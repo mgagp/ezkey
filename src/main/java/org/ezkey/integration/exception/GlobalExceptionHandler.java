@@ -15,7 +15,7 @@ import org.springframework.web.context.request.WebRequest;
  * </p>
  *
  * @author Ezkey contributors
- * @since 2024
+ * @since 2025
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

@@ -1,7 +1,7 @@
 /*
  * Ezkey - Open Source MFA/Passkey Alternative
  *
- * Copyright (c) 2024 Ezkey contributors
+ * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: EzkeyIntegrationService
@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service;
  * <p><b>License:</b> MIT</p>
  *
  * @author Ezkey contributors
- * @since 2024
+ * @since 2025
  */
 @Service
 public class EzkeyIntegrationService {

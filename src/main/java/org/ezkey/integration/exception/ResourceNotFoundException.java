@@ -8,7 +8,7 @@ package org.ezkey.integration.exception;
  * </p>
  *
  * @author Ezkey contributors
- * @since 2024
+ * @since 2025
  */
 public class ResourceNotFoundException extends RuntimeException {
     

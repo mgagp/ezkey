@@ -1,0 +1,104 @@
+# Cursor Rules for Ezkey Project
+
+## Java Code Formatting Standards
+
+### Indentation and Spacing
+- Use 4 spaces for indentation (not tabs)
+- Maximum line length: 120 characters
+- Use consistent spacing around operators and keywords
+- Add blank lines between methods and logical sections
+
+### Naming Conventions
+- Classes: PascalCase (e.g., `IntegrationController`)
+- Methods and variables: camelCase (e.g., `getIntegrationById`)
+- Constants: UPPER_SNAKE_CASE (e.g., `MAX_RETRY_ATTEMPTS`)
+- Packages: lowercase (e.g., `org.ezkey.integration`)
+
+### Import Organization
+Organize imports in this order:
+1. Java core imports
+2. Third-party library imports
+3. Spring framework imports
+4. Project-specific imports
+
+Example:
+```java
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RestController;
+
+import org.ezkey.integration.domain.entity.EzkeyIntegration;
+```
+
+### Javadoc Standards
+- Always include `@since 2025` for new classes
+- Include project header with copyright and license
+- Document all public methods with `@param`, `@return`, and `@throws` where applicable
+- Use descriptive comments that explain "why" not "what"
+
+### Code Structure
+- Follow the established package structure:
+  - `domain.entity` - JPA entities
+  - `domain.repository` - Spring Data repositories
+  - `service` - Business logic
+  - `controller` - REST endpoints
+  - `dto.request` - Request DTOs
+  - `dto.response` - Response DTOs
+  - `dto.common` - Shared DTOs
+  - `mapper` - MapStruct mappers
+  - `exception` - Custom exceptions
+
+### REST API Standards
+- Use appropriate HTTP status codes (200, 201, 404, 500)
+- Return 201 Created with Location header for POST operations
+- Use consistent URL patterns: `/api/v1/{resource}`
+- Always return DTOs, never expose entities directly
+
+### Error Handling
+- Use `ResourceNotFoundException` for 404 scenarios
+- Implement global exception handling with `@RestControllerAdvice`
+- Return standardized error responses with code, message, and timestamp
+
+### Dependencies and Imports
+- Use MapStruct for object mapping
+- Use Spring Data JPA for persistence
+- Prefer constructor injection over field injection
+- Use `@Autowired` annotation for clarity
+
+### Testing Standards
+- Write unit tests for services
+- Write integration tests for controllers
+- Use descriptive test method names
+- Follow AAA pattern (Arrange, Act, Assert)
+
+### Git Commit Standards
+- Use conventional commit messages
+- Keep commits focused and atomic
+- Include issue numbers when applicable
+
+## File Organization
+- One public class per file
+- File name matches class name exactly
+- Group related functionality in packages
+- Keep packages focused and cohesive
+
+## Performance Considerations
+- Use lazy loading for JPA relationships when appropriate
+- Implement proper pagination for large datasets
+- Use appropriate fetch strategies
+- Consider caching for frequently accessed data
+
+## Security Guidelines
+- Validate all input data
+- Use parameterized queries (handled by JPA)
+- Implement proper authentication and authorization
+- Sanitize user inputs
+- Use HTTPS in production
+
+## Documentation Requirements
+- Maintain up-to-date README.md
+- Document API endpoints with OpenAPI/Swagger
+- Include setup and deployment instructions
+- Document configuration options 
