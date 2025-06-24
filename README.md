@@ -1,2 +1,2 @@
-# ezkey
-ezkey – Rethinking MFA and Passkeys with Simplicity and Security
+# Ezkey
+Ezkey – Rethinking MFA and Passkeys with Simplicity and Security
