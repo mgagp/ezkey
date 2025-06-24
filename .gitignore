@@ -1,0 +1,87 @@
+# ==========================
+# Général
+# ==========================
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# ==========================
+# Build Java / Spring Boot
+# ==========================
+target/
+build/
+out/
+
+# ==========================
+# Fichiers de build spécifiques
+# ==========================
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Gradle
+.gradle/
+build/
+
+# ==========================
+# Fichiers spécifiques à IntelliJ IDEA
+# ==========================
+.idea/
+*.iml
+*.iws
+
+# ==========================
+# Fichiers spécifiques à Eclipse
+# ==========================
+.settings/
+.project
+.classpath
+.springBeans
+bin/
+
+# ==========================
+# Fichiers spécifiques à NetBeans
+# ==========================
+/nbproject/
+
+# ==========================
+# Fichiers spécifiques à VSCode
+# ==========================
+.vscode/
+
+# ==========================
+# Fichiers spécifiques à Mac OS
+# ==========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ==========================
+# Fichiers spécifiques à Windows
+# ==========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================
+# Logs spécifiques à Spring Boot
+# ==========================
+logs/
+*.log
+
+# ==========================
+# Autres
+# ==========================
+# Fichiers de configuration spécifiques à l'environnement
+application-*.yml
+application-*.properties
+
+# Scripts spécifiques à l'utilisateur
+*.sh
+*.bat

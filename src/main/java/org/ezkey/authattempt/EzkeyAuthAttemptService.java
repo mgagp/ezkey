@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class EzkeyAuthAttemptService {
-	private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EzkeyAuthAttemptService.class);
+	//private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EzkeyAuthAttemptService.class);
 	private final EzkeyAuthAttemptMapper mapper;
 	private final EzkeyEnrollmentMapper enrollmentMapper;
 	private final SignatureService signatureService;
