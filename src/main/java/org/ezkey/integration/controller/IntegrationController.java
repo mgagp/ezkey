@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.ezkey.integration.domain.entity.EzkeyIntegration;
-import org.ezkey.integration.dto.request.CreateIntegrationRequest;
+import org.ezkey.integration.dto.request.IntegrationCreateRequest;
 import org.ezkey.integration.dto.response.IntegrationResponse;
 import org.ezkey.integration.mapper.IntegrationMapper;
 import org.ezkey.integration.service.EzkeyIntegrationService;
@@ -95,7 +95,7 @@ public class IntegrationController {
 	/**
 	 * Creates a new Integration entity.
 	 * <p>
-	 * Accepts a CreateIntegrationRequest and creates a new Integration with default values
+	 * Accepts a IntegrationCreateRequest and creates a new Integration with default values
 	 * for active status and creation timestamp. Returns the created entity with HTTP 201 status
 	 * and Location header pointing to the new resource.
 	 * </p>
@@ -104,7 +104,7 @@ public class IntegrationController {
 	 * @return ResponseEntity containing the created IntegrationResponse with HTTP 201 status and Location header
 	 */
 	@PostMapping
-	public ResponseEntity<IntegrationResponse> create(@RequestBody CreateIntegrationRequest request) {
+	public ResponseEntity<IntegrationResponse> create(@RequestBody IntegrationCreateRequest request) {
 		EzkeyIntegration integration = mapper.toEntity(request);
 		integration.setActive(true);
 		integration.setCreatedAt(LocalDateTime.now());

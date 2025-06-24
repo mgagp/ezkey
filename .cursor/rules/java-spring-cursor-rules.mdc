@@ -51,7 +51,6 @@ Performance and Scalability
 - Implement proper database indexing and query optimization.
 
 Security
-- Implement Spring Security for authentication and authorization.
 - Use proper password encoding (e.g., BCrypt).
 - Implement CORS configuration when necessary.
 
@@ -66,7 +65,7 @@ API Documentation
 Data Access and ORM
 - Use Spring Data JPA for database operations.
 - Implement proper entity relationships and cascading.
-- Use database migrations with tools like Flyway or Liquibase.
+- Use database migrations with tool Flyway.
 
 Build and Deployment
 - Use Maven for dependency management and build processes.
@@ -75,7 +74,6 @@ Build and Deployment
 
 Follow best practices for:
 - RESTful API design (proper use of HTTP methods, status codes, etc.).
-- Microservices architecture (if applicable).
 - Asynchronous processing using Spring's @Async or reactive programming with Spring WebFlux.
 
 Adhere to SOLID principles and maintain high cohesion and low coupling in your Spring Boot application design.
