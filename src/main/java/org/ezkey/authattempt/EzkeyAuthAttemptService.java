@@ -8,7 +8,7 @@ import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoRequest;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoResponse;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateRequestDto;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateResponseDto;
-import org.ezkey.enrollment.EzkeyEnrollment;
+import org.ezkey.enrollment.EzkeyEnrollmentV0;
 import org.ezkey.enrollment.EzkeyEnrollmentMapper;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,7 +106,7 @@ public class EzkeyAuthAttemptService {
 			throw new IllegalStateException("Failed to mark auth attempt as read");
 		}
 
-		EzkeyEnrollment enrollment = enrollmentMapper.findById(request.getEnrollmentId());
+		EzkeyEnrollmentV0 enrollment = enrollmentMapper.findById(request.getEnrollmentId());
 		if (enrollment == null) {
 			throw new IllegalArgumentException("Enrollment not found");
 		}
@@ -162,7 +162,7 @@ public class EzkeyAuthAttemptService {
 			return response;
 		}
 
-		EzkeyEnrollment enrollment = enrollmentMapper.findById(authAttempt.getEnrollmentId());
+		EzkeyEnrollmentV0 enrollment = enrollmentMapper.findById(authAttempt.getEnrollmentId());
 		if (enrollment == null) {
 			response.setSuccess(false);
 			response.setMessage("Enrollment record not found");

@@ -2,7 +2,7 @@ package org.ezkey.enrollment;
 
 import java.time.LocalDateTime;
 
-public class EzkeyEnrollment {
+public class EzkeyEnrollmentV0 {
 
 	private Integer enrollmentId;
 	private Integer integrationId;

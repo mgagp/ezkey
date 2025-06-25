@@ -51,7 +51,7 @@ public interface EzkeyEnrollmentMapper {
 			@Result(property = "enrollmentCode", column = "enrollment_code"), //
 			@Result(property = "createdAt", column = "created_at") //
 	})
-	List<EzkeyEnrollment> findAll();
+	List<EzkeyEnrollmentV0> findAll();
 
 	@Select("""
 			    SELECT
@@ -86,7 +86,7 @@ public interface EzkeyEnrollmentMapper {
 			@Result(property = "enrollmentCode", column = "enrollment_code"), //
 			@Result(property = "createdAt", column = "created_at") //
 	})
-	EzkeyEnrollment findById(Integer id);
+	EzkeyEnrollmentV0 findById(Integer id);
 
 	@Insert("""
 			    INSERT INTO ezkey_enrollment (
@@ -118,7 +118,7 @@ public interface EzkeyEnrollmentMapper {
 			    )
 			""")
 	@Options(useGeneratedKeys = true, keyProperty = "enrollmentId")
-	int insert(EzkeyEnrollment enrollment);
+	int insert(EzkeyEnrollmentV0 enrollment);
 
 	@Update("""
 			    UPDATE ezkey_enrollment
@@ -135,7 +135,7 @@ public interface EzkeyEnrollmentMapper {
 			        enrollment_code = #{enrollmentCode}
 			    WHERE enrollment_id = #{enrollmentId}
 			""")
-	int update(EzkeyEnrollment enrollment);
+	int update(EzkeyEnrollmentV0 enrollment);
 
 	@Update("UPDATE ezkey_enrollment SET enrollment_read = TRUE WHERE enrollment_id = #{id}")
 	int setDeviceReadTrue(Integer id);

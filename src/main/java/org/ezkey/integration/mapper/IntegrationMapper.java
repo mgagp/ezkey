@@ -16,6 +16,8 @@ import org.ezkey.integration.dto.request.IntegrationCreateRequest;
 import org.ezkey.integration.dto.response.IntegrationResponse;
 import org.ezkey.integration.dto.response.IntegrationI18nResponse;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import java.util.List;
 
 /**
@@ -89,7 +91,7 @@ public interface IntegrationMapper {
      * @see IntegrationResponse
      * @see EzkeyIntegration
      */
-    EzkeyIntegration toEntity(IntegrationResponse response);
+    // toEntity(IntegrationResponse response);
     
     /**
      * Converts a list of EzkeyIntegration entities to a list of IntegrationResponse DTOs.
@@ -117,7 +119,7 @@ public interface IntegrationMapper {
      * @see IntegrationResponse
      * @see EzkeyIntegration
      */
-    List<EzkeyIntegration> toEntityList(List<IntegrationResponse> responses);
+    //List<EzkeyIntegration> toEntityList(List<IntegrationResponse> responses);
 
     /**
      * Converts an EzkeyIntegrationI18n entity to an IntegrationI18nResponse DTO.
@@ -146,6 +148,7 @@ public interface IntegrationMapper {
      * @see IntegrationI18nResponse
      * @see EzkeyIntegrationI18n
      */
+    @Mapping(target = "integration", ignore = true)
     EzkeyIntegrationI18n toI18nEntity(IntegrationI18nResponse response);
     
     /**
@@ -189,5 +192,9 @@ public interface IntegrationMapper {
      * @see IntegrationCreateRequest
      * @see EzkeyIntegration
      */
+    @Mapping(target = "active", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "id", ignore = true)
     EzkeyIntegration toEntity(IntegrationCreateRequest request);
+
 } 
