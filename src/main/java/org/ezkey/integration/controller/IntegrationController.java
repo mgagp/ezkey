@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,18 +32,34 @@ import org.ezkey.integration.service.EzkeyIntegrationService;
 import org.ezkey.integration.exception.ResourceNotFoundException;
 
 /**
- * REST controller for managing Integration entities.
+ * REST controller for integration API v1 using JPA service.
  * <p>
- * This controller provides HTTP endpoints for CRUD operations on Integration entities.
- * It follows REST conventions and returns appropriate HTTP status codes.
+ * This controller provides REST endpoints for integration management operations,
+ * using the JPA-based service and DTOs for clean API responses. It follows
+ * RESTful conventions and provides proper HTTP status codes and error handling.
+ * </p>
+ *
+ * <p>
+ * <b>API Endpoints:</b>
+ * <ul>
+ *   <li><b>GET /api/v1/integrations</b> - Get all integrations</li>
+ *   <li><b>GET /api/v1/integrations/{id}</b> - Get integration by ID</li>
+ *   <li><b>POST /api/v1/integrations</b> - Create new integration</li>
+ *   <li><b>PUT /api/v1/integrations/{id}</b> - Update integration</li>
+ *   <li><b>DELETE /api/v1/integrations/{id}</b> - Delete integration</li>
+ *   <li><b>GET /api/v1/integrations/{id}/i18n</b> - Get integration i18n data</li>
+ * </ul>
  * </p>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
  * <p><b>License:</b> MIT</p>
- * <p><b>Base Path:</b> /api/v1/integrations</p>
+ * <p><b>Usage:</b> Integration API v1 endpoints</p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see EzkeyIntegrationService
+ * @see IntegrationResponse
+ * @see IntegrationCreateRequest
  */
 @RestController
 @RequestMapping("/api/v1/integrations")
@@ -117,5 +135,46 @@ public class IntegrationController {
 		EzkeyIntegration savedIntegration = service.save(integration);
 		URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
 		return ResponseEntity.created(location).body(mapper.toResponse(savedIntegration));
+	}
+
+	/**
+	 * Updates an existing Integration entity.
+	 * <p>
+	 * Updates the integration with the provided data and returns the updated entity.
+	 * </p>
+	 *
+	 * @param id the integration ID to update
+	 * @param request the request containing updated integration data
+	 * @return ResponseEntity containing the updated IntegrationResponse
+	 */
+	@PutMapping("/{id}")
+	public ResponseEntity<IntegrationResponse> update(@PathVariable Integer id, @RequestBody IntegrationCreateRequest request) {
+		EzkeyIntegration existingIntegration = service.getById(id)
+			.orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+		
+		// Update fields
+		existingIntegration.setCode(request.getCode());
+		existingIntegration.setLogo(request.getLogo());
+		// Note: active status is not included in the request DTO, so we keep the existing value
+		
+		EzkeyIntegration updatedIntegration = service.save(existingIntegration);
+		return ResponseEntity.ok(mapper.toResponse(updatedIntegration));
+	}
+
+	/**
+	 * Deletes an Integration entity by its ID.
+	 * <p>
+	 * Removes an integration from the system.
+	 * </p>
+	 *
+	 * @param id the integration ID to delete
+	 * @return ResponseEntity with 204 No Content on success
+	 */
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> delete(@PathVariable Integer id) {
+		// Check if integration exists before deleting
+		service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+		service.delete(id);
+		return ResponseEntity.noContent().build();
 	}
 } 
