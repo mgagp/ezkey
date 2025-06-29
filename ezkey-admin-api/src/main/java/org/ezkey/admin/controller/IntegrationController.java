@@ -8,7 +8,7 @@
  * Description: REST controller for managing Integration entities through HTTP endpoints.
  */
 
-package org.ezkey.integration.controller;
+package org.ezkey.admin.controller;
 
 import java.net.URI;
 import java.time.LocalDateTime;
@@ -177,4 +177,4 @@ public class IntegrationController {
 		service.delete(id);
 		return ResponseEntity.noContent().build();
 	}
-} 
+}

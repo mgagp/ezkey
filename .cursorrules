@@ -102,3 +102,17 @@ import org.ezkey.integration.domain.entity.EzkeyIntegration;
 - Document API endpoints with OpenAPI/Swagger
 - Include setup and deployment instructions
 - Document configuration options 
+
+# Encodage UTF-8 sans BOM - Règle critique
+
+## Génération de code
+- TOUJOURS générer du code en UTF-8 sans BOM
+- JAMAIS utiliser d'encodage UTF-16 ou UTF-8 avec BOM
+- Vérifier que tous les fichiers Java générés sont en UTF-8 pur
+- Éviter tout caractère invisible ou BOM dans les générations
+
+## Validation obligatoire
+Avant de générer un fichier, confirmer mentalement : "Ce fichier sera en UTF-8 sans BOM"
+
+## Impact
+Les fichiers UTF-16 ou avec BOM causent des erreurs de compilation Maven et des problèmes d'encodage.
