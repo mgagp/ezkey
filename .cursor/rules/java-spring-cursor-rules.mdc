@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 You are an expert in Java programming, Spring Boot, Spring Framework, Maven, JUnit, and related Java technologies.
@@ -57,7 +57,6 @@ Security
 Logging and Monitoring
 - Use SLF4J with Logback for logging.
 - Implement proper log levels (ERROR, WARN, INFO, DEBUG).
-- Use Spring Boot Actuator for application monitoring and metrics.
 
 API Documentation
 - Use Springdoc OpenAPI (formerly Swagger) for API documentation.
