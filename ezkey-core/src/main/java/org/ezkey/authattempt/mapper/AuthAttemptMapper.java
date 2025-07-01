@@ -15,6 +15,7 @@ import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoRequest;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoResponse;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptDto;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
@@ -91,6 +92,9 @@ public interface AuthAttemptMapper {
      * @see EzkeyAuthAttempt
      * @see EzkeyAuthAttemptCreateDtoResponse
      */
+    @Mapping(target = "simulationAuthAttemptEnrolleeCode", ignore = true)
+    @Mapping(target = "simulationAuthAttemptChallengeResponse", ignore = true)
+    @Mapping(target = "simulationAuthAttemptEnrolleeCodeSigned", ignore = true)
     EzkeyAuthAttemptCreateDtoResponse toCreateResponse(EzkeyAuthAttempt entity);
     
     /**
@@ -107,17 +111,4 @@ public interface AuthAttemptMapper {
      */
     List<EzkeyAuthAttemptDto> toDtoList(List<EzkeyAuthAttempt> entities);
     
-    /**
-     * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptCreateDtoResponse objects.
-     * <p>
-     * This method applies the individual entity-to-create-response mapping to each
-     * element in the input list, maintaining the order of elements.
-     * </p>
-     *
-     * @param entities the list of EzkeyAuthAttempt entities to convert
-     * @return the corresponding list of EzkeyAuthAttemptCreateDtoResponse objects
-     * @see EzkeyAuthAttempt
-     * @see EzkeyAuthAttemptCreateDtoResponse
-     */
-    List<EzkeyAuthAttemptCreateDtoResponse> toCreateResponseList(List<EzkeyAuthAttempt> entities);
 } 
