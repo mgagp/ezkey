@@ -4,25 +4,23 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationCreateRequest
- * Description: Request DTO for creating new Integration entities.
+ * Domain IntegrationCreateRequest
+ * Description: Request for creating new Integration entities.
  */
 
-package org.ezkey.integration.dto.request;
+package org.ezkey.integration.domain;
 
 import java.util.List;
-import org.ezkey.integration.dto.response.IntegrationI18nResponse;
 
 /**
- * Request DTO for creating new Integration entities.
+ * Request for creating new Integration entities.
  * <p>
- * This DTO contains the data required to create a new Integration in the system.
+ * This domain object contains the data required to create a new Integration in the system.
  * It includes the basic integration information and optional internationalization data.
  * </p>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
  * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> POST /api/v1/integrations</p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -45,7 +43,7 @@ public class IntegrationCreateRequest {
      * Optional list of internationalization entries.
      * Contains localized name and description for different languages.
      */
-    private List<IntegrationI18nResponse> i18n;
+    private List<IntegrationI18nCreate> i18n;
 
     /**
      * Gets the unique code identifier for the integration.
@@ -88,7 +86,7 @@ public class IntegrationCreateRequest {
      *
      * @return the list of i18n entries
      */
-    public List<IntegrationI18nResponse> getI18n() { 
+    public List<IntegrationI18nCreate> getI18n() { 
         return i18n; 
     }
     
@@ -97,7 +95,7 @@ public class IntegrationCreateRequest {
      *
      * @param i18n the list of i18n entries to set
      */
-    public void setI18n(List<IntegrationI18nResponse> i18n) { 
+    public void setI18n(List<IntegrationI18nCreate> i18n) { 
         this.i18n = i18n; 
     }
 } 

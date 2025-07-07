@@ -16,28 +16,37 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Main Spring Boot application for Ezkey Admin API.
  * <p>
- * This application provides administrative endpoints for managing integrations,
- * enrollments, and authentication attempts. It scans both the core package
- * (for shared services and entities) and the admin package (for admin-specific
+ * This application provides administrative endpoints for managing integrations.
+ * It scans both the core package (for shared services and entities) and the admin package (for admin-specific
  * controllers and configuration).
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Admin API application</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Admin API application
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootApplication(scanBasePackages = {"org.ezkey.integration", "org.ezkey.admin"})
-public class EzkeyAdminApplication {
+@SpringBootApplication(scanBasePackages = { //
+        "org.ezkey.integration", //
+        "org.ezkey.admin", //
+        "org.ezkey.exception", //
+})
+public class EzkeyAdminApplication{
 
     /**
      * Main method to start the Ezkey Admin API application.
      *
      * @param args command line arguments
      */
-    public static void main(String[] args) {
-        SpringApplication.run(EzkeyAdminApplication.class, args);
+    public static void main(String[] args){
+        SpringApplication.run(EzkeyAdminApplication.class,args);
     }
-} 
+}

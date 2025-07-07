@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import org.ezkey.dto.ResourceNotFoundException;
 import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
 import org.ezkey.enrollment.domain.repository.EzkeyEnrollmentRepository;
 import org.ezkey.enrollment.dto.EzkeyEnrollmentBindRequest;
@@ -19,7 +20,6 @@ import org.ezkey.enrollment.dto.EzkeyEnrollmentConfirmResponse;
 import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
 import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
 import org.ezkey.enrollment.mapper.EnrollmentMapper;
-import org.ezkey.integration.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

@@ -28,7 +28,7 @@ import java.util.List;
  * @author Ezkey contributors
  * @since 2025
  */
-public class IntegrationResponse {
+public class IntegrationDtoResponse {
     
     /**
      * Unique identifier for the integration.

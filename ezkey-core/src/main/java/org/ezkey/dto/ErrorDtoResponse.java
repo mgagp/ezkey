@@ -8,7 +8,7 @@
  * Description: Common error response DTO for standardized API error handling.
  */
 
-package org.ezkey.integration.dto.common;
+package org.ezkey.dto;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
-public class ErrorResponse {
+public class ErrorDtoResponse {
     
     /**
      * Error code identifier.
@@ -61,7 +61,7 @@ public class ErrorResponse {
      * @param code the error code identifier
      * @param message the human-readable error message
      */
-    public ErrorResponse(String code, String message) {
+    public ErrorDtoResponse(String code, String message) {
         this.code = code;
         this.message = message;
         this.timestamp = LocalDateTime.now();
@@ -77,7 +77,7 @@ public class ErrorResponse {
      * @param message the human-readable error message
      * @param path the request path that caused the error
      */
-    public ErrorResponse(String code, String message, String path) {
+    public ErrorDtoResponse(String code, String message, String path) {
         this(code, message);
         this.path = path;
     }

@@ -10,15 +10,18 @@
 
 package org.ezkey.integration.mapper;
 
+import java.util.List;
+
+import org.ezkey.integration.domain.IntegrationCreateRequest;
+import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.EzkeyIntegration;
 import org.ezkey.integration.domain.entity.EzkeyIntegrationI18n;
-import org.ezkey.integration.dto.request.IntegrationCreateRequest;
-import org.ezkey.integration.dto.response.IntegrationResponse;
+import org.ezkey.integration.dto.request.IntegrationCreateDtoRequest;
+import org.ezkey.integration.dto.response.IntegrationCreateDtoResponse;
+import org.ezkey.integration.dto.response.IntegrationDtoResponse;
 import org.ezkey.integration.dto.response.IntegrationI18nResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 /**
  * MapStruct mapper interface for converting between Integration entities and DTOs.
@@ -62,7 +65,7 @@ import java.util.List;
  * @see IntegrationCreateRequest
  */
 @Mapper(componentModel = "spring")
-public interface IntegrationMapper {
+public interface IntegrationControllerMapper {
     
     /**
      * Converts an EzkeyIntegration entity to an IntegrationResponse DTO.
@@ -76,23 +79,8 @@ public interface IntegrationMapper {
      * @see EzkeyIntegration
      * @see IntegrationResponse
      */
-    IntegrationResponse toResponse(EzkeyIntegration entity);
-    
-    /**
-     * Converts an IntegrationResponse DTO to an EzkeyIntegration entity.
-     * <p>
-     * This method maps all fields from the response DTO to the JPA entity.
-     * Note that this conversion may not preserve all entity-specific fields
-     * such as audit timestamps or database-generated values.
-     * </p>
-     *
-     * @param response the IntegrationResponse DTO to convert
-     * @return the corresponding EzkeyIntegration entity
-     * @see IntegrationResponse
-     * @see EzkeyIntegration
-     */
-    // toEntity(IntegrationResponse response);
-    
+    IntegrationCreateDtoResponse toResponse(IntegrationCreateResponse entity);
+  
     /**
      * Converts a list of EzkeyIntegration entities to a list of IntegrationResponse DTOs.
      * <p>
@@ -105,22 +93,8 @@ public interface IntegrationMapper {
      * @see EzkeyIntegration
      * @see IntegrationResponse
      */
-    List<IntegrationResponse> toResponseList(List<EzkeyIntegration> entities);
+    List<IntegrationDtoResponse> toResponseList(List<EzkeyIntegration> entities);
     
-    /**
-     * Converts a list of IntegrationResponse DTOs to a list of EzkeyIntegration entities.
-     * <p>
-     * This method applies the individual response-to-entity mapping to each
-     * element in the input list, maintaining the order of elements.
-     * </p>
-     *
-     * @param responses the list of IntegrationResponse DTOs to convert
-     * @return the corresponding list of EzkeyIntegration entities
-     * @see IntegrationResponse
-     * @see EzkeyIntegration
-     */
-    //List<EzkeyIntegration> toEntityList(List<IntegrationResponse> responses);
-
     /**
      * Converts an EzkeyIntegrationI18n entity to an IntegrationI18nResponse DTO.
      * <p>
@@ -192,9 +166,10 @@ public interface IntegrationMapper {
      * @see IntegrationCreateRequest
      * @see EzkeyIntegration
      */
-    @Mapping(target = "active", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "id", ignore = true)
-    EzkeyIntegration toEntity(IntegrationCreateRequest request);
+    IntegrationCreateRequest toEntity(IntegrationCreateDtoRequest request);
+
+	IntegrationCreateRequest toCreateRequest(IntegrationCreateDtoRequest request);
+
+    IntegrationDtoResponse toResponse(EzkeyIntegration integration);
 
 } 

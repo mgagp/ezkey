@@ -10,6 +10,12 @@
 
 package org.ezkey.authattempt.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
+
 import org.ezkey.authattempt.domain.entity.EzkeyAuthAttempt;
 import org.ezkey.authattempt.domain.repository.EzkeyAuthAttemptRepository;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptCompleteRequestDto;
@@ -18,20 +24,14 @@ import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoRequest;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoResponse;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateRequestDto;
 import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateResponseDto;
+import org.ezkey.dto.ResourceNotFoundException;
 import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
 import org.ezkey.enrollment.domain.repository.EzkeyEnrollmentRepository;
-import org.ezkey.integration.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 /**
  * JPA-based service for authorization attempt business logic.
