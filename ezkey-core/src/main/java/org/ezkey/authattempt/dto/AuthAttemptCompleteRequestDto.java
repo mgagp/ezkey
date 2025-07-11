@@ -1,6 +1,6 @@
 package org.ezkey.authattempt.dto;
 
-public class EzkeyAuthAttemptCompleteRequestDto {
+public class AuthAttemptCompleteRequestDto {
 	private Integer enrollmentId;
 	private Integer authAttemptId;
 	private String authAttemptEnrolleeCode;

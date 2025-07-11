@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.domain.repository;
 
-import org.ezkey.authattempt.domain.entity.EzkeyAuthAttempt;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -43,10 +43,10 @@ import java.util.Optional;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyAuthAttempt
+ * @see AuthAttempt
  */
 @Repository
-public interface EzkeyAuthAttemptRepository extends JpaRepository<EzkeyAuthAttempt, Integer> {
+public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Integer> {
 
     /**
      * Finds the most recent authorization attempt for a given enrollment ID.
@@ -59,7 +59,7 @@ public interface EzkeyAuthAttemptRepository extends JpaRepository<EzkeyAuthAttem
      * @return the most recent authorization attempt, or empty if none found
      */
     @Query("SELECT a FROM EzkeyAuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.authAttemptId DESC")
-    List<EzkeyAuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(@Param("enrollmentId") Integer enrollmentId);
+    List<AuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(@Param("enrollmentId") Integer enrollmentId);
 
     /**
      * Finds the most recent authorization attempt for a given enrollment ID.
@@ -71,8 +71,8 @@ public interface EzkeyAuthAttemptRepository extends JpaRepository<EzkeyAuthAttem
      * @param enrollmentId the enrollment ID to search for
      * @return the most recent authorization attempt, or empty if none found
      */
-    default Optional<EzkeyAuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId) {
-        List<EzkeyAuthAttempt> attempts = findByEnrollmentIdOrderByAuthAttemptIdDesc(enrollmentId);
+    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId) {
+        List<AuthAttempt> attempts = findByEnrollmentIdOrderByAuthAttemptIdDesc(enrollmentId);
         return attempts.isEmpty() ? Optional.empty() : Optional.of(attempts.get(0));
     }
 
@@ -115,5 +115,5 @@ public interface EzkeyAuthAttemptRepository extends JpaRepository<EzkeyAuthAttem
      * @return list of authorization attempts for the enrollment
      */
     @Query("SELECT a FROM EzkeyAuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.createdAt DESC")
-    List<EzkeyAuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    List<AuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 } 

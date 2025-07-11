@@ -34,11 +34,11 @@ import java.time.LocalDateTime;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.ezkey.enrollment.domain.entity.EzkeyEnrollment
+ * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
 @Entity
 @Table(name = "ezkey_auth_attempt")
-public class EzkeyAuthAttempt {
+public class AuthAttempt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -69,7 +69,7 @@ public class EzkeyAuthAttempt {
     /**
      * Default constructor for JPA.
      */
-    public EzkeyAuthAttempt() {
+    public AuthAttempt() {
         this.createdAt = LocalDateTime.now();
     }
 
@@ -79,7 +79,7 @@ public class EzkeyAuthAttempt {
      * @param enrollmentId the enrollment ID associated with this attempt
      * @param authAttemptCode the authorization attempt code
      */
-    public EzkeyAuthAttempt(Integer enrollmentId, String authAttemptCode) {
+    public AuthAttempt(Integer enrollmentId, String authAttemptCode) {
         this();
         this.enrollmentId = enrollmentId;
         this.authAttemptCode = authAttemptCode;

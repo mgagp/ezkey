@@ -10,7 +10,7 @@
 
 package org.ezkey.enrollment.domain.repository;
 
-import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -34,10 +34,10 @@ import java.util.Optional;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.ezkey.enrollment.domain.entity.EzkeyEnrollment
+ * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
 @Repository
-public interface EzkeyEnrollmentRepository extends JpaRepository<EzkeyEnrollment, Integer> {
+public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
     
     /**
      * Finds an enrollment by its unique enrollment code.
@@ -49,7 +49,7 @@ public interface EzkeyEnrollmentRepository extends JpaRepository<EzkeyEnrollment
      * @param enrollmentCode the unique enrollment code to search for
      * @return Optional containing the enrollment if found, empty otherwise
      */
-    Optional<EzkeyEnrollment> findByEnrollmentCode(String enrollmentCode);
+    Optional<Enrollment> findByEnrollmentCode(String enrollmentCode);
     
     /**
      * Finds all enrollments for a specific integration.
@@ -61,7 +61,7 @@ public interface EzkeyEnrollmentRepository extends JpaRepository<EzkeyEnrollment
      * @param integrationId the integration ID to search for
      * @return list of enrollments for the specified integration
      */
-    List<EzkeyEnrollment> findByIntegrationId(Integer integrationId);
+    List<Enrollment> findByIntegrationId(Integer integrationId);
     
     /**
      * Finds active enrollments for a specific integration.
@@ -73,7 +73,7 @@ public interface EzkeyEnrollmentRepository extends JpaRepository<EzkeyEnrollment
      * @param integrationId the integration ID to search for
      * @return list of active enrollments for the specified integration
      */
-    List<EzkeyEnrollment> findByIntegrationIdAndEnrollmentActiveTrue(Integer integrationId);
+    List<Enrollment> findByIntegrationIdAndEnrollmentActiveTrue(Integer integrationId);
     
     /**
      * Finds confirmed enrollments for a specific integration.
@@ -85,7 +85,7 @@ public interface EzkeyEnrollmentRepository extends JpaRepository<EzkeyEnrollment
      * @param integrationId the integration ID to search for
      * @return list of confirmed enrollments for the specified integration
      */
-    List<EzkeyEnrollment> findByIntegrationIdAndEnrollmentConfirmedTrue(Integer integrationId);
+    List<Enrollment> findByIntegrationIdAndEnrollmentConfirmedTrue(Integer integrationId);
     
     /**
      * Updates the enrollment read status to true.

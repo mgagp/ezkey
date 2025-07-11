@@ -12,16 +12,16 @@ package org.ezkey.auth.controller;
 
 import java.util.List;
 
-import org.ezkey.enrollment.dto.EzkeyEnrollmentBindRequest;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentBindResponse;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentConfirmRequest;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentConfirmResponse;
+import org.ezkey.enrollment.dto.EnrollmentBindRequest;
+import org.ezkey.enrollment.dto.EnrollmentBindResponse;
+import org.ezkey.enrollment.dto.EnrollmentConfirmRequest;
+import org.ezkey.enrollment.dto.EnrollmentConfirmResponse;
 import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
 import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
 import org.ezkey.enrollment.dto.response.EnrollmentResponse;
 import org.ezkey.enrollment.mapper.EnrollmentMapper;
-import org.ezkey.enrollment.service.EzkeyEnrollmentService;
-import org.ezkey.integration.exception.ResourceNotFoundException;
+import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,20 +44,26 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * <b>API Endpoints:</b>
  * <ul>
- *   <li><b>GET /api/v1/enrollments</b> - Get all enrollments</li>
- *   <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID</li>
- *   <li><b>POST /api/v1/enrollments</b> - Create new enrollment</li>
- *   <li><b>PUT /api/v1/enrollments/{id}</b> - Update enrollment</li>
- *   <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment</li>
- *   <li><b>POST /api/v1/enrollments/{id}/read</b> - Mark enrollment as read</li>
- *   <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind enrollment to device</li>
- *   <li><b>POST /api/v1/enrollments/confirm</b> - Confirm enrollment</li>
+ * <li><b>GET /api/v1/enrollments</b> - Get all enrollments</li>
+ * <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID</li>
+ * <li><b>POST /api/v1/enrollments</b> - Create new enrollment</li>
+ * <li><b>PUT /api/v1/enrollments/{id}</b> - Update enrollment</li>
+ * <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment</li>
+ * <li><b>POST /api/v1/enrollments/{id}/read</b> - Mark enrollment as read</li>
+ * <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind enrollment to device</li>
+ * <li><b>POST /api/v1/enrollments/confirm</b> - Confirm enrollment</li>
  * </ul>
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Enrollment API v1 endpoints</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Enrollment API v1 endpoints
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -69,7 +75,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/enrollments")
 public class EnrollmentController {
 
-    private final EzkeyEnrollmentService enrollmentService;
+    private final EnrollmentService enrollmentService;
+
     private final EnrollmentMapper enrollmentMapper;
 
     /**
@@ -79,8 +86,7 @@ public class EnrollmentController {
      * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
      */
     @Autowired
-    public EnrollmentController(EzkeyEnrollmentService enrollmentService, 
-                               EnrollmentMapper enrollmentMapper) {
+    public EnrollmentController(EnrollmentService enrollmentService,EnrollmentMapper enrollmentMapper){
         this.enrollmentService = enrollmentService;
         this.enrollmentMapper = enrollmentMapper;
     }
@@ -94,7 +100,7 @@ public class EnrollmentController {
      * @return ResponseEntity containing list of enrollment responses
      */
     @GetMapping
-    public ResponseEntity<List<EnrollmentResponse>> getAll() {
+    public ResponseEntity<List<EnrollmentResponse>> getAll(){
         List<EnrollmentResponse> enrollments = enrollmentMapper.toResponseList(enrollmentService.getAll());
         return ResponseEntity.ok(enrollments);
     }
@@ -109,12 +115,12 @@ public class EnrollmentController {
      * @return ResponseEntity containing enrollment response or 404 error
      */
     @GetMapping("/{id}")
-    public ResponseEntity<EnrollmentResponse> getById(@PathVariable Integer id) {
-        try {
+    public ResponseEntity<EnrollmentResponse> getById(@PathVariable Integer id){
+        try{
             var enrollment = enrollmentService.getById(id);
             EnrollmentResponse response = enrollmentMapper.toResponse(enrollment);
             return ResponseEntity.ok(response);
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException e){
             return ResponseEntity.notFound().build();
         }
     }
@@ -129,14 +135,14 @@ public class EnrollmentController {
      * @return ResponseEntity containing created enrollment response with 201 status
      */
     @PostMapping
-    public ResponseEntity<EnrollmentCreateResponse> create(@RequestBody EnrollmentCreateRequest request) {
-        try {
+    public ResponseEntity<EnrollmentCreateResponse> create(@RequestBody EnrollmentCreateRequest request){
+        try{
             EnrollmentCreateResponse response = enrollmentService.create(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e){
             // Return 400 Bad Request with validation error message
             return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
+        } catch (Exception e){
             // Return 500 Internal Server Error for unexpected errors
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -152,11 +158,11 @@ public class EnrollmentController {
      * @return ResponseEntity with 204 No Content on success
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        try {
+    public ResponseEntity<Void> delete(@PathVariable Integer id){
+        try{
             enrollmentService.delete(id);
             return ResponseEntity.noContent().build();
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException e){
             return ResponseEntity.notFound().build();
         }
     }
@@ -171,11 +177,11 @@ public class EnrollmentController {
      * @return ResponseEntity with 200 OK on success
      */
     @PostMapping("/{id}/read")
-    public ResponseEntity<Void> setDeviceReadTrue(@PathVariable Integer id) {
-        try {
+    public ResponseEntity<Void> setDeviceReadTrue(@PathVariable Integer id){
+        try{
             enrollmentService.setDeviceReadTrue(id);
             return ResponseEntity.ok().build();
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException e){
             return ResponseEntity.notFound().build();
         }
     }
@@ -190,15 +196,15 @@ public class EnrollmentController {
      * @return ResponseEntity containing bind response
      */
     @GetMapping("/bind/{id}")
-    public ResponseEntity<EzkeyEnrollmentBindResponse> bind(@PathVariable Integer id) {
-        try {
-            EzkeyEnrollmentBindRequest req = new EzkeyEnrollmentBindRequest();
+    public ResponseEntity<EnrollmentBindResponse> bind(@PathVariable Integer id){
+        try{
+            EnrollmentBindRequest req = new EnrollmentBindRequest();
             req.setId(id);
-            EzkeyEnrollmentBindResponse response = enrollmentService.bind(req);
+            EnrollmentBindResponse response = enrollmentService.bind(req);
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException e){
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
@@ -213,13 +219,13 @@ public class EnrollmentController {
      * @return ResponseEntity containing confirmation response
      */
     @PostMapping("/confirm")
-    public ResponseEntity<EzkeyEnrollmentConfirmResponse> confirm(@RequestBody EzkeyEnrollmentConfirmRequest req) {
-        try {
-            EzkeyEnrollmentConfirmResponse response = enrollmentService.confirm(req);
+    public ResponseEntity<EnrollmentConfirmResponse> confirm(@RequestBody EnrollmentConfirmRequest req){
+        try{
+            EnrollmentConfirmResponse response = enrollmentService.confirm(req);
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException e){
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }

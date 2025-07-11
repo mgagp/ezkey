@@ -16,17 +16,17 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
-import org.ezkey.authattempt.domain.entity.EzkeyAuthAttempt;
-import org.ezkey.authattempt.domain.repository.EzkeyAuthAttemptRepository;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCompleteRequestDto;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCompleteResponseDto;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoRequest;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoResponse;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateRequestDto;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptInitiateResponseDto;
-import org.ezkey.dto.ResourceNotFoundException;
-import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
-import org.ezkey.enrollment.domain.repository.EzkeyEnrollmentRepository;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
+import org.ezkey.authattempt.dto.AuthAttemptCompleteRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptCompleteResponseDto;
+import org.ezkey.authattempt.dto.AuthAttemptCreateDtoRequest;
+import org.ezkey.authattempt.dto.AuthAttemptCreateDtoResponse;
+import org.ezkey.authattempt.dto.AuthAttemptInitiateRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptInitiateResponseDto;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,30 +45,38 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * <b>Supported Operations:</b>
  * <ul>
- *   <li><b>CRUD Operations:</b> Create, read, update, delete authorization attempts</li>
- *   <li><b>Business Logic:</b> Initiate, complete, and manage authorization flow</li>
- *   <li><b>Status Management:</b> Read, reply, and acceptance status updates</li>
- *   <li><b>Challenge Handling:</b> Challenge generation and validation</li>
- *   <li><b>Signature Validation:</b> Cryptographic signature verification</li>
+ * <li><b>CRUD Operations:</b> Create, read, update, delete authorization attempts</li>
+ * <li><b>Business Logic:</b> Initiate, complete, and manage authorization flow</li>
+ * <li><b>Status Management:</b> Read, reply, and acceptance status updates</li>
+ * <li><b>Challenge Handling:</b> Challenge generation and validation</li>
+ * <li><b>Signature Validation:</b> Cryptographic signature verification</li>
  * </ul>
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Business logic layer for authorization attempts</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Business logic layer for authorization attempts
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyAuthAttempt
- * @see EzkeyAuthAttemptRepository
- * @see EzkeyEnrollment
+ * @see AuthAttempt
+ * @see AuthAttemptRepository
+ * @see Enrollment
  */
 @Service
 @Transactional
-public class EzkeyAuthAttemptService {
+public class AuthAttemptService{
 
-    private final EzkeyAuthAttemptRepository authAttemptRepository;
-    private final EzkeyEnrollmentRepository enrollmentRepository;
+    private final AuthAttemptRepository authAttemptRepository;
+
+    private final EnrollmentRepository enrollmentRepository;
+
     private final SignatureService signatureService;
 
     @Value("${ezkey.simulation.mode:false}")
@@ -82,9 +90,8 @@ public class EzkeyAuthAttemptService {
      * @param signatureService the signature service for cryptographic operations
      */
     @Autowired
-    public EzkeyAuthAttemptService(EzkeyAuthAttemptRepository authAttemptRepository,
-                                   EzkeyEnrollmentRepository enrollmentRepository,
-                                   SignatureService signatureService) {
+    public AuthAttemptService(AuthAttemptRepository authAttemptRepository,
+            EnrollmentRepository enrollmentRepository,SignatureService signatureService){
         this.authAttemptRepository = authAttemptRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
@@ -97,9 +104,9 @@ public class EzkeyAuthAttemptService {
      * @return the authorization attempt entity
      * @throws ResourceNotFoundException if the authorization attempt is not found
      */
-    public EzkeyAuthAttempt getById(Integer id) {
+    public AuthAttempt getById(Integer id){
         return authAttemptRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Authorization attempt", id));
+                .orElseThrow(() -> new ResourceNotFoundException("Authorization attempt",id));
     }
 
     /**
@@ -107,7 +114,7 @@ public class EzkeyAuthAttemptService {
      *
      * @return list of all authorization attempts
      */
-    public List<EzkeyAuthAttempt> getAll() {
+    public List<AuthAttempt> getAll(){
         return authAttemptRepository.findAll();
     }
 
@@ -123,29 +130,29 @@ public class EzkeyAuthAttemptService {
      * @throws IllegalArgumentException if the enrollment is not found or validation fails
      * @throws RuntimeException if the creation fails
      */
-    public EzkeyAuthAttemptCreateDtoResponse create(EzkeyAuthAttemptCreateDtoRequest authRequest) {
+    public AuthAttemptCreateDtoResponse create(AuthAttemptCreateDtoRequest authRequest){
         // Find the enrollment
-        EzkeyEnrollment enrollment = enrollmentRepository.findById(authRequest.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
+        Enrollment enrollment = enrollmentRepository.findById(authRequest.getEnrollmentId()).orElseThrow(
+                () -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
         // Validate challenge requirement
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) && 
-            Boolean.FALSE.equals(authRequest.getChallengeRequested())) {
+        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())
+                && Boolean.FALSE.equals(authRequest.getChallengeRequested())){
             throw new IllegalArgumentException("Challenge for device is required for this enrollment");
         }
 
         // Create the authorization attempt
-        EzkeyAuthAttempt authAttempt = new EzkeyAuthAttempt();
+        AuthAttempt authAttempt = new AuthAttempt();
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
         authAttempt.setAuthAttemptRead(false);
         authAttempt.setAuthAttemptReplied(false);
         authAttempt.setAuthAttemptAccepted(false);
 
         // Generate challenge if required
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())) {
+        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
             Random random = new Random();
             authAttempt.setAuthAttemptChallenge(100000 + random.nextInt(900000));
-        } else {
+        } else{
             authAttempt.setAuthAttemptChallenge(null);
         }
 
@@ -153,18 +160,17 @@ public class EzkeyAuthAttemptService {
         authAttempt.setAuthAttemptCode(UUID.randomUUID().toString());
 
         // Save the authorization attempt
-        EzkeyAuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
+        AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
 
         // Create response
-        EzkeyAuthAttemptCreateDtoResponse response = new EzkeyAuthAttemptCreateDtoResponse();
+        AuthAttemptCreateDtoResponse response = new AuthAttemptCreateDtoResponse();
         response.setAuthAttemptId(savedAuthAttempt.getAuthAttemptId());
 
         // Add simulation data if in simulation mode
-        if (simulationMode) {
+        if (simulationMode){
             response.setSimulationAuthAttemptEnrolleeCode(UUID.randomUUID().toString());
-            response.setSimulationAuthAttemptEnrolleeCodeSigned(
-                    signatureService.generateSignature(response.getSimulationAuthAttemptEnrolleeCode(), 
-                                                     authRequest.getSimulationDevicePrivateKey()));
+            response.setSimulationAuthAttemptEnrolleeCodeSigned(signatureService.generateSignature(
+                    response.getSimulationAuthAttemptEnrolleeCode(),authRequest.getSimulationDevicePrivateKey()));
             response.setSimulationAuthAttemptChallengeResponse(authAttempt.getAuthAttemptChallenge());
         }
 
@@ -177,7 +183,7 @@ public class EzkeyAuthAttemptService {
      * @param authAttempt the authorization attempt to update
      * @return the updated authorization attempt
      */
-    public EzkeyAuthAttempt update(EzkeyAuthAttempt authAttempt) {
+    public AuthAttempt update(AuthAttempt authAttempt){
         return authAttemptRepository.save(authAttempt);
     }
 
@@ -187,9 +193,9 @@ public class EzkeyAuthAttemptService {
      * @param id the authorization attempt ID to delete
      * @throws ResourceNotFoundException if the authorization attempt is not found
      */
-    public void delete(Integer id) {
-        if (!authAttemptRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Authorization attempt", id);
+    public void delete(Integer id){
+        if (!authAttemptRepository.existsById(id)){
+            throw new ResourceNotFoundException("Authorization attempt",id);
         }
         authAttemptRepository.deleteById(id);
     }
@@ -206,37 +212,36 @@ public class EzkeyAuthAttemptService {
      * @throws IllegalArgumentException if validation fails
      * @throws IllegalStateException if the attempt is already read or update fails
      */
-    public EzkeyAuthAttemptInitiateResponseDto initiate(EzkeyAuthAttemptInitiateRequestDto request) {
+    public AuthAttemptInitiateResponseDto initiate(AuthAttemptInitiateRequestDto request){
         // Find the most recent authorization attempt
-        EzkeyAuthAttempt authAttempt = authAttemptRepository.findMostRecentByEnrollmentId(request.getEnrollmentId())
+        AuthAttempt authAttempt = authAttemptRepository.findMostRecentByEnrollmentId(request.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Auth attempt record not found for this enrollment"));
 
         // Check if already read
-        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
+        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             throw new IllegalStateException("Auth attempt already read by device");
         }
 
         // Mark as read
         int updated = authAttemptRepository.setDeviceReadTrueIfNotRead(authAttempt.getAuthAttemptId());
-        if (updated == 0) {
+        if (updated == 0){
             throw new IllegalStateException("Failed to mark auth attempt as read");
         }
 
         // Find the enrollment
-        EzkeyEnrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
+        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
 
         // Validate device public key
         String devicePublicKey = enrollment.getAuthAttemptPublicKey();
-        if (devicePublicKey == null) {
+        if (devicePublicKey == null){
             throw new IllegalStateException("Device public key not found for this enrollment");
         }
 
         // Validate signature
-        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(), 
-                                                           request.getAuthAttemptEnrolleeCodeSigned(), 
-                                                           devicePublicKey);
-        if (!isValid) {
+        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),
+                request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
+        if (!isValid){
             throw new IllegalArgumentException("Invalid signature for auth attempt code");
         }
 
@@ -245,11 +250,11 @@ public class EzkeyAuthAttemptService {
         authAttemptRepository.save(authAttempt);
 
         // Create response
-        EzkeyAuthAttemptInitiateResponseDto response = new EzkeyAuthAttemptInitiateResponseDto();
+        AuthAttemptInitiateResponseDto response = new AuthAttemptInitiateResponseDto();
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
         response.setAuthAttemptCode(authAttempt.getAuthAttemptCode());
-        response.setAuthAttemptCodeSigned(signatureService.generateSignature(authAttempt.getAuthAttemptCode(), 
-                                                                            enrollment.getIntegrationPrivateKey()));
+        response.setAuthAttemptCodeSigned(signatureService.generateSignature(authAttempt.getAuthAttemptCode(),
+                enrollment.getIntegrationPrivateKey()));
         response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
         return response;
     }
@@ -264,50 +269,49 @@ public class EzkeyAuthAttemptService {
      * @param request the completion request
      * @return the completion response
      */
-    public EzkeyAuthAttemptCompleteResponseDto complete(EzkeyAuthAttemptCompleteRequestDto request) {
-        EzkeyAuthAttemptCompleteResponseDto response = new EzkeyAuthAttemptCompleteResponseDto();
+    public AuthAttemptCompleteResponseDto complete(AuthAttemptCompleteRequestDto request){
+        AuthAttemptCompleteResponseDto response = new AuthAttemptCompleteResponseDto();
 
         // Find the authorization attempt
-        Optional<EzkeyAuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
-        if (authAttemptOpt.isEmpty()) {
+        Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
+        if (authAttemptOpt.isEmpty()){
             response.setSuccess(false);
             response.setMessage("Auth attempt record not found");
             return response;
         }
 
-        EzkeyAuthAttempt authAttempt = authAttemptOpt.get();
+        AuthAttempt authAttempt = authAttemptOpt.get();
 
         // Mark as replied
         int updated = authAttemptRepository.setDeviceRepliedTrueIfNotReplied(authAttempt.getAuthAttemptId());
-        if (updated == 0) {
+        if (updated == 0){
             throw new IllegalStateException("Failed to mark auth attempt as replied");
         }
 
         // Check if read
-        if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
+        if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             response.setSuccess(false);
             response.setMessage("Auth attempt not read by device");
             return response;
         }
 
         // Validate auth attempt code
-        if (!authAttempt.getAuthAttemptCode().equals(request.getAuthAttemptCode())) {
+        if (!authAttempt.getAuthAttemptCode().equals(request.getAuthAttemptCode())){
             response.setSuccess(false);
             response.setMessage("Integration code mismatch");
             return response;
         }
 
         // Validate enrollment ID
-        if (!authAttempt.getEnrollmentId().equals(request.getEnrollmentId())) {
+        if (!authAttempt.getEnrollmentId().equals(request.getEnrollmentId())){
             response.setSuccess(false);
             response.setMessage("Enrollment id mismatch");
             return response;
         }
 
         // Find the enrollment
-        EzkeyEnrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId())
-                .orElse(null);
-        if (enrollment == null) {
+        Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null);
+        if (enrollment == null){
             response.setSuccess(false);
             response.setMessage("Enrollment record not found");
             return response;
@@ -315,17 +319,16 @@ public class EzkeyAuthAttemptService {
 
         // Validate device public key
         String devicePublicKey = enrollment.getAuthAttemptPublicKey();
-        if (devicePublicKey == null) {
+        if (devicePublicKey == null){
             response.setSuccess(false);
             response.setMessage("Device public key not found");
             return response;
         }
 
         // Validate device signature
-        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(), 
-                                                           request.getAuthAttemptEnrolleeCodeSigned(), 
-                                                           devicePublicKey);
-        if (!isValid) {
+        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),
+                request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
+        if (!isValid){
             response.setSuccess(false);
             response.setMessage("Invalid signature for auth attempt code");
             return response;
@@ -333,26 +336,25 @@ public class EzkeyAuthAttemptService {
 
         // Validate integration public key
         String integrationPublicKey = enrollment.getIntegrationPublicKey();
-        if (integrationPublicKey == null) {
+        if (integrationPublicKey == null){
             response.setSuccess(false);
             response.setMessage("Integration public key not found");
             return response;
         }
 
         // Validate integration signature
-        boolean isAppCodeValid = signatureService.validateSignature(request.getAuthAttemptCode(), 
-                                                                  request.getAuthAttemptCodeSigned(), 
-                                                                  integrationPublicKey);
-        if (!isAppCodeValid) {
+        boolean isAppCodeValid = signatureService.validateSignature(request.getAuthAttemptCode(),
+                request.getAuthAttemptCodeSigned(),integrationPublicKey);
+        if (!isAppCodeValid){
             response.setSuccess(false);
             response.setMessage("Invalid signature for integration code");
             return response;
         }
 
         // Validate challenge if required
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())) {
-            if (request.getAuthAttemptChallengeResponse() == null || 
-                !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())) {
+        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
+            if (request.getAuthAttemptChallengeResponse() == null
+                    || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
                 authAttempt.setAuthAttemptAccepted(false);
                 authAttemptRepository.save(authAttempt);
                 response.setSuccess(false);
@@ -370,4 +372,4 @@ public class EzkeyAuthAttemptService {
         response.setMessage("Auth attempt completed");
         return response;
     }
-} 
+}

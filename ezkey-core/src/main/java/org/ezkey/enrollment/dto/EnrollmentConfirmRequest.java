@@ -1,6 +1,6 @@
 package org.ezkey.enrollment.dto;
 
-public class EzkeyEnrollmentConfirmRequest {
+public class EnrollmentConfirmRequest {
 	private Integer enrollmentId;
 	private Integer challengeResponse;
 	private String devicePublicKey;

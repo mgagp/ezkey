@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
-public class EzkeyAuthAttemptDto {
+public class AuthAttemptDto {
 
 	private Integer authAttemptId;
 	private Integer enrollmentId;
@@ -41,7 +41,7 @@ public class EzkeyAuthAttemptDto {
 	/**
 	 * Default constructor.
 	 */
-	public EzkeyAuthAttemptDto() {
+	public AuthAttemptDto() {
 	}
 
 	/**
@@ -56,7 +56,7 @@ public class EzkeyAuthAttemptDto {
 	 * @param authAttemptCode the authorization attempt code
 	 * @param createdAt the creation timestamp
 	 */
-	public EzkeyAuthAttemptDto(Integer authAttemptId, Integer enrollmentId, Boolean authAttemptRead,
+	public AuthAttemptDto(Integer authAttemptId, Integer enrollmentId, Boolean authAttemptRead,
 							   Boolean authAttemptReplied, Boolean authAttemptAccepted, Integer authAttemptChallenge,
 							   String authAttemptCode, LocalDateTime createdAt) {
 		this.authAttemptId = authAttemptId;

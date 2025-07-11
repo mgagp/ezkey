@@ -1,6 +1,6 @@
 package org.ezkey.authattempt.dto;
 
-public class EzkeyAuthAttemptInitiateResponseDto {
+public class AuthAttemptInitiateResponseDto {
 	private Integer authAttemptId;
 	private String authAttemptCode;
 	private String authAttemptCodeSigned;

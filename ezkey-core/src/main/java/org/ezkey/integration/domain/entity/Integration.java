@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Entity
 @Table(name = "ezkey_integration")
-public class EzkeyIntegration {
+public class Integration {
     
     /**
      * Unique identifier for the integration.
@@ -75,7 +75,7 @@ public class EzkeyIntegration {
      * Uses lazy loading for performance optimization.
      */
     @OneToMany(mappedBy = "integration", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<EzkeyIntegrationI18n> i18n;
+    private List<IntegrationI18n> i18n;
     
     /**
      * Gets the unique identifier of the integration.
@@ -172,7 +172,7 @@ public class EzkeyIntegration {
      *
      * @return the list of i18n entries
      */
-    public List<EzkeyIntegrationI18n> getI18n() {
+    public List<IntegrationI18n> getI18n() {
         return i18n;
     }
     
@@ -181,7 +181,7 @@ public class EzkeyIntegration {
      *
      * @param i18n the list of i18n entries to set
      */
-    public void setI18n(List<EzkeyIntegrationI18n> i18n) {
+    public void setI18n(List<IntegrationI18n> i18n) {
         this.i18n = i18n;
     }
 } 

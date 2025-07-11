@@ -16,13 +16,13 @@ import java.util.Optional;
 
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
-import org.ezkey.integration.domain.entity.EzkeyIntegration;
-import org.ezkey.integration.domain.repository.EzkeyIntegrationRepository;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for managing {@link EzkeyIntegration} entities and their I18n
+ * Service for managing {@link Integration} entities and their I18n
  * children.
  * <p>
  * This service provides CRUD operations for Integration entities using Spring
@@ -41,9 +41,9 @@ import org.springframework.stereotype.Service;
  * @since 2025
  */
 @Service
-public class EzkeyIntegrationService {
+public class IntegrationService {
 
-	private final EzkeyIntegrationRepository integrationRepository;
+	private final IntegrationRepository integrationRepository;
 	private final IntegrationServiceMapper integrationServiceMapper;
 
 	/**
@@ -53,7 +53,7 @@ public class EzkeyIntegrationService {
 	 * @param integrationServiceMapper     the mapper for converting between DTOs and
 	 *                              entities
 	 */
-	public EzkeyIntegrationService(EzkeyIntegrationRepository integrationRepository, IntegrationServiceMapper integrationServiceMapper) {
+	public IntegrationService(IntegrationRepository integrationRepository, IntegrationServiceMapper integrationServiceMapper) {
 		this.integrationRepository = integrationRepository;
 		this.integrationServiceMapper = integrationServiceMapper;
 	}
@@ -65,7 +65,7 @@ public class EzkeyIntegrationService {
 	 * @return an Optional containing the Integration if found, or empty if not
 	 *         found
 	 */
-	public Optional<EzkeyIntegration> getById(Integer id) {
+	public Optional<Integration> getById(Integer id) {
 		return integrationRepository.findById(id);
 	}
 
@@ -74,7 +74,7 @@ public class EzkeyIntegrationService {
 	 *
 	 * @return a list of all Integration entities
 	 */
-	public List<EzkeyIntegration> getAll() {
+	public List<Integration> getAll() {
 		return integrationRepository.findAll();
 	}
 
@@ -85,7 +85,7 @@ public class EzkeyIntegrationService {
 	 * @return the created and saved Integration entity
 	 */
 	public IntegrationCreateResponse createIntegration(IntegrationCreateRequest request) {
-		EzkeyIntegration integration = integrationServiceMapper.toEntity(request);
+		Integration integration = integrationServiceMapper.toEntity(request);
 		integration.setActive(true);
 		integration.setCreatedAt(LocalDateTime.now());
 

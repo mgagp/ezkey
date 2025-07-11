@@ -13,15 +13,15 @@ package org.ezkey.admin.controller;
 import java.net.URI;
 import java.util.List;
 
-import org.ezkey.dto.ResourceNotFoundException;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
-import org.ezkey.integration.domain.entity.EzkeyIntegration;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.dto.request.IntegrationCreateDtoRequest;
 import org.ezkey.integration.dto.response.IntegrationCreateDtoResponse;
 import org.ezkey.integration.dto.response.IntegrationDtoResponse;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
-import org.ezkey.integration.service.EzkeyIntegrationService;
+import org.ezkey.integration.service.IntegrationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,7 +61,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyIntegrationService
+ * @see IntegrationService
  * @see IntegrationResponse
  * @see IntegrationCreateRequest
  */
@@ -69,7 +69,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/integrations")
 public class IntegrationController{
 
-    private final EzkeyIntegrationService service;
+    private final IntegrationService service;
 
     private final IntegrationControllerMapper mapper;
 
@@ -79,7 +79,7 @@ public class IntegrationController{
      * @param service the service layer for Integration operations
      * @param mapper the mapper for converting between entities and DTOs
      */
-    public IntegrationController(EzkeyIntegrationService service,IntegrationControllerMapper mapper){
+    public IntegrationController(IntegrationService service,IntegrationControllerMapper mapper){
         this.service = service;
         this.mapper = mapper;
     }
@@ -94,7 +94,7 @@ public class IntegrationController{
      */
     @GetMapping
     public ResponseEntity<List<IntegrationDtoResponse>> getAll(){
-        List<EzkeyIntegration> integrations = service.getAll();
+        List<Integration> integrations = service.getAll();
         List<IntegrationDtoResponse> integrationResponses = mapper.toResponseList(integrations);
         return ResponseEntity.ok(integrationResponses);
     }
@@ -111,7 +111,7 @@ public class IntegrationController{
      */
     @GetMapping("/{id}")
     public ResponseEntity<IntegrationDtoResponse> getById(@PathVariable("id") Integer id){
-        EzkeyIntegration integration = service.getById(id)
+        Integration integration = service.getById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Integration",id));
         return ResponseEntity.ok(mapper.toResponse(integration));
     }

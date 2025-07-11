@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "ezkey_enrollment")
-public class EzkeyEnrollment {
+public class Enrollment {
     
     /**
      * Primary key identifier for the enrollment.
@@ -126,11 +126,11 @@ public class EzkeyEnrollment {
     private LocalDateTime createdAt;
 
     // Default constructor
-    public EzkeyEnrollment() {
+    public Enrollment() {
     }
 
     // Constructor with required fields
-    public EzkeyEnrollment(Integer integrationId, String enrollmentName, String enrollmentCode) {
+    public Enrollment(Integer integrationId, String enrollmentName, String enrollmentCode) {
         this.integrationId = integrationId;
         this.enrollmentName = enrollmentName;
         this.enrollmentCode = enrollmentCode;

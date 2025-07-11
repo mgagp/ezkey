@@ -10,16 +10,16 @@
 
 package org.ezkey.enrollment.service;
 
-import org.ezkey.dto.ResourceNotFoundException;
-import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
-import org.ezkey.enrollment.domain.repository.EzkeyEnrollmentRepository;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentBindRequest;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentBindResponse;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentConfirmRequest;
-import org.ezkey.enrollment.dto.EzkeyEnrollmentConfirmResponse;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.enrollment.dto.EnrollmentBindRequest;
+import org.ezkey.enrollment.dto.EnrollmentBindResponse;
+import org.ezkey.enrollment.dto.EnrollmentConfirmRequest;
+import org.ezkey.enrollment.dto.EnrollmentConfirmResponse;
 import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
 import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
 import org.ezkey.enrollment.mapper.EnrollmentMapper;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,17 +58,17 @@ import java.util.UUID;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyEnrollment
- * @see EzkeyEnrollmentRepository
+ * @see Enrollment
+ * @see EnrollmentRepository
  * @see EnrollmentMapper
  */
 @Service
 @Transactional
-public class EzkeyEnrollmentService {
+public class EnrollmentService {
 
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EzkeyEnrollmentService.class);
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EnrollmentService.class);
 
-    private final EzkeyEnrollmentRepository enrollmentRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentMapper enrollmentMapper;
     private final SignatureService signatureService;
 
@@ -83,7 +83,7 @@ public class EzkeyEnrollmentService {
      * @param signatureService the cryptographic signature service
      */
     @Autowired
-    public EzkeyEnrollmentService(EzkeyEnrollmentRepository enrollmentRepository, 
+    public EnrollmentService(EnrollmentRepository enrollmentRepository, 
                                   EnrollmentMapper enrollmentMapper,
                                   SignatureService signatureService) {
         this.enrollmentRepository = enrollmentRepository;
@@ -102,8 +102,8 @@ public class EzkeyEnrollmentService {
      * @return the enrollment entity
      * @throws ResourceNotFoundException if the enrollment is not found
      */
-    public EzkeyEnrollment getById(Integer id) {
-        Optional<EzkeyEnrollment> enrollment = enrollmentRepository.findById(id);
+    public Enrollment getById(Integer id) {
+        Optional<Enrollment> enrollment = enrollmentRepository.findById(id);
         if (enrollment.isEmpty()) {
             throw new ResourceNotFoundException("Enrollment", id);
         }
@@ -118,7 +118,7 @@ public class EzkeyEnrollmentService {
      *
      * @return list of all enrollment entities
      */
-    public List<EzkeyEnrollment> getAll() {
+    public List<Enrollment> getAll() {
         return enrollmentRepository.findAll();
     }
 
@@ -140,7 +140,7 @@ public class EzkeyEnrollmentService {
         }
       
 
-        var enrollment = new EzkeyEnrollment();
+        var enrollment = new Enrollment();
         enrollment.setIntegrationId(request.getIntegrationId());
         enrollment.setEnrollmentName(request.getName().trim());
         enrollment.setEnrollmentCode(UUID.randomUUID().toString());
@@ -164,7 +164,7 @@ public class EzkeyEnrollmentService {
         java.util.Random random = new java.util.Random();
         enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
 
-        EzkeyEnrollment savedEnrollment = enrollmentRepository.save(enrollment);
+        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         return enrollmentMapper.toCreateResponse(savedEnrollment);
     }
 
@@ -177,7 +177,7 @@ public class EzkeyEnrollmentService {
      * @param enrollment the enrollment entity to update
      * @return number of rows affected
      */
-    public int update(EzkeyEnrollment enrollment) {
+    public int update(Enrollment enrollment) {
         enrollmentRepository.save(enrollment);
         return 1; // JPA save returns the entity, so we return 1 for compatibility
     }
@@ -207,20 +207,20 @@ public class EzkeyEnrollmentService {
      * @return the bind response
      * @throws IllegalArgumentException if enrollment not found or already bound
      */
-    public EzkeyEnrollmentBindResponse bind(EzkeyEnrollmentBindRequest req) {
-        Optional<EzkeyEnrollment> enrollmentOpt = enrollmentRepository.findById(req.getId());
+    public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
+        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getId());
         if (enrollmentOpt.isEmpty()) {
             throw new IllegalArgumentException("Pair not found");
         }
         
-        EzkeyEnrollment enrollment = enrollmentOpt.get();
+        Enrollment enrollment = enrollmentOpt.get();
         if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
             throw new IllegalStateException("Pair already bound by a device");
         }
         
         enrollmentRepository.setDeviceReadTrue(req.getId());
         
-        EzkeyEnrollmentBindResponse response = new EzkeyEnrollmentBindResponse();
+        EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentCode(enrollment.getEnrollmentCode());
@@ -258,13 +258,13 @@ public class EzkeyEnrollmentService {
      * @throws IllegalArgumentException if enrollment not found or validation fails
      * @throws IllegalStateException if enrollment is in invalid state
      */
-    public EzkeyEnrollmentConfirmResponse confirm(EzkeyEnrollmentConfirmRequest req) {
-        Optional<EzkeyEnrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
+    public EnrollmentConfirmResponse confirm(EnrollmentConfirmRequest req) {
+        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
         if (enrollmentOpt.isEmpty()) {
             throw new IllegalArgumentException("Pair not found");
         }
         
-        EzkeyEnrollment enrollment = enrollmentOpt.get();
+        Enrollment enrollment = enrollmentOpt.get();
         if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
             throw new IllegalStateException("Pair must be read before confirmation");
         }
@@ -299,7 +299,7 @@ public class EzkeyEnrollmentService {
         enrollment.setAuthAttemptPublicKey(req.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
         
-        EzkeyEnrollmentConfirmResponse response = new EzkeyEnrollmentConfirmResponse();
+        EnrollmentConfirmResponse response = new EnrollmentConfirmResponse();
         response.setActive(true);
         return response;
     }
@@ -343,8 +343,8 @@ public class EzkeyEnrollmentService {
      * @return the enrollment entity
      * @throws ResourceNotFoundException if the enrollment is not found
      */
-    public EzkeyEnrollment findByEnrollmentCode(String enrollmentCode) {
-        Optional<EzkeyEnrollment> enrollment = enrollmentRepository.findByEnrollmentCode(enrollmentCode);
+    public Enrollment findByEnrollmentCode(String enrollmentCode) {
+        Optional<Enrollment> enrollment = enrollmentRepository.findByEnrollmentCode(enrollmentCode);
         if (enrollment.isEmpty()) {
             throw new ResourceNotFoundException("Enrollment", enrollmentCode);
         }
@@ -360,7 +360,7 @@ public class EzkeyEnrollmentService {
      * @param integrationId the integration ID
      * @return list of enrollment entities
      */
-    public List<EzkeyEnrollment> findByIntegrationId(Integer integrationId) {
+    public List<Enrollment> findByIntegrationId(Integer integrationId) {
         return enrollmentRepository.findByIntegrationId(integrationId);
     }
 } 

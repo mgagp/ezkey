@@ -1,6 +1,6 @@
 package org.ezkey.enrollment.dto;
 
-public class EzkeyEnrollmentCreateDtoResponse {
+public class EnrollmentCreateDtoResponse {
 	private Integer id;
 	private Integer challenge;
 

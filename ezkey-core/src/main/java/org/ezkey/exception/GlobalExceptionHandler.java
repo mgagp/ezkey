@@ -10,7 +10,6 @@
 package org.ezkey.exception;
 
 import org.ezkey.dto.ErrorDtoResponse;
-import org.ezkey.dto.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -49,7 +48,7 @@ import org.springframework.web.context.request.WebRequest;
  * @see ErrorDtoResponse
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler{
+public class GlobalExceptionHandler {
 
     /**
      * Handles {@link ResourceNotFoundException} and returns a standardized 404 Not Found response.

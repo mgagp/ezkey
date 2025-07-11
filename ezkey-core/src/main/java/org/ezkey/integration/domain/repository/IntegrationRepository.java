@@ -10,12 +10,12 @@
 
 package org.ezkey.integration.domain.repository;
 
-import org.ezkey.integration.domain.entity.EzkeyIntegration;
+import org.ezkey.integration.domain.entity.Integration;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
- * Spring Data JPA repository for {@link EzkeyIntegration} entities.
+ * Spring Data JPA repository for {@link Integration} entities.
  * <p>
  * This repository provides standard CRUD operations for Integration entities
  * and can be extended with custom query methods as needed.
@@ -29,7 +29,7 @@ import org.springframework.stereotype.Repository;
  * @since 2025
  */
 @Repository
-public interface EzkeyIntegrationRepository extends JpaRepository<EzkeyIntegration, Integer> {
+public interface IntegrationRepository extends JpaRepository<Integration, Integer> {
     
     // Standard CRUD operations are inherited from JpaRepository:
     // - save(EzkeyIntegration entity)

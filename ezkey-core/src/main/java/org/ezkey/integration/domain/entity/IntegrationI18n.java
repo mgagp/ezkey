@@ -29,7 +29,7 @@ import jakarta.persistence.*;
  */
 @Entity
 @Table(name = "ezkey_integration_i18n")
-public class EzkeyIntegrationI18n {
+public class IntegrationI18n {
     
     /**
      * Unique identifier for the i18n entry.
@@ -46,7 +46,7 @@ public class EzkeyIntegrationI18n {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "integration_id")
-    private EzkeyIntegration integration;
+    private Integration integration;
 
     /**
      * Language code for this i18n entry.
@@ -92,7 +92,7 @@ public class EzkeyIntegrationI18n {
      *
      * @return the parent integration
      */
-    public EzkeyIntegration getIntegration() { 
+    public Integration getIntegration() { 
         return integration; 
     }
     
@@ -101,7 +101,7 @@ public class EzkeyIntegrationI18n {
      *
      * @param integration the parent integration to set
      */
-    public void setIntegration(EzkeyIntegration integration) { 
+    public void setIntegration(Integration integration) { 
         this.integration = integration; 
     }
     

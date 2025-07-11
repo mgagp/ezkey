@@ -8,9 +8,7 @@
  * Description: Custom exception for handling resource not found scenarios across all Ezkey modules.
  */
 
-package org.ezkey.dto;
-
-import org.ezkey.exception.GlobalExceptionHandler;
+package org.ezkey.exception;
 
 /**
  * Exception thrown when a requested resource cannot be found in the Ezkey system.

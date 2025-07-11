@@ -10,10 +10,10 @@
 
 package org.ezkey.authattempt.mapper;
 
-import org.ezkey.authattempt.domain.entity.EzkeyAuthAttempt;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoRequest;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptCreateDtoResponse;
-import org.ezkey.authattempt.dto.EzkeyAuthAttemptDto;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.authattempt.dto.AuthAttemptCreateDtoRequest;
+import org.ezkey.authattempt.dto.AuthAttemptCreateDtoResponse;
+import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -55,10 +55,10 @@ import java.util.List;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyAuthAttempt
- * @see EzkeyAuthAttemptDto
- * @see EzkeyAuthAttemptCreateDtoRequest
- * @see EzkeyAuthAttemptCreateDtoResponse
+ * @see AuthAttempt
+ * @see AuthAttemptDto
+ * @see AuthAttemptCreateDtoRequest
+ * @see AuthAttemptCreateDtoResponse
  */
 @Mapper(
     unmappedTargetPolicy = ReportingPolicy.WARN,
@@ -75,10 +75,10 @@ public interface AuthAttemptMapper {
      *
      * @param entity the EzkeyAuthAttempt entity to convert
      * @return the corresponding EzkeyAuthAttemptDto
-     * @see EzkeyAuthAttempt
-     * @see EzkeyAuthAttemptDto
+     * @see AuthAttempt
+     * @see AuthAttemptDto
      */
-    EzkeyAuthAttemptDto toDto(EzkeyAuthAttempt entity);
+    AuthAttemptDto toDto(AuthAttempt entity);
     
     /**
      * Converts an EzkeyAuthAttempt entity to an EzkeyAuthAttemptCreateDtoResponse.
@@ -89,13 +89,13 @@ public interface AuthAttemptMapper {
      *
      * @param entity the EzkeyAuthAttempt entity to convert
      * @return the corresponding EzkeyAuthAttemptCreateDtoResponse
-     * @see EzkeyAuthAttempt
-     * @see EzkeyAuthAttemptCreateDtoResponse
+     * @see AuthAttempt
+     * @see AuthAttemptCreateDtoResponse
      */
     @Mapping(target = "simulationAuthAttemptEnrolleeCode", ignore = true)
     @Mapping(target = "simulationAuthAttemptChallengeResponse", ignore = true)
     @Mapping(target = "simulationAuthAttemptEnrolleeCodeSigned", ignore = true)
-    EzkeyAuthAttemptCreateDtoResponse toCreateResponse(EzkeyAuthAttempt entity);
+    AuthAttemptCreateDtoResponse toCreateResponse(AuthAttempt entity);
     
     /**
      * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptDto objects.
@@ -106,9 +106,9 @@ public interface AuthAttemptMapper {
      *
      * @param entities the list of EzkeyAuthAttempt entities to convert
      * @return the corresponding list of EzkeyAuthAttemptDto objects
-     * @see EzkeyAuthAttempt
-     * @see EzkeyAuthAttemptDto
+     * @see AuthAttempt
+     * @see AuthAttemptDto
      */
-    List<EzkeyAuthAttemptDto> toDtoList(List<EzkeyAuthAttempt> entities);
+    List<AuthAttemptDto> toDtoList(List<AuthAttempt> entities);
     
 } 

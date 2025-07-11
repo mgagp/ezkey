@@ -10,7 +10,7 @@
 
 package org.ezkey.enrollment.mapper;
 
-import org.ezkey.enrollment.domain.entity.EzkeyEnrollment;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
 import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
 import org.ezkey.enrollment.dto.response.EnrollmentResponse;
@@ -53,7 +53,7 @@ import java.util.List;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyEnrollment
+ * @see Enrollment
  * @see EnrollmentResponse
  * @see EnrollmentCreateRequest
  */
@@ -71,10 +71,10 @@ public interface EnrollmentMapper {
      *
      * @param entity the EzkeyEnrollment entity to convert
      * @return the corresponding EnrollmentResponse DTO
-     * @see EzkeyEnrollment
+     * @see Enrollment
      * @see EnrollmentResponse
      */
-    EnrollmentResponse toResponse(EzkeyEnrollment entity);
+    EnrollmentResponse toResponse(Enrollment entity);
     
     /**
      * Converts an EzkeyEnrollment entity to an EnrollmentCreateResponse DTO.
@@ -85,10 +85,10 @@ public interface EnrollmentMapper {
      *
      * @param entity the EzkeyEnrollment entity to convert
      * @return the corresponding EnrollmentCreateResponse DTO
-     * @see EzkeyEnrollment
+     * @see Enrollment
      * @see EnrollmentCreateResponse
      */
-    EnrollmentCreateResponse toCreateResponse(EzkeyEnrollment entity);
+    EnrollmentCreateResponse toCreateResponse(Enrollment entity);
     
     /**
      * Converts an EnrollmentResponse DTO to an EzkeyEnrollment entity.
@@ -114,9 +114,9 @@ public interface EnrollmentMapper {
      *
      * @param entities the list of EzkeyEnrollment entities to convert
      * @return the corresponding list of EnrollmentResponse DTOs
-     * @see EzkeyEnrollment
+     * @see Enrollment
      * @see EnrollmentResponse
      */
-    List<EnrollmentResponse> toResponseList(List<EzkeyEnrollment> entities);
+    List<EnrollmentResponse> toResponseList(List<Enrollment> entities);
     
 } 

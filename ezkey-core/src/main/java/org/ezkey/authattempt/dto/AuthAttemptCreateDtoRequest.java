@@ -1,6 +1,6 @@
 package org.ezkey.authattempt.dto;
 
-public class EzkeyAuthAttemptCreateDtoRequest {
+public class AuthAttemptCreateDtoRequest {
 	private Integer enrollmentId;
 	private Boolean challengeRequested;
 	private String simulationDevicePrivateKey;

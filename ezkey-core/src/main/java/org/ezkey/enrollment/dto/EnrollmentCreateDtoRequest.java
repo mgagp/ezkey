@@ -1,6 +1,6 @@
 package org.ezkey.enrollment.dto;
 
-public class EzkeyEnrollmentCreateDtoRequest {
+public class EnrollmentCreateDtoRequest {
 	private Integer integrationId;
 	private String name;
 	private Boolean authAttemptChallengeRequired;

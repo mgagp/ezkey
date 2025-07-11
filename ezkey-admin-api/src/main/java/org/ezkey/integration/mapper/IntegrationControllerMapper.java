@@ -14,8 +14,8 @@ import java.util.List;
 
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
-import org.ezkey.integration.domain.entity.EzkeyIntegration;
-import org.ezkey.integration.domain.entity.EzkeyIntegrationI18n;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.IntegrationI18n;
 import org.ezkey.integration.dto.request.IntegrationCreateDtoRequest;
 import org.ezkey.integration.dto.response.IntegrationCreateDtoResponse;
 import org.ezkey.integration.dto.response.IntegrationDtoResponse;
@@ -58,8 +58,8 @@ import org.mapstruct.Mapping;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyIntegration
- * @see EzkeyIntegrationI18n
+ * @see Integration
+ * @see IntegrationI18n
  * @see IntegrationResponse
  * @see IntegrationI18nResponse
  * @see IntegrationCreateRequest
@@ -76,7 +76,7 @@ public interface IntegrationControllerMapper {
      *
      * @param entity the EzkeyIntegration entity to convert
      * @return the corresponding IntegrationResponse DTO
-     * @see EzkeyIntegration
+     * @see Integration
      * @see IntegrationResponse
      */
     IntegrationCreateDtoResponse toResponse(IntegrationCreateResponse entity);
@@ -90,10 +90,10 @@ public interface IntegrationControllerMapper {
      *
      * @param entities the list of EzkeyIntegration entities to convert
      * @return the corresponding list of IntegrationResponse DTOs
-     * @see EzkeyIntegration
+     * @see Integration
      * @see IntegrationResponse
      */
-    List<IntegrationDtoResponse> toResponseList(List<EzkeyIntegration> entities);
+    List<IntegrationDtoResponse> toResponseList(List<Integration> entities);
     
     /**
      * Converts an EzkeyIntegrationI18n entity to an IntegrationI18nResponse DTO.
@@ -104,10 +104,10 @@ public interface IntegrationControllerMapper {
      *
      * @param entity the EzkeyIntegrationI18n entity to convert
      * @return the corresponding IntegrationI18nResponse DTO
-     * @see EzkeyIntegrationI18n
+     * @see IntegrationI18n
      * @see IntegrationI18nResponse
      */
-    IntegrationI18nResponse toI18nResponse(EzkeyIntegrationI18n entity);
+    IntegrationI18nResponse toI18nResponse(IntegrationI18n entity);
     
     /**
      * Converts an IntegrationI18nResponse DTO to an EzkeyIntegrationI18n entity.
@@ -120,10 +120,10 @@ public interface IntegrationControllerMapper {
      * @param response the IntegrationI18nResponse DTO to convert
      * @return the corresponding EzkeyIntegrationI18n entity
      * @see IntegrationI18nResponse
-     * @see EzkeyIntegrationI18n
+     * @see IntegrationI18n
      */
     @Mapping(target = "integration", ignore = true)
-    EzkeyIntegrationI18n toI18nEntity(IntegrationI18nResponse response);
+    IntegrationI18n toI18nEntity(IntegrationI18nResponse response);
     
     /**
      * Converts a list of EzkeyIntegrationI18n entities to a list of IntegrationI18nResponse DTOs.
@@ -134,10 +134,10 @@ public interface IntegrationControllerMapper {
      *
      * @param entities the list of EzkeyIntegrationI18n entities to convert
      * @return the corresponding list of IntegrationI18nResponse DTOs
-     * @see EzkeyIntegrationI18n
+     * @see IntegrationI18n
      * @see IntegrationI18nResponse
      */
-    List<IntegrationI18nResponse> toI18nResponseList(List<EzkeyIntegrationI18n> entities);
+    List<IntegrationI18nResponse> toI18nResponseList(List<IntegrationI18n> entities);
     
     /**
      * Converts a list of IntegrationI18nResponse DTOs to a list of EzkeyIntegrationI18n entities.
@@ -149,9 +149,9 @@ public interface IntegrationControllerMapper {
      * @param responses the list of IntegrationI18nResponse DTOs to convert
      * @return the corresponding list of EzkeyIntegrationI18n entities
      * @see IntegrationI18nResponse
-     * @see EzkeyIntegrationI18n
+     * @see IntegrationI18n
      */
-    List<EzkeyIntegrationI18n> toI18nEntityList(List<IntegrationI18nResponse> responses);
+    List<IntegrationI18n> toI18nEntityList(List<IntegrationI18nResponse> responses);
 
     /**
      * Converts an IntegrationCreateRequest DTO to an EzkeyIntegration entity.
@@ -164,12 +164,12 @@ public interface IntegrationControllerMapper {
      * @param request the IntegrationCreateRequest DTO to convert
      * @return the corresponding EzkeyIntegration entity
      * @see IntegrationCreateRequest
-     * @see EzkeyIntegration
+     * @see Integration
      */
     IntegrationCreateRequest toEntity(IntegrationCreateDtoRequest request);
 
 	IntegrationCreateRequest toCreateRequest(IntegrationCreateDtoRequest request);
 
-    IntegrationDtoResponse toResponse(EzkeyIntegration integration);
+    IntegrationDtoResponse toResponse(Integration integration);
 
 } 

@@ -13,8 +13,8 @@ package org.ezkey.integration.mapper;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationI18nCreate;
-import org.ezkey.integration.domain.entity.EzkeyIntegration;
-import org.ezkey.integration.domain.entity.EzkeyIntegrationI18n;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.IntegrationI18n;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -23,9 +23,9 @@ import org.mapstruct.Mapping;
  * <p>
  * This interface defines mapping methods for:
  * <ul>
- * <li>Mapping {@link IntegrationI18nCreate} to {@link EzkeyIntegrationI18n}</li>
- * <li>Mapping {@link IntegrationCreateRequest} to {@link EzkeyIntegration}</li>
- * <li>Mapping {@link EzkeyIntegration} to {@link IntegrationCreateResponse}</li>
+ * <li>Mapping {@link IntegrationI18nCreate} to {@link IntegrationI18n}</li>
+ * <li>Mapping {@link IntegrationCreateRequest} to {@link Integration}</li>
+ * <li>Mapping {@link Integration} to {@link IntegrationCreateResponse}</li>
  * </ul>
  * <p>
  * The generated implementation will be a Spring bean if componentModel is set to "spring".
@@ -51,7 +51,7 @@ public interface IntegrationServiceMapper{
      * @return the mapped entity with the parent integration ignored
      */
     @Mapping(target = "integration",ignore = true)
-    EzkeyIntegrationI18n map(IntegrationI18nCreate integrationI18nCreate);
+    IntegrationI18n map(IntegrationI18nCreate integrationI18nCreate);
 
     /**
      * Maps a create request DTO to the EzkeyIntegration entity.
@@ -62,7 +62,7 @@ public interface IntegrationServiceMapper{
     @Mapping(target = "id",ignore = true)
     @Mapping(target = "createdAt",ignore = true)
     @Mapping(target = "active",ignore = true)
-    EzkeyIntegration toEntity(IntegrationCreateRequest dto);
+    Integration toEntity(IntegrationCreateRequest dto);
 
     /**
      * Maps a saved EzkeyIntegration entity to a response DTO.
@@ -70,5 +70,5 @@ public interface IntegrationServiceMapper{
      * @param domResponse the saved EzkeyIntegration entity
      * @return the response DTO containing the integration's information
      */
-    IntegrationCreateResponse toCreateResponse(EzkeyIntegration domResponse);
+    IntegrationCreateResponse toCreateResponse(Integration domResponse);
 }
