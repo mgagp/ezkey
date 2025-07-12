@@ -24,19 +24,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @since 2025
  */
-@SpringBootApplication(scanBasePackages = {
-    "org.ezkey.authattempt",
-    "org.ezkey.enrollment", 
-    "org.ezkey.auth"
-})
-public class EzkeyAuthApplication {
+@SpringBootApplication(scanBasePackages = { "org.ezkey.authattempt","org.ezkey.enrollment","org.ezkey.auth" })
+public class AuthApplication {
 
     /**
      * Main method to start the Ezkey Auth API application.
      *
      * @param args command line arguments
      */
-    public static void main(String[] args) {
-        SpringApplication.run(EzkeyAuthApplication.class, args);
+    public static void main(String[] args){
+        SpringApplication.run(AuthApplication.class,args);
     }
-} 
+}

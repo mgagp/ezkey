@@ -28,9 +28,15 @@ import java.util.Optional;
  * It extends JpaRepository to inherit standard database operations.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Enrollment data access layer</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Enrollment data access layer
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -38,7 +44,7 @@ import java.util.Optional;
  */
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
-    
+
     /**
      * Finds an enrollment by its unique enrollment code.
      * <p>
@@ -50,7 +56,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return Optional containing the enrollment if found, empty otherwise
      */
     Optional<Enrollment> findByEnrollmentCode(String enrollmentCode);
-    
+
     /**
      * Finds all enrollments for a specific integration.
      * <p>
@@ -62,7 +68,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return list of enrollments for the specified integration
      */
     List<Enrollment> findByIntegrationId(Integer integrationId);
-    
+
     /**
      * Finds active enrollments for a specific integration.
      * <p>
@@ -74,7 +80,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return list of active enrollments for the specified integration
      */
     List<Enrollment> findByIntegrationIdAndEnrollmentActiveTrue(Integer integrationId);
-    
+
     /**
      * Finds confirmed enrollments for a specific integration.
      * <p>
@@ -86,7 +92,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return list of confirmed enrollments for the specified integration
      */
     List<Enrollment> findByIntegrationIdAndEnrollmentConfirmedTrue(Integer integrationId);
-    
+
     /**
      * Updates the enrollment read status to true.
      * <p>
@@ -100,7 +106,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     @Modifying
     @Query("UPDATE EzkeyEnrollment e SET e.enrollmentRead = true WHERE e.enrollmentId = :enrollmentId")
     int setDeviceReadTrue(@Param("enrollmentId") Integer enrollmentId);
-    
+
     /**
      * Checks if an enrollment exists by its enrollment code.
      * <p>
@@ -112,4 +118,4 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return true if the enrollment exists, false otherwise
      */
     boolean existsByEnrollmentCode(String enrollmentCode);
-} 
+}

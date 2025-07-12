@@ -21,9 +21,15 @@ import java.util.List;
  * Each integration can have multiple internationalization entries (i18n) for different languages.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Table:</b> ezkey_integration</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Table:</b> ezkey_integration
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -31,14 +37,12 @@ import java.util.List;
 @Entity
 @Table(name = "ezkey_integration")
 public class Integration {
-    
+
     /**
      * Unique identifier for the integration.
      * Auto-generated using database identity.
      */
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "integration_id")
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "integration_id")
     private Integer id;
 
     /**
@@ -74,114 +78,114 @@ public class Integration {
      * Each entry contains localized name and description for different languages.
      * Uses lazy loading for performance optimization.
      */
-    @OneToMany(mappedBy = "integration", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "integration",cascade = CascadeType.ALL,orphanRemoval = true,fetch = FetchType.LAZY)
     private List<IntegrationI18n> i18n;
-    
+
     /**
      * Gets the unique identifier of the integration.
      *
      * @return the integration ID
      */
-    public Integer getId() {
+    public Integer getId(){
         return id;
     }
-    
+
     /**
      * Sets the unique identifier of the integration.
      *
      * @param id the integration ID to set
      */
-    public void setId(Integer id) {
+    public void setId(Integer id){
         this.id = id;
     }
-    
+
     /**
      * Gets the unique code identifier for the integration.
      *
      * @return the integration code
      */
-    public String getCode() {
+    public String getCode(){
         return code;
     }
-    
+
     /**
      * Sets the unique code identifier for the integration.
      *
      * @param code the integration code to set
      */
-    public void setCode(String code) {
+    public void setCode(String code){
         this.code = code;
     }
-    
+
     /**
      * Gets the URL or path to the integration's logo.
      *
      * @return the logo URL/path
      */
-    public String getLogo() {
+    public String getLogo(){
         return logo;
     }
-    
+
     /**
      * Sets the URL or path to the integration's logo.
      *
      * @param logo the logo URL/path to set
      */
-    public void setLogo(String logo) {
+    public void setLogo(String logo){
         this.logo = logo;
     }
-    
+
     /**
      * Gets the active status of the integration.
      *
      * @return true if the integration is active, false otherwise
      */
-    public Boolean getActive() {
+    public Boolean getActive(){
         return active;
     }
-    
+
     /**
      * Sets the active status of the integration.
      *
      * @param active the active status to set
      */
-    public void setActive(Boolean active) {
+    public void setActive(Boolean active){
         this.active = active;
     }
-    
+
     /**
      * Gets the creation timestamp of the integration.
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public LocalDateTime getCreatedAt(){
         return createdAt;
     }
-    
+
     /**
      * Sets the creation timestamp of the integration.
      *
      * @param createdAt the creation timestamp to set
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt){
         this.createdAt = createdAt;
     }
-    
+
     /**
      * Gets the collection of internationalization entries for this integration.
      *
      * @return the list of i18n entries
      */
-    public List<IntegrationI18n> getI18n() {
+    public List<IntegrationI18n> getI18n(){
         return i18n;
     }
-    
+
     /**
      * Sets the collection of internationalization entries for this integration.
      *
      * @param i18n the list of i18n entries to set
      */
-    public void setI18n(List<IntegrationI18n> i18n) {
+    public void setI18n(List<IntegrationI18n> i18n){
         this.i18n = i18n;
     }
-} 
+}

@@ -1,50 +1,54 @@
 package org.ezkey.enrollment.dto;
 
 public class EnrollmentConfirmRequest {
-	private Integer enrollmentId;
-	private Integer challengeResponse;
-	private String devicePublicKey;
-	private String enrollmentCode;
-	private String enrollmentCodeSigned;
+    private Integer enrollmentId;
 
-	public String getDevicePublicKey() {
-		return devicePublicKey;
-	}
+    private Integer challengeResponse;
 
-	public void setDevicePublicKey(String devicePublicKey) {
-		this.devicePublicKey = devicePublicKey;
-	}
+    private String devicePublicKey;
 
-	public String getEnrollmentCode() {
-		return enrollmentCode;
-	}
+    private String enrollmentCode;
 
-	public void setEnrollmentCode(String enrollmentCode) {
-		this.enrollmentCode = enrollmentCode;
-	}
+    private String enrollmentCodeSigned;
 
-	public Integer getChallengeResponse() {
-		return challengeResponse;
-	}
+    public String getDevicePublicKey(){
+        return devicePublicKey;
+    }
 
-	public void setChallengeResponse(Integer challengeResponse) {
-		this.challengeResponse = challengeResponse;
-	}
+    public void setDevicePublicKey(String devicePublicKey){
+        this.devicePublicKey = devicePublicKey;
+    }
 
-	public Integer getEnrollmentId() {
-		return enrollmentId;
-	}
+    public String getEnrollmentCode(){
+        return enrollmentCode;
+    }
 
-	public void setEnrollmentId(Integer enrollmentId) {
-		this.enrollmentId = enrollmentId;
-	}
+    public void setEnrollmentCode(String enrollmentCode){
+        this.enrollmentCode = enrollmentCode;
+    }
 
-	public String getEnrollmentCodeSigned() {
-		return enrollmentCodeSigned;
-	}
+    public Integer getChallengeResponse(){
+        return challengeResponse;
+    }
 
-	public void setEnrollmentCodeSigned(String enrollmentCodeSigned) {
-		this.enrollmentCodeSigned = enrollmentCodeSigned;
-	}
+    public void setChallengeResponse(Integer challengeResponse){
+        this.challengeResponse = challengeResponse;
+    }
+
+    public Integer getEnrollmentId(){
+        return enrollmentId;
+    }
+
+    public void setEnrollmentId(Integer enrollmentId){
+        this.enrollmentId = enrollmentId;
+    }
+
+    public String getEnrollmentCodeSigned(){
+        return enrollmentCodeSigned;
+    }
+
+    public void setEnrollmentCodeSigned(String enrollmentCodeSigned){
+        this.enrollmentCodeSigned = enrollmentCodeSigned;
+    }
 
 }

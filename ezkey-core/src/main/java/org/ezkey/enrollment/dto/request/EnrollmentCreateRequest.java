@@ -18,40 +18,48 @@ package org.ezkey.enrollment.dto.request;
  * It contains only the necessary fields for enrollment creation.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Enrollment creation API requests</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Enrollment creation API requests
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  */
 public class EnrollmentCreateRequest {
     private Integer integrationId;
-	private String name;
-	private Boolean authAttemptChallengeRequired;
 
-	public Integer getIntegrationId() {
-		return integrationId;
-	}
+    private String name;
 
-	public void setIntegrationId(Integer integrationId) {
-		this.integrationId = integrationId;
-	}
+    private Boolean authAttemptChallengeRequired;
 
-	public String getName() {
-		return name;
-	}
+    public Integer getIntegrationId(){
+        return integrationId;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setIntegrationId(Integer integrationId){
+        this.integrationId = integrationId;
+    }
 
-	public Boolean getAuthAttemptChallengeRequired() {
-		return authAttemptChallengeRequired;
-	}
+    public String getName(){
+        return name;
+    }
 
-	public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
-		this.authAttemptChallengeRequired = authAttemptChallengeRequired;
-	}
+    public void setName(String name){
+        this.name = name;
+    }
 
-} 
+    public Boolean getAuthAttemptChallengeRequired(){
+        return authAttemptChallengeRequired;
+    }
+
+    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired){
+        this.authAttemptChallengeRequired = authAttemptChallengeRequired;
+    }
+
+}

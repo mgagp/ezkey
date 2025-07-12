@@ -17,9 +17,9 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.integration.dto.request.IntegrationCreateDtoRequest;
-import org.ezkey.integration.dto.response.IntegrationCreateDtoResponse;
-import org.ezkey.integration.dto.response.IntegrationDtoResponse;
+import org.ezkey.integration.dto.request.IntegrationCreateRequestDto;
+import org.ezkey.integration.dto.response.IntegrationCreateResponseDto;
+import org.ezkey.integration.dto.response.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
 import org.springframework.http.ResponseEntity;
@@ -67,7 +67,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/integrations")
-public class IntegrationController{
+public class IntegrationController {
 
     private final IntegrationService service;
 
@@ -93,9 +93,9 @@ public class IntegrationController{
      * @return ResponseEntity containing a list of IntegrationResponse objects with HTTP 200 status
      */
     @GetMapping
-    public ResponseEntity<List<IntegrationDtoResponse>> getAll(){
+    public ResponseEntity<List<IntegrationResponseDto>> getAll(){
         List<Integration> integrations = service.getAll();
-        List<IntegrationDtoResponse> integrationResponses = mapper.toResponseList(integrations);
+        List<IntegrationResponseDto> integrationResponses = mapper.toResponseList(integrations);
         return ResponseEntity.ok(integrationResponses);
     }
 
@@ -110,9 +110,8 @@ public class IntegrationController{
      * @throws ResourceNotFoundException if the Integration with the given id is not found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<IntegrationDtoResponse> getById(@PathVariable("id") Integer id){
-        Integration integration = service.getById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Integration",id));
+    public ResponseEntity<IntegrationResponseDto> getById(@PathVariable("id") Integer id){
+        Integration integration = service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration",id));
         return ResponseEntity.ok(mapper.toResponse(integration));
     }
 
@@ -127,7 +126,7 @@ public class IntegrationController{
      * @return ResponseEntity containing the created IntegrationResponse with HTTP 201 status and Location header
      */
     @PostMapping
-    public ResponseEntity<IntegrationCreateDtoResponse> create(@RequestBody IntegrationCreateDtoRequest request){
+    public ResponseEntity<IntegrationCreateResponseDto> create(@RequestBody IntegrationCreateRequestDto request){
         IntegrationCreateRequest integrationRequest = mapper.toCreateRequest(request);
         IntegrationCreateResponse savedIntegration = service.createIntegration(integrationRequest);
         URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());

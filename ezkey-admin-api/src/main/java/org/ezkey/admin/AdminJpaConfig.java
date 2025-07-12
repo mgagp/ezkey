@@ -8,5 +8,5 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = "org.ezkey.integration.domain.repository")
 @EntityScan(basePackages = "org.ezkey.integration.domain.entity")
 public class AdminJpaConfig {
-	// Configuration for JPA repositories and entity scanning
+    // Configuration for JPA repositories and entity scanning
 }

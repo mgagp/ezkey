@@ -29,20 +29,20 @@ import java.security.spec.X509EncodedKeySpec;
  * <p>
  * <b>Cryptographic Implementation:</b>
  * <ul>
- *   <li><b>Algorithm:</b> RSA with SHA-256 (SHA256withRSA)</li>
- *   <li><b>Key Format:</b> PKCS#8 for private keys, X.509 for public keys</li>
- *   <li><b>Encoding:</b> Base64 for key and signature representation</li>
- *   <li><b>Security Level:</b> Industry-standard cryptographic strength</li>
+ * <li><b>Algorithm:</b> RSA with SHA-256 (SHA256withRSA)</li>
+ * <li><b>Key Format:</b> PKCS#8 for private keys, X.509 for public keys</li>
+ * <li><b>Encoding:</b> Base64 for key and signature representation</li>
+ * <li><b>Security Level:</b> Industry-standard cryptographic strength</li>
  * </ul>
  * </p>
  *
  * <p>
  * <b>Security Applications:</b>
  * <ul>
- *   <li><b>Authentication:</b> Verifying the origin of messages and requests</li>
- *   <li><b>Integrity:</b> Ensuring data has not been tampered with</li>
- *   <li><b>Non-repudiation:</b> Providing proof of message origin</li>
- *   <li><b>Trust:</b> Establishing secure communication channels</li>
+ * <li><b>Authentication:</b> Verifying the origin of messages and requests</li>
+ * <li><b>Integrity:</b> Ensuring data has not been tampered with</li>
+ * <li><b>Non-repudiation:</b> Providing proof of message origin</li>
+ * <li><b>Trust:</b> Establishing secure communication channels</li>
  * </ul>
  * </p>
  *
@@ -53,9 +53,15 @@ import java.security.spec.X509EncodedKeySpec;
  * It forms the cryptographic backbone that enables secure MFA and passkey operations.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Security Level:</b> Production-grade cryptographic implementation</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Security Level:</b> Production-grade cryptographic implementation
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -64,7 +70,7 @@ import java.security.spec.X509EncodedKeySpec;
  */
 @Service
 public class SignatureService {
-    
+
     /**
      * Generates a digital signature for the provided data using RSA private key.
      * <p>
@@ -76,20 +82,20 @@ public class SignatureService {
      * <p>
      * <b>Cryptographic Process:</b>
      * <ol>
-     *   <li>Decode the Base64-encoded private key</li>
-     *   <li>Create PKCS#8 key specification</li>
-     *   <li>Initialize RSA signature with SHA-256</li>
-     *   <li>Sign the data bytes</li>
-     *   <li>Return Base64-encoded signature</li>
+     * <li>Decode the Base64-encoded private key</li>
+     * <li>Create PKCS#8 key specification</li>
+     * <li>Initialize RSA signature with SHA-256</li>
+     * <li>Sign the data bytes</li>
+     * <li>Return Base64-encoded signature</li>
      * </ol>
      * </p>
      *
      * <p>
      * <b>Security Considerations:</b>
      * <ul>
-     *   <li>Private keys must be securely stored and managed</li>
-     *   <li>Input data should be validated before signing</li>
-     *   <li>Generated signatures should be transmitted securely</li>
+     * <li>Private keys must be securely stored and managed</li>
+     * <li>Input data should be validated before signing</li>
+     * <li>Generated signatures should be transmitted securely</li>
      * </ul>
      * </p>
      *
@@ -100,8 +106,8 @@ public class SignatureService {
      * @see java.security.PrivateKey
      * @see java.security.spec.PKCS8EncodedKeySpec
      */
-    public String generateSignature(String data, String base64PrivateKey) {
-        try {
+    public String generateSignature(String data,String base64PrivateKey){
+        try{
             byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PrivateKey);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
             KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -111,8 +117,8 @@ public class SignatureService {
             signature.update(data.getBytes());
             byte[] signed = signature.sign();
             return java.util.Base64.getEncoder().encodeToString(signed);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate signature", e);
+        } catch (Exception e){
+            throw new RuntimeException("Failed to generate signature",e);
         }
     }
 
@@ -127,20 +133,20 @@ public class SignatureService {
      * <p>
      * <b>Cryptographic Process:</b>
      * <ol>
-     *   <li>Decode the Base64-encoded public key</li>
-     *   <li>Create X.509 key specification</li>
-     *   <li>Initialize RSA signature verification with SHA-256</li>
-     *   <li>Verify the signature against the data</li>
-     *   <li>Return verification result</li>
+     * <li>Decode the Base64-encoded public key</li>
+     * <li>Create X.509 key specification</li>
+     * <li>Initialize RSA signature verification with SHA-256</li>
+     * <li>Verify the signature against the data</li>
+     * <li>Return verification result</li>
      * </ol>
      * </p>
      *
      * <p>
      * <b>Security Behavior:</b>
      * <ul>
-     *   <li>Returns <code>false</code> for any cryptographic errors (fail-secure)</li>
-     *   <li>Validates both signature format and cryptographic correctness</li>
-     *   <li>Ensures data integrity and authenticity verification</li>
+     * <li>Returns <code>false</code> for any cryptographic errors (fail-secure)</li>
+     * <li>Validates both signature format and cryptographic correctness</li>
+     * <li>Ensures data integrity and authenticity verification</li>
      * </ul>
      * </p>
      *
@@ -151,8 +157,8 @@ public class SignatureService {
      * @see java.security.PublicKey
      * @see java.security.spec.X509EncodedKeySpec
      */
-    public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
-        try {
+    public boolean validateSignature(String data,String signatureBase64,String base64PublicKey){
+        try{
             byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PublicKey);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
             KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -162,7 +168,7 @@ public class SignatureService {
             signature.update(data.getBytes());
             byte[] signatureBytes = java.util.Base64.getDecoder().decode(signatureBase64);
             return signature.verify(signatureBytes);
-        } catch (Exception e) {
+        } catch (Exception e){
             return false;
         }
     }

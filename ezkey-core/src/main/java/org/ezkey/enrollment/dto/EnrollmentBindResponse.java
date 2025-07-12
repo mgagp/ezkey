@@ -1,70 +1,75 @@
 package org.ezkey.enrollment.dto;
 
 public class EnrollmentBindResponse {
-	private Integer enrollmentId;
-	private String integrationPublicKey;
-	private String enrollmentCode;
-	private String enrollmentCodeSigned;
+    private Integer enrollmentId;
 
-	// Simulation mode only
-	private String simulationEnrollmentCodeSigned;
-	private String simulationDevicePublicKey;
-	private String simulationDevicePrivateKey;
+    private String integrationPublicKey;
 
-	public Integer getEnrollmentId() {
-		return enrollmentId;
-	}
+    private String enrollmentCode;
 
-	public void setEnrollmentId(Integer enrollmentId) {
-		this.enrollmentId = enrollmentId;
-	}
+    private String enrollmentCodeSigned;
 
-	public String getIntegrationPublicKey() {
-		return integrationPublicKey;
-	}
+    // Simulation mode only
+    private String simulationEnrollmentCodeSigned;
 
-	public void setIntegrationPublicKey(String integrationPublicKey) {
-		this.integrationPublicKey = integrationPublicKey;
-	}
+    private String simulationDevicePublicKey;
 
-	public String getEnrollmentCode() {
-		return enrollmentCode;
-	}
+    private String simulationDevicePrivateKey;
 
-	public void setEnrollmentCode(String enrollmentCode) {
-		this.enrollmentCode = enrollmentCode;
-	}
+    public Integer getEnrollmentId(){
+        return enrollmentId;
+    }
 
-	public String getSimulationDevicePublicKey() {
-		return simulationDevicePublicKey;
-	}
+    public void setEnrollmentId(Integer enrollmentId){
+        this.enrollmentId = enrollmentId;
+    }
 
-	public void setSimulationDevicePublicKey(String simulationDevicePublicKey) {
-		this.simulationDevicePublicKey = simulationDevicePublicKey;
-	}
+    public String getIntegrationPublicKey(){
+        return integrationPublicKey;
+    }
 
-	public String getSimulationDevicePrivateKey() {
-		return simulationDevicePrivateKey;
-	}
+    public void setIntegrationPublicKey(String integrationPublicKey){
+        this.integrationPublicKey = integrationPublicKey;
+    }
 
-	public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
-		this.simulationDevicePrivateKey = simulationDevicePrivateKey;
-	}
+    public String getEnrollmentCode(){
+        return enrollmentCode;
+    }
 
-	public String getEnrollmentCodeSigned() {
-		return enrollmentCodeSigned;
-	}
+    public void setEnrollmentCode(String enrollmentCode){
+        this.enrollmentCode = enrollmentCode;
+    }
 
-	public void setEnrollmentCodeSigned(String enrollmentCodeSigned) {
-		this.enrollmentCodeSigned = enrollmentCodeSigned;
-	}
+    public String getSimulationDevicePublicKey(){
+        return simulationDevicePublicKey;
+    }
 
-	public String getSimulationEnrollmentCodeSigned() {
-		return simulationEnrollmentCodeSigned;
-	}
+    public void setSimulationDevicePublicKey(String simulationDevicePublicKey){
+        this.simulationDevicePublicKey = simulationDevicePublicKey;
+    }
 
-	public void setSimulationEnrollmentCodeSigned(String simulationEnrollmentCodeSigned) {
-		this.simulationEnrollmentCodeSigned = simulationEnrollmentCodeSigned;
-	}
+    public String getSimulationDevicePrivateKey(){
+        return simulationDevicePrivateKey;
+    }
+
+    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey){
+        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
+    }
+
+    public String getEnrollmentCodeSigned(){
+        return enrollmentCodeSigned;
+    }
+
+    public void setEnrollmentCodeSigned(String enrollmentCodeSigned){
+        this.enrollmentCodeSigned = enrollmentCodeSigned;
+    }
+
+    public String getSimulationEnrollmentCodeSigned(){
+        return simulationEnrollmentCodeSigned;
+    }
+
+    public void setSimulationEnrollmentCodeSigned(String simulationEnrollmentCodeSigned){
+        this.simulationEnrollmentCodeSigned = simulationEnrollmentCodeSigned;
+    }
 
 }

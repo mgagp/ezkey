@@ -16,16 +16,22 @@ package org.ezkey.integration.dto.response;
  * This DTO object contains the identifier of the newly created Integration in the system.
  * </p>
  *
- * <p><b>Usage:</b> Returned by controller methods after a successful Integration creation.</p>
+ * <p>
+ * <b>Usage:</b> Returned by controller methods after a successful Integration creation.
+ * </p>
  * *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  */
-public class IntegrationCreateDtoResponse {
-    
+public class IntegrationCreateResponseDto {
+
     /**
      * The unique identifier of the newly created Integration entity.
      */
@@ -36,7 +42,7 @@ public class IntegrationCreateDtoResponse {
      *
      * @return the Integration entity ID
      */
-    public Integer getId() {
+    public Integer getId(){
         return id;
     }
 
@@ -45,7 +51,7 @@ public class IntegrationCreateDtoResponse {
      *
      * @param id the Integration entity ID
      */
-    public void setId(Integer id) {
+    public void setId(Integer id){
         this.id = id;
     }
 

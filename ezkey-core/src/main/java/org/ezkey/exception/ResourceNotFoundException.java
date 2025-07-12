@@ -22,9 +22,9 @@ package org.ezkey.exception;
  * <p>
  * <b>Usage Examples:</b>
  * <ul>
- *   <li>Integration not found by ID: <code>throw new ResourceNotFoundException("Integration", 123)</code></li>
- *   <li>User not found by email: <code>throw new ResourceNotFoundException("User", "user@example.com")</code></li>
- *   <li>Enrollment not found: <code>throw new ResourceNotFoundException("Enrollment", "enroll-uuid")</code></li>
+ * <li>Integration not found by ID: <code>throw new ResourceNotFoundException("Integration", 123)</code></li>
+ * <li>User not found by email: <code>throw new ResourceNotFoundException("User", "user@example.com")</code></li>
+ * <li>Enrollment not found: <code>throw new ResourceNotFoundException("Enrollment", "enroll-uuid")</code></li>
  * </ul>
  * </p>
  *
@@ -34,9 +34,15 @@ package org.ezkey.exception;
  * to a standardized HTTP 404 Not Found response with appropriate error details for API consumers.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Resource not found scenarios in any Ezkey API module</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Resource not found scenarios in any Ezkey API module
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -44,7 +50,7 @@ package org.ezkey.exception;
  * @see RuntimeException
  */
 public class ResourceNotFoundException extends RuntimeException {
-    
+
     private static final long serialVersionUID = 1L;
 
     /**
@@ -62,8 +68,9 @@ public class ResourceNotFoundException extends RuntimeException {
      * <p>
      * <b>Examples:</b>
      * <ul>
-     *   <li><code>new ResourceNotFoundException("Integration", 123)</code> → "Integration with id 123 not found"</li>
-     *   <li><code>new ResourceNotFoundException("User", "john@example.com")</code> → "User with id john@example.com not found"</li>
+     * <li><code>new ResourceNotFoundException("Integration", 123)</code> → "Integration with id 123 not found"</li>
+     * <li><code>new ResourceNotFoundException("User", "john@example.com")</code> → "User with id john@example.com not
+     * found"</li>
      * </ul>
      * </p>
      *
@@ -71,7 +78,7 @@ public class ResourceNotFoundException extends RuntimeException {
      * @param id the identifier that was used to search for the resource (can be any Object type)
      * @throws IllegalArgumentException if resource is null or empty
      */
-    public ResourceNotFoundException(String resource, Object id) {
-        super(String.format("%s with id %s not found", resource, id));
+    public ResourceNotFoundException(String resource,Object id){
+        super(String.format("%s with id %s not found",resource,id));
     }
 }

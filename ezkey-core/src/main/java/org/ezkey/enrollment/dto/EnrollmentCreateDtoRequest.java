@@ -1,32 +1,34 @@
 package org.ezkey.enrollment.dto;
 
 public class EnrollmentCreateDtoRequest {
-	private Integer integrationId;
-	private String name;
-	private Boolean authAttemptChallengeRequired;
+    private Integer integrationId;
 
-	public Integer getIntegrationId() {
-		return integrationId;
-	}
+    private String name;
 
-	public void setIntegrationId(Integer integrationId) {
-		this.integrationId = integrationId;
-	}
+    private Boolean authAttemptChallengeRequired;
 
-	public String getName() {
-		return name;
-	}
+    public Integer getIntegrationId(){
+        return integrationId;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setIntegrationId(Integer integrationId){
+        this.integrationId = integrationId;
+    }
 
-	public Boolean getAuthAttemptChallengeRequired() {
-		return authAttemptChallengeRequired;
-	}
+    public String getName(){
+        return name;
+    }
 
-	public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
-		this.authAttemptChallengeRequired = authAttemptChallengeRequired;
-	}
+    public void setName(String name){
+        this.name = name;
+    }
+
+    public Boolean getAuthAttemptChallengeRequired(){
+        return authAttemptChallengeRequired;
+    }
+
+    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired){
+        this.authAttemptChallengeRequired = authAttemptChallengeRequired;
+    }
 
 }

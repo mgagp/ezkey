@@ -4,28 +4,20 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Entity: EzkeyAuthAttempt
- * Description: JPA entity representing an authorization attempt within the Ezkey system.
+ * DTO: EzkeyAuthAttemptDto
+ * Description: Response DTO for authorization attempt data.
  */
 
-package org.ezkey.authattempt.domain.entity;
+package org.ezkey.authattempt.dto;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * JPA entity representing an authorization attempt within the Ezkey system.
+ * Response DTO for authorization attempt data.
  * <p>
- * This entity contains details about the authorization attempt, including its status,
- * associated enrollment, challenge information, and metadata. It represents the
- * core authorization process state and interacts with enrollment entities.
- * </p>
- *
- * <p>
- * <b>Entity Relationships:</b>
- * <ul>
- * <li><b>Many-to-One:</b> EzkeyAuthAttempt → EzkeyEnrollment (via enrollmentId)</li>
- * </ul>
+ * This DTO represents the response data for authorization attempts,
+ * excluding sensitive information like private keys for security.
+ * It provides a clean API interface for authorization attempt operations.
  * </p>
  *
  * <p>
@@ -35,58 +27,58 @@ import java.time.LocalDateTime;
  * <b>License:</b> MIT
  * </p>
  * <p>
- * <b>Usage:</b> JPA entity for authorization attempt persistence
+ * <b>Usage:</b> API response for authorization attempt operations
  * </p>
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
-@Entity
-@Table(name = "ezkey_auth_attempt")
-public class AuthAttempt {
+public class AuthAttemptDto {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "auth_attempt_id")
     private Integer authAttemptId;
 
-    @Column(name = "enrollment_id",nullable = false)
     private Integer enrollmentId;
 
-    @Column(name = "auth_attempt_read",nullable = false)
-    private Boolean authAttemptRead = false;
+    private Boolean authAttemptRead;
 
-    @Column(name = "auth_attempt_replied",nullable = false)
-    private Boolean authAttemptReplied = false;
+    private Boolean authAttemptReplied;
 
-    @Column(name = "auth_attempt_accepted",nullable = false)
-    private Boolean authAttemptAccepted = false;
+    private Boolean authAttemptAccepted;
 
-    @Column(name = "auth_attempt_challenge")
     private Integer authAttemptChallenge;
 
-    @Column(name = "auth_attempt_code",nullable = false)
     private String authAttemptCode;
 
-    @Column(name = "created_at",nullable = false)
     private LocalDateTime createdAt;
 
     /**
-     * Default constructor for JPA.
+     * Default constructor.
      */
-    public AuthAttempt(){
-        this.createdAt = LocalDateTime.now();
+    public AuthAttemptDto(){
     }
 
     /**
-     * Constructs an authorization attempt with required fields.
+     * Constructs an authorization attempt DTO with all fields.
      *
-     * @param enrollmentId the enrollment ID associated with this attempt
+     * @param authAttemptId the authorization attempt ID
+     * @param enrollmentId the enrollment ID
+     * @param authAttemptRead whether the attempt has been read
+     * @param authAttemptReplied whether the attempt has been replied to
+     * @param authAttemptAccepted whether the attempt has been accepted
+     * @param authAttemptChallenge the challenge code
      * @param authAttemptCode the authorization attempt code
+     * @param createdAt the creation timestamp
      */
-    public AuthAttempt(Integer enrollmentId,String authAttemptCode){
-        this();
+    public AuthAttemptDto(Integer authAttemptId,Integer enrollmentId,Boolean authAttemptRead,Boolean authAttemptReplied,Boolean authAttemptAccepted,
+            Integer authAttemptChallenge,String authAttemptCode,LocalDateTime createdAt){
+        this.authAttemptId = authAttemptId;
         this.enrollmentId = enrollmentId;
+        this.authAttemptRead = authAttemptRead;
+        this.authAttemptReplied = authAttemptReplied;
+        this.authAttemptAccepted = authAttemptAccepted;
+        this.authAttemptChallenge = authAttemptChallenge;
         this.authAttemptCode = authAttemptCode;
+        this.createdAt = createdAt;
     }
 
     // Getters and Setters
@@ -110,7 +102,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the enrollment ID associated with this authorization attempt.
+     * Gets the enrollment ID.
      *
      * @return the enrollment ID
      */
@@ -119,7 +111,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the enrollment ID for this authorization attempt.
+     * Sets the enrollment ID.
      *
      * @param enrollmentId the enrollment ID to set
      */
@@ -128,61 +120,61 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets whether the device has read the authorization attempt.
+     * Gets whether the authorization attempt has been read.
      *
-     * @return true if the device has read the attempt, false otherwise
+     * @return true if the attempt has been read, false otherwise
      */
     public Boolean getAuthAttemptRead(){
         return authAttemptRead;
     }
 
     /**
-     * Sets whether the device has read the authorization attempt.
+     * Sets whether the authorization attempt has been read.
      *
-     * @param authAttemptRead true if the device has read the attempt, false otherwise
+     * @param authAttemptRead true if the attempt has been read, false otherwise
      */
     public void setAuthAttemptRead(Boolean authAttemptRead){
         this.authAttemptRead = authAttemptRead;
     }
 
     /**
-     * Gets whether the device has replied to the authorization attempt.
+     * Gets whether the authorization attempt has been replied to.
      *
-     * @return true if the device has replied, false otherwise
+     * @return true if the attempt has been replied to, false otherwise
      */
     public Boolean getAuthAttemptReplied(){
         return authAttemptReplied;
     }
 
     /**
-     * Sets whether the device has replied to the authorization attempt.
+     * Sets whether the authorization attempt has been replied to.
      *
-     * @param authAttemptReplied true if the device has replied, false otherwise
+     * @param authAttemptReplied true if the attempt has been replied to, false otherwise
      */
     public void setAuthAttemptReplied(Boolean authAttemptReplied){
         this.authAttemptReplied = authAttemptReplied;
     }
 
     /**
-     * Gets whether the device has accepted the authorization attempt.
+     * Gets whether the authorization attempt has been accepted.
      *
-     * @return true if the device has accepted, false otherwise
+     * @return true if the attempt has been accepted, false otherwise
      */
     public Boolean getAuthAttemptAccepted(){
         return authAttemptAccepted;
     }
 
     /**
-     * Sets whether the device has accepted the authorization attempt.
+     * Sets whether the authorization attempt has been accepted.
      *
-     * @param authAttemptAccepted true if the device has accepted, false otherwise
+     * @param authAttemptAccepted true if the attempt has been accepted, false otherwise
      */
     public void setAuthAttemptAccepted(Boolean authAttemptAccepted){
         this.authAttemptAccepted = authAttemptAccepted;
     }
 
     /**
-     * Gets the challenge code sent to the device for verification.
+     * Gets the authorization attempt challenge.
      *
      * @return the challenge code
      */
@@ -191,7 +183,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the challenge code sent to the device for verification.
+     * Sets the authorization attempt challenge.
      *
      * @param authAttemptChallenge the challenge code to set
      */
@@ -200,7 +192,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the authorization attempt code used for integration purposes.
+     * Gets the authorization attempt code.
      *
      * @return the authorization attempt code
      */
@@ -209,7 +201,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the authorization attempt code used for integration purposes.
+     * Sets the authorization attempt code.
      *
      * @param authAttemptCode the authorization attempt code to set
      */
@@ -218,7 +210,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the timestamp when the authorization attempt was created.
+     * Gets the creation timestamp.
      *
      * @return the creation timestamp
      */
@@ -227,7 +219,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the timestamp when the authorization attempt was created.
+     * Sets the creation timestamp.
      *
      * @param createdAt the creation timestamp to set
      */
@@ -237,7 +229,7 @@ public class AuthAttempt {
 
     @Override
     public String toString(){
-        return "EzkeyAuthAttempt{" + "authAttemptId=" + authAttemptId + ", enrollmentId=" + enrollmentId + ", authAttemptRead=" + authAttemptRead + ", authAttemptReplied="
+        return "EzkeyAuthAttemptDto{" + "authAttemptId=" + authAttemptId + ", enrollmentId=" + enrollmentId + ", authAttemptRead=" + authAttemptRead + ", authAttemptReplied="
                 + authAttemptReplied + ", authAttemptAccepted=" + authAttemptAccepted + ", authAttemptChallenge=" + authAttemptChallenge + ", authAttemptCode='"
                 + authAttemptCode + '\'' + ", createdAt=" + createdAt + '}';
     }

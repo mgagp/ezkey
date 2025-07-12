@@ -43,69 +43,70 @@ import org.springframework.stereotype.Service;
 @Service
 public class IntegrationService {
 
-	private final IntegrationRepository integrationRepository;
-	private final IntegrationServiceMapper integrationServiceMapper;
+    private final IntegrationRepository integrationRepository;
 
-	/**
-	 * Constructs the service with the required repository and mapper.
-	 *
-	 * @param integrationRepository the repository for Integration entities
-	 * @param integrationServiceMapper     the mapper for converting between DTOs and
-	 *                              entities
-	 */
-	public IntegrationService(IntegrationRepository integrationRepository, IntegrationServiceMapper integrationServiceMapper) {
-		this.integrationRepository = integrationRepository;
-		this.integrationServiceMapper = integrationServiceMapper;
-	}
+    private final IntegrationServiceMapper integrationServiceMapper;
 
-	/**
-	 * Retrieves an Integration by its unique identifier.
-	 *
-	 * @param id the unique identifier of the Integration
-	 * @return an Optional containing the Integration if found, or empty if not
-	 *         found
-	 */
-	public Optional<Integration> getById(Integer id) {
-		return integrationRepository.findById(id);
-	}
+    /**
+     * Constructs the service with the required repository and mapper.
+     *
+     * @param integrationRepository the repository for Integration entities
+     * @param integrationServiceMapper the mapper for converting between DTOs and
+     * entities
+     */
+    public IntegrationService(IntegrationRepository integrationRepository,IntegrationServiceMapper integrationServiceMapper){
+        this.integrationRepository = integrationRepository;
+        this.integrationServiceMapper = integrationServiceMapper;
+    }
 
-	/**
-	 * Retrieves all Integration entities.
-	 *
-	 * @return a list of all Integration entities
-	 */
-	public List<Integration> getAll() {
-		return integrationRepository.findAll();
-	}
+    /**
+     * Retrieves an Integration by its unique identifier.
+     *
+     * @param id the unique identifier of the Integration
+     * @return an Optional containing the Integration if found, or empty if not
+     * found
+     */
+    public Optional<Integration> getById(Integer id){
+        return integrationRepository.findById(id);
+    }
 
-	/**
-	 * Creates a new Integration entity from a request.
-	 *
-	 * @param request the request containing integration data
-	 * @return the created and saved Integration entity
-	 */
-	public IntegrationCreateResponse createIntegration(IntegrationCreateRequest request) {
-		Integration integration = integrationServiceMapper.toEntity(request);
-		integration.setActive(true);
-		integration.setCreatedAt(LocalDateTime.now());
+    /**
+     * Retrieves all Integration entities.
+     *
+     * @return a list of all Integration entities
+     */
+    public List<Integration> getAll(){
+        return integrationRepository.findAll();
+    }
 
-		// Set the parent reference for each i18n if present
-		if (integration.getI18n() != null) {
-			integration.getI18n().forEach(i18n -> i18n.setIntegration(integration));
-		}
+    /**
+     * Creates a new Integration entity from a request.
+     *
+     * @param request the request containing integration data
+     * @return the created and saved Integration entity
+     */
+    public IntegrationCreateResponse createIntegration(IntegrationCreateRequest request){
+        Integration integration = integrationServiceMapper.toEntity(request);
+        integration.setActive(true);
+        integration.setCreatedAt(LocalDateTime.now());
 
-		var domResponse = integrationRepository.save(integration);
-		IntegrationCreateResponse response = integrationServiceMapper.toCreateResponse(domResponse);
-		return response;
-	}
+        // Set the parent reference for each i18n if present
+        if (integration.getI18n() != null){
+            integration.getI18n().forEach(i18n -> i18n.setIntegration(integration));
+        }
 
-	/**
-	 * Deletes an Integration entity by its unique identifier.
-	 *
-	 * @param id the unique identifier of the Integration to delete
-	 */
-	public void delete(Integer id) {
-		integrationRepository.deleteById(id);
-	}
+        var domResponse = integrationRepository.save(integration);
+        IntegrationCreateResponse response = integrationServiceMapper.toCreateResponse(domResponse);
+        return response;
+    }
+
+    /**
+     * Deletes an Integration entity by its unique identifier.
+     *
+     * @param id the unique identifier of the Integration to delete
+     */
+    public void delete(Integer id){
+        integrationRepository.deleteById(id);
+    }
 
 }

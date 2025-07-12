@@ -42,7 +42,7 @@ import org.mapstruct.Mapping;
  * @since 2025
  */
 @Mapper(componentModel = "spring")
-public interface IntegrationServiceMapper{
+public interface IntegrationServiceMapper {
 
     /**
      * Maps a domain I18n create object to its entity representation.

@@ -46,15 +46,21 @@ import java.util.UUID;
  * <p>
  * <b>Migration Strategy:</b>
  * <ul>
- *   <li><b>Primary:</b> JPA for all new operations</li>
- *   <li><b>Fallback:</b> MyBatis for AuthAttempt compatibility</li>
- *   <li><b>Future:</b> Complete migration to JPA only</li>
+ * <li><b>Primary:</b> JPA for all new operations</li>
+ * <li><b>Fallback:</b> MyBatis for AuthAttempt compatibility</li>
+ * <li><b>Future:</b> Complete migration to JPA only</li>
  * </ul>
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Enrollment business logic and operations</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Enrollment business logic and operations
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -69,7 +75,9 @@ public class EnrollmentService {
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(EnrollmentService.class);
 
     private final EnrollmentRepository enrollmentRepository;
+
     private final EnrollmentMapper enrollmentMapper;
+
     private final SignatureService signatureService;
 
     @Value("${ezkey.simulation.mode:false}")
@@ -83,9 +91,7 @@ public class EnrollmentService {
      * @param signatureService the cryptographic signature service
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository, 
-                                  EnrollmentMapper enrollmentMapper,
-                                  SignatureService signatureService) {
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,EnrollmentMapper enrollmentMapper,SignatureService signatureService){
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentMapper = enrollmentMapper;
         this.signatureService = signatureService;
@@ -102,10 +108,10 @@ public class EnrollmentService {
      * @return the enrollment entity
      * @throws ResourceNotFoundException if the enrollment is not found
      */
-    public Enrollment getById(Integer id) {
+    public Enrollment getById(Integer id){
         Optional<Enrollment> enrollment = enrollmentRepository.findById(id);
-        if (enrollment.isEmpty()) {
-            throw new ResourceNotFoundException("Enrollment", id);
+        if (enrollment.isEmpty()){
+            throw new ResourceNotFoundException("Enrollment",id);
         }
         return enrollment.get();
     }
@@ -118,7 +124,7 @@ public class EnrollmentService {
      *
      * @return list of all enrollment entities
      */
-    public List<Enrollment> getAll() {
+    public List<Enrollment> getAll(){
         return enrollmentRepository.findAll();
     }
 
@@ -133,12 +139,11 @@ public class EnrollmentService {
      * @return the created enrollment response
      * @throws IllegalArgumentException if required fields are missing or invalid
      */
-    public EnrollmentCreateResponse create(EnrollmentCreateRequest request) {
+    public EnrollmentCreateResponse create(EnrollmentCreateRequest request){
         // Validate required fields
-        if (request.getIntegrationId() == null) {
+        if (request.getIntegrationId() == null){
             throw new IllegalArgumentException("Integration ID is required");
         }
-      
 
         var enrollment = new Enrollment();
         enrollment.setIntegrationId(request.getIntegrationId());
@@ -150,14 +155,14 @@ public class EnrollmentService {
         enrollment.setAuthAttemptChallengeRequired(false);
         enrollment.setCreatedAt(LocalDateTime.now());
 
-        try {
+        try{
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(2048);
             KeyPair kp = keyGen.generateKeyPair();
             enrollment.setIntegrationPrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
             enrollment.setIntegrationPublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Key generation failed", e);
+        } catch (NoSuchAlgorithmException e){
+            throw new RuntimeException("Key generation failed",e);
         }
 
         enrollment.setAuthAttemptPublicKey(null);
@@ -177,7 +182,7 @@ public class EnrollmentService {
      * @param enrollment the enrollment entity to update
      * @return number of rows affected
      */
-    public int update(Enrollment enrollment) {
+    public int update(Enrollment enrollment){
         enrollmentRepository.save(enrollment);
         return 1; // JPA save returns the entity, so we return 1 for compatibility
     }
@@ -192,7 +197,7 @@ public class EnrollmentService {
      * @param id the enrollment ID to mark as read
      * @return number of rows affected
      */
-    public int setDeviceReadTrue(Integer id) {
+    public int setDeviceReadTrue(Integer id){
         return enrollmentRepository.setDeviceReadTrue(id);
     }
 
@@ -207,42 +212,42 @@ public class EnrollmentService {
      * @return the bind response
      * @throws IllegalArgumentException if enrollment not found or already bound
      */
-    public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
+    public EnrollmentBindResponse bind(EnrollmentBindRequest req){
         Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getId());
-        if (enrollmentOpt.isEmpty()) {
+        if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
         }
-        
+
         Enrollment enrollment = enrollmentOpt.get();
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair already bound by a device");
         }
-        
+
         enrollmentRepository.setDeviceReadTrue(req.getId());
-        
+
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentCode(enrollment.getEnrollmentCode());
-        response.setEnrollmentCodeSigned(signatureService.generateSignature(enrollment.getEnrollmentCode(), enrollment.getIntegrationPrivateKey()));
-        
-        if (simulationMode) {
-            try {
+        response.setEnrollmentCodeSigned(signatureService.generateSignature(enrollment.getEnrollmentCode(),enrollment.getIntegrationPrivateKey()));
+
+        if (simulationMode){
+            try{
                 KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
                 keyGen.initialize(2048);
                 KeyPair kp = keyGen.generateKeyPair();
                 response.setSimulationDevicePrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
                 response.setSimulationDevicePublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException("Key generation failed", e);
+            } catch (NoSuchAlgorithmException e){
+                throw new RuntimeException("Key generation failed",e);
             }
-            String signature = signatureService.generateSignature(enrollment.getEnrollmentCode(), response.getSimulationDevicePrivateKey());
+            String signature = signatureService.generateSignature(enrollment.getEnrollmentCode(),response.getSimulationDevicePrivateKey());
             response.setSimulationEnrollmentCodeSigned(signature);
-            
-            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentCode(), signature, response.getSimulationDevicePublicKey());
-            logger.info("Bind code signature valid: {}", valid);
+
+            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentCode(),signature,response.getSimulationDevicePublicKey());
+            logger.info("Bind code signature valid: {}",valid);
         }
-        
+
         return response;
     }
 
@@ -258,47 +263,47 @@ public class EnrollmentService {
      * @throws IllegalArgumentException if enrollment not found or validation fails
      * @throws IllegalStateException if enrollment is in invalid state
      */
-    public EnrollmentConfirmResponse confirm(EnrollmentConfirmRequest req) {
+    public EnrollmentConfirmResponse confirm(EnrollmentConfirmRequest req){
         Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
-        if (enrollmentOpt.isEmpty()) {
+        if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
         }
-        
+
         Enrollment enrollment = enrollmentOpt.get();
-        if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
+        if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair must be read before confirmation");
         }
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentConfirmed())) {
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentConfirmed())){
             throw new IllegalStateException("Pair already confirmed");
         }
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentActive())) {
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentActive())){
             throw new IllegalStateException("Pair already active");
         }
-        
+
         // Validate signature
         boolean valid = req.getEnrollmentCodeSigned() != null
-                && signatureService.validateSignature(enrollment.getEnrollmentCode(), req.getEnrollmentCodeSigned(), req.getDevicePublicKey());
-        if (!valid) {
+                && signatureService.validateSignature(enrollment.getEnrollmentCode(),req.getEnrollmentCodeSigned(),req.getDevicePublicKey());
+        if (!valid){
             enrollment.setEnrollmentConfirmed(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid bind code signature");
         }
-        
+
         // Validate challenge response
-        if (!req.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())) {
+        if (!req.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())){
             enrollment.setEnrollmentConfirmed(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid challenge response");
         }
-        
+
         // Confirm enrollment
         enrollment.setEnrollmentConfirmed(true);
         enrollment.setEnrollmentActive(true);
         enrollment.setAuthAttemptPublicKey(req.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
-        
+
         EnrollmentConfirmResponse response = new EnrollmentConfirmResponse();
         response.setActive(true);
         return response;
@@ -313,8 +318,8 @@ public class EnrollmentService {
      * @param id the enrollment ID to delete
      * @return number of rows affected
      */
-    public int delete(Integer id) {
-        if (!enrollmentRepository.existsById(id)) {
+    public int delete(Integer id){
+        if (!enrollmentRepository.existsById(id)){
             return 0;
         }
         enrollmentRepository.deleteById(id);
@@ -329,7 +334,7 @@ public class EnrollmentService {
      *
      * @return a new UUID v4 string
      */
-    public String generateUuidV4() {
+    public String generateUuidV4(){
         return UUID.randomUUID().toString();
     }
 
@@ -343,10 +348,10 @@ public class EnrollmentService {
      * @return the enrollment entity
      * @throws ResourceNotFoundException if the enrollment is not found
      */
-    public Enrollment findByEnrollmentCode(String enrollmentCode) {
+    public Enrollment findByEnrollmentCode(String enrollmentCode){
         Optional<Enrollment> enrollment = enrollmentRepository.findByEnrollmentCode(enrollmentCode);
-        if (enrollment.isEmpty()) {
-            throw new ResourceNotFoundException("Enrollment", enrollmentCode);
+        if (enrollment.isEmpty()){
+            throw new ResourceNotFoundException("Enrollment",enrollmentCode);
         }
         return enrollment.get();
     }
@@ -360,7 +365,7 @@ public class EnrollmentService {
      * @param integrationId the integration ID
      * @return list of enrollment entities
      */
-    public List<Enrollment> findByIntegrationId(Integer integrationId) {
+    public List<Enrollment> findByIntegrationId(Integer integrationId){
         return enrollmentRepository.findByIntegrationId(integrationId);
     }
-} 
+}

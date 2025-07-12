@@ -31,25 +31,31 @@ import java.util.List;
  * <p>
  * <b>Supported Conversions:</b>
  * <ul>
- *   <li><b>Entity ↔ Response:</b> EzkeyEnrollment ↔ EnrollmentResponse</li>
- *   <li><b>Request → Entity:</b> EnrollmentCreateRequest → EzkeyEnrollment</li>
- *   <li><b>Collections:</b> List conversions for all supported types</li>
+ * <li><b>Entity ↔ Response:</b> EzkeyEnrollment ↔ EnrollmentResponse</li>
+ * <li><b>Request → Entity:</b> EnrollmentCreateRequest → EzkeyEnrollment</li>
+ * <li><b>Collections:</b> List conversions for all supported types</li>
  * </ul>
  * </p>
  *
  * <p>
  * <b>MapStruct Features:</b>
  * <ul>
- *   <li><b>Spring Integration:</b> Automatically registered as a Spring component</li>
- *   <li><b>Automatic Mapping:</b> Field names are automatically matched</li>
- *   <li><b>Type Safety:</b> Compile-time validation of mapping configurations</li>
- *   <li><b>Performance:</b> Generated code for optimal runtime performance</li>
+ * <li><b>Spring Integration:</b> Automatically registered as a Spring component</li>
+ * <li><b>Automatic Mapping:</b> Field names are automatically matched</li>
+ * <li><b>Type Safety:</b> Compile-time validation of mapping configurations</li>
+ * <li><b>Performance:</b> Generated code for optimal runtime performance</li>
  * </ul>
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Entity-DTO mapping for Enrollment API</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Entity-DTO mapping for Enrollment API
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -57,11 +63,9 @@ import java.util.List;
  * @see EnrollmentResponse
  * @see EnrollmentCreateRequest
  */
-@Mapper(
-    unmappedTargetPolicy = ReportingPolicy.WARN,
-componentModel = "spring")
+@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface EnrollmentMapper {
-    
+
     /**
      * Converts an EzkeyEnrollment entity to an EnrollmentResponse DTO.
      * <p>
@@ -75,7 +79,7 @@ public interface EnrollmentMapper {
      * @see EnrollmentResponse
      */
     EnrollmentResponse toResponse(Enrollment entity);
-    
+
     /**
      * Converts an EzkeyEnrollment entity to an EnrollmentCreateResponse DTO.
      * <p>
@@ -89,7 +93,7 @@ public interface EnrollmentMapper {
      * @see EnrollmentCreateResponse
      */
     EnrollmentCreateResponse toCreateResponse(Enrollment entity);
-    
+
     /**
      * Converts an EnrollmentResponse DTO to an EzkeyEnrollment entity.
      * <p>
@@ -103,8 +107,8 @@ public interface EnrollmentMapper {
      * @see EnrollmentResponse
      * @see EzkeyEnrollment
      */
-    //EzkeyEnrollment toEntity(EnrollmentResponse response);
-    
+    // EzkeyEnrollment toEntity(EnrollmentResponse response);
+
     /**
      * Converts a list of EzkeyEnrollment entities to a list of EnrollmentResponse DTOs.
      * <p>
@@ -118,5 +122,5 @@ public interface EnrollmentMapper {
      * @see EnrollmentResponse
      */
     List<EnrollmentResponse> toResponseList(List<Enrollment> entities);
-    
-} 
+
+}

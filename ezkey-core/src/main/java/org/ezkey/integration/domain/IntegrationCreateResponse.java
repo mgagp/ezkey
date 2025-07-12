@@ -16,23 +16,32 @@ package org.ezkey.integration.domain;
  * This domain object contains the identifier of the newly created Integration in the system.
  * </p>
  *
- * <p><b>Usage:</b> Returned by service or controller methods after a successful Integration creation.</p>
+ * <p>
+ * <b>Usage:</b> Returned by service or controller methods after a successful Integration creation.
+ * </p>
  *
- * <p><b>Example:</b></p>
+ * <p>
+ * <b>Example:</b>
+ * </p>
+ * 
  * <pre>
- *     IntegrationCreateResponse response = new IntegrationCreateResponse();
- *     response.setId(123);
- *     Integer integrationId = response.getId();
+ * IntegrationCreateResponse response = new IntegrationCreateResponse();
+ * response.setId(123);
+ * Integer integrationId = response.getId();
  * </pre>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  */
 public class IntegrationCreateResponse {
-    
+
     /**
      * The unique identifier of the newly created Integration entity.
      */
@@ -43,7 +52,7 @@ public class IntegrationCreateResponse {
      *
      * @return the Integration entity ID
      */
-    public Integer getId() {
+    public Integer getId(){
         return id;
     }
 
@@ -52,7 +61,7 @@ public class IntegrationCreateResponse {
      *
      * @param id the Integration entity ID
      */
-    public void setId(Integer id) {
+    public void setId(Integer id){
         this.id = id;
     }
 

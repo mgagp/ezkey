@@ -3,8 +3,14 @@ package org.ezkey.enrollment.dto;
 public class EnrollmentConfirmResponse {
     private boolean active;
 
-    public EnrollmentConfirmResponse() {}
+    public EnrollmentConfirmResponse(){
+    }
 
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public boolean isActive(){
+        return active;
+    }
+
+    public void setActive(boolean active){
+        this.active = active;
+    }
 }

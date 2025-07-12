@@ -39,7 +39,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
         "org.ezkey.admin", //
         "org.ezkey.exception", //
 })
-public class AdminApplication{
+public class AdminApplication {
 
     /**
      * Main method to start the Ezkey Admin API application.

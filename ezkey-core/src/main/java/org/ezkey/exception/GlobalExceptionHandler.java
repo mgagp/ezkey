@@ -108,8 +108,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDtoResponse> handleGenericException(Exception ex,WebRequest request){
-        ErrorDtoResponse error = new ErrorDtoResponse("INTERNAL_ERROR","An unexpected error occurred",
-                request.getDescription(false));
+        ErrorDtoResponse error = new ErrorDtoResponse("INTERNAL_ERROR","An unexpected error occurred",request.getDescription(false));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

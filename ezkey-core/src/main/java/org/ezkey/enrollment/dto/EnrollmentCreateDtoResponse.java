@@ -1,22 +1,23 @@
 package org.ezkey.enrollment.dto;
 
 public class EnrollmentCreateDtoResponse {
-	private Integer id;
-	private Integer challenge;
+    private Integer id;
 
-	public Integer getId() {
-		return id;
-	}
+    private Integer challenge;
 
-	public void setId(Integer id) {
-		this.id = id;
-	}
+    public Integer getId(){
+        return id;
+    }
 
-	public Integer getChallenge() {
-		return challenge;
-	}
+    public void setId(Integer id){
+        this.id = id;
+    }
 
-	public void setChallenge(Integer challenge) {
-		this.challenge = challenge;
-	}
+    public Integer getChallenge(){
+        return challenge;
+    }
+
+    public void setChallenge(Integer challenge){
+        this.challenge = challenge;
+    }
 }

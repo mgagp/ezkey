@@ -21,16 +21,22 @@ import org.springframework.stereotype.Repository;
  * and can be extended with custom query methods for language-specific operations.
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Entity:</b> EzkeyIntegrationI18n</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Entity:</b> EzkeyIntegrationI18n
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  */
 @Repository
 public interface IntegrationI18nRepository extends JpaRepository<IntegrationI18n, Integer> {
-    
+
     // Standard CRUD operations are inherited from JpaRepository:
     // - save(EzkeyIntegrationI18n entity)
     // - findById(Integer id)
@@ -39,10 +45,10 @@ public interface IntegrationI18nRepository extends JpaRepository<IntegrationI18n
     // - count()
     // - existsById(Integer id)
     // etc.
-    
+
     // Custom query methods can be added here as needed:
     // Example:
     // List<EzkeyIntegrationI18n> findByIntegrationId(Integer integrationId);
     // List<EzkeyIntegrationI18n> findByLanguage(String language);
     // Optional<EzkeyIntegrationI18n> findByIntegrationIdAndLanguage(Integer integrationId, String language);
-} 
+}

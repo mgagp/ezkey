@@ -12,11 +12,14 @@ package org.ezkey.auth.controller;
 
 import java.util.List;
 
+import org.ezkey.authattempt.domain.AuthAttemptCompleteResponse;
+import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptInitiateResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptCompleteRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCompleteResponseDto;
-import org.ezkey.authattempt.dto.AuthAttemptCreateDtoRequest;
-import org.ezkey.authattempt.dto.AuthAttemptCreateDtoResponse;
+import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.dto.AuthAttemptInitiateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptInitiateResponseDto;
@@ -136,10 +139,10 @@ public class AuthAttemptController {
      * @return ResponseEntity containing created authorization attempt response with 201 status
      */
     @PostMapping
-    public ResponseEntity<AuthAttemptCreateDtoResponse> create(@RequestBody AuthAttemptCreateDtoRequest request){
+    public ResponseEntity<AuthAttemptCreateResponseDto> create(@RequestBody AuthAttemptCreateRequestDto request){
         try{
-            AuthAttemptCreateDtoResponse response = authAttemptService.create(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            AuthAttemptCreateResponse response = authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
+            return ResponseEntity.status(HttpStatus.CREATED).body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
         } catch (IllegalArgumentException e){
             // Return 400 Bad Request with validation error message
             return ResponseEntity.badRequest().build();
@@ -200,12 +203,11 @@ public class AuthAttemptController {
      * @return ResponseEntity containing initiation response
      */
     @PostMapping("/initiate/{id}")
-    public ResponseEntity<AuthAttemptInitiateResponseDto> initiate(@PathVariable Integer id,
-            @RequestBody AuthAttemptInitiateRequestDto request){
+    public ResponseEntity<AuthAttemptInitiateResponseDto> initiate(@PathVariable Integer id,@RequestBody AuthAttemptInitiateRequestDto request){
         try{
             request.setEnrollmentId(id);
-            AuthAttemptInitiateResponseDto response = authAttemptService.initiate(request);
-            return ResponseEntity.ok(response);
+            AuthAttemptInitiateResponse response = authAttemptService.initiate(authAttemptMapper.toAuthAttemptInitiateRequest(request));
+            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptInitiateResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
         } catch (IllegalStateException e){
@@ -223,12 +225,11 @@ public class AuthAttemptController {
      * @return ResponseEntity containing completion response
      */
     @PostMapping("/complete/{id}")
-    public ResponseEntity<AuthAttemptCompleteResponseDto> complete(@PathVariable Integer id,
-            @RequestBody AuthAttemptCompleteRequestDto request){
+    public ResponseEntity<AuthAttemptCompleteResponseDto> complete(@PathVariable Integer id,@RequestBody AuthAttemptCompleteRequestDto request){
         try{
             request.setAuthAttemptId(id);
-            AuthAttemptCompleteResponseDto response = authAttemptService.complete(request);
-            return ResponseEntity.ok(response);
+            AuthAttemptCompleteResponse response = authAttemptService.complete(authAttemptMapper.toAuthAttemptCompleteRequest(request));
+            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptCompleteResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
         } catch (IllegalStateException e){

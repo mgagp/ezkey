@@ -31,15 +31,21 @@ import java.util.Optional;
  * <p>
  * <b>Supported Operations:</b>
  * <ul>
- *   <li><b>CRUD Operations:</b> Standard JPA repository operations</li>
- *   <li><b>Custom Queries:</b> Business-specific queries for auth attempt management</li>
- *   <li><b>Status Updates:</b> Atomic updates for read and reply status</li>
+ * <li><b>CRUD Operations:</b> Standard JPA repository operations</li>
+ * <li><b>Custom Queries:</b> Business-specific queries for auth attempt management</li>
+ * <li><b>Status Updates:</b> Atomic updates for read and reply status</li>
  * </ul>
  * </p>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative</p>
- * <p><b>License:</b> MIT</p>
- * <p><b>Usage:</b> Data access layer for authorization attempts</p>
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> Data access layer for authorization attempts
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
@@ -71,7 +77,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @param enrollmentId the enrollment ID to search for
      * @return the most recent authorization attempt, or empty if none found
      */
-    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId) {
+    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId){
         List<AuthAttempt> attempts = findByEnrollmentIdOrderByAuthAttemptIdDesc(enrollmentId);
         return attempts.isEmpty() ? Optional.empty() : Optional.of(attempts.get(0));
     }
@@ -116,4 +122,4 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      */
     @Query("SELECT a FROM EzkeyAuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.createdAt DESC")
     List<AuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
-} 
+}
