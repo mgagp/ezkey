@@ -10,14 +10,14 @@
 
 package org.ezkey.enrollment.mapper;
 
+import java.util.List;
+
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
 import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
 import org.ezkey.enrollment.dto.response.EnrollmentResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
-
-import java.util.List;
 
 /**
  * MapStruct mapper interface for converting between Enrollment entities and DTOs.

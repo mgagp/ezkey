@@ -10,15 +10,15 @@
 
 package org.ezkey.enrollment.domain.repository;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Spring Data JPA repository for EzkeyEnrollment entity.
@@ -104,7 +104,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return number of rows affected (should be 1 if successful)
      */
     @Modifying
-    @Query("UPDATE EzkeyEnrollment e SET e.enrollmentRead = true WHERE e.enrollmentId = :enrollmentId")
+    @Query("UPDATE Enrollment e SET e.enrollmentRead = true WHERE e.enrollmentId = :enrollmentId")
     int setDeviceReadTrue(@Param("enrollmentId") Integer enrollmentId);
 
     /**

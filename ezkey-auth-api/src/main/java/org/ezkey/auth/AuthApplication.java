@@ -24,7 +24,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @since 2025
  */
-@SpringBootApplication(scanBasePackages = { "org.ezkey.authattempt","org.ezkey.enrollment","org.ezkey.auth" })
+@SpringBootApplication(scanBasePackages = { //
+        "org.ezkey.authattempt", //
+        "org.ezkey.enrollment", //
+        "org.ezkey.auth", //
+        "org.ezkey.signature", //
+})
 public class AuthApplication {
 
     /**

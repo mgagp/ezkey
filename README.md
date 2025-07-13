@@ -33,7 +33,12 @@ cd ezkey
 mvn clean install
 ```
 
-3. Run the application:
+3. Launch a Database
+```bash
+docker run --name ezkey-postgres -e POSTGRES_PASSWORD=ezkey -e POSTGRES_DB=ezkey_db -p 5432:5432 -d postgres:17
+```
+
+4. Run the application:
 ```bash
 mvn spring-boot:run
 ```

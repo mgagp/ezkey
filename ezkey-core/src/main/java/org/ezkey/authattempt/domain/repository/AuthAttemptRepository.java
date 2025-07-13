@@ -10,15 +10,15 @@
 
 package org.ezkey.authattempt.domain.repository;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Spring Data JPA repository for EzkeyAuthAttempt entity.
@@ -64,7 +64,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @param enrollmentId the enrollment ID to search for
      * @return the most recent authorization attempt, or empty if none found
      */
-    @Query("SELECT a FROM EzkeyAuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.authAttemptId DESC")
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.authAttemptId DESC")
     List<AuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(@Param("enrollmentId") Integer enrollmentId);
 
     /**
@@ -93,7 +93,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @return the number of rows affected (1 if updated, 0 if already read)
      */
     @Modifying
-    @Query("UPDATE EzkeyAuthAttempt a SET a.authAttemptRead = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptRead = false")
+    @Query("UPDATE AuthAttempt a SET a.authAttemptRead = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptRead = false")
     int setDeviceReadTrueIfNotRead(@Param("authAttemptId") Integer authAttemptId);
 
     /**
@@ -107,7 +107,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @return the number of rows affected (1 if updated, 0 if already replied)
      */
     @Modifying
-    @Query("UPDATE EzkeyAuthAttempt a SET a.authAttemptReplied = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptReplied = false")
+    @Query("UPDATE AuthAttempt a SET a.authAttemptReplied = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptReplied = false")
     int setDeviceRepliedTrueIfNotReplied(@Param("authAttemptId") Integer authAttemptId);
 
     /**
@@ -120,6 +120,6 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @param enrollmentId the enrollment ID to search for
      * @return list of authorization attempts for the enrollment
      */
-    @Query("SELECT a FROM EzkeyAuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.createdAt DESC")
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.createdAt DESC")
     List<AuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 }

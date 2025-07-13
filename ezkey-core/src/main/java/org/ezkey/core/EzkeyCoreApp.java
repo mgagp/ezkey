@@ -1,8 +1,10 @@
 package org.ezkey.core;
 
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.flywaydb.core.Flyway;
 
 /**
  * EzkeyCoreApp - Application for running Flyway migrations only.
@@ -14,9 +16,21 @@ import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguratio
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootApplication(exclude = {WebMvcAutoConfiguration.class})
+@SpringBootApplication
 public class EzkeyCoreApp {
+    
     public static void main(String[] args) {
-        SpringApplication.run(EzkeyCoreApp.class, args);
+        SpringApplication app = new SpringApplication(EzkeyCoreApp.class);
+        app.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
+        app.run(args);
+    }
+    
+    @Bean
+    public CommandLineRunner flywayRunner(Flyway flyway) {
+        return args -> {
+            System.out.println("=== Starting Flyway Migration ===");
+            flyway.migrate();
+            System.out.println("=== Flyway Migration Completed ===");
+        };
     }
 }
