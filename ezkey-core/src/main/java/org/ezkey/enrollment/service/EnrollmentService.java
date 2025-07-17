@@ -18,15 +18,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.ezkey.enrollment.domain.EnrollmentBindRequest;
+import org.ezkey.enrollment.domain.EnrollmentBindResponse;
+import org.ezkey.enrollment.domain.EnrollmentConfirmRequest;
+import org.ezkey.enrollment.domain.EnrollmentConfirmResponse;
+import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
+import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.enrollment.dto.EnrollmentBindRequest;
-import org.ezkey.enrollment.dto.EnrollmentBindResponse;
-import org.ezkey.enrollment.dto.EnrollmentConfirmRequest;
-import org.ezkey.enrollment.dto.EnrollmentConfirmResponse;
-import org.ezkey.enrollment.dto.request.EnrollmentCreateRequest;
-import org.ezkey.enrollment.dto.response.EnrollmentCreateResponse;
-import org.ezkey.enrollment.mapper.EnrollmentMapper;
+import org.ezkey.enrollment.mapper.EnrollmentCoreMapper;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @since 2025
  * @see Enrollment
  * @see EnrollmentRepository
- * @see EnrollmentMapper
+ * @see EnrollmentCoreMapper
  */
 @Service
 @Transactional
@@ -76,7 +76,7 @@ public class EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
 
-    private final EnrollmentMapper enrollmentMapper;
+    private final EnrollmentCoreMapper enrollmentMapper;
 
     private final SignatureService signatureService;
 
@@ -91,7 +91,7 @@ public class EnrollmentService {
      * @param signatureService the cryptographic signature service
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository,EnrollmentMapper enrollmentMapper,SignatureService signatureService){
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,EnrollmentCoreMapper enrollmentMapper,SignatureService signatureService){
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentMapper = enrollmentMapper;
         this.signatureService = signatureService;
@@ -144,7 +144,6 @@ public class EnrollmentService {
         if (request.getIntegrationId() == null){
             throw new IllegalArgumentException("Integration ID is required");
         }
-
         var enrollment = new Enrollment();
         enrollment.setIntegrationId(request.getIntegrationId());
         enrollment.setEnrollmentName(request.getName().trim());
@@ -154,7 +153,6 @@ public class EnrollmentService {
         enrollment.setEnrollmentActive(false);
         enrollment.setAuthAttemptChallengeRequired(false);
         enrollment.setCreatedAt(LocalDateTime.now());
-
         try{
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(2048);
@@ -164,7 +162,6 @@ public class EnrollmentService {
         } catch (NoSuchAlgorithmException e){
             throw new RuntimeException("Key generation failed",e);
         }
-
         enrollment.setAuthAttemptPublicKey(null);
         java.util.Random random = new java.util.Random();
         enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
@@ -217,12 +214,10 @@ public class EnrollmentService {
         if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
         }
-
         Enrollment enrollment = enrollmentOpt.get();
         if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair already bound by a device");
         }
-
         enrollmentRepository.setDeviceReadTrue(req.getId());
 
         EnrollmentBindResponse response = new EnrollmentBindResponse();
@@ -230,7 +225,6 @@ public class EnrollmentService {
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentCode(enrollment.getEnrollmentCode());
         response.setEnrollmentCodeSigned(signatureService.generateSignature(enrollment.getEnrollmentCode(),enrollment.getIntegrationPrivateKey()));
-
         if (simulationMode){
             try{
                 KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
@@ -247,7 +241,6 @@ public class EnrollmentService {
             boolean valid = signatureService.validateSignature(enrollment.getEnrollmentCode(),signature,response.getSimulationDevicePublicKey());
             logger.info("Bind code signature valid: {}",valid);
         }
-
         return response;
     }
 
@@ -268,7 +261,6 @@ public class EnrollmentService {
         if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
         }
-
         Enrollment enrollment = enrollmentOpt.get();
         if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair must be read before confirmation");
@@ -279,7 +271,6 @@ public class EnrollmentService {
         if (Boolean.TRUE.equals(enrollment.getEnrollmentActive())){
             throw new IllegalStateException("Pair already active");
         }
-
         // Validate signature
         boolean valid = req.getEnrollmentCodeSigned() != null
                 && signatureService.validateSignature(enrollment.getEnrollmentCode(),req.getEnrollmentCodeSigned(),req.getDevicePublicKey());
@@ -289,7 +280,6 @@ public class EnrollmentService {
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid bind code signature");
         }
-
         // Validate challenge response
         if (!req.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())){
             enrollment.setEnrollmentConfirmed(false);
@@ -297,7 +287,6 @@ public class EnrollmentService {
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid challenge response");
         }
-
         // Confirm enrollment
         enrollment.setEnrollmentConfirmed(true);
         enrollment.setEnrollmentActive(true);

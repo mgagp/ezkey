@@ -94,7 +94,6 @@ public class IntegrationService {
         if (integration.getI18n() != null){
             integration.getI18n().forEach(i18n -> i18n.setIntegration(integration));
         }
-
         var domResponse = integrationRepository.save(integration);
         IntegrationCreateResponse response = integrationServiceMapper.toCreateResponse(domResponse);
         return response;

@@ -1,6 +1,7 @@
 package org.ezkey.enrollment.dto;
 
-public class EnrollmentBindResponse {
+public class EnrollmentBindResponseDto {
+
     private Integer enrollmentId;
 
     private String integrationPublicKey;

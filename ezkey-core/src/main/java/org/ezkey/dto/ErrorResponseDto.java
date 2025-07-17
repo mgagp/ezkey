@@ -32,7 +32,7 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
-public class ErrorDtoResponse {
+public class ErrorResponseDto {
 
     /**
      * Error code identifier.
@@ -67,7 +67,7 @@ public class ErrorDtoResponse {
      * @param code the error code identifier
      * @param message the human-readable error message
      */
-    public ErrorDtoResponse(String code,String message){
+    public ErrorResponseDto(String code,String message){
         this.code = code;
         this.message = message;
         this.timestamp = LocalDateTime.now();
@@ -83,7 +83,7 @@ public class ErrorDtoResponse {
      * @param message the human-readable error message
      * @param path the request path that caused the error
      */
-    public ErrorDtoResponse(String code,String message,String path){
+    public ErrorResponseDto(String code,String message,String path){
         this(code, message);
         this.path = path;
     }

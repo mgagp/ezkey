@@ -1,6 +1,7 @@
-package org.ezkey.enrollment.dto;
+package org.ezkey.enrollment.domain;
 
-public class EnrollmentCreateDtoRequest {
+public class EnrollmentCreateRequest {
+
     private Integer integrationId;
 
     private String name;

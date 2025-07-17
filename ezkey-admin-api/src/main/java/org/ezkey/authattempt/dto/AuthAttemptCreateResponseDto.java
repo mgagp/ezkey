@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.dto;
 
 public class AuthAttemptCreateResponseDto {
+
     private Integer authAttemptId;
 
     private String simulationAuthAttemptEnrolleeCode;

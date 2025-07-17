@@ -16,10 +16,10 @@ import java.util.List;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.IntegrationResponse;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.integration.dto.request.IntegrationCreateRequestDto;
-import org.ezkey.integration.dto.response.IntegrationCreateResponseDto;
-import org.ezkey.integration.dto.response.IntegrationResponseDto;
+import org.ezkey.integration.dto.IntegrationCreateRequestDto;
+import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
 import org.springframework.http.ResponseEntity;
@@ -110,7 +110,7 @@ public class IntegrationController {
      * @throws ResourceNotFoundException if the Integration with the given id is not found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<IntegrationResponseDto> getById(@PathVariable("id") Integer id){
+    public ResponseEntity<IntegrationResponse> getById(@PathVariable("id") Integer id){
         Integration integration = service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration",id));
         return ResponseEntity.ok(mapper.toResponse(integration));
     }
@@ -126,11 +126,10 @@ public class IntegrationController {
      * @return ResponseEntity containing the created IntegrationResponse with HTTP 201 status and Location header
      */
     @PostMapping
-    public ResponseEntity<IntegrationCreateResponseDto> create(@RequestBody IntegrationCreateRequestDto request){
-        IntegrationCreateRequest integrationRequest = mapper.toCreateRequest(request);
-        IntegrationCreateResponse savedIntegration = service.createIntegration(integrationRequest);
+    public ResponseEntity<IntegrationCreateResponse> create(@RequestBody IntegrationCreateRequestDto request){
+        IntegrationCreateResponse savedIntegration = service.createIntegration(mapper.toCreateRequest(request));
         URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
-        return ResponseEntity.created(location).body(mapper.toResponse(savedIntegration));
+        return ResponseEntity.created(location).body(savedIntegration);
     }
 
     /**

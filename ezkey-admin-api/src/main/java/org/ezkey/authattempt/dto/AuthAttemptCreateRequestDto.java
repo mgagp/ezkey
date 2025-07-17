@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.dto;
 
 public class AuthAttemptCreateRequestDto {
+
     private Integer enrollmentId;
 
     private Boolean challengeRequested;

@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Domain IntegrationCreateRequest
- * Description: Request for creating new Integration entities.
+ * DTO: IntegrationCreateRequest
+ * Description: Request DTO for creating new Integration entities.
  */
 
 package org.ezkey.integration.domain;
@@ -13,9 +13,9 @@ package org.ezkey.integration.domain;
 import java.util.List;
 
 /**
- * Request for creating new Integration entities.
+ * Request DTO for creating new Integration entities.
  * <p>
- * This domain object contains the data required to create a new Integration in the system.
+ * This DTO contains the data required to create a new Integration in the system.
  * It includes the basic integration information and optional internationalization data.
  * </p>
  *
@@ -24,6 +24,9 @@ import java.util.List;
  * </p>
  * <p>
  * <b>License:</b> MIT
+ * </p>
+ * <p>
+ * <b>Usage:</b> POST /api/v1/integrations
  * </p>
  *
  * @author Ezkey contributors

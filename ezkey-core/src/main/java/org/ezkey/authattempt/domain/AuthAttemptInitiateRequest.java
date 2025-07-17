@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.domain;
 
 public class AuthAttemptInitiateRequest {
+
     private Integer enrollmentId;
 
     private String authAttemptEnrolleeCode;

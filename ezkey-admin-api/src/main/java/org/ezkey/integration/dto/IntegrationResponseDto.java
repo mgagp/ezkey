@@ -8,7 +8,7 @@
  * Description: Response DTO for integration data including internationalization support.
  */
 
-package org.ezkey.integration.dto.response;
+package org.ezkey.integration.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -70,7 +70,7 @@ public class IntegrationResponseDto {
      * List of internationalized content for the integration.
      * Contains localized names and descriptions in multiple languages.
      */
-    private List<IntegrationI18nResponse> i18n;
+    private List<IntegrationI18nResponseDto> i18n;
 
     /**
      * Gets the unique identifier for the integration.
@@ -167,7 +167,7 @@ public class IntegrationResponseDto {
      *
      * @return the list of i18n responses
      */
-    public List<IntegrationI18nResponse> getI18n(){
+    public List<IntegrationI18nResponseDto> getI18n(){
         return i18n;
     }
 
@@ -176,7 +176,7 @@ public class IntegrationResponseDto {
      *
      * @param i18n the list of i18n responses to set
      */
-    public void setI18n(List<IntegrationI18nResponse> i18n){
+    public void setI18n(List<IntegrationI18nResponseDto> i18n){
         this.i18n = i18n;
     }
 }

@@ -10,15 +10,14 @@
 
 package org.ezkey.authattempt.mapper;
 
-import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
-import org.ezkey.authattempt.domain.AuthAttemptCompleteResponse;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateResponse;
+import java.util.List;
+
+import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
+import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
-import org.ezkey.authattempt.dto.AuthAttemptCompleteRequestDto;
-import org.ezkey.authattempt.dto.AuthAttemptCompleteResponseDto;
-import org.ezkey.authattempt.dto.AuthAttemptInitiateRequestDto;
-import org.ezkey.authattempt.dto.AuthAttemptInitiateResponseDto;
+import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
+import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
@@ -71,12 +70,36 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface AuthAttemptMapper {
 
-    AuthAttemptInitiateRequest toAuthAttemptInitiateRequest(AuthAttemptInitiateRequestDto request);
+    /**
+     * Converts an EzkeyAuthAttempt entity to an EzkeyAuthAttemptDto.
+     * <p>
+     * This method maps all fields from the JPA entity to the response DTO,
+     * excluding sensitive information for security.
+     * </p>
+     *
+     * @param entity the EzkeyAuthAttempt entity to convert
+     * @return the corresponding EzkeyAuthAttemptDto
+     * @see AuthAttempt
+     * @see AuthAttemptDto
+     */
+    AuthAttemptDto toDto(AuthAttempt entity);
 
-    AuthAttemptInitiateResponseDto toAuthAttemptInitiateResponseDto(AuthAttemptInitiateResponse response);
+    /**
+     * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptDto objects.
+     * <p>
+     * This method applies the individual entity-to-DTO mapping to each
+     * element in the input list, maintaining the order of elements.
+     * </p>
+     *
+     * @param entities the list of EzkeyAuthAttempt entities to convert
+     * @return the corresponding list of EzkeyAuthAttemptDto objects
+     * @see AuthAttempt
+     * @see AuthAttemptDto
+     */
+    List<AuthAttemptDto> toDtoList(List<AuthAttempt> entities);
 
-    AuthAttemptCompleteRequest toAuthAttemptCompleteRequest(AuthAttemptCompleteRequestDto request);
+    AuthAttemptCreateRequest toAuthAttemptCreateRequest(AuthAttemptCreateRequestDto request);
 
-    AuthAttemptCompleteResponseDto toAuthAttemptCompleteResponseDto(AuthAttemptCompleteResponse response);
+    AuthAttemptCreateResponseDto toAuthAttemptCreateResponseDto(AuthAttemptCreateResponse response);
 
 }

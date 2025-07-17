@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.domain;
 
 public class AuthAttemptCompleteRequest {
+
     private Integer enrollmentId;
 
     private Integer authAttemptId;

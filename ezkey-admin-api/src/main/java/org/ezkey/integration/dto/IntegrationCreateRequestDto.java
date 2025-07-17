@@ -8,7 +8,7 @@
  * Description: Request DTO for creating new Integration entities.
  */
 
-package org.ezkey.integration.dto.request;
+package org.ezkey.integration.dto;
 
 import java.util.List;
 

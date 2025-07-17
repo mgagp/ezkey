@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.dto;
 
 public class AuthAttemptCompleteResponseDto {
+
     private Boolean success;
 
     private String message;

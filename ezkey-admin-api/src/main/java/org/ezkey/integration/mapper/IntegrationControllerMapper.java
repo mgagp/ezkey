@@ -14,12 +14,12 @@ import java.util.List;
 
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.IntegrationI18nResponse;
+import org.ezkey.integration.domain.IntegrationResponse;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.IntegrationI18n;
-import org.ezkey.integration.dto.request.IntegrationCreateRequestDto;
-import org.ezkey.integration.dto.response.IntegrationCreateResponseDto;
-import org.ezkey.integration.dto.response.IntegrationResponseDto;
-import org.ezkey.integration.dto.response.IntegrationI18nResponse;
+import org.ezkey.integration.dto.IntegrationCreateRequestDto;
+import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -85,7 +85,7 @@ public interface IntegrationControllerMapper {
      * @see Integration
      * @see IntegrationResponse
      */
-    IntegrationCreateResponseDto toResponse(IntegrationCreateResponse entity);
+    IntegrationCreateResponse toResponse(IntegrationCreateResponse entity);
 
     /**
      * Converts a list of EzkeyIntegration entities to a list of IntegrationResponse DTOs.
@@ -159,23 +159,8 @@ public interface IntegrationControllerMapper {
      */
     List<IntegrationI18n> toI18nEntityList(List<IntegrationI18nResponse> responses);
 
-    /**
-     * Converts an IntegrationCreateRequest DTO to an EzkeyIntegration entity.
-     * <p>
-     * This method is used during the creation of new integrations, mapping
-     * the request data to a new entity instance. The entity will typically
-     * need to be persisted to the database after this conversion.
-     * </p>
-     *
-     * @param request the IntegrationCreateRequest DTO to convert
-     * @return the corresponding EzkeyIntegration entity
-     * @see IntegrationCreateRequest
-     * @see Integration
-     */
-    IntegrationCreateRequest toEntity(IntegrationCreateRequestDto request);
-
     IntegrationCreateRequest toCreateRequest(IntegrationCreateRequestDto request);
 
-    IntegrationResponseDto toResponse(Integration integration);
+    IntegrationResponse toResponse(Integration integration);
 
 }

@@ -34,11 +34,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootApplication(scanBasePackages = { //
-        "org.ezkey.integration", //
-        "org.ezkey.admin", //
-        "org.ezkey.exception", //
-})
+@SpringBootApplication(
+        scanBasePackages = { //
+                "org.ezkey.admin", //
+                "org.ezkey.authattempt", //
+                "org.ezkey.enrollment", //
+                "org.ezkey.integration", //
+                "org.ezkey.exception", //
+                "org.ezkey.signature", //
+        })
 public class AdminApplication {
 
     /**

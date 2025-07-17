@@ -9,7 +9,7 @@
 
 package org.ezkey.exception;
 
-import org.ezkey.dto.ErrorDtoResponse;
+import org.ezkey.dto.ErrorResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -45,7 +45,7 @@ import org.springframework.web.context.request.WebRequest;
  * @author Ezkey contributors
  * @since 2025
  * @see ResourceNotFoundException
- * @see ErrorDtoResponse
+ * @see ErrorResponseDto
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
      * <b>HTTP Response:</b>
      * <ul>
      * <li><b>Status:</b> 404 Not Found</li>
-     * <li><b>Body:</b> {@link ErrorDtoResponse} with code "NOT_FOUND"</li>
+     * <li><b>Body:</b> {@link ErrorResponseDto} with code "NOT_FOUND"</li>
      * <li><b>Headers:</b> Standard Spring Boot response headers</li>
      * </ul>
      * </p>
@@ -71,11 +71,11 @@ public class GlobalExceptionHandler {
      * @param request the web request that caused the exception, used for path information
      * @return {@code ResponseEntity<ErrorDtoResponse>} containing error details and 404 status code
      * @see ResourceNotFoundException
-     * @see ErrorDtoResponse
+     * @see ErrorResponseDto
      */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorDtoResponse> handleResourceNotFound(ResourceNotFoundException ex,WebRequest request){
-        ErrorDtoResponse error = new ErrorDtoResponse("NOT_FOUND",ex.getMessage(),request.getDescription(false));
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(ResourceNotFoundException ex,WebRequest request){
+        ErrorResponseDto error = new ErrorResponseDto("NOT_FOUND",ex.getMessage(),request.getDescription(false));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -96,7 +96,7 @@ public class GlobalExceptionHandler {
      * <b>HTTP Response:</b>
      * <ul>
      * <li><b>Status:</b> 500 Internal Server Error</li>
-     * <li><b>Body:</b> {@link ErrorDtoResponse} with code "INTERNAL_ERROR"</li>
+     * <li><b>Body:</b> {@link ErrorResponseDto} with code "INTERNAL_ERROR"</li>
      * <li><b>Headers:</b> Standard Spring Boot response headers</li>
      * </ul>
      * </p>
@@ -104,11 +104,11 @@ public class GlobalExceptionHandler {
      * @param ex the generic {@code Exception} that was thrown
      * @param request the web request that caused the exception, used for path information
      * @return {@code ResponseEntity<ErrorDtoResponse>} containing error details and 500 status code
-     * @see ErrorDtoResponse
+     * @see ErrorResponseDto
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorDtoResponse> handleGenericException(Exception ex,WebRequest request){
-        ErrorDtoResponse error = new ErrorDtoResponse("INTERNAL_ERROR","An unexpected error occurred",request.getDescription(false));
+    public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex,WebRequest request){
+        ErrorResponseDto error = new ErrorResponseDto("INTERNAL_ERROR","An unexpected error occurred",request.getDescription(false));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.domain;
 
 public class AuthAttemptCreateRequest {
+
     private Integer enrollmentId;
 
     private Boolean challengeRequested;

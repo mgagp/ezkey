@@ -8,7 +8,7 @@
  * Description: Response DTO for integration internationalization data.
  */
 
-package org.ezkey.integration.dto.request;
+package org.ezkey.integration.domain;
 
 /**
  * Response DTO for integration internationalization data.
@@ -31,7 +31,7 @@ package org.ezkey.integration.dto.request;
  * @author Ezkey contributors
  * @since 2025
  */
-public class IntegrationI18nCreateDto {
+public class IntegrationI18nResponse {
 
     /**
      * Unique identifier for the internationalization record.

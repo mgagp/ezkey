@@ -1,6 +1,7 @@
-package org.ezkey.enrollment.dto;
+package org.ezkey.enrollment.domain;
 
 public class EnrollmentConfirmResponse {
+
     private boolean active;
 
     public EnrollmentConfirmResponse(){

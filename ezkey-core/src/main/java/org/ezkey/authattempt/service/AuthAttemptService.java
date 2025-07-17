@@ -137,7 +137,6 @@ public class AuthAttemptService {
         if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) && Boolean.FALSE.equals(authRequest.getChallengeRequested())){
             throw new IllegalArgumentException("Challenge for device is required for this enrollment");
         }
-
         // Create the authorization attempt
         AuthAttempt authAttempt = new AuthAttempt();
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
@@ -152,7 +151,6 @@ public class AuthAttemptService {
         } else{
             authAttempt.setAuthAttemptChallenge(null);
         }
-
         authAttempt.setCreatedAt(LocalDateTime.now());
         authAttempt.setAuthAttemptCode(UUID.randomUUID().toString());
 
@@ -170,7 +168,6 @@ public class AuthAttemptService {
                     signatureService.generateSignature(response.getSimulationAuthAttemptEnrolleeCode(),authRequest.getSimulationDevicePrivateKey()));
             response.setSimulationAuthAttemptChallengeResponse(authAttempt.getAuthAttemptChallenge());
         }
-
         return response;
     }
 
@@ -218,13 +215,11 @@ public class AuthAttemptService {
         if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             throw new IllegalStateException("Auth attempt already read by device");
         }
-
         // Mark as read
         int updated = authAttemptRepository.setDeviceReadTrueIfNotRead(authAttempt.getAuthAttemptId());
         if (updated == 0){
             throw new IllegalStateException("Failed to mark auth attempt as read");
         }
-
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
 
@@ -233,13 +228,11 @@ public class AuthAttemptService {
         if (devicePublicKey == null){
             throw new IllegalStateException("Device public key not found for this enrollment");
         }
-
         // Validate signature
         boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
         if (!isValid){
             throw new IllegalArgumentException("Invalid signature for auth attempt code");
         }
-
         // Update the authorization attempt
         authAttempt.setAuthAttemptRead(true);
         authAttemptRepository.save(authAttempt);
@@ -273,36 +266,33 @@ public class AuthAttemptService {
             response.setMessage("Auth attempt record not found");
             return response;
         }
-
         AuthAttempt authAttempt = authAttemptOpt.get();
 
         // Mark as replied
         int updated = authAttemptRepository.setDeviceRepliedTrueIfNotReplied(authAttempt.getAuthAttemptId());
         if (updated == 0){
-            throw new IllegalStateException("Failed to mark auth attempt as replied");
+            response.setSuccess(false);
+            response.setMessage("Auth attempt completed");
+            return response;
         }
-
         // Check if read
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             response.setSuccess(false);
             response.setMessage("Auth attempt not read by device");
             return response;
         }
-
         // Validate auth attempt code
         if (!authAttempt.getAuthAttemptCode().equals(request.getAuthAttemptCode())){
             response.setSuccess(false);
             response.setMessage("Integration code mismatch");
             return response;
         }
-
         // Validate enrollment ID
         if (!authAttempt.getEnrollmentId().equals(request.getEnrollmentId())){
             response.setSuccess(false);
             response.setMessage("Enrollment id mismatch");
             return response;
         }
-
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null);
         if (enrollment == null){
@@ -310,7 +300,6 @@ public class AuthAttemptService {
             response.setMessage("Enrollment record not found");
             return response;
         }
-
         // Validate device public key
         String devicePublicKey = enrollment.getAuthAttemptPublicKey();
         if (devicePublicKey == null){
@@ -318,7 +307,6 @@ public class AuthAttemptService {
             response.setMessage("Device public key not found");
             return response;
         }
-
         // Validate device signature
         boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
         if (!isValid){
@@ -326,7 +314,6 @@ public class AuthAttemptService {
             response.setMessage("Invalid signature for auth attempt code");
             return response;
         }
-
         // Validate integration public key
         String integrationPublicKey = enrollment.getIntegrationPublicKey();
         if (integrationPublicKey == null){
@@ -334,7 +321,6 @@ public class AuthAttemptService {
             response.setMessage("Integration public key not found");
             return response;
         }
-
         // Validate integration signature
         boolean isAppCodeValid = signatureService.validateSignature(request.getAuthAttemptCode(),request.getAuthAttemptCodeSigned(),integrationPublicKey);
         if (!isAppCodeValid){
@@ -342,7 +328,6 @@ public class AuthAttemptService {
             response.setMessage("Invalid signature for integration code");
             return response;
         }
-
         // Validate challenge if required
         if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
             if (request.getAuthAttemptChallengeResponse() == null || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
@@ -353,7 +338,6 @@ public class AuthAttemptService {
                 return response;
             }
         }
-
         // Update authorization attempt
         authAttempt.setAuthAttemptReplied(true);
         authAttempt.setAuthAttemptAccepted(request.getAuthAttemptAccepted());

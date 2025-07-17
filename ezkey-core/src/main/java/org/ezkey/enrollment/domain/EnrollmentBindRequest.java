@@ -1,6 +1,7 @@
-package org.ezkey.enrollment.dto;
+package org.ezkey.enrollment.domain;
 
 public class EnrollmentBindRequest {
+
     private Integer id;
 
     public Integer getId(){

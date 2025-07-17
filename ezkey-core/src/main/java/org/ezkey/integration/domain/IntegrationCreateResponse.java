@@ -11,25 +11,15 @@
 package org.ezkey.integration.domain;
 
 /**
- * Response object for the creation of a new Integration entity.
+ * Response DTO for the creation of a new Integration entity.
  * <p>
- * This domain object contains the identifier of the newly created Integration in the system.
+ * This DTO object contains the identifier of the newly created Integration in the system.
  * </p>
  *
  * <p>
- * <b>Usage:</b> Returned by service or controller methods after a successful Integration creation.
+ * <b>Usage:</b> Returned by controller methods after a successful Integration creation.
  * </p>
- *
- * <p>
- * <b>Example:</b>
- * </p>
- * 
- * <pre>
- * IntegrationCreateResponse response = new IntegrationCreateResponse();
- * response.setId(123);
- * Integer integrationId = response.getId();
- * </pre>
- *
+ * *
  * <p>
  * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  * </p>

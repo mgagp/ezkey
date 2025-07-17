@@ -1,6 +1,7 @@
 package org.ezkey.authattempt.domain;
 
 public class AuthAttemptCompleteResponse {
+
     private Boolean success;
 
     private String message;

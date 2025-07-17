@@ -8,7 +8,7 @@
  * Description: Response DTO for enrollment data.
  */
 
-package org.ezkey.enrollment.dto.response;
+package org.ezkey.enrollment.dto;
 
 import java.time.LocalDateTime;
 
@@ -33,7 +33,7 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
-public class EnrollmentResponse {
+public class EnrollmentResponseDto {
 
     /**
      * Unique identifier for the enrollment.
