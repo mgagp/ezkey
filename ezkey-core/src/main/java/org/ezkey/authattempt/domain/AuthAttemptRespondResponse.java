@@ -1,6 +1,6 @@
-package org.ezkey.authattempt.dto;
+package org.ezkey.authattempt.domain;
 
-public class AuthAttemptCompleteResponseDto {
+public class AuthAttemptRespondResponse {
 
     private Boolean success;
 

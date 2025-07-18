@@ -17,11 +17,11 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
-import org.ezkey.authattempt.domain.AuthAttemptCompleteResponse;
+import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -206,7 +206,7 @@ public class AuthAttemptService {
      * @throws IllegalArgumentException if validation fails
      * @throws IllegalStateException if the attempt is already read or update fails
      */
-    public AuthAttemptInitiateResponse initiate(AuthAttemptInitiateRequest request){
+    public AuthAttemptPendingResponse pending(AuthAttemptInitiateRequest request){
         // Find the most recent authorization attempt
         AuthAttempt authAttempt = authAttemptRepository.findMostRecentByEnrollmentId(request.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Auth attempt record not found for this enrollment"));
@@ -238,7 +238,7 @@ public class AuthAttemptService {
         authAttemptRepository.save(authAttempt);
 
         // Create response
-        AuthAttemptInitiateResponse response = new AuthAttemptInitiateResponse();
+        AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
         response.setAuthAttemptCode(authAttempt.getAuthAttemptCode());
         response.setAuthAttemptCodeSigned(signatureService.generateSignature(authAttempt.getAuthAttemptCode(),enrollment.getIntegrationPrivateKey()));
@@ -256,8 +256,8 @@ public class AuthAttemptService {
      * @param request the completion request
      * @return the completion response
      */
-    public AuthAttemptCompleteResponse complete(AuthAttemptCompleteRequest request){
-        AuthAttemptCompleteResponse response = new AuthAttemptCompleteResponse();
+    public AuthAttemptRespondResponse complete(AuthAttemptCompleteRequest request){
+        AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
         // Find the authorization attempt
         Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
@@ -285,12 +285,6 @@ public class AuthAttemptService {
         if (!authAttempt.getAuthAttemptCode().equals(request.getAuthAttemptCode())){
             response.setSuccess(false);
             response.setMessage("Integration code mismatch");
-            return response;
-        }
-        // Validate enrollment ID
-        if (!authAttempt.getEnrollmentId().equals(request.getEnrollmentId())){
-            response.setSuccess(false);
-            response.setMessage("Enrollment id mismatch");
             return response;
         }
         // Find the enrollment

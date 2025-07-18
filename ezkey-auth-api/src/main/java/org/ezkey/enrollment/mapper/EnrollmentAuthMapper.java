@@ -1,11 +1,11 @@
 package org.ezkey.enrollment.mapper;
 
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
-import org.ezkey.enrollment.domain.EnrollmentConfirmRequest;
-import org.ezkey.enrollment.domain.EnrollmentConfirmResponse;
+import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
+import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
-import org.ezkey.enrollment.dto.EnrollmentConfirmRequestDto;
-import org.ezkey.enrollment.dto.EnrollmentConfirmResponseDto;
+import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
+import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
@@ -14,8 +14,8 @@ public interface EnrollmentAuthMapper {
 
     EnrollmentBindResponseDto toEnrollmentBindResponseDto(EnrollmentBindResponse response);
 
-    EnrollmentConfirmRequest toEnrollmentConfirmRequest(EnrollmentConfirmRequestDto req);
+    EnrollmentVerifyRequest toEnrollmentConfirmRequest(EnrollmentVerifyRequestDto req);
 
-    EnrollmentConfirmResponseDto toEnrollmentConfirmResponseDto(EnrollmentConfirmResponse response);
+    EnrollmentVerifyResponseDto toEnrollmentConfirmResponseDto(EnrollmentVerifyResponse response);
 
 }

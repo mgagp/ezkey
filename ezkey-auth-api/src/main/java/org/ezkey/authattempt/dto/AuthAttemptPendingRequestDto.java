@@ -1,6 +1,6 @@
 package org.ezkey.authattempt.dto;
 
-public class AuthAttemptInitiateRequestDto {
+public class AuthAttemptPendingRequestDto {
 
     private Integer enrollmentId;
 

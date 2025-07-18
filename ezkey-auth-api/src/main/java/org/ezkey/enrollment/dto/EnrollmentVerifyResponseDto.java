@@ -1,10 +1,10 @@
 package org.ezkey.enrollment.dto;
 
-public class EnrollmentConfirmResponseDto {
+public class EnrollmentVerifyResponseDto {
 
     private boolean active;
 
-    public EnrollmentConfirmResponseDto(){
+    public EnrollmentVerifyResponseDto(){
     }
 
     public boolean isActive(){

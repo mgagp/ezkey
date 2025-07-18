@@ -1,6 +1,6 @@
-package org.ezkey.authattempt.dto;
+package org.ezkey.authattempt.domain;
 
-public class AuthAttemptInitiateResponseDto {
+public class AuthAttemptPendingResponse {
 
     private Integer authAttemptId;
 

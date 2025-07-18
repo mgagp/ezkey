@@ -1,10 +1,10 @@
 package org.ezkey.enrollment.domain;
 
-public class EnrollmentConfirmResponse {
+public class EnrollmentVerifyResponse {
 
     private boolean active;
 
-    public EnrollmentConfirmResponse(){
+    public EnrollmentVerifyResponse(){
     }
 
     public boolean isActive(){

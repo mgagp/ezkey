@@ -12,11 +12,10 @@ package org.ezkey.auth.controller;
 
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
-import org.ezkey.enrollment.domain.EnrollmentConfirmResponse;
-import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
+import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
-import org.ezkey.enrollment.dto.EnrollmentConfirmRequestDto;
-import org.ezkey.enrollment.dto.EnrollmentConfirmResponseDto;
+import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
+import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,42 +29,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for enrollment API v1 using JPA service.
+ * REST controller for enrollment management operations (API v1).
  * <p>
- * This controller provides REST endpoints for enrollment management operations,
- * using the JPA-based service and new DTOs for clean API responses. It follows
- * RESTful conventions and provides proper HTTP status codes and error handling.
+ * Provides endpoints for binding, confirming, and managing enrollments using JPA-based services and DTOs.
+ * Follows RESTful conventions, returns appropriate HTTP status codes, and handles errors gracefully.
  * </p>
  *
- * <p>
- * <b>API Endpoints:</b>
+ * <b>Endpoints:</b>
  * <ul>
- * <li><b>GET /api/v1/enrollments</b> - Get all enrollments</li>
- * <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID</li>
- * <li><b>POST /api/v1/enrollments</b> - Create new enrollment</li>
- * <li><b>PUT /api/v1/enrollments/{id}</b> - Update enrollment</li>
- * <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment</li>
- * <li><b>POST /api/v1/enrollments/{id}/read</b> - Mark enrollment as read</li>
- * <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind enrollment to device</li>
- * <li><b>POST /api/v1/enrollments/confirm</b> - Confirm enrollment</li>
+ * <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind an enrollment to a device</li>
+ * <li><b>POST /api/v1/enrollments/verify</b> - Confirm an enrollment</li>
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
- * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative<br>
+ * <b>License:</b> MIT<br>
  * <b>Usage:</b> Enrollment API v1 endpoints
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyEnrollmentService
- * @see EnrollmentResponseDto
- * @see EnrollmentCreateRequest
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
@@ -76,10 +57,10 @@ public class EnrollmentController {
     private final EnrollmentAuthMapper enrollmentMapper;
 
     /**
-     * Constructs the enrollment controller with required dependencies.
+     * Constructs the EnrollmentController with required dependencies.
      *
-     * @param enrollmentService the JPA-based enrollment service
-     * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
+     * @param enrollmentService JPA-based enrollment service
+     * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
      */
     @Autowired
     public EnrollmentController(EnrollmentService enrollmentService,EnrollmentAuthMapper enrollmentMapper){
@@ -90,11 +71,12 @@ public class EnrollmentController {
     /**
      * Binds an enrollment to a device.
      * <p>
-     * Handles the enrollment binding process and returns binding information.
+     * Initiates the enrollment binding process and returns binding information as a DTO.
+     * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
      * </p>
      *
      * @param id the enrollment ID to bind
-     * @return ResponseEntity containing bind response
+     * @return ResponseEntity containing the binding response DTO, or error status
      */
     @GetMapping("/bind/{id}")
     public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("id") Integer id){
@@ -113,16 +95,17 @@ public class EnrollmentController {
     /**
      * Confirms an enrollment.
      * <p>
-     * Handles the enrollment confirmation process and returns confirmation information.
+     * Processes the enrollment confirmation and returns the result as a DTO.
+     * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
      * </p>
      *
-     * @param req the confirmation request
-     * @return ResponseEntity containing confirmation response
+     * @param req the confirmation request DTO
+     * @return ResponseEntity containing the confirmation response DTO, or error status
      */
-    @PostMapping("/confirm")
-    public ResponseEntity<EnrollmentConfirmResponseDto> confirm(@RequestBody EnrollmentConfirmRequestDto req){
+    @PostMapping("/verify")
+    public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req){
         try{
-            EnrollmentConfirmResponse response = enrollmentService.confirm(enrollmentMapper.toEnrollmentConfirmRequest(req));
+            EnrollmentVerifyResponse response = enrollmentService.confirm(enrollmentMapper.toEnrollmentConfirmRequest(req));
             return ResponseEntity.ok(enrollmentMapper.toEnrollmentConfirmResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();

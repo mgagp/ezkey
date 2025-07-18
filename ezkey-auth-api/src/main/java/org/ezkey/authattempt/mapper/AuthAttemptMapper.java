@@ -11,14 +11,14 @@
 package org.ezkey.authattempt.mapper;
 
 import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
-import org.ezkey.authattempt.domain.AuthAttemptCompleteResponse;
+import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
-import org.ezkey.authattempt.dto.AuthAttemptCompleteRequestDto;
-import org.ezkey.authattempt.dto.AuthAttemptCompleteResponseDto;
-import org.ezkey.authattempt.dto.AuthAttemptInitiateRequestDto;
-import org.ezkey.authattempt.dto.AuthAttemptInitiateResponseDto;
+import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
+import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
@@ -71,12 +71,12 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface AuthAttemptMapper {
 
-    AuthAttemptInitiateRequest toAuthAttemptInitiateRequest(AuthAttemptInitiateRequestDto request);
+    AuthAttemptInitiateRequest toAuthAttemptPendingRequest(AuthAttemptPendingRequestDto request);
 
-    AuthAttemptInitiateResponseDto toAuthAttemptInitiateResponseDto(AuthAttemptInitiateResponse response);
+    AuthAttemptPendingResponseDto toAuthAttemptPendingResponseDto(AuthAttemptPendingResponse response);
 
-    AuthAttemptCompleteRequest toAuthAttemptCompleteRequest(AuthAttemptCompleteRequestDto request);
+    AuthAttemptCompleteRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
 
-    AuthAttemptCompleteResponseDto toAuthAttemptCompleteResponseDto(AuthAttemptCompleteResponse response);
+    AuthAttemptRespondResponseDto toAuthAttemptRespondResponseDto(AuthAttemptRespondResponse response);
 
 }

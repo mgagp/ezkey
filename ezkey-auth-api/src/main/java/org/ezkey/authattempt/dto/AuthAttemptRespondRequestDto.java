@@ -1,8 +1,6 @@
 package org.ezkey.authattempt.dto;
 
-public class AuthAttemptCompleteRequestDto {
-
-    private Integer enrollmentId;
+public class AuthAttemptRespondRequestDto {
 
     private Integer authAttemptId;
 
@@ -17,20 +15,6 @@ public class AuthAttemptCompleteRequestDto {
     private Integer authAttemptChallengeResponse;
 
     private Boolean authAttemptAccepted;
-
-    /**
-     * @return the enrollmentId
-     */
-    public Integer getEnrollmentId(){
-        return enrollmentId;
-    }
-
-    /**
-     * @param enrollmentId the enrollmentId to set
-     */
-    public void setEnrollmentId(Integer enrollmentId){
-        this.enrollmentId = enrollmentId;
-    }
 
     /**
      * @return the authAttemptId

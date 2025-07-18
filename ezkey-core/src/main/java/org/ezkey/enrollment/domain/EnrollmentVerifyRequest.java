@@ -1,6 +1,6 @@
-package org.ezkey.enrollment.dto;
+package org.ezkey.enrollment.domain;
 
-public class EnrollmentConfirmRequestDto {
+public class EnrollmentVerifyRequest {
 
     private Integer enrollmentId;
 

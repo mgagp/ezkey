@@ -2,8 +2,6 @@ package org.ezkey.authattempt.domain;
 
 public class AuthAttemptCompleteRequest {
 
-    private Integer enrollmentId;
-
     private Integer authAttemptId;
 
     private String authAttemptEnrolleeCode;
@@ -17,20 +15,6 @@ public class AuthAttemptCompleteRequest {
     private Integer authAttemptChallengeResponse;
 
     private Boolean authAttemptAccepted;
-
-    /**
-     * @return the enrollmentId
-     */
-    public Integer getEnrollmentId(){
-        return enrollmentId;
-    }
-
-    /**
-     * @param enrollmentId the enrollmentId to set
-     */
-    public void setEnrollmentId(Integer enrollmentId){
-        this.enrollmentId = enrollmentId;
-    }
 
     /**
      * @return the authAttemptId

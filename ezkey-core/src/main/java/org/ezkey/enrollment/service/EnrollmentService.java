@@ -20,8 +20,8 @@ import java.util.UUID;
 
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
-import org.ezkey.enrollment.domain.EnrollmentConfirmRequest;
-import org.ezkey.enrollment.domain.EnrollmentConfirmResponse;
+import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
+import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -256,7 +256,7 @@ public class EnrollmentService {
      * @throws IllegalArgumentException if enrollment not found or validation fails
      * @throws IllegalStateException if enrollment is in invalid state
      */
-    public EnrollmentConfirmResponse confirm(EnrollmentConfirmRequest req){
+    public EnrollmentVerifyResponse confirm(EnrollmentVerifyRequest req){
         Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
         if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
@@ -293,7 +293,7 @@ public class EnrollmentService {
         enrollment.setAuthAttemptPublicKey(req.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
 
-        EnrollmentConfirmResponse response = new EnrollmentConfirmResponse();
+        EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();
         response.setActive(true);
         return response;
     }
