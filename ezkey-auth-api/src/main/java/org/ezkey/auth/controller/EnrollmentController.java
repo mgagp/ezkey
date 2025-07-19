@@ -75,14 +75,14 @@ public class EnrollmentController {
      * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
      * </p>
      *
-     * @param id the enrollment ID to bind
+     * @param enrollmentId the enrollment ID to bind
      * @return ResponseEntity containing the binding response DTO, or error status
      */
-    @GetMapping("/bind/{id}")
-    public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("id") Integer id){
+    @GetMapping("/bind/{enrollmentId}")
+    public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId){
         try{
             EnrollmentBindRequest req = new EnrollmentBindRequest();
-            req.setId(id);
+            req.setEnrollmentId(enrollmentId);
             EnrollmentBindResponse response = enrollmentService.bind(req);
             return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
         } catch (IllegalArgumentException e){

@@ -2,13 +2,14 @@ package org.ezkey.enrollment.domain;
 
 public class EnrollmentBindRequest {
 
-    private Integer id;
+    private Integer enrollmentId;
 
-    public Integer getId(){
-        return id;
+    public Integer getEnrollmentId(){
+        return enrollmentId;
     }
 
-    public void setId(Integer id){
-        this.id = id;
+    public void setEnrollmentId(Integer enrollmentId){
+        this.enrollmentId = enrollmentId;
     }
+
 }

@@ -20,10 +20,10 @@ import java.util.UUID;
 
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
-import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
-import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
+import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
+import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentCoreMapper;
@@ -210,7 +210,7 @@ public class EnrollmentService {
      * @throws IllegalArgumentException if enrollment not found or already bound
      */
     public EnrollmentBindResponse bind(EnrollmentBindRequest req){
-        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getId());
+        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
         if (enrollmentOpt.isEmpty()){
             throw new IllegalArgumentException("Pair not found");
         }
@@ -218,7 +218,7 @@ public class EnrollmentService {
         if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair already bound by a device");
         }
-        enrollmentRepository.setDeviceReadTrue(req.getId());
+        enrollmentRepository.setDeviceReadTrue(req.getEnrollmentId());
 
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
