@@ -73,11 +73,11 @@ public class Enrollment {
     private Boolean enrollmentRead;
 
     /**
-     * Flag indicating if the enrollment has been confirmed.
-     * Used to track enrollment completion status.
+     * Flag indicating if the enrollment has been verified.
+     * Used to track enrollment verification status.
      */
-    @Column(name = "enrollment_confirmed")
-    private Boolean enrollmentConfirmed;
+    @Column(name = "enrollment_verified")
+    private Boolean enrollmentVerified;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -115,11 +115,11 @@ public class Enrollment {
     private String integrationPublicKey;
 
     /**
-     * Public key for authentication attempts.
+     * Public key for the device for auth attempts.
      * Used for device authentication verification.
      */
-    @Column(name = "auth_attempt_public_key",columnDefinition = "TEXT")
-    private String authAttemptPublicKey;
+    @Column(name = "device_public_key",columnDefinition = "TEXT")
+    private String devicePublicKey;
 
     /**
      * Unique code for enrollment identification.
@@ -146,7 +146,7 @@ public class Enrollment {
         this.enrollmentCode = enrollmentCode;
         this.createdAt = LocalDateTime.now();
         this.enrollmentRead = false;
-        this.enrollmentConfirmed = false;
+        this.enrollmentVerified = false;
         this.enrollmentActive = true;
         this.authAttemptChallengeRequired = false;
     }
@@ -184,12 +184,12 @@ public class Enrollment {
         this.enrollmentRead = enrollmentRead;
     }
 
-    public Boolean getEnrollmentConfirmed(){
-        return enrollmentConfirmed;
+    public Boolean getEnrollmentVerified(){
+        return enrollmentVerified;
     }
 
-    public void setEnrollmentConfirmed(Boolean enrollmentConfirmed){
-        this.enrollmentConfirmed = enrollmentConfirmed;
+    public void setEnrollmentVerified(Boolean enrollmentVerified){
+        this.enrollmentVerified = enrollmentVerified;
     }
 
     public Boolean getEnrollmentActive(){
@@ -232,12 +232,12 @@ public class Enrollment {
         this.integrationPublicKey = integrationPublicKey;
     }
 
-    public String getAuthAttemptPublicKey(){
-        return authAttemptPublicKey;
+    public String getDevicePublicKey(){
+        return devicePublicKey;
     }
 
-    public void setAuthAttemptPublicKey(String authAttemptPublicKey){
-        this.authAttemptPublicKey = authAttemptPublicKey;
+    public void setDevicePublicKey(String devicePublicKey){
+        this.devicePublicKey = devicePublicKey;
     }
 
     public String getEnrollmentCode(){
@@ -255,4 +255,5 @@ public class Enrollment {
     public void setCreatedAt(LocalDateTime createdAt){
         this.createdAt = createdAt;
     }
+
 }

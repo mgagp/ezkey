@@ -173,4 +173,36 @@ public class SignatureService {
             return false;
         }
     }
+
+    /**
+     * Generates a cryptographically secure proof token for signature operations.
+     * <p>
+     * This method creates a random, unpredictable token suitable for use as a payload to be signed
+     * in authentication or enrollment flows. The token is composed of:
+     * <ul>
+     *   <li>256 bits (32 bytes) of cryptographically secure random data</li>
+     *   <li>A timestamp (milliseconds since epoch)</li>
+     *   <li>An additional 128 bits (16 bytes) of random salt</li>
+     * </ul>
+     * The result is encoded as a Base64 URL-safe string (without padding), concatenating the random bytes,
+     * timestamp, and salt, separated by a period ('.').
+     * </p>
+     *
+     * @return a Base64 URL-safe encoded proof token string
+     */
+    public String generateProofToken() {
+        try {
+            java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+            byte[] randomBytes = new byte[32]; // 256 bits
+            secureRandom.nextBytes(randomBytes);
+            long timestamp = System.currentTimeMillis();
+            byte[] salt = new byte[16]; // 128 bits
+            secureRandom.nextBytes(salt);
+            String randomPart = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+            String saltPart = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
+            return randomPart + "." + timestamp + "." + saltPart;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate proof token", e);
+        }
+    }
 }

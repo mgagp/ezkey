@@ -14,8 +14,8 @@ public interface EnrollmentAuthMapper {
 
     EnrollmentBindResponseDto toEnrollmentBindResponseDto(EnrollmentBindResponse response);
 
-    EnrollmentVerifyRequest toEnrollmentConfirmRequest(EnrollmentVerifyRequestDto req);
+    EnrollmentVerifyRequest toEnrollmentVerifyRequest(EnrollmentVerifyRequestDto req);
 
-    EnrollmentVerifyResponseDto toEnrollmentConfirmResponseDto(EnrollmentVerifyResponse response);
+    EnrollmentVerifyResponseDto toEnrollmentVerifyResponseDto(EnrollmentVerifyResponse response);
 
 }

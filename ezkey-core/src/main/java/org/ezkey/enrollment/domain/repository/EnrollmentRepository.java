@@ -82,16 +82,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     List<Enrollment> findByIntegrationIdAndEnrollmentActiveTrue(Integer integrationId);
 
     /**
-     * Finds confirmed enrollments for a specific integration.
+     * Finds verified enrollments for a specific integration.
      * <p>
-     * This method retrieves only confirmed enrollments for a particular
+     * This method retrieves only verified enrollments for a particular
      * integration, useful for authentication operations.
      * </p>
      *
      * @param integrationId the integration ID to search for
-     * @return list of confirmed enrollments for the specified integration
+     * @return list of verified enrollments for the specified integration
      */
-    List<Enrollment> findByIntegrationIdAndEnrollmentConfirmedTrue(Integer integrationId);
+    List<Enrollment> findByIntegrationIdAndEnrollmentVerifiedTrue(Integer integrationId);
 
     /**
      * Updates the enrollment read status to true.

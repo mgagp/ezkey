@@ -93,20 +93,20 @@ public class EnrollmentController {
     }
 
     /**
-     * Confirms an enrollment.
+     * Verifies an enrollment.
      * <p>
-     * Processes the enrollment confirmation and returns the result as a DTO.
+     * Confirms the enrollment process and returns verification response as a DTO.
      * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
      * </p>
      *
-     * @param req the confirmation request DTO
-     * @return ResponseEntity containing the confirmation response DTO, or error status
+     * @param req the enrollment verification request DTO
+     * @return ResponseEntity containing the verification response DTO, or error status
      */
     @PostMapping("/verify")
     public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req){
         try{
-            EnrollmentVerifyResponse response = enrollmentService.confirm(enrollmentMapper.toEnrollmentConfirmRequest(req));
-            return ResponseEntity.ok(enrollmentMapper.toEnrollmentConfirmResponseDto(response));
+            EnrollmentVerifyResponse response = enrollmentService.confirm(enrollmentMapper.toEnrollmentVerifyRequest(req));
+            return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
         } catch (IllegalStateException e){

@@ -17,11 +17,11 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
-import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
+import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -224,7 +224,7 @@ public class AuthAttemptService {
         Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
 
         // Validate device public key
-        String devicePublicKey = enrollment.getAuthAttemptPublicKey();
+        String devicePublicKey = enrollment.getDevicePublicKey();
         if (devicePublicKey == null){
             throw new IllegalStateException("Device public key not found for this enrollment");
         }
@@ -295,7 +295,7 @@ public class AuthAttemptService {
             return response;
         }
         // Validate device public key
-        String devicePublicKey = enrollment.getAuthAttemptPublicKey();
+        String devicePublicKey = enrollment.getDevicePublicKey();
         if (devicePublicKey == null){
             response.setSuccess(false);
             response.setMessage("Device public key not found");

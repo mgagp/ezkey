@@ -45,11 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <li><b>GET /api/v1/enrollments</b> - Get all enrollments</li>
  * <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID</li>
  * <li><b>POST /api/v1/enrollments</b> - Create new enrollment</li>
- * <li><b>PUT /api/v1/enrollments/{id}</b> - Update enrollment</li>
  * <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment</li>
- * <li><b>POST /api/v1/enrollments/{id}/read</b> - Mark enrollment as read</li>
- * <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind enrollment to device</li>
- * <li><b>POST /api/v1/enrollments/confirm</b> - Confirm enrollment</li>
  * </ul>
  * </p>
  *

@@ -140,7 +140,6 @@ public class EnrollmentService {
      * @throws IllegalArgumentException if required fields are missing or invalid
      */
     public EnrollmentCreateResponse create(EnrollmentCreateRequest request){
-        // Validate required fields
         if (request.getIntegrationId() == null){
             throw new IllegalArgumentException("Integration ID is required");
         }
@@ -149,7 +148,7 @@ public class EnrollmentService {
         enrollment.setEnrollmentName(request.getName().trim());
         enrollment.setEnrollmentCode(UUID.randomUUID().toString());
         enrollment.setEnrollmentRead(false);
-        enrollment.setEnrollmentConfirmed(false);
+        enrollment.setEnrollmentVerified(false);
         enrollment.setEnrollmentActive(false);
         enrollment.setAuthAttemptChallengeRequired(false);
         enrollment.setCreatedAt(LocalDateTime.now());
@@ -162,11 +161,12 @@ public class EnrollmentService {
         } catch (NoSuchAlgorithmException e){
             throw new RuntimeException("Key generation failed",e);
         }
-        enrollment.setAuthAttemptPublicKey(null);
+        enrollment.setDevicePublicKey(null);
         java.util.Random random = new java.util.Random();
         enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
 
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
         return enrollmentMapper.toCreateResponse(savedEnrollment);
     }
 
@@ -182,20 +182,6 @@ public class EnrollmentService {
     public int update(Enrollment enrollment){
         enrollmentRepository.save(enrollment);
         return 1; // JPA save returns the entity, so we return 1 for compatibility
-    }
-
-    /**
-     * Marks an enrollment as read by the device.
-     * <p>
-     * This method updates the enrollment_read flag to true, indicating
-     * that the enrollment has been read by a device.
-     * </p>
-     *
-     * @param id the enrollment ID to mark as read
-     * @return number of rows affected
-     */
-    public int setDeviceReadTrue(Integer id){
-        return enrollmentRepository.setDeviceReadTrue(id);
     }
 
     /**
@@ -265,8 +251,8 @@ public class EnrollmentService {
         if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Pair must be read before confirmation");
         }
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentConfirmed())){
-            throw new IllegalStateException("Pair already confirmed");
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentVerified())){
+            throw new IllegalStateException("Pair already verified");
         }
         if (Boolean.TRUE.equals(enrollment.getEnrollmentActive())){
             throw new IllegalStateException("Pair already active");
@@ -275,22 +261,22 @@ public class EnrollmentService {
         boolean valid = req.getEnrollmentCodeSigned() != null
                 && signatureService.validateSignature(enrollment.getEnrollmentCode(),req.getEnrollmentCodeSigned(),req.getDevicePublicKey());
         if (!valid){
-            enrollment.setEnrollmentConfirmed(false);
+            enrollment.setEnrollmentVerified(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid bind code signature");
         }
         // Validate challenge response
         if (!req.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())){
-            enrollment.setEnrollmentConfirmed(false);
+            enrollment.setEnrollmentVerified(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid challenge response");
         }
         // Confirm enrollment
-        enrollment.setEnrollmentConfirmed(true);
+        enrollment.setEnrollmentVerified(true);
         enrollment.setEnrollmentActive(true);
-        enrollment.setAuthAttemptPublicKey(req.getDevicePublicKey());
+        enrollment.setDevicePublicKey(req.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
 
         EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();

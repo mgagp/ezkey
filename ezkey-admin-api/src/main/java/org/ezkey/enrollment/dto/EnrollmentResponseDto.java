@@ -60,10 +60,10 @@ public class EnrollmentResponseDto {
     private Boolean enrollmentRead;
 
     /**
-     * Flag indicating if the enrollment has been confirmed.
-     * Used to track enrollment completion status.
+     * Flag indicating if the enrollment has been verified.
+     * Used to track enrollment verification status.
      */
-    private Boolean enrollmentConfirmed;
+    private Boolean enrollmentVerified;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -140,12 +140,12 @@ public class EnrollmentResponseDto {
         this.enrollmentRead = enrollmentRead;
     }
 
-    public Boolean getEnrollmentConfirmed(){
-        return enrollmentConfirmed;
+    public Boolean getEnrollmentVerified(){
+        return enrollmentVerified;
     }
 
-    public void setEnrollmentConfirmed(Boolean enrollmentConfirmed){
-        this.enrollmentConfirmed = enrollmentConfirmed;
+    public void setEnrollmentVerified(Boolean enrollmentVerified){
+        this.enrollmentVerified = enrollmentVerified;
     }
 
     public Boolean getEnrollmentActive(){

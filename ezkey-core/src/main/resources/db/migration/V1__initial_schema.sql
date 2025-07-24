@@ -26,7 +26,7 @@ CREATE TABLE ezkey_enrollment (
     auth_attempt_challenge_required BOOLEAN DEFAULT FALSE,
     integration_private_key TEXT NOT NULL,
     integration_public_key TEXT NOT NULL,
-    auth_attempt_public_key TEXT,
+    device_public_key TEXT,
     enrollment_code TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
