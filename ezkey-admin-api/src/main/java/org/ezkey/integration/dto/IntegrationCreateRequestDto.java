@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationCreateRequest
- * Description: Request DTO for creating new Integration entities.
+ * DTO: IntegrationCreateRequestDto
+ * Description: Request DTO for creating new Integration entities in admin API.
  */
 
 package org.ezkey.integration.dto;
@@ -13,10 +13,27 @@ package org.ezkey.integration.dto;
 import java.util.List;
 
 /**
- * Request DTO for creating new Integration entities.
+ * Request DTO for creating new Integration entities in admin API.
  * <p>
- * This DTO contains the data required to create a new Integration in the system.
- * It includes the basic integration information and optional internationalization data.
+ * This DTO contains the data required to create a new Integration through the admin API.
+ * Integrations represent applications or systems that will be protected by Ezkey MFA.
+ * It includes basic integration information and optional internationalization data
+ * for multi-language support.
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> Used by administrators to create new integrations that
+ * will use Ezkey for MFA authentication. Contains all necessary data for
+ * integration setup including branding and localization.
+ * </p>
+ *
+ * <p>
+ * <b>Fields:</b>
+ * <ul>
+ * <li><b>code:</b> Unique business identifier for the integration</li>
+ * <li><b>logo:</b> URL or path to the integration's logo image</li>
+ * <li><b>i18n:</b> Optional internationalization data for multi-language support</li>
+ * </ul>
  * </p>
  *
  * <p>
@@ -25,12 +42,11 @@ import java.util.List;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> POST /api/v1/integrations
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.integration.domain.IntegrationCreateRequest
+ * @see IntegrationI18nCreateDto
  */
 public class IntegrationCreateRequestDto {
 

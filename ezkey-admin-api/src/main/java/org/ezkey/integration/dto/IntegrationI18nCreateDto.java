@@ -4,18 +4,29 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationI18nResponse
- * Description: Response DTO for integration internationalization data.
+ * DTO: IntegrationI18nCreateDto
+ * Description: Create DTO for integration internationalization data in admin API.
  */
 
 package org.ezkey.integration.dto;
 
 /**
- * Response DTO for integration internationalization data.
+ * Create DTO for integration internationalization data in admin API.
  * <p>
- * This DTO represents localized content for integrations, providing
- * translated names and descriptions in different languages.
- * It is used as part of the IntegrationResponse to support multi-language interfaces.
+ * This DTO represents the localized content data needed to create internationalization
+ * records for integrations. It provides translated names and descriptions for different
+ * languages, enabling multi-language support in client applications.
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> Used as part of integration creation requests to provide
+ * localized content for multiple languages. This enables the mobile app and other
+ * clients to display integration information in the user's preferred language.
+ * </p>
+ *
+ * <p>
+ * <b>Internationalization:</b> Follows standard ISO language codes for consistent
+ * language identification across the system.
  * </p>
  *
  * <p>
@@ -24,12 +35,11 @@ package org.ezkey.integration.dto;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Integration i18n API responses
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see IntegrationCreateRequestDto
+ * @see IntegrationI18nResponseDto
  */
 public class IntegrationI18nCreateDto {
 

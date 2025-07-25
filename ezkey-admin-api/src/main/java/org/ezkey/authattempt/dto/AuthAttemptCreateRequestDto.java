@@ -1,33 +1,119 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * DTO: AuthAttemptCreateRequestDto
+ * Description: Request DTO for creating authorization attempts in admin API.
+ */
+
 package org.ezkey.authattempt.dto;
 
+/**
+ * Request DTO for creating authorization attempts in admin API.
+ * <p>
+ * This DTO represents the request data needed to create a new authorization attempt
+ * through the admin API. It contains enrollment information and challenge settings
+ * required to initiate an MFA authentication request.
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> Used by administrators or integrating applications to create
+ * authentication requests that will be consumed by mobile devices through auth-api.
+ * </p>
+ *
+ * <p>
+ * <b>Fields:</b>
+ * <ul>
+ * <li><b>enrollmentId:</b> Target enrollment for the authentication request</li>
+ * <li><b>challengeRequested:</b> Whether a challenge is required for this attempt</li>
+ * <li><b>simulationDevicePrivateKey:</b> Simulation key for testing purposes</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ *
+ * @author Ezkey contributors
+ * @since 2025
+ * @see org.ezkey.authattempt.domain.AuthAttemptCreateRequest
+ * @see AuthAttemptCreateResponseDto
+ */
 public class AuthAttemptCreateRequestDto {
 
+    /**
+     * The enrollment ID for which the authentication attempt is requested.
+     * Must reference an existing and active enrollment.
+     */
     private Integer enrollmentId;
 
+    /**
+     * Indicates whether a challenge is requested for this authentication attempt.
+     * When true, additional challenge data will be generated for verification.
+     */
     private Boolean challengeRequested;
 
+    /**
+     * Simulation device private key for testing purposes.
+     * Used in simulation mode to test authentication flows without a real device.
+     */
     private String simulationDevicePrivateKey;
 
+    /**
+     * Gets the enrollment ID for the authentication attempt.
+     *
+     * @return the enrollment ID
+     */
     public Integer getEnrollmentId(){
         return enrollmentId;
     }
 
+    /**
+     * Sets the enrollment ID for the authentication attempt.
+     *
+     * @param enrollmentId the enrollment ID to set
+     */
     public void setEnrollmentId(Integer enrollmentId){
         this.enrollmentId = enrollmentId;
     }
 
+    /**
+     * Gets whether a challenge is requested.
+     *
+     * @return true if challenge is requested, false otherwise
+     */
     public Boolean getChallengeRequested(){
         return challengeRequested;
     }
 
+    /**
+     * Sets whether a challenge is requested.
+     *
+     * @param challengeRequested true if challenge is requested, false otherwise
+     */
     public void setChallengeRequested(Boolean challengeRequested){
         this.challengeRequested = challengeRequested;
     }
 
+    /**
+     * Gets the simulation device private key.
+     *
+     * @return the simulation device private key
+     */
     public String getSimulationDevicePrivateKey(){
         return simulationDevicePrivateKey;
     }
 
+    /**
+     * Sets the simulation device private key.
+     *
+     * @param simulationDevicePrivateKey the simulation device private key to set
+     */
     public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey){
         this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }

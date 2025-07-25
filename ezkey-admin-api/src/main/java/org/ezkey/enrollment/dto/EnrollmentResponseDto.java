@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: EnrollmentResponse
- * Description: Response DTO for enrollment data.
+ * DTO: EnrollmentResponseDto
+ * Description: Response DTO for enrollment data in admin API.
  */
 
 package org.ezkey.enrollment.dto;
@@ -13,11 +13,23 @@ package org.ezkey.enrollment.dto;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO for enrollment data.
+ * Response DTO for enrollment data in admin API.
  * <p>
- * This DTO represents enrollment information returned by the API,
- * providing a clean separation between the domain entity and the API response.
- * It includes all necessary enrollment details for client consumption.
+ * This DTO represents the complete enrollment information returned by the admin API
+ * for administrative purposes. It provides comprehensive enrollment details including
+ * status, configuration, and metadata while excluding sensitive cryptographic material
+ * for security purposes.
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> Used by admin API endpoints to return enrollment information
+ * to administrators for monitoring and management purposes. Contains all non-sensitive
+ * data needed for enrollment administration.
+ * </p>
+ *
+ * <p>
+ * <b>Security Note:</b> This DTO excludes sensitive cryptographic keys and provides
+ * only the information necessary for administrative operations.
  * </p>
  *
  * <p>
@@ -26,12 +38,12 @@ import java.time.LocalDateTime;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Enrollment API responses
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.enrollment.domain.entity.Enrollment
+ * @see EnrollmentCreateRequestDto
+ * @see EnrollmentCreateResponseDto
  */
 public class EnrollmentResponseDto {
 

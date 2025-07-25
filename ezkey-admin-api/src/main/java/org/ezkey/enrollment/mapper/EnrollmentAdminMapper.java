@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Mapper: EnrollmentMapper
- * Description: MapStruct mapper for converting between Enrollment entities and DTOs.
+ * Mapper: EnrollmentAdminMapper
+ * Description: MapStruct mapper for converting between Enrollment entities and DTOs in admin API.
  */
 
 package org.ezkey.enrollment.mapper;
@@ -22,30 +22,36 @@ import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 /**
- * MapStruct mapper interface for converting between Enrollment entities and DTOs.
+ * MapStruct mapper interface for converting between Enrollment entities and DTOs in admin API.
  * <p>
- * This mapper provides bidirectional conversion between JPA entities and API DTOs,
- * ensuring clean separation between the domain layer and the API layer. It handles
- * both individual objects and collections, supporting the complete CRUD operations
- * for the Enrollment module.
+ * This mapper provides bidirectional conversion between JPA entities and API DTOs
+ * for the admin API context. It ensures clean separation between the domain layer
+ * and the API layer while supporting complete CRUD operations for enrollments.
+ * All mappings are type-safe and validated at compile time.
  * </p>
  *
  * <p>
  * <b>Supported Conversions:</b>
  * <ul>
- * <li><b>Entity ↔ Response:</b> EzkeyEnrollment ↔ EnrollmentResponse</li>
- * <li><b>Request → Entity:</b> EnrollmentCreateRequest → EzkeyEnrollment</li>
- * <li><b>Collections:</b> List conversions for all supported types</li>
+ * <li><b>Entity → Response DTO:</b> Enrollment → EnrollmentResponseDto</li>
+ * <li><b>Create Response → DTO:</b> EnrollmentCreateResponse → EnrollmentCreateResponseDto</li>
+ * <li><b>Request DTO → Domain:</b> EnrollmentCreateRequestDto → EnrollmentCreateRequest</li>
+ * <li><b>Collections:</b> List conversions for all supported entity/DTO types</li>
  * </ul>
  * </p>
  *
  * <p>
- * <b>MapStruct Features:</b>
+ * <b>Usage Context:</b> Used exclusively by the admin API to convert between
+ * domain objects and DTOs for administrative operations on enrollments.
+ * </p>
+ *
+ * <p>
+ * <b>MapStruct Configuration:</b>
  * <ul>
- * <li><b>Spring Integration:</b> Automatically registered as a Spring component</li>
- * <li><b>Automatic Mapping:</b> Field names are automatically matched</li>
- * <li><b>Type Safety:</b> Compile-time validation of mapping configurations</li>
- * <li><b>Performance:</b> Generated code for optimal runtime performance</li>
+ * <li><b>Component Model:</b> Spring integration for dependency injection</li>
+ * <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration</li>
+ * <li><b>Type Safety:</b> Compile-time validation of all mapping configurations</li>
+ * <li><b>Performance:</b> Generated implementation for optimal runtime performance</li>
  * </ul>
  * </p>
  *
@@ -55,15 +61,15 @@ import org.mapstruct.ReportingPolicy;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Entity-DTO mapping for Enrollment API
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  * @see Enrollment
  * @see EnrollmentResponseDto
  * @see EnrollmentCreateRequestDto
+ * @see EnrollmentCreateResponseDto
+ * @see EnrollmentCreateRequest
+ * @see EnrollmentCreateResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface EnrollmentAdminMapper {

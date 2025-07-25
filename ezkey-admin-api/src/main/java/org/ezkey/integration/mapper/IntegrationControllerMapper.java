@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Mapper: IntegrationMapper
- * Description: MapStruct mapper for converting between Integration entities and DTOs.
+ * Mapper: IntegrationControllerMapper
+ * Description: MapStruct mapper for converting between Integration entities and DTOs in admin API.
  */
 
 package org.ezkey.integration.mapper;
@@ -22,33 +22,42 @@ import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
- * MapStruct mapper interface for converting between Integration entities and DTOs.
+ * MapStruct mapper interface for converting between Integration entities and DTOs in admin API.
  * <p>
- * This mapper provides bidirectional conversion between JPA entities and API DTOs,
- * ensuring clean separation between the domain layer and the API layer. It handles
- * both individual objects and collections, supporting the complete CRUD operations
- * for the Integration module.
+ * This mapper provides bidirectional conversion between JPA entities and API DTOs
+ * for the admin API context. It ensures clean separation between the domain layer
+ * and the API layer while supporting complete CRUD operations for integrations.
+ * All mappings are type-safe and validated at compile time, including complex
+ * nested objects like internationalization data.
  * </p>
  *
  * <p>
  * <b>Supported Conversions:</b>
  * <ul>
- * <li><b>Entity ↔ Response:</b> EzkeyIntegration ↔ IntegrationResponse</li>
- * <li><b>Entity ↔ Response:</b> EzkeyIntegrationI18n ↔ IntegrationI18nResponse</li>
- * <li><b>Request → Entity:</b> IntegrationCreateRequest → EzkeyIntegration</li>
- * <li><b>Collections:</b> List conversions for all supported types</li>
+ * <li><b>Entity → Response DTO:</b> Integration → IntegrationResponseDto</li>
+ * <li><b>Entity → Domain Response:</b> Integration → IntegrationResponse</li>
+ * <li><b>Create Response → Entity:</b> IntegrationCreateResponse → Integration</li>
+ * <li><b>Request DTO → Domain:</b> IntegrationCreateRequestDto → IntegrationCreateRequest</li>
+ * <li><b>Collections:</b> List conversions for all supported entity/DTO types</li>
  * </ul>
  * </p>
  *
  * <p>
- * <b>MapStruct Features:</b>
+ * <b>Usage Context:</b> Used exclusively by the admin API controller to convert between
+ * domain objects and DTOs for administrative operations on integrations. Handles
+ * complex mapping scenarios including internationalization data.
+ * </p>
+ *
+ * <p>
+ * <b>MapStruct Configuration:</b>
  * <ul>
- * <li><b>Spring Integration:</b> Automatically registered as a Spring component</li>
- * <li><b>Automatic Mapping:</b> Field names are automatically matched</li>
- * <li><b>Type Safety:</b> Compile-time validation of mapping configurations</li>
- * <li><b>Performance:</b> Generated code for optimal runtime performance</li>
+ * <li><b>Component Model:</b> Spring integration for dependency injection</li>
+ * <li><b>Unmapped Reporting:</b> WARN to identify potential mapping issues</li>
+ * <li><b>Type Safety:</b> Compile-time validation of all mapping configurations</li>
+ * <li><b>Performance:</b> Generated implementation for optimal runtime performance</li>
  * </ul>
  * </p>
  *
@@ -58,19 +67,17 @@ import org.mapstruct.Mapping;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Entity-DTO mapping for Integration API
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  * @see Integration
- * @see IntegrationI18n
- * @see IntegrationResponse
- * @see IntegrationI18nResponse
+ * @see IntegrationResponseDto
+ * @see IntegrationCreateRequestDto
  * @see IntegrationCreateRequest
+ * @see IntegrationCreateResponse
+ * @see IntegrationResponse
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
 public interface IntegrationControllerMapper {
 
     /**

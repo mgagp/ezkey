@@ -4,8 +4,8 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationResponse
- * Description: Response DTO for integration data including internationalization support.
+ * DTO: IntegrationResponseDto
+ * Description: Response DTO for integration data in admin API including internationalization support.
  */
 
 package org.ezkey.integration.dto;
@@ -14,11 +14,23 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Response DTO for integration data including internationalization support.
+ * Response DTO for integration data in admin API including internationalization support.
  * <p>
- * This DTO represents the complete integration information returned by the API,
- * including basic integration details and localized content for multiple languages.
- * It is used in GET operations to return integration data to clients.
+ * This DTO represents the complete integration information returned by the admin API
+ * for administrative purposes. It includes comprehensive integration details, configuration,
+ * metadata, and localized content for multiple languages while excluding sensitive
+ * cryptographic material for security purposes.
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> Used by admin API endpoints to return integration information
+ * to administrators for monitoring and management purposes. Contains all non-sensitive
+ * data needed for integration administration and client consumption.
+ * </p>
+ *
+ * <p>
+ * <b>Security Note:</b> This DTO excludes sensitive cryptographic keys and provides
+ * only the information necessary for administrative operations and client display.
  * </p>
  *
  * <p>
@@ -27,12 +39,12 @@ import java.util.List;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Integration API responses
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.integration.domain.entity.Integration
+ * @see IntegrationCreateRequestDto
+ * @see IntegrationI18nResponseDto
  */
 public class IntegrationResponseDto {
 
