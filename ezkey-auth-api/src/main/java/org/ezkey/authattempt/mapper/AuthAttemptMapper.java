@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Mapper: AuthAttemptMapper
- * Description: MapStruct mapper for converting between AuthAttempt entities and DTOs.
+ * Description: MapStruct mapper for converting between AuthAttempt entities and DTOs in auth API.
  */
 
 package org.ezkey.authattempt.mapper;
@@ -23,31 +23,42 @@ import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 /**
- * MapStruct mapper interface for converting between AuthAttempt entities and DTOs.
+ * MapStruct mapper interface for converting between AuthAttempt entities and DTOs in auth API.
  * <p>
- * This mapper provides bidirectional conversion between JPA entities and API DTOs,
- * ensuring clean separation between the domain layer and the API layer. It handles
- * both individual objects and collections, supporting the complete CRUD operations
- * for the AuthAttempt module.
+ * This mapper provides conversion between domain objects and mobile API DTOs
+ * for the auth API context. It supports the mobile authentication flow where
+ * devices check for pending authentication attempts and submit responses.
+ * All mappings are type-safe and validated at compile time.
  * </p>
  *
  * <p>
  * <b>Supported Conversions:</b>
  * <ul>
- * <li><b>Entity ↔ Response:</b> EzkeyAuthAttempt ↔ EzkeyAuthAttemptDto</li>
- * <li><b>Entity ↔ Response:</b> EzkeyAuthAttempt ↔ EzkeyAuthAttemptCreateDtoResponse</li>
- * <li><b>Request → Entity:</b> EzkeyAuthAttemptCreateDtoRequest → EzkeyAuthAttempt</li>
- * <li><b>Collections:</b> List conversions for all supported types</li>
+ * <li><b>Pending Request:</b> AuthAttemptPendingRequestDto → AuthAttemptInitiateRequest</li>
+ * <li><b>Pending Response:</b> AuthAttemptPendingResponse → AuthAttemptPendingResponseDto</li>
+ * <li><b>Respond Request:</b> AuthAttemptRespondRequestDto → AuthAttemptCompleteRequest</li>
+ * <li><b>Respond Response:</b> AuthAttemptRespondResponse → AuthAttemptRespondResponseDto</li>
  * </ul>
  * </p>
  *
  * <p>
- * <b>MapStruct Features:</b>
+ * <b>Usage Context:</b> Used exclusively by the auth API to convert between
+ * domain objects and DTOs for mobile authentication operations. Handles the
+ * complete mobile authentication flow from pending checks to response submissions.
+ * </p>
+ *
+ * <p>
+ * <b>Mobile Flow Support:</b> Supports the pull-based authentication model where
+ * mobile devices poll for pending requests and submit cryptographically signed responses.
+ * </p>
+ *
+ * <p>
+ * <b>MapStruct Configuration:</b>
  * <ul>
- * <li><b>Spring Integration:</b> Automatically registered as a Spring component</li>
- * <li><b>Automatic Mapping:</b> Field names are automatically matched</li>
- * <li><b>Type Safety:</b> Compile-time validation of mapping configurations</li>
- * <li><b>Performance:</b> Generated code for optimal runtime performance</li>
+ * <li><b>Component Model:</b> Spring integration for dependency injection</li>
+ * <li><b>Unmapped Reporting:</b> WARN to identify potential mapping issues</li>
+ * <li><b>Type Safety:</b> Compile-time validation of all mapping configurations</li>
+ * <li><b>Performance:</b> Generated implementation for optimal runtime performance</li>
  * </ul>
  * </p>
  *
@@ -57,26 +68,68 @@ import org.mapstruct.ReportingPolicy;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Entity-DTO mapping for AuthAttempt API
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  * @see AuthAttempt
- * @see AuthAttemptDto
- * @see AuthAttemptCreateRequestDto
- * @see AuthAttemptCreateResponseDto
+ * @see AuthAttemptPendingRequestDto
+ * @see AuthAttemptPendingResponseDto
+ * @see AuthAttemptRespondRequestDto
+ * @see AuthAttemptRespondResponseDto
+ * @see AuthAttemptInitiateRequest
+ * @see AuthAttemptPendingResponse
+ * @see AuthAttemptCompleteRequest
+ * @see AuthAttemptRespondResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface AuthAttemptMapper {
 
+    /**
+     * Converts a pending request DTO to domain request for mobile authentication polling.
+     * <p>
+     * Maps mobile device polling requests to domain objects for processing
+     * pending authentication attempts. Handles cryptographic signature validation data.
+     * </p>
+     *
+     * @param request the mobile pending request DTO
+     * @return the corresponding domain initiate request
+     */
     AuthAttemptInitiateRequest toAuthAttemptPendingRequest(AuthAttemptPendingRequestDto request);
 
+    /**
+     * Converts a domain pending response to DTO for mobile consumption.
+     * <p>
+     * Maps domain pending response data to mobile-friendly DTOs containing
+     * authentication challenge information and cryptographic codes.
+     * </p>
+     *
+     * @param response the domain pending response
+     * @return the corresponding mobile response DTO
+     */
     AuthAttemptPendingResponseDto toAuthAttemptPendingResponseDto(AuthAttemptPendingResponse response);
 
+    /**
+     * Converts a respond request DTO to domain request for authentication completion.
+     * <p>
+     * Maps mobile device response submissions to domain objects for processing
+     * authentication attempt completions. Handles user decisions and cryptographic proofs.
+     * </p>
+     *
+     * @param request the mobile respond request DTO
+     * @return the corresponding domain complete request
+     */
     AuthAttemptCompleteRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
 
+    /**
+     * Converts a domain respond response to DTO for mobile feedback.
+     * <p>
+     * Maps domain response results to mobile-friendly DTOs providing confirmation
+     * of authentication response processing and status feedback.
+     * </p>
+     *
+     * @param response the domain respond response
+     * @return the corresponding mobile response DTO
+     */
     AuthAttemptRespondResponseDto toAuthAttemptRespondResponseDto(AuthAttemptRespondResponse response);
 
 }
