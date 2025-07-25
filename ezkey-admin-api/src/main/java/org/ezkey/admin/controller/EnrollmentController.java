@@ -32,21 +32,27 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for enrollment API v1 using JPA service.
+ * REST controller for enrollment administration API v1.
  * <p>
- * This controller provides REST endpoints for enrollment management operations,
- * using the JPA-based service and new DTOs for clean API responses. It follows
- * RESTful conventions and provides proper HTTP status codes and error handling.
+ * This controller provides REST endpoints for enrollment management operations
+ * in the admin API (internal). It handles CRUD operations for device enrollments,
+ * allowing administrators to create, view, and delete enrollments.
+ * Uses JPA-based service and DTOs for clean API responses with proper HTTP status codes.
  * </p>
  *
  * <p>
- * <b>API Endpoints:</b>
+ * <b>Admin API Endpoints (Internal):</b>
  * <ul>
- * <li><b>GET /api/v1/enrollments</b> - Get all enrollments</li>
+ * <li><b>GET /api/v1/enrollments</b> - List all enrollments</li>
  * <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID</li>
  * <li><b>POST /api/v1/enrollments</b> - Create new enrollment</li>
  * <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal 
+ * administration purposes. For mobile enrollment binding and verification, see auth-api endpoints.
  * </p>
  *
  * <p>
@@ -55,15 +61,13 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Enrollment API v1 endpoints
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyEnrollmentService
+ * @see EnrollmentService
  * @see EnrollmentResponseDto
- * @see EnrollmentCreateRequest
+ * @see EnrollmentCreateRequestDto
+ * @see EnrollmentCreateResponseDto
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
@@ -86,12 +90,13 @@ public class EnrollmentController {
     }
 
     /**
-     * Retrieves all enrollments.
+     * Retrieves all enrollments for administrative purposes.
      * <p>
      * Returns a list of all enrollments in the system as response DTOs.
+     * This endpoint is used by administrators to monitor and manage device enrollments.
      * </p>
      *
-     * @return ResponseEntity containing list of enrollment responses
+     * @return ResponseEntity containing list of enrollment responses with HTTP 200 status
      */
     @GetMapping
     public ResponseEntity<List<EnrollmentResponseDto>> getAll(){
@@ -100,13 +105,14 @@ public class EnrollmentController {
     }
 
     /**
-     * Retrieves an enrollment by its ID.
+     * Retrieves an enrollment by its ID for administrative purposes.
      * <p>
-     * Returns the enrollment data as a response DTO, or 404 if not found.
+     * Returns the enrollment data as a response DTO for administrative review.
+     * Returns 404 if the enrollment is not found.
      * </p>
      *
      * @param id the enrollment ID
-     * @return ResponseEntity containing enrollment response or 404 error
+     * @return ResponseEntity containing enrollment response with HTTP 200 status, or 404 if not found
      */
     @GetMapping("/{id}")
     public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable Integer id){
@@ -120,13 +126,15 @@ public class EnrollmentController {
     }
 
     /**
-     * Creates a new enrollment.
+     * Creates a new enrollment for administrative purposes.
      * <p>
      * Creates a new enrollment with the provided data and returns the created enrollment.
+     * This generates an enrollment that can later be bound to a mobile device.
+     * Returns 201 Created with the created enrollment data including enrollment code and challenge.
      * </p>
      *
-     * @param request the enrollment creation request
-     * @return ResponseEntity containing created enrollment response with 201 status
+     * @param request the enrollment creation request DTO
+     * @return ResponseEntity containing created enrollment response with HTTP 201 status
      */
     @PostMapping
     public ResponseEntity<EnrollmentCreateResponseDto> create(@RequestBody EnrollmentCreateRequestDto request){
@@ -143,13 +151,14 @@ public class EnrollmentController {
     }
 
     /**
-     * Deletes an enrollment by its ID.
+     * Deletes an enrollment by its ID for administrative purposes.
      * <p>
-     * Removes an enrollment from the system.
+     * Removes an enrollment from the system, effectively unlinking the device from the integration.
+     * Returns 204 No Content on successful deletion, or 404 if not found.
      * </p>
      *
      * @param id the enrollment ID to delete
-     * @return ResponseEntity with 204 No Content on success
+     * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id){

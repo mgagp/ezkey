@@ -32,21 +32,27 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for integration API v1 using JPA service.
+ * REST controller for integration administration API v1.
  * <p>
- * This controller provides REST endpoints for integration management operations, using the JPA-based service and DTOs
- * for clean API responses. It follows RESTful conventions and provides proper HTTP status codes and error handling.
+ * This controller provides REST endpoints for integration management operations
+ * in the admin API (internal). It handles CRUD operations for integrations,
+ * which represent applications or systems to be protected by MFA.
+ * Uses JPA-based service and DTOs for clean API responses with proper HTTP status codes.
  * </p>
  *
  * <p>
- * <b>API Endpoints:</b>
+ * <b>Admin API Endpoints (Internal):</b>
  * <ul>
- * <li><b>GET /api/v1/integrations</b> - Get all integrations</li>
+ * <li><b>GET /api/v1/integrations</b> - List all integrations</li>
  * <li><b>GET /api/v1/integrations/{id}</b> - Get integration by ID</li>
  * <li><b>POST /api/v1/integrations</b> - Create new integration</li>
  * <li><b>DELETE /api/v1/integrations/{id}</b> - Delete integration</li>
- * <li><b>GET /api/v1/integrations/{id}/i18n</b> - Get integration i18n data</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal 
+ * administration purposes. Integrations represent applications that will use Ezkey for MFA.
  * </p>
  *
  * <p>
@@ -55,15 +61,14 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Integration API v1 endpoints
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
  * @see IntegrationService
  * @see IntegrationResponse
  * @see IntegrationCreateRequest
+ * @see IntegrationResponseDto
+ * @see IntegrationCreateRequestDto
  */
 @RestController
 @RequestMapping("/api/v1/integrations")
@@ -85,12 +90,13 @@ public class IntegrationController {
     }
 
     /**
-     * Retrieves all Integration entities.
+     * Retrieves all integration entities for administrative purposes.
      * <p>
      * Returns a list of all available integrations in the system.
+     * This endpoint is used by administrators to view and manage all applications protected by Ezkey.
      * </p>
      *
-     * @return ResponseEntity containing a list of IntegrationResponse objects with HTTP 200 status
+     * @return ResponseEntity containing a list of IntegrationResponseDto objects with HTTP 200 status
      */
     @GetMapping
     public ResponseEntity<List<IntegrationResponseDto>> getAll(){
@@ -100,14 +106,15 @@ public class IntegrationController {
     }
 
     /**
-     * Retrieves a specific Integration by its unique identifier.
+     * Retrieves a specific integration by its unique identifier for administrative purposes.
      * <p>
      * Returns the integration if found, or throws ResourceNotFoundException if not found.
+     * This endpoint provides detailed information about a specific application integration.
      * </p>
      *
      * @param id the unique identifier of the Integration to retrieve
      * @return ResponseEntity containing the IntegrationResponse with HTTP 200 status if found
-     * @throws ResourceNotFoundException if the Integration with the given id is not found
+     * @throws ResourceNotFoundException if the Integration with the given id is not found (returns HTTP 404)
      */
     @GetMapping("/{id}")
     public ResponseEntity<IntegrationResponse> getById(@PathVariable("id") Integer id){
@@ -116,14 +123,16 @@ public class IntegrationController {
     }
 
     /**
-     * Creates a new Integration entity.
+     * Creates a new integration entity for administrative purposes.
      * <p>
-     * Accepts a IntegrationCreateRequest and creates a new Integration. The service layer handles all business logic
-     * including default values, relationship management, and validation.
+     * Accepts an IntegrationCreateRequestDto and creates a new Integration representing
+     * an application or system to be protected by Ezkey MFA. The service layer handles
+     * all business logic including default values, cryptographic key generation, and validation.
+     * Returns 201 Created with Location header pointing to the created resource.
      * </p>
      *
-     * @param request the request containing integration data to create
-     * @return ResponseEntity containing the created IntegrationResponse with HTTP 201 status and Location header
+     * @param request the request DTO containing integration data to create
+     * @return ResponseEntity containing the created IntegrationCreateResponse with HTTP 201 status and Location header
      */
     @PostMapping
     public ResponseEntity<IntegrationCreateResponse> create(@RequestBody IntegrationCreateRequestDto request){
@@ -133,13 +142,15 @@ public class IntegrationController {
     }
 
     /**
-     * Deletes an Integration entity by its ID.
+     * Deletes an integration entity by its ID for administrative purposes.
      * <p>
-     * Removes an integration from the system.
+     * Removes an integration from the system, effectively disabling MFA protection
+     * for the associated application. Returns 204 No Content on successful deletion,
+     * or 404 if the integration is not found.
      * </p>
      *
      * @param id the integration ID to delete
-     * @return ResponseEntity with 204 No Content on success
+     * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable("id") Integer id){

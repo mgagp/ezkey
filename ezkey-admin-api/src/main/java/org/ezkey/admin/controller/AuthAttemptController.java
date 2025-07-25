@@ -32,24 +32,27 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for authorization attempt API v1 using JPA service.
+ * REST controller for authorization attempt administration API v1.
  * <p>
- * This controller provides REST endpoints for authorization attempt management operations,
- * using the JPA-based service and DTOs for clean API responses. It follows
- * RESTful conventions and provides proper HTTP status codes and error handling.
+ * This controller provides REST endpoints for authorization attempt management operations
+ * in the admin API (internal). It handles CRUD operations for authentication attempts,
+ * allowing administrators to create, view, and delete authentication requests.
+ * Uses JPA-based service and DTOs for clean API responses with proper HTTP status codes.
  * </p>
  *
  * <p>
- * <b>API Endpoints:</b>
+ * <b>Admin API Endpoints (Internal):</b>
  * <ul>
- * <li><b>GET /api/v1/auth-attempts</b> - Get all authorization attempts</li>
+ * <li><b>GET /api/v1/auth-attempts</b> - List all authorization attempts</li>
  * <li><b>GET /api/v1/auth-attempts/{id}</b> - Get authorization attempt by ID</li>
  * <li><b>POST /api/v1/auth-attempts</b> - Create new authorization attempt</li>
- * <li><b>PUT /api/v1/auth-attempts/{id}</b> - Update authorization attempt</li>
  * <li><b>DELETE /api/v1/auth-attempts/{id}</b> - Delete authorization attempt</li>
- * <li><b>POST /api/v1/auth-attempts/initiate</b> - Initiate authorization attempt</li>
- * <li><b>POST /api/v1/auth-attempts/complete</b> - Complete authorization attempt</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal 
+ * administration purposes. For mobile authentication consumption, see auth-api endpoints.
  * </p>
  *
  * <p>
@@ -58,15 +61,13 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * <b>License:</b> MIT
  * </p>
- * <p>
- * <b>Usage:</b> Authorization attempt API v1 endpoints
- * </p>
  *
  * @author Ezkey contributors
  * @since 2025
- * @see EzkeyAuthAttemptService
- * @see EzkeyAuthAttemptDto
- * @see EzkeyAuthAttemptCreateDtoRequest
+ * @see AuthAttemptService
+ * @see AuthAttemptDto
+ * @see AuthAttemptCreateRequestDto
+ * @see AuthAttemptCreateResponseDto
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
@@ -89,12 +90,13 @@ public class AuthAttemptController {
     }
 
     /**
-     * Retrieves all authorization attempts.
+     * Retrieves all authorization attempts for administrative purposes.
      * <p>
      * Returns a list of all authorization attempts in the system as DTOs.
+     * This endpoint is used by administrators to monitor and manage authentication requests.
      * </p>
      *
-     * @return ResponseEntity containing list of authorization attempt DTOs
+     * @return ResponseEntity containing list of authorization attempt DTOs with HTTP 200 status
      */
     @GetMapping
     public ResponseEntity<List<AuthAttemptDto>> getAll(){
@@ -103,13 +105,14 @@ public class AuthAttemptController {
     }
 
     /**
-     * Retrieves an authorization attempt by its ID.
+     * Retrieves an authorization attempt by its ID for administrative purposes.
      * <p>
-     * Returns the authorization attempt data as a DTO, or 404 if not found.
+     * Returns the authorization attempt data as a DTO for administrative review.
+     * Returns 404 if the authorization attempt is not found.
      * </p>
      *
      * @param id the authorization attempt ID
-     * @return ResponseEntity containing authorization attempt DTO or 404 error
+     * @return ResponseEntity containing authorization attempt DTO with HTTP 200 status, or 404 if not found
      */
     @GetMapping("/{id}")
     public ResponseEntity<AuthAttemptDto> getById(@PathVariable("id") Integer id){
@@ -123,13 +126,15 @@ public class AuthAttemptController {
     }
 
     /**
-     * Creates a new authorization attempt.
+     * Creates a new authorization attempt for administrative purposes.
      * <p>
      * Creates a new authorization attempt with the provided data and returns the created attempt.
+     * This is typically used by integrating applications to initiate MFA authentication requests.
+     * Returns 201 Created with the created authorization attempt data.
      * </p>
      *
-     * @param request the authorization attempt creation request
-     * @return ResponseEntity containing created authorization attempt response with 201 status
+     * @param request the authorization attempt creation request DTO
+     * @return ResponseEntity containing created authorization attempt response with HTTP 201 status
      */
     @PostMapping
     public ResponseEntity<AuthAttemptCreateResponseDto> create(@RequestBody AuthAttemptCreateRequestDto request){
@@ -146,13 +151,14 @@ public class AuthAttemptController {
     }
 
     /**
-     * Deletes an authorization attempt by its ID.
+     * Deletes an authorization attempt by its ID for administrative purposes.
      * <p>
      * Removes an authorization attempt from the system.
+     * Returns 204 No Content on successful deletion, or 404 if not found.
      * </p>
      *
      * @param id the authorization attempt ID to delete
-     * @return ResponseEntity with 204 No Content on success
+     * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable("id") Integer id){

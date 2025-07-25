@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: AuthAttemptController
- * Description: REST controller for authorization attempt API v1 using JPA service.
+ * Description: REST controller for mobile authentication attempt API v1.
  */
 
 package org.ezkey.auth.controller;
@@ -27,6 +27,49 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for mobile authentication attempt API v1.
+ * <p>
+ * This controller provides REST endpoints for mobile device authentication operations
+ * in the auth-api (external). It handles the mobile authentication flow where devices
+ * check for pending authentication requests and submit their responses.
+ * Uses cryptographic signatures for secure authentication validation.
+ * </p>
+ *
+ * <p>
+ * <b>Auth API Endpoints (Mobile):</b>
+ * <ul>
+ * <li><b>POST /api/v1/auth-attempts/pending/{enrollmentId}</b> - Check for pending authentication requests</li>
+ * <li><b>POST /api/v1/auth-attempts/respond/{authAttemptId}</b> - Submit authentication response</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device 
+ * consumption. The mobile app uses these endpoints to implement the pull-based 
+ * authentication model with cryptographic signature validation.
+ * </p>
+ *
+ * <p>
+ * <b>Security Model:</b> All requests include cryptographic signatures in the body 
+ * to ensure request authenticity and prevent unauthorized access.
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ *
+ * @author Ezkey contributors
+ * @since 2025
+ * @see AuthAttemptService
+ * @see AuthAttemptPendingRequestDto
+ * @see AuthAttemptPendingResponseDto
+ * @see AuthAttemptRespondRequestDto
+ * @see AuthAttemptRespondResponseDto
+ */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
 public class AuthAttemptController {
@@ -36,7 +79,7 @@ public class AuthAttemptController {
     private final AuthAttemptMapper authAttemptMapper;
 
     /**
-     * Constructs the authorization attempt controller with required dependencies.
+     * Constructs the mobile authentication attempt controller with required dependencies.
      *
      * @param authAttemptService the JPA-based authorization attempt service
      * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
@@ -47,6 +90,20 @@ public class AuthAttemptController {
         this.authAttemptMapper = authAttemptMapper;
     }
 
+    /**
+     * Checks for pending authentication requests for a mobile device.
+     * <p>
+     * The mobile device polls this endpoint to check if there are pending authentication
+     * requests for its enrollment. The request body contains a cryptographic signature
+     * proving the authenticity of the request. Returns 200 with the pending request
+     * details, or 204 No Content if no pending requests exist.
+     * </p>
+     *
+     * @param id the enrollment ID to check for pending requests
+     * @param request the pending request DTO containing cryptographic signature
+     * @return ResponseEntity containing pending authentication details with HTTP 200,
+     *         or 204 No Content if no pending requests, or 400 for invalid requests
+     */
     @PostMapping("/pending/{enrollmentId}")
     public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id,@RequestBody AuthAttemptPendingRequestDto request){
         try{
@@ -61,13 +118,18 @@ public class AuthAttemptController {
     }
 
     /**
-     * Respond to an authorization attempt.
+     * Submits the mobile device's response to an authentication request.
      * <p>
-     * Handles the authorization attempt respond process and returns respond information.
+     * The mobile device uses this endpoint to submit the user's authentication response
+     * (approved, denied, or signature) for a specific authentication attempt.
+     * The response includes cryptographic signatures for validation.
+     * Returns 200 with the response status, or appropriate error codes for invalid requests.
      * </p>
      *
-     * @param request the respond request
-     * @return ResponseEntity containing respond response
+     * @param id the authentication attempt ID to respond to
+     * @param request the response request DTO containing user's decision and signatures
+     * @return ResponseEntity containing response confirmation with HTTP 200,
+     *         or 400 for invalid requests, or 409 for conflicting states
      */
     @PostMapping("/respond/{authAttemptId}")
     public ResponseEntity<AuthAttemptRespondResponseDto> respond(@PathVariable("authAttemptId") Integer id,@RequestBody AuthAttemptRespondRequestDto request){

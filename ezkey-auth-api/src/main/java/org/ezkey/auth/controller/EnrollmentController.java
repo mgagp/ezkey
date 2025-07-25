@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: EnrollmentController
- * Description: REST controller for enrollment API v1 using JPA service.
+ * Description: REST controller for mobile enrollment API v1.
  */
 
 package org.ezkey.auth.controller;
@@ -29,24 +29,51 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for enrollment management operations (API v1).
+ * REST controller for mobile enrollment API v1.
  * <p>
- * Provides endpoints for binding, confirming, and managing enrollments using JPA-based services and DTOs.
- * Follows RESTful conventions, returns appropriate HTTP status codes, and handles errors gracefully.
+ * This controller provides REST endpoints for mobile device enrollment operations
+ * in the auth-api (external). It handles the enrollment binding and verification
+ * process where mobile devices link themselves to user accounts and complete
+ * the cryptographic enrollment setup.
  * </p>
  *
- * <b>Endpoints:</b>
+ * <p>
+ * <b>Auth API Endpoints (Mobile):</b>
  * <ul>
- * <li><b>GET /api/v1/enrollments/bind/{id}</b> - Bind an enrollment to a device</li>
- * <li><b>POST /api/v1/enrollments/verify</b> - Confirm an enrollment</li>
+ * <li><b>GET /api/v1/enrollments/bind/{enrollmentId}</b> - Initiate device binding to enrollment</li>
+ * <li><b>POST /api/v1/enrollments/verify</b> - Complete enrollment verification process</li>
  * </ul>
+ * </p>
  *
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative<br>
- * <b>License:</b> MIT<br>
- * <b>Usage:</b> Enrollment API v1 endpoints
+ * <p>
+ * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device 
+ * consumption. Mobile apps use these endpoints to complete the enrollment process
+ * by linking devices to user accounts through cryptographic key exchange.
+ * </p>
+ *
+ * <p>
+ * <b>Enrollment Flow:</b>
+ * <ol>
+ * <li>Mobile device scans QR code or deep link containing enrollmentId</li>
+ * <li>Device calls bind endpoint to retrieve enrollment details and challenges</li>
+ * <li>Device generates cryptographic keys and signs enrollment code</li>
+ * <li>Device calls verify endpoint to complete enrollment with signatures</li>
+ * </ol>
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see EnrollmentService
+ * @see EnrollmentBindResponseDto
+ * @see EnrollmentVerifyRequestDto
+ * @see EnrollmentVerifyResponseDto
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
@@ -57,7 +84,7 @@ public class EnrollmentController {
     private final EnrollmentAuthMapper enrollmentMapper;
 
     /**
-     * Constructs the EnrollmentController with required dependencies.
+     * Constructs the mobile enrollment controller with required dependencies.
      *
      * @param enrollmentService JPA-based enrollment service
      * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
@@ -69,14 +96,17 @@ public class EnrollmentController {
     }
 
     /**
-     * Binds an enrollment to a device.
+     * Initiates the device binding process for mobile enrollment.
      * <p>
-     * Initiates the enrollment binding process and returns binding information as a DTO.
-     * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
+     * The mobile device calls this endpoint to start the enrollment binding process.
+     * It retrieves enrollment information including the integration public key,
+     * enrollment code, and challenge data needed to complete the enrollment.
+     * This is typically called after scanning a QR code or following a deep link.
      * </p>
      *
-     * @param enrollmentId the enrollment ID to bind
-     * @return ResponseEntity containing the binding response DTO, or error status
+     * @param enrollmentId the enrollment ID to bind the device to
+     * @return ResponseEntity containing enrollment binding information with HTTP 200,
+     *         or 400 for invalid enrollment ID, or 409 if enrollment is already bound
      */
     @GetMapping("/bind/{enrollmentId}")
     public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId){
@@ -93,14 +123,18 @@ public class EnrollmentController {
     }
 
     /**
-     * Verifies an enrollment.
+     * Completes the enrollment verification process for mobile devices.
      * <p>
-     * Confirms the enrollment process and returns verification response as a DTO.
-     * Returns HTTP 400 if the request is invalid, or 409 if the enrollment is in a conflicting state.
+     * The mobile device submits its cryptographic keys and signed enrollment code
+     * to finalize the enrollment process. The device generates a public/private key pair,
+     * signs the enrollment code with its private key, and submits the public key
+     * and signature for verification. Once verified, the enrollment becomes active
+     * and the device can authenticate users.
      * </p>
      *
-     * @param req the enrollment verification request DTO
-     * @return ResponseEntity containing the verification response DTO, or error status
+     * @param req the verification request DTO containing device keys and signatures
+     * @return ResponseEntity containing verification confirmation with HTTP 200,
+     *         or 400 for invalid verification data, or 409 if enrollment state conflicts
      */
     @PostMapping("/verify")
     public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req){
