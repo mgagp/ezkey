@@ -75,6 +75,25 @@ class SignatureServiceTest {
     }
 
     @Test
+    @DisplayName("Should generate a valid proof token")
+    void testGenerateProofToken() {
+        // Act
+        String proofToken = signatureService.generateProofToken();
+
+        // Assert
+        // The proof token should not be null or empty and should match the expected format
+        assertTrue(proofToken != null && !proofToken.isEmpty(), "Proof token should not be null or empty");
+        String[] parts = proofToken.split("\\.");
+        assertTrue(parts.length == 3, "Proof token should have three parts separated by '.'");
+        // Check that the timestamp part is a valid long
+        try {
+            Long.parseLong(parts[1]);
+        } catch (NumberFormatException e) {
+            throw new AssertionError("Timestamp part of proof token should be a valid long");
+        }
+    }
+
+    @Test
     @DisplayName("Should generate and validate signature successfully")
     void testKeyPairAndSignatureValidation() throws Exception {
         // Arrange
@@ -85,7 +104,7 @@ class SignatureServiceTest {
         boolean isValid = signatureService.validateSignature(testData, signature, base64PublicKey);
 
         // Assert
-        assertTrue(isValid, "La signature doit être valide pour les données originales");
+        assertTrue(isValid, "Signature should be valid for original data");
     }
 
     @Test
@@ -93,26 +112,26 @@ class SignatureServiceTest {
     void testSignatureValidationWithModifiedData() throws Exception {
         // Arrange
         String signature = signatureService.generateSignature(testData, base64PrivateKey);
-        String modifiedData = "Données modifiées pour test";
+        String modifiedData = "Modified data for test";
 
         // Act
         boolean isInvalid = signatureService.validateSignature(modifiedData, signature, base64PublicKey);
 
         // Assert
-        assertFalse(isInvalid, "La signature ne doit pas être valide pour des données modifiées");
+        assertFalse(isInvalid, "Signature should not be valid for modified data");
     }
 
     @Test
     @DisplayName("Should reject invalid signature")
     void testInvalidSignatureRejection() throws Exception {
         // Arrange
-        String invalidSignature = "signature_invalide_base64_encoded";
+        String invalidSignature = "invalid_signature_base64_encoded";
 
         // Act
         boolean isValid = signatureService.validateSignature(testData, invalidSignature, base64PublicKey);
 
         // Assert
-        assertFalse(isValid, "Une signature invalide doit être rejetée");
+        assertFalse(isValid, "An invalid signature should be rejected");
     }
 
     @Test
@@ -126,7 +145,7 @@ class SignatureServiceTest {
         boolean isValid = signatureService.validateSignature(emptyData, signature, base64PublicKey);
 
         // Assert
-        assertTrue(isValid, "La signature doit être valide même pour des données vides");
+        assertTrue(isValid, "Signature should be valid even for empty data");
     }
 
     @Test
@@ -135,7 +154,7 @@ class SignatureServiceTest {
         // Arrange
         StringBuilder largeData = new StringBuilder();
         for (int i = 0; i < 1000; i++) {
-            largeData.append("Données de test répétées ");
+            largeData.append("Repeated test data ");
         }
         String largeDataString = largeData.toString();
 
@@ -144,7 +163,7 @@ class SignatureServiceTest {
         boolean isValid = signatureService.validateSignature(largeDataString, signature, base64PublicKey);
 
         // Assert
-        assertTrue(isValid, "La signature doit être valide pour de grandes quantités de données");
+        assertTrue(isValid, "Signature should be valid for large amounts of data");
     }
 
     @Test
@@ -175,4 +194,4 @@ class SignatureServiceTest {
         // Assert
         assertTrue(signature1.equals(signature2), "Les signatures doivent être identiques pour les mêmes données");
     }
-} 
+}

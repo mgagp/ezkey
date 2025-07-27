@@ -10,9 +10,9 @@
 
 package org.ezkey.authattempt.mapper;
 
-import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
+import org.ezkey.authattempt.domain.AuthAttemptRepondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
+import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
@@ -76,9 +76,9 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptPendingResponseDto
  * @see AuthAttemptRespondRequestDto
  * @see AuthAttemptRespondResponseDto
- * @see AuthAttemptInitiateRequest
+ * @see AuthAttemptPendingRequest
  * @see AuthAttemptPendingResponse
- * @see AuthAttemptCompleteRequest
+ * @see AuthAttemptRepondRequest
  * @see AuthAttemptRespondResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
@@ -94,7 +94,7 @@ public interface AuthAttemptMapper {
      * @param request the mobile pending request DTO
      * @return the corresponding domain initiate request
      */
-    AuthAttemptInitiateRequest toAuthAttemptPendingRequest(AuthAttemptPendingRequestDto request);
+    AuthAttemptPendingRequest toAuthAttemptPendingRequest(AuthAttemptPendingRequestDto request);
 
     /**
      * Converts a domain pending response to DTO for mobile consumption.
@@ -118,7 +118,7 @@ public interface AuthAttemptMapper {
      * @param request the mobile respond request DTO
      * @return the corresponding domain complete request
      */
-    AuthAttemptCompleteRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
+    AuthAttemptRepondRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
 
     /**
      * Converts a domain respond response to DTO for mobile feedback.

@@ -8,48 +8,48 @@ public class EnrollmentVerifyRequest {
 
     private String devicePublicKey;
 
-    private String enrollmentCode;
+    private String deviceProofToken;
 
-    private String enrollmentCodeSigned;
+    private String deviceProofTokenSigned;
 
-    public String getDevicePublicKey(){
-        return devicePublicKey;
-    }
-
-    public void setDevicePublicKey(String devicePublicKey){
-        this.devicePublicKey = devicePublicKey;
-    }
-
-    public String getEnrollmentCode(){
-        return enrollmentCode;
-    }
-
-    public void setEnrollmentCode(String enrollmentCode){
-        this.enrollmentCode = enrollmentCode;
-    }
-
-    public Integer getChallengeResponse(){
-        return challengeResponse;
-    }
-
-    public void setChallengeResponse(Integer challengeResponse){
-        this.challengeResponse = challengeResponse;
-    }
-
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
-    public String getEnrollmentCodeSigned(){
-        return enrollmentCodeSigned;
+    public Integer getChallengeResponse() {
+        return challengeResponse;
     }
 
-    public void setEnrollmentCodeSigned(String enrollmentCodeSigned){
-        this.enrollmentCodeSigned = enrollmentCodeSigned;
+    public void setChallengeResponse(Integer challengeResponse) {
+        this.challengeResponse = challengeResponse;
+    }
+
+    public String getDevicePublicKey() {
+        return devicePublicKey;
+    }
+
+    public void setDevicePublicKey(String devicePublicKey) {
+        this.devicePublicKey = devicePublicKey;
+    }
+
+    public String getDeviceProofToken() {
+        return deviceProofToken;
+    }
+
+    public void setDeviceProofToken(String deviceProofToken) {
+        this.deviceProofToken = deviceProofToken;
+    }
+
+    public String getDeviceProofTokenSigned() {
+        return deviceProofTokenSigned;
+    }
+
+    public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
+        this.deviceProofTokenSigned = deviceProofTokenSigned;
     }
 
 }

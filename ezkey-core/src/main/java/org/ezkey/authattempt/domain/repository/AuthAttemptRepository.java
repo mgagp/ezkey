@@ -77,7 +77,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @param enrollmentId the enrollment ID to search for
      * @return the most recent authorization attempt, or empty if none found
      */
-    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId){
+    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId) {
         List<AuthAttempt> attempts = findByEnrollmentIdOrderByAuthAttemptIdDesc(enrollmentId);
         return attempts.isEmpty() ? Optional.empty() : Optional.of(attempts.get(0));
     }
@@ -99,16 +99,16 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
     /**
      * Updates the reply status of an authorization attempt if it hasn't been replied to yet.
      * <p>
-     * This method atomically updates the reply status to true only if the current
-     * status is false, preventing race conditions in concurrent scenarios.
+     * This method atomically updates the reply status by saving the device's proof token only if not already set,
+     * preventing race conditions in concurrent scenarios.
      * </p>
      *
      * @param authAttemptId the authorization attempt ID to update
      * @return the number of rows affected (1 if updated, 0 if already replied)
      */
     @Modifying
-    @Query("UPDATE AuthAttempt a SET a.authAttemptReplied = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptReplied = false")
-    int setDeviceRepliedTrueIfNotReplied(@Param("authAttemptId") Integer authAttemptId);
+    @Query("UPDATE AuthAttempt a SET a.deviceProofToken = :deviceProofToken WHERE a.authAttemptId = :authAttemptId AND a.deviceProofToken is null")
+    int setDeviceRepliedIfNotReplied(@Param("authAttemptId") Integer authAttemptId,@Param("deviceProofToken") String deviceProofToken);
 
     /**
      * Finds all authorization attempts for a given enrollment ID.

@@ -33,17 +33,6 @@ package org.ezkey.enrollment.dto;
  * </p>
  *
  * <p>
- * <b>Fields:</b>
- * <ul>
- * <li><b>enrollmentId:</b> The enrollment being verified and activated</li>
- * <li><b>challengeResponse:</b> Response to the enrollment challenge</li>
- * <li><b>devicePublicKey:</b> Device's generated public key for authentication</li>
- * <li><b>enrollmentCode:</b> The enrollment code being signed</li>
- * <li><b>enrollmentCodeSigned:</b> Device's signature of the enrollment code</li>
- * </ul>
- * </p>
- *
- * <p>
  * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  * </p>
  * <p>
@@ -58,124 +47,53 @@ package org.ezkey.enrollment.dto;
  */
 public class EnrollmentVerifyRequestDto {
 
-    /**
-     * The enrollment ID being verified and activated.
-     * Must reference an existing enrollment that was previously bound.
-     */
     private Integer enrollmentId;
 
-    /**
-     * Response to the enrollment challenge.
-     * Computed based on the challenge received during enrollment binding.
-     */
     private Integer challengeResponse;
 
-    /**
-     * The mobile device's generated public key for future authentication.
-     * Used by the system to verify signatures in subsequent authentication attempts.
-     */
     private String devicePublicKey;
 
-    /**
-     * The enrollment code that must be signed by the mobile device.
-     * Must match the code received during enrollment binding.
-     */
-    private String enrollmentCode;
+    private String deviceProofToken;
 
-    /**
-     * The mobile device's cryptographic signature of the enrollment code.
-     * Proves that the device possesses the private key corresponding to devicePublicKey.
-     */
-    private String enrollmentCodeSigned;
+    private String deviceProofTokenSigned;
 
-    /**
-     * Gets the device public key.
-     *
-     * @return the device public key
-     */
-    public String getDevicePublicKey(){
-        return devicePublicKey;
-    }
-
-    /**
-     * Sets the device public key.
-     *
-     * @param devicePublicKey the device public key to set
-     */
-    public void setDevicePublicKey(String devicePublicKey){
-        this.devicePublicKey = devicePublicKey;
-    }
-
-    /**
-     * Gets the enrollment code.
-     *
-     * @return the enrollment code
-     */
-    public String getEnrollmentCode(){
-        return enrollmentCode;
-    }
-
-    /**
-     * Sets the enrollment code.
-     *
-     * @param enrollmentCode the enrollment code to set
-     */
-    public void setEnrollmentCode(String enrollmentCode){
-        this.enrollmentCode = enrollmentCode;
-    }
-
-    /**
-     * Gets the challenge response.
-     *
-     * @return the challenge response
-     */
-    public Integer getChallengeResponse(){
-        return challengeResponse;
-    }
-
-    /**
-     * Sets the challenge response.
-     *
-     * @param challengeResponse the challenge response to set
-     */
-    public void setChallengeResponse(Integer challengeResponse){
-        this.challengeResponse = challengeResponse;
-    }
-
-    /**
-     * Gets the enrollment ID.
-     *
-     * @return the enrollment ID
-     */
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
-    /**
-     * Sets the enrollment ID.
-     *
-     * @param enrollmentId the enrollment ID to set
-     */
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
-    /**
-     * Gets the signed enrollment code.
-     *
-     * @return the signed enrollment code
-     */
-    public String getEnrollmentCodeSigned(){
-        return enrollmentCodeSigned;
+    public Integer getChallengeResponse() {
+        return challengeResponse;
     }
 
-    /**
-     * Sets the signed enrollment code.
-     *
-     * @param enrollmentCodeSigned the signed enrollment code to set
-     */
-    public void setEnrollmentCodeSigned(String enrollmentCodeSigned){
-        this.enrollmentCodeSigned = enrollmentCodeSigned;
+    public void setChallengeResponse(Integer challengeResponse) {
+        this.challengeResponse = challengeResponse;
     }
 
+    public String getDevicePublicKey() {
+        return devicePublicKey;
+    }
+
+    public void setDevicePublicKey(String devicePublicKey) {
+        this.devicePublicKey = devicePublicKey;
+    }
+
+    public String getDeviceProofToken() {
+        return deviceProofToken;
+    }
+
+    public void setDeviceProofToken(String deviceProofToken) {
+        this.deviceProofToken = deviceProofToken;
+    }
+
+    public String getDeviceProofTokenSigned() {
+        return deviceProofTokenSigned;
+    }
+
+    public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
+        this.deviceProofTokenSigned = deviceProofTokenSigned;
+    }
 }

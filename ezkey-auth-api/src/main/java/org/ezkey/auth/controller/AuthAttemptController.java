@@ -45,13 +45,13 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * <p>
- * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device 
- * consumption. The mobile app uses these endpoints to implement the pull-based 
+ * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device
+ * consumption. The mobile app uses these endpoints to implement the pull-based
  * authentication model with cryptographic signature validation.
  * </p>
  *
  * <p>
- * <b>Security Model:</b> All requests include cryptographic signatures in the body 
+ * <b>Security Model:</b> All requests include cryptographic signatures in the body
  * to ensure request authenticity and prevent unauthorized access.
  * </p>
  *
@@ -102,10 +102,10 @@ public class AuthAttemptController {
      * @param id the enrollment ID to check for pending requests
      * @param request the pending request DTO containing cryptographic signature
      * @return ResponseEntity containing pending authentication details with HTTP 200,
-     *         or 204 No Content if no pending requests, or 400 for invalid requests
+     * or 204 No Content if no pending requests, or 400 for invalid requests
      */
     @PostMapping("/pending/{enrollmentId}")
-    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id,@RequestBody AuthAttemptPendingRequestDto request){
+    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id,@RequestBody AuthAttemptPendingRequestDto request) {
         try{
             request.setEnrollmentId(id);
             AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
@@ -129,13 +129,13 @@ public class AuthAttemptController {
      * @param id the authentication attempt ID to respond to
      * @param request the response request DTO containing user's decision and signatures
      * @return ResponseEntity containing response confirmation with HTTP 200,
-     *         or 400 for invalid requests, or 409 for conflicting states
+     * or 400 for invalid requests, or 409 for conflicting states
      */
     @PostMapping("/respond/{authAttemptId}")
-    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@PathVariable("authAttemptId") Integer id,@RequestBody AuthAttemptRespondRequestDto request){
+    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@PathVariable("authAttemptId") Integer id,@RequestBody AuthAttemptRespondRequestDto request) {
         try{
             request.setAuthAttemptId(id);
-            AuthAttemptRespondResponse response = authAttemptService.complete(authAttemptMapper.toAuthAttemptRespondRequest(request));
+            AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
             return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();

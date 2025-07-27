@@ -11,7 +11,6 @@
 package org.ezkey.enrollment.domain.repository;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -46,18 +45,6 @@ import org.springframework.stereotype.Repository;
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
 
     /**
-     * Finds an enrollment by its unique enrollment code.
-     * <p>
-     * This method is used to locate enrollments using their unique identifier
-     * code, which is typically used in enrollment verification processes.
-     * </p>
-     *
-     * @param enrollmentCode the unique enrollment code to search for
-     * @return Optional containing the enrollment if found, empty otherwise
-     */
-    Optional<Enrollment> findByEnrollmentCode(String enrollmentCode);
-
-    /**
      * Finds all enrollments for a specific integration.
      * <p>
      * This method retrieves all enrollments associated with a particular
@@ -68,30 +55,6 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return list of enrollments for the specified integration
      */
     List<Enrollment> findByIntegrationId(Integer integrationId);
-
-    /**
-     * Finds active enrollments for a specific integration.
-     * <p>
-     * This method retrieves only active enrollments for a particular
-     * integration, filtering out inactive or disabled enrollments.
-     * </p>
-     *
-     * @param integrationId the integration ID to search for
-     * @return list of active enrollments for the specified integration
-     */
-    List<Enrollment> findByIntegrationIdAndEnrollmentActiveTrue(Integer integrationId);
-
-    /**
-     * Finds verified enrollments for a specific integration.
-     * <p>
-     * This method retrieves only verified enrollments for a particular
-     * integration, useful for authentication operations.
-     * </p>
-     *
-     * @param integrationId the integration ID to search for
-     * @return list of verified enrollments for the specified integration
-     */
-    List<Enrollment> findByIntegrationIdAndEnrollmentVerifiedTrue(Integer integrationId);
 
     /**
      * Updates the enrollment read status to true.
@@ -107,15 +70,4 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     @Query("UPDATE Enrollment e SET e.enrollmentRead = true WHERE e.enrollmentId = :enrollmentId")
     int setDeviceReadTrue(@Param("enrollmentId") Integer enrollmentId);
 
-    /**
-     * Checks if an enrollment exists by its enrollment code.
-     * <p>
-     * This method provides a quick way to check if an enrollment
-     * with the specified code exists in the system.
-     * </p>
-     *
-     * @param enrollmentCode the enrollment code to check
-     * @return true if the enrollment exists, false otherwise
-     */
-    boolean existsByEnrollmentCode(String enrollmentCode);
 }

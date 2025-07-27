@@ -16,11 +16,11 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
-import org.ezkey.authattempt.domain.AuthAttemptCompleteRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
-import org.ezkey.authattempt.domain.AuthAttemptInitiateRequest;
+import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
+import org.ezkey.authattempt.domain.AuthAttemptRepondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -33,42 +33,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * JPA-based service for authorization attempt business logic.
- * <p>
- * This service provides business operations for authorization attempts,
- * including creation, initiation, completion, and status management.
- * It uses JPA repositories for data persistence and maintains all
- * the functional requirements from the original MyBatis implementation.
- * </p>
- *
- * <p>
- * <b>Supported Operations:</b>
- * <ul>
- * <li><b>CRUD Operations:</b> Create, read, update, delete authorization attempts</li>
- * <li><b>Business Logic:</b> Initiate, complete, and manage authorization flow</li>
- * <li><b>Status Management:</b> Read, reply, and acceptance status updates</li>
- * <li><b>Challenge Handling:</b> Challenge generation and validation</li>
- * <li><b>Signature Validation:</b> Cryptographic signature verification</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
- * <p>
- * <b>Usage:</b> Business logic layer for authorization attempts
- * </p>
- *
- * @author Ezkey contributors
- * @since 2025
- * @see AuthAttempt
- * @see AuthAttemptRepository
- * @see Enrollment
- */
 @Service
 @Transactional
 public class AuthAttemptService {
@@ -103,7 +67,7 @@ public class AuthAttemptService {
      * @return the authorization attempt entity
      * @throws ResourceNotFoundException if the authorization attempt is not found
      */
-    public AuthAttempt getById(Integer id){
+    public AuthAttempt getById(Integer id) {
         return authAttemptRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Authorization attempt",id));
     }
 
@@ -112,7 +76,7 @@ public class AuthAttemptService {
      *
      * @return list of all authorization attempts
      */
-    public List<AuthAttempt> getAll(){
+    public List<AuthAttempt> getAll() {
         return authAttemptRepository.findAll();
     }
 
@@ -128,7 +92,7 @@ public class AuthAttemptService {
      * @throws IllegalArgumentException if the enrollment is not found or validation fails
      * @throws RuntimeException if the creation fails
      */
-    public AuthAttemptCreateResponse create(AuthAttemptCreateRequest authRequest){
+    public AuthAttemptCreateResponse create(AuthAttemptCreateRequest authRequest) {
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(authRequest.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
@@ -141,7 +105,6 @@ public class AuthAttemptService {
         AuthAttempt authAttempt = new AuthAttempt();
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
         authAttempt.setAuthAttemptRead(false);
-        authAttempt.setAuthAttemptReplied(false);
         authAttempt.setAuthAttemptAccepted(false);
 
         // Generate challenge if required
@@ -152,7 +115,7 @@ public class AuthAttemptService {
             authAttempt.setAuthAttemptChallenge(null);
         }
         authAttempt.setCreatedAt(LocalDateTime.now());
-        authAttempt.setAuthAttemptCode(UUID.randomUUID().toString());
+        authAttempt.setIntegrationProofToken(UUID.randomUUID().toString());
 
         // Save the authorization attempt
         AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
@@ -163,9 +126,9 @@ public class AuthAttemptService {
 
         // Add simulation data if in simulation mode
         if (simulationMode){
-            response.setSimulationAuthAttemptEnrolleeCode(UUID.randomUUID().toString());
-            response.setSimulationAuthAttemptEnrolleeCodeSigned(
-                    signatureService.generateSignature(response.getSimulationAuthAttemptEnrolleeCode(),authRequest.getSimulationDevicePrivateKey()));
+            response.setSimulationDeviceProofToken(UUID.randomUUID().toString());
+            response.setSimulationDeviceProofTokenSigned(
+                    signatureService.generateSignature(response.getSimulationDeviceProofToken(),authRequest.getSimulationDevicePrivateKey()));
             response.setSimulationAuthAttemptChallengeResponse(authAttempt.getAuthAttemptChallenge());
         }
         return response;
@@ -177,7 +140,7 @@ public class AuthAttemptService {
      * @param authAttempt the authorization attempt to update
      * @return the updated authorization attempt
      */
-    public AuthAttempt update(AuthAttempt authAttempt){
+    public AuthAttempt update(AuthAttempt authAttempt) {
         return authAttemptRepository.save(authAttempt);
     }
 
@@ -187,26 +150,14 @@ public class AuthAttemptService {
      * @param id the authorization attempt ID to delete
      * @throws ResourceNotFoundException if the authorization attempt is not found
      */
-    public void delete(Integer id){
+    public void delete(Integer id) {
         if (!authAttemptRepository.existsById(id)){
             throw new ResourceNotFoundException("Authorization attempt",id);
         }
         authAttemptRepository.deleteById(id);
     }
 
-    /**
-     * Initiates an authorization attempt.
-     * <p>
-     * This method handles the initiation of an authorization attempt, including
-     * marking it as read, validating signatures, and preparing the response.
-     * </p>
-     *
-     * @param request the initiation request
-     * @return the initiation response
-     * @throws IllegalArgumentException if validation fails
-     * @throws IllegalStateException if the attempt is already read or update fails
-     */
-    public AuthAttemptPendingResponse pending(AuthAttemptInitiateRequest request){
+    public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
         // Find the most recent authorization attempt
         AuthAttempt authAttempt = authAttemptRepository.findMostRecentByEnrollmentId(request.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Auth attempt record not found for this enrollment"));
@@ -229,7 +180,7 @@ public class AuthAttemptService {
             throw new IllegalStateException("Device public key not found for this enrollment");
         }
         // Validate signature
-        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
+        boolean isValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
         if (!isValid){
             throw new IllegalArgumentException("Invalid signature for auth attempt code");
         }
@@ -240,23 +191,13 @@ public class AuthAttemptService {
         // Create response
         AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-        response.setAuthAttemptCode(authAttempt.getAuthAttemptCode());
-        response.setAuthAttemptCodeSigned(signatureService.generateSignature(authAttempt.getAuthAttemptCode(),enrollment.getIntegrationPrivateKey()));
+        response.setIntegrationProofToken(authAttempt.getIntegrationProofToken());
+        response.setIntegrationProofTokenSigned(signatureService.generateSignature(authAttempt.getIntegrationProofToken(),enrollment.getIntegrationPrivateKey()));
         response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
         return response;
     }
 
-    /**
-     * Completes an authorization attempt.
-     * <p>
-     * This method handles the completion of an authorization attempt, including
-     * validation of all required fields, signatures, and challenge responses.
-     * </p>
-     *
-     * @param request the completion request
-     * @return the completion response
-     */
-    public AuthAttemptRespondResponse complete(AuthAttemptCompleteRequest request){
+    public AuthAttemptRespondResponse respond(AuthAttemptRepondRequest request) {
         AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
         // Find the authorization attempt
@@ -269,7 +210,7 @@ public class AuthAttemptService {
         AuthAttempt authAttempt = authAttemptOpt.get();
 
         // Mark as replied
-        int updated = authAttemptRepository.setDeviceRepliedTrueIfNotReplied(authAttempt.getAuthAttemptId());
+        int updated = authAttemptRepository.setDeviceRepliedIfNotReplied(authAttempt.getAuthAttemptId(),request.getDeviceProofToken());
         if (updated == 0){
             response.setSuccess(false);
             response.setMessage("Auth attempt completed");
@@ -282,7 +223,7 @@ public class AuthAttemptService {
             return response;
         }
         // Validate auth attempt code
-        if (!authAttempt.getAuthAttemptCode().equals(request.getAuthAttemptCode())){
+        if (!authAttempt.getIntegrationProofToken().equals(request.getIntegrationProofToken())){
             response.setSuccess(false);
             response.setMessage("Integration code mismatch");
             return response;
@@ -302,8 +243,8 @@ public class AuthAttemptService {
             return response;
         }
         // Validate device signature
-        boolean isValid = signatureService.validateSignature(request.getAuthAttemptEnrolleeCode(),request.getAuthAttemptEnrolleeCodeSigned(),devicePublicKey);
-        if (!isValid){
+        boolean isDeviceProofTokenValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
+        if (!isDeviceProofTokenValid){
             response.setSuccess(false);
             response.setMessage("Invalid signature for auth attempt code");
             return response;
@@ -316,8 +257,9 @@ public class AuthAttemptService {
             return response;
         }
         // Validate integration signature
-        boolean isAppCodeValid = signatureService.validateSignature(request.getAuthAttemptCode(),request.getAuthAttemptCodeSigned(),integrationPublicKey);
-        if (!isAppCodeValid){
+        boolean isIntegrationProofTokenValid = signatureService.validateSignature(request.getIntegrationProofToken(),request.getIntegrationProofTokenSigned(),
+                integrationPublicKey);
+        if (!isIntegrationProofTokenValid){
             response.setSuccess(false);
             response.setMessage("Invalid signature for integration code");
             return response;
@@ -333,7 +275,6 @@ public class AuthAttemptService {
             }
         }
         // Update authorization attempt
-        authAttempt.setAuthAttemptReplied(true);
         authAttempt.setAuthAttemptAccepted(request.getAuthAttemptAccepted());
         authAttemptRepository.save(authAttempt);
 

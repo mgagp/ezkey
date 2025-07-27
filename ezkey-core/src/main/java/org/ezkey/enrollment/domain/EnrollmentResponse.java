@@ -90,16 +90,16 @@ public class EnrollmentResponse {
     private String integrationPublicKey;
 
     /**
-     * Public key for authentication attempts.
+     * Public key for the device.
      * Used for device authentication verification.
      */
-    private String authAttemptPublicKey;
+    private String devicePublicKey;
 
     /**
-     * Unique code for enrollment identification.
-     * Used for enrollment lookup and verification.
+     * Unique code for enrollment verification.
+     * Used for enrollment verification step.
      */
-    private String enrollmentCode;
+    private String deviceProofToken;
 
     /**
      * Timestamp when the enrollment was created.
@@ -107,100 +107,100 @@ public class EnrollmentResponse {
      */
     private LocalDateTime createdAt;
 
-    // Getters and Setters
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
-    public Integer getIntegrationId(){
+    public Integer getIntegrationId() {
         return integrationId;
     }
 
-    public void setIntegrationId(Integer integrationId){
+    public void setIntegrationId(Integer integrationId) {
         this.integrationId = integrationId;
     }
 
-    public String getEnrollmentName(){
+    public String getEnrollmentName() {
         return enrollmentName;
     }
 
-    public void setEnrollmentName(String enrollmentName){
+    public void setEnrollmentName(String enrollmentName) {
         this.enrollmentName = enrollmentName;
     }
 
-    public Boolean getEnrollmentRead(){
+    public Boolean getEnrollmentRead() {
         return enrollmentRead;
     }
 
-    public void setEnrollmentRead(Boolean enrollmentRead){
+    public void setEnrollmentRead(Boolean enrollmentRead) {
         this.enrollmentRead = enrollmentRead;
     }
 
-    public Boolean getEnrollmentVerified(){
+    public Boolean getEnrollmentVerified() {
         return enrollmentVerified;
     }
 
-    public void setEnrollmentVerified(Boolean enrollmentVerified){
+    public void setEnrollmentVerified(Boolean enrollmentVerified) {
         this.enrollmentVerified = enrollmentVerified;
     }
 
-    public Boolean getEnrollmentActive(){
+    public Boolean getEnrollmentActive() {
         return enrollmentActive;
     }
 
-    public void setEnrollmentActive(Boolean enrollmentActive){
+    public void setEnrollmentActive(Boolean enrollmentActive) {
         this.enrollmentActive = enrollmentActive;
     }
 
-    public Integer getEnrollmentChallenge(){
+    public Integer getEnrollmentChallenge() {
         return enrollmentChallenge;
     }
 
-    public void setEnrollmentChallenge(Integer enrollmentChallenge){
+    public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
     }
 
-    public Boolean getAuthAttemptChallengeRequired(){
+    public Boolean getAuthAttemptChallengeRequired() {
         return authAttemptChallengeRequired;
     }
 
-    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired){
+    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
         this.authAttemptChallengeRequired = authAttemptChallengeRequired;
     }
 
-    public String getIntegrationPublicKey(){
+    public String getIntegrationPublicKey() {
         return integrationPublicKey;
     }
 
-    public void setIntegrationPublicKey(String integrationPublicKey){
+    public void setIntegrationPublicKey(String integrationPublicKey) {
         this.integrationPublicKey = integrationPublicKey;
     }
 
-    public String getAuthAttemptPublicKey(){
-        return authAttemptPublicKey;
+    public String getDevicePublicKey() {
+        return devicePublicKey;
     }
 
-    public void setAuthAttemptPublicKey(String authAttemptPublicKey){
-        this.authAttemptPublicKey = authAttemptPublicKey;
+    public void setDevicePublicKey(String devicePublicKey) {
+        this.devicePublicKey = devicePublicKey;
     }
 
-    public String getEnrollmentCode(){
-        return enrollmentCode;
+    public String getDeviceProofToken() {
+        return deviceProofToken;
     }
 
-    public void setEnrollmentCode(String enrollmentCode){
-        this.enrollmentCode = enrollmentCode;
+    public void setDeviceProofToken(String deviceProofToken) {
+        this.deviceProofToken = deviceProofToken;
     }
 
-    public LocalDateTime getCreatedAt(){
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt){
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
 }

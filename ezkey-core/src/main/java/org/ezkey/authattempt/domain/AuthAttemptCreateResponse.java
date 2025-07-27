@@ -1,13 +1,39 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * DTO: AuthAttemptCreateResponseDto
+ * Description: Response DTO for authorization attempt creation in admin API.
+ */
+
 package org.ezkey.authattempt.domain;
 
 public class AuthAttemptCreateResponse {
 
+    /**
+     * Unique identifier of the created authentication attempt.
+     * Used to reference this attempt in subsequent operations.
+     */
     private Integer authAttemptId;
 
-    private String simulationAuthAttemptEnrolleeCode;
+    /**
+     * Simulation device proof token for testing purposes.
+     * Used in simulation mode to test authentication flows.
+     */
+    private String simulationDeviceProofToken;
 
-    private String simulationAuthAttemptEnrolleeCodeSigned;
+    /**
+     * Cryptographically signed simulation device proof token.
+     * Provides authenticated simulation data for testing.
+     */
+    private String simulationDeviceProofTokenSigned;
 
+    /**
+     * Simulation challenge response for testing.
+     * Pre-computed response for simulation authentication flows.
+     */
     private Integer simulationAuthAttemptChallengeResponse;
 
     /**
@@ -25,35 +51,39 @@ public class AuthAttemptCreateResponse {
     }
 
     /**
-     * @return the simulationAuthAttemptEnrolleeCode
+     * Gets the simulation device proof token.
+     *
+     * @return the simulation device proof token
      */
-    public String getSimulationAuthAttemptEnrolleeCode(){
-        return simulationAuthAttemptEnrolleeCode;
+    public String getSimulationDeviceProofToken(){
+        return simulationDeviceProofToken;
     }
 
     /**
-     * @param simulationAuthAttemptEnrolleeCode the
-     * simulationAuthAttemptEnrolleeCode to
-     * set
+     * Sets the simulation device proof token.
+     *
+     * @param simulationDeviceProofToken the simulation device proof token to set
      */
-    public void setSimulationAuthAttemptEnrolleeCode(String simulationAuthAttemptEnrolleeCode){
-        this.simulationAuthAttemptEnrolleeCode = simulationAuthAttemptEnrolleeCode;
+    public void setSimulationDeviceProofToken(String simulationDeviceProofToken){
+        this.simulationDeviceProofToken = simulationDeviceProofToken;
     }
 
     /**
-     * @return the simulationAuthAttemptEnrolleeCodeSigned
+     * Gets the signed simulation device proof token.
+     *
+     * @return the signed simulation device proof token
      */
-    public String getSimulationAuthAttemptEnrolleeCodeSigned(){
-        return simulationAuthAttemptEnrolleeCodeSigned;
+    public String getSimulationDeviceProofTokenSigned(){
+        return simulationDeviceProofTokenSigned;
     }
 
     /**
-     * @param simulationAuthAttemptEnrolleeCodeSigned the
-     * simulationAuthAttemptEnrolleeCodeSigned
-     * to set
+     * Sets the signed simulation device proof token.
+     *
+     * @param simulationDeviceProofTokenSigned the signed simulation device proof token to set
      */
-    public void setSimulationAuthAttemptEnrolleeCodeSigned(String simulationAuthAttemptEnrolleeCodeSigned){
-        this.simulationAuthAttemptEnrolleeCodeSigned = simulationAuthAttemptEnrolleeCodeSigned;
+    public void setSimulationDeviceProofTokenSigned(String simulationDeviceProofTokenSigned){
+        this.simulationDeviceProofTokenSigned = simulationDeviceProofTokenSigned;
     }
 
     public Integer getSimulationAuthAttemptChallengeResponse(){

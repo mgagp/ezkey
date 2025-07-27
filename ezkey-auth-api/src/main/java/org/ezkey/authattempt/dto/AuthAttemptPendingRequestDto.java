@@ -35,8 +35,8 @@ package org.ezkey.authattempt.dto;
  * <b>Fields:</b>
  * <ul>
  * <li><b>enrollmentId:</b> Target enrollment to check for pending attempts</li>
- * <li><b>authAttemptEnrolleeCode:</b> Device's enrollee code for authentication</li>
- * <li><b>authAttemptEnrolleeCodeSigned:</b> Cryptographically signed enrollee code</li>
+ * <li><b>deviceProofToken:</b> Device's proof token for authentication</li>
+ * <li><b>deviceProofTokenSigned:</b> Cryptographically signed device proof token</li>
  * </ul>
  * </p>
  *
@@ -61,16 +61,16 @@ public class AuthAttemptPendingRequestDto {
     private Integer enrollmentId;
 
     /**
-     * The device's enrollee code for authentication.
+     * The device's proof token for authentication.
      * Used to identify the requesting device during the authentication flow.
      */
-    private String authAttemptEnrolleeCode;
+    private String deviceProofToken;
 
     /**
-     * Cryptographically signed enrollee code.
+     * Cryptographically signed device proof token.
      * Provides proof of device authenticity and prevents request forgery.
      */
-    private String authAttemptEnrolleeCodeSigned;
+    private String deviceProofTokenSigned;
 
     /**
      * Gets the enrollment ID.
@@ -91,39 +91,39 @@ public class AuthAttemptPendingRequestDto {
     }
 
     /**
-     * Gets the authentication attempt enrollee code.
+     * Gets the device proof token.
      *
-     * @return the authentication attempt enrollee code
+     * @return the device proof token
      */
-    public String getAuthAttemptEnrolleeCode(){
-        return authAttemptEnrolleeCode;
+    public String getDeviceProofToken(){
+        return deviceProofToken;
     }
 
     /**
-     * Sets the authentication attempt enrollee code.
+     * Sets the device proof token.
      *
-     * @param authAttemptEnrolleeCode the authentication attempt enrollee code to set
+     * @param deviceProofToken the device proof token to set
      */
-    public void setAuthAttemptEnrolleeCode(String authAttemptEnrolleeCode){
-        this.authAttemptEnrolleeCode = authAttemptEnrolleeCode;
+    public void setAuthAttemptEnrolleeCode(String deviceProofToken){
+        this.deviceProofToken = deviceProofToken;
     }
 
     /**
-     * Gets the signed authentication attempt enrollee code.
+     * Gets the signed device proof token.
      *
-     * @return the signed authentication attempt enrollee code
+     * @return the signed device proof token
      */
-    public String getAuthAttemptEnrolleeCodeSigned(){
-        return authAttemptEnrolleeCodeSigned;
+    public String getDeviceProofTokenSigned(){
+        return deviceProofTokenSigned;
     }
 
     /**
-     * Sets the signed authentication attempt enrollee code.
+     * Sets the signed device proof token.
      *
-     * @param authAttemptEnrolleeCodeSigned the signed authentication attempt enrollee code to set
+     * @param deviceProofTokenSigned the signed device proof token to set
      */
-    public void setAuthAttemptEnrolleeCodeSigned(String authAttemptEnrolleeCodeSigned){
-        this.authAttemptEnrolleeCodeSigned = authAttemptEnrolleeCodeSigned;
+    public void setAuthAttemptEnrolleeCodeSigned(String deviceProofTokenSigned){
+        this.deviceProofTokenSigned = deviceProofTokenSigned;
     }
 
 }

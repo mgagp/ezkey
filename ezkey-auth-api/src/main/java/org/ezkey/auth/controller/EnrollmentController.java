@@ -46,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * <p>
- * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device 
+ * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device
  * consumption. Mobile apps use these endpoints to complete the enrollment process
  * by linking devices to user accounts through cryptographic key exchange.
  * </p>
@@ -100,16 +100,16 @@ public class EnrollmentController {
      * <p>
      * The mobile device calls this endpoint to start the enrollment binding process.
      * It retrieves enrollment information including the integration public key,
-     * enrollment code, and challenge data needed to complete the enrollment.
+     * proof token the device must use, and challenge data needed to complete the enrollment.
      * This is typically called after scanning a QR code or following a deep link.
      * </p>
      *
      * @param enrollmentId the enrollment ID to bind the device to
      * @return ResponseEntity containing enrollment binding information with HTTP 200,
-     *         or 400 for invalid enrollment ID, or 409 if enrollment is already bound
+     * or 400 for invalid enrollment ID, or 409 if enrollment is already bound
      */
     @GetMapping("/bind/{enrollmentId}")
-    public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId){
+    public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId) {
         try{
             EnrollmentBindRequest req = new EnrollmentBindRequest();
             req.setEnrollmentId(enrollmentId);
@@ -125,21 +125,21 @@ public class EnrollmentController {
     /**
      * Completes the enrollment verification process for mobile devices.
      * <p>
-     * The mobile device submits its cryptographic keys and signed enrollment code
+     * The mobile device submits its cryptographic keys and signed proof token
      * to finalize the enrollment process. The device generates a public/private key pair,
-     * signs the enrollment code with its private key, and submits the public key
+     * signs the proof token with its private key, and submits the public key
      * and signature for verification. Once verified, the enrollment becomes active
-     * and the device can authenticate users.
+     * and the device can authenticate users. The proof token must be the one obtained from the bind endpoint.
      * </p>
      *
      * @param req the verification request DTO containing device keys and signatures
      * @return ResponseEntity containing verification confirmation with HTTP 200,
-     *         or 400 for invalid verification data, or 409 if enrollment state conflicts
+     * or 400 for invalid verification data, or 409 if enrollment state conflicts
      */
     @PostMapping("/verify")
-    public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req){
+    public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req) {
         try{
-            EnrollmentVerifyResponse response = enrollmentService.confirm(enrollmentMapper.toEnrollmentVerifyRequest(req));
+            EnrollmentVerifyResponse response = enrollmentService.verify(enrollmentMapper.toEnrollmentVerifyRequest(req));
             return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();

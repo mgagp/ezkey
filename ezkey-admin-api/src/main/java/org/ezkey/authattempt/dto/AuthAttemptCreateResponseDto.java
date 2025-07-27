@@ -28,8 +28,8 @@ package org.ezkey.authattempt.dto;
  * <b>Fields:</b>
  * <ul>
  * <li><b>authAttemptId:</b> Unique identifier of the created authentication attempt</li>
- * <li><b>simulationAuthAttemptEnrolleeCode:</b> Simulation code for testing</li>
- * <li><b>simulationAuthAttemptEnrolleeCodeSigned:</b> Signed simulation code</li>
+ * <li><b>simulationDeviceProofToken:</b> Simulation proof token for testing</li>
+ * <li><b>simulationDeviceProofTokenSigned:</b> Signed simulation proof token</li>
  * <li><b>simulationAuthAttemptChallengeResponse:</b> Simulation challenge response</li>
  * </ul>
  * </p>
@@ -55,16 +55,16 @@ public class AuthAttemptCreateResponseDto {
     private Integer authAttemptId;
 
     /**
-     * Simulation enrollee code for testing purposes.
+     * Simulation device proof token for testing purposes.
      * Used in simulation mode to test authentication flows.
      */
-    private String simulationAuthAttemptEnrolleeCode;
+    private String simulationDeviceProofToken;
 
     /**
-     * Cryptographically signed simulation enrollee code.
+     * Cryptographically signed simulation device proof token.
      * Provides authenticated simulation data for testing.
      */
-    private String simulationAuthAttemptEnrolleeCodeSigned;
+    private String simulationDeviceProofTokenSigned;
 
     /**
      * Simulation challenge response for testing.
@@ -91,39 +91,39 @@ public class AuthAttemptCreateResponseDto {
     }
 
     /**
-     * Gets the simulation enrollee code.
+     * Gets the simulation device proof token.
      *
-     * @return the simulation enrollee code
+     * @return the simulation device proof token
      */
-    public String getSimulationAuthAttemptEnrolleeCode(){
-        return simulationAuthAttemptEnrolleeCode;
+    public String getSimulationDeviceProofToken(){
+        return simulationDeviceProofToken;
     }
 
     /**
-     * Sets the simulation enrollee code.
+     * Sets the simulation device proof token.
      *
-     * @param simulationAuthAttemptEnrolleeCode the simulation enrollee code to set
+     * @param simulationDeviceProofToken the simulation device proof token to set
      */
-    public void setSimulationAuthAttemptEnrolleeCode(String simulationAuthAttemptEnrolleeCode){
-        this.simulationAuthAttemptEnrolleeCode = simulationAuthAttemptEnrolleeCode;
+    public void setSimulationDeviceProofToken(String simulationDeviceProofToken){
+        this.simulationDeviceProofToken = simulationDeviceProofToken;
     }
 
     /**
-     * Gets the signed simulation enrollee code.
+     * Gets the signed simulation device proof token.
      *
-     * @return the signed simulation enrollee code
+     * @return the signed simulation device proof token
      */
-    public String getSimulationAuthAttemptEnrolleeCodeSigned(){
-        return simulationAuthAttemptEnrolleeCodeSigned;
+    public String getSimulationDeviceProofTokenSigned(){
+        return simulationDeviceProofTokenSigned;
     }
 
     /**
-     * Sets the signed simulation enrollee code.
+     * Sets the signed simulation device proof token.
      *
-     * @param simulationAuthAttemptEnrolleeCodeSigned the signed simulation enrollee code to set
+     * @param simulationDeviceProofTokenSigned the signed simulation device proof token to set
      */
-    public void setSimulationAuthAttemptEnrolleeCodeSigned(String simulationAuthAttemptEnrolleeCodeSigned){
-        this.simulationAuthAttemptEnrolleeCodeSigned = simulationAuthAttemptEnrolleeCodeSigned;
+    public void setSimulationDeviceProofTokenSigned(String simulationDeviceProofTokenSigned){
+        this.simulationDeviceProofTokenSigned = simulationDeviceProofTokenSigned;
     }
 
     /**

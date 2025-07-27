@@ -36,8 +36,8 @@ package org.ezkey.authattempt.dto;
  * <b>Fields:</b>
  * <ul>
  * <li><b>authAttemptId:</b> Unique identifier of the authentication attempt</li>
- * <li><b>authAttemptCode:</b> Authentication code for this attempt</li>
- * <li><b>authAttemptCodeSigned:</b> Cryptographically signed authentication code</li>
+ * <li><b>integrationProofToken:</b> Integration proof token for this attempt</li>
+ * <li><b>integrationProofTokenSigned:</b> Cryptographically signed integration proof token</li>
  * <li><b>authAttemptChallengeRequired:</b> Whether additional challenge is required</li>
  * </ul>
  * </p>
@@ -64,16 +64,16 @@ public class AuthAttemptPendingResponseDto {
     private Integer authAttemptId;
 
     /**
-     * Authentication code for this attempt.
+     * Integration proof token for this attempt.
      * Contains the challenge data that needs to be signed by the mobile device.
      */
-    private String authAttemptCode;
+    private String integrationProofToken;
 
     /**
-     * Cryptographically signed authentication code.
+     * Cryptographically signed proof token.
      * Provides integrity protection and prevents tampering with the challenge.
      */
-    private String authAttemptCodeSigned;
+    private String integrationProofTokenSigned;
 
     /**
      * Indicates whether additional challenge validation is required.
@@ -100,39 +100,39 @@ public class AuthAttemptPendingResponseDto {
     }
 
     /**
-     * Gets the authentication attempt code.
+     * Gets the integration proof token.
      *
-     * @return the authentication attempt code
+     * @return the integration proof token
      */
-    public String getAuthAttemptCode(){
-        return authAttemptCode;
+    public String getIntegrationProofToken(){
+        return integrationProofToken;
     }
 
     /**
-     * Sets the authentication attempt code.
+     * Sets the integration proof token.
      *
-     * @param authAttemptCode the authentication attempt code to set
+     * @param integrationProofToken the integration proof token to set
      */
-    public void setAuthAttemptCode(String authAttemptCode){
-        this.authAttemptCode = authAttemptCode;
+    public void setIntegrationProofToken(String integrationProofToken){
+        this.integrationProofToken = integrationProofToken;
     }
 
     /**
-     * Gets the signed authentication attempt code.
+     * Gets the signed integration proof token.
      *
-     * @return the signed authentication attempt code
+     * @return the signed integration proof token
      */
-    public String getAuthAttemptCodeSigned(){
-        return authAttemptCodeSigned;
+    public String getIntegrationProofTokenSigned(){
+        return integrationProofTokenSigned;
     }
 
     /**
-     * Sets the signed authentication attempt code.
+     * Sets the signed integration proof token.
      *
-     * @param authAttemptCodeSigned the signed authentication attempt code to set
+     * @param authAttemptCodeSigned the signed integration proof token to set
      */
-    public void setAuthAttemptCodeSigned(String authAttemptCodeSigned){
-        this.authAttemptCodeSigned = authAttemptCodeSigned;
+    public void setIntegrationProofTokenSigned(String integrationProofTokenSigned){
+        this.integrationProofTokenSigned = integrationProofTokenSigned;
     }
 
     /**

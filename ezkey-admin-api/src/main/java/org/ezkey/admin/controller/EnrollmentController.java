@@ -12,7 +12,6 @@ package org.ezkey.admin.controller;
 
 import java.util.List;
 
-import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
@@ -51,7 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * <p>
- * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal 
+ * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal
  * administration purposes. For mobile enrollment binding and verification, see auth-api endpoints.
  * </p>
  *
@@ -99,7 +98,7 @@ public class EnrollmentController {
      * @return ResponseEntity containing list of enrollment responses with HTTP 200 status
      */
     @GetMapping
-    public ResponseEntity<List<EnrollmentResponseDto>> getAll(){
+    public ResponseEntity<List<EnrollmentResponseDto>> getAll() {
         List<EnrollmentResponseDto> enrollments = enrollmentMapper.toResponseList(enrollmentService.getAll());
         return ResponseEntity.ok(enrollments);
     }
@@ -115,7 +114,7 @@ public class EnrollmentController {
      * @return ResponseEntity containing enrollment response with HTTP 200 status, or 404 if not found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable Integer id){
+    public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable Integer id) {
         try{
             var enrollment = enrollmentService.getById(id);
             EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
@@ -137,7 +136,7 @@ public class EnrollmentController {
      * @return ResponseEntity containing created enrollment response with HTTP 201 status
      */
     @PostMapping
-    public ResponseEntity<EnrollmentCreateResponseDto> create(@RequestBody EnrollmentCreateRequestDto request){
+    public ResponseEntity<EnrollmentCreateResponseDto> create(@RequestBody EnrollmentCreateRequestDto request) {
         try{
             EnrollmentCreateResponse response = enrollmentService.create(enrollmentMapper.toCreateRequest(request));
             return ResponseEntity.status(HttpStatus.CREATED).body(enrollmentMapper.toCreateResponseDto(response));
@@ -161,7 +160,7 @@ public class EnrollmentController {
      * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id){
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
         try{
             enrollmentService.delete(id);
             return ResponseEntity.noContent().build();
