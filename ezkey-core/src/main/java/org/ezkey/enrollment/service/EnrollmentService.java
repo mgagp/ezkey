@@ -75,8 +75,6 @@ public class EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
 
-    private final EnrollmentCoreMapper enrollmentMapper;
-
     private final SignatureService signatureService;
 
     @Value("${ezkey.simulation.mode:false}")
@@ -90,9 +88,8 @@ public class EnrollmentService {
      * @param signatureService the cryptographic signature service
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository,EnrollmentCoreMapper enrollmentMapper,SignatureService signatureService){
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService){
         this.enrollmentRepository = enrollmentRepository;
-        this.enrollmentMapper = enrollmentMapper;
         this.signatureService = signatureService;
     }
 
@@ -164,7 +161,27 @@ public class EnrollmentService {
         java.util.Random random = new java.util.Random();
         enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
-        return enrollmentMapper.toCreateResponse(savedEnrollment);
+
+        EnrollmentCreateResponse response = new EnrollmentCreateResponse();
+        response.setEnrollmentId(savedEnrollment.getEnrollmentId());
+        response.setEnrollmentChallenge(savedEnrollment.getEnrollmentChallenge());
+        if (simulationMode){
+            try{
+                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+                keyGen.initialize(2048);
+                KeyPair kp = keyGen.generateKeyPair();
+                response.setSimulationDevicePrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
+                response.setSimulationDevicePublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
+            } catch (NoSuchAlgorithmException e){
+                throw new RuntimeException("Key generation failed",e);
+            }
+            String signature = signatureService.generateSignature(enrollment.getEnrollmentProofToken(),response.getSimulationDevicePrivateKey());
+            response.setSimulationEnrollmentProofTokenSigned(signature);
+
+            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),signature,response.getSimulationDevicePublicKey());
+            logger.info("Bind code signature valid: {}",valid);
+        }
+        return response;
     }
 
     /**
@@ -193,22 +210,7 @@ public class EnrollmentService {
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
-        if (simulationMode){
-            try{
-                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-                keyGen.initialize(2048);
-                KeyPair kp = keyGen.generateKeyPair();
-                response.setSimulationDevicePrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
-                response.setSimulationDevicePublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
-            } catch (NoSuchAlgorithmException e){
-                throw new RuntimeException("Key generation failed",e);
-            }
-            String signature = signatureService.generateSignature(enrollment.getEnrollmentProofToken(),response.getSimulationDevicePrivateKey());
-            response.setSimulationEnrollmentProofTokenSigned(signature);
 
-            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),signature,response.getSimulationDevicePublicKey());
-            logger.info("Bind code signature valid: {}",valid);
-        }
         return response;
     }
 

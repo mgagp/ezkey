@@ -53,17 +53,6 @@ public class EnrollmentBindResponseDto {
 
     private String enrollmentProofToken;
 
-    // Simulation mode only
-    private String simulationEnrollmentProofTokenSigned;
-
-    private String simulationDevicePublicKey;
-
-    private String simulationDevicePrivateKey;
-
-    private String simulationPendingDeviceProofToken;
-
-    private String simulationPendingDeviceProofTokenSigned;
-
     public Integer getEnrollmentId() {
         return enrollmentId;
     }
@@ -86,46 +75,6 @@ public class EnrollmentBindResponseDto {
 
     public void setEnrollmentProofToken(String enrollmentProofToken) {
         this.enrollmentProofToken = enrollmentProofToken;
-    }
-
-    public String getSimulationEnrollmentProofTokenSigned() {
-        return simulationEnrollmentProofTokenSigned;
-    }
-
-    public void setSimulationEnrollmentProofTokenSigned(String simulationEnrollmentProofTokenSigned) {
-        this.simulationEnrollmentProofTokenSigned = simulationEnrollmentProofTokenSigned;
-    }
-
-    public String getSimulationDevicePublicKey() {
-        return simulationDevicePublicKey;
-    }
-
-    public void setSimulationDevicePublicKey(String simulationDevicePublicKey) {
-        this.simulationDevicePublicKey = simulationDevicePublicKey;
-    }
-
-    public String getSimulationDevicePrivateKey() {
-        return simulationDevicePrivateKey;
-    }
-
-    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
-        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
-    }
-
-    public String getSimulationPendingDeviceProofToken() {
-        return simulationPendingDeviceProofToken;
-    }
-
-    public void setSimulationPendingDeviceProofToken(String simulationPendingDeviceProofToken) {
-        this.simulationPendingDeviceProofToken = simulationPendingDeviceProofToken;
-    }
-
-    public String getSimulationPendingDeviceProofTokenSigned() {
-        return simulationPendingDeviceProofTokenSigned;
-    }
-
-    public void setSimulationPendingDeviceProofTokenSigned(String simulationPendingDeviceProofTokenSigned) {
-        this.simulationPendingDeviceProofTokenSigned = simulationPendingDeviceProofTokenSigned;
     }
 
 }

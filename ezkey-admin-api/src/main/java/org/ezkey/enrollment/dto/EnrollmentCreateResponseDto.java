@@ -58,12 +58,20 @@ public class EnrollmentCreateResponseDto {
      */
     private Integer enrollmentChallenge;
 
+    // Simulation mode only
+
+    private String simulationEnrollmentProofTokenSigned;
+
+    private String simulationDevicePublicKey;
+
+    private String simulationDevicePrivateKey;
+
     /**
      * Gets the enrollment ID.
      *
      * @return the enrollment ID
      */
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
@@ -72,7 +80,7 @@ public class EnrollmentCreateResponseDto {
      *
      * @param enrollmentId the enrollment ID to set
      */
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
@@ -81,7 +89,7 @@ public class EnrollmentCreateResponseDto {
      *
      * @return the enrollment challenge
      */
-    public Integer getEnrollmentChallenge(){
+    public Integer getEnrollmentChallenge() {
         return enrollmentChallenge;
     }
 
@@ -90,8 +98,32 @@ public class EnrollmentCreateResponseDto {
      *
      * @param enrollmentChallenge the enrollment challenge to set
      */
-    public void setEnrollmentChallenge(Integer enrollmentChallenge){
+    public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    public String getSimulationEnrollmentProofTokenSigned() {
+        return simulationEnrollmentProofTokenSigned;
+    }
+
+    public void setSimulationEnrollmentProofTokenSigned(String simulationEnrollmentProofTokenSigned) {
+        this.simulationEnrollmentProofTokenSigned = simulationEnrollmentProofTokenSigned;
+    }
+
+    public String getSimulationDevicePublicKey() {
+        return simulationDevicePublicKey;
+    }
+
+    public void setSimulationDevicePublicKey(String simulationDevicePublicKey) {
+        this.simulationDevicePublicKey = simulationDevicePublicKey;
+    }
+
+    public String getSimulationDevicePrivateKey() {
+        return simulationDevicePrivateKey;
+    }
+
+    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
+        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 
 }
