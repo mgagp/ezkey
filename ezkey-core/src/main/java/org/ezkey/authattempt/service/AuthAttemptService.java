@@ -14,13 +14,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
-import org.ezkey.authattempt.domain.AuthAttemptRepondRequest;
+import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -105,6 +104,7 @@ public class AuthAttemptService {
         AuthAttempt authAttempt = new AuthAttempt();
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
         authAttempt.setAuthAttemptRead(false);
+        authAttempt.setAuthAttemptResponded(false);
         authAttempt.setAuthAttemptAccepted(false);
 
         // Generate challenge if required
@@ -114,8 +114,8 @@ public class AuthAttemptService {
         } else{
             authAttempt.setAuthAttemptChallenge(null);
         }
+        authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
         authAttempt.setCreatedAt(LocalDateTime.now());
-        authAttempt.setIntegrationProofToken(UUID.randomUUID().toString());
 
         // Save the authorization attempt
         AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
@@ -126,10 +126,12 @@ public class AuthAttemptService {
 
         // Add simulation data if in simulation mode
         if (simulationMode){
-            response.setSimulationDeviceProofToken(UUID.randomUUID().toString());
-            response.setSimulationDeviceProofTokenSigned(
-                    signatureService.generateSignature(response.getSimulationDeviceProofToken(),authRequest.getSimulationDevicePrivateKey()));
+            response.setSimulationAuthAttemptProofTokenSignedByDevice(
+                    signatureService.generateSignature(authAttempt.getAuthAttemptProofToken(),authRequest.getSimulationDevicePrivateKey()));
             response.setSimulationAuthAttemptChallengeResponse(authAttempt.getAuthAttemptChallenge());
+            response.setSimulationPendingDeviceProofToken(signatureService.generateProofToken());
+            response.setSimulationPendingDeviceProofTokenSigned(
+                    signatureService.generateSignature(response.getSimulationPendingDeviceProofToken(),authRequest.getSimulationDevicePrivateKey()));
         }
         return response;
     }
@@ -191,16 +193,15 @@ public class AuthAttemptService {
         // Create response
         AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-        response.setIntegrationProofToken(authAttempt.getIntegrationProofToken());
-        response.setIntegrationProofTokenSigned(signatureService.generateSignature(authAttempt.getIntegrationProofToken(),enrollment.getIntegrationPrivateKey()));
+        response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
+        response.setAuthAttemptProofTokenSignedByIntegration(signatureService.generateSignature(authAttempt.getAuthAttemptProofToken(),enrollment.getIntegrationPrivateKey()));
         response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
         return response;
     }
 
-    public AuthAttemptRespondResponse respond(AuthAttemptRepondRequest request) {
+    public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
         AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
-        // Find the authorization attempt
         Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
         if (authAttemptOpt.isEmpty()){
             response.setSuccess(false);
@@ -209,23 +210,17 @@ public class AuthAttemptService {
         }
         AuthAttempt authAttempt = authAttemptOpt.get();
 
-        // Mark as replied
-        int updated = authAttemptRepository.setDeviceRepliedIfNotReplied(authAttempt.getAuthAttemptId(),request.getDeviceProofToken());
-        if (updated == 0){
-            response.setSuccess(false);
-            response.setMessage("Auth attempt completed");
-            return response;
-        }
         // Check if read
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             response.setSuccess(false);
             response.setMessage("Auth attempt not read by device");
             return response;
         }
-        // Validate auth attempt code
-        if (!authAttempt.getIntegrationProofToken().equals(request.getIntegrationProofToken())){
+        // Mark as replied
+        int updated = authAttemptRepository.setDeviceRespondedTrueIfNotRead(authAttempt.getAuthAttemptId());
+        if (updated == 0){
             response.setSuccess(false);
-            response.setMessage("Integration code mismatch");
+            response.setMessage("Auth attempt completed");
             return response;
         }
         // Find the enrollment
@@ -243,25 +238,11 @@ public class AuthAttemptService {
             return response;
         }
         // Validate device signature
-        boolean isDeviceProofTokenValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
+        boolean isDeviceProofTokenValid = signatureService.validateSignature(authAttempt.getAuthAttemptProofToken(),request.getAuthAttemptProofTokenSignedByDevice(),
+                devicePublicKey);
         if (!isDeviceProofTokenValid){
             response.setSuccess(false);
             response.setMessage("Invalid signature for auth attempt code");
-            return response;
-        }
-        // Validate integration public key
-        String integrationPublicKey = enrollment.getIntegrationPublicKey();
-        if (integrationPublicKey == null){
-            response.setSuccess(false);
-            response.setMessage("Integration public key not found");
-            return response;
-        }
-        // Validate integration signature
-        boolean isIntegrationProofTokenValid = signatureService.validateSignature(request.getIntegrationProofToken(),request.getIntegrationProofTokenSigned(),
-                integrationPublicKey);
-        if (!isIntegrationProofTokenValid){
-            response.setSuccess(false);
-            response.setMessage("Invalid signature for integration code");
             return response;
         }
         // Validate challenge if required

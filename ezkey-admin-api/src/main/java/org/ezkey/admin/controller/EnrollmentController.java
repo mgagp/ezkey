@@ -114,7 +114,7 @@ public class EnrollmentController {
      * @return ResponseEntity containing enrollment response with HTTP 200 status, or 404 if not found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable Integer id) {
+    public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable("id") Integer id) {
         try{
             var enrollment = enrollmentService.getById(id);
             EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
@@ -160,7 +160,7 @@ public class EnrollmentController {
      * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Integer id) {
         try{
             enrollmentService.delete(id);
             return ResponseEntity.noContent().build();

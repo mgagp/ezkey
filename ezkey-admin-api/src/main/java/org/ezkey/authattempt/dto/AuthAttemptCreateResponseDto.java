@@ -58,13 +58,7 @@ public class AuthAttemptCreateResponseDto {
      * Simulation device proof token for testing purposes.
      * Used in simulation mode to test authentication flows.
      */
-    private String simulationDeviceProofToken;
-
-    /**
-     * Cryptographically signed simulation device proof token.
-     * Provides authenticated simulation data for testing.
-     */
-    private String simulationDeviceProofTokenSigned;
+    private String simulationAuthAttemptProofTokenSignedByDevice;
 
     /**
      * Simulation challenge response for testing.
@@ -72,76 +66,50 @@ public class AuthAttemptCreateResponseDto {
      */
     private Integer simulationAuthAttemptChallengeResponse;
 
-    /**
-     * Gets the authentication attempt ID.
-     *
-     * @return the authentication attempt ID
-     */
-    public Integer getAuthAttemptId(){
+    // Simulation only
+
+    private String simulationPendingDeviceProofToken;
+
+    private String simulationPendingDeviceProofTokenSigned;
+
+    public Integer getAuthAttemptId() {
         return authAttemptId;
     }
 
-    /**
-     * Sets the authentication attempt ID.
-     *
-     * @param authAttemptId the authentication attempt ID to set
-     */
-    public void setAuthAttemptId(Integer authAttemptId){
+    public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
     }
 
-    /**
-     * Gets the simulation device proof token.
-     *
-     * @return the simulation device proof token
-     */
-    public String getSimulationDeviceProofToken(){
-        return simulationDeviceProofToken;
+    public String getSimulationAuthAttemptProofTokenSignedByDevice() {
+        return simulationAuthAttemptProofTokenSignedByDevice;
     }
 
-    /**
-     * Sets the simulation device proof token.
-     *
-     * @param simulationDeviceProofToken the simulation device proof token to set
-     */
-    public void setSimulationDeviceProofToken(String simulationDeviceProofToken){
-        this.simulationDeviceProofToken = simulationDeviceProofToken;
+    public void setSimulationAuthAttemptProofTokenSignedByDevice(String simulationAuthAttemptProofTokenSignedByDevice) {
+        this.simulationAuthAttemptProofTokenSignedByDevice = simulationAuthAttemptProofTokenSignedByDevice;
     }
 
-    /**
-     * Gets the signed simulation device proof token.
-     *
-     * @return the signed simulation device proof token
-     */
-    public String getSimulationDeviceProofTokenSigned(){
-        return simulationDeviceProofTokenSigned;
-    }
-
-    /**
-     * Sets the signed simulation device proof token.
-     *
-     * @param simulationDeviceProofTokenSigned the signed simulation device proof token to set
-     */
-    public void setSimulationDeviceProofTokenSigned(String simulationDeviceProofTokenSigned){
-        this.simulationDeviceProofTokenSigned = simulationDeviceProofTokenSigned;
-    }
-
-    /**
-     * Gets the simulation challenge response.
-     *
-     * @return the simulation challenge response
-     */
-    public Integer getSimulationAuthAttemptChallengeResponse(){
+    public Integer getSimulationAuthAttemptChallengeResponse() {
         return simulationAuthAttemptChallengeResponse;
     }
 
-    /**
-     * Sets the simulation challenge response.
-     *
-     * @param simulationAuthAttemptChallengeResponse the simulation challenge response to set
-     */
-    public void setSimulationAuthAttemptChallengeResponse(Integer simulationAuthAttemptChallengeResponse){
+    public void setSimulationAuthAttemptChallengeResponse(Integer simulationAuthAttemptChallengeResponse) {
         this.simulationAuthAttemptChallengeResponse = simulationAuthAttemptChallengeResponse;
+    }
+
+    public String getSimulationPendingDeviceProofToken() {
+        return simulationPendingDeviceProofToken;
+    }
+
+    public void setSimulationPendingDeviceProofToken(String simulationPendingDeviceProofToken) {
+        this.simulationPendingDeviceProofToken = simulationPendingDeviceProofToken;
+    }
+
+    public String getSimulationPendingDeviceProofTokenSigned() {
+        return simulationPendingDeviceProofTokenSigned;
+    }
+
+    public void setSimulationPendingDeviceProofTokenSigned(String simulationPendingDeviceProofTokenSigned) {
+        this.simulationPendingDeviceProofTokenSigned = simulationPendingDeviceProofTokenSigned;
     }
 
 }

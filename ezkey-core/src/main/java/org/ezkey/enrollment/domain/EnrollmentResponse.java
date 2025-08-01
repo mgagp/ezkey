@@ -60,10 +60,10 @@ public class EnrollmentResponse {
     private Boolean enrollmentRead;
 
     /**
-     * Flag indicating if the enrollment has been verified.
-     * Used to track enrollment verification status.
+     * Flag indicating if the enrollment is valid.
+     * Used to track enrollment validity status.
      */
-    private Boolean enrollmentVerified;
+    private Boolean enrollmentValid;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -76,6 +76,12 @@ public class EnrollmentResponse {
      * Used in the enrollment challenge-response process.
      */
     private Integer enrollmentChallenge;
+
+    /**
+     * Unique code for enrollment verification.
+     * Used for enrollment verification step.
+     */
+    private String enrollmentProofToken;
 
     /**
      * Flag indicating if authentication attempts require challenge.
@@ -94,12 +100,6 @@ public class EnrollmentResponse {
      * Used for device authentication verification.
      */
     private String devicePublicKey;
-
-    /**
-     * Unique code for enrollment verification.
-     * Used for enrollment verification step.
-     */
-    private String deviceProofToken;
 
     /**
      * Timestamp when the enrollment was created.
@@ -139,12 +139,12 @@ public class EnrollmentResponse {
         this.enrollmentRead = enrollmentRead;
     }
 
-    public Boolean getEnrollmentVerified() {
-        return enrollmentVerified;
+    public Boolean getEnrollmentValid() {
+        return enrollmentValid;
     }
 
-    public void setEnrollmentVerified(Boolean enrollmentVerified) {
-        this.enrollmentVerified = enrollmentVerified;
+    public void setEnrollmentValid(Boolean enrollmentValid) {
+        this.enrollmentValid = enrollmentValid;
     }
 
     public Boolean getEnrollmentActive() {
@@ -187,12 +187,12 @@ public class EnrollmentResponse {
         this.devicePublicKey = devicePublicKey;
     }
 
-    public String getDeviceProofToken() {
-        return deviceProofToken;
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
     }
 
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
     public LocalDateTime getCreatedAt() {

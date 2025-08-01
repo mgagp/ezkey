@@ -6,12 +6,10 @@ public class EnrollmentBindResponse {
 
     private String integrationPublicKey;
 
-    private String deviceProofToken;
-
-    private String deviceProofTokenSignedByIntegration;
+    private String enrollmentProofToken;
 
     // Simulation mode only
-    private String simulationDeviceProofTokenSigned;
+    private String simulationEnrollmentProofTokenSigned;
 
     private String simulationDevicePublicKey;
 
@@ -33,28 +31,20 @@ public class EnrollmentBindResponse {
         this.integrationPublicKey = integrationPublicKey;
     }
 
-    public String getDeviceProofToken() {
-        return deviceProofToken;
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
     }
 
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
-    public String getDeviceProofTokenSignedByIntegration() {
-        return deviceProofTokenSignedByIntegration;
+    public String getSimulationEnrollmentProofTokenSigned() {
+        return simulationEnrollmentProofTokenSigned;
     }
 
-    public void setDeviceProofTokenSignedByIntegration(String deviceProofTokenSignedByIntegration) {
-        this.deviceProofTokenSignedByIntegration = deviceProofTokenSignedByIntegration;
-    }
-
-    public String getSimulationDeviceProofTokenSigned() {
-        return simulationDeviceProofTokenSigned;
-    }
-
-    public void setSimulationDeviceProofTokenSigned(String simulationDeviceProofTokenSigned) {
-        this.simulationDeviceProofTokenSigned = simulationDeviceProofTokenSigned;
+    public void setSimulationEnrollmentProofTokenSigned(String simulationEnrollmentProofTokenSigned) {
+        this.simulationEnrollmentProofTokenSigned = simulationEnrollmentProofTokenSigned;
     }
 
     public String getSimulationDevicePublicKey() {

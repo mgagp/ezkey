@@ -72,12 +72,16 @@ public class AuthAttemptPendingRequestDto {
      */
     private String deviceProofTokenSigned;
 
+    // Simulation mode only
+
+    private String simulationDevicePrivateKey;
+
     /**
      * Gets the enrollment ID.
      *
      * @return the enrollment ID
      */
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
@@ -86,7 +90,7 @@ public class AuthAttemptPendingRequestDto {
      *
      * @param enrollmentId the enrollment ID to set
      */
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
@@ -95,7 +99,7 @@ public class AuthAttemptPendingRequestDto {
      *
      * @return the device proof token
      */
-    public String getDeviceProofToken(){
+    public String getDeviceProofToken() {
         return deviceProofToken;
     }
 
@@ -104,7 +108,7 @@ public class AuthAttemptPendingRequestDto {
      *
      * @param deviceProofToken the device proof token to set
      */
-    public void setAuthAttemptEnrolleeCode(String deviceProofToken){
+    public void setAuthAttemptEnrolleeCode(String deviceProofToken) {
         this.deviceProofToken = deviceProofToken;
     }
 
@@ -113,7 +117,7 @@ public class AuthAttemptPendingRequestDto {
      *
      * @return the signed device proof token
      */
-    public String getDeviceProofTokenSigned(){
+    public String getDeviceProofTokenSigned() {
         return deviceProofTokenSigned;
     }
 
@@ -122,8 +126,16 @@ public class AuthAttemptPendingRequestDto {
      *
      * @param deviceProofTokenSigned the signed device proof token to set
      */
-    public void setAuthAttemptEnrolleeCodeSigned(String deviceProofTokenSigned){
+    public void setAuthAttemptEnrolleeCodeSigned(String deviceProofTokenSigned) {
         this.deviceProofTokenSigned = deviceProofTokenSigned;
+    }
+
+    public String getSimulationDevicePrivateKey() {
+        return simulationDevicePrivateKey;
+    }
+
+    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
+        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 
 }

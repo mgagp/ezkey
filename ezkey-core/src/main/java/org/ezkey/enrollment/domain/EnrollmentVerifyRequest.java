@@ -8,9 +8,7 @@ public class EnrollmentVerifyRequest {
 
     private String devicePublicKey;
 
-    private String deviceProofToken;
-
-    private String deviceProofTokenSigned;
+    private String enrollmentProofTokenSigned;
 
     public Integer getEnrollmentId() {
         return enrollmentId;
@@ -36,20 +34,12 @@ public class EnrollmentVerifyRequest {
         this.devicePublicKey = devicePublicKey;
     }
 
-    public String getDeviceProofToken() {
-        return deviceProofToken;
+    public String getEnrollmentProofTokenSigned() {
+        return enrollmentProofTokenSigned;
     }
 
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
-    }
-
-    public String getDeviceProofTokenSigned() {
-        return deviceProofTokenSigned;
-    }
-
-    public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
-        this.deviceProofTokenSigned = deviceProofTokenSigned;
+    public void setEnrollmentProofTokenSigned(String enrollmentProofTokenSigned) {
+        this.enrollmentProofTokenSigned = enrollmentProofTokenSigned;
     }
 
 }

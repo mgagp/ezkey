@@ -52,13 +52,17 @@ public class AuthAttemptDto {
 
     private Boolean authAttemptRead;
 
+    private Boolean authAttemptResponded;
+
+    private Boolean authAttemptValid;
+
     private Boolean authAttemptAccepted;
 
     private Integer authAttemptChallenge;
 
-    private String integrationProofToken;
+    private String authAttemptProofToken;
 
-    private String deviceProofToken;
+    private String deviceProofTokenValid;
 
     private LocalDateTime createdAt;
 
@@ -86,6 +90,22 @@ public class AuthAttemptDto {
         this.authAttemptRead = authAttemptRead;
     }
 
+    public Boolean getAuthAttemptResponded() {
+        return authAttemptResponded;
+    }
+
+    public void setAuthAttemptResponded(Boolean authAttemptResponded) {
+        this.authAttemptResponded = authAttemptResponded;
+    }
+
+    public Boolean getAuthAttemptValid() {
+        return authAttemptValid;
+    }
+
+    public void setAuthAttemptValid(Boolean authAttemptValid) {
+        this.authAttemptValid = authAttemptValid;
+    }
+
     public Boolean getAuthAttemptAccepted() {
         return authAttemptAccepted;
     }
@@ -102,20 +122,20 @@ public class AuthAttemptDto {
         this.authAttemptChallenge = authAttemptChallenge;
     }
 
-    public String getIntegrationProofToken() {
-        return integrationProofToken;
+    public String getAuthAttemptProofToken() {
+        return authAttemptProofToken;
     }
 
-    public void setIntegrationProofToken(String integrationProofToken) {
-        this.integrationProofToken = integrationProofToken;
+    public void setAuthAttemptProofToken(String authAttemptProofToken) {
+        this.authAttemptProofToken = authAttemptProofToken;
     }
 
-    public String getDeviceProofToken() {
-        return deviceProofToken;
+    public String getDeviceProofTokenValid() {
+        return deviceProofTokenValid;
     }
 
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
+    public void setDeviceProofTokenValid(String deviceProofTokenValid) {
+        this.deviceProofTokenValid = deviceProofTokenValid;
     }
 
     public LocalDateTime getCreatedAt() {

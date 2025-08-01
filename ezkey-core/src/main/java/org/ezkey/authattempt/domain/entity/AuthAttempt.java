@@ -61,17 +61,23 @@ public class AuthAttempt {
     @Column(name = "auth_attempt_read",nullable = false)
     private Boolean authAttemptRead = false;
 
+    @Column(name = "auth_attempt_responded",nullable = false)
+    private Boolean authAttemptResponded = false;
+
+    @Column(name = "auth_attempt_valid",nullable = false)
+    private Boolean authAttemptValid = false;
+
     @Column(name = "auth_attempt_accepted",nullable = false)
     private Boolean authAttemptAccepted = false;
 
     @Column(name = "auth_attempt_challenge")
     private Integer authAttemptChallenge;
 
-    @Column(name = "integration_proof_token",nullable = false)
-    private String integrationProofToken;
+    @Column(name = "auth_attempt_proof_token",nullable = false)
+    private String authAttemptProofToken;
 
-    @Column(name = "device_proof_token",nullable = true)
-    private String deviceProofToken;
+    @Column(name = "device_proof_token_valid",nullable = false)
+    private Boolean deviceProofTokenValid = false;
 
     @Column(name = "created_at",nullable = false)
     private LocalDateTime createdAt;
@@ -89,10 +95,10 @@ public class AuthAttempt {
      * @param enrollmentId the enrollment ID associated with this attempt
      * @param integrationProofToken the integration proof token for verification
      */
-    public AuthAttempt(Integer enrollmentId,String integrationProofToken){
+    public AuthAttempt(Integer enrollmentId,String authAttemptProofToken){
         this();
         this.enrollmentId = enrollmentId;
-        this.integrationProofToken = integrationProofToken;
+        this.setAuthAttemptProofToken(authAttemptProofToken);
     }
 
     // Getters and Setters
@@ -152,6 +158,32 @@ public class AuthAttempt {
     }
 
     /**
+     * Gets whether the device has responded the authorization attempt.
+     *
+     * @return true if the device has responded, false otherwise
+     */
+    public Boolean getAuthAttemptResponded() {
+        return authAttemptResponded;
+    }
+
+    /**
+     * Sets whether the device has responded the authorization attempt.
+     *
+     * @param authAttemptAccepted true if the device has responded, false otherwise
+     */
+    public void setAuthAttemptResponded(Boolean authAttemptResponded) {
+        this.authAttemptResponded = authAttemptResponded;
+    }
+
+    public Boolean getAuthAttemptValid() {
+        return authAttemptValid;
+    }
+
+    public void setAuthAttemptValid(Boolean authAttemptValid) {
+        this.authAttemptValid = authAttemptValid;
+    }
+
+    /**
      * Gets whether the device has accepted the authorization attempt.
      *
      * @return true if the device has accepted, false otherwise
@@ -187,20 +219,20 @@ public class AuthAttempt {
         this.authAttemptChallenge = authAttemptChallenge;
     }
 
-    public String getIntegrationProofToken() {
-        return integrationProofToken;
+    public String getAuthAttemptProofToken() {
+        return authAttemptProofToken;
     }
 
-    public void setIntegrationProofToken(String integrationProofToken) {
-        this.integrationProofToken = integrationProofToken;
+    public void setAuthAttemptProofToken(String authAttemptProofToken) {
+        this.authAttemptProofToken = authAttemptProofToken;
     }
 
-    public String getDeviceProofToken() {
-        return deviceProofToken;
+    public Boolean getDeviceProofTokenValid() {
+        return deviceProofTokenValid;
     }
 
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
+    public void setDeviceProofTokenValid(Boolean deviceProofTokenValid) {
+        this.deviceProofTokenValid = deviceProofTokenValid;
     }
 
     /**

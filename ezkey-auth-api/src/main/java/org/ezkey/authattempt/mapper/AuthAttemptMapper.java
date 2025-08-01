@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.mapper;
 
-import org.ezkey.authattempt.domain.AuthAttemptRepondRequest;
+import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
@@ -78,7 +78,7 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptRespondResponseDto
  * @see AuthAttemptPendingRequest
  * @see AuthAttemptPendingResponse
- * @see AuthAttemptRepondRequest
+ * @see AuthAttemptRespondRequest
  * @see AuthAttemptRespondResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
@@ -118,7 +118,7 @@ public interface AuthAttemptMapper {
      * @param request the mobile respond request DTO
      * @return the corresponding domain complete request
      */
-    AuthAttemptRepondRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
+    AuthAttemptRespondRequest toAuthAttemptRespondRequest(AuthAttemptRespondRequestDto request);
 
     /**
      * Converts a domain respond response to DTO for mobile feedback.

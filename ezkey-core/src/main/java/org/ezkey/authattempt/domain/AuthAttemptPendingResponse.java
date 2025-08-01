@@ -12,13 +12,13 @@ public class AuthAttemptPendingResponse {
      * Integration proof token for this attempt.
      * Contains the challenge data that needs to be signed by the mobile device.
      */
-    private String integrationProofToken;
+    private String authAttemptProofToken;
 
     /**
      * Cryptographically signed proof token.
      * Provides integrity protection and prevents tampering with the challenge.
      */
-    private String integrationProofTokenSigned;
+    private String authAttemptProofTokenSignedByIntegration;
 
     /**
      * Indicates whether additional challenge validation is required.
@@ -26,75 +26,35 @@ public class AuthAttemptPendingResponse {
      */
     private Boolean authAttemptChallengeRequired;
 
-    /**
-     * Gets the authentication attempt ID.
-     *
-     * @return the authentication attempt ID
-     */
-    public Integer getAuthAttemptId(){
+    public Integer getAuthAttemptId() {
         return authAttemptId;
     }
 
-    /**
-     * Sets the authentication attempt ID.
-     *
-     * @param authAttemptId the authentication attempt ID to set
-     */
-    public void setAuthAttemptId(Integer authAttemptId){
+    public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
     }
 
-    /**
-     * Gets the integration proof token.
-     *
-     * @return the integration proof token
-     */
-    public String getIntegrationProofToken(){
-        return integrationProofToken;
+    public String getAuthAttemptProofToken() {
+        return authAttemptProofToken;
     }
 
-    /**
-     * Sets the integration proof token.
-     *
-     * @param integrationProofToken the integration proof token to set
-     */
-    public void setIntegrationProofToken(String integrationProofToken){
-        this.integrationProofToken = integrationProofToken;
+    public void setAuthAttemptProofToken(String authAttemptProofToken) {
+        this.authAttemptProofToken = authAttemptProofToken;
     }
 
-    /**
-     * Gets the signed integration proof token.
-     *
-     * @return the signed integration proof token
-     */
-    public String getIntegrationProofTokenSigned(){
-        return integrationProofTokenSigned;
+    public String getAuthAttemptProofTokenSignedByIntegration() {
+        return authAttemptProofTokenSignedByIntegration;
     }
 
-    /**
-     * Sets the signed integration proof token.
-     *
-     * @param authAttemptCodeSigned the signed integration proof token to set
-     */
-    public void setIntegrationProofTokenSigned(String integrationProofTokenSigned){
-        this.integrationProofTokenSigned = integrationProofTokenSigned;
+    public void setAuthAttemptProofTokenSignedByIntegration(String authAttemptProofTokenSignedByIntegration) {
+        this.authAttemptProofTokenSignedByIntegration = authAttemptProofTokenSignedByIntegration;
     }
 
-    /**
-     * Gets whether authentication attempt challenge is required.
-     *
-     * @return true if challenge is required, false otherwise
-     */
-    public Boolean getAuthAttemptChallengeRequired(){
+    public Boolean getAuthAttemptChallengeRequired() {
         return authAttemptChallengeRequired;
     }
 
-    /**
-     * Sets whether authentication attempt challenge is required.
-     *
-     * @param authAttemptChallengeRequired true if challenge is required, false otherwise
-     */
-    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired){
+    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
         this.authAttemptChallengeRequired = authAttemptChallengeRequired;
     }
 

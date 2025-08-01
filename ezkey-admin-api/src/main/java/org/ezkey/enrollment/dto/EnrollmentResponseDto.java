@@ -70,10 +70,16 @@ public class EnrollmentResponseDto {
     private Boolean enrollmentRead;
 
     /**
-     * Flag indicating if the enrollment has been verified.
+     * Flag indicating if the enrollment is verified.
      * Used to track enrollment verification status.
      */
     private Boolean enrollmentVerified;
+
+    /**
+     * Flag indicating if the enrollment is valid.
+     * Used to track enrollment validity status.
+     */
+    private Boolean enrollmentValid;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -86,6 +92,12 @@ public class EnrollmentResponseDto {
      * Used in the enrollment challenge-response process.
      */
     private Integer enrollmentChallenge;
+
+    /**
+     * Unique code for enrollment verification.
+     * Used for enrollment verification step.
+     */
+    private String enrollmentProofToken;
 
     /**
      * Flag indicating if authentication attempts require challenge.
@@ -104,12 +116,6 @@ public class EnrollmentResponseDto {
      * Used for device authentication verification.
      */
     private String devicePublicKey;
-
-    /**
-     * Unique code for enrollment verification.
-     * Used for enrollment verification step.
-     */
-    private String deviceProofToken;
 
     public Integer getEnrollmentId() {
         return enrollmentId;
@@ -151,6 +157,14 @@ public class EnrollmentResponseDto {
         this.enrollmentVerified = enrollmentVerified;
     }
 
+    public Boolean getEnrollmentValid() {
+        return enrollmentValid;
+    }
+
+    public void setEnrollmentValid(Boolean enrollmentValid) {
+        this.enrollmentValid = enrollmentValid;
+    }
+
     public Boolean getEnrollmentActive() {
         return enrollmentActive;
     }
@@ -165,6 +179,14 @@ public class EnrollmentResponseDto {
 
     public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
+    }
+
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
     public Boolean getAuthAttemptChallengeRequired() {
@@ -189,14 +211,6 @@ public class EnrollmentResponseDto {
 
     public void setDevicePublicKey(String devicePublicKey) {
         this.devicePublicKey = devicePublicKey;
-    }
-
-    public String getDeviceProofToken() {
-        return deviceProofToken;
-    }
-
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
     }
 
 }

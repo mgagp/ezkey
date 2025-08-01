@@ -60,171 +60,43 @@ package org.ezkey.authattempt.dto;
  */
 public class AuthAttemptRespondRequestDto {
 
-    /**
-     * The authentication attempt ID being responded to.
-     * Must reference a valid pending authentication attempt.
-     */
     private Integer authAttemptId;
 
-    /**
-     * The device's enrollee code for validation.
-     * Used to verify the responding device's identity during the authentication flow.
-     */
-    private String authAttemptEnrolleeCode;
+    private String authAttemptProofTokenSignedByDevice;
 
-    /**
-     * Cryptographically signed device enrollee code.
-     * Provides proof of device authenticity and prevents impersonation.
-     */
-    private String authAttemptEnrolleeCodeSigned;
-
-    /**
-     * The authentication code being responded to.
-     * Must match the code provided in the pending authentication request.
-     */
-    private String authAttemptCode;
-
-    /**
-     * Cryptographically signed authentication code.
-     * Ensures the integrity of the authentication code and prevents tampering.
-     */
-    private String authAttemptCodeSigned;
-
-    /**
-     * Response to additional authentication challenges.
-     * Required when the authentication attempt includes challenge validation.
-     */
     private Integer authAttemptChallengeResponse;
 
-    /**
-     * User's decision to accept or deny the authentication attempt.
-     * True indicates approval, false indicates denial of the authentication request.
-     */
     private Boolean authAttemptAccepted;
 
-    /**
-     * Gets the authentication attempt ID.
-     *
-     * @return the authentication attempt ID
-     */
-    public Integer getAuthAttemptId(){
+    public Integer getAuthAttemptId() {
         return authAttemptId;
     }
 
-    /**
-     * Sets the authentication attempt ID.
-     *
-     * @param authAttemptId the authentication attempt ID to set
-     */
-    public void setAuthAttemptId(Integer authAttemptId){
+    public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
     }
 
-    /**
-     * Gets the authentication attempt enrollee code.
-     *
-     * @return the authentication attempt enrollee code
-     */
-    public String getAuthAttemptEnrolleeCode(){
-        return authAttemptEnrolleeCode;
+    public String getAuthAttemptProofTokenSignedByDevice() {
+        return authAttemptProofTokenSignedByDevice;
     }
 
-    /**
-     * Sets the authentication attempt enrollee code.
-     *
-     * @param authAttemptEnrolleeCode the authentication attempt enrollee code to set
-     */
-    public void setAuthAttemptEnrolleeCode(String authAttemptEnrolleeCode){
-        this.authAttemptEnrolleeCode = authAttemptEnrolleeCode;
+    public void setAuthAttemptProofTokenSignedByDevice(String authAttemptProofTokenSignedByDevice) {
+        this.authAttemptProofTokenSignedByDevice = authAttemptProofTokenSignedByDevice;
     }
 
-    /**
-     * Gets the signed authentication attempt enrollee code.
-     *
-     * @return the signed authentication attempt enrollee code
-     */
-    public String getAuthAttemptEnrolleeCodeSigned(){
-        return authAttemptEnrolleeCodeSigned;
-    }
-
-    /**
-     * Sets the signed authentication attempt enrollee code.
-     *
-     * @param authAttemptEnrolleeCodeSigned the signed authentication attempt enrollee code to set
-     */
-    public void setAuthAttemptEnrolleeCodeSigned(String authAttemptEnrolleeCodeSigned){
-        this.authAttemptEnrolleeCodeSigned = authAttemptEnrolleeCodeSigned;
-    }
-
-    /**
-     * Gets the authentication attempt code.
-     *
-     * @return the authentication attempt code
-     */
-    public String getAuthAttemptCode(){
-        return authAttemptCode;
-    }
-
-    /**
-     * Sets the authentication attempt code.
-     *
-     * @param authAttemptCode the authentication attempt code to set
-     */
-    public void setAuthAttemptCode(String authAttemptCode){
-        this.authAttemptCode = authAttemptCode;
-    }
-
-    /**
-     * Gets the signed authentication attempt code.
-     *
-     * @return the signed authentication attempt code
-     */
-    public String getAuthAttemptCodeSigned(){
-        return authAttemptCodeSigned;
-    }
-
-    /**
-     * Sets the signed authentication attempt code.
-     *
-     * @param authAttemptCodeSigned the signed authentication attempt code to set
-     */
-    public void setAuthAttemptCodeSigned(String authAttemptCodeSigned){
-        this.authAttemptCodeSigned = authAttemptCodeSigned;
-    }
-
-    /**
-     * Gets the authentication attempt challenge response.
-     *
-     * @return the authentication attempt challenge response
-     */
-    public Integer getAuthAttemptChallengeResponse(){
+    public Integer getAuthAttemptChallengeResponse() {
         return authAttemptChallengeResponse;
     }
 
-    /**
-     * Sets the authentication attempt challenge response.
-     *
-     * @param authAttemptChallengeResponse the authentication attempt challenge response to set
-     */
-    public void setAuthAttemptChallengeResponse(Integer authAttemptChallengeResponse){
+    public void setAuthAttemptChallengeResponse(Integer authAttemptChallengeResponse) {
         this.authAttemptChallengeResponse = authAttemptChallengeResponse;
     }
 
-    /**
-     * Gets whether the authentication attempt was accepted.
-     *
-     * @return true if accepted, false if denied
-     */
-    public Boolean getAuthAttemptAccepted(){
+    public Boolean getAuthAttemptAccepted() {
         return authAttemptAccepted;
     }
 
-    /**
-     * Sets whether the authentication attempt was accepted.
-     *
-     * @param authAttemptAccepted true if accepted, false if denied
-     */
-    public void setAuthAttemptAccepted(Boolean authAttemptAccepted){
+    public void setAuthAttemptAccepted(Boolean authAttemptAccepted) {
         this.authAttemptAccepted = authAttemptAccepted;
     }
 

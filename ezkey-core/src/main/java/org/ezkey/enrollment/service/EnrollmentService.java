@@ -16,7 +16,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -146,9 +145,9 @@ public class EnrollmentService {
         var enrollment = new Enrollment();
         enrollment.setIntegrationId(request.getIntegrationId());
         enrollment.setEnrollmentName(request.getName().trim());
-        enrollment.setDeviceProofToken(UUID.randomUUID().toString());
+        enrollment.setEnrollmentProofToken(signatureService.generateProofToken());
         enrollment.setEnrollmentRead(false);
-        enrollment.setEnrollmentVerified(false);
+        enrollment.setEnrollmentValid(false);
         enrollment.setEnrollmentActive(false);
         enrollment.setAuthAttemptChallengeRequired(false);
         enrollment.setCreatedAt(LocalDateTime.now());
@@ -193,8 +192,7 @@ public class EnrollmentService {
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
-        response.setDeviceProofToken(enrollment.getDeviceProofToken());
-        response.setDeviceProofTokenSignedByIntegration(signatureService.generateSignature(enrollment.getDeviceProofToken(),enrollment.getIntegrationPrivateKey()));
+        response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
         if (simulationMode){
             try{
                 KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
@@ -205,10 +203,10 @@ public class EnrollmentService {
             } catch (NoSuchAlgorithmException e){
                 throw new RuntimeException("Key generation failed",e);
             }
-            String signature = signatureService.generateSignature(enrollment.getDeviceProofToken(),response.getSimulationDevicePrivateKey());
-            response.setSimulationDeviceProofTokenSigned(signature);
+            String signature = signatureService.generateSignature(enrollment.getEnrollmentProofToken(),response.getSimulationDevicePrivateKey());
+            response.setSimulationEnrollmentProofTokenSigned(signature);
 
-            boolean valid = signatureService.validateSignature(enrollment.getDeviceProofToken(),signature,response.getSimulationDevicePublicKey());
+            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),signature,response.getSimulationDevicePublicKey());
             logger.info("Bind code signature valid: {}",valid);
         }
         return response;
@@ -229,36 +227,39 @@ public class EnrollmentService {
     public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
         Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(request.getEnrollmentId());
         if (enrollmentOpt.isEmpty()){
-            throw new IllegalArgumentException("Pair not found");
+            throw new IllegalArgumentException("Enrollment not found");
         }
         Enrollment enrollment = enrollmentOpt.get();
         if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
-            throw new IllegalStateException("Pair must be read before confirmation");
+            enrollment.setEnrollmentVerified(true);
+            enrollment.setEnrollmentValid(false);
+            enrollment.setEnrollmentChallenge(null);
+            enrollmentRepository.save(enrollment);
+            throw new IllegalStateException("Pair must be read before verification");
         }
         if (Boolean.TRUE.equals(enrollment.getEnrollmentVerified())){
             throw new IllegalStateException("Pair already verified");
         }
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentActive())){
-            throw new IllegalStateException("Pair already active");
-        }
         // Validate signature, this device proof token is the one obtained from the bind request
-        boolean valid = request.getDeviceProofTokenSigned() != null
-                && signatureService.validateSignature(enrollment.getDeviceProofToken(),request.getDeviceProofTokenSigned(),request.getDevicePublicKey());
+        boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),request.getEnrollmentProofTokenSigned(),request.getDevicePublicKey());
         if (!valid){
-            enrollment.setEnrollmentVerified(false);
+            enrollment.setEnrollmentVerified(true);
+            enrollment.setEnrollmentValid(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
-            throw new IllegalArgumentException("Invalid bind code signature");
+            throw new IllegalArgumentException("Invalid bind proof token signature");
         }
         // Validate challenge response
         if (!request.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())){
-            enrollment.setEnrollmentVerified(false);
+            enrollment.setEnrollmentVerified(true);
+            enrollment.setEnrollmentValid(false);
             enrollment.setEnrollmentChallenge(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid challenge response");
         }
         // Confirm enrollment
         enrollment.setEnrollmentVerified(true);
+        enrollment.setEnrollmentValid(true);
         enrollment.setEnrollmentActive(true);
         enrollment.setDevicePublicKey(request.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
@@ -277,24 +278,8 @@ public class EnrollmentService {
      * @param id the enrollment ID to delete
      * @return number of rows affected
      */
-    public int delete(Integer id) {
-        if (!enrollmentRepository.existsById(id)){
-            return 0;
-        }
+    public void delete(Integer id) {
         enrollmentRepository.deleteById(id);
-        return 1;
-    }
-
-    /**
-     * Generates a new UUID v4 for enrollment codes.
-     * <p>
-     * This method provides a utility for generating unique enrollment identifiers.
-     * </p>
-     *
-     * @return a new UUID v4 string
-     */
-    public String generateUuidV4() {
-        return UUID.randomUUID().toString();
     }
 
     /**

@@ -73,11 +73,18 @@ public class Enrollment {
     private Boolean enrollmentRead;
 
     /**
-     * Flag indicating if the enrollment has been verified.
+     * Flag indicating if the enrollment is verified.
      * Used to track enrollment verification status.
      */
     @Column(name = "enrollment_verified")
     private Boolean enrollmentVerified;
+
+    /**
+     * Flag indicating if the enrollment is valid.
+     * Used to track enrollment verification status.
+     */
+    @Column(name = "enrollment_valid")
+    private Boolean enrollmentValid;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -92,6 +99,13 @@ public class Enrollment {
      */
     @Column(name = "enrollment_challenge")
     private Integer enrollmentChallenge;
+
+    /**
+     * Unique enrollment proof token for identification.
+     * Used for enrollment lookup and verification.
+     */
+    @Column(name = "enrollment_proof_token",unique = true)
+    private String enrollmentProofToken;
 
     /**
      * Flag indicating if authentication attempts require challenge.
@@ -122,13 +136,6 @@ public class Enrollment {
     private String devicePublicKey;
 
     /**
-     * Unique device proof token for identification.
-     * Used for enrollment lookup and verification.
-     */
-    @Column(name = "device_proof_token",unique = true)
-    private String deviceProofToken;
-
-    /**
      * Timestamp when the enrollment was created.
      * Used for audit trails and sorting purposes.
      */
@@ -143,10 +150,10 @@ public class Enrollment {
     public Enrollment(Integer integrationId,String enrollmentName,String deviceProofToken){
         this.integrationId = integrationId;
         this.enrollmentName = enrollmentName;
-        this.deviceProofToken = deviceProofToken;
+        this.setEnrollmentProofToken(deviceProofToken);
         this.createdAt = LocalDateTime.now();
         this.enrollmentRead = false;
-        this.enrollmentVerified = false;
+        this.enrollmentValid = false;
         this.enrollmentActive = true;
         this.authAttemptChallengeRequired = false;
     }
@@ -192,6 +199,14 @@ public class Enrollment {
         this.enrollmentVerified = enrollmentVerified;
     }
 
+    public Boolean getEnrollmentValid() {
+        return enrollmentValid;
+    }
+
+    public void setEnrollmentValid(Boolean enrollmentValid) {
+        this.enrollmentValid = enrollmentValid;
+    }
+
     public Boolean getEnrollmentActive() {
         return enrollmentActive;
     }
@@ -206,6 +221,14 @@ public class Enrollment {
 
     public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
+    }
+
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
     public Boolean getAuthAttemptChallengeRequired() {
@@ -238,14 +261,6 @@ public class Enrollment {
 
     public void setDevicePublicKey(String devicePublicKey) {
         this.devicePublicKey = devicePublicKey;
-    }
-
-    public String getDeviceProofToken() {
-        return deviceProofToken;
-    }
-
-    public void setDeviceProofToken(String deviceProofToken) {
-        this.deviceProofToken = deviceProofToken;
     }
 
     public LocalDateTime getCreatedAt() {

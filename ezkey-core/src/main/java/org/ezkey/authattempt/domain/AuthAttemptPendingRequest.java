@@ -8,28 +8,40 @@ public class AuthAttemptPendingRequest {
 
     private String deviceProofTokenSigned;
 
-    public Integer getEnrollmentId(){
+    // Simulation mode only
+
+    private String simulationDevicePrivateKey;
+
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
-    public String getDeviceProofToken(){
+    public String getDeviceProofToken() {
         return deviceProofToken;
     }
 
-    public void setDeviceProofToken(String deviceProofToken){
+    public void setDeviceProofToken(String deviceProofToken) {
         this.deviceProofToken = deviceProofToken;
     }
 
-    public String getDeviceProofTokenSigned(){
+    public String getDeviceProofTokenSigned() {
         return deviceProofTokenSigned;
     }
 
-    public void setDeviceProofTokenSigned(String deviceProofTokenSigned){
+    public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
         this.deviceProofTokenSigned = deviceProofTokenSigned;
+    }
+
+    public String getSimulationDevicePrivateKey() {
+        return simulationDevicePrivateKey;
+    }
+
+    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
+        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 
 }

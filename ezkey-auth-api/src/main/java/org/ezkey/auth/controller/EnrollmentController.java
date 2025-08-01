@@ -111,9 +111,9 @@ public class EnrollmentController {
     @GetMapping("/bind/{enrollmentId}")
     public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId) {
         try{
-            EnrollmentBindRequest req = new EnrollmentBindRequest();
-            req.setEnrollmentId(enrollmentId);
-            EnrollmentBindResponse response = enrollmentService.bind(req);
+            EnrollmentBindRequest request = new EnrollmentBindRequest();
+            request.setEnrollmentId(enrollmentId);
+            EnrollmentBindResponse response = enrollmentService.bind(request);
             return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
         } catch (IllegalArgumentException e){
             return ResponseEntity.badRequest().build();
