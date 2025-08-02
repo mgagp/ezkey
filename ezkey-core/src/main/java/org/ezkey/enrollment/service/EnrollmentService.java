@@ -146,7 +146,7 @@ public class EnrollmentService {
         enrollment.setEnrollmentRead(false);
         enrollment.setEnrollmentValid(false);
         enrollment.setEnrollmentActive(false);
-        enrollment.setAuthAttemptChallengeRequired(false);
+        enrollment.setAuthAttemptChallengeRequired(request.getAuthAttemptChallengeRequired() != null ? request.getAuthAttemptChallengeRequired() : false);
         enrollment.setCreatedAt(LocalDateTime.now());
         try{
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");

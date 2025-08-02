@@ -155,7 +155,7 @@ public class Enrollment {
         this.enrollmentRead = false;
         this.enrollmentValid = false;
         this.enrollmentActive = true;
-        this.authAttemptChallengeRequired = false;
+        // Don't set authAttemptChallengeRequired here - let it be set explicitly by the caller
     }
 
     // Getters and Setters
