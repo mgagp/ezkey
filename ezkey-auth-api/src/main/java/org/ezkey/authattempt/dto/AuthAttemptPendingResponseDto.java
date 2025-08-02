@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for pending authentication attempts in auth API.
  * <p>
@@ -55,30 +57,59 @@ package org.ezkey.authattempt.dto;
  * @see AuthAttemptPendingRequestDto
  * @see AuthAttemptRespondRequestDto
  */
+@Schema(description = "Response DTO containing pending authentication attempt details")
 public class AuthAttemptPendingResponseDto {
 
     /**
      * Unique identifier of the authentication attempt.
-     * Used by the mobile device to reference this attempt when submitting a response.
+     * <p>
+     * Used by the mobile device to reference this specific authentication
+     * attempt when submitting a response. This ID links the pending request
+     * to the user's approval or denial decision.
+     * </p>
      */
+    @Schema(description = "Unique identifier of the authentication attempt", 
+            example = "123", 
+            required = true)
     private Integer authAttemptId;
 
     /**
-     * Integration proof token for this attempt.
-     * Contains the challenge data that needs to be signed by the mobile device.
+     * Authentication proof token containing challenge data.
+     * <p>
+     * Contains the challenge data and integration information that needs
+     * to be cryptographically signed by the mobile device to prove
+     * possession of the private key and complete authentication.
+     * </p>
      */
+    @Schema(description = "Authentication proof token containing challenge data", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String authAttemptProofToken;
 
     /**
-     * Cryptographically signed proof token.
-     * Provides integrity protection and prevents tampering with the challenge.
+     * Integration-signed authentication proof token.
+     * <p>
+     * Contains the cryptographically signed version of the proof token,
+     * signed by the integration's private key. Provides integrity protection
+     * and prevents tampering with the authentication challenge data.
+     * </p>
      */
+    @Schema(description = "Integration-signed authentication proof token for integrity", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String authAttemptProofTokenSignedByIntegration;
 
     /**
      * Indicates whether additional challenge validation is required.
-     * When true, the mobile device must provide additional challenge responses.
+     * <p>
+     * When true, the mobile device must collect and provide additional
+     * challenge responses from the user (e.g., numeric code verification).
+     * When false, only cryptographic signature validation is needed.
+     * </p>
      */
+    @Schema(description = "Whether additional challenge validation is required", 
+            example = "true", 
+            required = true)
     private Boolean authAttemptChallengeRequired;
 
     public Integer getAuthAttemptId() {

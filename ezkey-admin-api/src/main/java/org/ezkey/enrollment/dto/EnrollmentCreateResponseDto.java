@@ -26,7 +26,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <b>Usage Context:</b> Returned by admin API when creating enrollments.
  * The enrollment ID can be used for subsequent operations, and the challenge
  * can be used for enrollment verification processes. Simulation fields are
- * populated only in test/development environments.
+ * only included in the JSON response when simulation mode is enabled (they 
+ * are completely excluded when null).
  * </p>
  *
  * <p>
@@ -44,6 +45,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <li><b>simulationDevicePublicKey:</b> Device public key for simulation</li>
  * <li><b>simulationDevicePrivateKey:</b> Device private key for simulation</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>JSON Serialization:</b> Simulation fields use {@code @JsonInclude(NON_NULL)}
+ * annotation, meaning they are completely excluded from the JSON response when
+ * simulation mode is disabled, providing cleaner API responses.
+ * </p>
+ *
+ * <p>
+ * <b>Security Note:</b> Simulation fields containing private keys should never 
+ * be populated in production environments and are strictly for testing and 
+ * development purposes only.
  * </p>
  *
  * <p>
@@ -76,9 +89,12 @@ public class EnrollmentCreateResponseDto {
     private Integer enrollmentChallenge;
 
     /**
-     * Signed enrollment proof token used for simulation purposes.
-     * This field is populated only in test/development environments
-     * to facilitate enrollment testing without actual device interaction.
+     * Cryptographically signed enrollment proof token for simulation purposes.
+     * <p>
+     * Contains the signed enrollment proof token that simulates device responses
+     * during enrollment flows. Only included in JSON when simulation mode is enabled,
+     * allowing comprehensive testing of enrollment verification processes.
+     * </p>
      */
     @Schema(description = "Signed enrollment proof token (simulation mode only)", 
             example = "eyJhbGciOiJSUzI1NiJ9...", 
@@ -87,9 +103,12 @@ public class EnrollmentCreateResponseDto {
     private String simulationEnrollmentProofTokenSigned;
 
     /**
-     * Device public key used for simulation purposes.
-     * This field is populated only in test/development environments
-     * to simulate cryptographic key pairs without actual device interaction.
+     * Device public key for simulation purposes.
+     * <p>
+     * Contains the simulated device's public key for cryptographic operations
+     * during testing. Only included in JSON when simulation mode is enabled,
+     * providing realistic cryptographic interaction simulation.
+     * </p>
      */
     @Schema(description = "Device public key (simulation mode only)", 
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...", 
@@ -98,11 +117,16 @@ public class EnrollmentCreateResponseDto {
     private String simulationDevicePublicKey;
 
     /**
-     * Device private key used for simulation purposes.
-     * This field is populated only in test/development environments
-     * to simulate cryptographic key pairs without actual device interaction.
+     * Device private key for simulation purposes.
      * <p>
-     * <b>Security Note:</b> This field should never be populated in production environments.
+     * Contains the simulated device's private key for signing operations during
+     * testing. Only included in JSON when simulation mode is enabled, enabling
+     * end-to-end cryptographic testing of enrollment flows.
+     * </p>
+     * <p>
+     * <b>Security Warning:</b> This field contains highly sensitive cryptographic
+     * material and should never be populated in production environments. It is
+     * exclusively for development and testing purposes.
      * </p>
      */
     @Schema(description = "Device private key (simulation mode only - NEVER in production)", 

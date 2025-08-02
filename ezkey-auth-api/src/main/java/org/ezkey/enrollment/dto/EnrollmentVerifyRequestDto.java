@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for enrollment verification completion in auth API.
  * <p>
@@ -45,14 +47,60 @@ package org.ezkey.enrollment.dto;
  * @see EnrollmentBindResponseDto
  * @see EnrollmentVerifyResponseDto
  */
+@Schema(description = "Request DTO for enrollment verification completion")
 public class EnrollmentVerifyRequestDto {
 
+    /**
+     * The enrollment ID being verified.
+     * <p>
+     * Must reference the same enrollment ID that was used in the binding
+     * request. Links this verification request to the specific enrollment
+     * that the mobile device is trying to complete.
+     * </p>
+     */
+    @Schema(description = "Enrollment ID being verified", 
+            example = "123", 
+            required = true)
     private Integer enrollmentId;
 
+    /**
+     * User's response to the enrollment challenge.
+     * <p>
+     * Numeric response provided by the user for enrollment verification.
+     * This is typically a code displayed on the integration's website
+     * that the user must enter in the mobile app to prove enrollment intent.
+     * </p>
+     */
+    @Schema(description = "User's response to the enrollment challenge", 
+            example = "123456", 
+            required = true)
     private Integer challengeResponse;
 
+    /**
+     * The mobile device's generated public key.
+     * <p>
+     * Contains the public key that the mobile device generated as part of
+     * its cryptographic key pair. This public key will be stored on the server
+     * and used to verify future authentication signatures from this device.
+     * </p>
+     */
+    @Schema(description = "Mobile device's generated public key", 
+            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...", 
+            required = true)
     private String devicePublicKey;
 
+    /**
+     * Device-signed enrollment proof token.
+     * <p>
+     * Contains the enrollment proof token that was provided in the binding
+     * response, signed by the mobile device's private key. This signature
+     * proves that the device possesses the private key corresponding to
+     * the public key being registered.
+     * </p>
+     */
+    @Schema(description = "Device-signed enrollment proof token", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String enrollmentProofTokenSigned;
 
     public Integer getEnrollmentId() {

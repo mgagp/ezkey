@@ -25,8 +25,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <p>
  * <b>Usage Context:</b> Returned by admin API when creating authentication requests.
  * Contains simulation data that can be used for testing authentication flows
- * without requiring a real mobile device. All simulation fields are populated
- * only in test/development environments.
+ * without requiring a real mobile device. Simulation fields are only included
+ * in the JSON response when simulation mode is enabled (they are completely 
+ * excluded when null).
  * </p>
  *
  * <p>
@@ -44,6 +45,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <li><b>simulationPendingDeviceProofToken:</b> Pending device proof token for simulation</li>
  * <li><b>simulationPendingDeviceProofTokenSigned:</b> Signed pending device proof token for simulation</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>JSON Serialization:</b> Simulation fields use {@code @JsonInclude(NON_NULL)}
+ * annotation, meaning they are completely excluded from the JSON response when
+ * simulation mode is disabled, providing cleaner API responses.
  * </p>
  *
  * <p>
@@ -74,8 +81,12 @@ public class AuthAttemptCreateResponseDto {
     private Integer authAttemptId;
 
     /**
-     * Simulation device proof token for testing purposes.
-     * Used in simulation mode to test authentication flows.
+     * Device-signed proof token for simulation purposes.
+     * <p>
+     * This field contains a cryptographically signed proof token that simulates
+     * device authentication responses. Only included in JSON when simulation mode
+     * is enabled, providing realistic authentication flow testing.
+     * </p>
      */
     @Schema(description = "Device-signed proof token (simulation mode only)", 
             example = "eyJhbGciOiJSUzI1NiJ9...", 
@@ -84,8 +95,12 @@ public class AuthAttemptCreateResponseDto {
     private String simulationAuthAttemptProofTokenSignedByDevice;
 
     /**
-     * Simulation challenge response for testing.
-     * Pre-computed response for simulation authentication flows.
+     * Pre-computed challenge response for simulation purposes.
+     * <p>
+     * Contains the expected challenge response value for testing authentication
+     * flows. Only included in JSON when simulation mode is enabled, allowing
+     * automated testing of challenge-response mechanisms.
+     * </p>
      */
     @Schema(description = "Pre-computed challenge response (simulation mode only)", 
             example = "123456", 
@@ -94,9 +109,12 @@ public class AuthAttemptCreateResponseDto {
     private Integer simulationAuthAttemptChallengeResponse;
 
     /**
-     * Pending device proof token used for simulation purposes.
-     * This field is populated only in test/development environments
-     * to simulate pending authentication state during testing.
+     * Pending device proof token for simulation purposes.
+     * <p>
+     * Generated token used to simulate pending authentication states during testing.
+     * Only included in JSON when simulation mode is enabled, providing realistic
+     * multi-step authentication flow simulation.
+     * </p>
      */
     @Schema(description = "Pending device proof token (simulation mode only)", 
             example = "eyJhbGciOiJSUzI1NiJ9...", 
@@ -105,11 +123,15 @@ public class AuthAttemptCreateResponseDto {
     private String simulationPendingDeviceProofToken;
 
     /**
-     * Signed pending device proof token used for simulation purposes.
-     * This field is populated only in test/development environments
-     * to simulate signed pending authentication tokens during testing.
+     * Cryptographically signed pending device proof token for simulation purposes.
      * <p>
-     * <b>Security Note:</b> This field should never be populated in production environments.
+     * Contains the signed version of the pending device proof token for complete
+     * authentication flow simulation. Only included in JSON when simulation mode
+     * is enabled.
+     * </p>
+     * <p>
+     * <b>Security Warning:</b> This field contains sensitive cryptographic data
+     * and should never be populated in production environments.
      * </p>
      */
     @Schema(description = "Signed pending device proof token (simulation mode only - NEVER in production)", 

@@ -10,6 +10,9 @@
 
 package org.ezkey.authattempt.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for checking pending authentication attempts in auth API.
  * <p>
@@ -52,28 +55,62 @@ package org.ezkey.authattempt.dto;
  * @see org.ezkey.authattempt.domain.AuthAttemptPendingRequest
  * @see AuthAttemptPendingResponseDto
  */
+@Schema(description = "Request DTO for checking pending authentication attempts")
 public class AuthAttemptPendingRequestDto {
 
     /**
      * The enrollment ID to check for pending authentication attempts.
-     * Must reference an existing and active enrollment.
+     * <p>
+     * Must reference an existing and active enrollment. Used to identify
+     * which device enrollment is requesting pending authentication attempts.
+     * </p>
      */
+    @Schema(description = "Enrollment ID to check for pending authentication attempts", 
+            example = "123", 
+            required = true)
     private Integer enrollmentId;
 
     /**
      * The device's proof token for authentication.
-     * Used to identify the requesting device during the authentication flow.
+     * <p>
+     * Contains the device-specific proof token used to identify and
+     * authenticate the requesting device during the authentication flow.
+     * Generated during enrollment and unique to each device.
+     * </p>
      */
+    @Schema(description = "Device proof token for authentication", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String deviceProofToken;
 
     /**
      * Cryptographically signed device proof token.
-     * Provides proof of device authenticity and prevents request forgery.
+     * <p>
+     * Contains the signed version of the device proof token, providing
+     * cryptographic proof of device authenticity and preventing request
+     * forgery or unauthorized access to pending authentication attempts.
+     * </p>
      */
+    @Schema(description = "Cryptographically signed device proof token", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String deviceProofTokenSigned;
 
-    // Simulation mode only
-
+    /**
+     * Device private key for simulation purposes only.
+     * <p>
+     * Contains the simulated device's private key for testing authentication
+     * flows. Only included when simulation mode is enabled.
+     * </p>
+     * <p>
+     * <b>Security Warning:</b> This field contains highly sensitive cryptographic
+     * material and should never be present in production environments.
+     * </p>
+     */
+    @Schema(description = "Device private key (simulation mode only - NEVER in production)", 
+            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationDevicePrivateKey;
 
     /**

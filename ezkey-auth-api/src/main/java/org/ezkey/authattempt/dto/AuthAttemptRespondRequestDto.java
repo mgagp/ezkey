@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for submitting authentication attempt responses in auth API.
  * <p>
@@ -58,14 +60,54 @@ package org.ezkey.authattempt.dto;
  * @see AuthAttemptPendingResponseDto
  * @see AuthAttemptRespondResponseDto
  */
+@Schema(description = "Request DTO for submitting authentication attempt responses")
 public class AuthAttemptRespondRequestDto {
 
+    /**
+     * The authentication attempt ID being responded to.
+     * Must reference a valid pending authentication attempt.
+     */
+    @Schema(description = "Authentication attempt ID being responded to", 
+            example = "123", 
+            required = true)
     private Integer authAttemptId;
 
+    /**
+     * Device-signed proof token for cryptographic validation.
+     * <p>
+     * Contains the cryptographically signed proof token that validates
+     * the device's identity and proves possession of the private key
+     * associated with this enrollment.
+     * </p>
+     */
+    @Schema(description = "Device-signed proof token for authentication validation", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String authAttemptProofTokenSignedByDevice;
 
+    /**
+     * Response to the authentication challenge.
+     * <p>
+     * Numeric response provided by the user when additional challenge
+     * verification is required. Only needed when the authentication
+     * attempt has challengeRequired flag set to true.
+     * </p>
+     */
+    @Schema(description = "User's response to authentication challenge (if required)", 
+            example = "123456", 
+            nullable = true)
     private Integer authAttemptChallengeResponse;
 
+    /**
+     * User's decision to accept or deny the authentication attempt.
+     * <p>
+     * Boolean flag indicating whether the user approved (true) or 
+     * denied (false) the authentication request through the mobile app.
+     * </p>
+     */
+    @Schema(description = "User's decision: true to approve, false to deny", 
+            example = "true", 
+            required = true)
     private Boolean authAttemptAccepted;
 
     public Integer getAuthAttemptId() {

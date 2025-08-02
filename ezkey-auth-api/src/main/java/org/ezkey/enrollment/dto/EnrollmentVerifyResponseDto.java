@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for enrollment verification completion in auth API.
  * <p>
@@ -50,12 +52,20 @@ package org.ezkey.enrollment.dto;
  * @see org.ezkey.enrollment.domain.EnrollmentVerifyResponse
  * @see EnrollmentVerifyRequestDto
  */
+@Schema(description = "Response DTO for enrollment verification completion")
 public class EnrollmentVerifyResponseDto {
 
     /**
      * Indicates whether the enrollment is now active and ready for authentication.
-     * True means verification was successful and the device can now authenticate users.
+     * <p>
+     * True means verification was successful, the device is now enrolled,
+     * and can participate in authentication attempts for the associated
+     * integration. False indicates verification failed.
+     * </p>
      */
+    @Schema(description = "Whether the enrollment is now active and ready for authentication", 
+            example = "true", 
+            required = true)
     private boolean active;
 
     /**

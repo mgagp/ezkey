@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for enrollment binding initiation in auth API.
  * <p>
@@ -49,12 +51,20 @@ package org.ezkey.enrollment.dto;
  * @see org.ezkey.enrollment.domain.EnrollmentBindRequest
  * @see EnrollmentBindResponseDto
  */
+@Schema(description = "Request DTO for enrollment binding initiation")
 public class EnrollmentBindRequestDto {
 
     /**
      * The enrollment ID to bind to the mobile device.
+     * <p>
      * Must reference an existing enrollment created through the admin API.
+     * This ID is typically obtained by the mobile device through QR code
+     * scanning or deep link navigation from the integration website.
+     * </p>
      */
+    @Schema(description = "Enrollment ID to bind to the mobile device", 
+            example = "123", 
+            required = true)
     private Integer id;
 
     /**

@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for authentication attempt submissions in auth API.
  * <p>
@@ -51,18 +53,33 @@ package org.ezkey.authattempt.dto;
  * @see org.ezkey.authattempt.domain.AuthAttemptRespondResponse
  * @see AuthAttemptRespondRequestDto
  */
+@Schema(description = "Response DTO for authentication attempt submissions")
 public class AuthAttemptRespondResponseDto {
 
     /**
      * Indicates whether the authentication response submission was successful.
-     * True means the response was accepted and processed, false indicates an error.
+     * <p>
+     * True means the response was accepted and processed by the system,
+     * false indicates an error occurred during processing. Mobile apps
+     * should check this flag to determine next actions.
+     * </p>
      */
+    @Schema(description = "Whether the response submission was successful", 
+            example = "true", 
+            required = true)
     private Boolean success;
 
     /**
      * Additional message providing context about the submission result.
-     * Contains success confirmation or error details for user feedback.
+     * <p>
+     * Contains success confirmation or detailed error information for
+     * user feedback. Mobile apps can display this message to inform
+     * users about the authentication attempt status.
+     * </p>
      */
+    @Schema(description = "Success confirmation or error details for user feedback", 
+            example = "Authentication response processed successfully", 
+            required = true)
     private String message;
 
     /**

@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for enrollment binding information in auth API.
  * <p>
@@ -45,12 +47,45 @@ package org.ezkey.enrollment.dto;
  * @see EnrollmentBindRequestDto
  * @see EnrollmentVerifyRequestDto
  */
+@Schema(description = "Response DTO containing enrollment binding information")
 public class EnrollmentBindResponseDto {
 
+    /**
+     * The enrollment ID for this binding operation.
+     * <p>
+     * Confirms the enrollment ID that was successfully bound to the mobile device.
+     * Used for reference in subsequent verification requests.
+     * </p>
+     */
+    @Schema(description = "Enrollment ID that was bound to the mobile device", 
+            example = "123", 
+            required = true)
     private Integer enrollmentId;
 
+    /**
+     * The integration's public key for cryptographic operations.
+     * <p>
+     * Contains the public key of the integration that created this enrollment.
+     * Used by the mobile device to verify signatures and validate integration
+     * authenticity during the enrollment process.
+     * </p>
+     */
+    @Schema(description = "Integration's public key for cryptographic verification", 
+            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...", 
+            required = true)
     private String integrationPublicKey;
 
+    /**
+     * The enrollment proof token that needs to be signed by the device.
+     * <p>
+     * Contains the challenge data that the mobile device must sign with its
+     * private key to complete enrollment verification. This token proves that
+     * the device possesses the cryptographic keys it claims to have.
+     * </p>
+     */
+    @Schema(description = "Enrollment proof token to be signed by the device", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            required = true)
     private String enrollmentProofToken;
 
     public Integer getEnrollmentId() {
