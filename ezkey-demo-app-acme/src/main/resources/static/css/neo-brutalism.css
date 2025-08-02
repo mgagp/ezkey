@@ -1,0 +1,357 @@
+/*
+ * Neo Brutalism CSS Framework
+ * For ACME Demo Application - Ezkey Integration
+ * 
+ * Design Philosophy:
+ * - Bold, high-contrast typography
+ * - Geometric shapes and layouts
+ * - Thick borders and pronounced shadows
+ * - Limited color palette with strategic accents
+ * - Functional, utilitarian aesthetic
+ */
+
+/* ========================================
+   RESET AND BASE STYLES
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+body {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    color: #000000;
+    background-color: #FFFFFF;
+    line-height: 1.4;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: 3rem;
+    line-height: 1.1;
+}
+
+h2 {
+    font-size: 2.5rem;
+    line-height: 1.2;
+}
+
+h3 {
+    font-size: 2rem;
+    line-height: 1.3;
+}
+
+p {
+    font-family: Arial, sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* ========================================
+   LAYOUT COMPONENTS
+   ======================================== */
+
+.neo-brutal-body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.neo-brutal-main {
+    flex: 1;
+    padding: 0;
+}
+
+/* ========================================
+   HEADER AND NAVIGATION
+   ======================================== */
+
+.neo-brutal-header {
+    background-color: #000000;
+    color: #FFFFFF;
+    border-bottom: 8px solid #FF0066;
+    padding: 1rem 0;
+}
+
+.neo-brutal-nav {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.brand-logo {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #FFFFFF;
+    margin: 0;
+    letter-spacing: 0.1em;
+}
+
+.brand-subtitle {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #FF0066;
+    letter-spacing: 0.2em;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-link {
+    color: #FFFFFF;
+    text-decoration: none;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    border-color: #FF0066;
+    background-color: #FF0066;
+    color: #FFFFFF;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 #CC0052;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.neo-brutal-button {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 2rem;
+    border: 4px solid #000000;
+    background-color: #FFFFFF;
+    color: #000000;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 4px 4px 0 #000000;
+    font-size: 1rem;
+    min-width: 150px;
+}
+
+.neo-brutal-button:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #000000;
+}
+
+.neo-brutal-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000000;
+}
+
+.neo-brutal-button.primary {
+    background-color: #FF0066;
+    color: #FFFFFF;
+    border-color: #000000;
+}
+
+.neo-brutal-button.secondary {
+    background-color: #00FFFF;
+    color: #000000;
+    border-color: #000000;
+}
+
+/* ========================================
+   CARDS AND CONTAINERS
+   ======================================== */
+
+.feature-card,
+.status-card {
+    background-color: #FFFFFF;
+    border: 4px solid #000000;
+    padding: 2rem;
+    box-shadow: 6px 6px 0 #000000;
+    transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #000000;
+}
+
+/* ========================================
+   GRIDS
+   ======================================== */
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+/* ========================================
+   SECTIONS
+   ======================================== */
+
+.hero-section,
+.features-section,
+.status-section {
+    padding: 4rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.hero-section {
+    text-align: center;
+    background: linear-gradient(45deg, #FFFFFF 50%, #F0F0F0 50%);
+    border-bottom: 8px solid #000000;
+}
+
+.features-section {
+    background-color: #F0F0F0;
+    border-bottom: 8px solid #000000;
+}
+
+.status-section {
+    background-color: #FFFFFF;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 3rem;
+    color: #000000;
+    text-shadow: 3px 3px 0 #CCCCCC;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.neo-brutal-footer {
+    background-color: #000000;
+    color: #FFFFFF;
+    border-top: 8px solid #FF0066;
+    padding: 3rem 2rem 2rem;
+    margin-top: auto;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.footer-section h3 {
+    color: #FF0066;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.footer-section p {
+    color: #CCCCCC;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.footer-link {
+    color: #00FFFF;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .neo-brutal-nav {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .nav-links {
+        gap: 1rem;
+    }
+    
+    .brand-logo {
+        font-size: 2rem;
+    }
+    
+    h1 {
+        font-size: 2.5rem;
+    }
+    
+    h2 {
+        font-size: 2rem;
+    }
+    
+    .hero-section,
+    .features-section,
+    .status-section {
+        padding: 2rem 1rem;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .neo-brutal-button {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+    }
+}

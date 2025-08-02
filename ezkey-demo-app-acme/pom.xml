@@ -12,9 +12,85 @@
 	
 	<artifactId>ezkey-demo-app-acme</artifactId>
 	<name>Ezkey Demo App - Acme Inc</name>
-	<description>Demo application simulating a protected application (Acme Inc)</description>
+	<description>Demo application simulating a protected application (Acme Inc) integrating with Ezkey MFA</description>
 	
-	<packaging>pom</packaging>
+	<packaging>jar</packaging>
 	
-	<!-- Placeholder for future demo application -->
-</project> 
+	<dependencies>
+		<!-- Spring Boot Starters -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+		
+		<!-- WebJars for Frontend Dependencies -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>webjars-locator-core</artifactId>
+		</dependency>
+		
+		<!-- htmx for dynamic interactions -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>htmx.org</artifactId>
+			<version>1.9.10</version>
+		</dependency>
+		
+		<!-- Alpine.js for lightweight reactivity -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>alpinejs</artifactId>
+			<version>3.13.5</version>
+		</dependency>
+		
+		<!-- Bootstrap for base styling (will be customized for Neo Brutalism) -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>bootstrap</artifactId>
+			<version>5.3.2</version>
+		</dependency>
+		
+		<!-- HTTP Client for Ezkey API calls -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+		
+		<!-- Testing -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+	
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-devtools</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	
+</project>

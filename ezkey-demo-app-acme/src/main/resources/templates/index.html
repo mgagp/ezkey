@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">ACME Inc - Protected Application</title>
+    
+    <!-- Neo Brutalism CSS -->
+    <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
+    
+    <!-- WebJars dependencies -->
+    <script th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+    <script th:src="@{/webjars/alpinejs/dist/cdn.min.js}" defer></script>
+    
+    <!-- Custom CSS for ACME branding -->
+    <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
+</head>
+<body class="neo-brutal-body">
+    
+    <!-- Navigation Header -->
+    <header class="neo-brutal-header">
+        <nav class="neo-brutal-nav">
+            <div class="nav-brand">
+                <h1 class="brand-logo">ACME</h1>
+                <span class="brand-subtitle">INC</span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link active">Home</a>
+                <a href="/about" class="nav-link">About</a>
+                <a href="#" class="nav-link">Demo</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="neo-brutal-main">
+        
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="acme-logo-container">
+                    <!-- ASCII Art ACME Logo -->
+                    <pre class="ascii-logo">
+   ███████╗  ██████╗ ███╗   ███╗ ███████╗
+   ██╔══██║ ██╔════╝ ████╗ ████║ ██╔════╝
+   ███████║ ██║      ██╔████╔██║ █████╗  
+   ██╔══██║ ██║      ██║╚██╔╝██║ ██╔══╝  
+   ██║  ██║ ╚██████╗ ██║ ╚═╝ ██║ ███████╗
+   ╚═╝  ╚═╝  ╚═════╝ ╚═╝     ╚═╝ ╚══════╝
+                    </pre>
+                </div>
+                
+                <h1 class="hero-title" th:text="${applicationName}">ACME Inc</h1>
+                <h2 class="hero-subtitle">Protected Application</h2>
+                
+                <div class="hero-description">
+                    <p class="description-text">
+                        Secure enterprise application protected by 
+                        <span class="ezkey-brand">Ezkey MFA</span>
+                    </p>
+                    <p class="integration-status" th:text="${integrationStatus}">
+                        Ezkey MFA Integration Active
+                    </p>
+                </div>
+                
+                <!-- Call to Action Buttons -->
+                <div class="cta-buttons">
+                    <button class="neo-brutal-button primary" 
+                            onclick="startDemo()" 
+                            x-data 
+                            @click="$dispatch('demo-start')">
+                        START DEMO
+                    </button>
+                    <button class="neo-brutal-button secondary" 
+                            onclick="viewDocs()">
+                        VIEW DOCS
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <section class="features-section">
+            <h2 class="section-title">EZKEY INTEGRATION FEATURES</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3 class="feature-title">Multi-Factor Authentication</h3>
+                    <p class="feature-description">
+                        Secure user authentication using mobile devices and cryptographic signatures.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3 class="feature-title">Mobile Integration</h3>
+                    <p class="feature-description">
+                        Seamless enrollment and authentication through dedicated mobile applications.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Real-time Authentication</h3>
+                    <p class="feature-description">
+                        Instant authentication requests with push notifications and challenge responses.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3 class="feature-title">Easy Integration</h3>
+                    <p class="feature-description">
+                        Simple REST API integration with comprehensive documentation and examples.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status Dashboard -->
+        <section class="status-section" x-data="statusDashboard()">
+            <h2 class="section-title">SYSTEM STATUS</h2>
+            
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-indicator active"></div>
+                    <span class="status-label">Ezkey Admin API</span>
+                    <span class="status-value">ONLINE</span>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-indicator active"></div>
+                    <span class="status-label">Ezkey Auth API</span>
+                    <span class="status-value">ONLINE</span>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-indicator warning"></div>
+                    <span class="status-label">Demo Mode</span>
+                    <span class="status-value">ENABLED</span>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-indicator active"></div>
+                    <span class="status-label">Application</span>
+                    <span class="status-value" th:text="${version}">v1.0</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="neo-brutal-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>ACME Inc</h3>
+                <p>Demo application showcasing Ezkey MFA integration capabilities.</p>
+            </div>
+            <div class="footer-section">
+                <h3>EZKEY</h3>
+                <p>Open Source MFA/Passkey Alternative</p>
+                <a href="https://ezkey.org" class="footer-link">ezkey.org</a>
+            </div>
+            <div class="footer-section">
+                <h3>LICENSE</h3>
+                <p>MIT License - 2025 Ezkey Contributors</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Alpine.js data functions
+        function statusDashboard() {
+            return {
+                init() {
+                    console.log('ACME Demo Application Initialized');
+                }
+            }
+        }
+
+        // Demo functions
+        function startDemo() {
+            console.log('Starting Ezkey integration demo...');
+            // Future: Navigate to demo workflow
+            alert('Demo workflow will be implemented in Phase 2');
+        }
+
+        function viewDocs() {
+            console.log('Opening documentation...');
+            window.open('https://docs.ezkey.org', '_blank');
+        }
+
+        // htmx event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('ACME Demo Application loaded successfully');
+            
+            // Listen for demo events
+            document.addEventListener('demo-start', function(event) {
+                console.log('Demo started via Alpine.js event');
+            });
+        });
+    </script>
+
+</body>
+</html>

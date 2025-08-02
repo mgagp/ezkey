@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">About - ACME Inc Demo</title>
+    
+    <!-- Neo Brutalism CSS -->
+    <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
+    <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
+    
+    <!-- WebJars dependencies -->
+    <script th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+    <script th:src="@{/webjars/alpinejs/dist/cdn.min.js}" defer></script>
+</head>
+<body class="neo-brutal-body">
+    
+    <!-- Navigation Header -->
+    <header class="neo-brutal-header">
+        <nav class="neo-brutal-nav">
+            <div class="nav-brand">
+                <h1 class="brand-logo">ACME</h1>
+                <span class="brand-subtitle">INC</span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/about" class="nav-link active">About</a>
+                <a href="#" class="nav-link">Demo</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="neo-brutal-main">
+        
+        <!-- About Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1 class="hero-title">About ACME Demo</h1>
+                <h2 class="hero-subtitle">Ezkey Integration Showcase</h2>
+                
+                <div class="about-content">
+                    <div class="about-section">
+                        <h3>Purpose</h3>
+                        <p class="description-text">
+                            This demo application simulates a real-world enterprise application 
+                            (ACME Inc) that integrates with <span class="ezkey-brand">Ezkey MFA</span> 
+                            for secure user authentication.
+                        </p>
+                    </div>
+                    
+                    <div class="about-section">
+                        <h3>Technology Stack</h3>
+                        <div class="tech-grid">
+                            <div class="tech-card">
+                                <h4>Backend</h4>
+                                <ul>
+                                    <li>Spring Boot 3.3.6</li>
+                                    <li>Java 21</li>
+                                    <li>Thymeleaf Templates</li>
+                                    <li>WebFlux HTTP Client</li>
+                                </ul>
+                            </div>
+                            <div class="tech-card">
+                                <h4>Frontend</h4>
+                                <ul>
+                                    <li>htmx for Dynamic Interactions</li>
+                                    <li>Alpine.js for Reactivity</li>
+                                    <li>Neo Brutalism UI Design</li>
+                                    <li>Responsive CSS Grid</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="about-section">
+                        <h3>Demo Features</h3>
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feature-number">01</span>
+                                <div class="feature-info">
+                                    <h4>Integration Management</h4>
+                                    <p>Create and manage Ezkey integrations for your applications.</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-number">02</span>
+                                <div class="feature-info">
+                                    <h4>Device Enrollment</h4>
+                                    <p>Enroll mobile devices for secure multi-factor authentication.</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-number">03</span>
+                                <div class="feature-info">
+                                    <h4>Authentication Testing</h4>
+                                    <p>Test authentication flows with simulation mode capabilities.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cta-buttons">
+                    <a href="/" class="neo-brutal-button primary">Back to Home</a>
+                    <button class="neo-brutal-button secondary" onclick="viewSource()">View Source</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="neo-brutal-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>ACME Inc</h3>
+                <p>Demo application showcasing Ezkey MFA integration capabilities.</p>
+            </div>
+            <div class="footer-section">
+                <h3>EZKEY</h3>
+                <p>Open Source MFA/Passkey Alternative</p>
+                <a href="https://ezkey.org" class="footer-link">ezkey.org</a>
+            </div>
+            <div class="footer-section">
+                <h3>LICENSE</h3>
+                <p>MIT License - 2025 Ezkey Contributors</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        function viewSource() {
+            console.log('Opening source code...');
+            window.open('https://github.com/ezkey-org/ezkey', '_blank');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('About page loaded successfully');
+        });
+    </script>
+
+</body>
+</html>
