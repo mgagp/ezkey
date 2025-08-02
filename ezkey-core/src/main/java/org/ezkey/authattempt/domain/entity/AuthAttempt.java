@@ -175,10 +175,20 @@ public class AuthAttempt {
         this.authAttemptResponded = authAttemptResponded;
     }
 
+    /**
+     * Gets whether the authorization attempt is valid.
+     *
+     * @return true if the attempt is valid, false otherwise
+     */
     public Boolean getAuthAttemptValid() {
         return authAttemptValid;
     }
 
+    /**
+     * Sets whether the authorization attempt is valid.
+     *
+     * @param authAttemptValid true if the attempt is valid, false otherwise
+     */
     public void setAuthAttemptValid(Boolean authAttemptValid) {
         this.authAttemptValid = authAttemptValid;
     }
@@ -219,18 +229,38 @@ public class AuthAttempt {
         this.authAttemptChallenge = authAttemptChallenge;
     }
 
+    /**
+     * Gets the authorization proof token.
+     *
+     * @return the authorization proof token
+     */
     public String getAuthAttemptProofToken() {
         return authAttemptProofToken;
     }
 
+    /**
+     * Sets the authorization proof token.
+     *
+     * @param authAttemptProofToken the authorization proof token to set
+     */
     public void setAuthAttemptProofToken(String authAttemptProofToken) {
         this.authAttemptProofToken = authAttemptProofToken;
     }
 
+    /**
+     * Gets whether the device proof token is valid.
+     *
+     * @return true if the device proof token is valid, false otherwise
+     */
     public Boolean getDeviceProofTokenValid() {
         return deviceProofTokenValid;
     }
 
+    /**
+     * Sets whether the device proof token is valid.
+     *
+     * @param deviceProofTokenValid true if the device proof token is valid, false otherwise
+     */
     public void setDeviceProofTokenValid(Boolean deviceProofTokenValid) {
         this.deviceProofTokenValid = deviceProofTokenValid;
     }

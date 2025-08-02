@@ -112,34 +112,74 @@ public class AuthAttemptPendingResponseDto {
             required = true)
     private Boolean authAttemptChallengeRequired;
 
+    /**
+     * Gets the authentication attempt ID.
+     *
+     * @return the authentication attempt ID
+     */
     public Integer getAuthAttemptId() {
         return authAttemptId;
     }
 
+    /**
+     * Sets the authentication attempt ID.
+     *
+     * @param authAttemptId the authentication attempt ID to set
+     */
     public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
     }
 
+    /**
+     * Gets the authentication proof token.
+     *
+     * @return the authentication proof token
+     */
     public String getAuthAttemptProofToken() {
         return authAttemptProofToken;
     }
 
+    /**
+     * Sets the authentication proof token.
+     *
+     * @param authAttemptProofToken the authentication proof token to set
+     */
     public void setAuthAttemptProofToken(String authAttemptProofToken) {
         this.authAttemptProofToken = authAttemptProofToken;
     }
 
+    /**
+     * Gets the integration-signed authentication proof token.
+     *
+     * @return the integration-signed authentication proof token
+     */
     public String getAuthAttemptProofTokenSignedByIntegration() {
         return authAttemptProofTokenSignedByIntegration;
     }
 
+    /**
+     * Sets the integration-signed authentication proof token.
+     *
+     * @param authAttemptProofTokenSignedByIntegration the integration-signed authentication proof token to set
+     */
     public void setAuthAttemptProofTokenSignedByIntegration(String authAttemptProofTokenSignedByIntegration) {
         this.authAttemptProofTokenSignedByIntegration = authAttemptProofTokenSignedByIntegration;
     }
 
+    /**
+     * Gets the challenge validation requirement.
+     *
+     * @return the challenge validation requirement
+     */
     public Boolean getAuthAttemptChallengeRequired() {
         return authAttemptChallengeRequired;
     }
 
+    /**
+     * Sets the challenge validation requirement.
+     *
+     * @param authAttemptChallengeRequired the challenge validation requirement to set
+     */
     public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
         this.authAttemptChallengeRequired = authAttemptChallengeRequired;
     }

@@ -103,34 +103,74 @@ public class EnrollmentVerifyRequestDto {
             required = true)
     private String enrollmentProofTokenSigned;
 
+    /**
+     * Gets the enrollment ID.
+     *
+     * @return the enrollment ID
+     */
     public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
+    /**
+     * Sets the enrollment ID.
+     *
+     * @param enrollmentId the enrollment ID to set
+     */
     public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
+    /**
+     * Gets the challenge response.
+     *
+     * @return the challenge response
+     */
     public Integer getChallengeResponse() {
         return challengeResponse;
     }
 
+    /**
+     * Sets the challenge response.
+     *
+     * @param challengeResponse the challenge response to set
+     */
     public void setChallengeResponse(Integer challengeResponse) {
         this.challengeResponse = challengeResponse;
     }
 
+    /**
+     * Gets the device public key.
+     *
+     * @return the device public key
+     */
     public String getDevicePublicKey() {
         return devicePublicKey;
     }
 
+    /**
+     * Sets the device public key.
+     *
+     * @param devicePublicKey the device public key to set
+     */
     public void setDevicePublicKey(String devicePublicKey) {
         this.devicePublicKey = devicePublicKey;
     }
 
+    /**
+     * Gets the enrollment proof token signed.
+     *
+     * @return the enrollment proof token signed
+     */
     public String getEnrollmentProofTokenSigned() {
         return enrollmentProofTokenSigned;
     }
 
+    /**
+     * Sets the enrollment proof token signed.
+     *
+     * @param enrollmentProofTokenSigned the enrollment proof token signed to set
+     */
     public void setEnrollmentProofTokenSigned(String enrollmentProofTokenSigned) {
         this.enrollmentProofTokenSigned = enrollmentProofTokenSigned;
     }

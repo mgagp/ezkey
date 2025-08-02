@@ -88,26 +88,56 @@ public class EnrollmentBindResponseDto {
             required = true)
     private String enrollmentProofToken;
 
+    /**
+     * Gets the enrollment ID.
+     *
+     * @return the enrollment ID
+     */
     public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
+    /**
+     * Sets the enrollment ID.
+     *
+     * @param enrollmentId the enrollment ID to set
+     */
     public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
+    /**
+     * Gets the integration's public key.
+     *
+     * @return the integration's public key
+     */
     public String getIntegrationPublicKey() {
         return integrationPublicKey;
     }
 
+    /**
+     * Sets the integration's public key.
+     *
+     * @param integrationPublicKey the integration's public key to set
+     */
     public void setIntegrationPublicKey(String integrationPublicKey) {
         this.integrationPublicKey = integrationPublicKey;
     }
 
+    /**
+     * Gets the enrollment proof token.
+     *
+     * @return the enrollment proof token
+     */
     public String getEnrollmentProofToken() {
         return enrollmentProofToken;
     }
 
+    /**
+     * Sets the enrollment proof token.
+     *
+     * @param enrollmentProofToken the enrollment proof token to set
+     */
     public void setEnrollmentProofToken(String enrollmentProofToken) {
         this.enrollmentProofToken = enrollmentProofToken;
     }

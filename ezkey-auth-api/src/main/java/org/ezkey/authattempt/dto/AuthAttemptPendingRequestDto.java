@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -65,9 +66,7 @@ public class AuthAttemptPendingRequestDto {
      * which device enrollment is requesting pending authentication attempts.
      * </p>
      */
-    @Schema(description = "Enrollment ID to check for pending authentication attempts", 
-            example = "123", 
-            required = true)
+    @Schema(description = "Enrollment ID to check for pending authentication attempts",example = "123",required = true)
     private Integer enrollmentId;
 
     /**
@@ -78,9 +77,7 @@ public class AuthAttemptPendingRequestDto {
      * Generated during enrollment and unique to each device.
      * </p>
      */
-    @Schema(description = "Device proof token for authentication", 
-            example = "eyJhbGciOiJSUzI1NiJ9...", 
-            required = true)
+    @Schema(description = "Device proof token for authentication",example = "eyJhbGciOiJSUzI1NiJ9...",required = true)
     private String deviceProofToken;
 
     /**
@@ -91,9 +88,7 @@ public class AuthAttemptPendingRequestDto {
      * forgery or unauthorized access to pending authentication attempts.
      * </p>
      */
-    @Schema(description = "Cryptographically signed device proof token", 
-            example = "eyJhbGciOiJSUzI1NiJ9...", 
-            required = true)
+    @Schema(description = "Cryptographically signed device proof token",example = "eyJhbGciOiJSUzI1NiJ9...",required = true)
     private String deviceProofTokenSigned;
 
     /**
@@ -107,8 +102,9 @@ public class AuthAttemptPendingRequestDto {
      * material and should never be present in production environments.
      * </p>
      */
-    @Schema(description = "Device private key (simulation mode only - NEVER in production)", 
-            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL...", 
+    @Schema(
+            description = "Device private key (simulation mode only - NEVER in production)",
+            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL...",
             nullable = true)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationDevicePrivateKey;
@@ -145,7 +141,7 @@ public class AuthAttemptPendingRequestDto {
      *
      * @param deviceProofToken the device proof token to set
      */
-    public void setAuthAttemptEnrolleeCode(String deviceProofToken) {
+    public void setDeviceProofToken(String deviceProofToken) {
         this.deviceProofToken = deviceProofToken;
     }
 
@@ -163,14 +159,24 @@ public class AuthAttemptPendingRequestDto {
      *
      * @param deviceProofTokenSigned the signed device proof token to set
      */
-    public void setAuthAttemptEnrolleeCodeSigned(String deviceProofTokenSigned) {
+    public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
         this.deviceProofTokenSigned = deviceProofTokenSigned;
     }
 
+    /**
+     * Gets the simulation device private key.
+     *
+     * @return the simulation device private key
+     */
     public String getSimulationDevicePrivateKey() {
         return simulationDevicePrivateKey;
     }
 
+    /**
+     * Sets the simulation device private key.
+     *
+     * @param simulationDevicePrivateKey the simulation device private key to set
+     */
     public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
         this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }

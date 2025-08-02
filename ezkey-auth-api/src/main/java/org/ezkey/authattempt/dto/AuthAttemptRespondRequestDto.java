@@ -110,34 +110,74 @@ public class AuthAttemptRespondRequestDto {
             required = true)
     private Boolean authAttemptAccepted;
 
+    /**
+     * Gets the authentication attempt ID.
+     *
+     * @return the authentication attempt ID
+     */
     public Integer getAuthAttemptId() {
         return authAttemptId;
     }
 
+    /**
+     * Sets the authentication attempt ID.
+     *
+     * @param authAttemptId the authentication attempt ID to set
+     */
     public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
     }
 
+    /**
+     * Gets the device-signed proof token.
+     *
+     * @return the device-signed proof token
+     */
     public String getAuthAttemptProofTokenSignedByDevice() {
         return authAttemptProofTokenSignedByDevice;
     }
 
+    /**
+     * Sets the device-signed proof token.
+     *
+     * @param authAttemptProofTokenSignedByDevice the device-signed proof token to set
+     */
     public void setAuthAttemptProofTokenSignedByDevice(String authAttemptProofTokenSignedByDevice) {
         this.authAttemptProofTokenSignedByDevice = authAttemptProofTokenSignedByDevice;
     }
 
+    /**
+     * Gets the authentication challenge response.
+     *
+     * @return the authentication challenge response
+     */
     public Integer getAuthAttemptChallengeResponse() {
         return authAttemptChallengeResponse;
     }
 
+    /**
+     * Sets the authentication challenge response.
+     *
+     * @param authAttemptChallengeResponse the authentication challenge response to set
+     */
     public void setAuthAttemptChallengeResponse(Integer authAttemptChallengeResponse) {
         this.authAttemptChallengeResponse = authAttemptChallengeResponse;
     }
 
+    /**
+     * Gets the user's decision to accept or deny the authentication attempt.
+     *
+     * @return the user's decision
+     */
     public Boolean getAuthAttemptAccepted() {
         return authAttemptAccepted;
     }
 
+    /**
+     * Sets the user's decision to accept or deny the authentication attempt.
+     *
+     * @param authAttemptAccepted the user's decision to set
+     */
     public void setAuthAttemptAccepted(Boolean authAttemptAccepted) {
         this.authAttemptAccepted = authAttemptAccepted;
     }
