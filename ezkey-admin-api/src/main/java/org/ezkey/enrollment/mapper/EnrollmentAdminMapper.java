@@ -71,68 +71,63 @@ import org.mapstruct.ReportingPolicy;
  * @see EnrollmentCreateRequest
  * @see EnrollmentCreateResponse
  */
-@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
+@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
 public interface EnrollmentAdminMapper {
 
     /**
-     * Converts an EzkeyEnrollment entity to an EnrollmentResponse DTO.
+     * Converts an Enrollment entity to an EnrollmentResponseDto.
      * <p>
      * This method maps all fields from the JPA entity to the response DTO,
      * excluding sensitive information like private keys for security.
      * </p>
      *
-     * @param entity the EzkeyEnrollment entity to convert
-     * @return the corresponding EnrollmentResponse DTO
+     * @param entity the Enrollment entity to convert
+     * @return the corresponding EnrollmentResponseDto
      * @see Enrollment
      * @see EnrollmentResponseDto
      */
     EnrollmentResponseDto toResponse(Enrollment entity);
 
     /**
-     * Converts an EzkeyEnrollment entity to an EnrollmentCreateResponse DTO.
-     * <p>
-     * This method maps all fields from the JPA entity to the create response DTO,
-     * used specifically for enrollment creation operations.
-     * </p>
-     *
-     * @param entity the EzkeyEnrollment entity to convert
-     * @return the corresponding EnrollmentCreateResponse DTO
-     * @see Enrollment
-     * @see EnrollmentCreateResponseDto
-     */
-    EnrollmentCreateResponseDto toCreateResponse(Enrollment entity);
-
-    /**
-     * Converts an EnrollmentResponse DTO to an EzkeyEnrollment entity.
-     * <p>
-     * This method maps all fields from the response DTO to the JPA entity.
-     * Note that this conversion may not preserve all entity-specific fields
-     * such as audit timestamps or database-generated values.
-     * </p>
-     *
-     * @param response the EnrollmentResponse DTO to convert
-     * @return the corresponding EzkeyEnrollment entity
-     * @see EnrollmentResponse
-     * @see EzkeyEnrollment
-     */
-    // EzkeyEnrollment toEntity(EnrollmentResponse response);
-
-    /**
-     * Converts a list of EzkeyEnrollment entities to a list of EnrollmentResponse DTOs.
+     * Converts a list of Enrollment entities to a list of EnrollmentResponseDto.
      * <p>
      * This method applies the individual entity-to-response mapping to each
      * element in the input list, maintaining the order of elements.
      * </p>
      *
-     * @param entities the list of EzkeyEnrollment entities to convert
-     * @return the corresponding list of EnrollmentResponse DTOs
+     * @param entities the list of Enrollment entities to convert
+     * @return the corresponding list of EnrollmentResponseDto
      * @see Enrollment
      * @see EnrollmentResponseDto
      */
     List<EnrollmentResponseDto> toResponseList(List<Enrollment> entities);
 
+    /**
+     * Converts an EnrollmentCreateRequestDto to an EnrollmentCreateRequest domain object.
+     * <p>
+     * This method maps the request DTO from the API layer to the domain request object
+     * used by the service layer for enrollment creation operations.
+     * </p>
+     *
+     * @param request the EnrollmentCreateRequestDto from the API layer
+     * @return the corresponding EnrollmentCreateRequest domain object
+     * @see EnrollmentCreateRequestDto
+     * @see EnrollmentCreateRequest
+     */
     EnrollmentCreateRequest toCreateRequest(EnrollmentCreateRequestDto request);
 
+    /**
+     * Converts an EnrollmentCreateResponse domain object to an EnrollmentCreateResponseDto.
+     * <p>
+     * This method maps the domain response object from the service layer to the response DTO
+     * returned by the API layer for enrollment creation operations.
+     * </p>
+     *
+     * @param response the EnrollmentCreateResponse domain object from the service layer
+     * @return the corresponding EnrollmentCreateResponseDto for the API layer
+     * @see EnrollmentCreateResponse
+     * @see EnrollmentCreateResponseDto
+     */
     EnrollmentCreateResponseDto toCreateResponseDto(EnrollmentCreateResponse response);
 
 }

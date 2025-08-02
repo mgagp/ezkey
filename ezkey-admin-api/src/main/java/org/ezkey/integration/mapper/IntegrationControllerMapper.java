@@ -77,61 +77,48 @@ import org.mapstruct.ReportingPolicy;
  * @see IntegrationCreateResponse
  * @see IntegrationResponse
  */
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
+@Mapper(componentModel = "spring",unmappedTargetPolicy = ReportingPolicy.WARN)
 public interface IntegrationControllerMapper {
 
     /**
-     * Converts an EzkeyIntegration entity to an IntegrationResponse DTO.
-     * <p>
-     * This method maps all fields from the JPA entity to the response DTO,
-     * including the nested i18n collection if present.
-     * </p>
-     *
-     * @param entity the EzkeyIntegration entity to convert
-     * @return the corresponding IntegrationResponse DTO
-     * @see Integration
-     * @see IntegrationResponse
-     */
-    IntegrationCreateResponse toResponse(IntegrationCreateResponse entity);
-
-    /**
-     * Converts a list of EzkeyIntegration entities to a list of IntegrationResponse DTOs.
+     * Converts a list of Integration entities to a list of IntegrationResponseDto.
      * <p>
      * This method applies the individual entity-to-response mapping to each
      * element in the input list, maintaining the order of elements.
      * </p>
      *
-     * @param entities the list of EzkeyIntegration entities to convert
-     * @return the corresponding list of IntegrationResponse DTOs
+     * @param entities the list of Integration entities to convert
+     * @return the corresponding list of IntegrationResponseDto
      * @see Integration
-     * @see IntegrationResponse
+     * @see IntegrationResponseDto
      */
     List<IntegrationResponseDto> toResponseList(List<Integration> entities);
 
     /**
-     * Converts an EzkeyIntegrationI18n entity to an IntegrationI18nResponse DTO.
+     * Converts an IntegrationI18n entity to an IntegrationI18nResponse domain object.
      * <p>
-     * This method maps all fields from the i18n JPA entity to the response DTO,
+     * This method maps all fields from the i18n JPA entity to the response domain object,
      * including language code, name, and description.
      * </p>
      *
-     * @param entity the EzkeyIntegrationI18n entity to convert
-     * @return the corresponding IntegrationI18nResponse DTO
+     * @param entity the IntegrationI18n entity to convert
+     * @return the corresponding IntegrationI18nResponse domain object
      * @see IntegrationI18n
      * @see IntegrationI18nResponse
      */
     IntegrationI18nResponse toI18nResponse(IntegrationI18n entity);
 
     /**
-     * Converts an IntegrationI18nResponse DTO to an EzkeyIntegrationI18n entity.
+     * Converts an IntegrationI18nResponse domain object to an IntegrationI18n entity.
      * <p>
-     * This method maps all fields from the i18n response DTO to the JPA entity.
+     * This method maps all fields from the i18n response domain object to the JPA entity.
      * Note that this conversion may not preserve all entity-specific fields
-     * such as audit timestamps or database-generated values.
+     * such as audit timestamps or database-generated values. The integration field
+     * is explicitly ignored to prevent mapping conflicts.
      * </p>
      *
-     * @param response the IntegrationI18nResponse DTO to convert
-     * @return the corresponding EzkeyIntegrationI18n entity
+     * @param response the IntegrationI18nResponse domain object to convert
+     * @return the corresponding IntegrationI18n entity
      * @see IntegrationI18nResponse
      * @see IntegrationI18n
      */
@@ -139,35 +126,45 @@ public interface IntegrationControllerMapper {
     IntegrationI18n toI18nEntity(IntegrationI18nResponse response);
 
     /**
-     * Converts a list of EzkeyIntegrationI18n entities to a list of IntegrationI18nResponse DTOs.
+     * Converts a list of IntegrationI18n entities to a list of IntegrationI18nResponse domain objects.
      * <p>
      * This method applies the individual i18n entity-to-response mapping to each
      * element in the input list, maintaining the order of elements.
      * </p>
      *
-     * @param entities the list of EzkeyIntegrationI18n entities to convert
-     * @return the corresponding list of IntegrationI18nResponse DTOs
+     * @param entities the list of IntegrationI18n entities to convert
+     * @return the corresponding list of IntegrationI18nResponse domain objects
      * @see IntegrationI18n
      * @see IntegrationI18nResponse
      */
     List<IntegrationI18nResponse> toI18nResponseList(List<IntegrationI18n> entities);
 
     /**
-     * Converts a list of IntegrationI18nResponse DTOs to a list of EzkeyIntegrationI18n entities.
+     * Converts an IntegrationCreateRequestDto to an IntegrationCreateRequest domain object.
      * <p>
-     * This method applies the individual i18n response-to-entity mapping to each
-     * element in the input list, maintaining the order of elements.
+     * This method maps the request DTO from the API layer to the domain request object
+     * used by the service layer for integration creation operations.
      * </p>
      *
-     * @param responses the list of IntegrationI18nResponse DTOs to convert
-     * @return the corresponding list of EzkeyIntegrationI18n entities
-     * @see IntegrationI18nResponse
-     * @see IntegrationI18n
+     * @param request the IntegrationCreateRequestDto from the API layer
+     * @return the corresponding IntegrationCreateRequest domain object
+     * @see IntegrationCreateRequestDto
+     * @see IntegrationCreateRequest
      */
-    List<IntegrationI18n> toI18nEntityList(List<IntegrationI18nResponse> responses);
-
     IntegrationCreateRequest toCreateRequest(IntegrationCreateRequestDto request);
 
+    /**
+     * Converts an Integration entity to an IntegrationResponse domain object.
+     * <p>
+     * This method maps all fields from the JPA entity to the domain response object,
+     * excluding sensitive information like private keys for security purposes.
+     * </p>
+     *
+     * @param integration the Integration entity to convert
+     * @return the corresponding IntegrationResponse domain object
+     * @see Integration
+     * @see IntegrationResponse
+     */
     IntegrationResponse toResponse(Integration integration);
 
 }

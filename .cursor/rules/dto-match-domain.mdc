@@ -1,0 +1,5 @@
+---
+description: When a Dto class is modified, make sure the corresponding domain class is update with the same attributes and update the javadoc.
+globs: src/main/**/dto/*Dto.java
+alwaysApply: true
+---
