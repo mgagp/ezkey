@@ -10,6 +10,9 @@
 
 package org.ezkey.authattempt.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for authentication attempt creation in admin API.
  * <p>
@@ -60,24 +63,34 @@ package org.ezkey.authattempt.dto;
  * @see org.ezkey.authattempt.domain.AuthAttemptCreateResponse
  * @see AuthAttemptCreateRequestDto
  */
+@Schema(description = "Response DTO containing created authentication attempt details")
 public class AuthAttemptCreateResponseDto {
 
     /**
      * Unique identifier of the created authentication attempt.
      * Used to reference this attempt in subsequent operations.
      */
+    @Schema(description = "Unique identifier of the created authentication attempt", example = "11")
     private Integer authAttemptId;
 
     /**
      * Simulation device proof token for testing purposes.
      * Used in simulation mode to test authentication flows.
      */
+    @Schema(description = "Device-signed proof token (simulation mode only)", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationAuthAttemptProofTokenSignedByDevice;
 
     /**
      * Simulation challenge response for testing.
      * Pre-computed response for simulation authentication flows.
      */
+    @Schema(description = "Pre-computed challenge response (simulation mode only)", 
+            example = "123456", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Integer simulationAuthAttemptChallengeResponse;
 
     /**
@@ -85,6 +98,10 @@ public class AuthAttemptCreateResponseDto {
      * This field is populated only in test/development environments
      * to simulate pending authentication state during testing.
      */
+    @Schema(description = "Pending device proof token (simulation mode only)", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationPendingDeviceProofToken;
 
     /**
@@ -95,6 +112,10 @@ public class AuthAttemptCreateResponseDto {
      * <b>Security Note:</b> This field should never be populated in production environments.
      * </p>
      */
+    @Schema(description = "Signed pending device proof token (simulation mode only - NEVER in production)", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationPendingDeviceProofTokenSigned;
 
     /**

@@ -10,6 +10,9 @@
 
 package org.ezkey.enrollment.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for enrollment creation in admin API.
  * <p>
@@ -55,18 +58,21 @@ package org.ezkey.enrollment.dto;
  * @see org.ezkey.enrollment.domain.EnrollmentCreateResponse
  * @see EnrollmentCreateRequestDto
  */
+@Schema(description = "Response DTO containing created enrollment details")
 public class EnrollmentCreateResponseDto {
 
     /**
      * Unique identifier of the created enrollment.
      * Used to reference this enrollment in subsequent operations.
      */
+    @Schema(description = "Unique identifier of the created enrollment", example = "21")
     private Integer enrollmentId;
 
     /**
      * Challenge number generated for enrollment verification.
      * Used during the enrollment binding and verification process.
      */
+    @Schema(description = "Challenge number for enrollment verification", example = "154982")
     private Integer enrollmentChallenge;
 
     /**
@@ -74,6 +80,10 @@ public class EnrollmentCreateResponseDto {
      * This field is populated only in test/development environments
      * to facilitate enrollment testing without actual device interaction.
      */
+    @Schema(description = "Signed enrollment proof token (simulation mode only)", 
+            example = "eyJhbGciOiJSUzI1NiJ9...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationEnrollmentProofTokenSigned;
 
     /**
@@ -81,6 +91,10 @@ public class EnrollmentCreateResponseDto {
      * This field is populated only in test/development environments
      * to simulate cryptographic key pairs without actual device interaction.
      */
+    @Schema(description = "Device public key (simulation mode only)", 
+            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationDevicePublicKey;
 
     /**
@@ -91,6 +105,10 @@ public class EnrollmentCreateResponseDto {
      * <b>Security Note:</b> This field should never be populated in production environments.
      * </p>
      */
+    @Schema(description = "Device private key (simulation mode only - NEVER in production)", 
+            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL...", 
+            nullable = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String simulationDevicePrivateKey;
 
     /**
