@@ -10,6 +10,8 @@
 
 package org.ezkey.integration.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for integration internationalization data in admin API.
  * <p>
@@ -44,30 +46,36 @@ package org.ezkey.integration.dto;
  * @see IntegrationResponseDto
  * @see IntegrationI18nCreateDto
  */
+@Schema(description = "Response DTO for integration internationalization data")
 public class IntegrationI18nResponseDto {
 
     /**
      * Unique identifier for the internationalization record.
      * Auto-generated primary key from the database.
      */
+    @Schema(description = "Unique identifier for the internationalization record", example = "1")
     private Integer id;
 
     /**
      * Language code for the localized content.
      * Uses standard ISO language codes (e.g., "en", "fr", "es").
      */
+    @Schema(description = "Language code for the localized content", example = "en")
     private String language;
 
     /**
      * Localized name of the integration.
      * Display name in the specified language.
      */
+    @Schema(description = "Localized name of the integration", example = "ACME Corporation")
     private String name;
 
     /**
      * Localized description of the integration.
      * Detailed description in the specified language.
      */
+    @Schema(description = "Localized description of the integration", 
+            example = "Secure authentication system for ACME applications")
     private String description;
 
     /**

@@ -12,6 +12,7 @@ package org.ezkey.integration.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Response DTO for integration data in admin API including internationalization support.
@@ -46,36 +47,44 @@ import java.util.List;
  * @see IntegrationCreateRequestDto
  * @see IntegrationI18nResponseDto
  */
+@Schema(description = "Response DTO containing complete integration details")
 public class IntegrationResponseDto {
 
     /**
      * Unique identifier for the integration.
      * Auto-generated primary key from the database.
      */
+    @Schema(description = "Unique identifier for the integration", example = "1")
     private Integer id;
 
     /**
      * URL or path to the integration logo image.
      * Used for displaying the integration brand in user interfaces.
      */
+    @Schema(description = "URL or path to the integration logo image", 
+            example = "https://example.com/logo.png")
     private String logo;
 
     /**
      * Integration status flag.
      * Indicates whether the integration is currently active and available for use.
      */
+    @Schema(description = "Integration status flag", example = "true")
     private Boolean active;
 
     /**
      * Timestamp when the integration was created.
      * Used for audit trails and sorting purposes.
      */
+    @Schema(description = "Timestamp when the integration was created", 
+            example = "2025-01-15T10:30:00")
     private LocalDateTime createdAt;
 
     /**
      * List of internationalized content for the integration.
      * Contains localized names and descriptions in multiple languages.
      */
+    @Schema(description = "List of internationalized content for multiple languages")
     private List<IntegrationI18nResponseDto> i18n;
 
     /**

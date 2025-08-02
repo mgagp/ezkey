@@ -34,12 +34,6 @@ package org.ezkey.integration.domain;
 public class IntegrationI18nCreate {
 
     /**
-     * Unique identifier for the internationalization record.
-     * Auto-generated primary key from the database.
-     */
-    private Integer id;
-
-    /**
      * Language code for the localized content.
      * Uses standard ISO language codes (e.g., "en", "fr", "es").
      */
@@ -58,29 +52,11 @@ public class IntegrationI18nCreate {
     private String description;
 
     /**
-     * Gets the unique identifier for the internationalization record.
-     *
-     * @return the i18n record ID
-     */
-    public Integer getId(){
-        return id;
-    }
-
-    /**
-     * Sets the unique identifier for the internationalization record.
-     *
-     * @param id the i18n record ID to set
-     */
-    public void setId(Integer id){
-        this.id = id;
-    }
-
-    /**
      * Gets the language code for the localized content.
      *
      * @return the language code
      */
-    public String getLanguage(){
+    public String getLanguage() {
         return language;
     }
 
@@ -89,7 +65,7 @@ public class IntegrationI18nCreate {
      *
      * @param language the language code to set
      */
-    public void setLanguage(String language){
+    public void setLanguage(String language) {
         this.language = language;
     }
 
@@ -98,7 +74,7 @@ public class IntegrationI18nCreate {
      *
      * @return the localized name
      */
-    public String getName(){
+    public String getName() {
         return name;
     }
 
@@ -107,7 +83,7 @@ public class IntegrationI18nCreate {
      *
      * @param name the localized name to set
      */
-    public void setName(String name){
+    public void setName(String name) {
         this.name = name;
     }
 
@@ -116,7 +92,7 @@ public class IntegrationI18nCreate {
      *
      * @return the localized description
      */
-    public String getDescription(){
+    public String getDescription() {
         return description;
     }
 
@@ -125,7 +101,7 @@ public class IntegrationI18nCreate {
      *
      * @param description the localized description to set
      */
-    public void setDescription(String description){
+    public void setDescription(String description) {
         this.description = description;
     }
 }

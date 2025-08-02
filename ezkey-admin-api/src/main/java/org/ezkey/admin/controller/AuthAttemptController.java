@@ -30,6 +30,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for authorization attempt administration API v1.
@@ -71,6 +76,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
+@Tag(name = "Auth Attempts", description = "Authentication attempt management API")
 public class AuthAttemptController {
 
     private final AuthAttemptService authAttemptService;
@@ -98,6 +104,12 @@ public class AuthAttemptController {
      *
      * @return ResponseEntity containing list of authorization attempt DTOs with HTTP 200 status
      */
+    @Operation(summary = "Retrieve all auth attempts", 
+               description = "Returns the complete list of authentication attempts in the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping
     public ResponseEntity<List<AuthAttemptDto>> getAll(){
         List<AuthAttemptDto> authAttempts = authAttemptMapper.toDtoList(authAttemptService.getAll());
@@ -114,8 +126,17 @@ public class AuthAttemptController {
      * @param id the authorization attempt ID
      * @return ResponseEntity containing authorization attempt DTO with HTTP 200 status, or 404 if not found
      */
+    @Operation(summary = "Retrieve auth attempt by ID", 
+               description = "Returns details of a specific authentication attempt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Auth attempt found"),
+        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<AuthAttemptDto> getById(@PathVariable("id") Integer id){
+    public ResponseEntity<AuthAttemptDto> getById(
+        @Parameter(description = "Unique auth attempt ID", example = "1")
+        @PathVariable("id") Integer id){
         try{
             AuthAttempt authAttempt = authAttemptService.getById(id);
             AuthAttemptDto response = authAttemptMapper.toDto(authAttempt);
@@ -136,8 +157,17 @@ public class AuthAttemptController {
      * @param request the authorization attempt creation request DTO
      * @return ResponseEntity containing created authorization attempt response with HTTP 201 status
      */
+    @Operation(summary = "Create new auth attempt", 
+               description = "Creates a new authentication attempt for MFA validation")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Auth attempt created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid data"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping
-    public ResponseEntity<AuthAttemptCreateResponseDto> create(@RequestBody AuthAttemptCreateRequestDto request){
+    public ResponseEntity<AuthAttemptCreateResponseDto> create(
+        @Parameter(description = "Auth attempt creation data", required = true)
+        @RequestBody AuthAttemptCreateRequestDto request){
         try{
             AuthAttemptCreateResponse response = authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
             return ResponseEntity.status(HttpStatus.CREATED).body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
@@ -160,8 +190,17 @@ public class AuthAttemptController {
      * @param id the authorization attempt ID to delete
      * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
+    @Operation(summary = "Delete auth attempt", 
+               description = "Removes an authentication attempt from the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Auth attempt deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable("id") Integer id){
+    public ResponseEntity<Void> delete(
+        @Parameter(description = "Auth attempt ID to delete", example = "1")
+        @PathVariable("id") Integer id){
         try{
             authAttemptService.delete(id);
             return ResponseEntity.noContent().build();

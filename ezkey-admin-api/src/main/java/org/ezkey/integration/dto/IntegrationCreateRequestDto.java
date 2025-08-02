@@ -12,6 +12,8 @@ package org.ezkey.integration.dto;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for creating new Integration entities in admin API.
  * <p>
@@ -48,50 +50,29 @@ import java.util.List;
  * @see org.ezkey.integration.domain.IntegrationCreateRequest
  * @see IntegrationI18nCreateDto
  */
+@Schema(description = "Request DTO for creating new Integration entities")
 public class IntegrationCreateRequestDto {
-
-    /**
-     * Unique code identifier for the integration.
-     * Used for API identification and routing.
-     */
-    private String code;
 
     /**
      * URL or path to the integration's logo image.
      * Displayed in the mobile app and web interfaces.
      */
+    @Schema(description = "URL or path to the integration's logo image",example = "https://example.com/logo.png")
     private String logo;
 
     /**
      * Optional list of internationalization entries.
      * Contains localized name and description for different languages.
      */
+    @Schema(description = "List of internationalization entries for multi-language support")
     private List<IntegrationI18nCreateDto> i18n;
-
-    /**
-     * Gets the unique code identifier for the integration.
-     *
-     * @return the integration code
-     */
-    public String getCode(){
-        return code;
-    }
-
-    /**
-     * Sets the unique code identifier for the integration.
-     *
-     * @param code the integration code to set
-     */
-    public void setCode(String code){
-        this.code = code;
-    }
 
     /**
      * Gets the URL or path to the integration's logo.
      *
      * @return the logo URL/path
      */
-    public String getLogo(){
+    public String getLogo() {
         return logo;
     }
 
@@ -100,7 +81,7 @@ public class IntegrationCreateRequestDto {
      *
      * @param logo the logo URL/path to set
      */
-    public void setLogo(String logo){
+    public void setLogo(String logo) {
         this.logo = logo;
     }
 
@@ -109,7 +90,7 @@ public class IntegrationCreateRequestDto {
      *
      * @return the list of i18n entries
      */
-    public List<IntegrationI18nCreateDto> getI18n(){
+    public List<IntegrationI18nCreateDto> getI18n() {
         return i18n;
     }
 
@@ -118,7 +99,7 @@ public class IntegrationCreateRequestDto {
      *
      * @param i18n the list of i18n entries to set
      */
-    public void setI18n(List<IntegrationI18nCreateDto> i18n){
+    public void setI18n(List<IntegrationI18nCreateDto> i18n) {
         this.i18n = i18n;
     }
 }

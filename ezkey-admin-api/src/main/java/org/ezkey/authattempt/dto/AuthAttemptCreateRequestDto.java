@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for creating authorization attempts in admin API.
  * <p>
@@ -44,6 +46,7 @@ package org.ezkey.authattempt.dto;
  * @see org.ezkey.authattempt.domain.AuthAttemptCreateRequest
  * @see AuthAttemptCreateResponseDto
  */
+@Schema(description = "Request DTO for creating new authentication attempts")
 public class AuthAttemptCreateRequestDto {
 
     /**

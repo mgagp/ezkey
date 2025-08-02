@@ -43,12 +43,6 @@ public class IntegrationResponse {
     private Integer id;
 
     /**
-     * Integration code identifier.
-     * Used as a unique business identifier for the integration (e.g., "google", "microsoft").
-     */
-    private String code;
-
-    /**
      * URL or path to the integration logo image.
      * Used for displaying the integration brand in user interfaces.
      */
@@ -77,7 +71,7 @@ public class IntegrationResponse {
      *
      * @return the integration ID
      */
-    public Integer getId(){
+    public Integer getId() {
         return id;
     }
 
@@ -86,26 +80,8 @@ public class IntegrationResponse {
      *
      * @param id the integration ID to set
      */
-    public void setId(Integer id){
+    public void setId(Integer id) {
         this.id = id;
-    }
-
-    /**
-     * Gets the integration code identifier.
-     *
-     * @return the integration code
-     */
-    public String getCode(){
-        return code;
-    }
-
-    /**
-     * Sets the integration code identifier.
-     *
-     * @param code the integration code to set
-     */
-    public void setCode(String code){
-        this.code = code;
     }
 
     /**
@@ -113,7 +89,7 @@ public class IntegrationResponse {
      *
      * @return the logo URL/path
      */
-    public String getLogo(){
+    public String getLogo() {
         return logo;
     }
 
@@ -122,7 +98,7 @@ public class IntegrationResponse {
      *
      * @param logo the logo URL/path to set
      */
-    public void setLogo(String logo){
+    public void setLogo(String logo) {
         this.logo = logo;
     }
 
@@ -131,7 +107,7 @@ public class IntegrationResponse {
      *
      * @return true if the integration is active, false otherwise
      */
-    public Boolean getActive(){
+    public Boolean getActive() {
         return active;
     }
 
@@ -140,7 +116,7 @@ public class IntegrationResponse {
      *
      * @param active the active status to set
      */
-    public void setActive(Boolean active){
+    public void setActive(Boolean active) {
         this.active = active;
     }
 
@@ -149,7 +125,7 @@ public class IntegrationResponse {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt(){
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -158,7 +134,7 @@ public class IntegrationResponse {
      *
      * @param createdAt the creation timestamp to set
      */
-    public void setCreatedAt(LocalDateTime createdAt){
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -167,7 +143,7 @@ public class IntegrationResponse {
      *
      * @return the list of i18n responses
      */
-    public List<IntegrationI18nResponse> getI18n(){
+    public List<IntegrationI18nResponse> getI18n() {
         return i18n;
     }
 
@@ -176,7 +152,7 @@ public class IntegrationResponse {
      *
      * @param i18n the list of i18n responses to set
      */
-    public void setI18n(List<IntegrationI18nResponse> i18n){
+    public void setI18n(List<IntegrationI18nResponse> i18n) {
         this.i18n = i18n;
     }
 }

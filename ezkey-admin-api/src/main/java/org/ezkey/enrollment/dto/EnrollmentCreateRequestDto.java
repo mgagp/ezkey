@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for creating enrollments in admin API.
  * <p>
@@ -45,24 +47,33 @@ package org.ezkey.enrollment.dto;
  * @see org.ezkey.enrollment.domain.EnrollmentCreateRequest
  * @see EnrollmentCreateResponseDto
  */
+@Schema(description = "Request DTO for creating new enrollments")
 public class EnrollmentCreateRequestDto {
 
     /**
      * The integration ID to which this enrollment belongs.
      * Must reference an existing and active integration.
      */
+    @Schema(description = "The integration ID to which this enrollment belongs", 
+            example = "1", 
+            required = true)
     private Integer integrationId;
 
     /**
      * Human-readable name for the enrollment.
      * Helps identify the device or user associated with this enrollment.
      */
+    @Schema(description = "Human-readable name for the enrollment", 
+            example = "John's iPhone", 
+            required = true)
     private String name;
 
     /**
      * Indicates whether authentication attempts require challenge validation.
      * When true, auth attempts will include additional challenge data for verification.
      */
+    @Schema(description = "Whether authentication attempts require challenge validation", 
+            example = "true")
     private Boolean authAttemptChallengeRequired;
 
     /**

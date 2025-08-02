@@ -53,9 +53,9 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring-boot.version>3.5.3</spring-boot.version>
+		<spring-boot.version>3.3.6</spring-boot.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<springdoc.version>2.5.0</springdoc.version>
+		<springdoc.version>2.6.0</springdoc.version>
 		<spotbugs.version>4.7.3</spotbugs.version>
 		<checkstyle.version>10.14.0</checkstyle.version>
 		<pmd.version>3.21.2</pmd.version>

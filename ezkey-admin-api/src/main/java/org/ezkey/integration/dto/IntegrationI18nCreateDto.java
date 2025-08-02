@@ -10,6 +10,8 @@
 
 package org.ezkey.integration.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Create DTO for integration internationalization data in admin API.
  * <p>
@@ -41,56 +43,36 @@ package org.ezkey.integration.dto;
  * @see IntegrationCreateRequestDto
  * @see IntegrationI18nResponseDto
  */
+@Schema(description = "Create DTO for integration internationalization data")
 public class IntegrationI18nCreateDto {
-
-    /**
-     * Unique identifier for the internationalization record.
-     * Auto-generated primary key from the database.
-     */
-    private Integer id;
 
     /**
      * Language code for the localized content.
      * Uses standard ISO language codes (e.g., "en", "fr", "es").
      */
+    @Schema(description = "Language code for the localized content",example = "en",required = true)
     private String language;
 
     /**
      * Localized name of the integration.
      * Display name in the specified language.
      */
+    @Schema(description = "Localized name of the integration",example = "ACME Corporation",required = true)
     private String name;
 
     /**
      * Localized description of the integration.
      * Detailed description in the specified language.
      */
+    @Schema(description = "Localized description of the integration",example = "Secure authentication system for ACME applications")
     private String description;
-
-    /**
-     * Gets the unique identifier for the internationalization record.
-     *
-     * @return the i18n record ID
-     */
-    public Integer getId(){
-        return id;
-    }
-
-    /**
-     * Sets the unique identifier for the internationalization record.
-     *
-     * @param id the i18n record ID to set
-     */
-    public void setId(Integer id){
-        this.id = id;
-    }
 
     /**
      * Gets the language code for the localized content.
      *
      * @return the language code
      */
-    public String getLanguage(){
+    public String getLanguage() {
         return language;
     }
 
@@ -99,7 +81,7 @@ public class IntegrationI18nCreateDto {
      *
      * @param language the language code to set
      */
-    public void setLanguage(String language){
+    public void setLanguage(String language) {
         this.language = language;
     }
 
@@ -108,7 +90,7 @@ public class IntegrationI18nCreateDto {
      *
      * @return the localized name
      */
-    public String getName(){
+    public String getName() {
         return name;
     }
 
@@ -117,7 +99,7 @@ public class IntegrationI18nCreateDto {
      *
      * @param name the localized name to set
      */
-    public void setName(String name){
+    public void setName(String name) {
         this.name = name;
     }
 
@@ -126,7 +108,7 @@ public class IntegrationI18nCreateDto {
      *
      * @return the localized description
      */
-    public String getDescription(){
+    public String getDescription() {
         return description;
     }
 
@@ -135,7 +117,7 @@ public class IntegrationI18nCreateDto {
      *
      * @param description the localized description to set
      */
-    public void setDescription(String description){
+    public void setDescription(String description) {
         this.description = description;
     }
 }

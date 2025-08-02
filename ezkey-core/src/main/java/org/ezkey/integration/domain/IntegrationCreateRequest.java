@@ -35,12 +35,6 @@ import java.util.List;
 public class IntegrationCreateRequest {
 
     /**
-     * Unique code identifier for the integration.
-     * Used for API identification and routing.
-     */
-    private String code;
-
-    /**
      * URL or path to the integration's logo image.
      * Displayed in the mobile app and web interfaces.
      */
@@ -53,29 +47,11 @@ public class IntegrationCreateRequest {
     private List<IntegrationI18nCreate> i18n;
 
     /**
-     * Gets the unique code identifier for the integration.
-     *
-     * @return the integration code
-     */
-    public String getCode(){
-        return code;
-    }
-
-    /**
-     * Sets the unique code identifier for the integration.
-     *
-     * @param code the integration code to set
-     */
-    public void setCode(String code){
-        this.code = code;
-    }
-
-    /**
      * Gets the URL or path to the integration's logo.
      *
      * @return the logo URL/path
      */
-    public String getLogo(){
+    public String getLogo() {
         return logo;
     }
 
@@ -84,7 +60,7 @@ public class IntegrationCreateRequest {
      *
      * @param logo the logo URL/path to set
      */
-    public void setLogo(String logo){
+    public void setLogo(String logo) {
         this.logo = logo;
     }
 
@@ -93,7 +69,7 @@ public class IntegrationCreateRequest {
      *
      * @return the list of i18n entries
      */
-    public List<IntegrationI18nCreate> getI18n(){
+    public List<IntegrationI18nCreate> getI18n() {
         return i18n;
     }
 
@@ -102,7 +78,7 @@ public class IntegrationCreateRequest {
      *
      * @param i18n the list of i18n entries to set
      */
-    public void setI18n(List<IntegrationI18nCreate> i18n){
+    public void setI18n(List<IntegrationI18nCreate> i18n) {
         this.i18n = i18n;
     }
 }

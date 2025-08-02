@@ -29,6 +29,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for enrollment administration API v1.
@@ -70,6 +75,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
+@Tag(name = "Enrollments", description = "Enrollment management API")
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
@@ -97,6 +103,12 @@ public class EnrollmentController {
      *
      * @return ResponseEntity containing list of enrollment responses with HTTP 200 status
      */
+    @Operation(summary = "Retrieve all enrollments", 
+               description = "Returns the complete list of enrollments in the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping
     public ResponseEntity<List<EnrollmentResponseDto>> getAll() {
         List<EnrollmentResponseDto> enrollments = enrollmentMapper.toResponseList(enrollmentService.getAll());
@@ -113,8 +125,17 @@ public class EnrollmentController {
      * @param id the enrollment ID
      * @return ResponseEntity containing enrollment response with HTTP 200 status, or 404 if not found
      */
+    @Operation(summary = "Retrieve enrollment by ID", 
+               description = "Returns details of a specific enrollment")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Enrollment found"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<EnrollmentResponseDto> getById(@PathVariable("id") Integer id) {
+    public ResponseEntity<EnrollmentResponseDto> getById(
+        @Parameter(description = "Unique enrollment ID", example = "1")
+        @PathVariable("id") Integer id) {
         try{
             var enrollment = enrollmentService.getById(id);
             EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
@@ -135,8 +156,17 @@ public class EnrollmentController {
      * @param request the enrollment creation request DTO
      * @return ResponseEntity containing created enrollment response with HTTP 201 status
      */
+    @Operation(summary = "Create new enrollment", 
+               description = "Creates a new enrollment that can later be bound to a mobile device")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Enrollment created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid data"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping
-    public ResponseEntity<EnrollmentCreateResponseDto> create(@RequestBody EnrollmentCreateRequestDto request) {
+    public ResponseEntity<EnrollmentCreateResponseDto> create(
+        @Parameter(description = "Enrollment creation data", required = true)
+        @RequestBody EnrollmentCreateRequestDto request) {
         try{
             EnrollmentCreateResponse response = enrollmentService.create(enrollmentMapper.toCreateRequest(request));
             return ResponseEntity.status(HttpStatus.CREATED).body(enrollmentMapper.toCreateResponseDto(response));
@@ -159,8 +189,17 @@ public class EnrollmentController {
      * @param id the enrollment ID to delete
      * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
      */
+    @Operation(summary = "Delete enrollment", 
+               description = "Removes an enrollment from the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Enrollment deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable("id") Integer id) {
+    public ResponseEntity<Void> delete(
+        @Parameter(description = "Enrollment ID to delete", example = "1")
+        @PathVariable("id") Integer id) {
         try{
             enrollmentService.delete(id);
             return ResponseEntity.noContent().build();
