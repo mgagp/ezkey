@@ -165,6 +165,6 @@ public interface IntegrationControllerMapper {
      * @see Integration
      * @see IntegrationResponse
      */
-    IntegrationResponse toResponse(Integration integration);
+    IntegrationResponseDto toResponse(Integration integration);
 
 }

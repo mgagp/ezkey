@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="content">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title" th:text="${integration.integrationName}">Integration Name</h1>
+            <p class="page-subtitle">Integration Details & Management</p>
+        </div>
+        <div class="header-actions">
+            <a href="/integrations" class="btn-brutal btn-secondary">
+                <span class="btn-icon">←</span>
+                Back to List
+            </a>
+            <form th:action="@{/integrations/{id}/delete(id=${integration.integrationId})}" 
+                  method="post" 
+                  style="display: inline;"
+                  onsubmit="return confirm('Are you sure you want to delete this integration? This action cannot be undone.')">
+                <button type="submit" class="btn-brutal btn-danger">
+                    <span class="btn-icon">🗑️</span>
+                    Delete Integration
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="status-banner" th:class="'status-banner ' + (${integration.integrationActive} ? 'status-active' : 'status-inactive')">
+        <div class="status-content">
+            <div class="status-icon" th:text="${integration.integrationActive} ? '✅' : '❌'">✅</div>
+            <div class="status-text">
+                <h3 th:text="${integration.integrationActive} ? 'Integration Active' : 'Integration Inactive'">Integration Active</h3>
+                <p th:text="${integration.integrationActive} ? 'This integration is ready to accept enrollments and authentication requests' : 'This integration is currently disabled'}">
+                    This integration is ready to accept enrollments and authentication requests
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="details-grid">
+        
+        <!-- Integration Information -->
+        <div class="info-section">
+            <h2 class="section-title">Integration Information</h2>
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="card-header">
+                        <span class="card-icon">🏷️</span>
+                        <h3>Basic Details</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="detail-row">
+                            <span class="detail-label">ID:</span>
+                            <span class="detail-value" th:text="${integration.integrationId}">1</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Name:</span>
+                            <span class="detail-value" th:text="${integration.integrationName}">Integration Name</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Description:</span>
+                            <span class="detail-value description" th:text="${integration.integrationDescription}">Integration Description</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Created:</span>
+                            <span class="detail-value" th:text="${integration.createdAt != null ? #temporals.format(integration.createdAt, 'MMMM dd, yyyy HH:mm') : 'N/A'}">
+                                January 01, 2025 12:00
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header">
+                        <span class="card-icon">🔐</span>
+                        <h3>Security Configuration</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="detail-row">
+                            <span class="detail-label">Key Type:</span>
+                            <span class="detail-value security-info">RSA-2048</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Algorithm:</span>
+                            <span class="detail-value security-info">SHA-256</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Public Key:</span>
+                            <span class="detail-value key-info" th:if="${integration.integrationPublicKey}">
+                                <span th:text="${#strings.substring(integration.integrationPublicKey, 0, 50)} + '...'">Key available</span>
+                                <button class="btn-small btn-show-key" onclick="toggleKey('publicKey')">Show</button>
+                            </span>
+                            <span class="detail-value" th:unless="${integration.integrationPublicKey}">Not generated</span>
+                        </div>
+                        <div class="detail-row" th:if="${integration.integrationPublicKey}">
+                            <div id="publicKey" class="key-display" style="display: none;">
+                                <textarea readonly class="key-textarea" th:text="${integration.integrationPublicKey}">Public Key</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="qr-section">
+            <h2 class="section-title">Mobile Enrollment</h2>
+            <div class="qr-card">
+                <div class="qr-header">
+                    <span class="qr-icon">📱</span>
+                    <h3>Enrollment QR Code</h3>
+                </div>
+                <div class="qr-content">
+                    <div class="qr-placeholder">
+                        <!-- QR Code would be generated here -->
+                        <div class="qr-code-placeholder">
+                            <div class="qr-pattern">
+                                <div class="qr-corner"></div>
+                                <div class="qr-corner"></div>
+                                <div class="qr-corner"></div>
+                                <div class="qr-corner"></div>
+                                <div class="qr-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="qr-instructions">
+                            Scan this QR code with the Ezkey mobile app to enroll a device for this integration
+                        </p>
+                    </div>
+                    
+                    <div class="enrollment-info">
+                        <div class="enrollment-detail">
+                            <span class="enrollment-label">Enrollment URL:</span>
+                            <div class="enrollment-url">
+                                <input type="text" 
+                                       th:value="${enrollmentQrData}" 
+                                       readonly 
+                                       class="url-input"
+                                       id="enrollmentUrl">
+                                <button class="btn-copy" onclick="copyToClipboard('enrollmentUrl')">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enrollments Section -->
+    <div class="enrollments-section">
+        <div class="section-header">
+            <h2 class="section-title">Associated Enrollments</h2>
+            <p class="section-subtitle">Devices enrolled for this integration</p>
+        </div>
+        
+        <div class="enrollments-placeholder">
+            <div class="placeholder-content">
+                <div class="placeholder-icon">📱</div>
+                <h3>No Enrollments Yet</h3>
+                <p>
+                    Once users scan the QR code above with the Ezkey mobile app, 
+                    their enrolled devices will appear here.
+                </p>
+                <div class="placeholder-actions">
+                    <button class="btn-brutal btn-primary" onclick="refreshEnrollments()">
+                        <span class="btn-icon">🔄</span>
+                        Refresh Enrollments
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="actions-section">
+        <h3 class="actions-title">Available Actions</h3>
+        <div class="actions-grid">
+            <div class="action-card">
+                <div class="action-icon">📋</div>
+                <div class="action-content">
+                    <h4>View All Integrations</h4>
+                    <p>Return to the integrations overview</p>
+                    <a href="/integrations" class="action-link">Go to List →</a>
+                </div>
+            </div>
+            <div class="action-card">
+                <div class="action-icon">➕</div>
+                <div class="action-content">
+                    <h4>Create New Integration</h4>
+                    <p>Set up another application integration</p>
+                    <a href="/integrations/create" class="action-link">Create New →</a>
+                </div>
+            </div>
+            <div class="action-card">
+                <div class="action-icon">🏠</div>
+                <div class="action-content">
+                    <h4>Dashboard</h4>
+                    <p>Return to the main ACME dashboard</p>
+                    <a href="/" class="action-link">Go Home →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- JavaScript for Interactions -->
+<script>
+    function toggleKey(keyId) {
+        const keyDisplay = document.getElementById(keyId);
+        const button = event.target;
+        
+        if (keyDisplay.style.display === 'none') {
+            keyDisplay.style.display = 'block';
+            button.textContent = 'Hide';
+        } else {
+            keyDisplay.style.display = 'none';
+            button.textContent = 'Show';
+        }
+    }
+
+    function copyToClipboard(inputId) {
+        const input = document.getElementById(inputId);
+        input.select();
+        input.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            document.execCommand('copy');
+            
+            // Show feedback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.style.background = 'var(--acme-success)';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+        }
+    }
+
+    function refreshEnrollments() {
+        const button = event.target;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<span class="btn-icon">⏳</span>Refreshing...';
+        button.disabled = true;
+        
+        // Simulate refresh (in real implementation, this would call an API)
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            // Show a temporary message
+            const placeholder = document.querySelector('.enrollments-placeholder .placeholder-content h3');
+            const originalTitle = placeholder.textContent;
+            placeholder.textContent = 'No New Enrollments Found';
+            
+            setTimeout(() => {
+                placeholder.textContent = originalTitle;
+            }, 3000);
+        }, 2000);
+    }
+</script>
+
+<!-- Integration Details Specific Styles -->
+<style>
+    /* Status Banner */
+    .status-banner {
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 4px solid var(--acme-dark);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .status-banner.status-active {
+        background: var(--acme-success);
+    }
+
+    .status-banner.status-inactive {
+        background: var(--acme-error);
+    }
+
+    .status-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .status-icon {
+        font-size: 2rem;
+    }
+
+    .status-text h3 {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .status-text p {
+        color: var(--acme-dark);
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    /* Details Grid */
+    .details-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    /* Info Section */
+    .info-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .info-card {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .card-header {
+        background: var(--acme-primary);
+        color: var(--acme-light);
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .card-icon {
+        font-size: 1.5rem;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--acme-gray);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-weight: 700;
+        color: var(--acme-dark);
+        min-width: 100px;
+    }
+
+    .detail-value {
+        color: var(--acme-primary);
+        font-weight: 600;
+        text-align: right;
+        flex: 1;
+        word-break: break-word;
+    }
+
+    .detail-value.description {
+        text-align: left;
+        margin-left: 1rem;
+    }
+
+    .security-info {
+        color: var(--acme-success) !important;
+        font-weight: 700 !important;
+    }
+
+    .key-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-show-key {
+        background: var(--acme-secondary);
+        border: 2px solid var(--acme-dark);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-transform: uppercase;
+    }
+
+    .key-display {
+        grid-column: 1 / -1;
+        margin-top: 1rem;
+    }
+
+    .key-textarea {
+        width: 100%;
+        height: 150px;
+        padding: 1rem;
+        border: 2px solid var(--acme-dark);
+        background: var(--acme-gray);
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        resize: vertical;
+    }
+
+    /* QR Section */
+    .qr-card {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+        height: fit-content;
+    }
+
+    .qr-header {
+        background: var(--acme-secondary);
+        color: var(--acme-dark);
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .qr-icon {
+        font-size: 1.5rem;
+    }
+
+    .qr-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .qr-content {
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    /* QR Code Placeholder */
+    .qr-code-placeholder {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto 1rem;
+        border: 4px solid var(--acme-dark);
+        background: var(--acme-light);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .qr-pattern {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        background: 
+            linear-gradient(90deg, var(--acme-dark) 50%, transparent 50%),
+            linear-gradient(var(--acme-dark) 50%, transparent 50%);
+        background-size: 10px 10px;
+    }
+
+    .qr-corner {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border: 4px solid var(--acme-dark);
+    }
+
+    .qr-corner:nth-child(1) { top: 10px; left: 10px; }
+    .qr-corner:nth-child(2) { top: 10px; right: 10px; }
+    .qr-corner:nth-child(3) { bottom: 10px; left: 10px; }
+    .qr-corner:nth-child(4) { bottom: 10px; right: 10px; }
+
+    .qr-dots {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+    }
+
+    .qr-dots span {
+        width: 8px;
+        height: 8px;
+        background: var(--acme-primary);
+        border-radius: 50%;
+    }
+
+    .qr-instructions {
+        font-size: 0.9rem;
+        color: var(--acme-dark);
+        margin-bottom: 1.5rem;
+        line-height: 1.4;
+    }
+
+    /* Enrollment Info */
+    .enrollment-info {
+        text-align: left;
+    }
+
+    .enrollment-detail {
+        margin-bottom: 1rem;
+    }
+
+    .enrollment-label {
+        display: block;
+        font-weight: 700;
+        color: var(--acme-dark);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .enrollment-url {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .url-input {
+        flex: 1;
+        padding: 0.5rem;
+        border: 2px solid var(--acme-dark);
+        background: var(--acme-gray);
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+
+    .btn-copy {
+        background: var(--acme-primary);
+        color: var(--acme-light);
+        border: 2px solid var(--acme-dark);
+        padding: 0.5rem 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    .btn-copy:hover {
+        background: var(--acme-secondary);
+        color: var(--acme-dark);
+    }
+
+    /* Enrollments Section */
+    .enrollments-section {
+        background: var(--acme-gray);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        margin-bottom: 3rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .enrollments-placeholder {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .placeholder-content .placeholder-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .placeholder-content h3 {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+    }
+
+    .placeholder-content p {
+        color: var(--acme-dark);
+        margin-bottom: 2rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .placeholder-actions {
+        margin-top: 1.5rem;
+    }
+
+    /* Actions Section */
+    .actions-section {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .actions-title {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .action-card {
+        background: var(--acme-gray);
+        border: 3px solid var(--acme-dark);
+        padding: 1.5rem;
+        box-shadow: 4px 4px 0 var(--acme-dark);
+        transition: transform 0.2s ease;
+    }
+
+    .action-card:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .action-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .action-content h4 {
+        font-size: 1.1rem;
+        color: var(--acme-primary);
+        margin-bottom: 0.5rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .action-content p {
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+        line-height: 1.4;
+    }
+
+    .action-link {
+        color: var(--acme-secondary);
+        font-weight: 700;
+        text-decoration: none;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    .action-link:hover {
+        color: var(--acme-primary);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .status-content {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .detail-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .detail-value {
+            text-align: left;
+        }
+
+        .enrollment-url {
+            flex-direction: column;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+</html>

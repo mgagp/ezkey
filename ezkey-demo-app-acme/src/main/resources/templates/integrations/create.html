@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="content">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">Create New Integration</h1>
+            <p class="page-subtitle">Configure a new application for Ezkey MFA protection</p>
+        </div>
+        <div class="header-actions">
+            <a href="/integrations" class="btn-brutal btn-secondary">
+                <span class="btn-icon">←</span>
+                Back to Integrations
+            </a>
+        </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="form-section" x-data="integrationForm()">
+        
+        <!-- Form Header -->
+        <div class="form-header">
+            <h2 class="form-title">Integration Details</h2>
+            <p class="form-subtitle">Provide basic information about your application</p>
+        </div>
+
+        <!-- Creation Form -->
+        <form id="createIntegrationForm" 
+              th:action="@{/integrations/create}" 
+              method="post"
+              class="brutal-form"
+              @submit.prevent="submitForm"
+              x-ref="form">
+            
+            <!-- Name Field -->
+            <div class="form-group">
+                <label for="integrationName" class="form-label">
+                    <span class="label-text">Integration Name</span>
+                    <span class="label-required">*</span>
+                </label>
+                <input type="text" 
+                       id="integrationName" 
+                       name="integrationName" 
+                       class="form-input"
+                       x-model="formData.integrationName"
+                       @input="validateField('integrationName')"
+                       :class="{ 'input-error': errors.integrationName }"
+                       placeholder="e.g., ACME Customer Portal"
+                       maxlength="100"
+                       required>
+                <div class="input-help">
+                    <span class="help-text">A descriptive name for your application</span>
+                    <span class="char-count" x-text="`${formData.integrationName.length}/100`">0/100</span>
+                </div>
+                <div x-show="errors.integrationName" 
+                     x-text="errors.integrationName" 
+                     class="error-message"
+                     x-transition></div>
+            </div>
+
+            <!-- Description Field -->
+            <div class="form-group">
+                <label for="integrationDescription" class="form-label">
+                    <span class="label-text">Description</span>
+                    <span class="label-required">*</span>
+                </label>
+                <textarea id="integrationDescription" 
+                          name="integrationDescription" 
+                          class="form-textarea"
+                          x-model="formData.integrationDescription"
+                          @input="validateField('integrationDescription')"
+                          :class="{ 'input-error': errors.integrationDescription }"
+                          placeholder="Describe what this integration protects..."
+                          rows="4"
+                          maxlength="500"
+                          required></textarea>
+                <div class="input-help">
+                    <span class="help-text">Explain what this integration will protect</span>
+                    <span class="char-count" x-text="`${formData.integrationDescription.length}/500`">0/500</span>
+                </div>
+                <div x-show="errors.integrationDescription" 
+                     x-text="errors.integrationDescription" 
+                     class="error-message"
+                     x-transition></div>
+            </div>
+
+            <!-- Configuration Preview -->
+            <div class="config-preview" x-show="isFormValid()">
+                <h3 class="preview-title">Configuration Preview</h3>
+                <div class="preview-content">
+                    <div class="preview-item">
+                        <span class="preview-label">Name:</span>
+                        <span class="preview-value" x-text="formData.integrationName">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Description:</span>
+                        <span class="preview-value" x-text="formData.integrationDescription">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Security:</span>
+                        <span class="preview-value security-info">RSA-2048 keys will be generated</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" 
+                        class="btn-brutal btn-primary btn-large"
+                        :disabled="!isFormValid() || isSubmitting"
+                        :class="{ 'btn-loading': isSubmitting }">
+                    <span x-show="!isSubmitting" class="btn-icon">🔧</span>
+                    <span x-show="isSubmitting" class="btn-icon">⏳</span>
+                    <span x-text="isSubmitting ? 'Creating Integration...' : 'Create Integration'">Create Integration</span>
+                </button>
+                <a href="/integrations" class="btn-brutal btn-secondary btn-large">
+                    <span class="btn-icon">✖️</span>
+                    Cancel
+                </a>
+            </div>
+
+            <!-- Success Message Area -->
+            <div x-show="successMessage" 
+                 class="success-section"
+                 x-transition>
+                <div class="success-content">
+                    <div class="success-icon">✅</div>
+                    <div class="success-text">
+                        <h3>Integration Created Successfully!</h3>
+                        <p x-text="successMessage"></p>
+                        <a :href="successRedirectUrl" class="btn-brutal btn-primary">
+                            <span class="btn-icon">👁️</span>
+                            View Integration
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Information Section -->
+    <div class="info-section">
+        <h3 class="info-title">What happens next?</h3>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-icon">🔐</div>
+                <div class="info-content">
+                    <h4>Cryptographic Keys</h4>
+                    <p>RSA-2048 key pair will be automatically generated for secure authentication</p>
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-icon">📱</div>
+                <div class="info-content">
+                    <h4>QR Code Generation</h4>
+                    <p>Enrollment QR code will be available for mobile device registration</p>
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-icon">🚀</div>
+                <div class="info-content">
+                    <h4>Ready to Use</h4>
+                    <p>Integration will be immediately available for enrollment and authentication</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Alpine.js Form Logic -->
+<script>
+    function integrationForm() {
+        return {
+            formData: {
+                integrationName: '',
+                integrationDescription: ''
+            },
+            errors: {},
+            isSubmitting: false,
+            successMessage: '',
+            successRedirectUrl: '',
+
+            validateField(fieldName) {
+                switch(fieldName) {
+                    case 'integrationName':
+                        if (!this.formData.integrationName.trim()) {
+                            this.errors.integrationName = 'Integration name is required';
+                        } else if (this.formData.integrationName.length < 3) {
+                            this.errors.integrationName = 'Name must be at least 3 characters';
+                        } else if (this.formData.integrationName.length > 100) {
+                            this.errors.integrationName = 'Name must be less than 100 characters';
+                        } else {
+                            delete this.errors.integrationName;
+                        }
+                        break;
+                    
+                    case 'integrationDescription':
+                        if (!this.formData.integrationDescription.trim()) {
+                            this.errors.integrationDescription = 'Description is required';
+                        } else if (this.formData.integrationDescription.length < 10) {
+                            this.errors.integrationDescription = 'Description must be at least 10 characters';
+                        } else if (this.formData.integrationDescription.length > 500) {
+                            this.errors.integrationDescription = 'Description must be less than 500 characters';
+                        } else {
+                            delete this.errors.integrationDescription;
+                        }
+                        break;
+                }
+            },
+
+            isFormValid() {
+                this.validateField('integrationName');
+                this.validateField('integrationDescription');
+                return Object.keys(this.errors).length === 0 && 
+                       this.formData.integrationName.trim() && 
+                       this.formData.integrationDescription.trim();
+            },
+
+            async submitForm() {
+                if (!this.isFormValid() || this.isSubmitting) {
+                    return;
+                }
+
+                this.isSubmitting = true;
+
+                try {
+                    const response = await fetch('/integrations/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            integrationName: this.formData.integrationName,
+                            integrationDescription: this.formData.integrationDescription
+                        })
+                    });
+
+                    if (response.ok && response.redirected) {
+                        // Extract integration ID from redirect URL
+                        const redirectUrl = response.url;
+                        const integrationIdMatch = redirectUrl.match(/\/integrations\/(\d+)/);
+                        
+                        if (integrationIdMatch) {
+                            this.successMessage = `Integration "${this.formData.integrationName}" has been created successfully!`;
+                            this.successRedirectUrl = `/integrations/${integrationIdMatch[1]}`;
+                            
+                            // Redirect after a short delay
+                            setTimeout(() => {
+                                window.location.href = this.successRedirectUrl;
+                            }, 2000);
+                        } else {
+                            window.location.href = '/integrations';
+                        }
+                    } else {
+                        throw new Error('Failed to create integration');
+                    }
+                } catch (error) {
+                    console.error('Error creating integration:', error);
+                    alert('Failed to create integration. Please try again.');
+                } finally {
+                    this.isSubmitting = false;
+                }
+            }
+        }
+    }
+</script>
+
+<!-- Create Form Specific Styles -->
+<style>
+    /* Form Section */
+    .form-section {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        margin-bottom: 3rem;
+        box-shadow: 8px 8px 0 var(--acme-dark);
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid var(--acme-primary);
+    }
+
+    .form-title {
+        font-size: 2rem;
+        color: var(--acme-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-subtitle {
+        color: var(--acme-dark);
+        opacity: 0.8;
+        margin: 0;
+    }
+
+    /* Form Styling */
+    .brutal-form {
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 2rem;
+    }
+
+    .form-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--acme-dark);
+    }
+
+    .label-required {
+        color: var(--acme-error);
+        font-weight: 900;
+    }
+
+    .form-input, .form-textarea {
+        width: 100%;
+        padding: 1rem;
+        border: 3px solid var(--acme-dark);
+        background: var(--acme-light);
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 500;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--acme-primary);
+        box-shadow: 4px 4px 0 var(--acme-primary);
+        transform: translate(-1px, -1px);
+    }
+
+    .input-error {
+        border-color: var(--acme-error) !important;
+        box-shadow: 3px 3px 0 var(--acme-error) !important;
+    }
+
+    .input-help {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .help-text {
+        color: var(--acme-dark);
+        opacity: 0.7;
+    }
+
+    .char-count {
+        color: var(--acme-primary);
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    .error-message {
+        color: var(--acme-error);
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Configuration Preview */
+    .config-preview {
+        background: var(--acme-gray);
+        border: 3px solid var(--acme-dark);
+        padding: 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .preview-title {
+        font-size: 1.3rem;
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--acme-primary);
+        padding-bottom: 0.5rem;
+    }
+
+    .preview-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--acme-dark);
+    }
+
+    .preview-item:last-child {
+        border-bottom: none;
+    }
+
+    .preview-label {
+        font-weight: 700;
+        color: var(--acme-dark);
+    }
+
+    .preview-value {
+        color: var(--acme-primary);
+        font-weight: 600;
+        text-align: right;
+        max-width: 60%;
+        word-break: break-word;
+    }
+
+    .security-info {
+        color: var(--acme-success) !important;
+        font-weight: 700 !important;
+    }
+
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-loading {
+        opacity: 0.8;
+        cursor: not-allowed !important;
+        transform: none !important;
+    }
+
+    /* Success Section */
+    .success-section {
+        background: var(--acme-success);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        margin-top: 2rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .success-content {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .success-icon {
+        font-size: 3rem;
+    }
+
+    .success-text h3 {
+        color: var(--acme-dark);
+        margin-bottom: 0.5rem;
+        font-size: 1.5rem;
+    }
+
+    .success-text p {
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+    }
+
+    /* Information Section */
+    .info-section {
+        background: var(--acme-gray);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .info-title {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-card {
+        background: var(--acme-light);
+        border: 3px solid var(--acme-dark);
+        padding: 1.5rem;
+        box-shadow: 4px 4px 0 var(--acme-dark);
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .info-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .info-content h4 {
+        font-size: 1.1rem;
+        color: var(--acme-primary);
+        margin-bottom: 0.5rem;
+        font-weight: 900;
+    }
+
+    .info-content p {
+        color: var(--acme-dark);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .success-content {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .preview-item {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .preview-value {
+            text-align: left;
+            max-width: 100%;
+        }
+    }
+</style>
+</html>

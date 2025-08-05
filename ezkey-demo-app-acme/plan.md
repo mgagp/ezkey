@@ -110,11 +110,10 @@ After the initial phase, we will generate API clients allowing access to Ezkey A
 - [ ] **Auth attempt creation form**: `/auth-attempts/create`
   - Enrollment selection
   - Challenge configuration
-  - Simulation mode available
+  - Simulation mode NOT available MUST NOT BE USED AT ALL RESERVED FOR INTERNAL POSTMAN DEV ONLY TESTS
 - [ ] **Attempt details**: `/auth-attempts/{id}`
   - Attempt timeline
   - Result and details
-  - Simulation data if applicable
 
 ## Phase 4: Complete Demonstration Flow
 
@@ -125,7 +124,6 @@ After the initial phase, we will generate API clients allowing access to Ezkey A
   - Step 2: Create an enrollment
   - Step 3: Create an authentication attempt
   - Step 4: View the result
-- [ ] **Simulation mode**: Use of simulation endpoints
 - [ ] **Test data**: Pre-filling with realistic data
 
 ### 4.2 Advanced Features
@@ -174,7 +172,7 @@ src/main/
 ### Configuration
 - **Port**: `server.port=8082`
 - **Ezkey Admin API**: `ezkey.admin.api.url=http://localhost:9080`
-- **Simulation Mode**: `ezkey.simulation.enabled=true`
+- **Simulation Mode**: `ezkey.simulation.enabled=false` DEV ONLY TOOL NEVER USED OTHERWISE
 
 ## Success Criteria
 
@@ -195,7 +193,6 @@ src/main/
 
 ### Phase 4
 - [ ] Complete demonstration of Ezkey flow
-- [ ] Operational simulation mode
 - [ ] Integrated user documentation
 
 ## Development Notes

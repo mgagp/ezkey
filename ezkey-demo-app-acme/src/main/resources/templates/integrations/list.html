@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="content">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">Ezkey Integrations</h1>
+            <p class="page-subtitle">Manage your application integrations</p>
+        </div>
+        <div class="header-actions">
+            <a href="/integrations/create" class="btn-brutal btn-primary">
+                <span class="btn-icon">➕</span>
+                Create New Integration
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🔧</div>
+            <div class="stat-content">
+                <h3 class="stat-number" th:text="${integrationsCount}">0</h3>
+                <p class="stat-label">Total Integrations</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔐</div>
+            <div class="stat-content">
+                <h3 class="stat-number" th:text="${integrations.size() > 0 ? integrations.size() : '0'}">0</h3>
+                <p class="stat-label">Active Systems</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📱</div>
+            <div class="stat-content">
+                <h3 class="stat-number">Ready</h3>
+                <p class="stat-label">MFA Status</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integrations Table -->
+    <div class="data-section">
+        <div class="section-header">
+            <h2 class="section-title">Integration Registry</h2>
+            <p class="section-subtitle">All configured Ezkey integrations</p>
+        </div>
+
+        <div th:if="${integrations.empty}" class="empty-state">
+            <div class="empty-content">
+                <div class="empty-icon">📋</div>
+                <h3 class="empty-title">No Integrations Found</h3>
+                <p class="empty-description">
+                    Create your first integration to start using Ezkey MFA protection
+                    for your applications.
+                </p>
+                <a href="/integrations/create" class="btn-brutal btn-primary btn-large">
+                    <span class="btn-icon">🚀</span>
+                    Create First Integration
+                </a>
+            </div>
+        </div>
+
+        <div th:unless="${integrations.empty}" class="integrations-table-container">
+            <table class="brutal-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Integration Name</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="integration : ${integrations}" class="table-row">
+                        <td class="id-cell">
+                            <span class="integration-id" th:text="${integration.integrationId}">1</span>
+                        </td>
+                        <td class="name-cell">
+                            <div class="integration-name" th:text="${integration.integrationName}">Integration Name</div>
+                        </td>
+                        <td class="description-cell">
+                            <div class="integration-description" th:text="${integration.integrationDescription}">Description</div>
+                        </td>
+                        <td class="status-cell">
+                            <span class="status-badge" 
+                                  th:class="'status-badge ' + (${integration.integrationActive} ? 'status-active' : 'status-inactive')"
+                                  th:text="${integration.integrationActive} ? 'ACTIVE' : 'INACTIVE'">ACTIVE</span>
+                        </td>
+                        <td class="date-cell">
+                            <span class="creation-date" 
+                                  th:text="${integration.createdAt != null ? #temporals.format(integration.createdAt, 'MMM dd, yyyy') : 'N/A'}">
+                                Jan 01, 2025
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <a th:href="@{/integrations/{id}(id=${integration.integrationId})}" 
+                                   class="btn-brutal btn-secondary btn-small">
+                                    <span class="btn-icon">👁️</span>
+                                    View
+                                </a>
+                                <form th:action="@{/integrations/{id}/delete(id=${integration.integrationId})}" 
+                                      method="post" 
+                                      style="display: inline;"
+                                      onsubmit="return confirm('Are you sure you want to delete this integration?')">
+                                    <button type="submit" class="btn-brutal btn-danger btn-small">
+                                        <span class="btn-icon">🗑️</span>
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Additional Actions -->
+    <div class="actions-section">
+        <div class="actions-content">
+            <h3 class="actions-title">Quick Actions</h3>
+            <div class="quick-actions">
+                <a href="/integrations/create" class="action-card">
+                    <div class="action-icon">➕</div>
+                    <div class="action-content">
+                        <h4>New Integration</h4>
+                        <p>Create a new application integration</p>
+                    </div>
+                </a>
+                <a href="/" class="action-card">
+                    <div class="action-icon">🏠</div>
+                    <div class="action-content">
+                        <h4>Home</h4>
+                        <p>Return to main dashboard</p>
+                    </div>
+                </a>
+                <a href="/about" class="action-card">
+                    <div class="action-icon">ℹ️</div>
+                    <div class="action-content">
+                        <h4>About</h4>
+                        <p>Learn about Ezkey integration</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Integration List Specific Styles -->
+<style>
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 3rem;
+        padding: 2rem 0;
+        border-bottom: 4px solid var(--acme-dark);
+    }
+
+    .header-content h1 {
+        font-size: 3rem;
+        color: var(--acme-primary);
+        margin-bottom: 0.5rem;
+        text-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .header-content p {
+        font-size: 1.2rem;
+        color: var(--acme-dark);
+        margin: 0;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+        transition: transform 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 8px 8px 0 var(--acme-dark);
+    }
+
+    .stat-icon {
+        font-size: 2.5rem;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--acme-primary);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--acme-dark);
+        margin: 0;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    /* Data Section */
+    .data-section {
+        margin-bottom: 3rem;
+    }
+
+    .section-header {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        color: var(--acme-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .section-subtitle {
+        color: var(--acme-dark);
+        opacity: 0.7;
+        margin: 0;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--acme-gray);
+        border: 4px solid var(--acme-dark);
+        box-shadow: 8px 8px 0 var(--acme-dark);
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 2rem;
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+    }
+
+    .empty-description {
+        font-size: 1.1rem;
+        color: var(--acme-dark);
+        margin-bottom: 2rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Brutal Table */
+    .integrations-table-container {
+        overflow-x: auto;
+        border: 4px solid var(--acme-dark);
+        box-shadow: 8px 8px 0 var(--acme-dark);
+    }
+
+    .brutal-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--acme-light);
+    }
+
+    .brutal-table th {
+        background: var(--acme-dark);
+        color: var(--acme-light);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        border-right: 2px solid var(--acme-light);
+    }
+
+    .brutal-table th:last-child {
+        border-right: none;
+    }
+
+    .brutal-table td {
+        padding: 1rem;
+        border-bottom: 2px solid var(--acme-dark);
+        border-right: 2px solid var(--acme-dark);
+    }
+
+    .brutal-table td:last-child {
+        border-right: none;
+    }
+
+    .table-row:nth-child(even) {
+        background-color: var(--acme-gray);
+    }
+
+    .table-row:hover {
+        background-color: var(--acme-secondary);
+        color: var(--acme-dark);
+    }
+
+    /* Table Cell Specific Styles */
+    .integration-id {
+        font-weight: 900;
+        color: var(--acme-primary);
+        font-size: 1.1rem;
+    }
+
+    .integration-name {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .integration-description {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border: 2px solid var(--acme-dark);
+        font-weight: 900;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background: var(--acme-success);
+        color: var(--acme-dark);
+    }
+
+    .status-inactive {
+        background: var(--acme-error);
+        color: var(--acme-light);
+    }
+
+    .creation-date {
+        font-weight: 700;
+        color: var(--acme-dark);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-brutal {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 3px solid var(--acme-dark);
+        background: var(--acme-light);
+        color: var(--acme-dark);
+        text-decoration: none;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .btn-brutal:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .btn-primary {
+        background: var(--acme-primary);
+        color: var(--acme-light);
+    }
+
+    .btn-secondary {
+        background: var(--acme-secondary);
+        color: var(--acme-dark);
+    }
+
+    .btn-danger {
+        background: var(--acme-error);
+        color: var(--acme-light);
+    }
+
+    .btn-small {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-large {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    .btn-icon {
+        font-size: 1rem;
+    }
+
+    /* Actions Section */
+    .actions-section {
+        background: var(--acme-gray);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .actions-title {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin-bottom: 1.5rem;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .action-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--acme-light);
+        border: 3px solid var(--acme-dark);
+        text-decoration: none;
+        color: var(--acme-dark);
+        transition: all 0.2s ease;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .action-card:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 5px 5px 0 var(--acme-dark);
+        color: var(--acme-dark);
+        text-decoration: none;
+    }
+
+    .action-icon {
+        font-size: 2rem;
+    }
+
+    .action-content h4 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 0.25rem 0;
+        text-transform: uppercase;
+    }
+
+    .action-content p {
+        font-size: 0.9rem;
+        margin: 0;
+        opacity: 0.8;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .integrations-table-container {
+            font-size: 0.9rem;
+        }
+
+        .integration-description {
+            max-width: 150px;
+        }
+    }
+</style>
+</html>

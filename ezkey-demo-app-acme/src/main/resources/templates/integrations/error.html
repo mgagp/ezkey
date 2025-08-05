@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="content">
+    
+    <!-- Error Header -->
+    <div class="error-header">
+        <div class="error-icon">⚠️</div>
+        <h1 class="error-title">Integration Error</h1>
+        <p class="error-subtitle">Something went wrong while processing your request</p>
+    </div>
+
+    <!-- Error Content -->
+    <div class="error-content">
+        <div class="error-message-card">
+            <div class="card-header">
+                <span class="card-icon">❌</span>
+                <h2>Error Details</h2>
+            </div>
+            <div class="card-content">
+                <div class="error-text" th:if="${error}" th:text="${error}">
+                    An unexpected error occurred while processing your request.
+                </div>
+                <div class="error-text" th:unless="${error}">
+                    The requested integration could not be found or is no longer available.
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting Steps -->
+        <div class="troubleshooting-card">
+            <div class="card-header">
+                <span class="card-icon">🔧</span>
+                <h2>Troubleshooting</h2>
+            </div>
+            <div class="card-content">
+                <h3>What you can try:</h3>
+                <ul class="troubleshooting-list">
+                    <li>
+                        <strong>Check the integration ID:</strong> 
+                        Make sure you're using the correct integration identifier
+                    </li>
+                    <li>
+                        <strong>Verify API connectivity:</strong> 
+                        Ensure the Ezkey Admin API is running on port 9080
+                    </li>
+                    <li>
+                        <strong>Refresh the page:</strong> 
+                        Sometimes temporary network issues can cause this error
+                    </li>
+                    <li>
+                        <strong>Return to the list:</strong> 
+                        View all available integrations and try again
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="error-actions">
+        <a href="/integrations" class="btn-brutal btn-primary btn-large">
+            <span class="btn-icon">📋</span>
+            View All Integrations
+        </a>
+        <a href="/integrations/create" class="btn-brutal btn-secondary btn-large">
+            <span class="btn-icon">➕</span>
+            Create New Integration
+        </a>
+        <a href="/" class="btn-brutal btn-secondary btn-large">
+            <span class="btn-icon">🏠</span>
+            Return Home
+        </a>
+        <button onclick="window.location.reload()" class="btn-brutal btn-secondary btn-large">
+            <span class="btn-icon">🔄</span>
+            Retry
+        </button>
+    </div>
+
+    <!-- System Status -->
+    <div class="system-status">
+        <h3 class="status-title">System Status</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-icon">🌐</div>
+                <div class="status-content">
+                    <h4>ACME Demo App</h4>
+                    <span class="status-active">Online</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🔌</div>
+                <div class="status-content">
+                    <h4>Ezkey Admin API</h4>
+                    <span class="status-unknown">Checking...</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">📊</div>
+                <div class="status-content">
+                    <h4>Database</h4>
+                    <span class="status-unknown">Checking...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- JavaScript for Status Checking -->
+<script>
+    // Simple status checking simulation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Simulate API status check
+        setTimeout(() => {
+            const apiStatus = document.querySelector('.status-item:nth-child(2) .status-unknown');
+            if (apiStatus) {
+                // In a real implementation, this would make an actual API call
+                const isApiOnline = Math.random() > 0.3; // Simulate 70% chance of being online
+                
+                if (isApiOnline) {
+                    apiStatus.textContent = 'Online';
+                    apiStatus.className = 'status-active';
+                } else {
+                    apiStatus.textContent = 'Offline';
+                    apiStatus.className = 'status-error';
+                }
+            }
+        }, 1000);
+
+        // Simulate database status check
+        setTimeout(() => {
+            const dbStatus = document.querySelector('.status-item:nth-child(3) .status-unknown');
+            if (dbStatus) {
+                const isDbOnline = Math.random() > 0.2; // Simulate 80% chance of being online
+                
+                if (isDbOnline) {
+                    dbStatus.textContent = 'Online';
+                    dbStatus.className = 'status-active';
+                } else {
+                    dbStatus.textContent = 'Error';
+                    dbStatus.className = 'status-error';
+                }
+            }
+        }, 1500);
+    });
+</script>
+
+<!-- Error Page Specific Styles -->
+<style>
+    /* Error Header */
+    .error-header {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: var(--acme-error);
+        border: 4px solid var(--acme-dark);
+        margin-bottom: 3rem;
+        box-shadow: 8px 8px 0 var(--acme-dark);
+    }
+
+    .error-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+    }
+
+    .error-title {
+        font-size: 3rem;
+        color: var(--acme-light);
+        margin-bottom: 0.5rem;
+        text-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .error-subtitle {
+        font-size: 1.2rem;
+        color: var(--acme-light);
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    /* Error Content */
+    .error-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .error-message-card, .troubleshooting-card {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .card-header {
+        background: var(--acme-primary);
+        color: var(--acme-light);
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .card-icon {
+        font-size: 1.5rem;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+
+    .error-text {
+        font-size: 1.1rem;
+        color: var(--acme-dark);
+        line-height: 1.5;
+        background: var(--acme-gray);
+        padding: 1rem;
+        border: 2px solid var(--acme-dark);
+        margin-bottom: 1rem;
+    }
+
+    .troubleshooting-card h3 {
+        font-size: 1.2rem;
+        color: var(--acme-primary);
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        font-weight: 900;
+    }
+
+    .troubleshooting-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .troubleshooting-list li {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--acme-gray);
+        line-height: 1.4;
+    }
+
+    .troubleshooting-list li:last-child {
+        border-bottom: none;
+    }
+
+    .troubleshooting-list strong {
+        color: var(--acme-primary);
+        font-weight: 700;
+    }
+
+    /* Error Actions */
+    .error-actions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 3rem;
+        padding: 2rem;
+        background: var(--acme-gray);
+        border: 4px solid var(--acme-dark);
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    /* System Status */
+    .system-status {
+        background: var(--acme-light);
+        border: 4px solid var(--acme-dark);
+        padding: 2rem;
+        box-shadow: 6px 6px 0 var(--acme-dark);
+    }
+
+    .status-title {
+        font-size: 1.5rem;
+        color: var(--acme-dark);
+        margin-bottom: 1.5rem;
+        text-align: center;
+        text-transform: uppercase;
+        font-weight: 900;
+    }
+
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--acme-gray);
+        border: 3px solid var(--acme-dark);
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .status-item .status-icon {
+        font-size: 1.5rem;
+    }
+
+    .status-content h4 {
+        font-size: 1rem;
+        color: var(--acme-dark);
+        margin: 0 0 0.25rem 0;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        color: var(--acme-success) !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    .status-error {
+        color: var(--acme-error) !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    .status-unknown {
+        color: var(--acme-secondary) !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    /* Button Styles */
+    .btn-brutal {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 3px solid var(--acme-dark);
+        background: var(--acme-light);
+        color: var(--acme-dark);
+        text-decoration: none;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .btn-brutal:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 4px 4px 0 var(--acme-dark);
+        text-decoration: none;
+        color: var(--acme-dark);
+    }
+
+    .btn-primary {
+        background: var(--acme-primary);
+        color: var(--acme-light);
+    }
+
+    .btn-primary:hover {
+        color: var(--acme-light);
+    }
+
+    .btn-secondary {
+        background: var(--acme-secondary);
+        color: var(--acme-dark);
+    }
+
+    .btn-large {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    .btn-icon {
+        font-size: 1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .error-header {
+            padding: 2rem 1rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+        }
+
+        .error-content {
+            grid-template-columns: 1fr;
+        }
+
+        .error-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .status-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .status-item {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+
+    /* Animation for status updates */
+    .status-item span {
+        transition: all 0.3s ease;
+    }
+</style>
+</html>
