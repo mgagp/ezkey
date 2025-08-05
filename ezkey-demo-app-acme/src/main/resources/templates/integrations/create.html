@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" href="/css/neo-brutalism.css">
+    <link rel="stylesheet" href="/css/acme-theme.css">
+</head>
 <div th:fragment="content">
-    
-    <!-- Page Header -->
-    <div class="page-header">
+    <div class="page-header neo-brutal-header">
         <div class="header-content">
             <h1 class="page-title">Create New Integration</h1>
             <p class="page-subtitle">Configure a new application for Ezkey MFA protection</p>
         </div>
         <div class="header-actions">
-            <a href="/integrations" class="btn-brutal btn-secondary">
+            <a href="/integrations" class="neo-brutal-button secondary">
                 <span class="btn-icon">←</span>
                 Back to Integrations
             </a>
         </div>
     </div>
-
-    <!-- Form Section -->
-    <div class="form-section" x-data="integrationForm()">
+    <div class="form-section neo-brutal-main" x-data="integrationForm()">
         
         <!-- Form Header -->
         <div class="form-header">
@@ -29,7 +29,7 @@
         <form id="createIntegrationForm" 
               th:action="@{/integrations/create}" 
               method="post"
-              class="brutal-form"
+              class="brutal-form neo-brutal-main"
               @submit.prevent="submitForm"
               x-ref="form">
             
@@ -107,14 +107,14 @@
             <!-- Form Actions -->
             <div class="form-actions">
                 <button type="submit" 
-                        class="btn-brutal btn-primary btn-large"
+                        class="neo-brutal-button primary btn-large"
                         :disabled="!isFormValid() || isSubmitting"
                         :class="{ 'btn-loading': isSubmitting }">
                     <span x-show="!isSubmitting" class="btn-icon">🔧</span>
                     <span x-show="isSubmitting" class="btn-icon">⏳</span>
                     <span x-text="isSubmitting ? 'Creating Integration...' : 'Create Integration'">Create Integration</span>
                 </button>
-                <a href="/integrations" class="btn-brutal btn-secondary btn-large">
+                <a href="/integrations" class="neo-brutal-button secondary btn-large">
                     <span class="btn-icon">✖️</span>
                     Cancel
                 </a>
@@ -129,7 +129,7 @@
                     <div class="success-text">
                         <h3>Integration Created Successfully!</h3>
                         <p x-text="successMessage"></p>
-                        <a :href="successRedirectUrl" class="btn-brutal btn-primary">
+                        <a :href="successRedirectUrl" class="neo-brutal-button primary">
                             <span class="btn-icon">👁️</span>
                             View Integration
                         </a>

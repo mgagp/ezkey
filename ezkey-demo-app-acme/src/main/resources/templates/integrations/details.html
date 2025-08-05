@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" href="/css/neo-brutalism.css">
+    <link rel="stylesheet" href="/css/acme-theme.css">
+</head>
 <div th:fragment="content">
-    
     <!-- Page Header -->
-    <div class="page-header">
+    <div class="page-header neo-brutal-header">
         <div class="header-content">
             <h1 class="page-title" th:text="${integration.integrationName}">Integration Name</h1>
             <p class="page-subtitle">Integration Details & Management</p>
         </div>
         <div class="header-actions">
-            <a href="/integrations" class="btn-brutal btn-secondary">
+            <a href="/integrations" class="neo-brutal-button secondary">
                 <span class="btn-icon">←</span>
                 Back to List
             </a>
@@ -17,7 +20,7 @@
                   method="post" 
                   style="display: inline;"
                   onsubmit="return confirm('Are you sure you want to delete this integration? This action cannot be undone.')">
-                <button type="submit" class="btn-brutal btn-danger">
+                <button type="submit" class="neo-brutal-button table-delete-btn">
                     <span class="btn-icon">🗑️</span>
                     Delete Integration
                 </button>
