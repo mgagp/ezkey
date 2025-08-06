@@ -19,6 +19,7 @@ import org.ezkey.integration.domain.IntegrationResponse;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.IntegrationI18n;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
+import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -166,5 +167,18 @@ public interface IntegrationControllerMapper {
      * @see IntegrationResponse
      */
     IntegrationResponseDto toResponse(Integration integration);
+
+    /**
+     * Converts an IntegrationCreateResponse domain object to an IntegrationResponseDto.
+     * <p>
+     * This method maps the create response domain object to the response DTO used by the API layer.
+     * </p>
+     *
+     * @param savedIntegration the IntegrationCreateResponse domain object to convert
+     * @return the corresponding IntegrationResponseDto
+     * @see IntegrationCreateResponse
+     * @see IntegrationCreateResponseDto
+     */
+    IntegrationCreateResponseDto toCreateResponseDto(IntegrationCreateResponse savedIntegration);
 
 }

@@ -10,20 +10,20 @@
 
 package org.ezkey.demo.acme.service;
 
-import org.ezkey.demo.acme.dto.IntegrationCreateRequestDto;
-import org.ezkey.demo.acme.dto.IntegrationDto;
+import java.time.Duration;
+import java.util.List;
+
+import org.ezkey.demo.acme.generated.dto.IntegrationCreateRequestDto;
+import org.ezkey.demo.acme.generated.dto.IntegrationResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.time.Duration;
-import java.util.List;
 
 /**
  * Business service for managing Ezkey integrations via Admin API.
@@ -65,7 +65,7 @@ public class IntegrationService {
      *
      * @param ezkeyAdminApiClient the configured WebClient for Ezkey Admin API
      */
-    public IntegrationService(@Qualifier("ezkeyAdminApiClient") WebClient ezkeyAdminApiClient) {
+    public IntegrationService(@Qualifier("ezkeyAdminApiClient") WebClient ezkeyAdminApiClient){
         this.ezkeyAdminApiClient = ezkeyAdminApiClient;
     }
 
@@ -76,25 +76,18 @@ public class IntegrationService {
      * This is used to populate the integrations list page in the demo application.
      * </p>
      *
-     * @return Flux of IntegrationDto objects representing all integrations
+     * @return Flux of IntegrationResponseDto objects representing all integrations
      */
-    public Flux<IntegrationDto> getAllIntegrations() {
+    public Flux<IntegrationResponseDto> getAllIntegrations() {
         logger.debug("Fetching all integrations from Ezkey Admin API");
-        
-        return ezkeyAdminApiClient
-                .get()
-                .uri("/api/v1/integrations")
-                .retrieve()
-                .bodyToFlux(IntegrationDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .doOnNext(integration -> logger.debug("Received integration: {}", integration.getIntegrationName()))
-                .doOnError(error -> logger.error("Error fetching integrations", error))
-                .onErrorResume(WebClientResponseException.class, ex -> {
-                    logger.warn("API error fetching integrations: {} - {}", ex.getStatusCode(), ex.getMessage());
+
+        return ezkeyAdminApiClient.get().uri("/api/v1/integrations").retrieve().bodyToFlux(IntegrationResponseDto.class).timeout(Duration.ofSeconds(10))
+                .doOnNext(integration -> logger.debug("Received integration: {}",integration.getId())).doOnError(error -> logger.error("Error fetching integrations",error))
+                .onErrorResume(WebClientResponseException.class,ex -> {
+                    logger.warn("API error fetching integrations: {} - {}",ex.getStatusCode(),ex.getMessage());
                     return Flux.empty();
-                })
-                .onErrorResume(Exception.class, ex -> {
-                    logger.error("Unexpected error fetching integrations", ex);
+                }).onErrorResume(Exception.class,ex -> {
+                    logger.error("Unexpected error fetching integrations",ex);
                     return Flux.empty();
                 });
     }
@@ -108,29 +101,22 @@ public class IntegrationService {
      * </p>
      *
      * @param integrationId the unique identifier of the integration
-     * @return Mono of IntegrationDto or empty if not found
+     * @return Mono of IntegrationResponseDto or empty if not found
      */
-    public Mono<IntegrationDto> getIntegrationById(Integer integrationId) {
-        logger.debug("Fetching integration with ID: {}", integrationId);
-        
-        return ezkeyAdminApiClient
-                .get()
-                .uri("/api/v1/integrations/{id}", integrationId)
-                .retrieve()
-                .bodyToMono(IntegrationDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .doOnNext(integration -> logger.debug("Received integration details: {}", integration.getIntegrationName()))
-                .doOnError(error -> logger.error("Error fetching integration {}", integrationId, error))
-                .onErrorResume(WebClientResponseException.class, ex -> {
-                    if (ex.getStatusCode().value() == 404) {
-                        logger.warn("Integration {} not found", integrationId);
+    public Mono<IntegrationResponseDto> getIntegrationById(Integer integrationId) {
+        logger.debug("Fetching integration with ID: {}",integrationId);
+
+        return ezkeyAdminApiClient.get().uri("/api/v1/integrations/{id}",integrationId).retrieve().bodyToMono(IntegrationResponseDto.class).timeout(Duration.ofSeconds(10))
+                .doOnNext(integration -> logger.debug("Received integration details: {}",integration))
+                .doOnError(error -> logger.error("Error fetching integration {}",integrationId,error)).onErrorResume(WebClientResponseException.class,ex -> {
+                    if (ex.getStatusCode().value() == 404){
+                        logger.warn("Integration {} not found",integrationId);
                         return Mono.empty();
                     }
-                    logger.warn("API error fetching integration {}: {} - {}", integrationId, ex.getStatusCode(), ex.getMessage());
+                    logger.warn("API error fetching integration {}: {} - {}",integrationId,ex.getStatusCode(),ex.getMessage());
                     return Mono.empty();
-                })
-                .onErrorResume(Exception.class, ex -> {
-                    logger.error("Unexpected error fetching integration {}", integrationId, ex);
+                }).onErrorResume(Exception.class,ex -> {
+                    logger.error("Unexpected error fetching integration {}",integrationId,ex);
                     return Mono.empty();
                 });
     }
@@ -144,21 +130,14 @@ public class IntegrationService {
      * </p>
      *
      * @param createRequest the integration creation request
-     * @return Mono of created IntegrationDto or error
+     * @return Mono of created IntegrationResponseDto or error
      */
-    public Mono<IntegrationDto> createIntegration(IntegrationCreateRequestDto createRequest) {
-        logger.debug("Creating new integration: {}", createRequest.getIntegrationName());
-        
-        return ezkeyAdminApiClient
-                .post()
-                .uri("/api/v1/integrations")
-                .bodyValue(createRequest)
-                .retrieve()
-                .bodyToMono(IntegrationDto.class)
-                .timeout(Duration.ofSeconds(15))
-                .doOnNext(integration -> logger.info("Successfully created integration: {} with ID: {}", 
-                        integration.getIntegrationName(), integration.getIntegrationId()))
-                .doOnError(error -> logger.error("Error creating integration: {}", createRequest.getIntegrationName(), error));
+    public Mono<IntegrationResponseDto> createIntegration(IntegrationCreateRequestDto createRequest) {
+        logger.debug("Creating new integration: {}",createRequest.toString());
+
+        return ezkeyAdminApiClient.post().uri("/api/v1/integrations").bodyValue(createRequest).retrieve().bodyToMono(IntegrationResponseDto.class)
+                .timeout(Duration.ofSeconds(15)).doOnNext(integration -> logger.info("Successfully created integration: {} with ID: {}",integration))
+                .doOnError(error -> logger.error("Error creating integration: {}",createRequest,error));
     }
 
     /**
@@ -173,16 +152,11 @@ public class IntegrationService {
      * @return Mono<Void> indicating completion or error
      */
     public Mono<Void> deleteIntegration(Integer integrationId) {
-        logger.debug("Deleting integration with ID: {}", integrationId);
-        
-        return ezkeyAdminApiClient
-                .delete()
-                .uri("/api/v1/integrations/{id}", integrationId)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .timeout(Duration.ofSeconds(10))
-                .doOnSuccess(v -> logger.info("Successfully deleted integration: {}", integrationId))
-                .doOnError(error -> logger.error("Error deleting integration {}", integrationId, error));
+        logger.debug("Deleting integration with ID: {}",integrationId);
+
+        return ezkeyAdminApiClient.delete().uri("/api/v1/integrations/{id}",integrationId).retrieve().bodyToMono(Void.class).timeout(Duration.ofSeconds(10))
+                .doOnSuccess(v -> logger.info("Successfully deleted integration: {}",integrationId))
+                .doOnError(error -> logger.error("Error deleting integration {}",integrationId,error));
     }
 
     /**
@@ -192,12 +166,10 @@ public class IntegrationService {
      * in traditional Spring MVC controllers that expect synchronous results.
      * </p>
      *
-     * @return List of IntegrationDto objects
+     * @return List of IntegrationResponseDto objects
      */
-    public List<IntegrationDto> getAllIntegrationsSync() {
-        return getAllIntegrations()
-                .collectList()
-                .block(Duration.ofSeconds(30));
+    public List<IntegrationResponseDto> getAllIntegrationsSync() {
+        return getAllIntegrations().collectList().block(Duration.ofSeconds(30));
     }
 
     /**
@@ -208,11 +180,10 @@ public class IntegrationService {
      * </p>
      *
      * @param integrationId the unique identifier of the integration
-     * @return IntegrationDto or null if not found
+     * @return IntegrationResponseDto or null if not found
      */
-    public IntegrationDto getIntegrationByIdSync(Integer integrationId) {
-        return getIntegrationById(integrationId)
-                .block(Duration.ofSeconds(30));
+    public IntegrationResponseDto getIntegrationByIdSync(Integer integrationId) {
+        return getIntegrationById(integrationId).block(Duration.ofSeconds(30));
     }
 
     /**
@@ -223,10 +194,9 @@ public class IntegrationService {
      * </p>
      *
      * @param createRequest the integration creation request
-     * @return created IntegrationDto
+     * @return created IntegrationResponseDto
      */
-    public IntegrationDto createIntegrationSync(IntegrationCreateRequestDto createRequest) {
-        return createIntegration(createRequest)
-                .block(Duration.ofSeconds(30));
+    public IntegrationResponseDto createIntegrationSync(IntegrationCreateRequestDto createRequest) {
+        return createIntegration(createRequest).block(Duration.ofSeconds(30));
     }
 }

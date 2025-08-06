@@ -10,17 +10,21 @@
 
 package org.ezkey.demo.acme.controller;
 
-import org.ezkey.demo.acme.dto.IntegrationCreateRequestDto;
-import org.ezkey.demo.acme.dto.IntegrationDto;
+import java.util.List;
+
+import org.ezkey.demo.acme.generated.dto.IntegrationCreateRequestDto;
+import org.ezkey.demo.acme.generated.dto.IntegrationResponseDto;
 import org.ezkey.demo.acme.service.IntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import java.util.List;
 
 /**
  * Web controller for integration management in ACME demo application.
@@ -66,7 +70,7 @@ public class IntegrationController {
      *
      * @param integrationService the service for integration operations
      */
-    public IntegrationController(IntegrationService integrationService) {
+    public IntegrationController(IntegrationService integrationService){
         this.integrationService = integrationService;
     }
 
@@ -84,24 +88,21 @@ public class IntegrationController {
     @GetMapping
     public String listIntegrations(Model model) {
         logger.debug("Displaying integrations list page");
-        
-        try {
-            List<IntegrationDto> integrations = integrationService.getAllIntegrationsSync();
-            
-            model.addAttribute("pageTitle", "Ezkey Integrations - ACME Inc");
-            model.addAttribute("integrations", integrations);
-            model.addAttribute("integrationsCount", integrations.size());
-            
-            logger.debug("Found {} integrations to display", integrations.size());
-            
-        } catch (Exception e) {
-            logger.error("Error loading integrations list", e);
-            model.addAttribute("pageTitle", "Error - ACME Inc");
-            model.addAttribute("integrations", List.of());
-            model.addAttribute("integrationsCount", 0);
-            model.addAttribute("error", "Unable to load integrations. Please check that Ezkey Admin API is running.");
+        try{
+            List<IntegrationResponseDto> integrations = integrationService.getAllIntegrationsSync();
+
+            model.addAttribute("pageTitle","Ezkey Integrations - ACME Inc");
+            model.addAttribute("integrations",integrations);
+            model.addAttribute("integrationsCount",integrations.size());
+
+            logger.debug("Found {} integrations to display",integrations.size());
+        } catch (Exception e){
+            logger.error("Error loading integrations list",e);
+            model.addAttribute("pageTitle","Error - ACME Inc");
+            model.addAttribute("integrations",List.of());
+            model.addAttribute("integrationsCount",0);
+            model.addAttribute("error","Unable to load integrations. Please check that Ezkey Admin API is running.");
         }
-        
         return "integrations/list";
     }
 
@@ -119,10 +120,10 @@ public class IntegrationController {
     @GetMapping("/create")
     public String createIntegrationForm(Model model) {
         logger.debug("Displaying integration creation form");
-        
-        model.addAttribute("pageTitle", "Create Integration - ACME Inc");
-        model.addAttribute("integrationRequest", new IntegrationCreateRequestDto());
-        
+
+        model.addAttribute("pageTitle","Create Integration - ACME Inc");
+        model.addAttribute("integrationRequest",new IntegrationCreateRequestDto());
+
         return "integrations/create";
     }
 
@@ -139,42 +140,22 @@ public class IntegrationController {
      * @return redirect URL based on success or failure
      */
     @PostMapping("/create")
-    public String createIntegration(@ModelAttribute IntegrationCreateRequestDto integrationRequest,
-                                  RedirectAttributes redirectAttributes) {
-        logger.debug("Processing integration creation: {}", integrationRequest.getIntegrationName());
-        
-        try {
-            // Validate required fields
-            if (integrationRequest.getIntegrationName() == null || integrationRequest.getIntegrationName().trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("error", "Integration name is required");
-                return "redirect:/integrations/create";
-            }
-            
-            if (integrationRequest.getIntegrationDescription() == null || integrationRequest.getIntegrationDescription().trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("error", "Integration description is required");
-                return "redirect:/integrations/create";
-            }
-            
+    public String createIntegration(@ModelAttribute IntegrationCreateRequestDto integrationRequest,RedirectAttributes redirectAttributes) {
+        logger.debug("Processing integration creation: {}",integrationRequest.getI18n().get(0).getName());
+        try{
             // Create the integration
-            IntegrationDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
-            
-            if (createdIntegration != null) {
-                logger.info("Successfully created integration: {} with ID: {}", 
-                        createdIntegration.getIntegrationName(), createdIntegration.getIntegrationId());
-                
-                redirectAttributes.addFlashAttribute("success", 
-                        "Integration '" + createdIntegration.getIntegrationName() + "' created successfully!");
-                
-                return "redirect:/integrations/" + createdIntegration.getIntegrationId();
-            } else {
-                redirectAttributes.addFlashAttribute("error", "Failed to create integration");
+            IntegrationResponseDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
+            if (createdIntegration != null){
+                redirectAttributes.addFlashAttribute("success","Integration created successfully!");
+
+                return "redirect:/integrations/" + createdIntegration.getId();
+            } else{
+                redirectAttributes.addFlashAttribute("error","Failed to create integration");
                 return "redirect:/integrations/create";
             }
-            
-        } catch (Exception e) {
-            logger.error("Error creating integration: {}", integrationRequest.getIntegrationName(), e);
-            redirectAttributes.addFlashAttribute("error", 
-                    "Failed to create integration: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Error creating integration",e);
+            redirectAttributes.addFlashAttribute("error","Failed to create integration: " + e.getMessage());
             return "redirect:/integrations/create";
         }
     }
@@ -193,34 +174,31 @@ public class IntegrationController {
      * @return the name of the Thymeleaf template to render
      */
     @GetMapping("/{id}")
-    public String integrationDetails(@PathVariable("id") Integer integrationId, Model model) {
-        logger.debug("Displaying details for integration ID: {}", integrationId);
-        
-        try {
-            IntegrationDto integration = integrationService.getIntegrationByIdSync(integrationId);
-            
-            if (integration != null) {
-                model.addAttribute("pageTitle", integration.getIntegrationName() + " - ACME Inc");
-                model.addAttribute("integration", integration);
-                
+    public String integrationDetails(@PathVariable("id") Integer integrationId,Model model) {
+        logger.debug("Displaying details for integration ID: {}",integrationId);
+        try{
+            IntegrationResponseDto integration = integrationService.getIntegrationByIdSync(integrationId);
+            if (integration != null){
+                model.addAttribute("pageTitle","ACME Inc");
+                model.addAttribute("integration",integration);
+
                 // Generate QR code data for enrollment (placeholder for now)
-                String enrollmentUrl = "ezkey://enroll/" + integration.getIntegrationId();
-                model.addAttribute("enrollmentQrData", enrollmentUrl);
-                
-                logger.debug("Displaying details for integration: {}", integration.getIntegrationName());
-                
+                String enrollmentUrl = "ezkey://enroll/" + integration.getId();
+                model.addAttribute("enrollmentQrData",enrollmentUrl);
+
+                logger.debug("Displaying details for integration: {}",integration.getI18n().get(0).getName());
+
                 return "integrations/details";
-            } else {
-                logger.warn("Integration not found: {}", integrationId);
-                model.addAttribute("pageTitle", "Integration Not Found - ACME Inc");
-                model.addAttribute("error", "Integration not found");
+            } else{
+                logger.warn("Integration not found: {}",integrationId);
+                model.addAttribute("pageTitle","Integration Not Found - ACME Inc");
+                model.addAttribute("error","Integration not found");
                 return "integrations/error";
             }
-            
-        } catch (Exception e) {
-            logger.error("Error loading integration details: {}", integrationId, e);
-            model.addAttribute("pageTitle", "Error - ACME Inc");
-            model.addAttribute("error", "Unable to load integration details: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Error loading integration details: {}",integrationId,e);
+            model.addAttribute("pageTitle","Error - ACME Inc");
+            model.addAttribute("error","Unable to load integration details: " + e.getMessage());
             return "integrations/error";
         }
     }
@@ -238,21 +216,17 @@ public class IntegrationController {
      * @return redirect to integrations list with success or error message
      */
     @PostMapping("/{id}/delete")
-    public String deleteIntegration(@PathVariable("id") Integer integrationId,
-                                  RedirectAttributes redirectAttributes) {
-        logger.debug("Deleting integration ID: {}", integrationId);
-        
-        try {
+    public String deleteIntegration(@PathVariable("id") Integer integrationId,RedirectAttributes redirectAttributes) {
+        logger.debug("Deleting integration ID: {}",integrationId);
+        try{
             integrationService.deleteIntegration(integrationId).block();
-            
-            logger.info("Successfully deleted integration: {}", integrationId);
-            redirectAttributes.addFlashAttribute("success", "Integration deleted successfully");
-            
-        } catch (Exception e) {
-            logger.error("Error deleting integration: {}", integrationId, e);
-            redirectAttributes.addFlashAttribute("error", "Failed to delete integration: " + e.getMessage());
+
+            logger.info("Successfully deleted integration: {}",integrationId);
+            redirectAttributes.addFlashAttribute("success","Integration deleted successfully");
+        } catch (Exception e){
+            logger.error("Error deleting integration: {}",integrationId,e);
+            redirectAttributes.addFlashAttribute("error","Failed to delete integration: " + e.getMessage());
         }
-        
         return "redirect:/integrations";
     }
 
@@ -268,38 +242,22 @@ public class IntegrationController {
      * @param model the Spring MVC model for response data
      * @return fragment template for htmx response
      */
-    @PostMapping(value = "/create", headers = "HX-Request")
-    public String createIntegrationHtmx(@ModelAttribute IntegrationCreateRequestDto integrationRequest,
-                                       Model model) {
-        logger.debug("Processing htmx integration creation: {}", integrationRequest.getIntegrationName());
-        
-        try {
-            // Validate required fields
-            if (integrationRequest.getIntegrationName() == null || integrationRequest.getIntegrationName().trim().isEmpty()) {
-                model.addAttribute("error", "Integration name is required");
-                return "integrations/create :: form";
-            }
-            
-            if (integrationRequest.getIntegrationDescription() == null || integrationRequest.getIntegrationDescription().trim().isEmpty()) {
-                model.addAttribute("error", "Integration description is required");
-                return "integrations/create :: form";
-            }
-            
+    @PostMapping(value = "/create",headers = "HX-Request")
+    public String createIntegrationHtmx(@ModelAttribute IntegrationCreateRequestDto integrationRequest,Model model) {
+        try{
             // Create the integration
-            IntegrationDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
-            
-            if (createdIntegration != null) {
-                model.addAttribute("success", "Integration '" + createdIntegration.getIntegrationName() + "' created successfully!");
-                model.addAttribute("createdIntegration", createdIntegration);
+            IntegrationResponseDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
+            if (createdIntegration != null){
+                model.addAttribute("success","Integration created successfully!");
+                model.addAttribute("createdIntegration",createdIntegration);
                 return "integrations/create :: success";
-            } else {
-                model.addAttribute("error", "Failed to create integration");
+            } else{
+                model.addAttribute("error","Failed to create integration");
                 return "integrations/create :: form";
             }
-            
-        } catch (Exception e) {
-            logger.error("Error in htmx integration creation", e);
-            model.addAttribute("error", "Failed to create integration: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Error in htmx integration creation",e);
+            model.addAttribute("error","Failed to create integration: " + e.getMessage());
             return "integrations/create :: form";
         }
     }

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 	
 	<parent>
 		<groupId>org.ezkey</groupId>
@@ -68,6 +70,32 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 		
+		<!-- Jackson for JSON processing (required for generated DTOs) -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+		</dependency>
+		
+		<!-- OpenAPI annotations for generated DTOs -->
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>2.2.8</version>
+		</dependency>
+		
+		<!-- Validation API for generated DTOs -->
+		<dependency>
+			<groupId>jakarta.validation</groupId>
+			<artifactId>jakarta.validation-api</artifactId>
+		</dependency>
+		
+		<!-- JsonNullable library for OpenAPI generated DTOs -->
+		<dependency>
+			<groupId>org.openapitools</groupId>
+			<artifactId>jackson-databind-nullable</artifactId>
+			<version>0.2.6</version>
+		</dependency>
+		
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -89,6 +117,83 @@
 						</exclude>
 					</excludes>
 				</configuration>
+			</plugin>
+			
+			<!-- OpenAPI Generator Plugin -->
+			<plugin>
+				<groupId>org.openapitools</groupId>
+				<artifactId>openapi-generator-maven-plugin</artifactId>
+				<version>7.14.0</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
+							<generatorName>java</generatorName>
+							<configOptions>
+								<java8>false</java8>
+								<dateLibrary>java8</dateLibrary>
+								<modelDateTimeMapping>LocalDateTime</modelDateTimeMapping>
+								<modelFormatAnnotation>true</modelFormatAnnotation>
+								<modelFormatPattern>yyyy-MM-dd'T'HH:mm:ss.SSSSSS</modelFormatPattern>
+								<library>resttemplate</library>
+								<serializationLibrary>jackson</serializationLibrary>
+								<useJakartaEe>true</useJakartaEe>
+								<generateClientAsBean>false</generateClientAsBean>
+								<generateApis>false</generateApis>
+								<generateModels>true</generateModels>
+								<generateSupportingFiles>false</generateSupportingFiles>
+								<hideGenerationTimestamp>true</hideGenerationTimestamp>
+								<skipDefaultInterface>true</skipDefaultInterface>
+								<interfaceOnly>false</interfaceOnly>
+								<useBeanValidation>true</useBeanValidation>
+							</configOptions>
+							<typeMappings>
+                            	<typeMapping>string+localDateTime=LocalDateTime</typeMapping>
+                            	<typeMapping>string+localTime=LocalTime</typeMapping>
+                            	<typeMapping>string+date-time=LocalTime</typeMapping>
+                        	</typeMappings>
+                        	<importMappings>
+        						<importMapping>java.time.OffsetDateTime=java.time.LocalDateTime</importMapping>
+    						</importMappings>
+                        	<schemaMappings>
+                            	<mapping>LocalDateTime=java.time.LocalDateTime</mapping>
+                            	<mapping>LocalTime=java.time.LocalTime</mapping>                                
+	                        </schemaMappings>
+							<output>${project.build.directory}/generated-sources/openapi</output>
+							<modelPackage>org.ezkey.demo.acme.generated.dto</modelPackage>
+							<apiPackage>org.ezkey.demo.acme.generated.api</apiPackage>
+							<invokerPackage>org.ezkey.demo.acme.generated.client</invokerPackage>
+							<generateModelDocumentation>true</generateModelDocumentation>
+							<generateApiDocumentation>false</generateApiDocumentation>
+							<modelNameSuffix></modelNameSuffix>
+							<removeOperationIdPrefix>true</removeOperationIdPrefix>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			
+			<!-- Add generated sources to compilation -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.4.0</version>
+				<executions>
+					<execution>
+						<id>add-generated-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

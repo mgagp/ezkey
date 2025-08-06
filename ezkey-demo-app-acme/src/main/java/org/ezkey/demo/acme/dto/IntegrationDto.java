@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,7 @@ public class IntegrationDto {
     private Boolean integrationActive;
 
     @JsonProperty("createdAt")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     private LocalDateTime createdAt;
 
     @JsonProperty("i18n")

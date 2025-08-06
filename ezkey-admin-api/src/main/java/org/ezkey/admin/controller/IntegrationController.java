@@ -19,6 +19,7 @@ import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationResponse;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
+import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
@@ -154,11 +155,11 @@ public class IntegrationController {
             value = { @ApiResponse(responseCode = "201",description = "Integration created successfully"),@ApiResponse(responseCode = "400",description = "Invalid data"),
                     @ApiResponse(responseCode = "500",description = "Internal server error") })
     @PostMapping
-    public ResponseEntity<IntegrationCreateResponse> create(
+    public ResponseEntity<IntegrationCreateResponseDto> create(
             @Parameter(description = "Integration creation data",required = true) @RequestBody IntegrationCreateRequestDto request) {
         IntegrationCreateResponse savedIntegration = service.createIntegration(mapper.toCreateRequest(request));
         URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
-        return ResponseEntity.created(location).body(savedIntegration);
+        return ResponseEntity.created(location).body(mapper.toCreateResponseDto(savedIntegration));
     }
 
     /**
