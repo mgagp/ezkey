@@ -141,7 +141,10 @@ public class IntegrationController {
      */
     @PostMapping("/create")
     public String createIntegration(@ModelAttribute IntegrationCreateRequestDto integrationRequest,RedirectAttributes redirectAttributes) {
-        logger.debug("Processing integration creation: {}",integrationRequest.getI18n().get(0).getName());
+        logger.debug("Processing integration creation: {}", 
+            integrationRequest.getI18n() != null && !integrationRequest.getI18n().isEmpty() 
+                ? integrationRequest.getI18n().get(0).getName() 
+                : "No name provided");
         try{
             // Create the integration
             IntegrationResponseDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
@@ -186,7 +189,10 @@ public class IntegrationController {
                 String enrollmentUrl = "ezkey://enroll/" + integration.getId();
                 model.addAttribute("enrollmentQrData",enrollmentUrl);
 
-                logger.debug("Displaying details for integration: {}",integration.getI18n().get(0).getName());
+                logger.debug("Displaying details for integration: {}", 
+                    integration.getI18n() != null && !integration.getI18n().isEmpty() 
+                        ? integration.getI18n().get(0).getName() 
+                        : integration.getId());
 
                 return "integrations/details";
             } else{
