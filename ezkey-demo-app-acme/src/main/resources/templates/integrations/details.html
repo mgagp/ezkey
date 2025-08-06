@@ -5,18 +5,18 @@
     <link rel="stylesheet" href="/css/acme-theme.css">
     <style>
         .integration-hero {
-            background: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 100%);
-            border: 8px solid #000000;
+            background: linear-gradient(135deg, var(--acme-light) 0%, var(--acme-secondary) 20%, var(--acme-accent) 100%);
+            border: 8px solid var(--acme-dark);
             margin: 2rem 0;
             padding: 3rem;
-            box-shadow: 12px 12px 0 #000000;
+            box-shadow: 12px 12px 0 var(--acme-primary);
             text-align: center;
             position: relative;
         }
         
         .integration-logo-container {
-            background: #FFFFFF;
-            border: 6px solid #000000;
+            background: var(--acme-light);
+            border: 6px solid var(--acme-dark);
             border-radius: 50%;
             width: 200px;
             height: 200px;
@@ -24,7 +24,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 8px 8px 0 #000000;
+            box-shadow: 8px 8px 0 var(--acme-warning);
             overflow: hidden;
         }
         
@@ -38,27 +38,29 @@
             position: absolute;
             top: -20px;
             right: -20px;
-            background: var(--primary-color, #007BFF);
-            color: #FFFFFF;
-            border: 6px solid #000000;
+            background: var(--acme-success);
+            color: var(--acme-dark);
+            border: 6px solid var(--acme-dark);
             padding: 1rem 2rem;
             font-weight: 900;
             text-transform: uppercase;
             transform: rotate(15deg);
-            box-shadow: 6px 6px 0 #000000;
+            box-shadow: 6px 6px 0 var(--acme-primary);
             font-size: 1.2rem;
             letter-spacing: 0.1em;
         }
         
         .integration-status-mega.inactive {
-            background: #DC3545;
+            background: var(--acme-error);
+            color: var(--acme-light);
+            box-shadow: 6px 6px 0 var(--acme-warning);
         }
         
         .integration-details-table {
-            background: #FFFFFF;
-            border: 8px solid #000000;
+            background: var(--acme-light);
+            border: 8px solid var(--acme-dark);
             margin: 3rem 0;
-            box-shadow: 12px 12px 0 #000000;
+            box-shadow: 12px 12px 0 var(--acme-secondary);
             overflow: hidden;
         }
         
@@ -72,24 +74,25 @@
         .integration-details-table td {
             padding: 1.5rem 2rem;
             text-align: left;
-            border-bottom: 4px solid #000000;
+            border-bottom: 4px solid var(--acme-primary);
             font-weight: 700;
         }
         
         .integration-details-table th {
-            background: #000000;
-            color: #FFFFFF;
+            background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-accent) 100%);
+            color: var(--acme-dark);
             text-transform: uppercase;
             letter-spacing: 0.1em;
             font-size: 1.1rem;
+            text-shadow: 1px 1px 0 var(--acme-light);
         }
         
         .integration-details-table tr:nth-child(even) td {
-            background: #F0F0F0;
+            background: linear-gradient(90deg, var(--acme-gray) 0%, var(--acme-secondary) 5%, var(--acme-gray) 100%);
         }
         
         .integration-details-table tr:nth-child(odd) td {
-            background: #FFFFFF;
+            background: linear-gradient(90deg, var(--acme-light) 0%, var(--acme-accent) 5%, var(--acme-light) 100%);
         }
         
         .integration-details-table tr:last-child td {
@@ -100,13 +103,14 @@
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #000000;
+            color: var(--acme-primary);
             width: 200px;
+            text-shadow: 1px 1px 0 var(--acme-light);
         }
         
         .detail-value {
             font-weight: 400;
-            color: #333333;
+            color: var(--acme-dark);
         }
         
         .detail-value.description {
@@ -117,36 +121,16 @@
         .detail-value.id {
             font-family: 'Courier New', monospace;
             font-weight: 700;
-            background: #000000;
-            color: #FFFFFF;
+            background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-secondary) 100%);
+            color: var(--acme-dark);
             padding: 0.5rem 1rem;
             border-radius: 4px;
             display: inline-block;
+            border: 3px solid var(--acme-dark);
+            box-shadow: 3px 3px 0 var(--acme-warning);
         }
         
-        .qr-section {
-            background: linear-gradient(45deg, #000000 25%, transparent 25%), 
-                        linear-gradient(-45deg, #000000 25%, transparent 25%), 
-                        linear-gradient(45deg, transparent 75%, #000000 75%), 
-                        linear-gradient(-45deg, transparent 75%, #000000 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            background-color: #FFFFFF;
-            border: 8px solid #000000;
-            padding: 3rem;
-            margin: 3rem 0;
-            text-align: center;
-            box-shadow: 12px 12px 0 #000000;
-        }
-        
-        .qr-code {
-            background: #FFFFFF;
-            border: 6px solid #000000;
-            padding: 2rem;
-            display: inline-block;
-            margin: 1rem 0;
-            box-shadow: 6px 6px 0 #000000;
-        }
+
         
         .action-buttons-row {
             display: flex;
@@ -157,9 +141,9 @@
         }
         
         .mega-button {
-            background: var(--primary-color, #007BFF);
-            color: #FFFFFF;
-            border: 6px solid #000000;
+            background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-secondary) 100%);
+            color: var(--acme-dark);
+            border: 6px solid var(--acme-dark);
             padding: 1.5rem 3rem;
             font-weight: 900;
             text-transform: uppercase;
@@ -169,20 +153,58 @@
             transition: all 0.2s ease;
             text-decoration: none;
             display: inline-block;
-            box-shadow: 8px 8px 0 #000000;
+            box-shadow: 8px 8px 0 var(--acme-accent);
+            text-shadow: 1px 1px 0 var(--acme-light);
         }
         
         .mega-button:hover {
             transform: translate(-2px, -2px);
-            box-shadow: 10px 10px 0 #000000;
+            box-shadow: 10px 10px 0 var(--acme-warning);
+            background: linear-gradient(135deg, var(--acme-accent) 0%, var(--acme-primary) 100%);
         }
         
         .mega-button.secondary {
-            background: #6C757D;
+            background: linear-gradient(135deg, var(--acme-gray) 0%, var(--acme-secondary) 100%);
+            box-shadow: 8px 8px 0 var(--acme-primary);
+        }
+        
+        .mega-button.secondary:hover {
+            background: linear-gradient(135deg, var(--acme-secondary) 0%, var(--acme-gray) 100%);
+            box-shadow: 10px 10px 0 var(--acme-accent);
         }
         
         .mega-button.danger {
-            background: #DC3545;
+            background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%);
+            color: var(--acme-light);
+            box-shadow: 8px 8px 0 var(--acme-primary);
+        }
+        
+        .mega-button.danger:hover {
+            background: linear-gradient(135deg, var(--acme-warning) 0%, var(--acme-error) 100%);
+            box-shadow: 10px 10px 0 var(--acme-secondary);
+        }
+        
+        /* Status Badge Styling */
+        .status-badge {
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: 3px solid var(--acme-dark);
+            box-shadow: 3px 3px 0 var(--acme-primary);
+            display: inline-block;
+        }
+        
+        .status-badge.status-active {
+            background: linear-gradient(135deg, var(--acme-success) 0%, var(--acme-accent) 100%);
+            color: var(--acme-dark);
+        }
+        
+        .status-badge.status-inactive {
+            background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%);
+            color: var(--acme-light);
+            box-shadow: 3px 3px 0 var(--acme-secondary);
         }
     </style>
 </head>
@@ -205,8 +227,8 @@
         </div>
         
         <!-- Integration Name -->
-        <h1 class="integration-title" th:text="${integration.i18n != null && !integration.i18n.empty ? integration.i18n[0].name : 'Unnamed Integration'}">Integration Name</h1>
-        <p class="integration-description" th:text="${integration.i18n != null && !integration.i18n.empty ? integration.i18n[0].description : 'No description available'}">Integration description goes here</p>
+        <h1 class="integration-title" style="color: var(--acme-dark); text-shadow: 3px 3px 0 var(--acme-light), 6px 6px 0 var(--acme-primary); font-size: 3rem; margin-bottom: 1rem;" th:text="${integration.i18n != null && !integration.i18n.empty ? integration.i18n[0].name : 'Unnamed Integration'}">Integration Name</h1>
+        <p class="integration-description" style="color: var(--acme-dark); font-weight: 700; font-size: 1.2rem; text-shadow: 1px 1px 0 var(--acme-light);" th:text="${integration.i18n != null && !integration.i18n.empty ? integration.i18n[0].description : 'No description available'}">Integration description goes here</p>
     </div>
     
     <!-- Integration Details Table -->
@@ -251,23 +273,7 @@
         </table>
     </div>
     
-    <!-- QR Code Section -->
-    <div class="qr-section">
-        <h2 style="margin-bottom: 1rem; font-size: 2rem;">🔗 ENROLLMENT QR CODE</h2>
-        <p style="font-weight: 700; margin-bottom: 2rem;">Scan this code to enroll a device with this integration</p>
-        <div class="qr-code">
-            <!-- QR Code placeholder - in real app this would be generated -->
-            <div style="width: 200px; height: 200px; background: repeating-linear-gradient(45deg, #000 0, #000 10px, #fff 10px, #fff 20px); display: inline-block; position: relative;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 1rem; border: 2px solid #000; font-weight: 900; font-size: 0.8rem;">
-                    QR CODE<br/>
-                    <span style="font-family: 'Courier New', monospace; font-size: 0.6rem;" th:text="${enrollmentQrData}">ezkey://enroll/1</span>
-                </div>
-            </div>
-        </div>
-        <p style="font-size: 0.9rem; margin-top: 1rem; color: #666;">
-            <strong>Enrollment URL:</strong> <span style="font-family: 'Courier New', monospace;" th:text="${enrollmentQrData}">ezkey://enroll/1</span>
-        </p>
-    </div>
+
     
     <!-- Action Buttons -->
     <div class="action-buttons-row">
