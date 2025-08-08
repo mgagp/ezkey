@@ -85,17 +85,59 @@
                      x-transition></div>
             </div>
 
+            <!-- Logo URL Field -->
+            <div class="form-group">
+                <label for="integrationLogo" class="form-label">
+                    <span class="label-text">Logo URL</span>
+                    <span class="label-optional">(Optional)</span>
+                </label>
+                <input type="url" 
+                       id="integrationLogo" 
+                       name="integrationLogo" 
+                       class="form-input"
+                       x-model="formData.integrationLogo"
+                       @input="validateField('integrationLogo')"
+                       :class="{ 'input-error': errors.integrationLogo }"
+                                               placeholder="https://via.placeholder.com/200x100/0066cc/ffffff?text=LOGO"
+                       pattern="https?://.+">
+                <div class="input-help">
+                    <span class="help-text">URL to your application's logo (will be displayed in mobile app)</span>
+                    <span x-show="formData.integrationLogo && isValidUrl(formData.integrationLogo)" class="url-valid">✓ Valid URL</span>
+                </div>
+                <div x-show="errors.integrationLogo" 
+                     x-text="errors.integrationLogo" 
+                     class="error-message"
+                     x-transition></div>
+            </div>
+
+            <!-- Logo Preview (simplified) -->
+            <div class="logo-preview" x-show="formData.integrationLogo && isValidUrl(formData.integrationLogo)">
+                <h4 class="preview-subtitle">Logo Preview</h4>
+                <div class="logo-preview-container">
+                    <img :src="formData.integrationLogo"
+                         :alt="formData.integrationName ? formData.integrationName + ' logo' : 'Integration logo'"
+                         class="logo-preview-image"
+                         @load="imageError = false"
+                         @error="imageError = true">
+                </div>
+                <div x-show="imageError" class="error-message" x-transition>Unable to load logo from the provided URL.</div>
+            </div>
+
             <!-- Configuration Preview -->
-            <div class="config-preview" x-show="isFormValid()">
+            <div class="config-preview" x-show="formData.integrationName || formData.integrationDescription">
                 <h3 class="preview-title">Configuration Preview</h3>
                 <div class="preview-content">
                     <div class="preview-item">
                         <span class="preview-label">Name:</span>
-                        <span class="preview-value" x-text="formData.integrationName">-</span>
+                        <span class="preview-value" x-text="formData.integrationName || 'Not specified'">Not specified</span>
                     </div>
                     <div class="preview-item">
                         <span class="preview-label">Description:</span>
-                        <span class="preview-value" x-text="formData.integrationDescription">-</span>
+                        <span class="preview-value" x-text="formData.integrationDescription || 'Not specified'">Not specified</span>
+                    </div>
+                    <div class="preview-item" x-show="formData.integrationLogo">
+                        <span class="preview-label">Logo:</span>
+                        <span class="preview-value" x-text="formData.integrationLogo || 'Not specified'">Not specified</span>
                     </div>
                     <div class="preview-item">
                         <span class="preview-label">Security:</span>
@@ -175,12 +217,16 @@
         return {
             formData: {
                 integrationName: '',
-                integrationDescription: ''
+                integrationDescription: '',
+                integrationLogo: ''
             },
             errors: {},
             isSubmitting: false,
             successMessage: '',
             successRedirectUrl: '',
+            
+            // Simple image error flag for preview
+            imageError: false,
 
             validateField(fieldName) {
                 switch(fieldName) {
@@ -207,8 +253,28 @@
                             delete this.errors.integrationDescription;
                         }
                         break;
+                    
+                    case 'integrationLogo':
+                        if (this.formData.integrationLogo && !this.isValidUrl(this.formData.integrationLogo)) {
+                            this.errors.integrationLogo = 'Please enter a valid URL';
+                        } else {
+                            delete this.errors.integrationLogo;
+                        }
+                        break;
                 }
             },
+
+            isValidUrl(string) {
+                if (!string || typeof string !== 'string') return false;
+                try {
+                    new URL(string);
+                    return true;
+                } catch (_) {
+                    return false;
+                }
+            },
+
+            // No complex init/state machine needed — simplicity for demo
 
             isFormValid() {
                 this.validateField('integrationName');
@@ -232,8 +298,10 @@
                             'Content-Type': 'application/x-www-form-urlencoded',
                         },
                         body: new URLSearchParams({
-                            integrationName: this.formData.integrationName,
-                            integrationDescription: this.formData.integrationDescription
+                            'i18n[0].language': 'en',
+                            'i18n[0].name': this.formData.integrationName,
+                            'i18n[0].description': this.formData.integrationDescription,
+                            'logo': this.formData.integrationLogo || ''
                         })
                     });
 
@@ -320,6 +388,13 @@
         font-weight: 900;
     }
 
+    .label-optional {
+        color: var(--acme-dark);
+        opacity: 0.6;
+        font-weight: 400;
+        font-size: 0.9rem;
+    }
+
     .form-input, .form-textarea {
         width: 100%;
         padding: 1rem;
@@ -361,6 +436,48 @@
         color: var(--acme-primary);
         font-weight: 700;
         font-size: 0.8rem;
+    }
+
+    .url-valid {
+        color: var(--acme-success);
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    .debug-state {
+        color: var(--acme-primary);
+        font-weight: 700;
+        font-size: 0.8rem;
+        font-family: monospace;
+    }
+
+    .test-button {
+        background: var(--acme-primary);
+        border: 2px solid var(--acme-dark);
+        color: var(--acme-dark);
+        padding: 0.25rem 0.5rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 2px 2px 0 var(--acme-dark);
+        transition: all 0.2s ease;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
+
+    .test-button:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .debug-info {
+        background: var(--acme-primary);
+        color: var(--acme-dark);
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        border: 2px solid var(--acme-dark);
+        box-shadow: 2px 2px 0 var(--acme-dark);
     }
 
     .error-message {
@@ -414,6 +531,98 @@
     .security-info {
         color: var(--acme-success) !important;
         font-weight: 700 !important;
+    }
+
+    /* Logo Preview */
+    .logo-preview {
+        background: var(--acme-gray);
+        border: 3px solid var(--acme-dark);
+        padding: 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .preview-subtitle {
+        font-size: 1.1rem;
+        color: var(--acme-dark);
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--acme-primary);
+        padding-bottom: 0.5rem;
+    }
+
+    .logo-preview-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 120px;
+        position: relative;
+    }
+
+    .logo-preview-image {
+        max-width: 200px;
+        max-height: 100px;
+        object-fit: contain;
+        border: 2px solid var(--acme-dark);
+        border-radius: 8px;
+        background: white;
+        padding: 0.5rem;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+    }
+
+    .logo-loading, .logo-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--acme-dark);
+        font-weight: 600;
+    }
+
+    .retry-button {
+        background: var(--acme-primary);
+        border: 2px solid var(--acme-dark);
+        color: var(--acme-dark);
+        padding: 0.5rem 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 3px 3px 0 var(--acme-dark);
+        transition: all 0.2s ease;
+        margin-top: 0.5rem;
+    }
+
+    .retry-button:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 4px 4px 0 var(--acme-dark);
+    }
+
+    .retry-button:active {
+        transform: translate(0, 0);
+        box-shadow: 2px 2px 0 var(--acme-dark);
+    }
+
+    .retry-icon {
+        margin-right: 0.5rem;
+    }
+
+    .logo-success {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .loading-spinner {
+        font-size: 1.5rem;
+        animation: spin 1s linear infinite;
+    }
+
+    .error-icon {
+        font-size: 1.5rem;
+        color: var(--acme-error);
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 
     /* Form Actions */

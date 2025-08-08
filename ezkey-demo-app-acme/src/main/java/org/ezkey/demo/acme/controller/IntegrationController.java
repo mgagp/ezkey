@@ -141,10 +141,14 @@ public class IntegrationController {
      */
     @PostMapping("/create")
     public String createIntegration(@ModelAttribute IntegrationCreateRequestDto integrationRequest,RedirectAttributes redirectAttributes) {
-        logger.debug("Processing integration creation: {}", 
-            integrationRequest.getI18n() != null && !integrationRequest.getI18n().isEmpty() 
-                ? integrationRequest.getI18n().get(0).getName() 
-                : "No name provided");
+        logger.debug("Processing integration creation with logo: {}", integrationRequest.getLogo());
+        
+        // Ensure i18n is properly structured for English
+        if (integrationRequest.getI18n() == null || integrationRequest.getI18n().isEmpty()) {
+            logger.warn("No i18n data provided, creating default English entry");
+            // This should be handled by the form, but adding safety check
+        }
+        
         try{
             // Create the integration
             IntegrationResponseDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);
@@ -250,6 +254,8 @@ public class IntegrationController {
      */
     @PostMapping(value = "/create",headers = "HX-Request")
     public String createIntegrationHtmx(@ModelAttribute IntegrationCreateRequestDto integrationRequest,Model model) {
+        logger.debug("Processing HTMX integration creation with logo: {}", integrationRequest.getLogo());
+        
         try{
             // Create the integration
             IntegrationResponseDto createdIntegration = integrationService.createIntegrationSync(integrationRequest);

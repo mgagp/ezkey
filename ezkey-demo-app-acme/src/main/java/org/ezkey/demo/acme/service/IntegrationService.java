@@ -134,6 +134,7 @@ public class IntegrationService {
      */
     public Mono<IntegrationResponseDto> createIntegration(IntegrationCreateRequestDto createRequest) {
         logger.debug("Creating new integration: {}",createRequest.toString());
+        logger.info("Sending integration creation DTO to Admin API: {}", createRequest);
 
         return ezkeyAdminApiClient.post().uri("/api/v1/integrations").bodyValue(createRequest).retrieve().bodyToMono(IntegrationResponseDto.class)
                 .timeout(Duration.ofSeconds(15)).doOnNext(integration -> logger.info("Successfully created integration: {} with ID: {}",integration))
