@@ -112,7 +112,98 @@
 </div>
 </body>
 <style>
-    /* reuse list styles via base page; nothing additional for now */
+    /* Integrated Header - same as integrations list for visual consistency */
+    .integrated-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding: 1rem 0;
+        background: linear-gradient(135deg, var(--acme-light) 0%, var(--acme-accent) 100%);
+        border: 4px solid var(--acme-dark);
+        border-radius: 0;
+        box-shadow: 6px 6px 0 var(--acme-primary);
+        margin-bottom: 2rem;
+    }
+
+    .integrated-header .main-title {
+        font-size: 2.2rem;
+        color: var(--acme-primary);
+        text-shadow: 3px 3px 0 var(--acme-dark);
+        margin: 0 0 0.5rem 0;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .integrated-header .main-subtitle {
+        font-size: 1.2rem;
+        color: var(--acme-dark);
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .integrated-header .ezkey-brand {
+        color: var(--acme-primary);
+        font-weight: 900;
+        text-shadow: 2px 2px 0 var(--acme-dark);
+    }
+
+    /* Section subtitle */
+    .integration-subtitle {
+        text-align: center;
+        font-size: 1.1rem;
+        color: var(--acme-dark);
+        opacity: 0.8;
+        margin-bottom: 2rem;
+    }
+
+    /* Empty state */
+    .integration-empty-state { display: flex; justify-content: center; margin: 2rem 0; }
+    .empty-integration-card { max-width: 500px; text-align: center; background-color: var(--acme-gray); }
+    .empty-integration-card .feature-icon { font-size: 4rem; margin-bottom: 1.5rem; }
+    .empty-integration-card .feature-title { font-size: 2rem; color: var(--acme-dark); margin-bottom: 1rem; }
+    .empty-integration-card .feature-description { font-size: 1.1rem; margin-bottom: 2rem; }
+    .empty-cta { margin-top: 1.5rem; }
+
+    /* Table container and table styles */
+    .integrations-table-container {
+        overflow-x: auto;
+        border: 4px solid var(--acme-dark);
+        box-shadow: 8px 8px 0 var(--acme-dark);
+        background: var(--acme-light);
+    }
+
+    .brutal-table { width: 100%; border-collapse: collapse; background: var(--acme-light); }
+    .brutal-table th { background: var(--acme-dark); color: var(--acme-light); padding: 1rem; text-align: left; font-weight: 900; text-transform: uppercase; font-size: 0.9rem; border-right: 2px solid var(--acme-light); }
+    .brutal-table th:last-child { border-right: none; }
+    .brutal-table td { padding: 1rem; border-bottom: 2px solid var(--acme-dark); border-right: 2px solid var(--acme-dark); vertical-align: middle; }
+    .brutal-table td:last-child { border-right: none; }
+    .table-row:nth-child(even) { background-color: var(--acme-gray); }
+    .table-row:hover { background-color: var(--acme-secondary); color: var(--acme-dark); }
+
+    /* Common badges and cells */
+    .integration-id { font-weight: 900; color: var(--acme-primary); font-size: 1.1rem; }
+    .integration-name { font-weight: 700; font-size: 1rem; color: var(--acme-dark); }
+    .creation-date { font-weight: 700; color: var(--acme-dark); font-size: 0.9rem; }
+
+    .status-badge { padding: 0.3rem 0.8rem; border: 3px solid var(--acme-dark); font-weight: 900; font-size: 0.75rem; text-transform: uppercase; display: inline-block; box-shadow: 2px 2px 0 var(--acme-dark); }
+    .status-active { background: var(--acme-success); color: var(--acme-dark); }
+    .status-inactive { background: var(--acme-error); color: var(--acme-light); }
+
+    /* Table Actions */
+    .table-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .table-action-btn { padding: 0.4rem 0.8rem; font-size: 0.8rem; min-width: auto; box-shadow: 2px 2px 0 var(--acme-dark); }
+    .table-action-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--acme-dark); }
+    .table-delete-btn { background: var(--acme-error); color: var(--acme-light); border-color: var(--acme-dark); }
+
+    /* Responsive tweaks */
+    @media (max-width: 768px) {
+        .table-actions { flex-direction: column; }
+        .brutal-table { font-size: 0.9rem; }
+        .table-action-btn { width: 100%; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+        .brutal-table th, .brutal-table td { padding: 0.5rem; }
+    }
 </style>
 </html>
 
