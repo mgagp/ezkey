@@ -269,6 +269,12 @@
                     <td class="detail-label">Logo URL</td>
                     <td class="detail-value" style="font-family: 'Courier New', monospace; word-break: break-all;" th:text="${integration.logo}">https://example.com/logo.png</td>
                 </tr>
+                <tr>
+                    <td class="detail-label">Enrollments</td>
+                    <td class="detail-value">
+                        <a th:href="@{/enrollments(integrationId=${integration.id})}" class="mega-button secondary">📋 Enrollment</a>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -295,5 +301,19 @@
             </button>
         </form>
     </div>
+
+    <!-- Enrollment Status Placeholder under details -->
+    <section class="status-section neo-brutal-main">
+        <h2 class="section-title">Enrollment Status</h2>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Enrollments"></div>
+                <div class="status-content">
+                    <span class="status-label">Manage Enrollments</span>
+                    <span class="status-value"><a th:href="@{/enrollments(integrationId=${integration.id})}">Go to enrollments</a></span>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 </html>
