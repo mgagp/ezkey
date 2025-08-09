@@ -33,6 +33,9 @@
               @submit.prevent="submitForm"
               x-ref="form">
             
+            <!-- Hidden language for i18n (single English entry) -->
+            <input type="hidden" name="i18n[0].language" value="en">
+            
             <!-- Name Field -->
             <div class="form-group">
                 <label for="integrationName" class="form-label">
@@ -41,7 +44,7 @@
                 </label>
                 <input type="text" 
                        id="integrationName" 
-                       name="integrationName" 
+                       name="i18n[0].name" 
                        class="form-input"
                        x-model="formData.integrationName"
                        @input="validateField('integrationName')"
@@ -66,7 +69,7 @@
                     <span class="label-required">*</span>
                 </label>
                 <textarea id="integrationDescription" 
-                          name="integrationDescription" 
+                          name="i18n[0].description" 
                           class="form-textarea"
                           x-model="formData.integrationDescription"
                           @input="validateField('integrationDescription')"
@@ -93,7 +96,7 @@
                 </label>
                 <input type="url" 
                        id="integrationLogo" 
-                       name="integrationLogo" 
+                       name="logo" 
                        class="form-input"
                        x-model="formData.integrationLogo"
                        @input="validateField('integrationLogo')"
@@ -292,17 +295,19 @@
                 this.isSubmitting = true;
 
                 try {
+                    const formEl = this.$refs.form;
+                    const fd = new FormData(formEl);
+                    // Keep reactive state as source of truth
+                    fd.set('i18n[0].name', this.formData.integrationName);
+                    fd.set('i18n[0].description', this.formData.integrationDescription);
+                    fd.set('logo', this.formData.integrationLogo || '');
+
                     const response = await fetch('/integrations/create', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
                         },
-                        body: new URLSearchParams({
-                            'i18n[0].language': 'en',
-                            'i18n[0].name': this.formData.integrationName,
-                            'i18n[0].description': this.formData.integrationDescription,
-                            'logo': this.formData.integrationLogo || ''
-                        })
+                        body: new URLSearchParams(fd)
                     });
 
                     if (response.ok && response.redirected) {
