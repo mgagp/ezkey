@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" href="/css/neo-brutalism.css">
+    <link rel="stylesheet" href="/css/acme-theme.css">
+    <style>
+        .enrollment-hero {
+            background: linear-gradient(135deg, var(--acme-light) 0%, var(--acme-secondary) 20%, var(--acme-accent) 100%);
+            border: 8px solid var(--acme-dark);
+            margin: 2rem 0;
+            padding: 2rem;
+            box-shadow: 12px 12px 0 var(--acme-primary);
+            text-align: center;
+        }
+        .enrollment-details-table { background: var(--acme-light); border: 8px solid var(--acme-dark); margin: 3rem 0; box-shadow: 12px 12px 0 var(--acme-secondary); }
+        .enrollment-details-table table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .enrollment-details-table th, .enrollment-details-table td { padding: 1.5rem 2rem; text-align: left; border-bottom: 4px solid var(--acme-primary); font-weight: 700; }
+        .enrollment-details-table th { background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-accent) 100%); color: var(--acme-dark); text-transform: uppercase; letter-spacing: 0.1em; font-size: 1.1rem; }
+        .enrollment-details-table tr:nth-child(even) td { background: linear-gradient(90deg, var(--acme-gray) 0%, var(--acme-secondary) 5%, var(--acme-gray) 100%); }
+        .enrollment-details-table tr:nth-child(odd) td { background: linear-gradient(90deg, var(--acme-light) 0%, var(--acme-accent) 5%, var(--acme-light) 100%); }
+        .detail-label { font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--acme-primary); width: 240px; }
+        .status-badge { padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; border: 3px solid var(--acme-dark); box-shadow: 3px 3px 0 var(--acme-primary); display: inline-block; }
+        .status-active { background: linear-gradient(135deg, var(--acme-success) 0%, var(--acme-accent) 100%); color: var(--acme-dark); }
+        .status-inactive { background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%); color: var(--acme-light); box-shadow: 3px 3px 0 var(--acme-secondary); }
+        .action-buttons-row { display: flex; gap: 1rem; justify-content: center; margin: 3rem 0; flex-wrap: wrap; }
+        .mega-button { background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-secondary) 100%); color: var(--acme-dark); border: 6px solid var(--acme-dark); padding: 1rem 2rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1rem; text-decoration: none; display: inline-block; box-shadow: 8px 8px 0 var(--acme-accent); }
+        .mega-button.secondary { background: linear-gradient(135deg, var(--acme-gray) 0%, var(--acme-secondary) 100%); box-shadow: 8px 8px 0 var(--acme-primary); }
+        .mega-button.danger { background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%); color: var(--acme-light); box-shadow: 8px 8px 0 var(--acme-primary); }
+    </style>
+    </head>
+<div th:fragment="content">
+    <div class="enrollment-hero">
+        <h1 class="integration-title" style="color: var(--acme-dark); text-shadow: 3px 3px 0 var(--acme-light), 6px 6px 0 var(--acme-primary); font-size: 2rem; margin-bottom: 1rem;">
+            Enrollment Details
+        </h1>
+        <p style="font-weight:700">Enrollment ID <span th:text="${enrollment.enrollmentId}">1</span> for Integration <span th:text="${enrollment.integrationId}">1</span></p>
+    </div>
+
+    <div class="enrollment-details-table">
+        <table>
+            <thead>
+                <tr><th>PROPERTY</th><th>VALUE</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="detail-label">Enrollment ID</td><td th:text="${enrollment.enrollmentId}">1</td></tr>
+                <tr><td class="detail-label">Integration ID</td><td th:text="${enrollment.integrationId}">1</td></tr>
+                <tr><td class="detail-label">Name</td><td th:text="${enrollment.enrollmentName}">Device Name</td></tr>
+                <tr>
+                    <td class="detail-label">Verified</td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentVerified} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentVerified} ? 'YES' : 'NO'">YES</span></td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Valid</td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentValid} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentValid} ? 'YES' : 'NO'">YES</span></td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Active</td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentActive} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentActive} ? 'YES' : 'NO'">YES</span></td>
+                </tr>
+                <tr><td class="detail-label">Challenge</td><td th:text="${enrollment.enrollmentChallenge}">123456</td></tr>
+                <tr th:if="${enrollment.authAttemptChallengeRequired != null}"><td class="detail-label">Auth Attempt Challenge Required</td><td th:text="${enrollment.authAttemptChallengeRequired} ? 'YES' : 'NO'">YES</td></tr>
+                <tr th:if="${enrollment.integrationPublicKey != null}"><td class="detail-label">Integration Public Key</td><td style="word-break: break-all; font-family: 'Courier New', monospace;" th:text="${enrollment.integrationPublicKey}">PUBKEY</td></tr>
+                <tr th:if="${enrollment.devicePublicKey != null}"><td class="detail-label">Device Public Key</td><td style="word-break: break-all; font-family: 'Courier New', monospace;" th:text="${enrollment.devicePublicKey}">PUBKEY</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="action-buttons-row">
+        <a th:href="@{'/enrollments'(integrationId=${enrollment.integrationId})}" class="mega-button secondary">← Back to Enrollments</a>
+        <a th:href="@{'/integrations/' + ${enrollment.integrationId}}" class="mega-button secondary">🔗 Integration</a>
+        <form th:action="@{'/enrollments/' + ${enrollment.enrollmentId} + '/delete'(integrationId=${enrollment.integrationId})}" method="post" style="display:inline;"
+              onsubmit="return confirm('Are you sure you want to delete this enrollment?')">
+            <button type="submit" class="mega-button danger">🗑️ Delete Enrollment</button>
+        </form>
+    </div>
+</div>
+</html>
+
+

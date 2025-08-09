@@ -82,6 +82,24 @@ public class EnrollmentController {
     }
 
     /**
+     * Displays the enrollment creation form.
+     *
+     * @param integrationId the integration identifier to pre-fill
+     * @param model the view model
+     * @return template name
+     */
+    @GetMapping("/create")
+    public String createForm(@RequestParam("integrationId") Integer integrationId, Model model) {
+        logger.debug("Displaying enrollment creation form for integration: {}", integrationId);
+        EnrollmentCreateRequestDto request = new EnrollmentCreateRequestDto();
+        request.setIntegrationId(integrationId);
+        request.setAuthAttemptChallengeRequired(Boolean.TRUE);
+        model.addAttribute("pageTitle", "Create Enrollment - ACME Inc");
+        model.addAttribute("enrollmentRequest", request);
+        return "enrollments/create";
+    }
+
+    /**
      * Creates a new enrollment (future work - form to be added later).
      */
     @PostMapping
