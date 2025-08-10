@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${pageTitle}">Phone Simulator</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <style>
+    body { padding-top: 2rem; }
+    .phone { max-width: 420px; margin: 0 auto; border: 1px solid #ccc; border-radius: 16px; padding: 1.5rem; background: #fafafa; }
+    .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .app-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: inherit; }
+    .app-icon .icon { width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
+    .icon-ezkey { background: #0d6efd; }
+    .icon-generic { background: #6c757d; }
+  </style>
+</head>
+<body>
+<main class="container">
+  <div class="phone">
+    <h5 class="mb-3">Home</h5>
+    <div class="app-grid">
+      <a href="/phone/ezkey" class="app-icon">
+        <div class="icon icon-ezkey">EZ</div>
+        <small class="mt-2">Ezkey</small>
+      </a>
+      <div class="app-icon">
+        <div class="icon icon-generic">📞</div>
+        <small class="mt-2">Phone</small>
+      </div>
+      <div class="app-icon">
+        <div class="icon icon-generic">✉️</div>
+        <small class="mt-2">Mail</small>
+      </div>
+      <div class="app-icon">
+        <div class="icon icon-generic">🖼️</div>
+        <small class="mt-2">Photos</small>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
+
+

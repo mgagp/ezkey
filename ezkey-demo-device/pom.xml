@@ -14,7 +14,169 @@
 	<name>Ezkey Demo Device</name>
 	<description>Demo device simulator for mobile authentication</description>
 	
-	<packaging>pom</packaging>
-	
-	<!-- Placeholder for future device simulator -->
+	<packaging>jar</packaging>
+
+	<dependencies>
+		<!-- Spring Boot Starters -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- WebJars for simple styling (optional) -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>webjars-locator-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>bootstrap</artifactId>
+			<version>5.3.2</version>
+		</dependency>
+
+		<!-- HTTP Client for Ezkey Auth API calls -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
+		<!-- Jackson for JSON processing (required for generated DTOs) -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+		</dependency>
+
+		<!-- OpenAPI annotations (used by generated DTOs in some cases) -->
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>2.2.8</version>
+		</dependency>
+
+		<!-- Validation API for generated DTOs -->
+		<dependency>
+			<groupId>jakarta.validation</groupId>
+			<artifactId>jakarta.validation-api</artifactId>
+		</dependency>
+
+		<!-- JsonNullable library for OpenAPI generated DTOs -->
+		<dependency>
+			<groupId>org.openapitools</groupId>
+			<artifactId>jackson-databind-nullable</artifactId>
+			<version>0.2.6</version>
+		</dependency>
+
+		<!-- Testing -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-devtools</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+
+			<!-- OpenAPI Generator Plugin (same parameters as demo-acme-app) -->
+			<plugin>
+				<groupId>org.openapitools</groupId>
+				<artifactId>openapi-generator-maven-plugin</artifactId>
+				<version>7.14.0</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>http://localhost:8080/v3/api-docs</inputSpec>
+							<generatorName>java</generatorName>
+							<configOptions>
+								<java8>false</java8>
+								<dateLibrary>java8</dateLibrary>
+								<modelDateTimeMapping>LocalDateTime</modelDateTimeMapping>
+								<modelFormatAnnotation>true</modelFormatAnnotation>
+								<modelFormatPattern>yyyy-MM-dd'T'HH:mm:ss.SSSSSS</modelFormatPattern>
+								<library>resttemplate</library>
+								<serializationLibrary>jackson</serializationLibrary>
+								<useJakartaEe>true</useJakartaEe>
+								<generateClientAsBean>false</generateClientAsBean>
+								<generateApis>false</generateApis>
+								<generateModels>true</generateModels>
+								<generateSupportingFiles>false</generateSupportingFiles>
+								<hideGenerationTimestamp>true</hideGenerationTimestamp>
+								<skipDefaultInterface>true</skipDefaultInterface>
+								<interfaceOnly>false</interfaceOnly>
+								<useBeanValidation>true</useBeanValidation>
+							</configOptions>
+							<typeMappings>
+								<typeMapping>string+localDateTime=LocalDateTime</typeMapping>
+								<typeMapping>string+localTime=LocalTime</typeMapping>
+								<typeMapping>string+date-time=LocalTime</typeMapping>
+							</typeMappings>
+							<importMappings>
+								<importMapping>java.time.OffsetDateTime=java.time.LocalDateTime</importMapping>
+							</importMappings>
+							<schemaMappings>
+								<mapping>LocalDateTime=java.time.LocalDateTime</mapping>
+								<mapping>LocalTime=java.time.LocalTime</mapping>
+							</schemaMappings>
+							<output>${project.build.directory}/generated-sources/openapi</output>
+							<modelPackage>org.ezkey.demodevice.generated.dto</modelPackage>
+							<apiPackage>org.ezkey.demodevice.generated.api</apiPackage>
+							<invokerPackage>org.ezkey.demodevice.generated.client</invokerPackage>
+							<generateModelDocumentation>true</generateModelDocumentation>
+							<generateApiDocumentation>false</generateApiDocumentation>
+							<modelNameSuffix></modelNameSuffix>
+							<removeOperationIdPrefix>true</removeOperationIdPrefix>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Add generated sources to compilation -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.4.0</version>
+				<executions>
+					<execution>
+						<id>add-generated-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project> 
