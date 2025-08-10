@@ -6,39 +6,140 @@
   <title th:text="${pageTitle}">Phone Simulator</title>
   <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
   <style>
-    body { padding-top: 2rem; }
-    .phone { max-width: 420px; margin: 0 auto; border: 1px solid #ccc; border-radius: 16px; padding: 1.5rem; background: #fafafa; }
-    .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-    .app-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; color: inherit; }
-    .app-icon .icon { width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
-    .icon-ezkey { background: #0d6efd; }
-    .icon-generic { background: #6c757d; }
+    :root {
+      --bezel:#111;
+      --glass:#0a0a0a;
+      --screen-shadow:rgba(0,0,0,.35);
+      --dock-bg:rgba(255,255,255,.25);
+      --label-color:#f5f5f7;
+    }
+    body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
+    .device {
+      width: 380px; height: 780px; border-radius: 48px; background: var(--bezel);
+      box-shadow: 0 25px 60px rgba(0,0,0,.35), inset 0 0 0 6px #000;
+      padding: 16px; position: relative;
+    }
+    .frame { width: 100%; height: 100%; border-radius: 40px; background: var(--glass); padding: 10px; }
+    .screen {
+      width: 100%; height: 100%; border-radius: 32px; overflow: hidden; position: relative;
+      background: linear-gradient(160deg,#1b2236 0%, #203a76 40%, #0c7bb3 65%, #1ac0d6 100%);
+      box-shadow: inset 0 0 40px var(--screen-shadow);
+      color: var(--label-color);
+    }
+    /* Notch with camera and speaker */
+    .notch { position:absolute; top: 8px; left:50%; transform:translateX(-50%); width: 210px; height: 32px; background:#000; border-radius: 0 0 20px 20px; display:flex; align-items:center; justify-content:center; gap:16px; }
+    .speaker { width: 70px; height: 6px; border-radius: 3px; background:#1f1f1f; box-shadow: inset 0 0 2px rgba(255,255,255,.15); }
+    .camera { width: 12px; height: 12px; background: radial-gradient(circle at 30% 30%, #3dc1ff 0 25%, #0b1724 40% 100%); border-radius: 50%; box-shadow: 0 0 0 2px #0b1724; }
+    /* Status bar */
+    .status-bar { position:absolute; top: 50px; left:0; right:0; padding: 0 20px; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:.9rem; }
+    .status-icons { display:flex; gap:10px; align-items:center; }
+    .dot { width:8px; height:8px; background:#fff; opacity:.9; border-radius:50%; display:inline-block; }
+    .battery { width: 24px; height: 12px; border:2px solid #fff; border-radius:3px; position:relative; }
+    .battery::after { content:''; position:absolute; right:-5px; top:3px; width:3px; height:6px; background:#fff; border-radius:1px; }
+    .battery .level { position:absolute; left:2px; top:2px; bottom:2px; width:16px; background:#55d86a; border-radius:1px; }
+    /* Grid */
+    .content { position:absolute; top: 90px; left:0; right:0; bottom: 100px; padding: 10px 16px; display:flex; flex-direction:column; }
+    .featured { display:flex; justify-content:center; margin: 12px 0 6px; }
+    .featured-app { text-align:center; text-decoration:none; color: var(--label-color); }
+    .featured-icon { width: 86px; height: 86px; border-radius: 22px; box-shadow: 0 10px 20px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.06) inset; animation: glow 2.5s ease-in-out infinite; }
+    .hint { font-size:.75rem; opacity:.9; margin-top:4px; text-shadow: 0 2px 4px rgba(0,0,0,.4); }
+    @keyframes glow { 0%,100% { filter: drop-shadow(0 0 0 rgba(13,110,253,.0)); } 50% { filter: drop-shadow(0 0 10px rgba(13,110,253,.45)); } }
+    .app-grid { margin-top:auto; margin-bottom:12px; display:grid; grid-template-columns: repeat(4, 1fr); gap: 18px 14px; }
+    .app { text-decoration:none; color: var(--label-color); text-align:center; }
+    .icon { width:64px; height:64px; margin: 0 auto; border-radius: 18px; display:grid; place-items:center; color:#fff; font-weight:800; letter-spacing:.5px; box-shadow: 0 6px 12px rgba(0,0,0,.25); }
+    .app:hover .icon { transform: translateY(-2px); transition: transform .15s ease; }
+    .label { margin-top:6px; font-size:.8rem; text-shadow: 0 2px 4px rgba(0,0,0,.4); }
+    /* Icon colors */
+    .ic-ezkey { background:#0d6efd; }
+    .ic-weather { background: linear-gradient(135deg,#4facfe 0%, #00f2fe 100%); }
+    .ic-browser { background: linear-gradient(135deg,#6a11cb 0%, #2575fc 100%); }
+    .ic-mail { background: linear-gradient(135deg,#11998e 0%, #38ef7d 100%); }
+    .ic-photos { background: linear-gradient(135deg,#f7971e 0%, #ffd200 100%); }
+    .ic-settings { background: linear-gradient(135deg,#434343 0%, #000000 100%); }
+    .ic-calendar { background: linear-gradient(135deg,#f953c6 0%, #b91d73 100%); }
+    .ic-camera { background: linear-gradient(135deg,#d7d2cc 0%, #304352 100%); }
+    .ic-maps { background: linear-gradient(135deg,#00c6ff 0%, #0072ff 100%); }
+    .ic-music { background: linear-gradient(135deg,#ff512f 0%, #dd2476 100%); }
+    /* Dock */
+    .dock { position:absolute; left: 24px; right: 24px; bottom: 20px; height:72px; background: var(--dock-bg); backdrop-filter: blur(6px); border-radius: 22px; display:flex; align-items:center; justify-content:space-evenly; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.25); }
+    .dock .icon { width:56px; height:56px; border-radius: 16px; }
+    /* Home indicator */
+    .home-indicator { position:absolute; bottom: 6px; left:50%; transform: translateX(-50%); width: 120px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.6); }
   </style>
 </head>
 <body>
-<main class="container">
-  <div class="phone">
-    <h5 class="mb-3">Home</h5>
-    <div class="app-grid">
-      <a href="/phone/ezkey" class="app-icon">
-        <div class="icon icon-ezkey">EZ</div>
-        <small class="mt-2">Ezkey</small>
-      </a>
-      <div class="app-icon">
-        <div class="icon icon-generic">📞</div>
-        <small class="mt-2">Phone</small>
-      </div>
-      <div class="app-icon">
-        <div class="icon icon-generic">✉️</div>
-        <small class="mt-2">Mail</small>
-      </div>
-      <div class="app-icon">
-        <div class="icon icon-generic">🖼️</div>
-        <small class="mt-2">Photos</small>
+  <div class="device">
+    <div class="frame">
+      <div class="screen">
+        <div class="notch">
+          <div class="camera"></div>
+          <div class="speaker"></div>
+        </div>
+        <div class="status-bar">
+          <div class="time">9:41</div>
+          <div class="status-icons">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="dot" style="opacity:.6"></span>
+            <div class="battery"><div class="level"></div></div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="featured">
+            <a href="/phone/ezkey" class="app featured-app" title="Ezkey">
+              <div class="icon ic-ezkey featured-icon">EZ</div>
+              <div class="label">Ezkey</div>
+              <div class="hint">Tap to continue demo</div>
+            </a>
+          </div>
+          <div class="app-grid">
+            <a class="app" href="#" title="Weather">
+              <div class="icon ic-weather">☀️</div>
+              <div class="label">Weather</div>
+            </a>
+            <a class="app" href="#" title="Browser">
+              <div class="icon ic-browser">🌐</div>
+              <div class="label">Browser</div>
+            </a>
+            <a class="app" href="#" title="Mail">
+              <div class="icon ic-mail">✉️</div>
+              <div class="label">Mail</div>
+            </a>
+            <a class="app" href="#" title="Photos">
+              <div class="icon ic-photos">🖼️</div>
+              <div class="label">Photos</div>
+            </a>
+            <a class="app" href="#" title="Settings">
+              <div class="icon ic-settings">⚙️</div>
+              <div class="label">Settings</div>
+            </a>
+            <a class="app" href="#" title="Calendar">
+              <div class="icon ic-calendar">📅</div>
+              <div class="label">Calendar</div>
+            </a>
+            <a class="app" href="#" title="Camera">
+              <div class="icon ic-camera">📷</div>
+              <div class="label">Camera</div>
+            </a>
+            <a class="app" href="#" title="Maps">
+              <div class="icon ic-maps">🗺️</div>
+              <div class="label">Maps</div>
+            </a>
+            <a class="app" href="#" title="Music">
+              <div class="icon ic-music">🎵</div>
+              <div class="label">Music</div>
+            </a>
+          </div>
+        </div>
+        <div class="dock">
+          <a class="app" href="#" title="Phone"><div class="icon ic-settings">📞</div></a>
+          <a class="app" href="#" title="Messages"><div class="icon ic-mail">💬</div></a>
+          <a class="app" href="#" title="Browser"><div class="icon ic-browser">🌐</div></a>
+          <a class="app" href="#" title="Camera"><div class="icon ic-camera">📷</div></a>
+        </div>
+        <div class="home-indicator"></div>
       </div>
     </div>
   </div>
-</main>
 </body>
 </html>
 
