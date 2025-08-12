@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${pageTitle}">Ezkey App</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+</head>
+<body class="p-3">
+  <div class="container">
+    <h3 class="mb-3">Ezkey App</h3>
+    <p class="text-muted">Simulated mobile application</p>
+
+    <div class="mb-3">
+      <a href="/phone" class="btn btn-outline-secondary">← Back to Phone</a>
+    </div>
+
+    <h5>My Enrollments</h5>
+    <div th:if="${#lists.isEmpty(enrollments)}" class="alert alert-info">No enrollments stored yet.</div>
+    <ul class="list-group mb-3" th:if="${!#lists.isEmpty(enrollments)}">
+      <li class="list-group-item" th:each="e : ${enrollments}">
+        <div><strong>ID</strong>: <span th:text="${e.enrollmentId}">1</span></div>
+        <div><strong>Label</strong>: <span th:text="${e.deviceLabel}">Device</span></div>
+      </li>
+    </ul>
+
+    <div class="alert alert-secondary">To start an enrollment, go back to the phone home and tap Ezkey after pasting the enrollment URL on the site home page.</div>
+  </div>
+</body>
+</html>
+
+

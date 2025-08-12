@@ -44,7 +44,18 @@ public class EnrollmentStoreService {
     public void save(Record record) {
         try {
             if (record.createdAt() == null) {
-                record = new Record(record.enrollmentId(), record.integrationId(), record.enrollmentUrl(), record.devicePublicKey(), record.devicePrivateKey(), record.authAttemptChallengeRequired(), record.deviceLabel(), Instant.now().toString());
+                record = new Record(
+                        record.enrollmentId(),
+                        record.integrationId(),
+                        record.enrollmentUrl(),
+                        record.integrationPublicKey(),
+                        record.enrollmentProofToken(),
+                        record.devicePublicKey(),
+                        record.devicePrivateKey(),
+                        record.authAttemptChallengeRequired(),
+                        record.deviceLabel(),
+                        Instant.now().toString()
+                );
             }
             Path file = rootDir.resolve(record.enrollmentId() + ".json");
             byte[] json = objectMapper.writeValueAsBytes(record);
@@ -101,6 +112,8 @@ public class EnrollmentStoreService {
             Integer enrollmentId,
             Integer integrationId,
             String enrollmentUrl,
+            String integrationPublicKey,
+            String enrollmentProofToken,
             String devicePublicKey,
             String devicePrivateKey,
             Boolean authAttemptChallengeRequired,

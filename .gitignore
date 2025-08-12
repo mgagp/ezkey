@@ -85,3 +85,6 @@ application-*.properties
 # Scripts spécifiques à l'utilisateur
 *.sh
 *.bat
+ezkey-demo-device/data/enrollments/26.json
+ezkey-demo-device/data/enrollments/27.json
+ezkey-demo-device/data/enrollments/28.json

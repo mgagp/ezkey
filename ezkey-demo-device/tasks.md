@@ -13,62 +13,69 @@ Milestones and detailed TODOs
 
 M1 — Project setup and OpenAPI models
 
-- [ ] Create Spring Boot 3.x project skeleton (module: `ezkey-demo-device`, Java 21)
-- [ ] Configure port `server.port=8083`
-- [ ] Add dependencies in `pom.xml`:
-  - [ ] `spring-boot-starter-web`
-  - [ ] `spring-boot-starter-thymeleaf`
-  - [ ] `spring-boot-starter-webflux` (WebClient)
-  - [ ] WebJars (Bootstrap or minimal CSS if desired)
-  - [ ] Jackson (annotations)
-  - [ ] `jakarta.validation:jakarta.validation-api`
-- [ ] Configure OpenAPI Generator plugin (copy exact settings from demo-acme-app):
-  - [ ] `generatorName=java`, `library=resttemplate`, `serializationLibrary=jackson`, `useJakartaEe=true`
-  - [ ] generateModels=true, generateApis=false, generateSupportingFiles=false
-  - [ ] identical date/time/type mappings as demo-acme
-  - [ ] `modelPackage=org.ezkey.demodevice.generated.dto`
-  - [ ] `output=${project.build.directory}/generated-sources/openapi`
-  - [ ] `inputSpec=http://localhost:8080/v3/api-docs` (auth-api)
-  - [ ] Add build-helper-maven-plugin to add generated sources
-- [ ] Basic folders: `controller`, `service`, `templates`, `static/css`
-- [ ] Minimal base layout and CSS (no Neo Brutalism)
-- [ ] Verify `mvn package` generates DTOs successfully
+- [x] Create Spring Boot 3.x project skeleton (module: `ezkey-demo-device`, Java 21)
+- [x] Configure port `server.port=8083`
+- [x] Add dependencies in `pom.xml`:
+  - [x] `spring-boot-starter-web`
+  - [x] `spring-boot-starter-thymeleaf`
+  - [x] `spring-boot-starter-webflux` (WebClient)
+  - [x] WebJars (Bootstrap)
+  - [x] Jackson (annotations)
+  - [x] `jakarta.validation:jakarta.validation-api`
+- [x] Configure OpenAPI Generator plugin (copy exact settings from demo-acme-app):
+  - [x] `generatorName=java`, `library=resttemplate`, `serializationLibrary=jackson`, `useJakartaEe=true`
+  - [x] generateModels=true, generateApis=false, generateSupportingFiles=false
+  - [x] identical date/time/type mappings as demo-acme
+  - [x] `modelPackage=org.ezkey.demodevice.generated.dto`
+  - [x] `output=${project.build.directory}/generated-sources/openapi`
+  - [x] `inputSpec=http://localhost:8080/v3/api-docs` (auth-api)
+  - [x] Add build-helper-maven-plugin to add generated sources
+- [x] Basic folders: `controller`, `service`, `templates`
+- [x] Minimal base pages and CSS (simple Bootstrap-based, no Neo Brutalism)
+- [~] Verify `mvn package` generates DTOs successfully (depends on auth-api running at 8080)
 
 M2 — Device crypto + local store
 
-- [ ] Implement `DeviceCryptoService`
-  - [ ] Generate RSA-2048 key pair
-  - [ ] Sign payloads (compatible with auth-api proof expectations)
-  - [ ] Base64/encoding helpers as needed
+- [x] Implement `DeviceCryptoService`
+  - [x] Generate RSA-2048 key pair
+  - [x] Sign payloads (SHA256withRSA)
+  - [x] Base64/encoding helpers for keys and signatures
   - [ ] Unit test basic sign/verify round-trip
-- [ ] Implement `EnrollmentStoreService` (filesystem JSON)
-  - [ ] Decide storage root (e.g., `data/enrollments/` or `${user.home}/.ezkey/demo-device/enrollments/`)
-  - [ ] Save one JSON per enrollmentId containing: enrollmentUrl, device keys, metadata
-  - [ ] Load/list/delete operations
+- [x] Implement `EnrollmentStoreService` (filesystem JSON)
+  - [x] Storage root `data/enrollments/`
+  - [x] Save one JSON per enrollmentId containing: enrollmentUrl, device keys, metadata
+  - [x] Load/list/delete operations
   - [ ] Add simple tests for save/load/list
 
-M3 — Enrollment flow (Bind → Verify)
+M3 — Enrollment flow (Bind → Verify) — revised to use real auth-api endpoints
 
 - [ ] `HomeController` and home page `/`
-  - [ ] Input for Enrollment URL
-  - [ ] POST to capture/store URL (session or temp store)
-  - [ ] Button: “Launch Phone Simulator” → `/phone`
+  - [x] Input for Enrollment URL
+  - [x] Store URL (sessionStorage on client) and navigate to `/phone`
+  - [ ] Optionally mirror server-side capture if needed later
 - [ ] `PhoneController` `/phone`
-  - [ ] Render generic phone grid UI; include “Ezkey” app icon
-- [ ] `EzkeyAppController` — Ezkey app pages
+  - [x] Render generic phone grid UI; include featured “Ezkey” app icon
+- [ ] `EzkeyAppController` — Ezkey mobile app simulation
   - [ ] App home `/phone/ezkey` with actions:
-    - [ ] “Handle Enrollment” (uses captured URL)
-    - [ ] “My Enrollments” (list stored)
-  - [ ] Start enrollment `/phone/ezkey/enrollment/start`
-    - [ ] Parse Enrollment URL (extract needed identifiers/tokens)
-    - [ ] Generate device key pair via `DeviceCryptoService`
-    - [ ] Build device proof/payload
-    - [ ] Call auth-api bind endpoint
-  - [ ] Verify step `/phone/ezkey/enrollment/verify`
-    - [ ] Prompt user for challenge if policy requires
-    - [ ] POST verify with enrollmentId, device public key, signed proof token
-    - [ ] On success, persist JSON via `EnrollmentStoreService`
-- [ ] Templates (Thymeleaf) for the above pages with simple, clean styling
+    - [ ] “My Enrollments” (list stored from JSON files)
+  - [ ] Enrollment begin (Bind) — when user taps Ezkey from phone home, immediately process the captured URL:
+    - [ ] Read Enrollment URL from sessionStorage (client) or pass via query param to server controller
+    - [ ] Parse to extract the bind endpoint: `GET /api/v1/enrollment/bind/{id}` (real endpoint; do not invent)
+    - [ ] Call bind endpoint via `AuthApiService`
+    - [ ] Persist bind response fields in `EnrollmentStoreService` record:
+      - [ ] `integrationPublicKey`
+      - [ ] `enrollmentProofToken`
+      - [ ] Also persist `enrollmentUrl`
+      - [ ] Generate and persist device key pair (public/private Base64) if not already
+  - [ ] Prompt user for challenge code (displayed in demo-acme) after bind
+  - [ ] Verify step `POST /api/v1/enrollments/verify`
+    - [ ] Build request with: `enrollmentId`, `challengeResponse`, `devicePublicKey`, `enrollmentProofTokenSigned`
+    - [ ] Compute `enrollmentProofTokenSigned` by signing the proof token using `DeviceCryptoService`
+    - [ ] Submit verify; on success, update stored record (e.g., mark verified, keep keys and tokens)
+- [ ] Templates (Thymeleaf) for Ezkey app pages:
+  - [ ] `/phone/ezkey` app home
+  - [ ] `/phone/ezkey/enrollment/bind` result + challenge prompt
+  - [ ] `/phone/ezkey/enrollment/verify` success/failure feedback
 - [ ] Error/empty states and basic messaging
 
 M4 — Auth attempt flow (Pending → Respond)

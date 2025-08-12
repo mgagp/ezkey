@@ -68,6 +68,17 @@
   </style>
 </head>
 <body>
+  <script>
+    function launchEzkey(){
+      const url = sessionStorage.getItem('enrollmentUrl') || '';
+      if(!url){
+        alert('No enrollment URL found. Go back to the site home and paste the URL before launching the phone.');
+        return;
+      }
+      const encoded = encodeURIComponent(url);
+      window.location.href = '/phone/ezkey/enrollment/bind?url=' + encoded;
+    }
+  </script>
   <div class="device">
     <div class="frame">
       <div class="screen">
@@ -85,7 +96,7 @@
         </div>
         <div class="content">
           <div class="featured">
-            <a href="/phone/ezkey" class="app featured-app" title="Ezkey">
+            <a href="#" onclick="launchEzkey()" class="app featured-app" title="Ezkey">
               <div class="icon ic-ezkey featured-icon">EZ</div>
               <div class="label">Ezkey</div>
               <div class="hint">Tap to continue demo</div>
