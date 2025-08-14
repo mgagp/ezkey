@@ -16,6 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -46,6 +47,13 @@ public class EzkeyAppController {
         model.addAttribute("pageTitle", "Ezkey App");
         model.addAttribute("enrollments", storeService.list());
         return "phone/ezkey/home";
+    }
+
+    @GetMapping("/enrollments/{enrollmentId}/auth")
+    public String enrollmentAuth(@PathVariable("enrollmentId") Integer enrollmentId, Model model) {
+        model.addAttribute("pageTitle", "Authentication");
+        model.addAttribute("enrollmentId", enrollmentId);
+        return "phone/ezkey/auth";
     }
 
     /**

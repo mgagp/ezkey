@@ -16,8 +16,8 @@
   <script>
     function captureUrlAndLaunch(){
       const urlInput = document.getElementById('enrollUrl');
-      if(!urlInput.value){ alert('Please paste an enrollment URL'); return; }
-      sessionStorage.setItem('enrollmentUrl', urlInput.value);
+      // Allow empty URL; it will simply open the Ezkey app where enrollments can be managed
+      try { sessionStorage.setItem('enrollmentUrl', urlInput.value || ''); } catch(e) {}
       window.location.href = '/phone';
     }
   </script>

@@ -34,12 +34,6 @@ public class AuthApiService {
      * @param enrollmentId id to bind
      * @return response map (integrationPublicKey, enrollmentProofToken, ...)
      */
-    public Mono<Map> bindOrig(Integer enrollmentId) {
-        return authClient.get().uri("/api/v1/enrollments/bind/{id}",enrollmentId).retrieve().bodyToMono(Map.class).timeout(Duration.ofSeconds(15))
-                .doOnError(e -> logger.error("Bind failed for {}",enrollmentId,e)).onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex))
-                .onErrorResume(Exception.class,ex -> Mono.error(ex));
-    }
-
     public Mono<Map> bind(Integer enrollmentId) {
         String uri = String.format("/api/v1/enrollments/bind/%d",enrollmentId);
 
@@ -57,12 +51,6 @@ public class AuthApiService {
      * @param payload body map including enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned
      * @return response as a map
      */
-    public Mono<Map> verifyOrig(Map<String, Object> payload) {
-        return authClient.post().uri("/api/v1/enrollments/verify").bodyValue(payload).retrieve().bodyToMono(Map.class).timeout(Duration.ofSeconds(15))
-                .doOnError(e -> logger.error("Verify failed payload {}",payload,e)).onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex))
-                .onErrorResume(Exception.class,ex -> Mono.error(ex));
-    }
-
     public Mono<Map> verify(Map<String, Object> payload) {
         String uri = "/api/v1/enrollments/verify";
 

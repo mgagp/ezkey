@@ -70,13 +70,8 @@
 <body>
   <script>
     function launchEzkey(){
-      const url = sessionStorage.getItem('enrollmentUrl') || '';
-      if(!url){
-        alert('No enrollment URL found. Go back to the site home and paste the URL before launching the phone.');
-        return;
-      }
-      const encoded = encodeURIComponent(url);
-      window.location.href = '/phone/ezkey/enrollment/bind?url=' + encoded;
+      // Always open the Ezkey app. If an enrollment URL is present, users can start a new enrollment from there.
+      window.location.href = '/phone/ezkey';
     }
     function exitToSetup(){
       try { sessionStorage.removeItem('enrollmentUrl'); } catch(e) {}
