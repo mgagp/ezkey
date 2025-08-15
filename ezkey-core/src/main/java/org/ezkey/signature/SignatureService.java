@@ -11,6 +11,8 @@
 package org.ezkey.signature;
 
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -171,6 +173,30 @@ public class SignatureService {
             return signature.verify(signatureBytes);
         } catch (Exception e){
             return false;
+        }
+    }
+
+    /**
+     * Generates a new RSA key pair and returns it as Base64-encoded strings.
+     * <p>
+     * The generated private key is returned in PKCS#8 format and the public key in X.509 format.
+     * Keys are generated using a secure {@link KeyPairGenerator} and encoded with Base64 for storage/transmission.
+     * </p>
+     *
+     * @param keySize the RSA key size in bits (e.g., 2048)
+     * @return an immutable {@link RsaKeyPair} containing Base64-encoded keys
+     * @throws RuntimeException if key generation fails due to cryptographic errors
+     */
+    public RsaKeyPair generateRsaKeyPair(int keySize) {
+        try {
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(keySize);
+            KeyPair keyPair = keyGen.generateKeyPair();
+            String privateKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+            String publicKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+            return new RsaKeyPair(privateKeyBase64, publicKeyBase64);
+        } catch (Exception e) {
+            throw new RuntimeException("RSA key pair generation failed", e);
         }
     }
 

@@ -13,9 +13,6 @@ package org.ezkey.signature;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.util.Base64;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,11 +41,10 @@ import org.junit.jupiter.api.Test;
  * @since 2025
  * @see SignatureService
  */
-@DisplayName("Signature Service Tests")
+@DisplayName("SignatureService Tests")
 class SignatureServiceTest {
 
     private SignatureService signatureService;
-    private KeyPair keyPair;
     private String base64PrivateKey;
     private String base64PublicKey;
     private String testData;
@@ -61,17 +57,13 @@ class SignatureServiceTest {
         // Initialize signature service
         signatureService = new SignatureService();
         
-        // Generate RSA key pair for testing
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        keyPair = keyGen.generateKeyPair();
-
-        // Encode keys to Base64
-        base64PrivateKey = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-        base64PublicKey = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+        // Generate RSA key pair for testing via service API
+        RsaKeyPair rsaKeyPair = signatureService.generateRsaKeyPair(2048);
+        base64PrivateKey = rsaKeyPair.base64PrivateKey();
+        base64PublicKey = rsaKeyPair.base64PublicKey();
 
         // Test data
-        testData = "Test de signature pour Ezkey";
+        testData = "Signature test payload for Ezkey";
     }
 
     @Test
@@ -170,28 +162,41 @@ class SignatureServiceTest {
     @DisplayName("Should generate different signatures for different data")
     void testDifferentSignaturesForDifferentData() throws Exception {
         // Arrange
-        String data1 = "Première donnée de test";
-        String data2 = "Deuxième donnée de test";
+        String data1 = "First test data";
+        String data2 = "Second test data";
 
         // Act
         String signature1 = signatureService.generateSignature(data1, base64PrivateKey);
         String signature2 = signatureService.generateSignature(data2, base64PrivateKey);
 
         // Assert
-        assertFalse(signature1.equals(signature2), "Les signatures doivent être différentes pour des données différentes");
+        assertFalse(signature1.equals(signature2), "Signatures should differ for different data");
     }
 
     @Test
     @DisplayName("Should generate consistent signatures for same data")
     void testConsistentSignaturesForSameData() throws Exception {
         // Arrange
-        String data = "Données identiques pour test de cohérence";
+        String data = "Identical data for consistency test";
 
         // Act
         String signature1 = signatureService.generateSignature(data, base64PrivateKey);
         String signature2 = signatureService.generateSignature(data, base64PrivateKey);
 
         // Assert
-        assertTrue(signature1.equals(signature2), "Les signatures doivent être identiques pour les mêmes données");
+        assertTrue(signature1.equals(signature2), "Signatures should be identical for the same data");
+    }
+
+    @Test
+    @DisplayName("Should generate RSA key pair via service")
+    void testGenerateRsaKeyPair() {
+        // Act
+        RsaKeyPair pair = signatureService.generateRsaKeyPair(2048);
+        // Assert
+        assertTrue(pair.base64PrivateKey() != null && !pair.base64PrivateKey().isEmpty(), "Private key must be present");
+        assertTrue(pair.base64PublicKey() != null && !pair.base64PublicKey().isEmpty(), "Public key must be present");
+        // Quick sanity: produced keys can sign/verify
+        String sig = signatureService.generateSignature("data", pair.base64PrivateKey());
+        assertTrue(signatureService.validateSignature("data", sig, pair.base64PublicKey()), "Generated keys should work for sign/verify");
     }
 }

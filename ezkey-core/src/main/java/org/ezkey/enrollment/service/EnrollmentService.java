@@ -10,12 +10,14 @@
 
 package org.ezkey.enrollment.service;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -25,13 +27,9 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.enrollment.mapper.EnrollmentCoreMapper;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for enrollment operations using JPA with MyBatis fallback.
@@ -127,8 +125,10 @@ public class EnrollmentService {
     /**
      * Creates a new enrollment using the new DTO format.
      * <p>
-     * This method creates a new enrollment with the provided data, generates
-     * cryptographic keys, and returns the new response format.
+     * This method creates a new enrollment with the provided data, requests an RSA
+     * key pair from the cryptographic service, and returns the new response format.
+     * RSA key generation responsibility is delegated to {@link SignatureService}
+     * to centralize cryptographic operations.
      * </p>
      *
      * @param request the enrollment creation request
@@ -148,15 +148,9 @@ public class EnrollmentService {
         enrollment.setEnrollmentActive(false);
         enrollment.setAuthAttemptChallengeRequired(request.getAuthAttemptChallengeRequired() != null ? request.getAuthAttemptChallengeRequired() : false);
         enrollment.setCreatedAt(LocalDateTime.now());
-        try{
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(2048);
-            KeyPair kp = keyGen.generateKeyPair();
-            enrollment.setIntegrationPrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
-            enrollment.setIntegrationPublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
-        } catch (NoSuchAlgorithmException e){
-            throw new RuntimeException("Key generation failed",e);
-        }
+        RsaKeyPair integrationKeys = signatureService.generateRsaKeyPair(2048);
+        enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
+        enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
         enrollment.setDevicePublicKey(null);
         java.util.Random random = new java.util.Random();
         enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
@@ -166,15 +160,9 @@ public class EnrollmentService {
         response.setEnrollmentId(savedEnrollment.getEnrollmentId());
         response.setEnrollmentChallenge(savedEnrollment.getEnrollmentChallenge());
         if (simulationMode){
-            try{
-                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-                keyGen.initialize(2048);
-                KeyPair kp = keyGen.generateKeyPair();
-                response.setSimulationDevicePrivateKey(java.util.Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
-                response.setSimulationDevicePublicKey(java.util.Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()));
-            } catch (NoSuchAlgorithmException e){
-                throw new RuntimeException("Key generation failed",e);
-            }
+            RsaKeyPair deviceKeys = signatureService.generateRsaKeyPair(2048);
+            response.setSimulationDevicePrivateKey(deviceKeys.base64PrivateKey());
+            response.setSimulationDevicePublicKey(deviceKeys.base64PublicKey());
             String signature = signatureService.generateSignature(enrollment.getEnrollmentProofToken(),response.getSimulationDevicePrivateKey());
             response.setSimulationEnrollmentProofTokenSigned(signature);
 
