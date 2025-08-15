@@ -67,8 +67,8 @@ public interface IntegrationServiceMapper {
     /**
      * Maps a saved EzkeyIntegration entity to a response DTO.
      *
-     * @param domResponse the saved EzkeyIntegration entity
+     * @param integrationEntity the saved EzkeyIntegration entity
      * @return the response DTO containing the integration's information
      */
-    IntegrationCreateResponse toCreateResponse(Integration domResponse);
+    IntegrationCreateResponse toCreateResponse(Integration integrationEntity);
 }
