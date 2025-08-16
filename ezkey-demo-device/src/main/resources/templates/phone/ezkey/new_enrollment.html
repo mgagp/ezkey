@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${pageTitle}">New Enrollment</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
+    .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
+    .status-bar { position:absolute; top: 12px; left:0; right:0; padding: 0 16px; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:.9rem; }
+    .content { position:absolute; top: 52px; left:0; right:0; bottom: 0; display:flex; flex-direction:column; }
+    .header { padding: 16px; }
+    .title { margin:0; font-size: 1.25rem; }
+    .form-container { flex:1; padding: 16px; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
+    .form-input { 
+      width: 100%; 
+      padding: 12px 14px; 
+      border-radius: 14px; 
+      background: rgba(255,255,255,.06); 
+      border: 1px solid rgba(255,255,255,.1); 
+      color: #fff; 
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .form-input:focus { 
+      outline: none; 
+      border-color: #0d6efd; 
+      background: rgba(255,255,255,.08); 
+    }
+    .form-input::placeholder { color: #888; }
+    .btn-primary { 
+      width: 100%; 
+      padding: 12px 14px; 
+      border-radius: 14px; 
+      background: #0d6efd; 
+      color: #fff; 
+      border: none; 
+      font-size: 1rem; 
+      cursor: pointer; 
+    }
+    .btn-primary:hover { background: #0b5ed7; }
+    .btn-secondary { 
+      width: 100%; 
+      padding: 12px 14px; 
+      border-radius: 14px; 
+      background: rgba(255,255,255,.1); 
+      color: #fff; 
+      border: none; 
+      font-size: 1rem; 
+      cursor: pointer; 
+      margin-top: 12px;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.15); }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+  </style>
+  <script>
+    function exitToSetup(){ window.location.href = '/phone/ezkey'; }
+  </script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="status-bar">
+      <div>Ezkey</div>
+      <div>9:41</div>
+    </div>
+    <div class="content">
+      <div class="header">
+        <h1 class="title">New Enrollment</h1>
+        <div class="text-muted" style="font-size:.85rem; opacity:.8;">Enter enrollment ID to start</div>
+      </div>
+      <div class="form-container">
+        <form action="/phone/ezkey/enrollment/bind" method="post">
+          <div class="form-group">
+            <label for="enrollmentId" class="form-label">Enrollment ID</label>
+            <input type="number" id="enrollmentId" name="enrollmentId" class="form-input" placeholder="Enter enrollment ID" required>
+          </div>
+          <button type="submit" class="btn-primary">Start Enrollment</button>
+        </form>
+        <button class="btn-secondary" onclick="exitToSetup()">Cancel</button>
+      </div>
+    </div>
+    <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>
+  </div>
+</body>
+</html>

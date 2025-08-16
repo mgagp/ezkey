@@ -82,7 +82,8 @@ public class DeviceCryptoService {
      * @return Base64 signature string
      */
     public String signStringToBase64(String content, PrivateKey privateKey) {
-        byte[] signature = signBytes(content.getBytes(StandardCharsets.UTF_8), privateKey);
+        // Use default charset to match SignatureService implementation
+        byte[] signature = signBytes(content.getBytes(), privateKey);
         return Base64.getEncoder().encodeToString(signature);
     }
 
