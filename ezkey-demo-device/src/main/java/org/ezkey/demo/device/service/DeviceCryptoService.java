@@ -34,7 +34,9 @@ public class DeviceCryptoService {
     private static final Logger logger = LoggerFactory.getLogger(DeviceCryptoService.class);
 
     private static final String KEY_ALGORITHM = "RSA";
+
     private static final int KEY_SIZE_BITS = 2048;
+
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
 
     /**
@@ -43,13 +45,13 @@ public class DeviceCryptoService {
      * @return key pair
      */
     public KeyPair generateDeviceKeyPair() {
-        try {
+        try{
             KeyPairGenerator generator = KeyPairGenerator.getInstance(KEY_ALGORITHM);
-            generator.initialize(KEY_SIZE_BITS, SecureRandom.getInstanceStrong());
+            generator.initialize(KEY_SIZE_BITS,SecureRandom.getInstanceStrong());
             return generator.generateKeyPair();
-        } catch (Exception e) {
-            logger.error("Failed to generate device key pair", e);
-            throw new IllegalStateException("Unable to generate RSA key pair", e);
+        } catch (Exception e){
+            logger.error("Failed to generate device key pair",e);
+            throw new IllegalStateException("Unable to generate RSA key pair",e);
         }
     }
 
@@ -60,17 +62,17 @@ public class DeviceCryptoService {
      * @param privateKey RSA private key
      * @return signature bytes
      */
-    public byte[] signBytes(byte[] dataToSign, PrivateKey privateKey) {
-        Objects.requireNonNull(dataToSign, "dataToSign must not be null");
-        Objects.requireNonNull(privateKey, "privateKey must not be null");
-        try {
+    public byte[] signBytes(byte[] dataToSign,PrivateKey privateKey) {
+        Objects.requireNonNull(dataToSign,"dataToSign must not be null");
+        Objects.requireNonNull(privateKey,"privateKey must not be null");
+        try{
             Signature signer = Signature.getInstance(SIGNATURE_ALGORITHM);
             signer.initSign(privateKey);
             signer.update(dataToSign);
             return signer.sign();
-        } catch (Exception e) {
-            logger.error("Failed to sign data", e);
-            throw new IllegalStateException("Signing failure", e);
+        } catch (Exception e){
+            logger.error("Failed to sign data",e);
+            throw new IllegalStateException("Signing failure",e);
         }
     }
 
@@ -81,9 +83,9 @@ public class DeviceCryptoService {
      * @param privateKey RSA private key
      * @return Base64 signature string
      */
-    public String signStringToBase64(String content, PrivateKey privateKey) {
+    public String signStringToBase64(String content,PrivateKey privateKey) {
         // Use default charset to match SignatureService implementation
-        byte[] signature = signBytes(content.getBytes(), privateKey);
+        byte[] signature = signBytes(content.getBytes(StandardCharsets.UTF_8),privateKey);
         return Base64.getEncoder().encodeToString(signature);
     }
 
@@ -114,12 +116,12 @@ public class DeviceCryptoService {
      * @return public key instance
      */
     public PublicKey base64ToPublicKey(String base64) {
-        try {
+        try{
             byte[] der = Base64.getDecoder().decode(base64);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(der);
             return KeyFactory.getInstance(KEY_ALGORITHM).generatePublic(spec);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid public key encoding", e);
+        } catch (Exception e){
+            throw new IllegalArgumentException("Invalid public key encoding",e);
         }
     }
 
@@ -130,12 +132,12 @@ public class DeviceCryptoService {
      * @return private key instance
      */
     public PrivateKey base64ToPrivateKey(String base64) {
-        try {
+        try{
             byte[] der = Base64.getDecoder().decode(base64);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(der);
             return KeyFactory.getInstance(KEY_ALGORITHM).generatePrivate(spec);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid private key encoding", e);
+        } catch (Exception e){
+            throw new IllegalArgumentException("Invalid private key encoding",e);
         }
     }
 
@@ -148,14 +150,9 @@ public class DeviceCryptoService {
      * @param privateKey device private key
      * @return Base64-encoded signature over the canonicalized claims string
      */
-    public String buildAndSignDeviceProof(Map<String, Object> claims, PrivateKey privateKey) {
-        String canonical = claims.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(e -> e.getKey() + "=" + String.valueOf(e.getValue()))
-                .reduce((a, b) -> a + "\n" + b)
-                .orElse("");
-        return signStringToBase64(canonical, privateKey);
+    public String buildAndSignDeviceProof(Map<String, Object> claims,PrivateKey privateKey) {
+        String canonical = claims.entrySet().stream().sorted(Map.Entry.comparingByKey()).map(e -> e.getKey() + "=" + String.valueOf(e.getValue()))
+                .reduce((a,b) -> a + "\n" + b).orElse("");
+        return signStringToBase64(canonical,privateKey);
     }
 }
-
-

@@ -57,7 +57,21 @@
       </div>
       <div class="list" th:if="${!#lists.isEmpty(enrollments)}">
         <a class="item" th:each="e : ${enrollments}" th:href="@{'/phone/ezkey/enrollments/' + ${e.enrollmentId} + '/auth'}">
-          <div>#<span th:text="${e.enrollmentId}">1</span></div>
+          <div style="display: flex; align-items: center;">
+            <img th:if="${e.integrationLogo}" th:src="${e.integrationLogo}" alt="Integration Logo" 
+                 style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 4px;">
+                <span th:if="${e.integrationName}" th:text="${e.integrationName}">Integration Name</span>
+                <span th:unless="${e.integrationName}">#<span th:text="${e.enrollmentId}">1</span></span>
+              </div>
+              <div th:if="${e.integrationDescription}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
+                   th:text="${e.integrationDescription}">Integration description</div>
+              <div th:unless="${e.integrationDescription}" style="font-size: 0.8rem; color: #888;">
+                Enrollment #<span th:text="${e.enrollmentId}">1</span>
+              </div>
+            </div>
+          </div>
         </a>
       </div>
     </div>

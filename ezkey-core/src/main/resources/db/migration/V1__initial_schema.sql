@@ -20,7 +20,7 @@ CREATE TABLE ezkey_enrollment (
     enrollment_name VARCHAR(64) NOT NULL,
     enrollment_read BOOLEAN DEFAULT FALSE,
     enrollment_verified BOOLEAN DEFAULT FALSE,
-    enrollment_valid BOOLEAN DEFAULT NULL,
+    enrollment_valid BOOLEAN DEFAULT FALSE,
     enrollment_active BOOLEAN DEFAULT FALSE,
     enrollment_challenge INT DEFAULT NULL,
     enrollment_proof_token TEXT NOT NULL,

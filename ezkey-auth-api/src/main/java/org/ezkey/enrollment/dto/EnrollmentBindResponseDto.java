@@ -89,6 +89,42 @@ public class EnrollmentBindResponseDto {
     private String enrollmentProofToken;
 
     /**
+     * The logo URL or base64-encoded image for the integration.
+     * <p>
+     * Provides a visual identifier for the integration, allowing the mobile device
+     * to display the integration's logo during the enrollment process.
+     * </p>
+     */
+    @Schema(description = "Logo URL or base64-encoded image for the integration", 
+            example = "https://acme.com/logo.png", 
+            required = false)
+    private String integrationLogo;
+
+    /**
+     * The display name of the integration.
+     * <p>
+     * Human-readable name of the integration, shown to the user during enrollment
+     * to help identify the service or application being enrolled.
+     * </p>
+     */
+    @Schema(description = "Display name of the integration", 
+            example = "Acme Bank", 
+            required = false)
+    private String integrationName;
+
+    /**
+     * The description of the integration.
+     * <p>
+     * Provides additional context or information about the integration, such as
+     * its purpose or features, to assist the user during the enrollment process.
+     * </p>
+     */
+    @Schema(description = "Description of the integration", 
+            example = "Acme Bank provides secure online banking services.", 
+            required = false)
+    private String integrationDescription;
+
+    /**
      * Gets the enrollment ID.
      *
      * @return the enrollment ID
@@ -140,6 +176,60 @@ public class EnrollmentBindResponseDto {
      */
     public void setEnrollmentProofToken(String enrollmentProofToken) {
         this.enrollmentProofToken = enrollmentProofToken;
+    }
+
+    /**
+     * Gets the integration logo.
+     *
+     * @return the integration logo (URL or base64-encoded image)
+     */
+    public String getIntegrationLogo() {
+        return integrationLogo;
+    }
+
+    /**
+     * Sets the integration logo.
+     *
+     * @param integrationLogo the integration logo to set (URL or base64-encoded image)
+     */
+    public void setIntegrationLogo(String integrationLogo) {
+        this.integrationLogo = integrationLogo;
+    }
+
+    /**
+     * Gets the integration name.
+     *
+     * @return the integration name
+     */
+    public String getIntegrationName() {
+        return integrationName;
+    }
+
+    /**
+     * Sets the integration name.
+     *
+     * @param integrationName the integration name to set
+     */
+    public void setIntegrationName(String integrationName) {
+        this.integrationName = integrationName;
+    }
+
+    /**
+     * Gets the integration description.
+     *
+     * @return the integration description
+     */
+    public String getIntegrationDescription() {
+        return integrationDescription;
+    }
+
+    /**
+     * Sets the integration description.
+     *
+     * @param integrationDescription the integration description to set
+     */
+    public void setIntegrationDescription(String integrationDescription) {
+        this.integrationDescription = integrationDescription;
     }
 
 }

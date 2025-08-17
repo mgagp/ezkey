@@ -14,11 +14,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
@@ -27,9 +22,16 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.enrollment.mapper.EnrollmentCoreMapper;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for enrollment operations using JPA with MyBatis fallback.
@@ -75,6 +77,8 @@ public class EnrollmentService {
 
     private final SignatureService signatureService;
 
+    private final IntegrationRepository integrationRepository;
+
     @Value("${ezkey.simulation.mode:false}")
     private boolean simulationMode;
 
@@ -84,11 +88,13 @@ public class EnrollmentService {
      * @param enrollmentRepository the JPA repository for enrollment operations
      * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
      * @param signatureService the cryptographic signature service
+     * @param integrationRepository the JPA repository for integration operations
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService){
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService,IntegrationRepository integrationRepository){
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
+        this.integrationRepository = integrationRepository;
     }
 
     /**
@@ -199,6 +205,19 @@ public class EnrollmentService {
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
 
+        Optional<Integration> integrationOpt = integrationRepository.findById(enrollment.getIntegrationId());
+        Integration integration = integrationOpt.get();
+
+        integration.getI18n().stream().filter(i18n -> i18n.getLanguage().equals(req.getLanguage())).findFirst().ifPresent(i18n -> {
+            response.setIntegrationName(i18n.getName());
+            response.setIntegrationDescription(i18n.getDescription());
+        });
+        if (response.getIntegrationName() == null || response.getIntegrationDescription() == null){
+            if (!integration.getI18n().isEmpty()){
+                response.setIntegrationName(integration.getI18n().get(0).getName());
+                response.setIntegrationDescription(integration.getI18n().get(0).getDescription());
+            }
+        }
         return response;
     }
 

@@ -41,7 +41,8 @@ public class EzkeyAppController {
 
     private final EnrollmentStoreService storeService;
 
-    public EzkeyAppController(AuthApiService authApiService, DeviceCryptoService cryptoService, EnrollmentStoreService storeService) {
+    public EzkeyAppController(AuthApiService authApiService, DeviceCryptoService cryptoService, 
+                             EnrollmentStoreService storeService) {
         this.authApiService = authApiService;
         this.cryptoService = cryptoService;
         this.storeService = storeService;
@@ -61,7 +62,9 @@ public class EzkeyAppController {
     }
 
     @PostMapping("/enrollment/bind")
-    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId, Model model) {
+    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,
+                                 @RequestParam(value = "language", defaultValue = "en") String language,
+                                 Model model) {
         model.addAttribute("pageTitle", "Enrollment - Bind");
         model.addAttribute("enrollmentId", enrollmentId);
         
@@ -78,10 +81,18 @@ public class EzkeyAppController {
                 String integrationPublicKey = bindResponse.getIntegrationPublicKey();
                 String enrollmentProofToken = bindResponse.getEnrollmentProofToken();
 
-                // Save interim record before verify
+                // Get integration information from the response
+                String integrationName = bindResponse.getIntegrationName();
+                String integrationDescription = bindResponse.getIntegrationDescription();
+                String integrationLogo = bindResponse.getIntegrationLogo();
+
+                logger.info("Using integration info for enrollment {} with language {}: name={}, description={}, logo={}", 
+                           enrollmentId, language, integrationName, integrationDescription, integrationLogo);
+
+                // Save interim record before verify with integration information
                 Record record = new Record(
                         enrollmentId,
-                        null,
+                        null, // integrationId - would be set if available
                         null,
                         integrationPublicKey,
                         enrollmentProofToken, // Store the proof token (not signed)
@@ -89,13 +100,20 @@ public class EzkeyAppController {
                         devicePrivateKeyB64,
                         null,
                         "Device",
-                        null
+                        null,
+                        integrationName,
+                        integrationDescription,
+                        integrationLogo
                 );
                 storeService.save(record);
 
                 model.addAttribute("enrollmentId", enrollmentId);
                 model.addAttribute("enrollmentProofToken", enrollmentProofToken);
                 model.addAttribute("integrationPublicKey", integrationPublicKey);
+                model.addAttribute("integrationName", integrationName);
+                model.addAttribute("integrationDescription", integrationDescription);
+                model.addAttribute("integrationLogo", integrationLogo);
+                model.addAttribute("language", language);
                 model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
             } else {
                 model.addAttribute("error", "Bind failed: No response from server");
@@ -156,7 +174,10 @@ public class EzkeyAppController {
                             rec.devicePrivateKey(),
                             true, // authAttemptChallengeRequired
                             rec.deviceLabel(),
-                            rec.createdAt()
+                            rec.createdAt(),
+                            rec.integrationName(),
+                            rec.integrationDescription(),
+                            rec.integrationLogo()
                     );
                     storeService.save(updatedRecord);
                     

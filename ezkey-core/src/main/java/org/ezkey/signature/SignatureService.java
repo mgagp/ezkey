@@ -10,6 +10,7 @@
 
 package org.ezkey.signature;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -18,6 +19,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 
@@ -74,6 +76,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class SignatureService {
 
+    private static final int PROOF_TOKEN_RANDOM_BYTES = 32; // 256 bits
+
+    private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
+
+    private static final String RSA_ALGORITHM = "RSA";
+
+    private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
+
     /**
      * Generates a digital signature for the provided data using RSA private key.
      * <p>
@@ -109,15 +119,17 @@ public class SignatureService {
      * @see java.security.PrivateKey
      * @see java.security.spec.PKCS8EncodedKeySpec
      */
-    public String generateSignature(String data,String base64PrivateKey){
+    public String generateSignature(String data,String base64PrivateKey) {
+        Objects.requireNonNull(data,"Data cannot be null");
+        Objects.requireNonNull(base64PrivateKey,"Private key cannot be null");
         try{
             byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PrivateKey);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory kf = KeyFactory.getInstance("RSA");
+            KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
             PrivateKey privateKey = kf.generatePrivate(spec);
-            Signature signature = Signature.getInstance("SHA256withRSA");
+            Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
             signature.initSign(privateKey);
-            signature.update(data.getBytes());
+            signature.update(data.getBytes(StandardCharsets.UTF_8));
             byte[] signed = signature.sign();
             return java.util.Base64.getEncoder().encodeToString(signed);
         } catch (Exception e){
@@ -160,15 +172,15 @@ public class SignatureService {
      * @see java.security.PublicKey
      * @see java.security.spec.X509EncodedKeySpec
      */
-    public boolean validateSignature(String data,String signatureBase64,String base64PublicKey){
+    public boolean validateSignature(String data,String signatureBase64,String base64PublicKey) {
         try{
             byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PublicKey);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-            KeyFactory kf = KeyFactory.getInstance("RSA");
+            KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
             PublicKey publicKey = kf.generatePublic(spec);
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initVerify(publicKey);
-            signature.update(data.getBytes());
+            signature.update(data.getBytes(StandardCharsets.UTF_8));
             byte[] signatureBytes = java.util.Base64.getDecoder().decode(signatureBase64);
             return signature.verify(signatureBytes);
         } catch (Exception e){
@@ -188,15 +200,15 @@ public class SignatureService {
      * @throws RuntimeException if key generation fails due to cryptographic errors
      */
     public RsaKeyPair generateRsaKeyPair(int keySize) {
-        try {
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        try{
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(RSA_ALGORITHM);
             keyGen.initialize(keySize);
             KeyPair keyPair = keyGen.generateKeyPair();
             String privateKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
             String publicKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-            return new RsaKeyPair(privateKeyBase64, publicKeyBase64);
-        } catch (Exception e) {
-            throw new RuntimeException("RSA key pair generation failed", e);
+            return new RsaKeyPair(privateKeyBase64,publicKeyBase64);
+        } catch (Exception e){
+            throw new RuntimeException("RSA key pair generation failed",e);
         }
     }
 
@@ -206,9 +218,9 @@ public class SignatureService {
      * This method creates a random, unpredictable token suitable for use as a payload to be signed
      * in authentication or enrollment flows. The token is composed of:
      * <ul>
-     *   <li>256 bits (32 bytes) of cryptographically secure random data</li>
-     *   <li>A timestamp (milliseconds since epoch)</li>
-     *   <li>An additional 128 bits (16 bytes) of random salt</li>
+     * <li>256 bits (32 bytes) of cryptographically secure random data</li>
+     * <li>A timestamp (milliseconds since epoch)</li>
+     * <li>An additional 128 bits (16 bytes) of random salt</li>
      * </ul>
      * The result is encoded as a Base64 URL-safe string (without padding), concatenating the random bytes,
      * timestamp, and salt, separated by a period ('.').
@@ -217,18 +229,18 @@ public class SignatureService {
      * @return a Base64 URL-safe encoded proof token string
      */
     public String generateProofToken() {
-        try {
+        try{
             java.security.SecureRandom secureRandom = new java.security.SecureRandom();
-            byte[] randomBytes = new byte[32]; // 256 bits
+            byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];
             secureRandom.nextBytes(randomBytes);
             long timestamp = System.currentTimeMillis();
-            byte[] salt = new byte[16]; // 128 bits
+            byte[] salt = new byte[PROOF_TOKEN_SALT_BYTES];
             secureRandom.nextBytes(salt);
             String randomPart = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
             String saltPart = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
             return randomPart + "." + timestamp + "." + saltPart;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate proof token", e);
+        } catch (Exception e){
+            throw new RuntimeException("Failed to generate proof token",e);
         }
     }
 }

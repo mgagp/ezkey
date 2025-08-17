@@ -100,6 +100,22 @@
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
         
+        <!-- Integration Information -->
+        <div th:if="${integrationName}" class="info-box">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <img th:if="${integrationLogo}" th:src="${integrationLogo}" alt="Integration Logo" 
+                 style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">
+            <div>
+              <strong th:text="${integrationName}">Demo Integration</strong>
+              <div th:if="${integrationDescription}" style="font-size: 0.8rem; color: #999; margin-top: 2px;" 
+                   th:text="${integrationDescription}">Demo integration for testing purposes</div>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">
+            Language: <span th:text="${language}">en</span>
+          </div>
+        </div>
+        
         <!-- Bind Information -->
         <div th:if="${enrollmentProofToken}" class="info-box">
           <strong>Enrollment ProofToken:</strong> <span th:text="${enrollmentProofToken}"></span>

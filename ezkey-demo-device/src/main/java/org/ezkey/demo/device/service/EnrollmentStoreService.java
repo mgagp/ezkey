@@ -54,7 +54,10 @@ public class EnrollmentStoreService {
                         record.devicePrivateKey(),
                         record.authAttemptChallengeRequired(),
                         record.deviceLabel(),
-                        Instant.now().toString()
+                        Instant.now().toString(),
+                        record.integrationName(),
+                        record.integrationDescription(),
+                        record.integrationLogo()
                 );
             }
             Path file = rootDir.resolve(record.enrollmentId() + ".json");
@@ -118,7 +121,11 @@ public class EnrollmentStoreService {
             String devicePrivateKey,
             Boolean authAttemptChallengeRequired,
             String deviceLabel,
-            String createdAt
+            String createdAt,
+            // New integration information fields
+            String integrationName,
+            String integrationDescription,
+            String integrationLogo
     ) { }
 }
 

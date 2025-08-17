@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -105,14 +106,21 @@ public class EnrollmentController {
      * </p>
      *
      * @param enrollmentId the enrollment ID to bind the device to
+     * @param acceptLanguage the preferred language for i18n fields (from Accept-Language header)
      * @return ResponseEntity containing enrollment binding information with HTTP 200,
      * or 400 for invalid enrollment ID, or 409 if enrollment is already bound
      */
     @GetMapping("/bind/{enrollmentId}")
-    public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentId") Integer enrollmentId) {
+    public ResponseEntity<EnrollmentBindResponseDto> bind(
+            @PathVariable("enrollmentId") Integer enrollmentId,
+            @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
         try{
+            String language = (acceptLanguage != null && !acceptLanguage.isEmpty())
+                ? acceptLanguage.split(",")[0].split("-")[0]
+                : "en";
             EnrollmentBindRequest request = new EnrollmentBindRequest();
             request.setEnrollmentId(enrollmentId);
+            request.setLanguage(language);
             EnrollmentBindResponse response = enrollmentService.bind(request);
             return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
         } catch (IllegalArgumentException e){
