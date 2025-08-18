@@ -2,10 +2,13 @@ package org.ezkey.demo.device.service;
 
 import java.time.Duration;
 
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentBindResponseDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,18 +42,12 @@ public class AuthApiService {
      * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
      */
     public Mono<EnrollmentBindResponseDto> bind(Integer enrollmentId) {
-        String uri = String.format("/api/v1/enrollments/bind/%d", enrollmentId);
+        String uri = String.format("/api/v1/enrollments/bind/%d",enrollmentId);
 
-        Mono<EnrollmentBindResponseDto> responseMono = authClient.get()
-                .uri(uri)
-                .retrieve()
-                .bodyToMono(EnrollmentBindResponseDto.class)
-                .timeout(Duration.ofSeconds(15));
+        Mono<EnrollmentBindResponseDto> responseMono = authClient.get().uri(uri).retrieve().bodyToMono(EnrollmentBindResponseDto.class).timeout(Duration.ofSeconds(15));
 
-        Mono<EnrollmentBindResponseDto> errorHandledMono = responseMono
-                .doOnError(e -> logger.error("Bind failed for {}", enrollmentId, e))
-                .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
-                .onErrorResume(Exception.class, ex -> Mono.error(ex));
+        Mono<EnrollmentBindResponseDto> errorHandledMono = responseMono.doOnError(e -> logger.error("Bind failed for {}",enrollmentId,e))
+                .onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex)).onErrorResume(Exception.class,ex -> Mono.error(ex));
 
         return errorHandledMono;
     }
@@ -67,16 +64,59 @@ public class AuthApiService {
         WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
         WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
 
-        Mono<EnrollmentVerifyResponseDto> responseMono = headersSpec
-                .retrieve()
-                .bodyToMono(EnrollmentVerifyResponseDto.class)
-                .timeout(Duration.ofSeconds(15));
+        Mono<EnrollmentVerifyResponseDto> responseMono = headersSpec.retrieve().bodyToMono(EnrollmentVerifyResponseDto.class).timeout(Duration.ofSeconds(15));
 
-        Mono<EnrollmentVerifyResponseDto> errorHandledMono = responseMono
-                .doOnSuccess(response -> logger.info("Verify API response: {}", response))
-                .doOnError(e -> logger.error("Verify failed for request: {}", requestDto, e))
-                .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
-                .onErrorResume(Exception.class, ex -> Mono.error(ex));
+        Mono<EnrollmentVerifyResponseDto> errorHandledMono = responseMono.doOnSuccess(response -> logger.info("Verify API response: {}",response))
+                .doOnError(e -> logger.error("Verify failed for request: {}",requestDto,e)).onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex))
+                .onErrorResume(Exception.class,ex -> Mono.error(ex));
+
+        return errorHandledMono;
+    }
+
+    /**
+     * Calls POST /api/v1/auth-attempts/pending/{enrollmentId} to check for pending authentication attempts.
+     *
+     * @param requestDto typed request DTO with enrollmentId, deviceProofToken, deviceProofTokenSigned
+     * @return typed response DTO with auth attempt details or null if no pending attempt
+     */
+    public Mono<AuthAttemptPendingResponseDto> pending(AuthAttemptPendingRequestDto requestDto) {
+        String uri = String.format("/api/v1/auth-attempts/pending/%d",requestDto.getEnrollmentId());
+
+        WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
+        WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
+
+        Mono<AuthAttemptPendingResponseDto> responseMono = headersSpec.retrieve().bodyToMono(AuthAttemptPendingResponseDto.class).timeout(Duration.ofSeconds(15));
+
+        Mono<AuthAttemptPendingResponseDto> errorHandledMono = responseMono.doOnSuccess(response -> logger.info("Pending API response: {}",response))
+                .doOnError(e -> logger.error("Pending failed for request: {}",requestDto,e)).onErrorResume(WebClientResponseException.class,ex -> {
+                    if (ex.getStatusCode().value() == 204){
+                        // No pending attempts
+                        return Mono.empty();
+                    }
+                    return Mono.error(ex);
+                }).onErrorResume(Exception.class,ex -> Mono.error(ex));
+
+        return errorHandledMono;
+    }
+
+    /**
+     * Calls POST /api/v1/auth-attempts/respond/{authAttemptId} to submit authentication response.
+     *
+     * @param authAttemptId the authentication attempt ID
+     * @param requestDto typed request DTO with approved, responseSignature, etc.
+     * @return typed response DTO with result
+     */
+    public Mono<AuthAttemptRespondResponseDto> respond(Integer authAttemptId,AuthAttemptRespondRequestDto requestDto) {
+        String uri = String.format("/api/v1/auth-attempts/respond/%d",authAttemptId);
+
+        WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
+        WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
+
+        Mono<AuthAttemptRespondResponseDto> responseMono = headersSpec.retrieve().bodyToMono(AuthAttemptRespondResponseDto.class).timeout(Duration.ofSeconds(15));
+
+        Mono<AuthAttemptRespondResponseDto> errorHandledMono = responseMono.doOnSuccess(response -> logger.info("Respond API response: {}",response))
+                .doOnError(e -> logger.error("Respond failed for authAttemptId {}: {}",authAttemptId,requestDto,e))
+                .onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex)).onErrorResume(Exception.class,ex -> Mono.error(ex));
 
         return errorHandledMono;
     }

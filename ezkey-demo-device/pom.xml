@@ -115,22 +115,30 @@
 							<inputSpec>http://localhost:8080/v3/api-docs</inputSpec>
 							<generatorName>java</generatorName>
 							<configOptions>
-								<java8>false</java8>
-								<dateLibrary>java8</dateLibrary>
-								<modelDateTimeMapping>LocalDateTime</modelDateTimeMapping>
-								<modelFormatAnnotation>true</modelFormatAnnotation>
-								<modelFormatPattern>yyyy-MM-dd'T'HH:mm:ss.SSSSSS</modelFormatPattern>
-								<library>resttemplate</library>
-								<serializationLibrary>jackson</serializationLibrary>
-								<useJakartaEe>true</useJakartaEe>
-								<generateClientAsBean>false</generateClientAsBean>
-								<generateApis>false</generateApis>
-								<generateModels>true</generateModels>
-								<generateSupportingFiles>false</generateSupportingFiles>
-								<hideGenerationTimestamp>true</hideGenerationTimestamp>
-								<skipDefaultInterface>true</skipDefaultInterface>
-								<interfaceOnly>false</interfaceOnly>
-								<useBeanValidation>true</useBeanValidation>
+			                    <!-- Configuration temporelle -->
+			                    <dateLibrary>java8</dateLibrary>
+			                    <modelDateTimeMapping>LocalDateTime</modelDateTimeMapping>
+			                    <modelFormatAnnotation>true</modelFormatAnnotation>
+			                    <modelFormatPattern>yyyy-MM-dd'T'HH:mm:ss.SSSSSS</modelFormatPattern>
+			                    
+			                    <!-- Configuration Spring/Jakarta -->
+			                    <library>resttemplate</library>
+			                    <useJakartaEe>true</useJakartaEe>
+			                    <useSpringBoot3>true</useSpringBoot3>
+			                    
+			                    <!-- Configuration génération -->
+			                    <generateApis>false</generateApis>
+			                    <generateSupportingFiles>false</generateSupportingFiles>
+			                    <generateApiDocumentation>false</generateApiDocumentation>
+			                    <hideGenerationTimestamp>true</hideGenerationTimestamp>
+			                    
+			                    <!-- Configuration validation/sérialisation -->
+			                    <useBeanValidation>true</useBeanValidation>
+			                    <jacksonJsonInclude>NON_NULL</jacksonJsonInclude>
+			                    <openApiNullable>false</openApiNullable>
+			                    
+			                    <!-- Configuration nommage -->
+			                    <modelPropertyNaming>original</modelPropertyNaming>
 							</configOptions>
 							<typeMappings>
 								<typeMapping>string+localDateTime=LocalDateTime</typeMapping>

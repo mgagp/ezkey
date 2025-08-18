@@ -150,9 +150,75 @@ public class DeviceCryptoService {
      * @param privateKey device private key
      * @return Base64-encoded signature over the canonicalized claims string
      */
-    public String buildAndSignDeviceProof(Map<String, Object> claims,PrivateKey privateKey) {
-        String canonical = claims.entrySet().stream().sorted(Map.Entry.comparingByKey()).map(e -> e.getKey() + "=" + String.valueOf(e.getValue()))
-                .reduce((a,b) -> a + "\n" + b).orElse("");
-        return signStringToBase64(canonical,privateKey);
+    public String buildAndSignDeviceProof(Map<String, Object> claims, PrivateKey privateKey) {
+        String canonical = claims.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> e.getKey() + "=" + String.valueOf(e.getValue()))
+                .reduce((a, b) -> a + "\n" + b)
+                .orElse("");
+        return signStringToBase64(canonical, privateKey);
+    }
+
+    /**
+     * Generates a cryptographically secure proof token for authentication operations.
+     * <p>
+     * This method creates a random, unpredictable token suitable for use as a payload to be signed
+     * in authentication flows. The token is composed of:
+     * <ul>
+     *   <li>256 bits (32 bytes) of cryptographically secure random data</li>
+     *   <li>A timestamp (milliseconds since epoch)</li>
+     *   <li>An additional 128 bits (16 bytes) of random salt</li>
+     * </ul>
+     * The result is encoded as a Base64 URL-safe string (without padding), concatenating the random bytes,
+     * timestamp, and salt, separated by a period ('.').
+     * </p>
+     *
+     * @return a Base64 URL-safe encoded proof token string
+     */
+    public String generateProofToken() {
+        try {
+            SecureRandom secureRandom = new SecureRandom();
+            byte[] randomBytes = new byte[32]; // 256 bits
+            secureRandom.nextBytes(randomBytes);
+            long timestamp = System.currentTimeMillis();
+            byte[] salt = new byte[16]; // 128 bits
+            secureRandom.nextBytes(salt);
+            String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+            String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
+            return randomPart + "." + timestamp + "." + saltPart;
+        } catch (Exception e) {
+            logger.error("Failed to generate proof token", e);
+            throw new IllegalStateException("Unable to generate proof token", e);
+        }
+    }
+
+    /**
+     * Validates a digital signature against the provided data using RSA public key.
+     * <p>
+     * This method verifies the authenticity and integrity of data by validating its
+     * associated digital signature. It confirms that the data was signed by the holder
+     * of the corresponding private key and has not been altered since signing.
+     * </p>
+     *
+     * @param data the original data that was signed
+     * @param signatureBase64 the Base64-encoded digital signature to validate
+     * @param base64PublicKey the Base64-encoded RSA public key in X.509 format
+     * @return <code>true</code> if the signature is valid, <code>false</code> otherwise
+     */
+    public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
+        try {
+            byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance(KEY_ALGORITHM);
+            PublicKey publicKey = kf.generatePublic(spec);
+            Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
+            signature.initVerify(publicKey);
+            signature.update(data.getBytes());
+            byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+            return signature.verify(signatureBytes);
+        } catch (Exception e) {
+            logger.error("Signature validation failed", e);
+            return false;
+        }
     }
 }

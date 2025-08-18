@@ -102,8 +102,32 @@ public interface AuthAttemptMapper {
      */
     List<AuthAttemptDto> toDtoList(List<AuthAttempt> entities);
 
+    /**
+     * Converts an EzkeyAuthAttemptCreateRequestDto to an EzkeyAuthAttemptCreateRequest domain object.
+     * <p>
+     * This method maps all fields from the request DTO to the domain object,
+     * preparing it for processing in the service layer.
+     * </p>
+     *
+     * @param request the EzkeyAuthAttemptCreateRequestDto to convert
+     * @return the corresponding EzkeyAuthAttemptCreateRequest domain object
+     * @see AuthAttemptCreateRequestDto
+     * @see AuthAttemptCreateRequest
+     */
     AuthAttemptCreateRequest toAuthAttemptCreateRequest(AuthAttemptCreateRequestDto request);
 
+    /**
+     * Converts an EzkeyAuthAttemptCreateResponse domain object to an EzkeyAuthAttemptCreateResponseDto.
+     * <p>
+     * This method maps all fields from the domain object to the response DTO,
+     * preparing it for return to the API client.
+     * </p>
+     *
+     * @param response the EzkeyAuthAttemptCreateResponse to convert
+     * @return the corresponding EzkeyAuthAttemptCreateResponseDto
+     * @see AuthAttemptCreateResponse
+     * @see AuthAttemptCreateResponseDto
+     */
     AuthAttemptCreateResponseDto toAuthAttemptCreateResponseDto(AuthAttemptCreateResponse response);
 
 }

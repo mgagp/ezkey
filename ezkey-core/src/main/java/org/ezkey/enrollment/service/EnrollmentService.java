@@ -218,6 +218,8 @@ public class EnrollmentService {
                 response.setIntegrationDescription(integration.getI18n().get(0).getDescription());
             }
         }
+        response.setIntegrationLogo(integration.getLogo());
+
         return response;
     }
 

@@ -8,6 +8,10 @@ import java.util.Optional;
 import org.ezkey.demodevice.generated.dto.EnrollmentBindResponseDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
 
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
@@ -202,6 +206,127 @@ public class EzkeyAppController {
     public String enrollmentAuth(@PathVariable("enrollmentId") Integer enrollmentId, Model model) {
         model.addAttribute("pageTitle", "Authentication");
         model.addAttribute("enrollmentId", enrollmentId);
-        return "phone/ezkey/auth";
+        
+        try {
+            // Load enrollment record
+            Optional<Record> recOpt = storeService.load(enrollmentId);
+            if (recOpt.isEmpty()) {
+                model.addAttribute("error", "Enrollment not found");
+                return "phone/ezkey/auth";
+            }
+            
+            Record rec = recOpt.get();
+            
+            // Add integration information to model
+            model.addAttribute("integrationName", rec.integrationName());
+            model.addAttribute("integrationDescription", rec.integrationDescription());
+            model.addAttribute("integrationLogo", rec.integrationLogo());
+            
+            // Generate device proof token for pending request
+            String deviceProofToken = cryptoService.generateProofToken();
+            String deviceProofTokenSigned = cryptoService.signStringToBase64(deviceProofToken, 
+                cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+            
+            // Create pending request
+            AuthAttemptPendingRequestDto pendingRequest = new AuthAttemptPendingRequestDto()
+                    .enrollmentId(enrollmentId)
+                    .deviceProofToken(deviceProofToken)
+                    .deviceProofTokenSigned(deviceProofTokenSigned);
+            
+            logger.info("Checking for pending auth attempts for enrollment {}: {}", enrollmentId, pendingRequest);
+            
+            // Check for pending authentication attempts
+            AuthAttemptPendingResponseDto pendingResponse = authApiService.pending(pendingRequest).block();
+            
+            if (pendingResponse != null) {
+                // There's a pending authentication attempt
+                logger.info("Found pending auth attempt: {}", pendingResponse);
+                
+                // Validate the integration signature
+                boolean signatureValid = cryptoService.validateSignature(
+                    pendingResponse.getAuthAttemptProofToken(),
+                    pendingResponse.getAuthAttemptProofTokenSignedByIntegration(),
+                    rec.integrationPublicKey()
+                );
+                
+                if (!signatureValid) {
+                    model.addAttribute("error", "Invalid integration signature");
+                    return "phone/ezkey/auth";
+                }
+                
+                // Store auth attempt info in session for respond
+                model.addAttribute("authAttemptId", pendingResponse.getAuthAttemptId());
+                model.addAttribute("authAttemptProofToken", pendingResponse.getAuthAttemptProofToken());
+                model.addAttribute("challengeRequired", pendingResponse.getAuthAttemptChallengeRequired());
+                model.addAttribute("hasPendingAuth", true);
+                
+                return "phone/ezkey/auth_pending";
+            } else {
+                // No pending authentication attempts
+                model.addAttribute("message", "No pending authentication requests");
+                model.addAttribute("hasPendingAuth", false);
+                return "phone/ezkey/auth";
+            }
+            
+        } catch (Exception e) {
+            logger.error("Authentication check failed for enrollment {}", enrollmentId, e);
+            model.addAttribute("error", "Authentication check failed: " + e.getMessage());
+            return "phone/ezkey/auth";
+        }
+    }
+
+    @PostMapping("/enrollments/{enrollmentId}/auth/respond")
+    public String respondToAuth(@PathVariable("enrollmentId") Integer enrollmentId,
+                                @RequestParam("authAttemptId") Integer authAttemptId,
+                                @RequestParam("approved") Boolean approved,
+                                @RequestParam(value = "challengeResponse", required = false) String challengeResponse,
+                                Model model) {
+        model.addAttribute("pageTitle", "Authentication Response");
+        model.addAttribute("enrollmentId", enrollmentId);
+        
+        try {
+            // Load enrollment record
+            Optional<Record> recOpt = storeService.load(enrollmentId);
+            if (recOpt.isEmpty()) {
+                model.addAttribute("error", "Enrollment not found");
+                return "phone/ezkey/auth";
+            }
+            
+            Record rec = recOpt.get();
+            
+            // Add integration information to model
+            model.addAttribute("integrationName", rec.integrationName());
+            model.addAttribute("integrationDescription", rec.integrationDescription());
+            model.addAttribute("integrationLogo", rec.integrationLogo());
+            
+            // Sign the enrollment proof token for the response
+            String responseSignature = cryptoService.signStringToBase64(rec.enrollmentProofToken(), 
+                cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+            
+            // Create respond request
+            AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto()
+                    .authAttemptId(authAttemptId)
+                    .authAttemptAccepted(approved)
+                    .authAttemptProofTokenSignedByDevice(responseSignature);
+            
+            logger.info("Responding to auth attempt {} for enrollment {}: {}", authAttemptId, enrollmentId, respondRequest);
+            
+            // Submit response
+            AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId, respondRequest).block();
+            
+            if (respondResponse != null) {
+                logger.info("Auth response submitted successfully: {}", respondResponse);
+                model.addAttribute("success", "Authentication response submitted successfully");
+                model.addAttribute("message", respondResponse.getMessage());
+            } else {
+                model.addAttribute("error", "Failed to submit authentication response");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Auth response failed for enrollment {} authAttempt {}", enrollmentId, authAttemptId, e);
+            model.addAttribute("error", "Authentication response failed: " + e.getMessage());
+        }
+        
+        return "phone/ezkey/auth_result";
     }
 }
