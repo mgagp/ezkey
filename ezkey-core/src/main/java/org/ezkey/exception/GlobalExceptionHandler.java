@@ -51,6 +51,23 @@ import org.springframework.web.context.request.WebRequest;
 public class GlobalExceptionHandler {
 
     /**
+     * Handles NoPendingAuthAttemptException - normal state in MFA systems.
+     * <p>
+     * When no pending authentication attempt is found, this is a normal
+     * operational state in pull-based MFA systems. Returns 204 No Content
+     * to indicate successful processing with no content to return.
+     * </p>
+     *
+     * @param ex the NoPendingAuthAttemptException
+     * @param request the web request
+     * @return ResponseEntity with 204 No Content status
+     */
+    @ExceptionHandler(NoPendingAuthAttemptException.class)
+    public ResponseEntity<Void> handleNoPendingAuthAttempt(NoPendingAuthAttemptException ex,WebRequest request) {
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Handles {@link ResourceNotFoundException} and returns a standardized 404 Not Found response.
      * <p>
      * This method intercepts {@code ResourceNotFoundException} instances thrown by service or controller methods when
@@ -74,7 +91,7 @@ public class GlobalExceptionHandler {
      * @see ErrorResponseDto
      */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(ResourceNotFoundException ex,WebRequest request){
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(ResourceNotFoundException ex,WebRequest request) {
         ErrorResponseDto error = new ErrorResponseDto("NOT_FOUND",ex.getMessage(),request.getDescription(false));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
@@ -107,7 +124,7 @@ public class GlobalExceptionHandler {
      * @see ErrorResponseDto
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex,WebRequest request){
+    public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex,WebRequest request) {
         ErrorResponseDto error = new ErrorResponseDto("INTERNAL_ERROR","An unexpected error occurred",request.getDescription(false));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }

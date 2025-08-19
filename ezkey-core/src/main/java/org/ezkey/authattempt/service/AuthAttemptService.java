@@ -26,6 +26,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -162,7 +163,7 @@ public class AuthAttemptService {
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
         // Find the most recent authorization attempt
         AuthAttempt authAttempt = authAttemptRepository.findMostRecentByEnrollmentId(request.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Auth attempt record not found for this enrollment"));
+                .orElseThrow(() -> new NoPendingAuthAttemptException("No pending authentication attempt found for enrollment: " + request.getEnrollmentId()));
 
         // Check if already read
         if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
@@ -174,7 +175,7 @@ public class AuthAttemptService {
             throw new IllegalStateException("Failed to mark auth attempt as read");
         }
         // Find the enrollment
-        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
+        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + request.getEnrollmentId()));
 
         // Validate device public key
         String devicePublicKey = enrollment.getDevicePublicKey();
@@ -184,7 +185,7 @@ public class AuthAttemptService {
         // Validate signature
         boolean isValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
         if (!isValid){
-            throw new IllegalArgumentException("Invalid signature for auth attempt code");
+            throw new IllegalArgumentException("Invalid device signature for authentication request");
         }
         // Update the authorization attempt
         authAttempt.setAuthAttemptRead(true);
