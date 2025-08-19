@@ -73,6 +73,20 @@
             <button type="submit" class="mega-button danger">🗑️ Delete Enrollment</button>
         </form>
     </div>
+
+    <!-- Authorization Attempts Status Section -->
+    <section class="status-section neo-brutal-main">
+        <h2 class="section-title">Authorization Attempts Status</h2>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Authorization Attempts"></div>
+                <div class="status-content">
+                    <span class="status-label">Manage Authorization Attempts</span>
+                    <span class="status-value"><a th:href="@{'/auth-attempts?enrollmentId=' + ${enrollment.enrollmentId}}">Go to authorization attempts</a></span>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 </html>
 

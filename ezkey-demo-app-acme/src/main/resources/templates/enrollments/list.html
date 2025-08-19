@@ -25,7 +25,7 @@
                     Create your first enrollment to start linking devices to this integration.
                 </p>
                 <div class="empty-cta">
-                    <a th:href="@{'/enrollments/create'(integrationId=${integrationId})}" class="neo-brutal-button primary">
+                    <a th:href="@{'/enrollments/create?integrationId=' + ${integrationId}}" class="neo-brutal-button primary">
                         <span class="btn-icon">➕</span>
                         New Enrollment
                     </a>
@@ -66,7 +66,8 @@
                     <td class="actions-cell">
                         <div class="table-actions">
                             <a th:href="@{'/enrollments/' + ${enrollment.enrollmentId}}" class="neo-brutal-button secondary table-action-btn">👁️ View</a>
-                            <form th:action="@{'/enrollments/' + ${enrollment.enrollmentId} + '/delete'(integrationId=${integrationId})}" method="post" style="display:inline;"
+                            <a th:href="@{'/auth-attempts?enrollmentId=' + ${enrollment.enrollmentId}}" class="neo-brutal-button secondary table-action-btn">🔐 Auth</a>
+                            <form th:action="@{'/enrollments/' + ${enrollment.enrollmentId} + '/delete?integrationId=' + ${integrationId}}" method="post" style="display:inline;"
                                   onsubmit="return confirm('Are you sure you want to delete this enrollment?')">
                                 <button type="submit" class="neo-brutal-button table-action-btn table-delete-btn">🗑️ Delete</button>
                             </form>
@@ -92,14 +93,33 @@
         </div>
     </section>
 
+    <!-- Authorization Attempts Status -->
+    <section class="status-section neo-brutal-main">
+        <h2 class="section-title">Authorization Attempts Status</h2>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Authorization attempts"></div>
+                <div class="status-content">
+                    <span class="status-label">Manage Authorization Attempts</span>
+                    <span class="status-value"><a th:href="@{'/auth-attempts?integrationId=' + ${integrationId}}">Go to authorization attempts</a></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Quick Actions -->
     <section class="features-section">
         <h2 class="section-title">Quick Actions</h2>
         <div class="features-grid">
-            <a th:href="@{'/enrollments/create'(integrationId=${integrationId})}" class="feature-card action-feature-card">
+            <a th:href="@{'/enrollments/create?integrationId=' + ${integrationId}}" class="feature-card action-feature-card">
                 <div class="feature-icon">➕</div>
                 <h3 class="feature-title">New Enrollment</h3>
                 <p class="feature-description">Create a new device enrollment for this integration</p>
+            </a>
+            <a th:href="@{'/auth-attempts?integrationId=' + ${integrationId}}" class="feature-card action-feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3 class="feature-title">Authorization Attempts</h3>
+                <p class="feature-description">View and manage authentication attempts for this integration</p>
             </a>
             <a th:href="@{'/integrations/' + ${integrationId}}" class="feature-card action-feature-card">
                 <div class="feature-icon">🔙</div>

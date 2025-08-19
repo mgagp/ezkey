@@ -28,6 +28,7 @@
                 <a href="/" class="nav-link" th:classappend="${#httpServletRequest.requestURI == '/' ? 'active' : ''}">Home</a>
                 <a href="/about" class="nav-link" th:classappend="${#httpServletRequest.requestURI == '/about' ? 'active' : ''}">About</a>
                 <a href="/integrations" class="nav-link" th:classappend="${#httpServletRequest.requestURI.startsWith('/integrations') ? 'active' : ''}">Integrations</a>
+                <a href="/auth-attempts" class="nav-link" th:classappend="${#httpServletRequest.requestURI.startsWith('/auth-attempts') ? 'active' : ''}">Auth Attempts</a>
             </div>
         </nav>
     </header>
