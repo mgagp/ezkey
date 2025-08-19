@@ -4,6 +4,50 @@
 
 Ezkey is a pragmatic, open-source, and developer-friendly alternative to complex passkey implementations. It provides a simple and secure MFA solution that can be easily integrated into any application through a modern multi-module architecture.
 
+### Why Ezkey?
+
+```mermaid
+graph LR
+    subgraph "Traditional MFA"
+        A[Complex Setup]
+        B[Vendor Lock-in]
+        C[High Costs]
+        D[Limited Control]
+    end
+    
+    subgraph "Passkeys"
+        E[Browser Dependencies]
+        F[Complex Integration]
+        G[Limited Support]
+        H[Steep Learning Curve]
+    end
+    
+    subgraph "Ezkey Solution"
+        I[Simple REST APIs]
+        J[Open Source]
+        K[Self-Hosted]
+        L[Developer-Friendly]
+    end
+    
+    style I fill:#e8f5e8
+    style J fill:#e8f5e8
+    style K fill:#e8f5e8
+    style L fill:#e8f5e8
+```
+
+### Comparison Matrix
+
+| Feature | Traditional MFA | Passkeys | Ezkey |
+|---------|----------------|----------|-------|
+| **Setup Complexity** | High | Very High | Low |
+| **Integration Effort** | Medium | High | Low |
+| **Cost** | High | Free (but complex) | Free + Self-hosted |
+| **Control** | Limited | Limited | Full |
+| **Mobile Support** | Good | Excellent | Excellent |
+| **Developer Experience** | Poor | Complex | Excellent |
+| **Open Source** | Rarely | Partially | Yes |
+| **Self-Hosting** | Rarely | No | Yes |
+
 ## Features
 
 - **Multi-Module Architecture**: Separated APIs for different use cases
@@ -28,6 +72,204 @@ ezkey/
 ├── ezkey-demo-app-acme/     # Demo integration application
 ├── ezkey-demo-device/       # Demo device simulation
 └── ezkey-docs/              # Project documentation
+```
+
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Protected Applications"
+        A[ACME Admin Portal]
+        B[E-commerce Site]
+        C[Banking App]
+    end
+    
+    subgraph "Ezkey System"
+        D[Admin API<br/>Port 9080]
+        E[Auth API<br/>Port 8080]
+        F[Core Module]
+        G[(Database)]
+    end
+    
+    subgraph "User Devices"
+        H[Mobile App]
+        I[Demo Device]
+    end
+    
+    A --> D
+    B --> D
+    C --> D
+    D --> F
+    E --> F
+    F --> G
+    H --> E
+    I --> E
+```
+
+### Core Entities and Relationships
+
+```mermaid
+erDiagram
+    Integration ||--o{ Enrollment : "has"
+    Enrollment ||--o{ AuthAttempt : "generates"
+    Integration {
+        int id PK
+        string name
+        string description
+        string logo
+        boolean active
+        timestamp created_at
+    }
+    Enrollment {
+        int id PK
+        int integration_id FK
+        string device_public_key
+        string enrollment_proof_token
+        boolean active
+        boolean challenge_required
+        timestamp created_at
+    }
+    AuthAttempt {
+        int id PK
+        int enrollment_id FK
+        string auth_proof_token
+        boolean accepted
+        boolean responded
+        timestamp created_at
+    }
+```
+
+### Authentication Flow Overview
+
+```mermaid
+sequenceDiagram
+    participant App as Protected App
+    participant Admin as Admin API
+    participant Auth as Auth API
+    participant Mobile as Mobile Device
+    participant DB as Database
+    
+    Note over App,Mobile: 1. Enrollment Process
+    App->>Admin: Create Integration
+    App->>Admin: Create Enrollment
+    Mobile->>Auth: Bind Device (GET /bind/{id})
+    Auth->>Mobile: Return Integration Info + Proof Token
+    Mobile->>Auth: Verify Enrollment (POST /verify)
+    Auth->>DB: Store Enrollment
+    Auth->>Mobile: Enrollment Complete
+    
+    Note over App,Mobile: 2. Authentication Process
+    App->>Admin: Create Auth Attempt
+    Mobile->>Auth: Check Pending (POST /pending)
+    Auth->>Mobile: Return Auth Attempt Details
+    Mobile->>Auth: Respond (POST /respond)
+    Auth->>DB: Update Auth Attempt
+    Auth->>Mobile: Authentication Result
+```
+
+### User Journey: Application Owner
+
+```mermaid
+flowchart TD
+    A[Application Owner] --> B[Create Integration]
+    B --> C[Configure MFA Settings]
+    C --> D[Generate Enrollment QR/Link]
+    D --> E[Share with Users]
+    E --> F[Monitor Enrollments]
+    F --> G[Create Auth Attempts]
+    G --> H[View Authentication Results]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style G fill:#fff3e0
+    style H fill:#e8f5e8
+```
+
+### User Journey: End User
+
+```mermaid
+flowchart TD
+    A[End User] --> B[Receive Enrollment Link/QR]
+    B --> C[Open Mobile App]
+    C --> D[Scan QR or Enter Code]
+    D --> E[Generate Device Keys]
+    E --> F[Complete Enrollment]
+    F --> G[Receive Auth Notifications]
+    G --> H[Approve/Deny Access]
+    H --> I[Enter Challenge if Required]
+    I --> J[Authentication Complete]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style G fill:#fff3e0
+    style J fill:#e8f5e8
+```
+
+### Technical Integration Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as Client App
+    participant Admin as Admin API
+    participant Auth as Auth API
+    participant Mobile as Mobile Device
+    
+    Note over Client,Mobile: Integration Setup
+    Client->>Admin: POST /integrations
+    Admin-->>Client: Integration ID
+    
+    Note over Client,Mobile: User Enrollment
+    Client->>Admin: POST /enrollments
+    Admin-->>Client: Enrollment ID + Challenge
+    Client->>Mobile: Share Enrollment Link/QR
+    Mobile->>Auth: GET /enrollments/bind/{id}
+    Auth-->>Mobile: Integration Info + Proof Token
+    Mobile->>Auth: POST /enrollments/verify
+    Auth-->>Mobile: Enrollment Complete
+    
+    Note over Client,Mobile: Authentication Request
+    Client->>Admin: POST /auth-attempts
+    Admin-->>Client: Auth Attempt ID
+    Mobile->>Auth: POST /auth-attempts/pending/{id}
+    Auth-->>Mobile: Auth Attempt Details
+    Mobile->>Auth: POST /auth-attempts/respond/{id}
+    Auth-->>Mobile: Authentication Result
+    Client->>Admin: GET /auth-attempts/{id}
+    Admin-->>Client: Authentication Status
+```
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "Development Environment"
+        A[Developer Machine]
+        B[Local Database]
+        C[Demo Apps]
+    end
+    
+    subgraph "Production Environment"
+        D[Load Balancer]
+        E[Admin API Cluster]
+        F[Auth API Cluster]
+        G[Database Cluster]
+        H[Mobile App Store]
+    end
+    
+    subgraph "User Devices"
+        I[User Mobile Devices]
+        J[Protected Applications]
+    end
+    
+    A --> B
+    A --> C
+    D --> E
+    D --> F
+    E --> G
+    F --> G
+    I --> F
+    J --> E
+    H --> I
 ```
 
 ### Core Components
@@ -60,6 +302,57 @@ Cross-platform Flutter application featuring:
 - **Secure Storage**: Encrypted key management
 - **Biometric Support**: Local device authentication
 - **Deep Links**: SMS and URL-based enrollment
+
+### Security and Cryptography Flow
+
+```mermaid
+sequenceDiagram
+    participant Device as Mobile Device
+    participant Auth as Auth API
+    participant Core as Core Service
+    participant DB as Database
+    
+    Note over Device,DB: Key Generation & Enrollment
+    Device->>Device: Generate RSA-2048 Key Pair
+    Device->>Auth: Send Public Key + Enrollment Request
+    Auth->>Core: Validate Request
+    Core->>Core: Generate Proof Token
+    Core->>DB: Store Enrollment
+    Auth->>Device: Return Proof Token + Integration Info
+    
+    Note over Device,DB: Authentication Flow
+    Device->>Device: Generate Device Proof Token
+    Device->>Auth: Send Signed Proof Token
+    Auth->>Core: Validate Signature
+    Core->>Core: Verify Integration Signature
+    Core->>DB: Update Auth Attempt
+    Auth->>Device: Authentication Result
+```
+
+### Data Flow and Security
+
+```mermaid
+flowchart TD
+    A[User Action] --> B{Action Type?}
+    B -->|Enrollment| C[Generate Device Keys]
+    B -->|Authentication| D[Generate Proof Token]
+    
+    C --> E[Sign Enrollment Data]
+    D --> F[Sign Auth Response]
+    
+    E --> G[Send to Auth API]
+    F --> G
+    
+    G --> H[Validate Signature]
+    H --> I[Process Request]
+    I --> J[Store in Database]
+    
+    style A fill:#e1f5fe
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style H fill:#f3e5f5
+    style J fill:#e8f5e8
+```
 
 ## Quick Start
 
