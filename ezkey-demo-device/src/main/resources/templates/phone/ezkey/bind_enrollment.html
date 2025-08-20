@@ -92,7 +92,7 @@
     </div>
     <div class="content">
       <div class="header">
-        <h1 class="title">Enrollment #<span th:text="${enrollmentId}">123</span></h1>
+        <h1 class="title" th:text="${enrollmentName ?: 'Enrollment #' + enrollmentId}">Enrollment Name</h1>
         <div class="text-muted" style="font-size:.85rem; opacity:.8;">Complete the enrollment process</div>
       </div>
       <div class="form-container">
@@ -112,6 +112,9 @@
             </div>
           </div>
           <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">
+            <div th:if="${enrollmentName != null and enrollmentName != integrationName}">
+              <strong>Enrollment:</strong> <span th:text="${enrollmentName}">Enrollment Name</span>
+            </div>
             Language: <span th:text="${language}">en</span>
           </div>
         </div>

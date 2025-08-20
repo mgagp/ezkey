@@ -85,15 +85,4 @@ application-*.properties
 # Scripts spécifiques à l'utilisateur
 *.sh
 *.bat
-ezkey-demo-device/data/enrollments/26.json
-ezkey-demo-device/data/enrollments/27.json
-ezkey-demo-device/data/enrollments/28.json
-ezkey-demo-device/data/enrollments/29.json
-ezkey-demo-device/data/enrollments/43.json
-ezkey-demo-device/data/enrollments/44.json
-ezkey-demo-device/data/enrollments/45.json
-ezkey-demo-device/data/enrollments/46.json
-ezkey-demo-device/data/enrollments/47.json
-ezkey-demo-device/data/enrollments/51.json
-ezkey-demo-device/data/enrollments/49.json
-ezkey-demo-device/openapi-spec.json.backup
+ezkey-demo-device/data/enrollments/*.json

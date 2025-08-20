@@ -103,6 +103,15 @@ public class EnrollmentBindResponse {
     private String integrationDescription;
 
     /**
+     * The human-readable name for the enrollment.
+     * <p>
+     * Human-readable name of the enrollment, shown to the user during enrollment
+     * to help identify the specific device or user account being enrolled.
+     * </p>
+     */
+    private String enrollmentName;
+
+    /**
      * Gets the enrollment ID.
      *
      * @return the enrollment ID
@@ -208,6 +217,24 @@ public class EnrollmentBindResponse {
      */
     public void setIntegrationDescription(String integrationDescription) {
         this.integrationDescription = integrationDescription;
+    }
+
+    /**
+     * Gets the enrollment name.
+     *
+     * @return the enrollment name
+     */
+    public String getEnrollmentName() {
+        return enrollmentName;
+    }
+
+    /**
+     * Sets the enrollment name.
+     *
+     * @param enrollmentName the enrollment name to set
+     */
+    public void setEnrollmentName(String enrollmentName) {
+        this.enrollmentName = enrollmentName;
     }
 
 }

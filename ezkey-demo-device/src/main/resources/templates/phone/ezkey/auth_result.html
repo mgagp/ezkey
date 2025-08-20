@@ -97,7 +97,7 @@
             <span th:unless="${integrationLogo}">🔐</span>
           </div>
           <div class="integration-details">
-            <div class="integration-name" th:text="${integrationName ?: 'Enrollment #' + enrollmentId}">Integration Name</div>
+            <div class="integration-name" th:text="${enrollmentName ?: integrationName ?: 'Enrollment #' + enrollmentId}">Enrollment Name</div>
             <div class="integration-description" th:text="${integrationDescription ?: 'Authentication completed'}">Integration description</div>
           </div>
         </div>

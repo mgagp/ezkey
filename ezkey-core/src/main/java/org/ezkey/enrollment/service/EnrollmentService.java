@@ -202,6 +202,7 @@ public class EnrollmentService {
 
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
+        response.setEnrollmentName(enrollment.getEnrollmentName());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
 

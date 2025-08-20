@@ -47,6 +47,7 @@ public class EnrollmentStoreService {
                 record = new Record(
                         record.enrollmentId(),
                         record.integrationId(),
+                        record.enrollmentName(),
                         record.enrollmentUrl(),
                         record.integrationPublicKey(),
                         record.enrollmentProofToken(),
@@ -114,6 +115,7 @@ public class EnrollmentStoreService {
     public static record Record(
             Integer enrollmentId,
             Integer integrationId,
+            String enrollmentName,
             String enrollmentUrl,
             String integrationPublicKey,
             String enrollmentProofToken,

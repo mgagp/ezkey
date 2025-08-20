@@ -116,3 +116,35 @@ Avant de générer un fichier, confirmer mentalement : "Ce fichier sera en UTF-8
 
 ## Impact
 Les fichiers UTF-16 ou avec BOM causent des erreurs de compilation Maven et des problèmes d'encodage.
+
+# Terminal Command Optimization Rules
+
+## Command Execution Best Practices
+- AVOID long compound commands with `&&` or `;` that can block
+- PREFER short, focused commands executed separately
+- USE `cd` first, then execute the main command in a separate call
+- AVOID `mvn clean compile` - prefer `mvn compile` for faster execution
+- USE `mvn compile` instead of `mvn clean compile` when possible
+
+## Maven Optimization
+- When possible, use `mvn compile` instead of `mvn clean compile`
+- For quick syntax checks, prefer reading files directly over compilation
+- Use `mvn help:effective-settings` sparingly as it can be slow
+- Consider using `mvn validate` for quick project validation
+
+## Alternative to Compilation
+- READ source files directly to verify syntax and structure
+- CHECK imports and dependencies by examining file content
+- VALIDATE Thymeleaf templates by reading HTML structure
+- USE code analysis tools instead of full compilation when possible
+
+## Command Structure
+- BREAK complex commands into simple steps
+- EXECUTE directory changes separately from build commands
+- USE PowerShell syntax correctly: `& "path/to/executable"` for external tools
+- AVOID bash-specific syntax when using PowerShell
+
+## Performance Monitoring
+- If a command blocks for more than 30 seconds, consider alternatives
+- Use file reading and analysis instead of compilation when appropriate
+- Prefer direct code review over automated compilation checks

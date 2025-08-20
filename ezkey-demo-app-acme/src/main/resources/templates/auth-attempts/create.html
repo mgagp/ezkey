@@ -138,9 +138,9 @@
                     <option value="">Choose an enrollment...</option>
                     <option th:each="enrollment : ${enrollments}"
                             th:value="${enrollment.enrollmentId}"
-                            th:text="${enrollment.enrollmentName} + ' (' + ${enrollment.integrationName} + ')'"
+                            th:text="${enrollment.enrollmentName} + ' (' + ${integrationNames.get(enrollment.integrationId)} + ')'"
                             th:selected="${enrollment.enrollmentId == selectedEnrollmentId}">
-                        John's iPhone (ACME Admin Portal)
+                        Select an enrollment...
                     </option>
                 </select>
                 <div class="help-text">

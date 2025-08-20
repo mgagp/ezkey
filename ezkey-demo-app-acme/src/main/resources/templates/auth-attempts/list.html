@@ -218,14 +218,14 @@
                     </td>
                     <td>
                         <div>
-                            <strong th:text="${attempt.integrationName}">ACME Admin Portal</strong>
+                                                         <strong>Integration #<span th:text="${attempt.integrationId}">1</span></strong>
                             <br>
                             <small style="color: var(--acme-primary);">ID: <span th:text="${attempt.integrationId}">1</span></small>
                         </div>
                     </td>
                     <td>
                         <div>
-                            <strong th:text="${attempt.enrollmentName}">John's iPhone</strong>
+                            <strong th:text="${attempt.enrollmentName}">Enrollment Name</strong>
                             <br>
                             <small style="color: var(--acme-primary);">ID: <span th:text="${attempt.enrollmentId}">1</span></small>
                         </div>

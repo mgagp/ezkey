@@ -62,12 +62,17 @@
                  style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">
             <div style="flex: 1;">
               <div style="font-weight: 600; margin-bottom: 4px;">
-                <span th:if="${e.integrationName}" th:text="${e.integrationName}">Integration Name</span>
-                <span th:unless="${e.integrationName}">#<span th:text="${e.enrollmentId}">1</span></span>
+                <span th:if="${e.enrollmentName}" th:text="${e.enrollmentName}">Enrollment Name</span>
+                <span th:unless="${e.enrollmentName}">
+                  <span th:if="${e.integrationName}" th:text="${e.integrationName}">Integration Name</span>
+                  <span th:unless="${e.integrationName}">#<span th:text="${e.enrollmentId}">1</span></span>
+                </span>
               </div>
+              <div th:if="${e.enrollmentName != null and e.integrationName != null}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
+                   th:text="${e.integrationName}">Integration Name</div>
               <div th:if="${e.integrationDescription}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
                    th:text="${e.integrationDescription}">Integration description</div>
-              <div th:unless="${e.integrationDescription}" style="font-size: 0.8rem; color: #888;">
+              <div th:unless="${e.integrationDescription != null or e.enrollmentName != null}" style="font-size: 0.8rem; color: #888;">
                 Enrollment #<span th:text="${e.enrollmentId}">1</span>
               </div>
             </div>

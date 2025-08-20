@@ -1,23 +1,19 @@
 package org.ezkey.demo.device.controller;
 
 import java.security.KeyPair;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-
-import org.ezkey.demodevice.generated.dto.EnrollmentBindResponseDto;
-import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
-import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
-import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
-import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
-import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
-import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
 
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
-
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
+import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
+import org.ezkey.demodevice.generated.dto.EnrollmentBindResponseDto;
+import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
+import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -45,8 +41,7 @@ public class EzkeyAppController {
 
     private final EnrollmentStoreService storeService;
 
-    public EzkeyAppController(AuthApiService authApiService, DeviceCryptoService cryptoService, 
-                             EnrollmentStoreService storeService) {
+    public EzkeyAppController(AuthApiService authApiService,DeviceCryptoService cryptoService,EnrollmentStoreService storeService){
         this.authApiService = authApiService;
         this.cryptoService = cryptoService;
         this.storeService = storeService;
@@ -54,29 +49,25 @@ public class EzkeyAppController {
 
     @GetMapping
     public String appHome(Model model) {
-        model.addAttribute("pageTitle", "Ezkey App");
-        model.addAttribute("enrollments", storeService.list());
+        model.addAttribute("pageTitle","Ezkey App");
+        model.addAttribute("enrollments",storeService.list());
         return "phone/ezkey/home";
     }
 
     @GetMapping("/enrollment/new")
     public String newEnrollment(Model model) {
-        model.addAttribute("pageTitle", "New Enrollment");
+        model.addAttribute("pageTitle","New Enrollment");
         return "phone/ezkey/new_enrollment";
     }
 
     @PostMapping("/enrollment/bind")
-    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,
-                                 @RequestParam(value = "language", defaultValue = "en") String language,
-                                 Model model) {
-        model.addAttribute("pageTitle", "Enrollment - Bind");
-        model.addAttribute("enrollmentId", enrollmentId);
-        
-        try {
+    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,@RequestParam(value = "language",defaultValue = "en") String language,Model model) {
+        model.addAttribute("pageTitle","Enrollment - Bind");
+        model.addAttribute("enrollmentId",enrollmentId);
+        try{
             // Call the bind API
             EnrollmentBindResponseDto bindResponse = authApiService.bind(enrollmentId).block();
-            
-            if (bindResponse != null) {
+            if (bindResponse != null){
                 // Generate device keys
                 KeyPair keyPair = cryptoService.generateDeviceKeyPair();
                 String devicePublicKeyB64 = cryptoService.publicKeyToBase64(keyPair.getPublic());
@@ -89,244 +80,191 @@ public class EzkeyAppController {
                 String integrationName = bindResponse.getIntegrationName();
                 String integrationDescription = bindResponse.getIntegrationDescription();
                 String integrationLogo = bindResponse.getIntegrationLogo();
+                String enrollmentName = bindResponse.getEnrollmentName();
 
-                logger.info("Using integration info for enrollment {} with language {}: name={}, description={}, logo={}", 
-                           enrollmentId, language, integrationName, integrationDescription, integrationLogo);
+                logger.info("Using integration info for enrollment {} with language {}: name={}, description={}, logo={}, enrollmentName={}",enrollmentId,language,
+                        integrationName,integrationDescription,integrationLogo,enrollmentName);
 
                 // Save interim record before verify with integration information
-                Record record = new Record(
-                        enrollmentId,
-                        null, // integrationId - would be set if available
-                        null,
-                        integrationPublicKey,
-                        enrollmentProofToken, // Store the proof token (not signed)
-                        devicePublicKeyB64,
-                        devicePrivateKeyB64,
-                        null,
-                        "Device",
-                        null,
-                        integrationName,
-                        integrationDescription,
-                        integrationLogo
-                );
+                Record record = new Record(enrollmentId,null, // integrationId - would be set if available
+                        enrollmentName,null, // enrollmentUrl
+                        integrationPublicKey,enrollmentProofToken, // Store the proof token (not signed)
+                        devicePublicKeyB64,devicePrivateKeyB64,null,"Device",null,integrationName,integrationDescription,integrationLogo);
                 storeService.save(record);
 
-                model.addAttribute("enrollmentId", enrollmentId);
-                model.addAttribute("enrollmentProofToken", enrollmentProofToken);
-                model.addAttribute("integrationPublicKey", integrationPublicKey);
-                model.addAttribute("integrationName", integrationName);
-                model.addAttribute("integrationDescription", integrationDescription);
-                model.addAttribute("integrationLogo", integrationLogo);
-                model.addAttribute("language", language);
-                model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
-            } else {
-                model.addAttribute("error", "Bind failed: No response from server");
+                model.addAttribute("enrollmentId",enrollmentId);
+                model.addAttribute("enrollmentName",enrollmentName);
+                model.addAttribute("enrollmentProofToken",enrollmentProofToken);
+                model.addAttribute("integrationPublicKey",integrationPublicKey);
+                model.addAttribute("integrationName",integrationName);
+                model.addAttribute("integrationDescription",integrationDescription);
+                model.addAttribute("integrationLogo",integrationLogo);
+                model.addAttribute("language",language);
+                model.addAttribute("success","Bind successful! Enter the challenge code to verify.");
+            } else{
+                model.addAttribute("error","Bind failed: No response from server");
             }
-        } catch (Exception e) {
-            logger.error("Bind failed for enrollment {}", enrollmentId, e);
-            model.addAttribute("error", "Bind failed: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Bind failed for enrollment {}",enrollmentId,e);
+            model.addAttribute("error","Bind failed: " + e.getMessage());
         }
-        
         return "phone/ezkey/bind_enrollment";
     }
 
     @PostMapping("/enrollment/verify")
-    public String verifyEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,
-                                   @RequestParam("challengeResponse") String challengeResponse,
-                                   Model model) {
-        model.addAttribute("pageTitle", "Enrollment - Verify");
-        
-        try {
+    public String verifyEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,@RequestParam("challengeResponse") String challengeResponse,Model model) {
+        model.addAttribute("pageTitle","Enrollment - Verify");
+        try{
             Optional<Record> recOpt = storeService.load(enrollmentId);
-            if (recOpt.isEmpty()) {
-                model.addAttribute("error", "Enrollment not found in local store");
+            if (recOpt.isEmpty()){
+                model.addAttribute("error","Enrollment not found in local store");
                 return "phone/ezkey/bind_enrollment";
             }
-            
             Record rec = recOpt.get();
-            
+
             // Sign the enrollment proof token with device private key
-            String enrollmentProofTokenSigned = cryptoService.signStringToBase64(rec.enrollmentProofToken(), 
-                cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+            String enrollmentProofTokenSigned = cryptoService.signStringToBase64(rec.enrollmentProofToken(),cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
 
             // Create typed request DTO
-            EnrollmentVerifyRequestDto requestDto = new EnrollmentVerifyRequestDto()
-                    .enrollmentId(enrollmentId)
-                    .challengeResponse(Integer.parseInt(challengeResponse))
-                    .devicePublicKey(rec.devicePublicKey())
-                    .enrollmentProofTokenSigned(enrollmentProofTokenSigned);
+            EnrollmentVerifyRequestDto requestDto = new EnrollmentVerifyRequestDto().enrollmentId(enrollmentId).challengeResponse(Integer.parseInt(challengeResponse))
+                    .devicePublicKey(rec.devicePublicKey()).enrollmentProofTokenSigned(enrollmentProofTokenSigned);
 
             // Log the request for debugging
-            logger.info("Verify request for enrollment {}: {}", enrollmentId, requestDto);
-            logger.info("Enrollment proof token being signed: {}", rec.enrollmentProofToken());
-            logger.info("Device public key: {}", rec.devicePublicKey());
-            logger.info("Signed enrollment proof token: {}", enrollmentProofTokenSigned);
+            logger.info("Verify request for enrollment {}: {}",enrollmentId,requestDto);
+            logger.info("Enrollment proof token being signed: {}",rec.enrollmentProofToken());
+            logger.info("Device public key: {}",rec.devicePublicKey());
+            logger.info("Signed enrollment proof token: {}",enrollmentProofTokenSigned);
 
             EnrollmentVerifyResponseDto verifyResponse = authApiService.verify(requestDto).block();
-
-            if (verifyResponse != null) {
+            if (verifyResponse != null){
                 Boolean active = verifyResponse.getActive();
-                if (Boolean.TRUE.equals(active)) {
+                if (Boolean.TRUE.equals(active)){
                     // Update the record with verification status
-                    Record updatedRecord = new Record(
-                            rec.enrollmentId(),
-                            rec.integrationId(),
-                            rec.enrollmentUrl(),
-                            rec.integrationPublicKey(),
-                            rec.enrollmentProofToken(),
-                            rec.devicePublicKey(),
-                            rec.devicePrivateKey(),
-                            true, // authAttemptChallengeRequired
-                            rec.deviceLabel(),
-                            rec.createdAt(),
-                            rec.integrationName(),
-                            rec.integrationDescription(),
-                            rec.integrationLogo()
-                    );
+                    Record updatedRecord = new Record(rec.enrollmentId(),rec.integrationId(),rec.enrollmentName(),rec.enrollmentUrl(),rec.integrationPublicKey(),
+                            rec.enrollmentProofToken(),rec.devicePublicKey(),rec.devicePrivateKey(),true, // authAttemptChallengeRequired
+                            rec.deviceLabel(),rec.createdAt(),rec.integrationName(),rec.integrationDescription(),rec.integrationLogo());
                     storeService.save(updatedRecord);
-                    
-                    model.addAttribute("success", "Enrollment verified successfully!");
-                    model.addAttribute("enrollmentId", enrollmentId);
+
+                    model.addAttribute("success","Enrollment verified successfully!");
+                    model.addAttribute("enrollmentId",enrollmentId);
                     return "phone/ezkey/verify_success";
-                } else {
-                    model.addAttribute("error", "Verification failed: Enrollment is not active");
+                } else{
+                    model.addAttribute("error","Verification failed: Enrollment is not active");
                 }
-            } else {
-                model.addAttribute("error", "Verification failed: No response from server");
+            } else{
+                model.addAttribute("error","Verification failed: No response from server");
             }
-        } catch (Exception e) {
-            logger.error("Verify failed for enrollment {}", enrollmentId, e);
-            model.addAttribute("error", "Verification failed: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Verify failed for enrollment {}",enrollmentId,e);
+            model.addAttribute("error","Verification failed: " + e.getMessage());
         }
-        
         return "phone/ezkey/bind_enrollment";
     }
 
     @GetMapping("/enrollments/{enrollmentId}/auth")
-    public String enrollmentAuth(@PathVariable("enrollmentId") Integer enrollmentId, Model model) {
-        model.addAttribute("pageTitle", "Authentication");
-        model.addAttribute("enrollmentId", enrollmentId);
-        
-        try {
+    public String enrollmentAuth(@PathVariable("enrollmentId") Integer enrollmentId,Model model) {
+        model.addAttribute("pageTitle","Authentication");
+        model.addAttribute("enrollmentId",enrollmentId);
+        try{
             // Load enrollment record
             Optional<Record> recOpt = storeService.load(enrollmentId);
-            if (recOpt.isEmpty()) {
-                model.addAttribute("error", "Enrollment not found");
+            if (recOpt.isEmpty()){
+                model.addAttribute("error","Enrollment not found");
                 return "phone/ezkey/auth";
             }
-            
             Record rec = recOpt.get();
-            
+
             // Add integration information to model
-            model.addAttribute("integrationName", rec.integrationName());
-            model.addAttribute("integrationDescription", rec.integrationDescription());
-            model.addAttribute("integrationLogo", rec.integrationLogo());
-            
+            model.addAttribute("enrollmentName",rec.enrollmentName());
+            model.addAttribute("integrationName",rec.integrationName());
+            model.addAttribute("integrationDescription",rec.integrationDescription());
+            model.addAttribute("integrationLogo",rec.integrationLogo());
+
             // Generate device proof token for pending request
             String deviceProofToken = cryptoService.generateProofToken();
-            String deviceProofTokenSigned = cryptoService.signStringToBase64(deviceProofToken, 
-                cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
-            
+            String deviceProofTokenSigned = cryptoService.signStringToBase64(deviceProofToken,cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+
             // Create pending request
-            AuthAttemptPendingRequestDto pendingRequest = new AuthAttemptPendingRequestDto()
-                    .enrollmentId(enrollmentId)
-                    .deviceProofToken(deviceProofToken)
+            AuthAttemptPendingRequestDto pendingRequest = new AuthAttemptPendingRequestDto().enrollmentId(enrollmentId).deviceProofToken(deviceProofToken)
                     .deviceProofTokenSigned(deviceProofTokenSigned);
-            
-            logger.info("Checking for pending auth attempts for enrollment {}: {}", enrollmentId, pendingRequest);
-            
+
+            logger.info("Checking for pending auth attempts for enrollment {}: {}",enrollmentId,pendingRequest);
+
             // Check for pending authentication attempts
             AuthAttemptPendingResponseDto pendingResponse = authApiService.pending(pendingRequest).block();
-            
-            if (pendingResponse != null) {
+            if (pendingResponse != null){
                 // There's a pending authentication attempt
-                logger.info("Found pending auth attempt: {}", pendingResponse);
-                
+                logger.info("Found pending auth attempt: {}",pendingResponse);
+
                 // Validate the integration signature
-                boolean signatureValid = cryptoService.validateSignature(
-                    pendingResponse.getAuthAttemptProofToken(),
-                    pendingResponse.getAuthAttemptProofTokenSignedByIntegration(),
-                    rec.integrationPublicKey()
-                );
-                
-                if (!signatureValid) {
-                    model.addAttribute("error", "Invalid integration signature");
+                boolean signatureValid = cryptoService.validateSignature(pendingResponse.getAuthAttemptProofToken(),
+                        pendingResponse.getAuthAttemptProofTokenSignedByIntegration(),rec.integrationPublicKey());
+                if (!signatureValid){
+                    model.addAttribute("error","Invalid integration signature");
                     return "phone/ezkey/auth";
                 }
-                
                 // Store auth attempt info in session for respond
-                model.addAttribute("authAttemptId", pendingResponse.getAuthAttemptId());
-                model.addAttribute("authAttemptProofToken", pendingResponse.getAuthAttemptProofToken());
-                model.addAttribute("challengeRequired", pendingResponse.getAuthAttemptChallengeRequired());
-                model.addAttribute("hasPendingAuth", true);
-                
+                model.addAttribute("authAttemptId",pendingResponse.getAuthAttemptId());
+                model.addAttribute("authAttemptProofToken",pendingResponse.getAuthAttemptProofToken());
+                model.addAttribute("challengeRequired",pendingResponse.getAuthAttemptChallengeRequired());
+                model.addAttribute("hasPendingAuth",true);
+
                 return "phone/ezkey/auth_pending";
-            } else {
+            } else{
                 // No pending authentication attempts
-                model.addAttribute("message", "No pending authentication requests");
-                model.addAttribute("hasPendingAuth", false);
+                model.addAttribute("message","No pending authentication requests");
+                model.addAttribute("hasPendingAuth",false);
                 return "phone/ezkey/auth";
             }
-            
-        } catch (Exception e) {
-            logger.error("Authentication check failed for enrollment {}", enrollmentId, e);
-            model.addAttribute("error", "Authentication check failed: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Authentication check failed for enrollment {}",enrollmentId,e);
+            model.addAttribute("error","Authentication check failed: " + e.getMessage());
             return "phone/ezkey/auth";
         }
     }
 
     @PostMapping("/enrollments/{enrollmentId}/auth/respond")
-    public String respondToAuth(@PathVariable("enrollmentId") Integer enrollmentId,
-                                @RequestParam("authAttemptId") Integer authAttemptId,
-                                @RequestParam("approved") Boolean approved,
-                                @RequestParam(value = "challengeResponse", required = false) String challengeResponse,
-                                Model model) {
-        model.addAttribute("pageTitle", "Authentication Response");
-        model.addAttribute("enrollmentId", enrollmentId);
-        
-        try {
+    public String respondToAuth(@PathVariable("enrollmentId") Integer enrollmentId,@RequestParam("authAttemptId") Integer authAttemptId,
+            @RequestParam("approved") Boolean approved,@RequestParam(value = "challengeResponse",required = false) String challengeResponse,Model model) {
+        model.addAttribute("pageTitle","Authentication Response");
+        model.addAttribute("enrollmentId",enrollmentId);
+        try{
             // Load enrollment record
             Optional<Record> recOpt = storeService.load(enrollmentId);
-            if (recOpt.isEmpty()) {
-                model.addAttribute("error", "Enrollment not found");
+            if (recOpt.isEmpty()){
+                model.addAttribute("error","Enrollment not found");
                 return "phone/ezkey/auth";
             }
-            
             Record rec = recOpt.get();
-            
+
             // Add integration information to model
-            model.addAttribute("integrationName", rec.integrationName());
-            model.addAttribute("integrationDescription", rec.integrationDescription());
-            model.addAttribute("integrationLogo", rec.integrationLogo());
-            
+            model.addAttribute("enrollmentName",rec.enrollmentName());
+            model.addAttribute("integrationName",rec.integrationName());
+            model.addAttribute("integrationDescription",rec.integrationDescription());
+            model.addAttribute("integrationLogo",rec.integrationLogo());
+
             // Sign the enrollment proof token for the response
-            String responseSignature = cryptoService.signStringToBase64(rec.enrollmentProofToken(), 
-                cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
-            
+            String responseSignature = cryptoService.signStringToBase64(rec.enrollmentProofToken(),cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+
             // Create respond request
-            AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto()
-                    .authAttemptId(authAttemptId)
-                    .authAttemptAccepted(approved)
+            AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto().authAttemptId(authAttemptId).authAttemptAccepted(approved)
                     .authAttemptProofTokenSignedByDevice(responseSignature);
-            
-            logger.info("Responding to auth attempt {} for enrollment {}: {}", authAttemptId, enrollmentId, respondRequest);
-            
+
+            logger.info("Responding to auth attempt {} for enrollment {}: {}",authAttemptId,enrollmentId,respondRequest);
+
             // Submit response
-            AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId, respondRequest).block();
-            
-            if (respondResponse != null) {
-                logger.info("Auth response submitted successfully: {}", respondResponse);
-                model.addAttribute("success", "Authentication response submitted successfully");
-                model.addAttribute("message", respondResponse.getMessage());
-            } else {
-                model.addAttribute("error", "Failed to submit authentication response");
+            AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId,respondRequest).block();
+            if (respondResponse != null){
+                logger.info("Auth response submitted successfully: {}",respondResponse);
+                model.addAttribute("success","Authentication response submitted successfully");
+                model.addAttribute("message",respondResponse.getMessage());
+            } else{
+                model.addAttribute("error","Failed to submit authentication response");
             }
-            
-        } catch (Exception e) {
-            logger.error("Auth response failed for enrollment {} authAttempt {}", enrollmentId, authAttemptId, e);
-            model.addAttribute("error", "Authentication response failed: " + e.getMessage());
+        } catch (Exception e){
+            logger.error("Auth response failed for enrollment {} authAttempt {}",enrollmentId,authAttemptId,e);
+            model.addAttribute("error","Authentication response failed: " + e.getMessage());
         }
-        
         return "phone/ezkey/auth_result";
     }
 }
