@@ -161,14 +161,18 @@ public class AuthAttemptService {
     }
 
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
-        // Find the most recent unread authorization attempt
-        AuthAttempt authAttempt = authAttemptRepository.findMostRecentUnreadByEnrollmentId(request.getEnrollmentId())
+        // Find and lock the most recent unread authorization attempt atomically
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId())
                 .orElseThrow(() -> new NoPendingAuthAttemptException("No pending authentication attempt found for enrollment: " + request.getEnrollmentId()));
-        // Mark as read
-        int updated = authAttemptRepository.setDeviceReadTrueIfNotRead(authAttempt.getAuthAttemptId());
-        if (updated == 0){
-            throw new IllegalStateException("Failed to mark auth attempt as read");
+        
+        // Double-check if already read (defense in depth)
+        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
+            throw new IllegalStateException("Auth attempt already read by device");
         }
+        
+        // Mark as read (the lock ensures no race condition)
+        authAttempt.setAuthAttemptRead(true);
+        authAttemptRepository.save(authAttempt);
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + request.getEnrollmentId()));

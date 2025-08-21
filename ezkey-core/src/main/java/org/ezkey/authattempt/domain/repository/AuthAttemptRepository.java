@@ -82,6 +82,27 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
     Optional<AuthAttempt> findMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
     /**
+     * Finds and locks the most recent unread authorization attempt for a given enrollment ID.
+     * <p>
+     * This method uses SELECT FOR NO KEY UPDATE to lock the row atomically,
+     * preventing race conditions and ensuring exclusive access to the auth attempt.
+     * The lock is acquired at the row level to minimize contention.
+     * </p>
+     *
+     * @param enrollmentId the enrollment ID to search for
+     * @return the most recent unread authorization attempt with row lock, or empty if none found
+     */
+    @Query(value = """
+        SELECT * FROM auth_attempt 
+        WHERE enrollment_id = :enrollmentId 
+          AND auth_attempt_read = false 
+        ORDER BY auth_attempt_id DESC 
+        LIMIT 1 
+        FOR NO KEY UPDATE
+        """, nativeQuery = true)
+    Optional<AuthAttempt> findAndLockMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+
+    /**
      * Updates the read status of an authorization attempt if it hasn't been read yet.
      * <p>
      * This method atomically updates the read status to true only if the current
