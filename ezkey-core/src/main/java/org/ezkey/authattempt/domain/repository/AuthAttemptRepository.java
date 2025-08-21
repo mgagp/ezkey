@@ -68,19 +68,18 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
     List<AuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(@Param("enrollmentId") Integer enrollmentId);
 
     /**
-     * Finds the most recent authorization attempt for a given enrollment ID.
+     * Finds the most recent unread authorization attempt for a given enrollment ID.
      * <p>
-     * This method returns the first (most recent) authorization attempt
-     * for the specified enrollment.
+     * This method returns the first (most recent) unread authorization attempt
+     * for the specified enrollment. Only attempts that haven't been read by the device
+     * are considered.
      * </p>
      *
      * @param enrollmentId the enrollment ID to search for
-     * @return the most recent authorization attempt, or empty if none found
+     * @return the most recent unread authorization attempt, or empty if none found
      */
-    default Optional<AuthAttempt> findMostRecentByEnrollmentId(Integer enrollmentId) {
-        List<AuthAttempt> attempts = findByEnrollmentIdOrderByAuthAttemptIdDesc(enrollmentId);
-        return attempts.isEmpty() ? Optional.empty() : Optional.of(attempts.get(0));
-    }
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptRead = false ORDER BY a.authAttemptId DESC")
+    Optional<AuthAttempt> findMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
     /**
      * Updates the read status of an authorization attempt if it hasn't been read yet.
