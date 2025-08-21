@@ -97,20 +97,6 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
     int setDeviceReadTrueIfNotRead(@Param("authAttemptId") Integer authAttemptId);
 
     /**
-     * Updates the responded status of an authorization attempt if it hasn't been responded yet.
-     * <p>
-     * This method atomically updates the responded status to true only if the current
-     * status is false, preventing race conditions in concurrent scenarios.
-     * </p>
-     *
-     * @param authAttemptId the authorization attempt ID to update
-     * @return the number of rows affected (1 if updated, 0 if already read)
-     */
-    @Modifying
-    @Query("UPDATE AuthAttempt a SET a.authAttemptResponded = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptResponded = false")
-    int setDeviceRespondedTrueIfNotRead(@Param("authAttemptId") Integer authAttemptId);
-
-    /**
      * Finds all authorization attempts for a given enrollment ID.
      * <p>
      * This method returns all authorization attempts associated with the

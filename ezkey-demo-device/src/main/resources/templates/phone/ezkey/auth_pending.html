@@ -150,6 +150,7 @@
         
         <form id="authForm" th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}" method="post">
           <input type="hidden" name="authAttemptId" th:value="${authAttemptId}">
+          <input type="hidden" name="authAttemptProofToken" th:value="${authAttemptProofToken}">
           <input type="hidden" id="approved" name="approved" value="">
           <input type="hidden" id="challengeResponseParam" name="challengeResponse" value="">
           

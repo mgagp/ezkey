@@ -10,6 +10,49 @@ Le modèle d’interaction est **pull** : le mobile vient chercher la demande 
 
 ---
 
+## 🔐 Sécurité des Tokens - Conception Critique
+
+### **Principe de Sécurité : Token à Usage Unique**
+
+Ezkey utilise un système de **tokens de preuve à usage unique** pour garantir l'intégrité et la sécurité du processus d'authentification.
+
+#### **🔑 Deux Types de Tokens**
+
+1. **`enrollmentProofToken`** : Token permanent de l'enrollment, utilisé pour lier l'appareil
+2. **`authAttemptProofToken`** : Token unique par tentative d'authentification, **CRITIQUE pour la sécurité**
+
+#### **🛡️ Mécanisme de Sécurité**
+
+**Étape 1 - PENDING** :
+- Le serveur génère un `authAttemptProofToken` unique pour chaque tentative
+- Ce token est **chiffré** avec la clé publique de l'intégration lors de l'envoi
+- Le device mobile **déchiffre** le token avec sa clé privée
+- **Le token ne peut être lu qu'une seule fois** (par le PENDING)
+
+**Étape 2 - RESPOND** :
+- Le device mobile **signe** le `authAttemptProofToken` (en clair) avec sa clé privée
+- Cette signature prouve que le device a bien reçu le token original
+- **Sécurité renforcée** : impossible de rejouer une tentative sans avoir le token original
+
+#### **⚠️ Points Critiques pour les Développeurs**
+
+```java
+// ❌ INCORRECT - Ne jamais signer enrollmentProofToken pour RESPOND
+String signature = signWithDeviceKey(enrollmentProofToken);
+
+// ✅ CORRECT - Toujours signer authAttemptProofToken pour RESPOND  
+String signature = signWithDeviceKey(authAttemptProofToken);
+```
+
+#### **🎯 Pourquoi cette Conception ?**
+
+1. **Anti-replay** : Chaque tentative a un token unique
+2. **Authentification forte** : Seul le device légitime peut déchiffrer et signer
+3. **Traçabilité** : Chaque token peut être tracé à une tentative spécifique
+4. **Sécurité par défaut** : Impossible de contourner sans comprendre le mécanisme
+
+---
+
 ## 1. Endpoints auth-api (mobile)
 
 ### a) Récupérer la demande en attente (pending)
@@ -129,9 +172,32 @@ Content-Type: application/json
 
 ### a) Gestion des demandes d'authentification
 
+**GET    /api/v1/auth-attemps**          // Lister toutes les demandes d'authentification
 **POST   /api/v1/auth-attempts**         // Créer une demande d'authentification
 **GET    /api/v1/auth-attempts/{id}**    // Lire une demande
 **DELETE /api/v1/auth-attempts/{id}**    // Supprimer une demande
+
+**Exemple de GET**
+```
+   {
+        "authAttemptId": 49,
+        "enrollmentId": 61,
+        "authAttemptRead": false,
+        "authAttemptResponded": false,
+        "authAttemptValid": false,
+        "authAttemptAccepted": false,
+        "authAttemptChallenge": null,
+        "authAttemptProofToken": "KstrTWXbywp5Zi-ACI1kIzGrj9thTUkn_-lcOxQxYR0.1755796478548.1HGz9A4uEyYjqdxbYg9U7A",
+        "deviceProofTokenValid": "false",
+        "createdAt": "2025-08-21T13:14:38.548701"
+    }
+```
+
+Pour afficher un status associé à une demande, voici les règles en ordre de priorité (#1 en premier)
+-authAttemptRead null ou false : PENDING
+-authAttemptRead et authAttemptResponded null ou false: READ
+-authAttemptValid null ou false: INVALID
+-authAttemptAccepted null ou false: REJECTED sinon ACCEPTED
 
 **Exemple de création**
 ```http

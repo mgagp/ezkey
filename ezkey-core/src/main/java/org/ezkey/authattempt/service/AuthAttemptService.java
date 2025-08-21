@@ -25,8 +25,8 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.NoPendingAuthAttemptException;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -175,7 +175,8 @@ public class AuthAttemptService {
             throw new IllegalStateException("Failed to mark auth attempt as read");
         }
         // Find the enrollment
-        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + request.getEnrollmentId()));
+        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
+                .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + request.getEnrollmentId()));
 
         // Validate device public key
         String devicePublicKey = enrollment.getDevicePublicKey();
@@ -217,13 +218,6 @@ public class AuthAttemptService {
             response.setMessage("Auth attempt not read by device");
             return response;
         }
-        // Mark as replied
-        int updated = authAttemptRepository.setDeviceRespondedTrueIfNotRead(authAttempt.getAuthAttemptId());
-        if (updated == 0){
-            response.setSuccess(false);
-            response.setMessage("Auth attempt completed");
-            return response;
-        }
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null);
         if (enrollment == null){
@@ -250,6 +244,8 @@ public class AuthAttemptService {
         if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
             if (request.getAuthAttemptChallengeResponse() == null || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
                 authAttempt.setAuthAttemptAccepted(false);
+                authAttempt.setAuthAttemptValid(false);
+                authAttempt.setAuthAttemptResponded(true);
                 authAttemptRepository.save(authAttempt);
                 response.setSuccess(false);
                 response.setMessage("Challenge value mismatch");
@@ -258,6 +254,8 @@ public class AuthAttemptService {
         }
         // Update authorization attempt
         authAttempt.setAuthAttemptAccepted(request.getAuthAttemptAccepted());
+        authAttempt.setAuthAttemptValid(true);
+        authAttempt.setAuthAttemptResponded(true);
         authAttemptRepository.save(authAttempt);
 
         response.setSuccess(true);

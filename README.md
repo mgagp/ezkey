@@ -59,6 +59,52 @@ graph LR
 - **Developer-Friendly**: REST APIs, OpenAPI documentation, and extensive examples
 - **Cross-Platform**: Works with any technology stack
 
+## 🔐 Security Design
+
+### **One-Time Proof Token System**
+
+Ezkey implements a sophisticated **one-time proof token** security model that prevents replay attacks and ensures authentication integrity.
+
+#### **Key Security Principles**
+
+1. **Unique Tokens**: Each authentication attempt gets a unique `authAttemptProofToken`
+2. **One-Time Use**: Tokens can only be read once (during PENDING request)
+3. **Cryptographic Proof**: Device must prove it received the original token
+4. **Anti-Replay**: Impossible to replay authentication attempts
+
+#### **Security Flow**
+
+```mermaid
+sequenceDiagram
+    participant App as Protected App
+    participant Admin as Admin API
+    participant Auth as Auth API
+    participant Device as Mobile Device
+    
+    App->>Admin: Create auth attempt
+    Admin->>Auth: Generate unique authAttemptProofToken
+    Device->>Auth: PENDING request (decrypts token)
+    Device->>Auth: RESPOND request (signs token)
+    Auth->>Admin: Validate signature
+    Admin->>App: Authentication result
+```
+
+#### **Developer Security Checklist**
+
+- ✅ Always use `authAttemptProofToken` for RESPOND (never `enrollmentProofToken`)
+- ✅ Implement proper signature validation
+- ✅ Store tokens securely on device
+- ✅ Never reuse tokens across attempts
+- ✅ Validate all cryptographic signatures
+
+#### **Why This Matters**
+
+This design ensures that:
+- **Only legitimate devices** can respond to authentication requests
+- **Each attempt is unique** and cannot be replayed
+- **Cryptographic proof** prevents man-in-the-middle attacks
+- **Zero-trust architecture** with end-to-end verification
+
 ## Architecture
 
 Ezkey is built with a modern multi-module architecture:

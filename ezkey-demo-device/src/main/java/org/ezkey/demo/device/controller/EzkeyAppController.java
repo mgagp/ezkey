@@ -225,7 +225,8 @@ public class EzkeyAppController {
 
     @PostMapping("/enrollments/{enrollmentId}/auth/respond")
     public String respondToAuth(@PathVariable("enrollmentId") Integer enrollmentId,@RequestParam("authAttemptId") Integer authAttemptId,
-            @RequestParam("approved") Boolean approved,@RequestParam(value = "challengeResponse",required = false) String challengeResponse,Model model) {
+            @RequestParam("approved") Boolean approved,@RequestParam(value = "challengeResponse",required = false) String challengeResponse,
+            @RequestParam("authAttemptProofToken") String authAttemptProofToken, Model model) {
         model.addAttribute("pageTitle","Authentication Response");
         model.addAttribute("enrollmentId",enrollmentId);
         try{
@@ -243,8 +244,8 @@ public class EzkeyAppController {
             model.addAttribute("integrationDescription",rec.integrationDescription());
             model.addAttribute("integrationLogo",rec.integrationLogo());
 
-            // Sign the enrollment proof token for the response
-            String responseSignature = cryptoService.signStringToBase64(rec.enrollmentProofToken(),cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+            // Sign the auth attempt proof token for the response (security: one-time use token)
+            String responseSignature = cryptoService.signStringToBase64(authAttemptProofToken,cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
 
             // Create respond request
             AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto().authAttemptId(authAttemptId).authAttemptAccepted(approved)
@@ -256,13 +257,15 @@ public class EzkeyAppController {
             AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId,respondRequest).block();
             if (respondResponse != null){
                 logger.info("Auth response submitted successfully: {}",respondResponse);
-                model.addAttribute("success","Authentication response submitted successfully");
-                model.addAttribute("message",respondResponse.getMessage());
+                model.addAttribute("success", true);
+                model.addAttribute("message", respondResponse.getMessage());
             } else{
+                model.addAttribute("success", false);
                 model.addAttribute("error","Failed to submit authentication response");
             }
         } catch (Exception e){
             logger.error("Auth response failed for enrollment {} authAttempt {}",enrollmentId,authAttemptId,e);
+            model.addAttribute("success", false);
             model.addAttribute("error","Authentication response failed: " + e.getMessage());
         }
         return "phone/ezkey/auth_result";
