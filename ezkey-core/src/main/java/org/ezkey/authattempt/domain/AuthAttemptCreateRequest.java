@@ -14,9 +14,9 @@ package org.ezkey.authattempt.domain;
  * Domain request object for creating authentication attempts.
  * <p>
  * This domain object represents the request data used internally by the service layer
- * to create new authentication attempts. It contains the enrollment information,
- * challenge requirements, and simulation data needed to initiate an authentication
- * flow for a specific user enrollment.
+ * to create new authentication attempts. It contains the enrollment information
+ * and challenge requirements needed to initiate an authentication flow for a 
+ * specific user enrollment.
  * </p>
  *
  * <p>
@@ -37,12 +37,6 @@ package org.ezkey.authattempt.domain;
  * additional user verification is required beyond cryptographic signatures.
  * When enabled, users must provide additional verification codes during
  * the authentication process.
- * </p>
- *
- * <p>
- * <b>Simulation Support:</b> Includes simulation data for testing and development
- * environments, allowing end-to-end authentication flow testing without requiring
- * actual mobile devices.
  * </p>
  *
  * <p>
@@ -82,21 +76,6 @@ public class AuthAttemptCreateRequest {
     private Boolean challengeRequested;
 
     /**
-     * Device private key for simulation purposes only.
-     * <p>
-     * Contains the simulated device's private key for testing authentication
-     * flows in development and testing environments. This field enables
-     * end-to-end testing without requiring actual mobile devices.
-     * </p>
-     * <p>
-     * <b>Security Warning:</b> This field contains highly sensitive cryptographic
-     * material and should never be populated in production environments. It is
-     * exclusively for development and testing purposes.
-     * </p>
-     */
-    private String simulationDevicePrivateKey;
-
-    /**
      * Gets the enrollment ID for this authentication attempt.
      *
      * @return the enrollment ID
@@ -130,31 +109,5 @@ public class AuthAttemptCreateRequest {
      */
     public void setChallengeRequested(Boolean challengeRequested){
         this.challengeRequested = challengeRequested;
-    }
-
-    /**
-     * Gets the simulation device private key.
-     * <p>
-     * <b>Security Warning:</b> This method should only be used in testing
-     * and development environments. Never call this in production code.
-     * </p>
-     *
-     * @return the simulation device private key
-     */
-    public String getSimulationDevicePrivateKey(){
-        return simulationDevicePrivateKey;
-    }
-
-    /**
-     * Sets the simulation device private key.
-     * <p>
-     * <b>Security Warning:</b> This method should only be used in testing
-     * and development environments. Never call this in production code.
-     * </p>
-     *
-     * @param simulationDevicePrivateKey the simulation device private key to set
-     */
-    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey){
-        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 }
