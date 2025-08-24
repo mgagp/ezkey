@@ -116,7 +116,7 @@ ezkey/
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
 ├── ezkey_mobile/            # Flutter mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
-├── ezkey-demo-device/       # Demo device simulation
+├── ezkey-demo-device/       # Demo device application
 └── ezkey-docs/              # Project documentation
 ```
 
@@ -625,7 +625,7 @@ server.port=9080  # Admin API
 server.port=8080  # Auth API
 
 # Security
-ezkey.simulation.mode=false  # Production setting
+# All security-related configurations handled in API-specific property files
 ```
 
 ## Contributing
