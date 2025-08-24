@@ -43,9 +43,6 @@ public class AuthAttemptService {
 
     private final SignatureService signatureService;
 
-    @Value("${ezkey.simulation.mode:false}")
-    private boolean simulationMode;
-
     /**
      * Constructs the authorization attempt service with required dependencies.
      *
@@ -125,15 +122,6 @@ public class AuthAttemptService {
         AuthAttemptCreateResponse response = new AuthAttemptCreateResponse();
         response.setAuthAttemptId(savedAuthAttempt.getAuthAttemptId());
 
-        // Add simulation data if in simulation mode
-        if (simulationMode){
-            response.setSimulationAuthAttemptProofTokenSignedByDevice(
-                    signatureService.generateSignature(authAttempt.getAuthAttemptProofToken(),authRequest.getSimulationDevicePrivateKey()));
-            response.setSimulationAuthAttemptChallengeResponse(authAttempt.getAuthAttemptChallenge());
-            response.setSimulationPendingDeviceProofToken(signatureService.generateProofToken());
-            response.setSimulationPendingDeviceProofTokenSigned(
-                    signatureService.generateSignature(response.getSimulationPendingDeviceProofToken(),authRequest.getSimulationDevicePrivateKey()));
-        }
         return response;
     }
 

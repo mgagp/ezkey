@@ -15,8 +15,8 @@ package org.ezkey.authattempt.domain;
  * <p>
  * This domain object represents the request data used internally by the service layer
  * to check for pending authentication attempts for a specific enrollment. It contains
- * device authentication credentials and simulation data needed to validate device
- * identity and retrieve appropriate pending authentication requests.
+ * device authentication credentials needed to validate device identity and retrieve 
+ * appropriate pending authentication requests.
  * </p>
  *
  * <p>
@@ -37,12 +37,6 @@ package org.ezkey.authattempt.domain;
  * device's identity and ensure only legitimate enrolled devices can access
  * pending authentication attempts. This prevents unauthorized access to
  * authentication challenges.
- * </p>
- *
- * <p>
- * <b>Simulation Support:</b> Includes simulation data for testing and development
- * environments, allowing end-to-end authentication flow testing without requiring
- * actual mobile devices. Simulation fields are never populated in production.
  * </p>
  *
  * <p>
@@ -91,22 +85,6 @@ public class AuthAttemptPendingRequest {
      * </p>
      */
     private String deviceProofTokenSigned;
-
-    /**
-     * Device private key for simulation purposes only.
-     * <p>
-     * Contains the simulated device's private key for testing authentication
-     * flows in development and testing environments. This field enables
-     * end-to-end testing without requiring actual mobile devices and allows
-     * automated verification of authentication flows.
-     * </p>
-     * <p>
-     * <b>Security Warning:</b> This field contains highly sensitive cryptographic
-     * material and should never be populated in production environments. It is
-     * exclusively for development and testing purposes.
-     * </p>
-     */
-    private String simulationDevicePrivateKey;
 
     /**
      * Gets the enrollment ID for this pending authentication request.
@@ -160,32 +138,6 @@ public class AuthAttemptPendingRequest {
      */
     public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
         this.deviceProofTokenSigned = deviceProofTokenSigned;
-    }
-
-    /**
-     * Gets the simulation device private key.
-     * <p>
-     * <b>Security Warning:</b> This method should only be used in testing
-     * and development environments. Never call this in production code.
-     * </p>
-     *
-     * @return the simulation device private key
-     */
-    public String getSimulationDevicePrivateKey() {
-        return simulationDevicePrivateKey;
-    }
-
-    /**
-     * Sets the simulation device private key.
-     * <p>
-     * <b>Security Warning:</b> This method should only be used in testing
-     * and development environments. Never call this in production code.
-     * </p>
-     *
-     * @param simulationDevicePrivateKey the simulation device private key to set
-     */
-    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
-        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 
 }
