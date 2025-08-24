@@ -38,7 +38,6 @@ import org.springframework.web.reactive.function.client.WebClient;
  * <b>Configuration Properties:</b>
  * <ul>
  * <li><code>ezkey.admin.api.url</code> - Base URL for Ezkey Admin API</li>
- * <li><code>ezkey.simulation.enabled</code> - Enable simulation mode for testing</li>
  * </ul>
  * </p>
  *
@@ -50,9 +49,6 @@ public class EzkeyApiClientConfig {
 
     @Value("${ezkey.admin.api.url:http://localhost:9080}")
     private String ezkeyAdminApiUrl;
-
-    @Value("${ezkey.simulation.enabled:false}")
-    private boolean simulationEnabled;
 
     /**
      * Creates a configured WebClient for Ezkey Admin API communication.
@@ -81,19 +77,5 @@ public class EzkeyApiClientConfig {
      */
     public String getEzkeyAdminApiUrl() {
         return ezkeyAdminApiUrl;
-    }
-
-    /**
-     * Returns whether simulation mode is enabled.
-     * <p>
-     * Simulation mode allows testing of the application flow without
-     * requiring actual mobile device enrollment. This is useful for
-     * development and demonstration purposes.
-     * </p>
-     *
-     * @return true if simulation mode is enabled, false otherwise
-     */
-    public boolean isSimulationEnabled() {
-        return simulationEnabled;
     }
 }

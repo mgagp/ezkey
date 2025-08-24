@@ -129,10 +129,7 @@ GET /api/v1/enrollments/bind/456
   "enrollmentId": 456,
   "integrationPublicKey": "base64-encoded-integration-key",
   "enrollmentCode": "EZK-ABC123-DEF456",
-  "enrollmentCodeSigned": "base64-encoded-signed-code",
-  "simulationDevicePublicKey": "base64-encoded-simulation-key",
-  "simulationDevicePrivateKey": "base64-encoded-simulation-private-key",
-  "simulationEnrollmentCodeSigned": "base64-encoded-simulation-signature"
+  "enrollmentCodeSigned": "base64-encoded-signed-code"
 }
 ```
 
