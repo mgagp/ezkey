@@ -41,11 +41,10 @@ Phase 1 – MVP
 Scope:
 - Spring Boot application with Integration, Enrollment, and Authentication Attempt entities.
 - REST APIs for all core flows.
-- Simulation mode for flows (to enable testing before the mobile app is available).
 - Basic error handling and minimal documentation (README, entity diagrams).
 
 Acceptance Criteria:
-- End-to-end happy path can be demonstrated via API calls and simulation.
+- End-to-end happy path can be demonstrated via API calls and demo applications.
 - Entities and relationships are clearly documented.
 - Project can be run locally with minimal setup.
 

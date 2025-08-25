@@ -79,9 +79,6 @@ public class EnrollmentService {
 
     private final IntegrationRepository integrationRepository;
 
-    @Value("${ezkey.simulation.mode:false}")
-    private boolean simulationMode;
-
     /**
      * Constructs the enrollment service with required dependencies.
      *
@@ -165,16 +162,6 @@ public class EnrollmentService {
         EnrollmentCreateResponse response = new EnrollmentCreateResponse();
         response.setEnrollmentId(savedEnrollment.getEnrollmentId());
         response.setEnrollmentChallenge(savedEnrollment.getEnrollmentChallenge());
-        if (simulationMode){
-            RsaKeyPair deviceKeys = signatureService.generateRsaKeyPair(2048);
-            response.setSimulationDevicePrivateKey(deviceKeys.base64PrivateKey());
-            response.setSimulationDevicePublicKey(deviceKeys.base64PublicKey());
-            String signature = signatureService.generateSignature(enrollment.getEnrollmentProofToken(),response.getSimulationDevicePrivateKey());
-            response.setSimulationEnrollmentProofTokenSigned(signature);
-
-            boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),signature,response.getSimulationDevicePublicKey());
-            logger.info("Bind code signature valid: {}",valid);
-        }
         return response;
     }
 
