@@ -182,23 +182,28 @@ public class EnrollmentService {
      * Binds an enrollment to a device.
      * <p>
      * This method handles the enrollment binding process, including signature
-     * generation and simulation mode support.
+     * generation and simulation mode support. It uses row-level locking to ensure
+     * exclusive access and prevent race conditions during the binding process.
      * </p>
      *
      * @param req the bind request
      * @return the bind response
      * @throws IllegalArgumentException if enrollment not found or already bound
+     * @throws IllegalStateException if enrollment is already read by another device
      */
     public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
-        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(req.getEnrollmentId());
-        if (enrollmentOpt.isEmpty()){
-            throw new IllegalArgumentException("Pair not found");
+        // Find and lock the unread enrollment atomically
+        Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId())
+                .orElseThrow(() -> new IllegalArgumentException("Enrollment not found or already bound"));
+        
+        // Double-check if already read (defense in depth)
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
+            throw new IllegalStateException("Enrollment already bound by a device");
         }
-        Enrollment enrollment = enrollmentOpt.get();
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
-            throw new IllegalStateException("Pair already bound by a device");
-        }
-        enrollmentRepository.setDeviceReadTrue(req.getEnrollmentId());
+        
+        // Mark as read (the lock ensures no race condition)
+        enrollment.setEnrollmentRead(true);
+        enrollmentRepository.save(enrollment);
 
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());

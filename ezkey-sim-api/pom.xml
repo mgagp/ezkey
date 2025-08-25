@@ -16,10 +16,6 @@
 	<name>Ezkey Simulation API</name>
 	<description>Simulation API for enrollment completion and authentication validation tests</description>
 	
-	<properties>
-    	<m2e.apt.activation>jdt_apt</m2e.apt.activation>
-	</properties>
-	
 	<dependencies>
 		<!-- Core module dependency -->
 		<dependency>

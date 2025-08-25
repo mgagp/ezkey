@@ -86,3 +86,4 @@ application-*.properties
 *.sh
 *.bat
 ezkey-demo-device/data/enrollments/*.json
+plan_doc.md
