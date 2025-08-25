@@ -18,7 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * This DTO represents the response data returned to mobile devices when they
  * initiate enrollment binding. It contains all the information needed by the
  * mobile device to complete the enrollment process, including cryptographic
- * keys, enrollment codes, and simulation data for testing.
+ * keys and enrollment codes.
  * </p>
  *
  * <p>
@@ -57,9 +57,7 @@ public class EnrollmentBindResponseDto {
      * Used for reference in subsequent verification requests.
      * </p>
      */
-    @Schema(description = "Enrollment ID that was bound to the mobile device", 
-            example = "123", 
-            required = true)
+    @Schema(description = "Enrollment ID that was bound to the mobile device",example = "123",required = true)
     private Integer enrollmentId;
 
     /**
@@ -70,9 +68,7 @@ public class EnrollmentBindResponseDto {
      * authenticity during the enrollment process.
      * </p>
      */
-    @Schema(description = "Integration's public key for cryptographic verification", 
-            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...", 
-            required = true)
+    @Schema(description = "Integration's public key for cryptographic verification",example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",required = true)
     private String integrationPublicKey;
 
     /**
@@ -83,9 +79,7 @@ public class EnrollmentBindResponseDto {
      * the device possesses the cryptographic keys it claims to have.
      * </p>
      */
-    @Schema(description = "Enrollment proof token to be signed by the device", 
-            example = "eyJhbGciOiJSUzI1NiJ9...", 
-            required = true)
+    @Schema(description = "Enrollment proof token to be signed by the device",example = "eyJhbGciOiJSUzI1NiJ9...",required = true)
     private String enrollmentProofToken;
 
     /**
@@ -95,9 +89,7 @@ public class EnrollmentBindResponseDto {
      * to display the integration's logo during the enrollment process.
      * </p>
      */
-    @Schema(description = "Logo URL or base64-encoded image for the integration", 
-            example = "https://acme.com/logo.png", 
-            required = false)
+    @Schema(description = "Logo URL or base64-encoded image for the integration",example = "https://acme.com/logo.png",required = false)
     private String integrationLogo;
 
     /**
@@ -107,9 +99,7 @@ public class EnrollmentBindResponseDto {
      * to help identify the service or application being enrolled.
      * </p>
      */
-    @Schema(description = "Display name of the integration", 
-            example = "Acme Bank", 
-            required = false)
+    @Schema(description = "Display name of the integration",example = "Acme Bank",required = false)
     private String integrationName;
 
     /**
@@ -119,9 +109,7 @@ public class EnrollmentBindResponseDto {
      * its purpose or features, to assist the user during the enrollment process.
      * </p>
      */
-    @Schema(description = "Description of the integration", 
-            example = "Acme Bank provides secure online banking services.", 
-            required = false)
+    @Schema(description = "Description of the integration",example = "Acme Bank provides secure online banking services.",required = false)
     private String integrationDescription;
 
     /**
@@ -131,9 +119,7 @@ public class EnrollmentBindResponseDto {
      * to help identify the specific device or user account being enrolled.
      * </p>
      */
-    @Schema(description = "Human-readable name for the enrollment", 
-            example = "John's iPhone", 
-            required = false)
+    @Schema(description = "Human-readable name for the enrollment",example = "John's iPhone",required = false)
     private String enrollmentName;
 
     /**

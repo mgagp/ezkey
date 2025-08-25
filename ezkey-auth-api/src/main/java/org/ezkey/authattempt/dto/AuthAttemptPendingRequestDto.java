@@ -10,8 +10,6 @@
 
 package org.ezkey.authattempt.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -92,24 +90,6 @@ public class AuthAttemptPendingRequestDto {
     private String deviceProofTokenSigned;
 
     /**
-     * Device private key for simulation purposes only.
-     * <p>
-     * Contains the simulated device's private key for testing authentication
-     * flows. Only included when simulation mode is enabled.
-     * </p>
-     * <p>
-     * <b>Security Warning:</b> This field contains highly sensitive cryptographic
-     * material and should never be present in production environments.
-     * </p>
-     */
-    @Schema(
-            description = "Device private key (simulation mode only - NEVER in production)",
-            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL...",
-            nullable = true)
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String simulationDevicePrivateKey;
-
-    /**
      * Gets the enrollment ID.
      *
      * @return the enrollment ID
@@ -161,24 +141,6 @@ public class AuthAttemptPendingRequestDto {
      */
     public void setDeviceProofTokenSigned(String deviceProofTokenSigned) {
         this.deviceProofTokenSigned = deviceProofTokenSigned;
-    }
-
-    /**
-     * Gets the simulation device private key.
-     *
-     * @return the simulation device private key
-     */
-    public String getSimulationDevicePrivateKey() {
-        return simulationDevicePrivateKey;
-    }
-
-    /**
-     * Sets the simulation device private key.
-     *
-     * @param simulationDevicePrivateKey the simulation device private key to set
-     */
-    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey) {
-        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
     }
 
 }

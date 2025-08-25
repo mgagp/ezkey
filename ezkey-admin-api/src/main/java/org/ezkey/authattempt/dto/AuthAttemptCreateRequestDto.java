@@ -30,7 +30,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <ul>
  * <li><b>enrollmentId:</b> Target enrollment for the authentication request</li>
  * <li><b>challengeRequested:</b> Whether a challenge is required for this attempt</li>
- * <li><b>simulationDevicePrivateKey:</b> Simulation key for testing purposes</li>
  * </ul>
  * </p>
  *
@@ -62,17 +61,11 @@ public class AuthAttemptCreateRequestDto {
     private Boolean challengeRequested;
 
     /**
-     * Simulation device private key for testing purposes.
-     * Used in simulation mode to test authentication flows without a real device.
-     */
-    private String simulationDevicePrivateKey;
-
-    /**
      * Gets the enrollment ID for the authentication attempt.
      *
      * @return the enrollment ID
      */
-    public Integer getEnrollmentId(){
+    public Integer getEnrollmentId() {
         return enrollmentId;
     }
 
@@ -81,7 +74,7 @@ public class AuthAttemptCreateRequestDto {
      *
      * @param enrollmentId the enrollment ID to set
      */
-    public void setEnrollmentId(Integer enrollmentId){
+    public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
     }
 
@@ -90,7 +83,7 @@ public class AuthAttemptCreateRequestDto {
      *
      * @return true if challenge is requested, false otherwise
      */
-    public Boolean getChallengeRequested(){
+    public Boolean getChallengeRequested() {
         return challengeRequested;
     }
 
@@ -99,25 +92,8 @@ public class AuthAttemptCreateRequestDto {
      *
      * @param challengeRequested true if challenge is requested, false otherwise
      */
-    public void setChallengeRequested(Boolean challengeRequested){
+    public void setChallengeRequested(Boolean challengeRequested) {
         this.challengeRequested = challengeRequested;
     }
 
-    /**
-     * Gets the simulation device private key.
-     *
-     * @return the simulation device private key
-     */
-    public String getSimulationDevicePrivateKey(){
-        return simulationDevicePrivateKey;
-    }
-
-    /**
-     * Sets the simulation device private key.
-     *
-     * @param simulationDevicePrivateKey the simulation device private key to set
-     */
-    public void setSimulationDevicePrivateKey(String simulationDevicePrivateKey){
-        this.simulationDevicePrivateKey = simulationDevicePrivateKey;
-    }
 }

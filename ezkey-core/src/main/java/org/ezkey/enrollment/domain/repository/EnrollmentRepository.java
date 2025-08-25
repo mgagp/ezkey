@@ -79,11 +79,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      * @return the unread enrollment with row lock, or empty if not found or already read
      */
     @Query(value = """
-        SELECT * FROM enrollment 
-        WHERE enrollment_id = :enrollmentId 
-          AND enrollment_read = false 
-        FOR NO KEY UPDATE
-        """, nativeQuery = true)
+            SELECT * FROM ezkey_enrollment
+            WHERE enrollment_id = :enrollmentId
+              AND enrollment_read = false
+            FOR NO KEY UPDATE
+            """,nativeQuery = true)
     Optional<Enrollment> findAndLockUnreadById(@Param("enrollmentId") Integer enrollmentId);
 
     /**

@@ -93,13 +93,13 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @return the most recent unread authorization attempt with row lock, or empty if none found
      */
     @Query(value = """
-        SELECT * FROM auth_attempt 
-        WHERE enrollment_id = :enrollmentId 
-          AND auth_attempt_read = false 
-        ORDER BY auth_attempt_id DESC 
-        LIMIT 1 
-        FOR NO KEY UPDATE
-        """, nativeQuery = true)
+            SELECT * FROM ezkey_auth_attempt
+            WHERE enrollment_id = :enrollmentId
+              AND auth_attempt_read = false
+            ORDER BY auth_attempt_id DESC
+            LIMIT 1
+            FOR NO KEY UPDATE
+            """,nativeQuery = true)
     Optional<AuthAttempt> findAndLockMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
     /**

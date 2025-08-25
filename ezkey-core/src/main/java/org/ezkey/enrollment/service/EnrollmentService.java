@@ -29,7 +29,6 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -169,7 +168,7 @@ public class EnrollmentService {
      * Binds an enrollment to a device.
      * <p>
      * This method handles the enrollment binding process, including signature
-     * generation and simulation mode support. It uses row-level locking to ensure
+     * generation. It uses row-level locking to ensure
      * exclusive access and prevent race conditions during the binding process.
      * </p>
      *
@@ -182,12 +181,11 @@ public class EnrollmentService {
         // Find and lock the unread enrollment atomically
         Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found or already bound"));
-        
+
         // Double-check if already read (defense in depth)
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
             throw new IllegalStateException("Enrollment already bound by a device");
         }
-        
         // Mark as read (the lock ensures no race condition)
         enrollment.setEnrollmentRead(true);
         enrollmentRepository.save(enrollment);

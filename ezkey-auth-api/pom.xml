@@ -71,4 +71,15 @@
 			</plugin>
 		</plugins>
 	</build>
-</project> 
+
+	<profiles>
+	    <profile>
+	        <id>native</id>
+	        <properties>
+	            <spring-boot.build-image.builder>paketobuildpacks/builder:tiny</spring-boot.build-image.builder>
+	            <spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
+	        </properties>
+	    </profile>
+	</profiles>
+
+</project>

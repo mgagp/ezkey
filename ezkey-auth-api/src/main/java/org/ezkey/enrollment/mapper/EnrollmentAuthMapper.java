@@ -76,14 +76,14 @@ import org.mapstruct.ReportingPolicy;
  * @see EnrollmentVerifyRequest
  * @see EnrollmentVerifyResponse
  */
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
+@Mapper(componentModel = "spring",unmappedTargetPolicy = ReportingPolicy.WARN)
 public interface EnrollmentAuthMapper {
 
     /**
      * Converts a domain bind response to DTO for mobile consumption.
      * <p>
      * Maps enrollment binding information to mobile-friendly DTOs containing
-     * cryptographic keys, enrollment codes, and simulation data needed for
+     * cryptographic keys and enrollment codes data needed for
      * mobile devices to complete enrollment verification.
      * </p>
      *
