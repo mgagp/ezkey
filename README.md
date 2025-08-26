@@ -1,5 +1,7 @@
 # Ezkey - Open Source MFA/Passkey Alternative
 
+![Ezkey Logo](logo.svg)
+
 ## Overview
 
 Ezkey is a pragmatic, open-source alternative to complex passkey implementations. It provides a simple and secure MFA solution that can be easily integrated into any application through a modern multi-module architecture.
