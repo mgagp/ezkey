@@ -1,149 +1,224 @@
 # OpenAPI Specification Management
 
-## Vue d'ensemble
+## Overview
 
-Ce dossier contient les scripts pour uniformiser la gestion des spécifications OpenAPI dans les projets demo d'Ezkey.
+This directory contains scripts for standardizing OpenAPI specification management in Ezkey demo projects.
 
-## Problème initial
+## Initial Problem
 
-Les projets demo utilisaient deux approches différentes pour les spécifications OpenAPI :
+Demo projects were using two different approaches for OpenAPI specifications:
 
-- **ezkey-demo-device** : URL live (`http://localhost:8080/v3/api-docs`)
-- **ezkey-demo-app-acme** : Fichier local (`openapi-spec.json`)
+- **ezkey-demo-device** : Live URL (`http://localhost:8080/v3/api-docs`)
+- **ezkey-demo-app-acme** : Local file (`openapi-spec.json`)
 
-## Solution adoptée : Fichier local uniformisé
+## Adopted Solution: Standardized Local File
 
-### Pourquoi cette approche ?
+### Why This Approach?
 
-**Avantages :**
-- ✅ **Stabilité des builds** : Pas de dépendance réseau
-- ✅ **Contrôle de version** : Gestion contrôlée des changements d'API
-- ✅ **CI/CD simple** : Pas besoin de démarrer des services
-- ✅ **Reproductibilité** : Builds identiques à chaque fois
-- ✅ **Indépendance** : Développement possible sans API en cours
+**Advantages:**
+- ✅ **Build stability** : No network dependency
+- ✅ **Version control** : Controlled management of API changes
+- ✅ **Simple CI/CD** : No need to start services
+- ✅ **Reproducibility** : Identical builds every time
+- ✅ **Independence** : Development possible without running APIs
 
-**Inconvénients :**
-- ❌ **Maintenance manuelle** : Nécessite de mettre à jour le fichier
-- ❌ **Risque de désynchronisation** : Possibilité d'avoir des DTOs obsolètes
+**Disadvantages:**
+- ❌ **Manual maintenance** : Requires updating the file
+- ❌ **Desynchronization risk** : Possibility of having obsolete DTOs
 
-## Scripts de synchronisation
+## Synchronization Scripts
 
-### Script Bash (Linux/macOS/Git Bash)
+### Bash Script (Linux/macOS/Git Bash)
 ```bash
 ./scripts/update-openapi-specs.sh [OPTIONS]
 ```
 
-### Script Windows Batch
+### Windows Batch Script
 ```cmd
 scripts\update-openapi-specs.bat [OPTIONS]
 ```
 
-### Options disponibles
-- `--app` : Mettre à jour uniquement demo-app-acme
-- `--device` : Mettre à jour uniquement demo-device
-- `--all` : Mettre à jour les deux (par défaut)
-- `--help` : Afficher l'aide
+### Available Options
+- `--app` : Update only demo-app-acme
+- `--device` : Update only demo-device
+- `--all` : Update both (default)
+- `--help` : Display help
 
-## Workflow recommandé
+## Recommended Workflow
 
-### 1. Développement quotidien
+### 1. Daily Development
 ```bash
-# Démarrer les APIs
+# Start the APIs
 mvn spring-boot:run -pl ezkey-auth-api
 mvn spring-boot:run -pl ezkey-admin-api
 
-# Mettre à jour les specs quand l'API change
+# Update specs when API changes
 ./scripts/update-openapi-specs.sh
 
-# Recompiler les projets demo
+# Recompile demo projects
 mvn clean compile -pl ezkey-demo-device
 mvn clean compile -pl ezkey-demo-app-acme
 ```
 
-### 2. Avant un commit
+### 2. Before Commit
 ```bash
-# Vérifier que les specs sont à jour
+# Check that specs are up to date
 ./scripts/update-openapi-specs.sh --all
 
-# Tester que tout compile
+# Test that everything compiles
 mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ```
 
 ### 3. CI/CD
-Les builds CI/CD utilisent directement les fichiers locaux, garantissant la stabilité.
+CI/CD builds use local files directly, ensuring stability.
 
-## Structure des fichiers
+## File Structure
 
 ```
 ezkey-demo-device/
-├── openapi-spec.json          # Spec Auth API (local)
-└── pom.xml                    # Utilise le fichier local
+├── openapi-spec.json          # Auth API spec (local)
+└── pom.xml                    # Uses local file
 
 ezkey-demo-app-acme/
-├── openapi-spec.json          # Spec Admin API (local)
-└── pom.xml                    # Utilise le fichier local
+├── openapi-spec.json          # Admin API spec (local)
+└── pom.xml                    # Uses local file
 
 scripts/
-├── update-openapi-specs.sh    # Script bash
-├── update-openapi-specs.bat   # Script Windows
-└── README.md                  # Cette documentation
+├── update-openapi-specs.sh    # Bash script
+├── update-openapi-specs.bat   # Windows script
+└── README.md                  # This documentation
 ```
 
-## Configuration Maven
+## Maven Configuration
 
-Les deux projets utilisent maintenant la même configuration :
+Both projects now use the same configuration:
 
 ```xml
 <inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
 ```
 
-## Gestion des erreurs
+## Error Handling
 
-### Si l'API n'est pas disponible
-Le script affiche un message d'erreur et ne modifie pas les fichiers existants.
+### If API is not available
+The script displays an error message and does not modify existing files.
 
-### Si le téléchargement échoue
-Le script restaure automatiquement la sauvegarde précédente.
+### If download fails
+The script automatically restores the previous backup.
 
-### Validation JSON
-Le script valide automatiquement le JSON téléchargé (si `jq` est installé).
+### JSON Validation
+The script automatically validates downloaded JSON (if `jq` is installed).
 
-## Prérequis
+## Prerequisites
 
-- `curl` : Pour télécharger les spécifications
-- `jq` (optionnel) : Pour la validation JSON
-- APIs démarrées : Pour pouvoir télécharger les specs
+- `curl` : For downloading specifications
+- `jq` (optional) : For JSON validation
+- APIs started : To be able to download specs
 
-## Exemples d'utilisation
+## Usage Examples
 
-### Mise à jour complète
+### Complete Update
 ```bash
 ./scripts/update-openapi-specs.sh
 ```
 
-### Mise à jour sélective
+### Selective Update
 ```bash
 ./scripts/update-openapi-specs.sh --device
 ./scripts/update-openapi-specs.sh --app
 ```
 
-### Vérification de l'aide
+### Help Verification
 ```bash
 ./scripts/update-openapi-specs.sh --help
 ```
 
-## Intégration avec le workflow de développement
+## Integration with Development Workflow
 
-1. **Modification d'API** : Développer dans `ezkey-auth-api` ou `ezkey-admin-api`
-2. **Test local** : Démarrer l'API et tester
-3. **Synchronisation** : Exécuter le script de mise à jour
-4. **Validation** : Recompiler les projets demo
-5. **Commit** : Inclure les fichiers `openapi-spec.json` mis à jour
+1. **API Modification** : Develop in `ezkey-auth-api` or `ezkey-admin-api`
+2. **Local Testing** : Start the API and test
+3. **Synchronization** : Execute the update script
+4. **Validation** : Recompile demo projects
+5. **Commit** : Include updated `openapi-spec.json` files
 
-## Avantages de cette approche
+## Advantages of This Approach
 
-- **Cohérence** : Les deux projets utilisent la même approche
-- **Fiabilité** : Pas de builds cassés par des problèmes réseau
-- **Traçabilité** : Les changements d'API sont visibles dans Git
-- **Flexibilité** : Possibilité de revenir à une version précédente
-- **Performance** : Génération plus rapide (pas de téléchargement à chaque build)
+- **Consistency** : Both projects use the same approach
+- **Reliability** : No broken builds due to network issues
+- **Traceability** : API changes are visible in Git
+- **Flexibility** : Ability to revert to a previous version
+- **Performance** : Faster generation (no download at each build)
+
+## Security Considerations
+
+### API Access
+- Scripts only access local development APIs
+- No production API access through these scripts
+- Secure error handling prevents information leakage
+
+### File Management
+- Automatic backup before updates
+- Validation of downloaded specifications
+- Safe fallback to previous versions
+
+## Troubleshooting
+
+### Common Issues
+
+**API not responding:**
+```bash
+# Check if APIs are running
+curl http://localhost:8080/v3/api-docs
+curl http://localhost:9080/v3/api-docs
+```
+
+**Permission denied:**
+```bash
+# Make script executable (Linux/Mac)
+chmod +x scripts/update-openapi-specs.sh
+```
+
+**JSON validation failed:**
+```bash
+# Install jq for JSON validation
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# macOS
+brew install jq
+
+# Windows
+# Download from https://stedolan.github.io/jq/download/
+```
+
+### Script Debugging
+
+Enable verbose output:
+```bash
+./scripts/update-openapi-specs.sh --verbose
+```
+
+Check script syntax:
+```bash
+# Bash
+bash -n scripts/update-openapi-specs.sh
+
+# Windows
+# Check batch file syntax manually
+```
+
+## Best Practices
+
+### Development
+- Always update specs after API changes
+- Test compilation before committing
+- Keep backup files for safety
+
+### CI/CD Integration
+- Use local files in build pipelines
+- Validate specs during build process
+- Include spec updates in version control
+
+### Maintenance
+- Regular validation of spec files
+- Monitor for API changes
+- Update documentation when needed

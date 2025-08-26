@@ -1,36 +1,69 @@
 # Ezkey Core
 
-Le module core d'Ezkey contient la logique métier partagée, les entités, les services et les outils de migration de base de données.
+The core module of Ezkey contains the shared business logic, entities, services, and database migration tools.
 
-## Vue d'ensemble
+## Overview
 
-Ce module fournit :
-- **Entités JPA** : Modèles de données pour l'authentification et les intégrations
-- **Services métier** : Logique de gestion des tentatives d'authentification et des inscriptions
-- **Mappers** : Conversion entre DTOs et entités
-- **Outils de migration** : Gestion des migrations de base de données via Flyway
+This module provides:
+- **JPA Entities** : Data models for authentication and integrations
+- **Business Services** : Logic for managing authentication attempts and enrollments
+- **Mappers** : Conversion between DTOs and entities
+- **Migration Tools** : Database migration management via Flyway
 
-## Structure du projet
+## Project Structure
 
 ```
 ezkey-core/
 ├── src/main/java/org/ezkey/
-│   ├── authattempt/     # Gestion des tentatives d'authentification
-│   ├── enrollment/       # Gestion des inscriptions
-│   ├── integration/      # Gestion des intégrations
-│   ├── signature/        # Services de signature
-│   └── core/            # Application principale pour Flyway
+│   ├── authattempt/     # Authentication attempt management
+│   │   ├── domain/      # Domain objects and entities
+│   │   ├── service/     # Business logic services
+│   │   └── mapper/      # DTO-Entity mappers
+│   ├── enrollment/       # Enrollment management
+│   │   ├── domain/      # Domain objects and entities
+│   │   ├── service/     # Business logic services
+│   │   └── mapper/      # DTO-Entity mappers
+│   ├── integration/      # Integration management
+│   │   ├── domain/      # Domain objects and entities
+│   │   └── repository/  # Data access layer
+│   ├── signature/        # Cryptographic signature services
+│   └── core/            # Main application for Flyway
 ├── src/main/resources/
-│   ├── application.properties  # Configuration de base de données
-│   └── db/migration/          # Scripts de migration Flyway
+│   ├── application.properties  # Database configuration
+│   └── db/migration/          # Flyway migration scripts
 └── README.md
 ```
 
+## Security Principles
+
+### Read-Once Guarantee
+
+Ezkey implements a fundamental security principle: **read-once guarantee**. This ensures that:
+
+- Each authentication attempt can only be read once by a legitimate device
+- Once read, the attempt is marked as processed and cannot be read again
+- This prevents replay attacks and ensures proof-of-possession
+- The proof token returned can only be obtained by the legitimate reader
+
+### Implementation Strategy
+
+The security pattern follows these steps:
+1. **Complete validation** before any database modification
+2. **Atomic lock and marking** only if validation succeeds
+3. **Immediate marking** to preserve read-once guarantee
+4. **Response generation** with signed proof token
+
+### Error Handling
+
+- Uses secure error messages to prevent information leakage
+- Logs detailed information for debugging purposes
+- Maintains read-once guarantee even in error scenarios
+
 ## Configuration
 
-### Base de données
+### Database
 
-Le module est configuré pour utiliser PostgreSQL avec les paramètres suivants :
+The module is configured to use PostgreSQL with the following parameters:
 
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/ezkey_db
@@ -41,42 +74,42 @@ spring.datasource.driver-class-name=org.postgresql.Driver
 
 ### Flyway
 
-Les migrations sont configurées pour :
-- S'exécuter automatiquement au démarrage
-- Utiliser le répertoire `classpath:db/migration`
-- Baser les migrations à partir de la version 1
+Migrations are configured to:
+- Execute automatically on startup
+- Use the `classpath:db/migration` directory
+- Base migrations from version 1
 
 ## ezkey-flyway
 
 ### Description
 
-`ezkey-flyway` est un outil en ligne de commande dédié à la gestion des migrations de base de données. Il permet d'exécuter les commandes Flyway sans démarrer les APIs web, offrant une solution légère et sécurisée pour la gestion des schémas de base de données.
+`ezkey-flyway` is a dedicated command-line tool for database migration management. It allows executing Flyway commands without starting the web APIs, providing a lightweight and secure solution for database schema management.
 
 ### Installation
 
-Les scripts `ezkey-flyway` sont disponibles à la racine du projet :
+The `ezkey-flyway` scripts are available at the project root:
 - `ezkey-flyway.bat` (Windows)
 - `ezkey-flyway.sh` (Linux/Mac)
 
-Pour Linux/Mac, rendez le script exécutable :
+For Linux/Mac, make the script executable:
 ```bash
 chmod +x ezkey-flyway.sh
 ```
 
-### Utilisation
+### Usage
 
-#### Commandes disponibles
+#### Available Commands
 
-| Commande | Description |
-|----------|-------------|
-| (aucune) | Exécute les migrations en attente (comportement par défaut) |
-| `--migrate` | Exécute les migrations en attente |
-| `--info` | Affiche les informations sur l'état des migrations |
-| `--repair` | Répare l'historique des migrations |
+| Command | Description |
+|---------|-------------|
+| (none) | Execute pending migrations (default behavior) |
+| `--migrate` | Execute pending migrations |
+| `--info` | Display migration status information |
+| `--repair` | Repair migration history |
 
-#### Exemples d'utilisation
+#### Usage Examples
 
-**Migration par défaut :**
+**Default migration:**
 ```bash
 # Windows
 ezkey-flyway.bat
@@ -85,7 +118,7 @@ ezkey-flyway.bat
 ./ezkey-flyway.sh
 ```
 
-**Afficher les informations de migration :**
+**Display migration information:**
 ```bash
 # Windows
 ezkey-flyway.bat --info
@@ -94,7 +127,7 @@ ezkey-flyway.bat --info
 ./ezkey-flyway.sh --info
 ```
 
-**Répare l'historique des migrations :**
+**Repair migration history:**
 ```bash
 # Windows
 ezkey-flyway.bat --repair
@@ -103,55 +136,55 @@ ezkey-flyway.bat --repair
 ./ezkey-flyway.sh --repair
 ```
 
-### Fonctionnement technique
+### Technical Operation
 
-1. **Compilation automatique** : Le script vérifie si le projet est compilé et le compile automatiquement si nécessaire
-2. **Gestion des dépendances** : Utilise Maven pour récupérer le classpath complet avec toutes les dépendances
-3. **Exécution directe** : Lance l'application Java directement sans passer par Maven pour de meilleures performances
-4. **Gestion d'erreurs** : Affiche des messages d'erreur clairs en cas de problème
+1. **Automatic compilation** : The script checks if the project is compiled and compiles it automatically if necessary
+2. **Dependency management** : Uses Maven to retrieve the complete classpath with all dependencies
+3. **Direct execution** : Launches the Java application directly without going through Maven for better performance
+4. **Error handling** : Displays clear error messages in case of problems
 
-### Avantages
+### Advantages
 
-- **Performance** : Exécution directe en Java sans overhead Maven
-- **Sécurité** : Pas d'accès aux APIs web, uniquement aux migrations
-- **Simplicité** : Interface en ligne de commande intuitive
-- **Flexibilité** : Support de toutes les commandes Flyway principales
-- **Robustesse** : Gestion automatique de la compilation et des dépendances
+- **Performance** : Direct Java execution without Maven overhead
+- **Security** : No access to web APIs, only to migrations
+- **Simplicity** : Intuitive command-line interface
+- **Flexibility** : Support for all main Flyway commands
+- **Robustness** : Automatic compilation and dependency management
 
-### Dépannage
+### Troubleshooting
 
-**Erreur de compilation :**
+**Compilation error:**
 ```bash
-# Vérifiez que Java 21 est installé
+# Check that Java 21 is installed
 java -version
 
-# Nettoyez et recompilez manuellement
+# Clean and recompile manually
 cd ezkey-core
 mvn clean compile
 ```
 
-**Erreur de connexion à la base de données :**
-- Vérifiez que PostgreSQL est démarré
-- Vérifiez les paramètres de connexion dans `application.properties`
-- Assurez-vous que la base de données `ezkey_db` existe
+**Database connection error:**
+- Verify that PostgreSQL is started
+- Check connection parameters in `application.properties`
+- Ensure the `ezkey_db` database exists
 
-**Erreur de permissions (Linux/Mac) :**
+**Permission error (Linux/Mac):**
 ```bash
 chmod +x ezkey-flyway.sh
 ```
 
-### Intégration CI/CD
+### CI/CD Integration
 
-L'outil peut être intégré dans vos pipelines CI/CD :
+The tool can be integrated into your CI/CD pipelines:
 
 ```yaml
-# Exemple GitHub Actions
+# GitHub Actions example
 - name: Run database migrations
   run: ./ezkey-flyway.sh --migrate
 ```
 
 ```bash
-# Exemple script de déploiement
+# Deployment script example
 #!/bin/bash
 echo "Running database migrations..."
 ./ezkey-flyway.sh --migrate
@@ -163,9 +196,9 @@ else
 fi
 ```
 
-### Exemples de sortie
+### Output Examples
 
-#### Info :
+#### Info:
 ```
 === Flyway Migration Info ===
 Current version: 1.0.0
@@ -177,8 +210,31 @@ Applied migrations:
 === Info Completed ===
 ```
 
-#### Repair :
+#### Repair:
 ```
 === Starting Flyway Repair ===
 === Flyway Repair Completed ===
-``` 
+```
+
+## Development Guidelines
+
+### Code Style
+
+- Follow Java 21 best practices
+- Use Spring Boot conventions
+- Implement comprehensive Javadoc documentation
+- Follow the established package structure
+
+### Security Considerations
+
+- Always validate before modifying database records
+- Use secure error messages to prevent information leakage
+- Implement proper logging for debugging
+- Maintain read-once guarantee in all operations
+
+### Testing
+
+- Write unit tests for all business logic
+- Test security scenarios thoroughly
+- Validate read-once guarantee behavior
+- Test error handling and edge cases 
