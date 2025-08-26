@@ -167,44 +167,71 @@ public class EnrollmentService {
     /**
      * Binds an enrollment to a device.
      * <p>
-     * This method handles the enrollment binding process, including signature
-     * generation. It uses row-level locking to ensure
-     * exclusive access and prevent race conditions during the binding process.
+     * This method validates the request completely before locking the enrollment
+     * to ensure the read-once guarantee is maintained. The method follows the security principle
+     * of validation before modification to prevent transaction rollbacks that could compromise
+     * the read-once guarantee.
      * </p>
      *
      * @param req the bind request
      * @return the bind response
-     * @throws IllegalArgumentException if enrollment not found or already bound
-     * @throws IllegalStateException if enrollment is already read by another device
+     * @throws IllegalArgumentException if validation fails (with secure error messages)
+     * @throws IllegalStateException if the enrollment is already processed
+     * @since 2025
      */
     public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
-        // Find and lock the unread enrollment atomically
-        Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Enrollment not found or already bound"));
+        // 1. COMPLETE VALIDATION BEFORE LOCK (secure messages)
+        Enrollment enrollment = enrollmentRepository.findById(req.getEnrollmentId())
+                .orElse(null);
+        if (enrollment == null) {
+            logger.warn("Enrollment not found for ID: {}", req.getEnrollmentId());
+            throw new IllegalArgumentException("Enrollment binding failed");
+        }
 
-        // Double-check if already read (defense in depth)
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
+        // Validate integration exists
+        Optional<Integration> integrationOpt = integrationRepository.findById(enrollment.getIntegrationId());
+        if (integrationOpt.isEmpty()) {
+            logger.warn("Integration not found for enrollment: {}", req.getEnrollmentId());
+            throw new IllegalStateException("Enrollment binding failed");
+        }
+        Integration integration = integrationOpt.get();
+
+        // 2. LOCK AND MARKING (only if validation OK)
+        enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId())
+                .orElse(null);
+        if (enrollment == null) {
+            throw new IllegalArgumentException("Enrollment not found or already bound");
+        }
+
+        // Double-check if already read (protection against race condition)
+        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())) {
+            logger.warn("Enrollment already processed: {}", enrollment.getEnrollmentId());
             throw new IllegalStateException("Enrollment already bound by a device");
         }
-        // Mark as read (the lock ensures no race condition)
+
+        // 3. IMMEDIATE MARKING (read-once guarantee)
         enrollment.setEnrollmentRead(true);
         enrollmentRepository.save(enrollment);
 
+        // 4. RESPONSE CREATION
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setEnrollmentName(enrollment.getEnrollmentName());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
 
-        Optional<Integration> integrationOpt = integrationRepository.findById(enrollment.getIntegrationId());
-        Integration integration = integrationOpt.get();
+        // Set integration details with language preference
+        integration.getI18n().stream()
+                .filter(i18n -> i18n.getLanguage().equals(req.getLanguage()))
+                .findFirst()
+                .ifPresent(i18n -> {
+                    response.setIntegrationName(i18n.getName());
+                    response.setIntegrationDescription(i18n.getDescription());
+                });
 
-        integration.getI18n().stream().filter(i18n -> i18n.getLanguage().equals(req.getLanguage())).findFirst().ifPresent(i18n -> {
-            response.setIntegrationName(i18n.getName());
-            response.setIntegrationDescription(i18n.getDescription());
-        });
-        if (response.getIntegrationName() == null || response.getIntegrationDescription() == null){
-            if (!integration.getI18n().isEmpty()){
+        // Fallback to first available language if preferred not found
+        if (response.getIntegrationName() == null || response.getIntegrationDescription() == null) {
+            if (!integration.getI18n().isEmpty()) {
                 response.setIntegrationName(integration.getI18n().get(0).getName());
                 response.setIntegrationDescription(integration.getI18n().get(0).getDescription());
             }

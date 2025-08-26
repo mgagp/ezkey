@@ -162,10 +162,38 @@ public class AuthAttemptService {
     /**
      * Processes a pending authentication request.
      * <p>
-     * This method validates the request completely before locking the authentication attempt
-     * to ensure the read-once guarantee is maintained. The method follows the security principle
-     * of validation before modification to prevent transaction rollbacks that could compromise
-     * the read-once guarantee.
+     * This method implements the fundamental Ezkey security principle of read-once guarantee.
+     * It validates the request completely before locking the authentication attempt to ensure
+     * that each authentication attempt can only be read once by a legitimate device.
+     * </p>
+     * 
+     * <p>
+     * <b>Security Principle - Read-Once Guarantee:</b>
+     * <ul>
+     * <li>Each authentication attempt can only be read once by a legitimate device</li>
+     * <li>Once read, the attempt is marked as processed and cannot be read again</li>
+     * <li>This prevents replay attacks and ensures proof-of-possession</li>
+     * <li>The proof token returned can only be obtained by the legitimate reader</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Implementation Strategy:</b>
+     * <ul>
+     * <li><b>Step 1:</b> Complete validation before any database modification</li>
+     * <li><b>Step 2:</b> Atomic lock and marking only if validation succeeds</li>
+     * <li><b>Step 3:</b> Immediate marking to preserve read-once guarantee</li>
+     * <li><b>Step 4:</b> Response generation with signed proof token</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Error Handling:</b>
+     * <ul>
+     * <li>Uses secure error messages to prevent information leakage</li>
+     * <li>Logs detailed information for debugging purposes</li>
+     * <li>Maintains read-once guarantee even in error scenarios</li>
+     * </ul>
      * </p>
      *
      * @param request the pending authentication request
