@@ -159,37 +159,52 @@ public class AuthAttemptService {
         authAttemptRepository.deleteById(id);
     }
 
+    /**
+     * Processes a pending authentication request.
+     * <p>
+     * This method validates the request completely before locking the authentication attempt
+     * to ensure the read-once guarantee is maintained. The method follows the security principle
+     * of validation before modification to prevent transaction rollbacks that could compromise
+     * the read-once guarantee.
+     * </p>
+     *
+     * @param request the pending authentication request
+     * @return the pending authentication response with proof token
+     * @throws IllegalArgumentException if validation fails (with secure error messages)
+     * @throws IllegalStateException if the authentication attempt is already processed
+     * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
+     * @since 2025
+     */
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
-        // Find and lock the most recent unread authorization attempt atomically
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId())
-                .orElseThrow(() -> new NoPendingAuthAttemptException("No pending authentication attempt found for enrollment: " + request.getEnrollmentId()));
-
-        // Double-check if already read (defense in depth)
-        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
-            throw new IllegalStateException("Auth attempt already read by device");
+        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElse(null);
+        if (enrollment == null){
+            logger.warn("Enrollment not found for ID: {}",request.getEnrollmentId());
+            throw new IllegalArgumentException("Authentication request failed");
         }
-        // Mark as read (the lock ensures no race condition)
-        authAttempt.setAuthAttemptRead(true);
-        authAttemptRepository.save(authAttempt);
-        // Find the enrollment
-        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + request.getEnrollmentId()));
-
         // Validate device public key
         String devicePublicKey = enrollment.getDevicePublicKey();
         if (devicePublicKey == null){
-            throw new IllegalStateException("Device public key not found for this enrollment");
+            logger.warn("Device public key missing for enrollment: {}",request.getEnrollmentId());
+            throw new IllegalStateException("Authentication request failed");
         }
         // Validate signature
         boolean isValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
         if (!isValid){
-            throw new IllegalArgumentException("Invalid device signature for authentication request");
+            logger.warn("Invalid signature for enrollment: {}",request.getEnrollmentId());
+            throw new IllegalArgumentException("Authentication request failed");
         }
-        // Update the authorization attempt
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId()).orElse(null);
+        if (authAttempt == null){
+            throw new NoPendingAuthAttemptException("No pending authentication request");
+        }
+        // Double-check if already read (protection against race condition)
+        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
+            logger.warn("Auth attempt already processed: {}",authAttempt.getAuthAttemptId());
+            throw new IllegalStateException("Authentication request failed");
+        }
         authAttempt.setAuthAttemptRead(true);
         authAttemptRepository.save(authAttempt);
 
-        // Create response
         AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
         response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
