@@ -1,6 +1,6 @@
 # Ezkey - Open Source MFA/Passkey Alternative
 
-![Ezkey Logo](logo.svg)
+<img src="logo.svg" alt="Ezkey Logo" width="200">
 
 ## Overview
 
