@@ -221,6 +221,11 @@ public class AuthAttemptService {
             logger.warn("Invalid signature for enrollment: {}",request.getEnrollmentId());
             throw new IllegalArgumentException("Authentication request failed");
         }
+        // Check device proof token uniqueness
+        if (authAttemptRepository.existsByDeviceProofToken(request.getDeviceProofToken())){
+            logger.warn("Device proof token already used for enrollment: {}",request.getEnrollmentId());
+            throw new IllegalArgumentException("Authentication request failed");
+        }
         AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId()).orElse(null);
         if (authAttempt == null){
             throw new NoPendingAuthAttemptException("No pending authentication request");
@@ -230,6 +235,8 @@ public class AuthAttemptService {
             logger.warn("Auth attempt already processed: {}",authAttempt.getAuthAttemptId());
             throw new IllegalStateException("Authentication request failed");
         }
+        // Record the device proof token to ensure unicity
+        authAttempt.setDeviceProofToken(request.getDeviceProofToken());
         authAttempt.setAuthAttemptRead(true);
         authAttemptRepository.save(authAttempt);
 
@@ -279,7 +286,6 @@ public class AuthAttemptService {
             authAttempt.setAuthAttemptAccepted(false);
             authAttempt.setAuthAttemptValid(false);
             authAttempt.setAuthAttemptResponded(true);
-            authAttempt.setDeviceProofTokenValid(false);
             authAttemptRepository.save(authAttempt);
             response.setSuccess(false);
             response.setMessage("Invalid signature for auth attempt code");
@@ -291,7 +297,6 @@ public class AuthAttemptService {
                 authAttempt.setAuthAttemptAccepted(false);
                 authAttempt.setAuthAttemptValid(false);
                 authAttempt.setAuthAttemptResponded(true);
-                authAttempt.setDeviceProofTokenValid(true);
                 authAttemptRepository.save(authAttempt);
                 response.setSuccess(false);
                 response.setMessage("Challenge value mismatch");
@@ -302,7 +307,6 @@ public class AuthAttemptService {
         authAttempt.setAuthAttemptAccepted(request.getAuthAttemptAccepted());
         authAttempt.setAuthAttemptValid(true);
         authAttempt.setAuthAttemptResponded(true);
-        authAttempt.setDeviceProofTokenValid(true);
         authAttemptRepository.save(authAttempt);
 
         response.setSuccess(true);
