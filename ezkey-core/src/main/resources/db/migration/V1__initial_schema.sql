@@ -40,6 +40,6 @@ CREATE TABLE ezkey_auth_attempt (
     auth_attempt_accepted BOOLEAN DEFAULT FALSE,
     auth_attempt_challenge INT,
     auth_attempt_proof_token TEXT NULL,
-    device_proof_token_valid BOOLEAN DEFAULT FALSE,
+    device_proof_token TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

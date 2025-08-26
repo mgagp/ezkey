@@ -76,8 +76,8 @@ public class AuthAttempt {
     @Column(name = "auth_attempt_proof_token",nullable = false)
     private String authAttemptProofToken;
 
-    @Column(name = "device_proof_token_valid",nullable = false)
-    private Boolean deviceProofTokenValid = false;
+    @Column(name = "device_proof_token")
+    private String deviceProofToken;
 
     @Column(name = "created_at",nullable = false)
     private LocalDateTime createdAt;
@@ -248,21 +248,21 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets whether the device proof token is valid.
+     * Gets the device proof token.
      *
-     * @return true if the device proof token is valid, false otherwise
+     * @return the device proof token
      */
-    public Boolean getDeviceProofTokenValid() {
-        return deviceProofTokenValid;
+    public String getDeviceProofToken() {
+        return deviceProofToken;
     }
 
     /**
-     * Sets whether the device proof token is valid.
+     * Sets the device proof token.
      *
-     * @param deviceProofTokenValid true if the device proof token is valid, false otherwise
+     * @param deviceProofToken the device proof token to set
      */
-    public void setDeviceProofTokenValid(Boolean deviceProofTokenValid) {
-        this.deviceProofTokenValid = deviceProofTokenValid;
+    public void setDeviceProofToken(String deviceProofToken) {
+        this.deviceProofToken = deviceProofToken;
     }
 
     /**
