@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ezkey is a pragmatic, open-source, and developer-friendly alternative to complex passkey implementations. It provides a simple and secure MFA solution that can be easily integrated into any application through a modern multi-module architecture.
+Ezkey is a pragmatic, open-source alternative to complex passkey implementations. It provides a simple and secure MFA solution that can be easily integrated into any application through a modern multi-module architecture.
 
 ### Why Ezkey?
 
@@ -22,37 +22,41 @@ graph LR
         H[Steep Learning Curve]
     end
     
-    subgraph "Ezkey Solution"
+    subgraph "Ezkey Approach"
         I[Simple REST APIs]
         J[Open Source]
         K[Self-Hosted]
         L[Developer-Friendly]
+        M[Synchronous Wait API]
     end
     
     style I fill:#e8f5e8
     style J fill:#e8f5e8
     style K fill:#e8f5e8
     style L fill:#e8f5e8
+    style M fill:#e8f5e8
 ```
 
 ### Comparison Matrix
 
 | Feature | Traditional MFA | Passkeys | Ezkey |
 |---------|----------------|----------|-------|
-| **Setup Complexity** | High | Very High | Low |
+| **Setup Complexity** | High | High | Low |
 | **Integration Effort** | Medium | High | Low |
 | **Cost** | High | Free (but complex) | Free + Self-hosted |
 | **Control** | Limited | Limited | Full |
 | **Mobile Support** | Good | Excellent | Excellent |
-| **Developer Experience** | Poor | Complex | Excellent |
+| **Developer Experience** | Varies | Complex | Simple |
 | **Open Source** | Rarely | Partially | Yes |
 | **Self-Hosting** | Rarely | No | Yes |
+| **Synchronous Integration** | Limited | No | Yes (Wait API) |
 
 ## Features
 
 - **Multi-Module Architecture**: Separated APIs for different use cases
 - **Admin API**: Complete management interface for integrations and enrollments
 - **Authentication API**: Mobile-focused API for device authentication
+- **Wait API**: Synchronous polling for authentication completion
 - **Mobile Application**: Cross-platform Flutter app for end users
 - **Secure**: Cryptographic key-based authentication with signature validation
 - **Open Source**: MIT licensed with comprehensive documentation
@@ -63,14 +67,14 @@ graph LR
 
 ### **One-Time Proof Token System**
 
-Ezkey implements a sophisticated **one-time proof token** security model that prevents replay attacks and ensures authentication integrity.
+Ezkey implements a **one-time proof token** security model that prevents replay attacks and ensures authentication integrity.
 
 #### **Key Security Principles**
 
 1. **Unique Tokens**: Each authentication attempt gets a unique `authAttemptProofToken`
 2. **One-Time Use**: Tokens can only be read once (during PENDING request)
 3. **Cryptographic Proof**: Device must prove it received the original token
-4. **Anti-Replay**: Impossible to replay authentication attempts
+4. **Anti-Replay**: Prevents replay of authentication attempts
 
 #### **Security Flow**
 
@@ -86,6 +90,7 @@ sequenceDiagram
     Device->>Auth: PENDING request (decrypts token)
     Device->>Auth: RESPOND request (signs token)
     Auth->>Admin: Validate signature
+    App->>Admin: Wait for completion (polling)
     Admin->>App: Authentication result
 ```
 
@@ -150,6 +155,10 @@ graph TB
     F --> G
     H --> E
     I --> E
+    
+    D -.->|Wait API| A
+    D -.->|Wait API| B
+    D -.->|Wait API| C
 ```
 
 ### Core Entities and Relationships
@@ -181,6 +190,8 @@ erDiagram
         string auth_proof_token
         boolean accepted
         boolean responded
+        boolean read
+        boolean valid
         timestamp created_at
     }
 ```
@@ -211,6 +222,11 @@ sequenceDiagram
     Mobile->>Auth: Respond (POST /respond)
     Auth->>DB: Update Auth Attempt
     Auth->>Mobile: Authentication Result
+    
+    Note over App,Mobile: 3. Wait for Completion (Optional)
+    App->>Admin: Wait for Response (GET /wait)
+    Admin->>DB: Poll for completion
+    Admin->>App: Return final status
 ```
 
 ### User Journey: Application Owner
@@ -223,12 +239,14 @@ flowchart TD
     D --> E[Share with Users]
     E --> F[Monitor Enrollments]
     F --> G[Create Auth Attempts]
-    G --> H[View Authentication Results]
+    G --> H[Wait for User Response]
+    H --> I[View Authentication Results]
     
     style A fill:#e1f5fe
     style B fill:#f3e5f5
     style G fill:#fff3e0
-    style H fill:#e8f5e8
+    style H fill:#fff3e0
+    style I fill:#e8f5e8
 ```
 
 ### User Journey: End User
@@ -276,12 +294,15 @@ sequenceDiagram
     Note over Client,Mobile: Authentication Request
     Client->>Admin: POST /auth-attempts
     Admin-->>Client: Auth Attempt ID
-    Mobile->>Auth: POST /auth-attempts/pending/{id}
-    Auth-->>Mobile: Auth Attempt Details
-    Mobile->>Auth: POST /auth-attempts/respond/{id}
-    Auth-->>Mobile: Authentication Result
+    
+    Note over Client,Mobile: Wait for Completion (Synchronous)
+    Client->>Admin: GET /auth-attempts/{id}/wait
+    Admin->>Admin: Poll for completion
+    Admin-->>Client: Final authentication status
+    
+    Note over Client,Mobile: Alternative: Check Status (Asynchronous)
     Client->>Admin: GET /auth-attempts/{id}
-    Admin-->>Client: Authentication Status
+    Admin-->>Client: Current authentication status
 ```
 
 ### Deployment Architecture
@@ -323,7 +344,7 @@ graph TB
 #### 🏗️ **ezkey-core**
 Central module containing:
 - **JPA Entities**: Integration, Enrollment, AuthAttempt
-- **Business Services**: Authentication logic, signature validation
+- **Business Services**: Authentication logic, signature validation, polling
 - **Database Migrations**: Flyway-based schema management
 - **Shared DTOs and Mappers**: Cross-module data structures
 
@@ -332,6 +353,7 @@ Administration interface for:
 - **Integration Management**: Create, update, delete integrations
 - **Enrollment Administration**: Manage device enrollments
 - **Auth Attempt Creation**: Initialize authentication requests
+- **Wait API**: Synchronous polling for authentication completion
 - **System Monitoring**: View statistics and system health
 
 #### 🔐 **ezkey-auth-api** (Port 8080)
@@ -382,22 +404,26 @@ flowchart TD
     A[User Action] --> B{Action Type?}
     B -->|Enrollment| C[Generate Device Keys]
     B -->|Authentication| D[Generate Proof Token]
+    B -->|Wait for Completion| E[Poll Authentication Status]
     
-    C --> E[Sign Enrollment Data]
-    D --> F[Sign Auth Response]
+    C --> F[Sign Enrollment Data]
+    D --> G[Sign Auth Response]
+    E --> H[Check Database State]
     
-    E --> G[Send to Auth API]
-    F --> G
+    F --> I[Send to Auth API]
+    G --> I
+    H --> J[Return Status]
     
-    G --> H[Validate Signature]
-    H --> I[Process Request]
-    I --> J[Store in Database]
+    I --> K[Validate Signature]
+    K --> L[Process Request]
+    L --> M[Store in Database]
     
     style A fill:#e1f5fe
     style C fill:#fff3e0
     style D fill:#fff3e0
-    style H fill:#f3e5f5
-    style J fill:#e8f5e8
+    style E fill:#fff3e0
+    style K fill:#f3e5f5
+    style M fill:#e8f5e8
 ```
 
 ## Quick Start
@@ -483,6 +509,8 @@ flutter run
 #### Auth Attempts (Admin)
 - `GET /api/v1/auth-attempts` - List auth attempts
 - `POST /api/v1/auth-attempts` - Create auth attempt
+- `GET /api/v1/auth-attempts/{id}` - Get auth attempt status
+- `GET /api/v1/auth-attempts/{id}/wait` - **Wait for authentication completion**
 
 ### Auth API Endpoints (`localhost:8080`)
 
@@ -493,6 +521,23 @@ flutter run
 #### Auth Attempts (Mobile)
 - `POST /api/v1/auth-attempts/pending/{enrollmentId}` - Get pending authentication
 - `POST /api/v1/auth-attempts/respond` - Respond to auth attempt
+
+### Wait API Usage
+
+The Wait API provides synchronous behavior for authentication requests:
+
+```bash
+# Wait for authentication completion (default: 30s timeout, 2s polling)
+GET /api/v1/auth-attempts/123/wait
+
+# Custom timeout and polling interval
+GET /api/v1/auth-attempts/123/wait?timeout=60&polling=5
+```
+
+**Response includes:**
+- Authentication status (PENDING, READ, INVALID, REJECTED, ACCEPTED)
+- Completion status and metadata
+- Wait duration and timeout information
 
 ## Development
 
@@ -692,6 +737,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Multi-module architecture
 - [x] Core entities and services
 - [x] Admin and Auth APIs
+- [x] **Wait API for synchronous authentication**
 - [x] Flutter mobile application
 - [x] Database migrations
 - [x] Development tooling
