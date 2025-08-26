@@ -1,66 +1,66 @@
 # Ezkey API Endpoint Reference
 
-## Contexte général
+## General Context
 
-Ezkey sépare ses API backend en deux applications :
-- **admin-api** (interne) : gestion des demandes d’authentification (CRUD), accessible uniquement à l’organisation.
-- **auth-api** (externe, mobile) : consommation des demandes d’authentification par l’application mobile Ezkey.
+Ezkey separates its backend APIs into two applications:
+- **admin-api** (internal): management of authentication requests (CRUD), accessible only to the organization.
+- **auth-api** (external, mobile): consumption of authentication requests by the Ezkey mobile application.
 
-Le modèle d’interaction est **pull** : le mobile vient chercher la demande à valider (pending) en fournissant une signature cryptographique dans le body, garantissant l’authenticité de la requête.
+The interaction model is **pull**: the mobile device fetches the request to validate (pending) by providing a cryptographic signature in the body, ensuring the authenticity of the request.
 
 ---
 
-## 🔐 Sécurité des Tokens - Conception Critique
+## 🔐 Token Security - Critical Design
 
-### **Principe de Sécurité : Token à Usage Unique**
+### **Security Principle: One-Time Use Token**
 
-Ezkey utilise un système de **tokens de preuve à usage unique** pour garantir l'intégrité et la sécurité du processus d'authentification.
+Ezkey uses a **one-time proof token** system to ensure the integrity and security of the authentication process.
 
-#### **🔑 Deux Types de Tokens**
+#### **🔑 Two Types of Tokens**
 
-1. **`enrollmentProofToken`** : Token permanent de l'enrollment, utilisé pour lier l'appareil
-2. **`authAttemptProofToken`** : Token unique par tentative d'authentification, **CRITIQUE pour la sécurité**
+1. **`enrollmentProofToken`**: Permanent enrollment token, used to bind the device
+2. **`authAttemptProofToken`**: Unique token per authentication attempt, **CRITICAL for security**
 
-#### **🛡️ Mécanisme de Sécurité**
+#### **🛡️ Security Mechanism**
 
-**Étape 1 - PENDING** :
-- Le serveur génère un `authAttemptProofToken` unique pour chaque tentative
-- Ce token est **chiffré** avec la clé publique de l'intégration lors de l'envoi
-- Le device mobile **déchiffre** le token avec sa clé privée
-- **Le token ne peut être lu qu'une seule fois** (par le PENDING)
+**Step 1 - PENDING**:
+- The server generates a unique `authAttemptProofToken` for each attempt
+- This token is **encrypted** with the integration's public key when sent
+- The mobile device **decrypts** the token with its private key
+- **The token can only be read once** (by the PENDING request)
 
-**Étape 2 - RESPOND** :
-- Le device mobile **signe** le `authAttemptProofToken` (en clair) avec sa clé privée
-- Cette signature prouve que le device a bien reçu le token original
-- **Sécurité renforcée** : impossible de rejouer une tentative sans avoir le token original
+**Step 2 - RESPOND**:
+- The mobile device **signs** the `authAttemptProofToken` (in clear) with its private key
+- This signature proves that the device has received the original token
+- **Enhanced security**: impossible to replay an attempt without having the original token
 
-#### **⚠️ Points Critiques pour les Développeurs**
+#### **⚠️ Critical Points for Developers**
 
 ```java
-// ❌ INCORRECT - Ne jamais signer enrollmentProofToken pour RESPOND
+// ❌ INCORRECT - Never sign enrollmentProofToken for RESPOND
 String signature = signWithDeviceKey(enrollmentProofToken);
 
-// ✅ CORRECT - Toujours signer authAttemptProofToken pour RESPOND  
+// ✅ CORRECT - Always sign authAttemptProofToken for RESPOND  
 String signature = signWithDeviceKey(authAttemptProofToken);
 ```
 
-#### **🎯 Pourquoi cette Conception ?**
+#### **🎯 Why This Design?**
 
-1. **Anti-replay** : Chaque tentative a un token unique
-2. **Authentification forte** : Seul le device légitime peut déchiffrer et signer
-3. **Traçabilité** : Chaque token peut être tracé à une tentative spécifique
-4. **Sécurité par défaut** : Impossible de contourner sans comprendre le mécanisme
+1. **Anti-replay**: Each attempt has a unique token
+2. **Strong authentication**: Only the legitimate device can decrypt and sign
+3. **Traceability**: Each token can be traced to a specific attempt
+4. **Security by default**: Impossible to bypass without understanding the mechanism
 
 ---
 
-## 1. Endpoints auth-api (mobile)
+## 1. Auth API Endpoints (mobile)
 
-### a) Récupérer la demande en attente (pending)
+### a) Retrieve pending request
 
 **POST /api/v1/auth-attempts/pending/{enrollmentId}**
 
-- **Description** : Le mobile interroge le backend pour savoir s’il existe une demande d’authentification en attente pour son enrollmentId. Le body contient une signature cryptographique prouvant l’authenticité de la requête.
-- **Pourquoi POST ?** : La signature crypto est transmise dans le body, ce qui n’est pas possible avec GET.
+- **Description**: The mobile device queries the backend to check if there is a pending authentication request for its enrollmentId. The body contains a cryptographic signature proving the authenticity of the request.
+- **Why POST?**: The crypto signature is transmitted in the body, which is not possible with GET.
 
 **Request**
 ```http
@@ -75,7 +75,7 @@ Content-Type: application/json
 ```
 
 **Response**
-- 200 OK + détails de la demande en attente (ou 204 No Content si aucune demande)
+- 200 OK + pending request details (or 204 No Content if no request)
 ```json
 {
   "authAttemptId": 123,
@@ -85,11 +85,11 @@ Content-Type: application/json
 }
 ```
 
-### b) Soumettre la réponse à la demande
+### b) Submit response to request
 
 **POST /api/v1/auth-attempts/respond/{authAttemptId}**
 
-- **Description** : Le mobile soumet la réponse de l’usager (approuvé, refusé, signature, etc.) pour la demande d’authentification reçue.
+- **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
 
 **Request**
 ```http
@@ -104,18 +104,18 @@ Content-Type: application/json
 ```
 
 **Response**
-- 200 OK + résultat de la validation
+- 200 OK + validation result
 ```json
 {
   "status": "APPROVED"
 }
 ```
 
-### c) Processus d'enrollment (liaison d'appareil)
+### c) Enrollment process (device binding)
 
 **GET /api/v1/enrollments/bind/{enrollmentId}**
 
-- **Description** : Initie le processus de liaison d'un enrollment à un appareil mobile. L'appareil récupère les informations nécessaires pour débuter l'enrollment.
+- **Description**: Initiates the process of binding an enrollment to a mobile device. The device retrieves the necessary information to start enrollment.
 
 **Request**
 ```http
@@ -123,7 +123,7 @@ GET /api/v1/enrollments/bind/456
 ```
 
 **Response**
-- 200 OK + informations de liaison
+- 200 OK + binding information
 ```json
 {
   "enrollmentId": 456,
@@ -133,11 +133,11 @@ GET /api/v1/enrollments/bind/456
 }
 ```
 
-### d) Vérification de l'enrollment
+### d) Enrollment verification
 
 **POST /api/v1/enrollments/verify**
 
-- **Description** : Finalise le processus d'enrollment en soumettant les clés cryptographiques de l'appareil et la signature du code d'enrollment.
+- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and the enrollment code signature.
 
 **Request**
 ```http
@@ -154,7 +154,7 @@ Content-Type: application/json
 ```
 
 **Response**
-- 200 OK + confirmation de la vérification
+- 200 OK + verification confirmation
 ```json
 {
   "verified": true,
@@ -165,16 +165,63 @@ Content-Type: application/json
 
 ---
 
-## 2. Endpoints admin-api (interne)
+## 2. Admin API Endpoints (internal)
 
-### a) Gestion des demandes d'authentification
+### a) Authentication request management
 
-**GET    /api/v1/auth-attemps**          // Lister toutes les demandes d'authentification
-**POST   /api/v1/auth-attempts**         // Créer une demande d'authentification
-**GET    /api/v1/auth-attempts/{id}**    // Lire une demande
-**DELETE /api/v1/auth-attempts/{id}**    // Supprimer une demande
+**GET    /api/v1/auth-attempts**          // List all authentication requests
+**POST   /api/v1/auth-attempts**         // Create an authentication request
+**GET    /api/v1/auth-attempts/{id}**    // Read a request
+**GET    /api/v1/auth-attempts/{id}/wait** // Wait for authentication response (POLLING)
+**DELETE /api/v1/auth-attempts/{id}**    // Delete a request
 
-**Exemple de GET**
+#### **New Endpoint: Authentication Response Waiting**
+
+**GET /api/v1/auth-attempts/{id}/wait**
+
+- **Description**: Allows applications to wait for the mobile device's response to an authentication request. Implements a polling mechanism with configurable timeout for synchronous behavior in the asynchronous MFA flow.
+
+**Query parameters:**
+- `timeout` (optional, default: 30s): Maximum wait duration in seconds (1-300)
+- `polling` (optional, default: 2s): Polling interval in seconds (1-60)
+
+**Request**
+```http
+GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
+```
+
+**Response**
+- 200 OK: Authentication completed
+```json
+{
+  "authAttempt": {
+    "authAttemptId": 123,
+    "enrollmentId": 456,
+    "authAttemptRead": true,
+    "authAttemptResponded": true,
+    "authAttemptValid": true,
+    "authAttemptAccepted": true,
+    "createdAt": "2024-06-01T12:34:56Z"
+  },
+  "status": "ACCEPTED",
+  "completed": true,
+  "timeoutReached": false,
+  "waitDuration": 15,
+  "completedAt": "2024-06-01T12:35:11Z"
+}
+```
+
+- 408 Request Timeout: Timeout reached, authentication still pending
+- 404 Not Found: Auth attempt not found
+- 400 Bad Request: Invalid parameters
+
+**Status calculation rules (according to ENDPOINT.md):**
+1. `authAttemptRead` null or false: **PENDING**
+2. `authAttemptRead` true and `authAttemptResponded` null or false: **READ**
+3. `authAttemptValid` null or false: **INVALID**
+4. `authAttemptAccepted` null or false: **REJECTED** else **ACCEPTED**
+
+**GET Example**
 ```
    {
         "authAttemptId": 49,
@@ -190,13 +237,13 @@ Content-Type: application/json
     }
 ```
 
-Pour afficher un status associé à une demande, voici les règles en ordre de priorité (#1 en premier)
--authAttemptRead null ou false : PENDING
--authAttemptRead et authAttemptResponded null ou false: READ
--authAttemptValid null ou false: INVALID
--authAttemptAccepted null ou false: REJECTED sinon ACCEPTED
+To display a status associated with a request, here are the rules in order of priority (#1 first)
+-authAttemptRead null or false: PENDING
+-authAttemptRead and authAttemptResponded null or false: READ
+-authAttemptValid null or false: INVALID
+-authAttemptAccepted null or false: REJECTED else ACCEPTED
 
-**Exemple de création**
+**Creation example**
 ```http
 POST /api/v1/auth-attempts
 Content-Type: application/json
@@ -209,27 +256,27 @@ Content-Type: application/json
 }
 ```
 
-### b) Gestion des enrollments (CRUD)
+### b) Enrollment management (CRUD)
 
-**GET    /api/v1/enrollments**           // Récupérer tous les enrollments
-**GET    /api/v1/enrollments/{id}**      // Récupérer un enrollment par ID
-**POST   /api/v1/enrollments**          // Créer un nouveau enrollment
-**DELETE /api/v1/enrollments/{id}**     // Supprimer un enrollment
+**GET    /api/v1/enrollments**           // Retrieve all enrollments
+**GET    /api/v1/enrollments/{id}**      // Retrieve an enrollment by ID
+**POST   /api/v1/enrollments**          // Create a new enrollment
+**DELETE /api/v1/enrollments/{id}**     // Delete an enrollment
 
-**Création d'un enrollment**
+**Creating an enrollment**
 ```http
 POST /api/v1/enrollments
 Content-Type: application/json
 
 {
   "integrationId": 123,
-  "name": "Mon Appareil Mobile",
+  "name": "My Mobile Device",
   "authAttemptChallengeRequired": true
 }
 ```
 
 **Response**
-- 201 Created + détails de l'enrollment créé
+- 201 Created + created enrollment details
 ```json
 {
   "enrollmentId": 456,
@@ -239,18 +286,18 @@ Content-Type: application/json
 }
 ```
 
-**Récupération d'un enrollment**
+**Retrieving an enrollment**
 ```http
 GET /api/v1/enrollments/456
 ```
 
 **Response**
-- 200 OK + détails complets de l'enrollment
+- 200 OK + complete enrollment details
 ```json
 {
   "enrollmentId": 456,
   "integrationId": 123,
-  "enrollmentName": "Mon Appareil Mobile",
+  "enrollmentName": "My Mobile Device",
   "enrollmentRead": false,
   "enrollmentConfirmed": false,
   "enrollmentActive": true,
@@ -263,19 +310,19 @@ GET /api/v1/enrollments/456
 }
 ```
 
-**Récupération de tous les enrollments**
+**Retrieving all enrollments**
 ```http
 GET /api/v1/enrollments
 ```
 
 **Response**
-- 200 OK + liste de tous les enrollments
+- 200 OK + list of all enrollments
 ```json
 [
   {
     "enrollmentId": 456,
     "integrationId": 123,
-    "enrollmentName": "Mon Appareil Mobile",
+    "enrollmentName": "My Mobile Device",
     "enrollmentRead": false,
     "enrollmentConfirmed": false,
     "enrollmentActive": true,
@@ -289,34 +336,47 @@ GET /api/v1/enrollments
 ]
 ```
 
-**Suppression d'un enrollment**
+**Deleting an enrollment**
 ```http
 DELETE /api/v1/enrollments/456
 ```
 
 **Response**
-- 204 No Content (suppression réussie)
-- 404 Not Found (enrollment inexistant)
+- 204 No Content (successful deletion)
+- 404 Not Found (enrollment not found)
 
 ---
 
-## 3. Résumé des choix de design
+## 3. Design choices summary
 
-- **pending** : exprime clairement la demande en attente pour un enrollment donné.
-- **respond** : standard, explicite pour la soumission de la réponse.
-- **POST pour pending** : permet de transmettre une signature crypto dans le body, renforçant la sécurité.
-- **Séparation claire** entre gestion (admin-api) et consommation (auth-api).
-- **Processus d'enrollment** : séparation claire entre binding (GET) et verification (POST) pour la sécurité.
-- **CRUD enrollment** : opérations classiques de gestion administrative des enrollments.
-
----
-
-## 4. Notes complémentaires
-
-- Toujours documenter les codes de retour (200, 204, 400, 401, 403, etc.).
-- Expliquer dans la doc que le modèle est pull (pas de push notification).
-- Préciser le format attendu de la signature et des clés publiques.
+- **pending**: clearly expresses the pending request for a given enrollment.
+- **respond**: standard, explicit for response submission.
+- **wait**: clearly indicates the intention to wait for authentication response.
+- **POST for pending**: allows transmission of crypto signature in the body, strengthening security.
+- **GET for wait**: read operation without modification, with query parameters for configuration.
+- **Clear separation** between management (admin-api) and consumption (auth-api).
+- **Enrollment process**: clear separation between binding (GET) and verification (POST) for security.
+- **Enrollment CRUD**: classic administrative enrollment management operations.
 
 ---
 
-**Ce fichier sert de référence pour la conception et la documentation future des endpoints Ezkey.** 
+## 4. Additional notes
+
+- Always document return codes (200, 204, 400, 401, 403, 408, etc.).
+- Explain in the documentation that the model is pull (no push notification).
+- Specify the expected format for signature and public keys.
+- The `/wait` endpoint enables synchronous behavior in the asynchronous MFA flow.
+
+---
+
+**This file serves as a reference for the design and future documentation of Ezkey endpoints.**
+
+---
+
+## 5. Development rules
+
+### Testing and validation
+- **DO NOT perform tests with curl or other validation tools** during development
+- **The user will perform the tests** for endpoint validation themselves
+- **Focus on implementation** and documentation rather than manual testing
+- **Use unit tests and integration tests** for automatic code validation 

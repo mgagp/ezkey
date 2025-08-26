@@ -17,8 +17,12 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
+import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
+import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -29,9 +33,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +57,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * <ul>
  * <li><b>GET /api/v1/auth-attempts</b> - List all authorization attempts</li>
  * <li><b>GET /api/v1/auth-attempts/{id}</b> - Get authorization attempt by ID</li>
+ * <li><b>GET /api/v1/auth-attempts/{id}/wait</b> - Wait for authentication response</li>
  * <li><b>POST /api/v1/auth-attempts</b> - Create new authorization attempt</li>
  * <li><b>DELETE /api/v1/auth-attempts/{id}</b> - Delete authorization attempt</li>
  * </ul>
@@ -73,6 +81,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * @see AuthAttemptDto
  * @see AuthAttemptCreateRequestDto
  * @see AuthAttemptCreateResponseDto
+ * @see AuthAttemptWaitRequestDto
+ * @see AuthAttemptWaitResponseDto
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
@@ -206,6 +216,90 @@ public class AuthAttemptController {
             return ResponseEntity.noContent().build();
         } catch (ResourceNotFoundException e){
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Waits for authentication response completion with configurable timeout and polling.
+     * <p>
+     * This endpoint allows applications to wait for mobile device responses to authentication
+     * requests. It implements a polling mechanism that checks the authentication status at
+     * regular intervals until either the device responds or the timeout is reached.
+     * </p>
+     *
+     * <p>
+     * <b>MFA Integration Context:</b> This endpoint enables synchronous-like behavior in the
+     * asynchronous MFA authentication flow. Applications can wait for user responses without
+     * implementing their own polling logic, simplifying integration.
+     * </p>
+     *
+     * <p>
+     * <b>Status Calculation:</b> The response includes a calculated status based on the rules
+     * defined in ENDPOINT.md:
+     * <ul>
+     * <li><b>PENDING:</b> Authentication request created but not yet read by device</li>
+     * <li><b>READ:</b> Device has read the request but not yet responded</li>
+     * <li><b>INVALID:</b> Authentication was invalid (wrong signature, challenge, etc.)</li>
+     * <li><b>REJECTED:</b> User rejected the authentication request</li>
+     * <li><b>ACCEPTED:</b> User accepted the authentication request</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Security Note:</b> This endpoint is part of the admin API and should only be
+     * accessible to authorized applications. The polling mechanism prevents excessive
+     * resource consumption while providing responsive authentication status updates.
+     * </p>
+     *
+     * @param id the authentication attempt ID to wait for
+     * @param timeoutSeconds maximum duration to wait in seconds (default: 30, max: 300)
+     * @param pollingSeconds interval between status checks in seconds (default: 2, max: 60)
+     * @return ResponseEntity containing authentication status with HTTP 200 for completion,
+     * 408 for timeout, 404 for not found, or 400 for invalid parameters
+     */
+    @GetMapping("/{id}/wait")
+    @Operation(summary = "Wait for authentication response", 
+               description = "Blocks until authentication attempt is completed or timeout is reached. " +
+                            "Provides polling mechanism for synchronous-like behavior in MFA flow.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Authentication completed", 
+                    content = @Content(schema = @Schema(implementation = AuthAttemptWaitResponseDto.class))),
+        @ApiResponse(responseCode = "408", description = "Timeout reached, authentication still pending"),
+        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters (timeout, polling)"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<AuthAttemptWaitResponseDto> waitForResponse(
+        @Parameter(description = "Authentication attempt ID to wait for", example = "1")
+        @PathVariable("id") Integer id,
+        @Parameter(description = "Maximum wait duration in seconds", example = "30", schema = @Schema(defaultValue = "30", minimum = "1", maximum = "300"))
+        @RequestParam(value = "timeout", defaultValue = "30") Integer timeoutSeconds,
+        @Parameter(description = "Polling interval in seconds", example = "2", schema = @Schema(defaultValue = "2", minimum = "1", maximum = "60"))
+        @RequestParam(value = "polling", defaultValue = "2") Integer pollingSeconds) {
+        
+        try {
+            // Build request DTO from parameters
+            AuthAttemptWaitRequestDto requestDto = new AuthAttemptWaitRequestDto();
+            requestDto.setTimeout(timeoutSeconds);
+            requestDto.setPolling(pollingSeconds);
+            
+            // Convert to domain object
+            AuthAttemptWaitRequest request = authAttemptMapper.toAuthAttemptWaitRequest(requestDto);
+            
+            // Call service for polling logic
+            AuthAttemptWaitResponse response = authAttemptService.waitForResponse(id, request);
+            
+            // Convert to response DTO
+            AuthAttemptWaitResponseDto responseDto = authAttemptMapper.toAuthAttemptWaitResponseDto(response);
+            
+            return ResponseEntity.ok(responseDto);
+            
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

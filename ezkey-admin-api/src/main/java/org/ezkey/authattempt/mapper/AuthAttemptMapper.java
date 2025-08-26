@@ -14,10 +14,14 @@ import java.util.List;
 
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
+import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
+import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
+import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
@@ -36,6 +40,9 @@ import org.mapstruct.ReportingPolicy;
  * <li><b>Entity → Response DTO:</b> AuthAttempt → AuthAttemptDto</li>
  * <li><b>Entity → Create Response:</b> AuthAttemptCreateResponse → AuthAttemptCreateResponseDto</li>
  * <li><b>Request DTO → Domain:</b> AuthAttemptCreateRequestDto → AuthAttemptCreateRequest</li>
+ * <li><b>Request DTO → Domain:</b> AuthAttemptWaitRequestDto → AuthAttemptWaitRequest</li>
+ * <li><b>Domain → Response DTO:</b> AuthAttemptWaitResponse → AuthAttemptWaitResponseDto</li>
+ * <li><b>Wait Response:</b> AuthAttemptWaitResponseDto creation from components</li>
  * <li><b>Collections:</b> List conversions for all supported entity/DTO types</li>
  * </ul>
  * </p>
@@ -68,8 +75,12 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptDto
  * @see AuthAttemptCreateRequestDto
  * @see AuthAttemptCreateResponseDto
+ * @see AuthAttemptWaitRequestDto
+ * @see AuthAttemptWaitResponseDto
  * @see AuthAttemptCreateRequest
  * @see AuthAttemptCreateResponse
+ * @see AuthAttemptWaitRequest
+ * @see AuthAttemptWaitResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
 public interface AuthAttemptMapper {
@@ -129,5 +140,55 @@ public interface AuthAttemptMapper {
      * @see AuthAttemptCreateResponseDto
      */
     AuthAttemptCreateResponseDto toAuthAttemptCreateResponseDto(AuthAttemptCreateResponse response);
+
+    /**
+     * Converts an AuthAttemptWaitRequestDto to an AuthAttemptWaitRequest domain object.
+     * <p>
+     * This method maps all fields from the request DTO to the domain object,
+     * preparing it for processing in the service layer.
+     * </p>
+     *
+     * @param request the AuthAttemptWaitRequestDto to convert
+     * @return the corresponding AuthAttemptWaitRequest domain object
+     * @see AuthAttemptWaitRequestDto
+     * @see AuthAttemptWaitRequest
+     */
+    AuthAttemptWaitRequest toAuthAttemptWaitRequest(AuthAttemptWaitRequestDto request);
+
+    /**
+     * Converts an AuthAttemptWaitResponse domain object to an AuthAttemptWaitResponseDto.
+     * <p>
+     * This method maps all fields from the domain object to the response DTO,
+     * preparing it for return to the API client.
+     * </p>
+     *
+     * @param response the AuthAttemptWaitResponse to convert
+     * @return the corresponding AuthAttemptWaitResponseDto
+     * @see AuthAttemptWaitResponse
+     * @see AuthAttemptWaitResponseDto
+     */
+    AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptWaitResponse response);
+
+    /**
+     * Creates an AuthAttemptWaitResponseDto from its components.
+     * <p>
+     * This method constructs the wait response DTO from the authentication attempt data
+     * and calculated status information. It provides a clean way to build the response
+     * for the wait endpoint.
+     * </p>
+     *
+     * @param authAttempt the authentication attempt DTO
+     * @param status the calculated status string
+     * @param completed whether authentication is complete
+     * @param timeoutReached whether timeout was reached
+     * @param waitDuration actual wait duration in seconds
+     * @param completedAt timestamp when wait completed
+     * @return the constructed AuthAttemptWaitResponseDto
+     * @see AuthAttemptWaitResponseDto
+     * @see AuthAttemptDto
+     */
+    AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptDto authAttempt, String status, 
+                                                           Boolean completed, Boolean timeoutReached, 
+                                                           Integer waitDuration, java.time.LocalDateTime completedAt);
 
 }

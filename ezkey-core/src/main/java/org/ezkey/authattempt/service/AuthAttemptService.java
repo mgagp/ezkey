@@ -21,6 +21,8 @@ import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
+import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
+import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -28,20 +30,29 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Service
 @Transactional
 public class AuthAttemptService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthAttemptService.class);
 
     private final AuthAttemptRepository authAttemptRepository;
 
     private final EnrollmentRepository enrollmentRepository;
 
     private final SignatureService signatureService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Constructs the authorization attempt service with required dependencies.
@@ -152,12 +163,11 @@ public class AuthAttemptService {
         // Find and lock the most recent unread authorization attempt atomically
         AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId())
                 .orElseThrow(() -> new NoPendingAuthAttemptException("No pending authentication attempt found for enrollment: " + request.getEnrollmentId()));
-        
+
         // Double-check if already read (defense in depth)
-        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
+        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             throw new IllegalStateException("Auth attempt already read by device");
         }
-        
         // Mark as read (the lock ensures no race condition)
         authAttempt.setAuthAttemptRead(true);
         authAttemptRepository.save(authAttempt);
@@ -255,5 +265,170 @@ public class AuthAttemptService {
         response.setSuccess(true);
         response.setMessage("Auth attempt completed");
         return response;
+    }
+
+    /**
+     * Waits for authentication response completion with configurable timeout and polling.
+     * <p>
+     * This method implements a simple polling mechanism that checks the authentication status
+     * at regular intervals until either the device responds or the timeout is reached.
+     * The polling approach is chosen for its simplicity, robustness, and alignment with
+     * the project's principles of maintainability over maximum performance.
+     * </p>
+     *
+     * <p>
+     * <b>Polling Mechanism:</b>
+     * <ul>
+     * <li>Checks authentication status every <code>polling</code> seconds</li>
+     * <li>Continues until <code>timeout</code> is reached or authentication completes</li>
+     * <li>Returns immediately when <code>authAttemptResponded</code> becomes true</li>
+     * <li>Calculates status based on ENDPOINT.md rules</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Error Handling:</b>
+     * <ul>
+     * <li>Throws <code>ResourceNotFoundException</code> if auth attempt not found</li>
+     * <li>Throws <code>IllegalArgumentException</code> for invalid parameters</li>
+     * <li>Handles <code>InterruptedException</code> gracefully</li>
+     * <li>Logs polling progress for debugging</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Performance Considerations:</b>
+     * <ul>
+     * <li>Uses <code>Thread.sleep()</code> for simplicity</li>
+     * <li>One thread per wait operation</li>
+     * <li>Suitable for moderate load scenarios</li>
+     * <li>Can be optimized with thread pools if needed</li>
+     * </ul>
+     * </p>
+     *
+     * @param authAttemptId the authentication attempt ID to wait for
+     * @param request the wait request containing timeout and polling parameters
+     * @return AuthAttemptWaitResponse containing the final authentication status and metadata
+     * @throws ResourceNotFoundException if the authentication attempt is not found
+     * @throws IllegalArgumentException if the request parameters are invalid
+     * @throws RuntimeException if the wait operation is interrupted
+     */
+    public AuthAttemptWaitResponse waitForResponse(Integer authAttemptId,AuthAttemptWaitRequest request) {
+        logger.debug("Starting wait operation for auth attempt {} with timeout={}s, polling={}s",authAttemptId,request.getTimeout(),request.getPolling());
+
+        // Validate parameters
+        validateWaitRequest(request);
+
+        // Verify auth attempt exists
+        AuthAttempt authAttempt = getById(authAttemptId);
+        logger.debug("Found auth attempt {} with status: read={}, responded={}, accepted={}",authAttemptId,authAttempt.getAuthAttemptRead(),
+                authAttempt.getAuthAttemptResponded(),authAttempt.getAuthAttemptAccepted());
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + (request.getTimeout() * 1000L);
+        int pollCount = 0;
+        while (System.currentTimeMillis() < endTime){
+            try{
+                // Check if authentication is complete
+                if (Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
+                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                    logger.info("Auth attempt {} completed after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
+
+                    return buildWaitResponse(authAttempt,false,waitDuration);
+                }
+                // Sleep before next check
+                Thread.sleep(request.getPolling() * 1000L);
+                pollCount++;
+
+                // Refresh auth attempt data
+                entityManager.refresh(authAttempt);
+                authAttempt = getById(authAttemptId);
+                if (pollCount % 10 == 0){ // Log every 10th poll to avoid spam
+                    logger.debug("Auth attempt {} still pending after {} polls",authAttemptId,pollCount);
+                }
+            } catch (InterruptedException e){
+                Thread.currentThread().interrupt();
+                logger.warn("Wait operation for auth attempt {} was interrupted",authAttemptId);
+                throw new RuntimeException("Wait operation interrupted",e);
+            }
+        }
+        // Timeout reached
+        int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+        logger.info("Auth attempt {} timed out after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
+
+        return buildWaitResponse(authAttempt,true,waitDuration);
+    }
+
+    /**
+     * Validates the wait request parameters.
+     * <p>
+     * Ensures that timeout and polling parameters are within acceptable ranges
+     * and that polling is not greater than timeout.
+     * </p>
+     *
+     * @param request the wait request to validate
+     * @throws IllegalArgumentException if parameters are invalid
+     */
+    private void validateWaitRequest(AuthAttemptWaitRequest request) {
+        if (request.getTimeout() == null || request.getTimeout() <= 0 || request.getTimeout() > 300){
+            throw new IllegalArgumentException("Timeout must be between 1 and 300 seconds");
+        }
+        if (request.getPolling() == null || request.getPolling() <= 0 || request.getPolling() > 60){
+            throw new IllegalArgumentException("Polling must be between 1 and 60 seconds");
+        }
+        if (request.getPolling() > request.getTimeout()){
+            throw new IllegalArgumentException("Polling interval cannot be greater than timeout");
+        }
+    }
+
+    /**
+     * Builds the wait response with calculated status and metadata.
+     * <p>
+     * Creates a complete AuthAttemptWaitResponse with the authentication attempt data,
+     * calculated status based on ENDPOINT.md rules, and wait operation metadata.
+     * </p>
+     *
+     * @param authAttempt the authentication attempt data
+     * @param timeoutReached whether the wait operation timed out
+     * @param waitDuration the actual duration waited in seconds
+     * @return the complete AuthAttemptWaitResponse
+     */
+    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,boolean timeoutReached,int waitDuration) {
+        String status = calculateStatus(authAttempt);
+        boolean completed = Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded());
+
+        return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
+    }
+
+    /**
+     * Calculates the authentication status based on the rules defined in ENDPOINT.md.
+     * <p>
+     * This method implements the status calculation logic as specified in the project
+     * documentation. The status is determined by checking the authentication attempt
+     * flags in a specific order of priority.
+     * </p>
+     *
+     * @param authAttempt the authentication attempt entity
+     * @return the calculated status string (PENDING, READ, INVALID, REJECTED, ACCEPTED)
+     */
+    private String calculateStatus(AuthAttempt authAttempt) {
+        // #1: authAttemptRead null or false : PENDING
+        if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
+            return "PENDING";
+        }
+        // #2: authAttemptRead true and authAttemptResponded null or false : READ
+        else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
+            return "READ";
+        }
+        // #3: authAttemptValid null or false : INVALID
+        else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptValid())){
+            return "INVALID";
+        }
+        // #4: authAttemptAccepted null or false : REJECTED else ACCEPTED
+        else if (Boolean.TRUE.equals(authAttempt.getAuthAttemptAccepted())){
+            return "ACCEPTED";
+        } else{
+            return "REJECTED";
+        }
     }
 }
