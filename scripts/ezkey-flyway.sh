@@ -1,12 +1,12 @@
 #!/bin/bash
-
+set -x
 # Ezkey Flyway Migration Tool
 echo "Ezkey Flyway Migration Tool"
 echo "==========================="
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORE_DIR="$SCRIPT_DIR/ezkey-core"
+CORE_DIR="$SCRIPT_DIR/../ezkey-core"
 
 # Check if ezkey-core directory exists
 if [ ! -d "$CORE_DIR" ]; then

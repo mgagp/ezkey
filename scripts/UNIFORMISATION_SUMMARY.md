@@ -1,46 +1,46 @@
-# Résumé de l'uniformisation des spécifications OpenAPI
+# OpenAPI Specification Uniformization Summary
 
-## Problème initial
+## Initial Problem
 
-Les projets demo d'Ezkey utilisaient deux approches différentes pour les spécifications OpenAPI :
+Ezkey demo projects were using two different approaches for OpenAPI specifications:
 
-- **ezkey-demo-device** : URL live (`http://localhost:8080/v3/api-docs`)
-- **ezkey-demo-app-acme** : Fichier local (`openapi-spec.json`)
+- **ezkey-demo-device** : Live URL (`http://localhost:8080/v3/api-docs`)
+- **ezkey-demo-app-acme** : Local file (`openapi-spec.json`)
 
-Cette disparité causait :
-- Des builds instables (dépendance réseau)
-- Des difficultés en CI/CD
-- Une maintenance incohérente
+This disparity caused:
+- Unstable builds (network dependency)
+- CI/CD difficulties
+- Inconsistent maintenance
 
-## Solution implémentée
+## Implemented Solution
 
-### 1. Approche uniformisée : Fichier local
+### 1. Uniformized Approach: Local File
 
-**Décision :** Utiliser des fichiers locaux pour les deux projets
+**Decision:** Use local files for both projects
 
-**Avantages :**
-- ✅ Stabilité des builds (pas de dépendance réseau)
-- ✅ Contrôle de version (gestion Git des changements d'API)
-- ✅ CI/CD simple (pas besoin de démarrer des services)
-- ✅ Reproductibilité (builds identiques)
-- ✅ Indépendance (développement possible sans API)
+**Advantages:**
+- ✅ Build stability (no network dependency)
+- ✅ Version control (Git management of API changes)
+- ✅ Simple CI/CD (no need to start services)
+- ✅ Reproducibility (identical builds)
+- ✅ Independence (development possible without APIs)
 
-### 2. Scripts de synchronisation
+### 2. Synchronization Scripts
 
-**Scripts créés :**
+**Created Scripts:**
 - `scripts/update-openapi-specs.sh` (Bash - Linux/macOS/Git Bash)
 - `scripts/update-openapi-specs.bat` (Windows Batch)
 
-**Fonctionnalités :**
-- Téléchargement automatique depuis les APIs en cours
-- Sauvegarde automatique avant modification
-- Validation JSON (si `jq` disponible)
-- Restauration automatique en cas d'échec
-- Options pour mise à jour sélective
+**Features:**
+- Automatic download from running APIs
+- Automatic backup before modification
+- JSON validation (if `jq` available)
+- Automatic restoration on failure
+- Options for selective updates
 
-### 3. Configuration Maven uniformisée
+### 3. Uniformized Maven Configuration
 
-**Avant :**
+**Before:**
 ```xml
 <!-- demo-device -->
 <inputSpec>http://localhost:8080/v3/api-docs</inputSpec>
@@ -49,122 +49,151 @@ Cette disparité causait :
 <inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
 ```
 
-**Après :**
+**After:**
 ```xml
-<!-- Les deux projets -->
+<!-- Both projects -->
 <inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
 ```
 
-## Fichiers modifiés
+## Modified Files
 
-### 1. Configuration Maven
-- `ezkey-demo-device/pom.xml` : Changé de URL live vers fichier local
+### 1. Maven Configuration
+- `ezkey-demo-device/pom.xml` : Changed from live URL to local file
 
-### 2. Scripts créés
-- `scripts/update-openapi-specs.sh` : Script bash principal
-- `scripts/update-openapi-specs.bat` : Script Windows
-- `scripts/README.md` : Documentation complète
-- `scripts/UNIFORMISATION_SUMMARY.md` : Ce résumé
+### 2. Created Scripts
+- `scripts/update-openapi-specs.sh` : Main bash script
+- `scripts/update-openapi-specs.bat` : Windows script
+- `scripts/README.md` : Complete documentation
+- `scripts/UNIFORMISATION_SUMMARY.md` : This summary
 
-### 3. Fichiers de spécification
-- `ezkey-demo-device/openapi-spec.json` : Téléchargé depuis auth-api
-- `ezkey-demo-app-acme/openapi-spec.json` : Déjà existant
+### 3. Specification Files
+- `ezkey-demo-device/openapi-spec.json` : Downloaded from auth-api
+- `ezkey-demo-app-acme/openapi-spec.json` : Already existing
 
-## Workflow recommandé
+## Recommended Workflow
 
-### Développement quotidien
+### Daily Development
 ```bash
-# 1. Démarrer les APIs
+# 1. Start the APIs
 mvn spring-boot:run -pl ezkey-auth-api
 mvn spring-boot:run -pl ezkey-admin-api
 
-# 2. Modifier l'API selon les besoins
+# 2. Modify the API as needed
 
-# 3. Mettre à jour les specs
+# 3. Update the specs
 ./scripts/update-openapi-specs.sh
 
-# 4. Recompiler les projets demo
+# 4. Recompile demo projects
 mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ```
 
-### Avant un commit
+### Before Commit
 ```bash
-# Vérifier que les specs sont à jour
+# Check that specs are up to date
 ./scripts/update-openapi-specs.sh --all
 
-# Tester la compilation
+# Test compilation
 mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ```
 
-## Utilisation des scripts
+## Script Usage
 
-### Options disponibles
+### Available Options
 ```bash
 ./scripts/update-openapi-specs.sh --help
 ```
 
-- `--app` : Mettre à jour uniquement demo-app-acme
-- `--device` : Mettre à jour uniquement demo-device  
-- `--all` : Mettre à jour les deux (par défaut)
-- `--help` : Afficher l'aide
+- `--app` : Update only demo-app-acme
+- `--device` : Update only demo-device  
+- `--all` : Update both (default)
+- `--help` : Display help
 
-### Exemples d'utilisation
+### Usage Examples
 ```bash
-# Mise à jour complète
+# Complete update
 ./scripts/update-openapi-specs.sh
 
-# Mise à jour sélective
+# Selective update
 ./scripts/update-openapi-specs.sh --device
 ./scripts/update-openapi-specs.sh --app
 ```
 
-## Avantages obtenus
+## Achieved Advantages
 
-### 1. Stabilité
-- Plus de builds cassés par des problèmes réseau
-- Compilation fiable et reproductible
+### 1. Stability
+- No more broken builds due to network issues
+- Reliable and reproducible compilation
 
-### 2. Traçabilité
-- Les changements d'API sont visibles dans Git
-- Historique des évolutions de l'API
+### 2. Traceability
+- API changes are visible in Git
+- History of API evolution
 
-### 3. Flexibilité
-- Possibilité de revenir à une version précédente
-- Développement possible sans API en cours
+### 3. Flexibility
+- Ability to revert to a previous version
+- Development possible without running APIs
 
 ### 4. Performance
-- Génération plus rapide (pas de téléchargement à chaque build)
-- Moins de dépendances externes
+- Faster generation (no download at each build)
+- Fewer external dependencies
 
 ### 5. CI/CD
-- Builds stables et prévisibles
-- Pas besoin de démarrer des services
+- Stable and predictable builds
+- No need to start services
 
-## Prérequis
+## Prerequisites
 
-- `curl` : Pour télécharger les spécifications
-- `jq` (optionnel) : Pour la validation JSON
-- APIs démarrées : Pour pouvoir télécharger les specs
+- `curl` : For downloading specifications
+- `jq` (optional) : For JSON validation
+- APIs started : To be able to download specs
 
 ## Validation
 
-✅ **Tests effectués :**
-- Téléchargement de la spec auth-api
-- Compilation du projet demo-device
-- Génération des DTOs
-- Fonctionnement du script de mise à jour
+✅ **Tests performed:**
+- Auth-api spec download
+- Demo-device project compilation
+- DTO generation
+- Update script functionality
 
-✅ **Résultats :**
-- BUILD SUCCESS sur demo-device
-- Scripts fonctionnels sur Windows et Linux
-- Documentation complète
+✅ **Results:**
+- BUILD SUCCESS on demo-device
+- Scripts functional on Windows and Linux
+- Complete documentation
 
 ## Conclusion
 
-L'uniformisation est **terminée avec succès**. Les deux projets demo utilisent maintenant la même approche (fichier local) avec des scripts de synchronisation robustes pour maintenir les spécifications à jour.
+The uniformization is **successfully completed**. Both demo projects now use the same approach (local file) with robust synchronization scripts to keep specifications up to date.
 
-Cette solution offre un bon équilibre entre :
-- **Stabilité** (builds fiables)
-- **Flexibilité** (contrôle de version)
-- **Simplicité** (scripts automatisés)
-- **Maintenabilité** (approche uniforme)
+This solution offers a good balance between:
+- **Stability** (reliable builds)
+- **Flexibility** (version control)
+- **Simplicity** (automated scripts)
+- **Maintainability** (uniform approach)
+
+## Security Considerations
+
+### API Access
+- Scripts only access local development APIs
+- No production API access through these scripts
+- Secure error handling prevents information leakage
+
+### File Management
+- Automatic backup before updates
+- Validation of downloaded specifications
+- Safe fallback to previous versions
+
+## Best Practices
+
+### Development
+- Always update specs after API changes
+- Test compilation before committing
+- Keep backup files for safety
+
+### CI/CD Integration
+- Use local files in build pipelines
+- Validate specs during build process
+- Include spec updates in version control
+
+### Maintenance
+- Regular validation of spec files
+- Monitor for API changes
+- Update documentation when needed

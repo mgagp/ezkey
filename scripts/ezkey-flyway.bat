@@ -1,4 +1,4 @@
-@echo off
+@echo on    
 setlocal enabledelayedexpansion
 
 REM Ezkey Flyway Migration Tool
@@ -7,7 +7,7 @@ echo ===========================
 
 REM Get the directory where this script is located
 set SCRIPT_DIR=%~dp0
-set CORE_DIR=%SCRIPT_DIR%ezkey-core
+set CORE_DIR=%SCRIPT_DIR%..\ezkey-core
 
 REM Check if ezkey-core directory exists
 if not exist "%CORE_DIR%" (

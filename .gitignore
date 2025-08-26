@@ -87,3 +87,4 @@ application-*.properties
 *.bat
 ezkey-demo-device/data/enrollments/*.json
 plan_doc.md
+ezkey-core/classpath.txt
