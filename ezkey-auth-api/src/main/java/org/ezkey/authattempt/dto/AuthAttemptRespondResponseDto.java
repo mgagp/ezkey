@@ -16,27 +16,25 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Response DTO for authentication attempt submissions in auth API.
  * <p>
  * This DTO represents the response data returned to mobile devices after they
- * submit their authentication attempt response. It provides confirmation of
- * the submission status and any relevant feedback message for the mobile app
- * to display to the user.
+ * submit their authentication attempt response. It provides clear, unambiguous
+ * feedback on the authentication result.
  * </p>
  *
  * <p>
  * <b>Usage Context:</b> Returned by auth-api when mobile devices submit
- * authentication responses. Provides immediate feedback on whether the
- * response was successfully processed and recorded by the system.
+ * authentication responses. Provides immediate feedback on the authentication result.
  * </p>
  *
  * <p>
- * <b>Response Handling:</b> The mobile app should check the success flag
- * to determine if the authentication response was accepted. The message
- * field provides additional context for error handling or user feedback.
+ * <b>Response Handling:</b> The mobile app should check the result field
+ * to determine the authentication outcome. The message field provides additional
+ * context for user feedback.
  * </p>
  *
  * <p>
  * <b>Fields:</b>
  * <ul>
- * <li><b>success:</b> Indicates whether the response submission was successful</li>
+ * <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED)</li>
  * <li><b>message:</b> Additional information or error details</li>
  * </ul>
  * </p>
@@ -57,20 +55,22 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class AuthAttemptRespondResponseDto {
 
     /**
-     * Indicates whether the authentication response submission was successful.
+     * The authentication result indicating the outcome of the authentication attempt.
      * <p>
-     * True means the response was accepted and processed by the system,
-     * false indicates an error occurred during processing. Mobile apps
-     * should check this flag to determine next actions.
+     * Provides clear, unambiguous states:
+     * - APPROVED: User approved the authentication
+     * - DENIED: User denied the authentication
+     * - FAILED: Technical error occurred
      * </p>
      */
-    @Schema(description = "Whether the response submission was successful", 
-            example = "true", 
+    @Schema(description = "The authentication result", 
+            example = "APPROVED", 
+            allowableValues = {"APPROVED", "DENIED", "FAILED"},
             required = true)
-    private Boolean success;
+    private String result;
 
     /**
-     * Additional message providing context about the submission result.
+     * Additional message providing context about the authentication result.
      * <p>
      * Contains success confirmation or detailed error information for
      * user feedback. Mobile apps can display this message to inform
@@ -78,26 +78,26 @@ public class AuthAttemptRespondResponseDto {
      * </p>
      */
     @Schema(description = "Success confirmation or error details for user feedback", 
-            example = "Authentication response processed successfully", 
+            example = "Authentication approved", 
             required = true)
     private String message;
 
     /**
-     * Gets the success status of the response submission.
+     * Gets the authentication result.
      *
-     * @return true if successful, false if there was an error
+     * @return the authentication result
      */
-    public Boolean getSuccess(){
-        return success;
+    public String getResult() {
+        return result;
     }
 
     /**
-     * Sets the success status of the response submission.
+     * Sets the authentication result.
      *
-     * @param success true if successful, false if there was an error
+     * @param result the authentication result to set
      */
-    public void setSuccess(Boolean success){
-        this.success = success;
+    public void setResult(String result) {
+        this.result = result;
     }
 
     /**
@@ -105,7 +105,7 @@ public class AuthAttemptRespondResponseDto {
      *
      * @return the response message
      */
-    public String getMessage(){
+    public String getMessage() {
         return message;
     }
 
@@ -114,7 +114,7 @@ public class AuthAttemptRespondResponseDto {
      *
      * @param message the response message to set
      */
-    public void setMessage(String message){
+    public void setMessage(String message) {
         this.message = message;
     }
 }

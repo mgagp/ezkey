@@ -132,4 +132,13 @@ public interface AuthAttemptMapper {
      */
     AuthAttemptRespondResponseDto toAuthAttemptRespondResponseDto(AuthAttemptRespondResponse response);
 
+    /**
+     * Maps AuthenticationResult enum to String for DTO serialization.
+     *
+     * @param result the authentication result enum
+     * @return the string representation
+     */
+    default String mapAuthenticationResultToString(org.ezkey.authattempt.domain.AuthenticationResult result) {
+        return result != null ? result.name() : null;
+    }
 }

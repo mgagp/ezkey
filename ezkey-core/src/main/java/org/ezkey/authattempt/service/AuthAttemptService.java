@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.ezkey.authattempt.domain.AuthenticationResult;
 
 @Service
 @Transactional
@@ -105,23 +106,23 @@ public class AuthAttemptService {
         Enrollment enrollment = enrollmentRepository.findById(authRequest.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
-        // Validate challenge requirement
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) && Boolean.FALSE.equals(authRequest.getChallengeRequested())){
-            throw new IllegalArgumentException("Challenge for device is required for this enrollment");
-        }
         // Create the authorization attempt
         AuthAttempt authAttempt = new AuthAttempt();
+
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
         authAttempt.setAuthAttemptRead(false);
         authAttempt.setAuthAttemptResponded(false);
         authAttempt.setAuthAttemptAccepted(false);
 
         // Generate challenge if required
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
+        boolean shouldGenerateChallenge = Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) || Boolean.TRUE.equals(authRequest.getChallengeRequested());
+        if (shouldGenerateChallenge){
             Random random = new Random();
             authAttempt.setAuthAttemptChallenge(100000 + random.nextInt(900000));
+            logger.debug("Generated challenge code for auth attempt: {}",authAttempt.getAuthAttemptChallenge());
         } else{
             authAttempt.setAuthAttemptChallenge(null);
+            logger.debug("No challenge code generated for auth attempt");
         }
         authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
         authAttempt.setCreatedAt(LocalDateTime.now());
@@ -166,7 +167,7 @@ public class AuthAttemptService {
      * It validates the request completely before locking the authentication attempt to ensure
      * that each authentication attempt can only be read once by a legitimate device.
      * </p>
-     * 
+     *
      * <p>
      * <b>Security Principle - Read-Once Guarantee:</b>
      * <ul>
@@ -244,7 +245,11 @@ public class AuthAttemptService {
         response.setAuthAttemptId(authAttempt.getAuthAttemptId());
         response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
         response.setAuthAttemptProofTokenSignedByIntegration(signatureService.generateSignature(authAttempt.getAuthAttemptProofToken(),enrollment.getIntegrationPrivateKey()));
-        response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
+        if (authAttempt.getAuthAttemptChallenge() != null){
+            response.setAuthAttemptChallengeRequired(true);
+        } else{
+            response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
+        }
         return response;
     }
 
@@ -253,7 +258,7 @@ public class AuthAttemptService {
 
         Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
         if (authAttemptOpt.isEmpty()){
-            response.setSuccess(false);
+            response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Auth attempt record not found");
             return response;
         }
@@ -261,21 +266,21 @@ public class AuthAttemptService {
 
         // Check if read
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
-            response.setSuccess(false);
+            response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Auth attempt not read by device");
             return response;
         }
         // Find the enrollment
         Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null);
         if (enrollment == null){
-            response.setSuccess(false);
+            response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Enrollment record not found");
             return response;
         }
         // Validate device public key
         String devicePublicKey = enrollment.getDevicePublicKey();
         if (devicePublicKey == null){
-            response.setSuccess(false);
+            response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Device public key not found");
             return response;
         }
@@ -287,7 +292,7 @@ public class AuthAttemptService {
             authAttempt.setAuthAttemptValid(false);
             authAttempt.setAuthAttemptResponded(true);
             authAttemptRepository.save(authAttempt);
-            response.setSuccess(false);
+            response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Invalid signature for auth attempt code");
             return response;
         }
@@ -298,7 +303,7 @@ public class AuthAttemptService {
                 authAttempt.setAuthAttemptValid(false);
                 authAttempt.setAuthAttemptResponded(true);
                 authAttemptRepository.save(authAttempt);
-                response.setSuccess(false);
+                response.setResult(AuthenticationResult.FAILED);
                 response.setMessage("Challenge value mismatch");
                 return response;
             }
@@ -309,7 +314,12 @@ public class AuthAttemptService {
         authAttempt.setAuthAttemptResponded(true);
         authAttemptRepository.save(authAttempt);
 
-        response.setSuccess(true);
+        // Set result based on user's choice
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+            response.setResult(AuthenticationResult.APPROVED);
+        } else {
+            response.setResult(AuthenticationResult.DENIED);
+        }
         response.setMessage("Auth attempt completed");
         return response;
     }

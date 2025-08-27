@@ -50,6 +50,8 @@
     }
     .result-success { color: #28a745; }
     .result-error { color: #dc3545; }
+    .result-denied { color: #dc3545; }  /* Rouge pour denied */
+    .result-failed { color: #fd7e14; }  /* Orange pour failed */
     .result-title { 
       font-size: 1.2rem; 
       font-weight: 600; 
@@ -105,11 +107,32 @@
       
       <!-- Result Card -->
       <div class="result-card">
+        <!-- Success State -->
         <div th:if="${success}" class="result-icon result-success">✅</div>
-        <div th:if="${error}" class="result-icon result-error">❌</div>
         
-        <div class="result-title" th:text="${success ? 'Authentication Successful' : 'Authentication Failed'}">Result</div>
-        <div class="result-message" th:text="${message ?: (error ?: 'Authentication response submitted')}">Result message</div>
+        <!-- Denied State (User Choice) -->
+        <div th:if="${denied}" class="result-icon result-denied">❌</div>
+        
+        <!-- Failed State (Technical Error) -->
+        <div th:if="${failed}" class="result-icon result-failed">⚠️</div>
+        
+        <!-- Dynamic Title -->
+        <div class="result-title" 
+             th:text="${success ? 'Authentication Successful' : 
+                        denied ? 'Authentication Denied' : 
+                        failed ? 'Authentication Failed' : 
+                        'Authentication Result'}">
+          Result
+        </div>
+        
+        <!-- Dynamic Message -->
+        <div class="result-message" 
+             th:text="${message ?: 
+                        denied ? 'Authentication was denied by user' : 
+                        failed ? 'Authentication failed due to technical error' : 
+                        'Authentication response submitted'}">
+          Result message
+        </div>
       </div>
       
       <!-- Action Button -->

@@ -226,7 +226,7 @@ public class EzkeyAppController {
     @PostMapping("/enrollments/{enrollmentId}/auth/respond")
     public String respondToAuth(@PathVariable("enrollmentId") Integer enrollmentId,@RequestParam("authAttemptId") Integer authAttemptId,
             @RequestParam("approved") Boolean approved,@RequestParam(value = "challengeResponse",required = false) String challengeResponse,
-            @RequestParam("authAttemptProofToken") String authAttemptProofToken, Model model) {
+            @RequestParam("authAttemptProofToken") String authAttemptProofToken,Model model) {
         model.addAttribute("pageTitle","Authentication Response");
         model.addAttribute("enrollmentId",enrollmentId);
         try{
@@ -251,22 +251,68 @@ public class EzkeyAppController {
             AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto().authAttemptId(authAttemptId).authAttemptAccepted(approved)
                     .authAttemptProofTokenSignedByDevice(responseSignature);
 
+            // Add challenge response if provided
+            if (challengeResponse != null && !challengeResponse.trim().isEmpty()){
+                try{
+                    Integer challengeResponseInt = Integer.parseInt(challengeResponse.trim());
+                    respondRequest.authAttemptChallengeResponse(challengeResponseInt);
+                    logger.info("Including challenge response: {}",challengeResponseInt);
+                } catch (NumberFormatException e){
+                    logger.warn("Invalid challenge response format: {}",challengeResponse);
+                    model.addAttribute("success",false);
+                    model.addAttribute("denied",false);
+                    model.addAttribute("failed",true);
+                    model.addAttribute("message","Invalid challenge response format. Please enter a numeric code.");
+                    return "phone/ezkey/auth_result";
+                }
+            }
             logger.info("Responding to auth attempt {} for enrollment {}: {}",authAttemptId,enrollmentId,respondRequest);
 
             // Submit response
             AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId,respondRequest).block();
             if (respondResponse != null){
                 logger.info("Auth response submitted successfully: {}",respondResponse);
-                model.addAttribute("success", true);
-                model.addAttribute("message", respondResponse.getMessage());
+
+                // Determine result based on the API response result field
+                String result = respondResponse.getResult().getValue();
+                if ("APPROVED".equals(result)){
+                    // Authentication was successful
+                    model.addAttribute("success",true);
+                    model.addAttribute("denied",false);
+                    model.addAttribute("failed",false);
+                    model.addAttribute("message",respondResponse.getMessage());
+                } else if ("DENIED".equals(result)){
+                    // Authentication was denied by user
+                    model.addAttribute("success",false);
+                    model.addAttribute("denied",true);
+                    model.addAttribute("failed",false);
+                    model.addAttribute("message",respondResponse.getMessage());
+                } else if ("FAILED".equals(result)){
+                    // Technical error occurred
+                    model.addAttribute("success",false);
+                    model.addAttribute("denied",false);
+                    model.addAttribute("failed",true);
+                    model.addAttribute("message",respondResponse.getMessage());
+                } else{
+                    // Unknown result - treat as failed
+                    model.addAttribute("success",false);
+                    model.addAttribute("denied",false);
+                    model.addAttribute("failed",true);
+                    model.addAttribute("message","Unknown authentication result: " + result);
+                }
             } else{
-                model.addAttribute("success", false);
-                model.addAttribute("error","Failed to submit authentication response");
+                // Technical failure
+                model.addAttribute("success",false);
+                model.addAttribute("denied",false);
+                model.addAttribute("failed",true);
+                model.addAttribute("message","Failed to submit authentication response");
             }
         } catch (Exception e){
             logger.error("Auth response failed for enrollment {} authAttempt {}",enrollmentId,authAttemptId,e);
-            model.addAttribute("success", false);
-            model.addAttribute("error","Authentication response failed: " + e.getMessage());
+            model.addAttribute("success",false);
+            model.addAttribute("denied",false);
+            model.addAttribute("failed",true);
+            model.addAttribute("message","Authentication response failed: " + e.getMessage());
         }
         return "phone/ezkey/auth_result";
     }

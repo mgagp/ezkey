@@ -68,9 +68,7 @@ public class AuthAttemptPendingResponseDto {
      * to the user's approval or denial decision.
      * </p>
      */
-    @Schema(description = "Unique identifier of the authentication attempt", 
-            example = "123", 
-            required = true)
+    @Schema(description = "Unique identifier of the authentication attempt",example = "123",required = true)
     private Integer authAttemptId;
 
     /**
@@ -81,9 +79,7 @@ public class AuthAttemptPendingResponseDto {
      * possession of the private key and complete authentication.
      * </p>
      */
-    @Schema(description = "Authentication proof token containing challenge data", 
-            example = "eyJhbGciOiJSUzI1NiJ9...", 
-            required = true)
+    @Schema(description = "Authentication proof token containing challenge data",example = "eyJhbGciOiJSUzI1NiJ9...",required = true)
     private String authAttemptProofToken;
 
     /**
@@ -94,9 +90,7 @@ public class AuthAttemptPendingResponseDto {
      * and prevents tampering with the authentication challenge data.
      * </p>
      */
-    @Schema(description = "Integration-signed authentication proof token for integrity", 
-            example = "eyJhbGciOiJSUzI1NiJ9...", 
-            required = true)
+    @Schema(description = "Integration-signed authentication proof token for integrity",example = "eyJhbGciOiJSUzI1NiJ9...",required = true)
     private String authAttemptProofTokenSignedByIntegration;
 
     /**
@@ -107,9 +101,7 @@ public class AuthAttemptPendingResponseDto {
      * When false, only cryptographic signature validation is needed.
      * </p>
      */
-    @Schema(description = "Whether additional challenge validation is required", 
-            example = "true", 
-            required = true)
+    @Schema(description = "Whether additional challenge validation is required",example = "true",required = true)
     private Boolean authAttemptChallengeRequired;
 
     /**

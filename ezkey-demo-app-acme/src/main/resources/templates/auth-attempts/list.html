@@ -289,12 +289,12 @@
         </a>
         
         <a th:href="@{'/enrollments?integrationId=' + ${integrationId}}" 
-           th:if="${enrollmentId != null}"
+           th:if="${integrationId != null}"
            class="mega-button secondary">
-            ← Back to Enrollment
+            ← Back to Enrollments
         </a>
         <a th:href="@{/enrollments}" 
-           th:unless="${enrollmentId != null}"
+           th:unless="${integrationId != null}"
            class="mega-button secondary">
             ← Back to Enrollments
         </a>

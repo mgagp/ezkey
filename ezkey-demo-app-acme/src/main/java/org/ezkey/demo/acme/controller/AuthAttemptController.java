@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.ezkey.demo.acme.generated.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.demo.acme.generated.dto.AuthAttemptCreateResponseDto;
@@ -18,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,6 +34,8 @@ import reactor.core.publisher.Mono;
 @Controller
 @RequestMapping("/auth-attempts")
 public class AuthAttemptController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
 
     private final EnrollmentService enrollmentService;
     private final IntegrationService integrationService;
@@ -66,12 +72,18 @@ public class AuthAttemptController {
         try {
             List<AuthAttemptDto> authAttempts;
             
+            // Always get all auth attempts first, then filter client-side if needed
+            authAttempts = authAttemptService.getAllAuthAttemptsSync();
+            
             if (enrollmentId != null) {
-                // Filter by enrollment ID
-                authAttempts = authAttemptService.getAuthAttemptsByEnrollmentIdSync(enrollmentId);
-            } else {
-                // Get all auth attempts
-                authAttempts = authAttemptService.getAllAuthAttemptsSync();
+                // Filter by enrollment ID on client side
+                List<AuthAttemptDto> filteredAttempts = authAttempts.stream()
+                    .filter(attempt -> Objects.equals(attempt.getEnrollmentId(), enrollmentId))
+                    .collect(Collectors.toList());
+                
+                authAttempts = filteredAttempts;
+                logger.debug("Client-side filtered auth attempts for enrollment {}: found {} attempts out of {} total", 
+                    enrollmentId, authAttempts.size(), authAttemptService.getAllAuthAttemptsSync().size());
             }
             
             if (authAttempts == null) {
@@ -158,10 +170,19 @@ public class AuthAttemptController {
                 enrichedAuthAttempts.add(enrichedAttempt);
             }
             
+            // If enrollmentId is provided but integrationId is not, try to get integrationId from enrollment
+            Integer resolvedIntegrationId = integrationId;
+            if (enrollmentId != null && integrationId == null) {
+                EnrollmentResponseDto enrollment = enrollmentMap.get(enrollmentId);
+                if (enrollment != null) {
+                    resolvedIntegrationId = enrollment.getIntegrationId();
+                }
+            }
+            
             model.addAttribute("authAttempts", enrichedAuthAttempts);
             model.addAttribute("integrationNames", integrationNames);
             model.addAttribute("enrollmentId", enrollmentId);
-            model.addAttribute("integrationId", integrationId);
+            model.addAttribute("integrationId", resolvedIntegrationId);
             model.addAttribute("pageTitle", "Authentication Attempts");
             
         } catch (Exception e) {
@@ -169,7 +190,27 @@ public class AuthAttemptController {
             model.addAttribute("authAttempts", new ArrayList<>());
             model.addAttribute("integrationNames", new HashMap<>());
             model.addAttribute("enrollmentId", enrollmentId);
-            model.addAttribute("integrationId", integrationId);
+            
+            // Try to resolve integrationId from enrollmentId even in error case
+            Integer resolvedIntegrationId = integrationId;
+            if (enrollmentId != null && integrationId == null) {
+                try {
+                    List<EnrollmentResponseDto> enrollments = enrollmentService.getAllEnrollments()
+                            .collectList()
+                            .block(Duration.ofSeconds(5));
+                    if (enrollments != null) {
+                        for (EnrollmentResponseDto enrollment : enrollments) {
+                            if (enrollment.getEnrollmentId().equals(enrollmentId)) {
+                                resolvedIntegrationId = enrollment.getIntegrationId();
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception resolveException) {
+                    // Ignore resolution errors in error handling
+                }
+            }
+            model.addAttribute("integrationId", resolvedIntegrationId);
             model.addAttribute("pageTitle", "Authentication Attempts");
             model.addAttribute("error", "Failed to load authentication attempts: " + e.getMessage());
         }
@@ -315,9 +356,19 @@ public class AuthAttemptController {
                 }
             }
             
+            // Find the selected enrollment if enrollmentId is provided
+            EnrollmentResponseDto selectedEnrollment = null;
+            if (enrollmentId != null) {
+                selectedEnrollment = enrollments.stream()
+                    .filter(e -> Objects.equals(e.getEnrollmentId(), enrollmentId))
+                    .findFirst()
+                    .orElse(null);
+            }
+            
             model.addAttribute("enrollments", enrollments);
             model.addAttribute("integrationNames", integrationNames);
             model.addAttribute("selectedEnrollmentId", enrollmentId);
+            model.addAttribute("selectedEnrollment", selectedEnrollment);
             model.addAttribute("pageTitle", "Create Authentication Attempt");
             
         } catch (Exception e) {
@@ -343,10 +394,38 @@ public class AuthAttemptController {
     @PostMapping("/create")
     public String createAuthAttempt(
             @RequestParam("enrollmentId") Integer enrollmentId,
-            @RequestParam(value = "challengeRequested", defaultValue = "false") Boolean challengeRequested,
+            @RequestParam(value = "challengeRequested", required = false) Boolean challengeRequested,
             Model model) {
         
         try {
+            // Get enrollment to check if challenge is required
+            List<EnrollmentResponseDto> enrollments = enrollmentService.getAllEnrollments()
+                    .collectList()
+                    .block(Duration.ofSeconds(10));
+            
+            EnrollmentResponseDto selectedEnrollment = null;
+            if (enrollments != null) {
+                selectedEnrollment = enrollments.stream()
+                    .filter(e -> Objects.equals(e.getEnrollmentId(), enrollmentId))
+                    .findFirst()
+                    .orElse(null);
+            }
+            
+            // Determine if challenge is requested
+            if (selectedEnrollment != null) {
+                // If enrollment requires challenge, force challengeRequested to true
+                if (Boolean.TRUE.equals(selectedEnrollment.getAuthAttemptChallengeRequired())) {
+                    challengeRequested = true;
+                }
+                // If challengeRequested is null (not checked), set to false
+                else if (challengeRequested == null) {
+                    challengeRequested = false;
+                }
+            } else {
+                // Default to false if no enrollment found
+                challengeRequested = challengeRequested != null ? challengeRequested : false;
+            }
+            
             // Create the authentication attempt request
             AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto();
             request.setEnrollmentId(enrollmentId);
@@ -364,12 +443,14 @@ public class AuthAttemptController {
                 return "redirect:/auth-attempts?success=created&id=" + response.getAuthAttemptId();
             } else {
                 model.addAttribute("error", "Failed to create authentication attempt: No response from API");
-                return "auth-attempts/create";
+                // Reload form data for error display
+                return reloadCreateFormData(model, enrollmentId);
             }
             
         } catch (Exception e) {
             model.addAttribute("error", "Failed to create authentication attempt: " + e.getMessage());
-            return "auth-attempts/create";
+            // Reload form data for error display
+            return reloadCreateFormData(model, enrollmentId);
         }
     }
 
@@ -409,5 +490,61 @@ public class AuthAttemptController {
                 return "redirect:/auth-attempts?error=Failed to delete: " + e.getMessage();
             }
         }
+    }
+
+    /**
+     * Helper method to reload form data for error display.
+     * 
+     * @param model Spring model
+     * @param selectedEnrollmentId the enrollment ID that was selected
+     * @return template name
+     */
+    private String reloadCreateFormData(Model model, Integer selectedEnrollmentId) {
+        try {
+            // Get all enrollments from the API
+            Flux<EnrollmentResponseDto> enrollmentsFlux = enrollmentService.getAllEnrollments();
+            List<EnrollmentResponseDto> enrollments = enrollmentsFlux.collectList().block();
+            
+            if (enrollments == null) {
+                enrollments = new ArrayList<>();
+            }
+            
+            // Get all integrations to map integration names
+            List<IntegrationResponseDto> integrations = integrationService.getAllIntegrationsSync();
+            Map<Integer, String> integrationNames = new HashMap<>();
+            
+            for (IntegrationResponseDto integration : integrations) {
+                if (integration.getI18n() != null && !integration.getI18n().isEmpty()) {
+                    // Get the name from the first i18n entry
+                    String integrationName = integration.getI18n().get(0).getName();
+                    integrationNames.put(integration.getId(), integrationName);
+                }
+            }
+            
+            // Find the selected enrollment if enrollmentId is provided
+            EnrollmentResponseDto selectedEnrollment = null;
+            if (selectedEnrollmentId != null) {
+                selectedEnrollment = enrollments.stream()
+                    .filter(e -> Objects.equals(e.getEnrollmentId(), selectedEnrollmentId))
+                    .findFirst()
+                    .orElse(null);
+            }
+            
+            model.addAttribute("enrollments", enrollments);
+            model.addAttribute("integrationNames", integrationNames);
+            model.addAttribute("selectedEnrollmentId", selectedEnrollmentId);
+            model.addAttribute("selectedEnrollment", selectedEnrollment);
+            model.addAttribute("pageTitle", "Create Authentication Attempt");
+            
+        } catch (Exception e) {
+            // Log error and show empty list
+            System.err.println("Error reloading form data: " + e.getMessage());
+            model.addAttribute("enrollments", new ArrayList<>());
+            model.addAttribute("integrationNames", new HashMap<>());
+            model.addAttribute("selectedEnrollmentId", selectedEnrollmentId);
+            model.addAttribute("pageTitle", "Create Authentication Attempt");
+        }
+        
+        return "auth-attempts/create";
     }
 }
