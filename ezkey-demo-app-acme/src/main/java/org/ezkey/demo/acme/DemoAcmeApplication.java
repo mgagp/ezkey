@@ -47,7 +47,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 2025
  */
 @SpringBootApplication
-public class AcmeDemoApplication {
+public class DemoAcmeApplication {
 
     /**
      * Main method to start the ACME demo application.
@@ -55,6 +55,6 @@ public class AcmeDemoApplication {
      * @param args command line arguments
      */
     public static void main(String[] args) {
-        SpringApplication.run(AcmeDemoApplication.class, args);
+        SpringApplication.run(DemoAcmeApplication.class, args);
     }
 }

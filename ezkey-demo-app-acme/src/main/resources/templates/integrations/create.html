@@ -88,43 +88,30 @@
                      x-transition></div>
             </div>
 
-            <!-- Logo URL Field -->
-            <div class="form-group">
-                <label for="integrationLogo" class="form-label">
-                    <span class="label-text">Logo URL</span>
-                    <span class="label-optional">(Optional)</span>
-                </label>
-                <input type="url" 
-                       id="integrationLogo" 
-                       name="logo" 
-                       class="form-input"
-                       x-model="formData.integrationLogo"
-                       @input="validateField('integrationLogo')"
-                       :class="{ 'input-error': errors.integrationLogo }"
-                                               placeholder="https://via.placeholder.com/200x100/0066cc/ffffff?text=LOGO"
-                       pattern="https?://.+">
-                <div class="input-help">
-                    <span class="help-text">URL to your application's logo (will be displayed in mobile app)</span>
-                    <span x-show="formData.integrationLogo && isValidUrl(formData.integrationLogo)" class="url-valid">✓ Valid URL</span>
-                </div>
-                <div x-show="errors.integrationLogo" 
-                     x-text="errors.integrationLogo" 
-                     class="error-message"
-                     x-transition></div>
-            </div>
-
-            <!-- Logo Preview (simplified) -->
-            <div class="logo-preview" x-show="formData.integrationLogo && isValidUrl(formData.integrationLogo)">
-                <h4 class="preview-subtitle">Logo Preview</h4>
-                <div class="logo-preview-container">
-                    <img :src="formData.integrationLogo"
-                         :alt="formData.integrationName ? formData.integrationName + ' logo' : 'Integration logo'"
-                         class="logo-preview-image"
-                         @load="imageError = false"
-                         @error="imageError = true">
-                </div>
-                <div x-show="imageError" class="error-message" x-transition>Unable to load logo from the provided URL.</div>
-            </div>
+                         <!-- Logo URL Field -->
+             <div class="form-group">
+                 <label for="integrationLogo" class="form-label">
+                     <span class="label-text">Logo URL</span>
+                     <span class="label-optional">(Optional)</span>
+                 </label>
+                 <input type="text" 
+                        id="integrationLogo" 
+                        name="logo" 
+                        class="form-input"
+                        x-model="formData.integrationLogo"
+                        @input="validateField('integrationLogo')"
+                        @keydown.enter.prevent="validateField('integrationLogo')"
+                        :class="{ 'input-error': errors.integrationLogo }"
+                        placeholder="https://via.placeholder.com/200x100/0066cc/ffffff?text=LOGO or example.com/logo.png">
+                 <div class="input-help">
+                     <span class="help-text">URL to your application's logo (https:// will be added automatically if needed)</span>
+                     <span x-show="formData.integrationLogo && isValidUrl(formData.integrationLogo)" class="url-valid">✓ Valid URL</span>
+                 </div>
+                 <div x-show="errors.integrationLogo" 
+                      x-text="errors.integrationLogo" 
+                      class="error-message"
+                      x-transition></div>
+             </div>
 
             <!-- Configuration Preview -->
             <div class="config-preview" x-show="formData.integrationName || formData.integrationDescription">
@@ -228,8 +215,7 @@
             successMessage: '',
             successRedirectUrl: '',
             
-            // Simple image error flag for preview
-            imageError: false,
+            
 
             validateField(fieldName) {
                 switch(fieldName) {
@@ -257,25 +243,47 @@
                         }
                         break;
                     
-                    case 'integrationLogo':
-                        if (this.formData.integrationLogo && !this.isValidUrl(this.formData.integrationLogo)) {
-                            this.errors.integrationLogo = 'Please enter a valid URL';
-                        } else {
-                            delete this.errors.integrationLogo;
-                        }
-                        break;
+                                         case 'integrationLogo':
+                         if (this.formData.integrationLogo && !this.isValidUrl(this.formData.integrationLogo)) {
+                             this.errors.integrationLogo = 'Please enter a valid URL (e.g., example.com/logo.png or https://example.com/logo.png)';
+                         } else {
+                             delete this.errors.integrationLogo;
+                         }
+                         break;
                 }
             },
 
-            isValidUrl(string) {
-                if (!string || typeof string !== 'string') return false;
-                try {
-                    new URL(string);
-                    return true;
-                } catch (_) {
-                    return false;
-                }
-            },
+                         isValidUrl(string) {
+                 if (!string || typeof string !== 'string') return false;
+                 
+                 // Trim whitespace
+                 string = string.trim();
+                 if (!string) return false;
+                 
+                 // Basic URL pattern check (more permissive for image URLs)
+                 const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                 if (!urlPattern.test(string)) {
+                     return false;
+                 }
+                 
+                 // Check if it's a valid URL (with or without protocol)
+                 try {
+                     // Try as absolute URL first
+                     new URL(string);
+                     return true;
+                 } catch (_) {
+                     // If that fails, try adding https:// and see if it becomes valid
+                     try {
+                         new URL('https://' + string);
+                         return true;
+                     } catch (_) {
+                         // If both fail, it's not a valid URL
+                         return false;
+                     }
+                 }
+             },
+
+                         
 
             // No complex init/state machine needed — simplicity for demo
 
@@ -485,12 +493,14 @@
         box-shadow: 2px 2px 0 var(--acme-dark);
     }
 
-    .error-message {
-        color: var(--acme-error);
-        font-weight: 700;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-    }
+         .error-message {
+         color: var(--acme-error);
+         font-weight: 700;
+         font-size: 0.9rem;
+         margin-top: 0.5rem;
+     }
+
+
 
     /* Configuration Preview */
     .config-preview {
@@ -538,97 +548,7 @@
         font-weight: 700 !important;
     }
 
-    /* Logo Preview */
-    .logo-preview {
-        background: var(--acme-gray);
-        border: 3px solid var(--acme-dark);
-        padding: 1.5rem;
-        margin: 2rem 0;
-        box-shadow: 4px 4px 0 var(--acme-dark);
-    }
-
-    .preview-subtitle {
-        font-size: 1.1rem;
-        color: var(--acme-dark);
-        margin-bottom: 1rem;
-        border-bottom: 2px solid var(--acme-primary);
-        padding-bottom: 0.5rem;
-    }
-
-    .logo-preview-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 120px;
-        position: relative;
-    }
-
-    .logo-preview-image {
-        max-width: 200px;
-        max-height: 100px;
-        object-fit: contain;
-        border: 2px solid var(--acme-dark);
-        border-radius: 8px;
-        background: white;
-        padding: 0.5rem;
-        box-shadow: 3px 3px 0 var(--acme-dark);
-    }
-
-    .logo-loading, .logo-error {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--acme-dark);
-        font-weight: 600;
-    }
-
-    .retry-button {
-        background: var(--acme-primary);
-        border: 2px solid var(--acme-dark);
-        color: var(--acme-dark);
-        padding: 0.5rem 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 3px 3px 0 var(--acme-dark);
-        transition: all 0.2s ease;
-        margin-top: 0.5rem;
-    }
-
-    .retry-button:hover {
-        transform: translate(-1px, -1px);
-        box-shadow: 4px 4px 0 var(--acme-dark);
-    }
-
-    .retry-button:active {
-        transform: translate(0, 0);
-        box-shadow: 2px 2px 0 var(--acme-dark);
-    }
-
-    .retry-icon {
-        margin-right: 0.5rem;
-    }
-
-    .logo-success {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .loading-spinner {
-        font-size: 1.5rem;
-        animation: spin 1s linear infinite;
-    }
-
-    .error-icon {
-        font-size: 1.5rem;
-        color: var(--acme-error);
-    }
-
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
+    
 
     /* Form Actions */
     .form-actions {
