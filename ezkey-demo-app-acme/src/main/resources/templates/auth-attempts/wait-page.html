@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wait for Authentication - ACME Inc</title>
+    <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
+    <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+    <div class="container" x-data="waitController()">
+        <!-- Header -->
+        <header class="page-header">
+            <h1>⏱️ Wait for Authentication</h1>
+            <p class="subtitle">Monitor authentication attempt completion</p>
+        </header>
+
+        <!-- Auth Attempt Info -->
+        <div class="info-card">
+            <h3>Authentication Attempt Details</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>ID:</strong> <span th:text="${authAttempt.authAttemptId}">123</span>
+                </div>
+                <div class="info-item">
+                    <strong>Integration:</strong> <span th:text="${integrationName}">ACME Admin</span>
+                </div>
+                <div class="info-item">
+                    <strong>Enrollment:</strong> <span th:text="${enrollmentName}">John's iPhone</span>
+                </div>
+                <div class="info-item">
+                    <strong>Current Status:</strong> 
+                    <span class="status-badge" 
+                          th:class="'status-badge status-' + ${#strings.toLowerCase(status)}"
+                          th:text="${status}">PENDING</span>
+                </div>
+                <div class="info-item">
+                    <strong>Created:</strong> <span th:text="${#temporals.format(authAttempt.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2025-01-01 12:00:00</span>
+                </div>
+                <div class="info-item" th:if="${authAttempt.authAttemptChallenge != null}">
+                    <strong>Challenge:</strong> 
+                    <span th:text="${authAttempt.authAttemptChallenge}" 
+                          style="font-family: 'Courier New', monospace; font-weight: 700;">123456</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wait Configuration -->
+        <div class="config-card">
+            <h3>Wait Configuration</h3>
+            <form id="waitForm" @submit.prevent="startWait()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="timeout">Timeout (seconds):</label>
+                        <input type="number" 
+                               id="timeout" 
+                               name="timeout" 
+                               x-model="timeout"
+                               min="1" 
+                               max="300" 
+                               value="30"
+                               required>
+                        <small>Maximum 300 seconds (5 minutes)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="polling">Polling Interval (seconds):</label>
+                        <input type="number" 
+                               id="polling" 
+                               name="polling" 
+                               x-model="polling"
+                               min="1" 
+                               max="60" 
+                               value="2"
+                               required>
+                        <small>Maximum 60 seconds</small>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" 
+                            class="mega-button primary"
+                            :disabled="isWaiting">
+                        <span x-show="!isWaiting">🚀 Start Wait</span>
+                        <span x-show="isWaiting">⏳ Waiting...</span>
+                    </button>
+                    <a th:href="@{'/auth-attempts/' + ${authAttempt.authAttemptId}}" 
+                       class="mega-button secondary">
+                        ← Back to Details
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Wait Results -->
+        <div class="results-card" x-show="hasResults">
+            <h3>Wait Results</h3>
+            <div class="results-grid">
+                <div class="result-item">
+                    <strong>Final Status:</strong>
+                    <span class="status-badge" 
+                          :class="'status-badge status-' + result.status.toLowerCase()"
+                          x-text="result.status">PENDING</span>
+                </div>
+                <div class="result-item">
+                    <strong>Completed:</strong>
+                    <span x-text="result.completed ? 'Yes' : 'No'">No</span>
+                </div>
+                <div class="result-item">
+                    <strong>Timeout Reached:</strong>
+                    <span x-text="result.timeoutReached ? 'Yes' : 'No'">No</span>
+                </div>
+                <div class="result-item">
+                    <strong>Wait Duration:</strong>
+                    <span x-text="result.waitDuration + ' seconds'">0 seconds</span>
+                </div>
+                <div class="result-item" x-show="result.completedAt">
+                    <strong>Completed At:</strong>
+                    <span x-text="formatDateTime(result.completedAt)">2025-01-01 12:00:00</span>
+                </div>
+            </div>
+            
+            <div class="result-message" x-show="result.message">
+                <strong>Message:</strong>
+                <p x-text="result.message">No message</p>
+            </div>
+            
+            <div class="form-actions">
+                <button @click="resetForm()" class="mega-button secondary">
+                    🔄 New Wait
+                </button>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div class="error-card" x-show="error" x-transition>
+            <h3>❌ Error</h3>
+            <p x-text="error"></p>
+            <button @click="error = null" class="mega-button secondary">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function waitController() {
+            return {
+                timeout: 30,
+                polling: 2,
+                isWaiting: false,
+                hasResults: false,
+                error: null,
+                result: {},
+
+                async startWait() {
+                    this.isWaiting = true;
+                    this.hasResults = false;
+                    this.error = null;
+
+                    try {
+                        const response = await fetch(`/auth-attempts/${this.authAttemptId}/wait`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                timeout: this.timeout,
+                                polling: this.polling
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        this.result = await response.json();
+                        this.hasResults = true;
+                    } catch (err) {
+                        this.error = err.message || 'An error occurred during the wait operation';
+                    } finally {
+                        this.isWaiting = false;
+                    }
+                },
+
+                resetForm() {
+                    this.hasResults = false;
+                    this.error = null;
+                    this.result = {};
+                },
+
+                formatDateTime(dateTimeString) {
+                    if (!dateTimeString) return '';
+                    const date = new Date(dateTimeString);
+                    return date.toLocaleString();
+                },
+
+                // Get auth attempt ID from URL
+                get authAttemptId() {
+                    const pathParts = window.location.pathname.split('/');
+                    return pathParts[pathParts.length - 2]; // /auth-attempts/{id}/wait
+                }
+            }
+        }
+    </script>
+</body>
+</html>

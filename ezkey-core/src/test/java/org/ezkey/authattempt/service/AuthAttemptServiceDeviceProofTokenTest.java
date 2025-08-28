@@ -14,10 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
@@ -136,7 +138,7 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(signatureService.validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey))
                 .thenReturn(true);
         when(authAttemptRepository.existsByDeviceProofToken(deviceProofToken)).thenReturn(false); // Token is unique
-        when(authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(enrollmentId))
+        when(authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(eq(enrollmentId), any()))
                 .thenReturn(Optional.of(mockAuthAttempt));
         when(signatureService.generateSignature(anyString(), anyString())).thenReturn("integration-signature");
 

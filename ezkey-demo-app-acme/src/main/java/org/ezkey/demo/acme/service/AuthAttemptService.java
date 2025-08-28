@@ -11,7 +11,9 @@
 package org.ezkey.demo.acme.service;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -207,5 +209,65 @@ public class AuthAttemptService {
                         authAttemptId))
                 .doOnError(error -> logger.error("Failed to delete authentication attempt with ID {}: {}", 
                         authAttemptId, error.getMessage()));
+    }
+
+    /**
+     * Retrieves a specific authentication attempt by ID synchronously.
+     * <p>
+     * Convenience method that converts the reactive Mono to a blocking result.
+     * Use this method when you need a synchronous result.
+     * </p>
+     *
+     * @param authAttemptId the authentication attempt ID
+     * @return the authentication attempt DTO or null if not found
+     * @throws WebClientResponseException if the API call fails
+     */
+    public AuthAttemptDto getAuthAttemptSync(Integer authAttemptId) {
+        return getAuthAttemptById(authAttemptId)
+                .block(Duration.ofSeconds(10));
+    }
+
+    /**
+     * Executes a wait operation for an authentication attempt.
+     * <p>
+     * Delegates to the Ezkey Admin API to wait for authentication completion
+     * with the specified timeout and polling parameters.
+     * </p>
+     *
+     * @param authAttemptId the authentication attempt ID
+     * @param timeout the maximum wait duration in seconds
+     * @param polling the polling interval in seconds
+     * @return Map containing the wait results
+     * @throws WebClientResponseException if the API call fails
+     */
+    public Map<String, Object> waitForAuthAttempt(Integer authAttemptId, Integer timeout, Integer polling) {
+        logger.debug("Executing wait operation for auth attempt {} with timeout={}s, polling={}s", 
+                authAttemptId, timeout, polling);
+
+        try {
+            String uri = String.format("/api/v1/auth-attempts/%d/wait?timeout=%d&polling=%d", 
+                    authAttemptId, timeout, polling);
+            
+            Map<String, Object> result = ezkeyAdminApiClient
+                    .get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block(Duration.ofSeconds(timeout + 10)); // Add buffer for network overhead
+            
+            if (result == null) {
+                result = new HashMap<>();
+                result.put("error", "No response received from wait operation");
+            }
+            
+            logger.info("Wait operation completed for auth attempt {}: {}", authAttemptId, result);
+            return result;
+            
+        } catch (Exception e) {
+            logger.error("Wait operation failed for auth attempt {}: {}", authAttemptId, e.getMessage());
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("error", "Wait operation failed: " + e.getMessage());
+            return errorResult;
+        }
     }
 }
