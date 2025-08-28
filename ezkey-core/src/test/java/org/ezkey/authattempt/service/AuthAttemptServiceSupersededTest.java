@@ -37,6 +37,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import jakarta.persistence.EntityManager;
+
 /**
  * Test class for authentication attempt superseded logic.
  * <p>
@@ -59,6 +61,9 @@ class AuthAttemptServiceSupersededTest {
     @Mock
     private SignatureService signatureService;
 
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private AuthAttemptService authAttemptService;
 
@@ -68,6 +73,15 @@ class AuthAttemptServiceSupersededTest {
 
     @BeforeEach
     void setUp() {
+        // Configure EntityManager using reflection
+        try {
+            java.lang.reflect.Field entityManagerField = AuthAttemptService.class.getDeclaredField("entityManager");
+            entityManagerField.setAccessible(true);
+            entityManagerField.set(authAttemptService, entityManager);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set EntityManager", e);
+        }
+
         // Create test enrollment
         enrollment = new Enrollment();
         enrollment.setEnrollmentId(1);
@@ -106,7 +120,6 @@ class AuthAttemptServiceSupersededTest {
         when(authAttemptRepository.findById(1)).thenReturn(Optional.of(olderAttempt));
         when(authAttemptRepository.findNewerAttemptByEnrollmentId(1, olderAttempt.getCreatedAt()))
             .thenReturn(Optional.of(newerAttempt));
-        when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
         AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
         request.setAuthAttemptId(1);

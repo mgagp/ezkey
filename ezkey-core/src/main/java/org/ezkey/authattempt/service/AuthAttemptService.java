@@ -409,7 +409,7 @@ public class AuthAttemptService {
         if (newerAttempt.isPresent()) {
             logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation", 
                 authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
-            return buildWaitResponse(authAttempt, false, 0);
+            return buildWaitResponse(authAttempt, "EXPIRED", false, 0);
         }
 
         long startTime = System.currentTimeMillis();
@@ -424,6 +424,7 @@ public class AuthAttemptService {
 
                     return buildWaitResponse(authAttempt,false,waitDuration);
                 }
+                
                 // Sleep before next check
                 Thread.sleep(request.getPolling() * 1000L);
                 pollCount++;
@@ -431,6 +432,25 @@ public class AuthAttemptService {
                 // Refresh auth attempt data
                 entityManager.refresh(authAttempt);
                 authAttempt = getById(authAttemptId);
+                
+                // Check if superseded by a newer authentication attempt for the same enrollment (in loop)
+                Optional<AuthAttempt> newerAttemptInLoop = authAttemptRepository.findNewerAttemptByEnrollmentId(
+                    authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
+                if (newerAttemptInLoop.isPresent()) {
+                    logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during polling", 
+                        authAttempt.getAuthAttemptId(), newerAttemptInLoop.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
+                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                    return buildWaitResponse(authAttempt, "EXPIRED", false, waitDuration);
+                }
+                
+                // Check if expired (in loop)
+                LocalDateTime now = LocalDateTime.now();
+                if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+                    logger.info("Auth attempt {} expired during polling at {}", authAttempt.getAuthAttemptId(), authAttempt.getExpiresAt());
+                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                    return buildWaitResponse(authAttempt, "EXPIRED", false, waitDuration);
+                }
+                
                 if (pollCount % 10 == 0){ // Log every 10th poll to avoid spam
                     logger.debug("Auth attempt {} still pending after {} polls",authAttemptId,pollCount);
                 }
@@ -489,6 +509,25 @@ public class AuthAttemptService {
     }
 
     /**
+     * Builds the wait response with a specific status for special cases.
+     * <p>
+     * Creates a complete AuthAttemptWaitResponse with a specific status for cases
+     * where the normal status calculation doesn't apply (e.g., superseded attempts).
+     * </p>
+     *
+     * @param authAttempt the authentication attempt data
+     * @param status the specific status to use
+     * @param timeoutReached whether the wait operation timed out
+     * @param waitDuration the actual duration waited in seconds
+     * @return the complete AuthAttemptWaitResponse
+     */
+    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt, String status, boolean timeoutReached, int waitDuration) {
+        boolean completed = Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded());
+
+        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, LocalDateTime.now());
+    }
+
+    /**
      * Calculates the authentication status based on the rules defined in ENDPOINT.md.
      * <p>
      * This method implements the status calculation logic as specified in the project
@@ -497,9 +536,15 @@ public class AuthAttemptService {
      * </p>
      *
      * @param authAttempt the authentication attempt entity
-     * @return the calculated status string (PENDING, READ, INVALID, REJECTED, ACCEPTED)
+     * @return the calculated status string (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
      */
     private String calculateStatus(AuthAttempt authAttempt) {
+        // Check if expired first (highest priority)
+        LocalDateTime now = LocalDateTime.now();
+        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+            return "EXPIRED";
+        }
+        
         // #1: authAttemptRead null or false : PENDING
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             return "PENDING";
