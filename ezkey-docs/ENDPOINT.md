@@ -221,6 +221,9 @@ GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
 3. `authAttemptValid` null or false: **INVALID**
 4. `authAttemptAccepted` null or false: **REJECTED** else **ACCEPTED**
 
+**⚠️ Supersession Rule:**
+When a newer authentication attempt is created for the same enrollment, older attempts are considered **EXPIRED** even if they haven't reached their timeout. This ensures that only the most recent authentication request for a person is valid.
+
 **GET Example**
 ```
    {
@@ -373,7 +376,57 @@ DELETE /api/v1/enrollments/456
 
 ---
 
-## 5. Development rules
+## 5. Authentication Attempt Supersession
+
+### **Business Rule: One Active Attempt Per Person**
+
+Ezkey implements a **supersession rule** to ensure that only the most recent authentication attempt for a person is valid. This prevents confusion and ensures a clear authentication flow.
+
+#### **🔄 How It Works**
+
+1. **New Attempt Creation**: When a new authentication attempt is created for an enrollment
+2. **Older Attempts Expired**: All previous attempts for the same enrollment are considered **EXPIRED**
+3. **Conceptual Expiration**: This happens regardless of the actual timeout of older attempts
+
+#### **📋 Implementation Details**
+
+**APIs Affected:**
+- **RESPOND**: Returns `EXPIRED` status if a newer attempt exists
+- **WAIT**: Returns `EXPIRED` status if a newer attempt exists
+
+**Database Impact:**
+- No data modification (older attempts remain in database)
+- Index on `(enrollment_id, created_at DESC)` for performance
+- Query checks for newer attempts by `created_at` timestamp
+
+#### **🎯 Use Cases**
+
+1. **User Double-Click**: User accidentally creates multiple requests
+2. **Network Issues**: User retries authentication after timeout
+3. **Mobile App Refresh**: App creates new request after state loss
+4. **Security**: Ensures only the latest request is processed
+
+#### **📊 Example Scenario**
+
+```
+10:00:00 - User creates AuthAttempt A
+10:00:30 - User creates AuthAttempt B (A becomes expired)
+10:01:00 - Device tries to respond to A → EXPIRED
+10:01:30 - Device responds to B → ACCEPTED
+```
+
+#### **🔧 Technical Implementation**
+
+```sql
+-- Check for newer attempts
+SELECT * FROM ezkey_auth_attempt 
+WHERE enrollment_id = ? AND created_at > ? 
+ORDER BY created_at DESC
+```
+
+---
+
+## 6. Development rules
 
 ### Testing and validation
 - **DO NOT perform tests with curl or other validation tools** during development

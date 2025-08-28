@@ -250,6 +250,10 @@
                                class="mega-button small secondary">
                                 👁️ View
                             </a>
+                            <a th:href="@{'/auth-attempts/' + ${attempt.id} + '/wait'}" 
+                               class="mega-button small primary">
+                                ⏱️ Wait
+                            </a>
                             <form method="post" 
                                   style="display: inline;"
                                   th:if="${enrollmentId != null}"

@@ -493,6 +493,126 @@ public class AuthAttemptController {
     }
 
     /**
+     * Display the wait page for an authentication attempt.
+     * 
+     * @param id authentication attempt ID
+     * @param model Spring model
+     * @return template name
+     */
+    @GetMapping("/{id}/wait")
+    public String showWaitPage(
+            @PathVariable(value = "id") Integer id,
+            Model model) {
+        
+        try {
+            // Get the authentication attempt
+            AuthAttemptDto authAttempt = authAttemptService.getAuthAttemptSync(id);
+            if (authAttempt == null) {
+                return "redirect:/auth-attempts?error=Authentication attempt not found";
+            }
+            
+            // Get enrollment details
+            EnrollmentResponseDto enrollment = null;
+            if (authAttempt.getEnrollmentId() != null) {
+                enrollment = enrollmentService.getEnrollmentById(authAttempt.getEnrollmentId()).block();
+            }
+            
+            // Get integration details
+            String integrationName = "Unknown";
+            if (enrollment != null && enrollment.getIntegrationId() != null) {
+                IntegrationResponseDto integration = integrationService.getIntegrationByIdSync(enrollment.getIntegrationId());
+                if (integration != null && integration.getI18n() != null && !integration.getI18n().isEmpty()) {
+                    integrationName = integration.getI18n().get(0).getName();
+                }
+            }
+            
+            String enrollmentName = enrollment != null ? enrollment.getEnrollmentName() : "Unknown";
+            
+            // Calculate status based on DTO properties according to ENDPOINT.md rules
+            String status;
+            
+            // #1: authAttemptRead null or false : PENDING
+            if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
+                status = "PENDING";
+            }
+            // #2: authAttemptRead true and authAttemptResponded null or false : READ
+            else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())) {
+                status = "READ";
+            }
+            // #3: authAttemptValid null or false : INVALID
+            else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptValid())) {
+                status = "INVALID";
+            }
+            // #4: authAttemptAccepted null or false : REJECTED else ACCEPTED
+            else if (Boolean.TRUE.equals(authAttempt.getAuthAttemptAccepted())) {
+                status = "ACCEPTED";
+            } else {
+                status = "REJECTED";
+            }
+            
+            model.addAttribute("authAttempt", authAttempt);
+            model.addAttribute("enrollmentName", enrollmentName);
+            model.addAttribute("integrationName", integrationName);
+            model.addAttribute("status", status);
+            model.addAttribute("pageTitle", "Wait for Authentication");
+            
+            return "auth-attempts/wait-page";
+            
+        } catch (Exception e) {
+            logger.error("Error loading wait page for auth attempt {}: {}", id, e.getMessage());
+            return "redirect:/auth-attempts?error=Failed to load wait page: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Execute wait operation for an authentication attempt.
+     * 
+     * @param id authentication attempt ID
+     * @param request the wait request with timeout and polling parameters
+     * @return JSON response with wait results
+     */
+    @PostMapping("/{id}/wait")
+    @ResponseBody
+    public Map<String, Object> executeWait(
+            @PathVariable(value = "id") Integer id,
+            @RequestBody Map<String, Object> request) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Extract parameters
+            Integer timeout = (Integer) request.get("timeout");
+            Integer polling = (Integer) request.get("polling");
+            
+            // Validate parameters
+            if (timeout == null || timeout <= 0 || timeout > 300) {
+                response.put("error", "Timeout must be between 1 and 300 seconds");
+                return response;
+            }
+            
+            if (polling == null || polling <= 0 || polling > 60) {
+                response.put("error", "Polling must be between 1 and 60 seconds");
+                return response;
+            }
+            
+            if (polling > timeout) {
+                response.put("error", "Polling interval cannot be greater than timeout");
+                return response;
+            }
+            
+            // Execute wait operation
+            Map<String, Object> waitResult = authAttemptService.waitForAuthAttempt(id, timeout, polling);
+            response.putAll(waitResult);
+            
+        } catch (Exception e) {
+            logger.error("Error executing wait for auth attempt {}: {}", id, e.getMessage());
+            response.put("error", "Wait operation failed: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
      * Helper method to reload form data for error display.
      * 
      * @param model Spring model

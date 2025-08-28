@@ -274,6 +274,17 @@ public class AuthAttemptService {
             return response;
         }
         
+        // Check if superseded by a newer authentication attempt for the same enrollment
+        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(
+            authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
+        if (newerAttempt.isPresent()) {
+            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}", 
+                authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
+            response.setResult(AuthenticationResult.EXPIRED);
+            response.setMessage("Authentication attempt superseded by newer request");
+            return response;
+        }
+        
         // Check if expired
         LocalDateTime now = LocalDateTime.now();
         if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
@@ -391,6 +402,15 @@ public class AuthAttemptService {
         AuthAttempt authAttempt = getById(authAttemptId);
         logger.debug("Found auth attempt {} with status: read={}, responded={}, accepted={}",authAttemptId,authAttempt.getAuthAttemptRead(),
                 authAttempt.getAuthAttemptResponded(),authAttempt.getAuthAttemptAccepted());
+
+        // Check if superseded by a newer authentication attempt for the same enrollment
+        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(
+            authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
+        if (newerAttempt.isPresent()) {
+            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation", 
+                authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
+            return buildWaitResponse(authAttempt, false, 0);
+        }
 
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (request.getTimeout() * 1000L);

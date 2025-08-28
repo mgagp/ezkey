@@ -44,3 +44,6 @@ CREATE TABLE ezkey_auth_attempt (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '120 seconds')
 );
+
+-- Index to optimize queries for finding newer authentication attempts by enrollment
+CREATE INDEX idx_auth_attempt_enrollment_created ON ezkey_auth_attempt(enrollment_id, created_at DESC);

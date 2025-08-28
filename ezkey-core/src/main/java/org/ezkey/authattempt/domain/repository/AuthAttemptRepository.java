@@ -180,4 +180,20 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      */
     @Query("SELECT COUNT(a) > 0 FROM AuthAttempt a WHERE a.deviceProofToken = :deviceProofToken")
     boolean existsByDeviceProofToken(@Param("deviceProofToken") String deviceProofToken);
+
+    /**
+     * Finds a newer authentication attempt for the same enrollment.
+     * <p>
+     * This method checks if there exists a more recent authentication attempt
+     * for the same enrollment, which would make the current attempt conceptually
+     * expired. This implements the business rule that only the most recent
+     * authentication attempt for a person should be valid.
+     * </p>
+     *
+     * @param enrollmentId the enrollment ID to check
+     * @param createdAt the creation time of the current attempt
+     * @return the newer authentication attempt if it exists, empty otherwise
+     */
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt > :createdAt ORDER BY a.createdAt DESC")
+    Optional<AuthAttempt> findNewerAttemptByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("createdAt") java.time.LocalDateTime createdAt);
 }
