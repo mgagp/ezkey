@@ -126,6 +126,7 @@ public class AuthAttemptService {
         }
         authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
         authAttempt.setCreatedAt(LocalDateTime.now());
+        authAttempt.setExpiresAt(LocalDateTime.now().plusSeconds(120)); // TTL: 120 seconds
 
         // Save the authorization attempt
         AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
@@ -227,7 +228,9 @@ public class AuthAttemptService {
             logger.warn("Device proof token already used for enrollment: {}",request.getEnrollmentId());
             throw new IllegalArgumentException("Authentication request failed");
         }
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentUnreadByEnrollmentId(request.getEnrollmentId()).orElse(null);
+        // Find valid (non-expired) unread auth attempt
+        LocalDateTime now = LocalDateTime.now();
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(request.getEnrollmentId(), now).orElse(null);
         if (authAttempt == null){
             throw new NoPendingAuthAttemptException("No pending authentication request");
         }
@@ -268,6 +271,14 @@ public class AuthAttemptService {
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Auth attempt not read by device");
+            return response;
+        }
+        
+        // Check if expired
+        LocalDateTime now = LocalDateTime.now();
+        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+            response.setResult(AuthenticationResult.EXPIRED);
+            response.setMessage("Authentication attempt expired");
             return response;
         }
         // Find the enrollment

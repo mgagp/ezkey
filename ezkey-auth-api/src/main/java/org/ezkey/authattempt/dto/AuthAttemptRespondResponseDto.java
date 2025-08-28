@@ -34,7 +34,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <p>
  * <b>Fields:</b>
  * <ul>
- * <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED)</li>
+ * <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED, EXPIRED)</li>
  * <li><b>message:</b> Additional information or error details</li>
  * </ul>
  * </p>
@@ -65,7 +65,7 @@ public class AuthAttemptRespondResponseDto {
      */
     @Schema(description = "The authentication result", 
             example = "APPROVED", 
-            allowableValues = {"APPROVED", "DENIED", "FAILED"},
+            allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
             required = true)
     private String result;
 

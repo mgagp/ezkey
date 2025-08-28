@@ -58,6 +58,7 @@ import java.time.LocalDateTime;
  * <b>Metadata:</b>
  * <ul>
  * <li><b>createdAt:</b> Timestamp when the attempt was created</li>
+ * <li><b>expiresAt:</b> Timestamp when the attempt expires</li>
  * </ul>
  * </p>
  *
@@ -141,6 +142,12 @@ public class AuthAttemptDto {
      * Used for auditing and tracking purposes.
      */
     private LocalDateTime createdAt;
+
+    /**
+     * Timestamp when the authentication attempt expires.
+     * Used to determine if the authentication attempt is still valid.
+     */
+    private LocalDateTime expiresAt;
 
     /**
      * Gets the authentication attempt ID.
@@ -320,6 +327,24 @@ public class AuthAttemptDto {
      */
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    /**
+     * Gets the expiration timestamp.
+     *
+     * @return the timestamp when the authentication attempt expires
+     */
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    /**
+     * Sets the expiration timestamp.
+     *
+     * @param expiresAt the timestamp when the authentication attempt expires
+     */
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
 }

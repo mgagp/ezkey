@@ -39,7 +39,8 @@ CREATE TABLE ezkey_auth_attempt (
     auth_attempt_valid BOOLEAN NOT NULL DEFAULT FALSE,
     auth_attempt_accepted BOOLEAN NOT NULL DEFAULT FALSE,
     auth_attempt_challenge INT,
-    auth_attempt_proof_token TEXT NULL,
+    auth_attempt_proof_token TEXT NOT NULL,
     device_proof_token TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '120 seconds')
 );

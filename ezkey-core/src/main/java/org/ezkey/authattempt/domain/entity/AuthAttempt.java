@@ -82,6 +82,9 @@ public class AuthAttempt {
     @Column(name = "created_at",nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "expires_at",nullable = false)
+    private LocalDateTime expiresAt;
+
     /**
      * Default constructor for JPA.
      */
@@ -281,6 +284,24 @@ public class AuthAttempt {
      */
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    /**
+     * Gets the timestamp when the authorization attempt expires.
+     *
+     * @return the expiration timestamp
+     */
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    /**
+     * Sets the timestamp when the authorization attempt expires.
+     *
+     * @param expiresAt the expiration timestamp to set
+     */
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
 }

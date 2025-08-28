@@ -52,6 +52,7 @@
     .result-error { color: #dc3545; }
     .result-denied { color: #dc3545; }  /* Rouge pour denied */
     .result-failed { color: #fd7e14; }  /* Orange pour failed */
+    .result-expired { color: #6c757d; } /* Grey for expired */
     .result-title { 
       font-size: 1.2rem; 
       font-weight: 600; 
@@ -116,11 +117,15 @@
         <!-- Failed State (Technical Error) -->
         <div th:if="${failed}" class="result-icon result-failed">⚠️</div>
         
+        <!-- Expired State (Authentication Expired) -->
+        <div th:if="${expired}" class="result-icon result-expired">⏰</div>
+        
         <!-- Dynamic Title -->
         <div class="result-title" 
              th:text="${success ? 'Authentication Successful' : 
                         denied ? 'Authentication Denied' : 
                         failed ? 'Authentication Failed' : 
+                        expired ? 'Authentication Expired' :
                         'Authentication Result'}">
           Result
         </div>
@@ -130,6 +135,7 @@
              th:text="${message ?: 
                         denied ? 'Authentication was denied by user' : 
                         failed ? 'Authentication failed due to technical error' : 
+                        expired ? 'Authentication attempt expired. Please create a new request.' :
                         'Authentication response submitted'}">
           Result message
         </div>

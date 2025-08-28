@@ -218,7 +218,14 @@ public class EzkeyAppController {
             }
         } catch (Exception e){
             logger.error("Authentication check failed for enrollment {}",enrollmentId,e);
-            model.addAttribute("error","Authentication check failed: " + e.getMessage());
+            
+            // Check if it's an expired authentication attempt
+            if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
+                model.addAttribute("message","Demande d'authentification expirée. Veuillez en créer une nouvelle.");
+            } else {
+                model.addAttribute("error","Authentication check failed: " + e.getMessage());
+            }
+            model.addAttribute("hasPendingAuth",false);
             return "phone/ezkey/auth";
         }
     }
@@ -292,6 +299,13 @@ public class EzkeyAppController {
                     model.addAttribute("success",false);
                     model.addAttribute("denied",false);
                     model.addAttribute("failed",true);
+                    model.addAttribute("message",respondResponse.getMessage());
+                } else if ("EXPIRED".equals(result)){
+                    // Authentication attempt expired
+                    model.addAttribute("success",false);
+                    model.addAttribute("denied",false);
+                    model.addAttribute("failed",false);
+                    model.addAttribute("expired",true);
                     model.addAttribute("message",respondResponse.getMessage());
                 } else{
                     // Unknown result - treat as failed
