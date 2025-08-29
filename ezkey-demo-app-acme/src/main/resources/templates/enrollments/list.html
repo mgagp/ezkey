@@ -39,6 +39,7 @@
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
+                    <th>Read</th>
                     <th>Verified</th>
                     <th>Valid</th>
                     <th>Active</th>
@@ -50,6 +51,10 @@
                 <tr th:each="enrollment : ${enrollments}" class="table-row">
                     <td><span class="integration-id" th:text="${enrollment.enrollmentId}">1</span></td>
                     <td><span class="integration-name" th:text="${enrollment.enrollmentName}">Device Name</span></td>
+                    <td>
+                        <span class="status-badge" th:classappend="${enrollment.enrollmentRead} ? ' status-active' : ' status-inactive'"
+                              th:text="${enrollment.enrollmentRead} ? 'YES' : 'NO'">YES</span>
+                    </td>
                     <td>
                         <span class="status-badge" th:classappend="${enrollment.enrollmentVerified} ? ' status-active' : ' status-inactive'"
                               th:text="${enrollment.enrollmentVerified} ? 'YES' : 'NO'">YES</span>
@@ -88,6 +93,53 @@
                 <div class="status-content">
                     <span class="status-label">Total Enrollments</span>
                     <span class="status-value" th:text="${enrollmentsCount}">0</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status Legend -->
+    <section class="status-section neo-brutal-main">
+        <h2 class="section-title">Status Legend</h2>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Read Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Read Status</span>
+                    <span class="status-value">
+                        <span class="status-badge status-active">YES</span> - Enrollment has been read by the device<br>
+                        <span class="status-badge status-inactive">NO</span> - Enrollment has not been read yet
+                    </span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Verification Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Verification Status</span>
+                    <span class="status-value">
+                        <span class="status-badge status-active">YES</span> - Enrollment has been verified<br>
+                        <span class="status-badge status-inactive">NO</span> - Enrollment is not verified
+                    </span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Validity Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Validity Status</span>
+                    <span class="status-value">
+                        <span class="status-badge status-active">YES</span> - Enrollment is valid<br>
+                        <span class="status-badge status-inactive">NO</span> - Enrollment is invalid
+                    </span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Active Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Active Status</span>
+                    <span class="status-value">
+                        <span class="status-badge status-active">YES</span> - Enrollment is active<br>
+                        <span class="status-badge status-inactive">NO</span> - Enrollment is inactive
+                    </span>
                 </div>
             </div>
         </div>
@@ -215,11 +267,23 @@
     .table-action-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--acme-dark); }
     .table-delete-btn { background: var(--acme-error); color: var(--acme-light); border-color: var(--acme-dark); }
 
+    /* Status section styles */
+    .status-section { margin: 2rem 0; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+    .status-card { background: var(--acme-light); border: 4px solid var(--acme-dark); padding: 1.5rem; box-shadow: 6px 6px 0 var(--acme-secondary); }
+    .status-indicator { width: 20px; height: 20px; border-radius: 50%; background: var(--acme-success); border: 3px solid var(--acme-dark); margin-bottom: 1rem; }
+    .status-content { display: flex; flex-direction: column; gap: 0.5rem; }
+    .status-label { font-weight: 900; color: var(--acme-primary); text-transform: uppercase; letter-spacing: 0.1em; }
+    .status-value { font-weight: 700; color: var(--acme-dark); }
+    .status-value a { color: var(--acme-primary); text-decoration: none; font-weight: 900; }
+    .status-value a:hover { text-decoration: underline; }
+
     /* Responsive tweaks */
     @media (max-width: 768px) {
         .table-actions { flex-direction: column; }
         .brutal-table { font-size: 0.9rem; }
         .table-action-btn { width: 100%; justify-content: center; }
+        .status-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
         .brutal-table th, .brutal-table td { padding: 0.5rem; }

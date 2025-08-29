@@ -22,6 +22,17 @@
         .status-badge { padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; border: 3px solid var(--acme-dark); box-shadow: 3px 3px 0 var(--acme-primary); display: inline-block; }
         .status-active { background: linear-gradient(135deg, var(--acme-success) 0%, var(--acme-accent) 100%); color: var(--acme-dark); }
         .status-inactive { background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%); color: var(--acme-light); box-shadow: 3px 3px 0 var(--acme-secondary); }
+        
+        /* Status section styles */
+        .status-section { margin: 2rem 0; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .status-card { background: var(--acme-light); border: 4px solid var(--acme-dark); padding: 1.5rem; box-shadow: 6px 6px 0 var(--acme-secondary); }
+        .status-indicator { width: 20px; height: 20px; border-radius: 50%; background: var(--acme-success); border: 3px solid var(--acme-dark); margin-bottom: 1rem; }
+        .status-content { display: flex; flex-direction: column; gap: 0.5rem; }
+        .status-label { font-weight: 900; color: var(--acme-primary); text-transform: uppercase; letter-spacing: 0.1em; }
+        .status-value { font-weight: 700; color: var(--acme-dark); }
+        .status-value a { color: var(--acme-primary); text-decoration: none; font-weight: 900; }
+        .status-value a:hover { text-decoration: underline; }
         .action-buttons-row { display: flex; gap: 1rem; justify-content: center; margin: 3rem 0; flex-wrap: wrap; }
         .mega-button { background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-secondary) 100%); color: var(--acme-dark); border: 6px solid var(--acme-dark); padding: 1rem 2rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; font-size: 1rem; text-decoration: none; display: inline-block; box-shadow: 8px 8px 0 var(--acme-accent); }
         .mega-button.secondary { background: linear-gradient(135deg, var(--acme-gray) 0%, var(--acme-secondary) 100%); box-shadow: 8px 8px 0 var(--acme-primary); }
@@ -45,6 +56,10 @@
                 <tr><td class="detail-label">Enrollment ID</td><td th:text="${enrollment.enrollmentId}">1</td></tr>
                 <tr><td class="detail-label">Integration ID</td><td th:text="${enrollment.integrationId}">1</td></tr>
                 <tr><td class="detail-label">Name</td><td th:text="${enrollment.enrollmentName}">Device Name</td></tr>
+                <tr>
+                    <td class="detail-label">Read</td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentRead} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentRead} ? 'YES' : 'NO'">YES</span></td>
+                </tr>
                 <tr>
                     <td class="detail-label">Verified</td>
                     <td><span class="status-badge" th:classappend="${enrollment.enrollmentVerified} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentVerified} ? 'YES' : 'NO'">YES</span></td>
@@ -73,6 +88,35 @@
             <button type="submit" class="mega-button danger">🗑️ Delete Enrollment</button>
         </form>
     </div>
+
+    <!-- Enrollment Status Information -->
+    <section class="status-section neo-brutal-main">
+        <h2 class="section-title">Enrollment Status Information</h2>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Read Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Read Status</span>
+                    <span class="status-value">
+                        <span th:if="${enrollment.enrollmentRead}" class="status-badge status-active">READ</span>
+                        <span th:unless="${enrollment.enrollmentRead}" class="status-badge status-inactive">UNREAD</span>
+                        - Indicates if the enrollment has been read by the device
+                    </span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-indicator active" aria-label="Verification Status"></div>
+                <div class="status-content">
+                    <span class="status-label">Verification Status</span>
+                    <span class="status-value">
+                        <span th:if="${enrollment.enrollmentVerified}" class="status-badge status-active">VERIFIED</span>
+                        <span th:unless="${enrollment.enrollmentVerified}" class="status-badge status-inactive">UNVERIFIED</span>
+                        - Indicates if the enrollment has been verified
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Authorization Attempts Status Section -->
     <section class="status-section neo-brutal-main">

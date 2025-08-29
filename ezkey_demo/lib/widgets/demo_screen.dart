@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../services/crypto_service.dart';
+import '../models/enrollment.dart';
+import '../models/auth_attempt.dart';
 
 /// Main demo screen for the Ezkey application
 /// 
@@ -14,6 +18,10 @@ class DemoScreen extends StatefulWidget {
 }
 
 class _DemoScreenState extends State<DemoScreen> {
+  // Services
+  final ApiService _apiService = ApiService();
+  final CryptoService _cryptoService = CryptoService();
+  
   // Controllers for text fields
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _challengeController = TextEditingController();
@@ -27,9 +35,10 @@ class _DemoScreenState extends State<DemoScreen> {
   bool _showAuthButtons = false;
   bool _showChallengeInput = false;
   
-  // Mock data for demo
-  String? _currentEnrollmentId;
-  String? _currentAuthAttemptId;
+  // Current data
+  Enrollment? _currentEnrollment;
+  AuthAttempt? _currentAuthAttempt;
+  Map<String, String>? _deviceKeys;
 
   @override
   void dispose() {
@@ -124,7 +133,7 @@ class _DemoScreenState extends State<DemoScreen> {
               title: 'Authentication',
               children: [
                 ElevatedButton(
-                  onPressed: _currentEnrollmentId == null || _isCheckingAuth
+                  onPressed: _currentEnrollment == null || _isCheckingAuth
                       ? null
                       : _checkPendingAuth,
                   child: _isCheckingAuth
@@ -234,12 +243,27 @@ class _DemoScreenState extends State<DemoScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          '1. Enter an enrollment URL\n'
+                          '1. Enter an enrollment URL (e.g., http://localhost:8080/api/v1/enrollments/bind/3)\n'
                           '2. Click "Start Enrollment"\n'
                           '3. Check for pending authentication\n'
                           '4. Approve or deny requests\n'
                           '5. Enter challenge if required',
                           style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'API Status:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF00BCD4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Base URL: http://localhost:8080\n'
+                          'Enrollment: ${_currentEnrollment != null ? "✅ Active" : "❌ None"}\n'
+                          'Auth Attempt: ${_currentAuthAttempt != null ? "✅ Pending" : "❌ None"}',
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ],
                     ),
@@ -277,7 +301,7 @@ class _DemoScreenState extends State<DemoScreen> {
     );
   }
 
-  // Mock enrollment workflow
+  // Real enrollment workflow with API calls
   void _startEnrollment() async {
     final url = _urlController.text.trim();
     
@@ -288,27 +312,94 @@ class _DemoScreenState extends State<DemoScreen> {
       return;
     }
     
+    // Extract enrollment ID from URL
+    final enrollmentId = _extractEnrollmentId(url);
+    if (enrollmentId == null) {
+      setState(() {
+        _enrollmentStatus = 'Error: Invalid enrollment URL format. Expected: .../bind/{id}';
+      });
+      return;
+    }
+    
     setState(() {
       _isEnrolling = true;
       _enrollmentStatus = '';
     });
     
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 2));
-    
-    // Mock successful enrollment
-    setState(() {
-      _isEnrolling = false;
-      _currentEnrollmentId = '12345';
-      _enrollmentStatus = '✅ Enrollment successful!\n'
-          'Integration: Acme Corp Admin Portal\n'
-          'Enrollment ID: $_currentEnrollmentId\n'
-          'Status: Active';
-    });
+    try {
+      // Step 1: Call BIND API
+      setState(() {
+        _enrollmentStatus = '🔄 Calling BIND API...';
+      });
+      
+      final enrollment = await _apiService.bindEnrollment(enrollmentId);
+      
+      // Step 2: Generate device keys
+      setState(() {
+        _enrollmentStatus = '🔄 Generating device keys...';
+      });
+      
+      final deviceKeys = await _cryptoService.generateKeyPair();
+      
+      // Step 3: Generate challenge response
+      setState(() {
+        _enrollmentStatus = '🔄 Generating challenge response...';
+      });
+      
+      final challengeResponse = await _cryptoService.generateChallengeResponse();
+      
+      // Step 4: Sign enrollment code
+      setState(() {
+        _enrollmentStatus = '🔄 Signing enrollment data...';
+      });
+      
+      final signedEnrollmentCode = await _cryptoService.signData(
+        enrollment.enrollmentCode,
+        deviceKeys['privateKey']!,
+      );
+      
+      // Step 5: Call CONFIRM API
+      setState(() {
+        _enrollmentStatus = '🔄 Confirming enrollment...';
+      });
+      
+      final confirmResult = await _apiService.confirmEnrollment(
+        enrollmentId: enrollment.enrollmentId,
+        challengeResponse: challengeResponse,
+        devicePublicKey: deviceKeys['publicKey']!,
+        enrollmentCode: enrollment.enrollmentCode,
+        enrollmentCodeSigned: signedEnrollmentCode,
+      );
+      
+      // Success
+      setState(() {
+        _isEnrolling = false;
+        _currentEnrollment = enrollment;
+        _deviceKeys = deviceKeys;
+        _enrollmentStatus = '✅ Enrollment successful!\n'
+            'Enrollment ID: ${enrollment.enrollmentId}\n'
+            'Enrollment Code: ${enrollment.enrollmentCode}\n'
+            'Status: Active\n'
+            'Challenge Response: $challengeResponse';
+      });
+      
+    } catch (e) {
+      setState(() {
+        _isEnrolling = false;
+        _enrollmentStatus = '❌ Enrollment failed: $e';
+      });
+    }
   }
 
-  // Mock authentication check
+  // Real authentication check with API calls
   void _checkPendingAuth() async {
+    if (_currentEnrollment == null) {
+      setState(() {
+        _authStatus = 'Error: No active enrollment found';
+      });
+      return;
+    }
+    
     setState(() {
       _isCheckingAuth = true;
       _authStatus = '';
@@ -316,23 +407,43 @@ class _DemoScreenState extends State<DemoScreen> {
       _showChallengeInput = false;
     });
     
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // Mock pending authentication
-    setState(() {
-      _isCheckingAuth = false;
-      _currentAuthAttemptId = '67890';
-      _authStatus = '🔔 Pending authentication request!\n'
-          'Request ID: $_currentAuthAttemptId\n'
-          'Challenge Required: Yes';
-      _showAuthButtons = true;
-      _showChallengeInput = true;
-    });
+    try {
+      final authAttempt = await _apiService.checkPendingAuth(_currentEnrollment!.enrollmentId);
+      
+      if (authAttempt == null) {
+        setState(() {
+          _isCheckingAuth = false;
+          _currentAuthAttempt = null;
+          _authStatus = 'ℹ️ No pending authentication requests found.';
+        });
+      } else {
+        setState(() {
+          _isCheckingAuth = false;
+          _currentAuthAttempt = authAttempt;
+          _authStatus = '🔔 Pending authentication request!\n'
+              'Request ID: ${authAttempt.authAttemptId}\n'
+              'Challenge Required: ${authAttempt.authAttemptChallengeRequired ? "Yes" : "No"}';
+          _showAuthButtons = true;
+          _showChallengeInput = authAttempt.authAttemptChallengeRequired;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isCheckingAuth = false;
+        _authStatus = '❌ Failed to check auth: $e';
+      });
+    }
   }
 
-  // Mock authentication response
+  // Real authentication response with API calls
   void _respondToAuth(bool approved) async {
+    if (_currentEnrollment == null || _currentAuthAttempt == null) {
+      setState(() {
+        _authStatus = 'Error: No active enrollment or auth attempt';
+      });
+      return;
+    }
+    
     final challenge = _challengeController.text.trim();
     
     if (_showChallengeInput && challenge.isEmpty) {
@@ -346,17 +457,72 @@ class _DemoScreenState extends State<DemoScreen> {
       _isResponding = true;
     });
     
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    setState(() {
-      _isResponding = false;
-      _authStatus = approved 
-          ? '✅ Authentication approved successfully!'
-          : '❌ Authentication denied.';
-      _showAuthButtons = false;
-      _showChallengeInput = false;
-      _challengeController.clear();
-    });
+    try {
+      // Sign the auth attempt data
+      final signedEnrolleeCode = await _cryptoService.signData(
+        _currentEnrollment!.enrollmentCode,
+        _deviceKeys!['privateKey']!,
+      );
+      
+      final signedAuthCode = await _cryptoService.signData(
+        _currentAuthAttempt!.authAttemptCode,
+        _deviceKeys!['privateKey']!,
+      );
+      
+      // Parse challenge response if provided
+      int? challengeResponse;
+      if (_showChallengeInput && challenge.isNotEmpty) {
+        challengeResponse = int.tryParse(challenge);
+        if (challengeResponse == null) {
+          throw Exception('Invalid challenge response format');
+        }
+      }
+      
+      final result = await _apiService.respondToAuth(
+        authAttemptId: _currentAuthAttempt!.authAttemptId,
+        enrollmentId: _currentEnrollment!.enrollmentId,
+        authAttemptEnrolleeCode: _currentEnrollment!.enrollmentCode,
+        authAttemptEnrolleeCodeSigned: signedEnrolleeCode,
+        authAttemptCode: _currentAuthAttempt!.authAttemptCode,
+        authAttemptCodeSigned: signedAuthCode,
+        authAttemptChallengeResponse: challengeResponse,
+        authAttemptAccepted: approved,
+      );
+      
+      setState(() {
+        _isResponding = false;
+        _authStatus = approved 
+            ? '✅ Authentication approved successfully!'
+            : '❌ Authentication denied.';
+        _showAuthButtons = false;
+        _showChallengeInput = false;
+        _challengeController.clear();
+        _currentAuthAttempt = null;
+      });
+    } catch (e) {
+      setState(() {
+        _isResponding = false;
+        _authStatus = '❌ Failed to respond to auth: $e';
+      });
+    }
+  }
+
+  // Extract enrollment ID from URL
+  int? _extractEnrollmentId(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments;
+      
+      // Look for pattern: .../bind/{id}
+      for (int i = 0; i < pathSegments.length - 1; i++) {
+        if (pathSegments[i] == 'bind' && i + 1 < pathSegments.length) {
+          return int.tryParse(pathSegments[i + 1]);
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 }
