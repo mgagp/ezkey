@@ -7,8 +7,8 @@
 
 ## 2. Création du projet
 ```bash
-flutter create ezkey-mobile
-cd ezkey-mobile
+flutter create ezkey_mobile
+cd ezkey_mobile
 ```
 
 ## 3. Structure initiale recommandée
