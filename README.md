@@ -121,7 +121,9 @@ ezkey/
 ├── ezkey-core/              # Shared core module (entities, services, migrations)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
-├── ezkey_mobile/            # React Native mobile application
+├── ezkey-sim-api/           # Simulation API for testing (port 8080)
+├── ezkey-cli/               # Command Line Interface tool
+├── ezkey_mobile/            # Flutter mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
 ├── ezkey-demo-device/       # Demo device application
 └── ezkey-docs/              # Project documentation
@@ -540,6 +542,37 @@ GET /api/v1/auth-attempts/123/wait?timeout=60&polling=5
 - Authentication status (PENDING, READ, INVALID, REJECTED, ACCEPTED)
 - Completion status and metadata
 - Wait duration and timeout information
+
+## Command Line Interface
+
+Ezkey includes a comprehensive CLI tool for interacting with all APIs and managing the system:
+
+```bash
+# Install CLI dependencies
+cd ezkey-cli
+npm install
+npm run build
+
+# Configure the CLI
+./bin/ezkey configure interactive
+
+# Example usage
+./bin/ezkey admin integration list
+./bin/ezkey auth enrollment bind --id 123
+./bin/ezkey sim keypair --key-size 2048
+./bin/ezkey database migrate
+```
+
+### CLI Features
+
+- **Unified API Access**: Commands for all admin, auth, and simulation APIs
+- **Configuration Management**: Hierarchical config with CLI > current dir > home dir precedence
+- **JSON File Support**: Use `@filename` syntax for complex data input
+- **Database Migrations**: Integrated Flyway migration management
+- **OpenAPI Management**: Refresh demo application specifications
+- **Help System**: Comprehensive help for all commands and subcommands
+
+See `ezkey-cli/README.md` for complete documentation and examples.
 
 ## Development
 
