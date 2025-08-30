@@ -248,4 +248,30 @@ public class EnrollmentBindResponseDto {
         this.enrollmentName = enrollmentName;
     }
 
+    /**
+     * Returns a string representation of the EnrollmentBindResponseDto.
+     *
+     * @return string representation of the DTO
+     */
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("EnrollmentBindResponseDto [enrollmentId=");
+        builder.append(enrollmentId);
+        builder.append(", integrationPublicKey=");
+        builder.append(integrationPublicKey);
+        builder.append(", enrollmentProofToken=");
+        builder.append(enrollmentProofToken);
+        builder.append(", integrationLogo=");
+        builder.append(integrationLogo);
+        builder.append(", integrationName=");
+        builder.append(integrationName);
+        builder.append(", integrationDescription=");
+        builder.append(integrationDescription);
+        builder.append(", enrollmentName=");
+        builder.append(enrollmentName);
+        builder.append("]");
+        return builder.toString();
+    }
+
 }
