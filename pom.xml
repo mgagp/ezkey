@@ -41,6 +41,7 @@
 		<module>ezkey-core</module>
 		<module>ezkey-admin-api</module>
 		<module>ezkey-auth-api</module>
+		<module>ezkey-sim-api</module>
 		<module>ezkey-docs</module>
 		<module>ezkey-demo-app-acme</module>
 		<module>ezkey-demo-device</module>
@@ -60,6 +61,7 @@
 		<pmd.version>3.21.2</pmd.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<zxing.version>3.5.3</zxing.version>
+		<jib.version>3.4.3</jib.version>
 	</properties>
 	
 	<!-- Gestion centralisée des dépendances -->
@@ -198,6 +200,31 @@
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
 					<version>${spring-boot.version}</version>
+				</plugin>
+				
+				<!-- Jib Docker Container Plugin -->
+				<plugin>
+					<groupId>com.google.cloud.tools</groupId>
+					<artifactId>jib-maven-plugin</artifactId>
+					<version>${jib.version}</version>
+					<configuration>
+						<from>
+							<image>eclipse-temurin:17-jre</image>
+						</from>
+						<to>
+							<image>ezkey/${project.artifactId}:${project.version}</image>
+						</to>
+						<container>
+							<jvmFlags>
+								<jvmFlag>-Xms256m</jvmFlag>
+								<jvmFlag>-Xmx512m</jvmFlag>
+							</jvmFlags>
+							<ports>
+								<port>8080</port>
+							</ports>
+							<creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+						</container>
+					</configuration>
 				</plugin>
 			</plugins>
 		</pluginManagement>

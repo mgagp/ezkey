@@ -677,17 +677,38 @@ flutter build ios
 
 ## Deployment
 
+### 🐳 Docker Deployment (Recommended)
+
+Experience Ezkey in **5 minutes** with our complete Docker stack:
+
+```bash
+# Clone and build
+git clone https://github.com/mgagp/ezkey.git
+cd ezkey
+mvn clean install -Pdocker
+
+# Start complete stack
+docker compose up -d
+
+# Access services
+# Admin API: http://localhost:9080
+# Auth API: http://localhost:8080
+# ACME Demo: http://localhost:8082
+# Device Demo: http://localhost:8083
+```
+
+For complete setup and usage guide, see **[DOCKER.md](DOCKER.md)**.
+
 ### Docker Support
 
-Each module can be containerized:
+Each module can be containerized using the Jib Maven plugin:
 
 ```bash
 # Build API images
-docker build -t ezkey-admin-api ./ezkey-admin-api
-docker build -t ezkey-auth-api ./ezkey-auth-api
+mvn clean install -Pdocker
 
-# Run with docker-compose
-docker-compose up -d
+# Run with docker compose
+docker compose up -d
 ```
 
 ### Environment Configuration

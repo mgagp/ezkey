@@ -99,4 +99,41 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>docker</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+						<configuration>
+							<mainClass>org.ezkey.core.MigrationApplication</mainClass>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>com.google.cloud.tools</groupId>
+						<artifactId>jib-maven-plugin</artifactId>
+						<configuration>
+							<container>
+								<mainClass>org.ezkey.core.MigrationApplication</mainClass>
+								<ports>
+									<port>8080</port>
+								</ports>
+							</container>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>dockerBuild</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

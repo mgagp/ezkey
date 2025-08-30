@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  ezkey-postgres:
+    image: postgres:17-alpine
+    container_name: ezkey-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ezkey-docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ezkey-network
+    restart: unless-stopped
+
+  # Database Migration Service
+  ezkey-migration:
+    image: ezkey/ezkey-core:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-migration
+    environment:
+      SPRING_DATASOURCE_URL: ${DATABASE_URL}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_FLYWAY_ENABLED: "true"
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    depends_on:
+      ezkey-postgres:
+        condition: service_healthy
+    networks:
+      - ezkey-network
+    profiles:
+      - migration
+    restart: "no"
+
+  # Admin API Service
+  ezkey-admin-api:
+    image: ezkey/ezkey-admin-api:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-admin-api
+    environment:
+      SPRING_DATASOURCE_URL: ${DATABASE_URL}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_FLYWAY_ENABLED: "false"
+      SERVER_PORT: 9080
+      JAVA_OPTS: ${JAVA_OPTS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      LOGGING_LEVEL_ORG_EZKEY: ${LOG_LEVEL_EZKEY}
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT}
+    ports:
+      - "${EZKEY_ADMIN_API_PORT}:9080"
+    depends_on:
+      ezkey-postgres:
+        condition: service_healthy
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Auth API Service
+  ezkey-auth-api:
+    image: ezkey/ezkey-auth-api:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-auth-api
+    environment:
+      SPRING_DATASOURCE_URL: ${DATABASE_URL}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_FLYWAY_ENABLED: "false"
+      SERVER_PORT: 8080
+      JAVA_OPTS: ${JAVA_OPTS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      LOGGING_LEVEL_ORG_EZKEY: ${LOG_LEVEL_EZKEY}
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT}
+      EZKEY_AUTH_ATTEMPT_TTL_SECONDS: ${EZKEY_AUTH_TTL_SECONDS}
+    ports:
+      - "${EZKEY_AUTH_API_PORT}:8080"
+    depends_on:
+      ezkey-postgres:
+        condition: service_healthy
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Simulation API Service
+  ezkey-sim-api:
+    image: ezkey/ezkey-sim-api:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-sim-api
+    environment:
+      SERVER_PORT: 8081
+      JAVA_OPTS: ${JAVA_OPTS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      LOGGING_LEVEL_ORG_EZKEY: ${LOG_LEVEL_EZKEY}
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT}
+    ports:
+      - "${EZKEY_SIM_API_PORT}:8081"
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ACME Demo Application
+  ezkey-demo-acme:
+    image: ezkey/ezkey-demo-app-acme:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-demo-acme
+    environment:
+      SERVER_PORT: 8082
+      JAVA_OPTS: ${JAVA_OPTS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      EZKEY_ADMIN_API_URL: ${DEMO_ACME_ADMIN_API_URL}
+      LOGGING_LEVEL_ORG_EZKEY: ${LOG_LEVEL_EZKEY}
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT}
+    ports:
+      - "${EZKEY_DEMO_ACME_PORT}:8082"
+    depends_on:
+      ezkey-admin-api:
+        condition: service_healthy
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Device Demo Application
+  ezkey-demo-device:
+    image: ezkey/ezkey-demo-device:${EZKEY_VERSION:-0.0.1-SNAPSHOT}
+    container_name: ezkey-demo-device
+    environment:
+      SERVER_PORT: 8083
+      JAVA_OPTS: ${JAVA_OPTS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      EZKEY_AUTH_API_URL: ${DEMO_DEVICE_AUTH_API_URL}
+      LOGGING_LEVEL_ORG_EZKEY: ${LOG_LEVEL_EZKEY}
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT}
+    ports:
+      - "${EZKEY_DEMO_DEVICE_PORT}:8083"
+    depends_on:
+      ezkey-auth-api:
+        condition: service_healthy
+    networks:
+      - ezkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+# Network Configuration
+networks:
+  ezkey-network:
+    driver: bridge
+    name: ezkey-network
+
+# Volume Configuration
+volumes:
+  postgres_data:
+    driver: local
+    name: ezkey-postgres-data
