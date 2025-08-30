@@ -31,7 +31,7 @@ Ezkey aims to be the pragmatic, open-source, and developer-friendly alternative:
 
 - Spring Boot backend with three main entities (Integration, Enrollment, Authentication Attempt).
 - REST APIs for all operations.
-- Mobile app (Dart + Flutter) for cross-platform support (iOS, Android, etc.).
+- Mobile app (React Native + Native Modules) for cross-platform support (iOS, Android, etc.).
 - Self-hosting: Docker support for easy deployment.
 
 6. Project Phases
@@ -88,7 +88,7 @@ Phase 4 – Industrialization & Mobile
 
 Scope:
 - Modularize and secure the REST APIs.
-- Develop an open-source mobile app (Dart + Flutter) for iOS and Android.
+- Develop an open-source mobile app (React Native + Native Modules) for iOS and Android.
 - Mobile app features: scan QR code for enrollment, manage multiple enrollments, display integration info (name, logo, description).
 - Publish Ezkey to Maven Central (build, CI/CD).
 

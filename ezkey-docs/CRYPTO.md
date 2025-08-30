@@ -189,27 +189,30 @@ public String generateSignature(String data, String base64PrivateKey) {
 }
 ```
 
-### **Dart/Flutter**
-```dart
-// Use pointycastle for RSA
-import 'package:pointycastle/export.dart';
+### **React Native (Native Modules)**
+```javascript
+// Android Native Module (Kotlin)
+class SignatureService {
+    fun signData(data: String, privateKeyBase64: String): String {
+        val privateKeyBytes = Base64.getDecoder().decode(privateKeyBase64)
+        val spec = PKCS8EncodedKeySpec(privateKeyBytes)
+        val kf = KeyFactory.getInstance("RSA")
+        val privateKey = kf.generatePrivate(spec)
+        
+        val signature = Signature.getInstance("SHA256withRSA")
+        signature.initSign(privateKey)
+        signature.update(data.toByteArray(StandardCharsets.UTF_8))
+        val signed = signature.sign()
+        return Base64.getEncoder().encodeToString(signed)
+    }
+}
 
-Future<String> signData(String data, String privateKeyBase64) async {
-  // 1. Decode PKCS#8 private key
-  final privateKeyBytes = base64.decode(privateKeyBase64);
-  final privateKey = _decodePKCS8PrivateKey(privateKeyBytes);
-  
-  // 2. Create SHA-256 hash
-  final dataBytes = utf8.encode(data);
-  final hash = sha256.convert(dataBytes);
-  
-  // 3. Sign with RSA
-  final signer = RSASigner(SHA256Digest(), '0609608648016503040201');
-  signer.init(true, PrivateKeyParameter<RSAPrivateKey>(privateKey));
-  final signature = signer.generateSignature(hash.bytes);
-  
-  // 4. Encode to Base64
-  return base64.encode(signature.bytes);
+// iOS Native Module (Swift)
+class SignatureService {
+    func signData(data: String, privateKeyBase64: String) -> String {
+        // Implementation using CryptoKit
+        // ...
+    }
 }
 ```
 

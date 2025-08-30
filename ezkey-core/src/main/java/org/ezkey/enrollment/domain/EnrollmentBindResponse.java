@@ -5,33 +5,52 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Domain: EnrollmentBindResponse
- * Description: Domain object for enrollment binding information in the core domain.
+ * Description: Domain response object containing enrollment binding and integration metadata.
  */
 
 package org.ezkey.enrollment.domain;
 
 /**
- * Domain object for enrollment binding information in the core domain.
+ * Domain response object containing enrollment binding and integration metadata.
  * <p>
- * This class represents the enrollment binding response used internally by the core domain
- * and service layers. It contains all the information needed to complete the enrollment process,
- * including cryptographic keys, enrollment codes, and integration metadata.
+ * This domain object represents the response data returned by the service layer
+ * when devices request enrollment binding information. It contains cryptographic
+ * keys, proof tokens, and integration metadata necessary for the device to
+ * complete the enrollment verification process with proper context and branding.
  * </p>
  *
  * <p>
- * <b>Usage Context:</b> Used by the core and service layers to transfer enrollment binding data
- * to the API layer, which then exposes it to mobile devices via DTOs. This object is mapped to
- * {@link org.ezkey.enrollment.dto.EnrollmentBindResponseDto} for API responses.
+ * <b>Usage Context:</b> Returned by the EnrollmentService when processing
+ * enrollment binding requests. The service layer creates this response object
+ * to provide comprehensive enrollment and integration information for consumption
+ * by API layers and client applications.
  * </p>
  *
  * <p>
- * <b>Cryptographic Flow:</b> Contains the integration's public key and signed enrollment code
- * that the mobile device must validate and respond to with its own generated keys and signature.
+ * <b>Enrollment Flow:</b> This response bridges the enrollment creation and
+ * verification phases by providing the device with necessary cryptographic
+ * material and user-friendly integration information for display during
+ * the enrollment process.
  * </p>
  *
  * <p>
- * <b>Integration Metadata:</b> Includes logo, name, and description to provide a better user
- * experience during the enrollment process.
+ * <b>Cryptographic Flow:</b> Contains the integration's public key and
+ * enrollment proof token that the mobile device must validate and respond
+ * to with its own generated keys and cryptographic signature to complete
+ * the secure enrollment binding process.
+ * </p>
+ *
+ * <p>
+ * <b>Integration Metadata:</b> Includes logo, name, and description to
+ * provide enhanced user experience during enrollment by displaying
+ * relevant branding and contextual information about the service being
+ * enrolled with.
+ * </p>
+ *
+ * <p>
+ * <b>Internationalization:</b> Supports localized integration information
+ * based on the language specified in the binding request, ensuring
+ * appropriate content display for international users.
  * </p>
  *
  * <p>
@@ -43,14 +62,19 @@ package org.ezkey.enrollment.domain;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.ezkey.enrollment.dto.EnrollmentBindResponseDto
+ * @see org.ezkey.enrollment.service.EnrollmentService
+ * @see org.ezkey.enrollment.domain.EnrollmentBindRequest
+ * @see org.ezkey.enrollment.domain.EnrollmentVerifyRequest
+ * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
 public class EnrollmentBindResponse {
     /**
      * The enrollment ID for this binding operation.
      * <p>
-     * Confirms the enrollment ID that was successfully bound to the mobile device.
-     * Used for reference in subsequent verification requests.
+     * Confirms the enrollment ID that was successfully bound to the mobile
+     * device. Used for reference in subsequent verification requests and
+     * provides confirmation that the binding request was processed for
+     * the correct enrollment.
      * </p>
      */
     private Integer enrollmentId;
@@ -60,7 +84,9 @@ public class EnrollmentBindResponse {
      * <p>
      * Contains the public key of the integration that created this enrollment.
      * Used by the mobile device to verify signatures and validate integration
-     * authenticity during the enrollment process.
+     * authenticity during the enrollment process. This key enables the device
+     * to cryptographically verify that enrollment challenges originate from
+     * the legitimate integration.
      * </p>
      */
     private String integrationPublicKey;
@@ -70,7 +96,8 @@ public class EnrollmentBindResponse {
      * <p>
      * Contains the challenge data that the mobile device must sign with its
      * private key to complete enrollment verification. This token proves that
-     * the device possesses the cryptographic keys it claims to have.
+     * the device possesses the cryptographic keys it claims to have and
+     * establishes the secure binding between device and enrollment.
      * </p>
      */
     private String enrollmentProofToken;
@@ -78,26 +105,32 @@ public class EnrollmentBindResponse {
     /**
      * The logo URL or base64-encoded image for the integration.
      * <p>
-     * Provides a visual identifier for the integration, allowing the mobile device
-     * to display the integration's logo during the enrollment process.
+     * Provides a visual identifier for the integration, allowing the mobile
+     * device to display the integration's logo during the enrollment process.
+     * This enhances user experience by providing visual context about the
+     * service being enrolled with.
      * </p>
      */
     private String integrationLogo;
 
     /**
-     * The display name of the integration.
+     * The localized display name of the integration.
      * <p>
-     * Human-readable name of the integration, shown to the user during enrollment
-     * to help identify the service or application being enrolled.
+     * Human-readable name of the integration in the requested language,
+     * shown to the user during enrollment to help identify the service
+     * or application being enrolled. This name is localized based on
+     * the language specified in the binding request.
      * </p>
      */
     private String integrationName;
 
     /**
-     * The description of the integration.
+     * The localized description of the integration.
      * <p>
-     * Provides additional context or information about the integration, such as
-     * its purpose or features, to assist the user during the enrollment process.
+     * Provides additional context or information about the integration in
+     * the requested language, such as its purpose or features, to assist
+     * the user during the enrollment process. This description helps users
+     * understand what service they are enrolling with.
      * </p>
      */
     private String integrationDescription;
@@ -105,8 +138,10 @@ public class EnrollmentBindResponse {
     /**
      * The human-readable name for the enrollment.
      * <p>
-     * Human-readable name of the enrollment, shown to the user during enrollment
-     * to help identify the specific device or user account being enrolled.
+     * Human-readable name of the enrollment, shown to the user during
+     * enrollment to help identify the specific device or user account
+     * being enrolled. This name provides personal context for the
+     * enrollment within the integration.
      * </p>
      */
     private String enrollmentName;
@@ -130,7 +165,7 @@ public class EnrollmentBindResponse {
     }
 
     /**
-     * Gets the integration's public key.
+     * Gets the integration's public key for cryptographic operations.
      *
      * @return the integration's public key
      */
@@ -139,7 +174,7 @@ public class EnrollmentBindResponse {
     }
 
     /**
-     * Sets the integration's public key.
+     * Sets the integration's public key for cryptographic operations.
      *
      * @param integrationPublicKey the integration's public key to set
      */
@@ -148,7 +183,7 @@ public class EnrollmentBindResponse {
     }
 
     /**
-     * Gets the enrollment proof token.
+     * Gets the enrollment proof token that needs to be signed by the device.
      *
      * @return the enrollment proof token
      */
@@ -157,7 +192,7 @@ public class EnrollmentBindResponse {
     }
 
     /**
-     * Sets the enrollment proof token.
+     * Sets the enrollment proof token that needs to be signed by the device.
      *
      * @param enrollmentProofToken the enrollment proof token to set
      */

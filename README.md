@@ -59,7 +59,7 @@ graph LR
 - **Admin API**: Complete management interface for integrations and enrollments
 - **Authentication API**: Mobile-focused API for device authentication
 - **Wait API**: Synchronous polling for authentication completion
-- **Mobile Application**: Cross-platform Flutter app for end users
+- **Mobile Application**: Cross-platform React Native app for end users
 - **Secure**: Cryptographic key-based authentication with signature validation
 - **Open Source**: MIT licensed with comprehensive documentation
 - **Developer-Friendly**: REST APIs, OpenAPI documentation, and extensive examples
@@ -121,7 +121,7 @@ ezkey/
 ├── ezkey-core/              # Shared core module (entities, services, migrations)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
-├── ezkey_mobile/            # Flutter mobile application
+├── ezkey_mobile/            # React Native mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
 ├── ezkey-demo-device/       # Demo device application
 └── ezkey-docs/              # Project documentation
@@ -366,7 +366,7 @@ Mobile-focused authentication API for:
 - **Mobile Integration**: Optimized for mobile app consumption
 
 #### 📱 **ezkey_mobile**
-Cross-platform Flutter application featuring:
+Cross-platform React Native application featuring:
 - **QR Code Scanning**: Easy enrollment via QR codes
 - **Push Notifications**: Real-time authentication requests
 - **Secure Storage**: Encrypted key management
@@ -435,7 +435,7 @@ flowchart TD
 - **Java 21** or higher
 - **Maven 3.6+**
 - **PostgreSQL** (or H2 for development)
-- **Flutter SDK 3.8.1+** (for mobile development)
+- **React Native CLI** (for mobile development)
 
 ### Database Setup
 
@@ -481,8 +481,8 @@ mvn spring-boot:run
 4. **Launch Mobile App**:
 ```bash
 cd ezkey_mobile
-flutter pub get
-flutter run
+npm install
+npx react-native run-android  # or run-ios
 ```
 
 ### Access Points
@@ -550,7 +550,7 @@ GET /api/v1/auth-attempts/123/wait?timeout=60&polling=5
 - **Mapping**: MapStruct for DTO conversions
 - **Documentation**: SpringDoc OpenAPI
 - **Testing**: JUnit 5, Spring Boot Test
-- **Mobile**: Flutter 3.8.1+, Provider state management
+- **Mobile**: React Native, Native Modules for cryptography
 - **Build**: Maven multi-module setup
 
 ### Code Standards
@@ -588,15 +588,17 @@ src/main/java/org/ezkey/
 │   └── exception/           # Custom exceptions
 ```
 
-#### Flutter Structure
+#### React Native Structure
 ```
-lib/
-├── models/                  # Data models
+src/
+├── components/              # React components
 ├── services/                # API services
-├── providers/               # State management
+├── hooks/                   # Custom hooks
 ├── screens/                 # UI screens
-├── widgets/                 # Reusable widgets
-└── utils/                   # Utilities
+├── utils/                   # Utilities
+└── native/                  # Native modules
+    ├── android/             # Android native code
+    └── ios/                 # iOS native code
 ```
 
 ### Development Commands
@@ -622,17 +624,17 @@ mvn spring-boot:run
 #### Mobile
 ```bash
 # Install dependencies
-flutter pub get
+npm install
 
 # Run application
-flutter run
+npx react-native run-android  # or run-ios
 
 # Run tests
-flutter test
+npm test
 
 # Build release
-flutter build apk
-flutter build ios
+cd android && ./gradlew assembleRelease
+cd ios && xcodebuild -workspace EzkeyMobile.xcworkspace -scheme EzkeyMobile -configuration Release
 ```
 
 ### Testing Strategy
@@ -690,7 +692,7 @@ Use conventional commit messages:
 ```
 feat(admin-api): add integration export endpoint
 fix(auth-api): resolve enrollment binding issue
-docs(mobile): update Flutter setup instructions
+docs(mobile): update React Native setup instructions
 style(core): format according to Google style guide
 test(admin-api): add integration controller tests
 ```
@@ -740,7 +742,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Core entities and services
 - [x] Admin and Auth APIs
 - [x] **Wait API for synchronous authentication**
-- [x] Flutter mobile application
+- [x] React Native mobile application
 - [x] Database migrations
 - [x] Development tooling
 
