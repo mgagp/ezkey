@@ -13,7 +13,6 @@ package org.ezkey.admin.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,7 +20,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,7 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.Integration;
@@ -93,6 +90,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @DisplayName("Integration Controller Tests")
 class IntegrationControllerTest {
 
+    private static final String BASE_URL = "/api/v1/integrations";
+    private static final LocalDateTime FIXED_CREATED_AT = LocalDateTime.of(2025,1,15,10,30,0);
+    private static final String EXPECTED_CREATED_AT_JSON = "2025-01-15T10:30:00"; // Jackson serializes with seconds
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -106,10 +107,15 @@ class IntegrationControllerTest {
     private IntegrationControllerMapper integrationMapper;
 
     private Integration testIntegration;
+
     private IntegrationResponseDto testResponseDto;
+
     private IntegrationCreateRequestDto testCreateRequestDto;
+
     private IntegrationCreateRequest testCreateRequest;
+
     private IntegrationCreateResponse testCreateResponse;
+
     private IntegrationCreateResponseDto testCreateResponseDto;
 
     /**
@@ -123,14 +129,14 @@ class IntegrationControllerTest {
         testIntegration.setId(1);
         testIntegration.setLogo("https://example.com/logo.png");
         testIntegration.setActive(true);
-        testIntegration.setCreatedAt(LocalDateTime.of(2025, 1, 15, 10, 30, 0));
+        testIntegration.setCreatedAt(FIXED_CREATED_AT);
 
         // Create test response DTO
         testResponseDto = new IntegrationResponseDto();
         testResponseDto.setId(1);
         testResponseDto.setLogo("https://example.com/logo.png");
         testResponseDto.setActive(true);
-        testResponseDto.setCreatedAt(LocalDateTime.of(2025, 1, 15, 10, 30, 0));
+        testResponseDto.setCreatedAt(FIXED_CREATED_AT);
 
         // Create test create request DTO
         testCreateRequestDto = new IntegrationCreateRequestDto();
@@ -140,13 +146,13 @@ class IntegrationControllerTest {
         testCreateRequest = new IntegrationCreateRequest();
         testCreateRequest.setLogo("https://example.com/new-logo.png");
 
-        // Create test create response
+        // Create test create response - ENSURE ID IS SET
         testCreateResponse = new IntegrationCreateResponse();
-        testCreateResponse.setId(2);
+        testCreateResponse.setId(2); // This is critical - the ID must be set
 
-        // Create test create response DTO
+        // Create test create response DTO - ENSURE ID IS SET
         testCreateResponseDto = new IntegrationCreateResponseDto();
-        testCreateResponseDto.setId(2);
+        testCreateResponseDto.setId(2); // This is critical - the ID must be set
     }
 
     /**
@@ -164,19 +170,40 @@ class IntegrationControllerTest {
         when(integrationMapper.toResponseList(integrations)).thenReturn(responseDtos);
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/integrations")
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].logo").value("https://example.com/logo.png"))
                 .andExpect(jsonPath("$[0].active").value(true))
-                .andExpect(jsonPath("$[0].createdAt").value("2025-01-15T10:30:00"));
+                .andExpect(jsonPath("$[0].createdAt").value(EXPECTED_CREATED_AT_JSON));
 
         // Verify service interactions
-        verify(integrationService, times(1)).getAll();
-        verify(integrationMapper, times(1)).toResponseList(integrations);
+        verify(integrationService,times(1)).getAll();
+        verify(integrationMapper,times(1)).toResponseList(integrations);
+    }
+
+    /**
+     * Tests the GET /api/v1/integrations endpoint when no integrations exist.
+     * Verifies that the endpoint returns HTTP 200 with an empty JSON array.
+     */
+    @Test
+    @DisplayName("GET /api/v1/integrations - Should return empty list when no data")
+    void getAllIntegrations_WhenNone_ShouldReturnEmptyArray() throws Exception {
+        // Arrange
+        when(integrationService.getAll()).thenReturn(List.of());
+        when(integrationMapper.toResponseList(List.of())).thenReturn(List.of());
+
+        // Act & Assert
+        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(content().json("[]"));
+
+        // Verify service interactions
+        verify(integrationService,times(1)).getAll();
+        verify(integrationMapper,times(1)).toResponseList(List.of());
     }
 
     /**
@@ -192,18 +219,17 @@ class IntegrationControllerTest {
         when(integrationMapper.toResponse(testIntegration)).thenReturn(testResponseDto);
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/integrations/{id}", integrationId)
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get(BASE_URL + "/{id}",integrationId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.logo").value("https://example.com/logo.png"))
                 .andExpect(jsonPath("$.active").value(true))
-                .andExpect(jsonPath("$.createdAt").value("2025-01-15T10:30:00"));
+                .andExpect(jsonPath("$.createdAt").value(EXPECTED_CREATED_AT_JSON));
 
         // Verify service interactions
-        verify(integrationService, times(1)).getById(integrationId);
-        verify(integrationMapper, times(1)).toResponse(testIntegration);
+        verify(integrationService,times(1)).getById(integrationId);
+        verify(integrationMapper,times(1)).toResponse(testIntegration);
     }
 
     /**
@@ -218,13 +244,12 @@ class IntegrationControllerTest {
         when(integrationService.getById(integrationId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/integrations/{id}", integrationId)
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get(BASE_URL + "/{id}",integrationId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
         // Verify service interactions
-        verify(integrationService, times(1)).getById(integrationId);
-        verify(integrationMapper, times(0)).toResponse(any());
+        verify(integrationService,times(1)).getById(integrationId);
+        verify(integrationMapper,times(0)).toResponse(any());
     }
 
     /**
@@ -235,23 +260,76 @@ class IntegrationControllerTest {
     @DisplayName("POST /api/v1/integrations - Should create integration and return 201")
     void createIntegration_ShouldCreateAndReturn201() throws Exception {
         // Arrange
-        when(integrationMapper.toCreateRequest(testCreateRequestDto)).thenReturn(testCreateRequest);
-        when(integrationService.createIntegration(testCreateRequest)).thenReturn(testCreateResponse);
+        when(integrationMapper.toCreateRequest(any(IntegrationCreateRequestDto.class))).thenReturn(testCreateRequest);
+        when(integrationService.createIntegration(any(IntegrationCreateRequest.class))).thenReturn(testCreateResponse);
         when(integrationMapper.toCreateResponseDto(testCreateResponse)).thenReturn(testCreateResponseDto);
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/integrations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(testCreateRequestDto)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/v1/integrations/2"))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(2));
+        String requestJson = objectMapper.writeValueAsString(testCreateRequestDto);
 
-        // Verify service interactions
-        verify(integrationMapper, times(1)).toCreateRequest(testCreateRequestDto);
-        verify(integrationService, times(1)).createIntegration(testCreateRequest);
+        // Act & Assert
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(status().isCreated())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value(2))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Location", BASE_URL + "/2"));
+
+        // Verify interactions
+        verify(integrationMapper, times(1)).toCreateRequest(any(IntegrationCreateRequestDto.class));
+        verify(integrationService, times(1)).createIntegration(any(IntegrationCreateRequest.class));
         verify(integrationMapper, times(1)).toCreateResponseDto(testCreateResponse);
+    }
+
+    /**
+     * Tests the POST /api/v1/integrations endpoint for creating new integrations.
+     * Verifies that the logo field is propagated correctly to the service layer.
+     */
+    @Test
+    @DisplayName("POST /api/v1/integrations - Should propagate logo field to service request")
+    void createIntegration_ShouldPropagateLogo() throws Exception {
+        // Arrange
+        when(integrationMapper.toCreateRequest(any(IntegrationCreateRequestDto.class))).thenReturn(testCreateRequest);
+        when(integrationService.createIntegration(any(IntegrationCreateRequest.class))).thenReturn(testCreateResponse);
+        when(integrationMapper.toCreateResponseDto(testCreateResponse)).thenReturn(testCreateResponseDto);
+
+        String requestJson = objectMapper.writeValueAsString(testCreateRequestDto);
+
+        // Act & Assert
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(status().isCreated());
+
+        org.mockito.ArgumentCaptor<IntegrationCreateRequest> captor = org.mockito.ArgumentCaptor.forClass(IntegrationCreateRequest.class);
+        verify(integrationService).createIntegration(captor.capture());
+        IntegrationCreateRequest passed = captor.getValue();
+        if (!"https://example.com/new-logo.png".equals(passed.getLogo())) {
+            throw new AssertionError("Logo not propagated correctly. Expected https://example.com/new-logo.png but was " + passed.getLogo());
+        }
+    }
+
+    /**
+     * Tests the POST /api/v1/integrations endpoint for creating new integrations.
+     * Verifies that the endpoint returns HTTP 500 on unexpected service exceptions.
+     */
+    @Test
+    @DisplayName("POST /api/v1/integrations - Should return 500 on unexpected service exception")
+    void createIntegration_WhenServiceThrows_ShouldReturn500() throws Exception {
+        when(integrationMapper.toCreateRequest(any(IntegrationCreateRequestDto.class))).thenReturn(testCreateRequest);
+        when(integrationService.createIntegration(any(IntegrationCreateRequest.class))).thenThrow(new RuntimeException("boom"));
+
+        String requestJson = objectMapper.writeValueAsString(testCreateRequestDto);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+            .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
+
+        verify(integrationMapper, times(1)).toCreateRequest(any(IntegrationCreateRequestDto.class));
+        verify(integrationService, times(1)).createIntegration(any(IntegrationCreateRequest.class));
     }
 
     /**
@@ -267,14 +345,13 @@ class IntegrationControllerTest {
         doNothing().when(integrationService).delete(integrationId);
 
         // Act & Assert
-        mockMvc.perform(delete("/api/v1/integrations/{id}", integrationId)
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(delete(BASE_URL + "/{id}",integrationId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         // Verify service interactions
-        verify(integrationService, times(1)).getById(integrationId);
-        verify(integrationService, times(1)).delete(integrationId);
+        verify(integrationService,times(1)).getById(integrationId);
+        verify(integrationService,times(1)).delete(integrationId);
     }
 
     /**
@@ -289,12 +366,11 @@ class IntegrationControllerTest {
         when(integrationService.getById(integrationId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        mockMvc.perform(delete("/api/v1/integrations/{id}", integrationId)
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(delete(BASE_URL + "/{id}",integrationId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
         // Verify service interactions
-        verify(integrationService, times(1)).getById(integrationId);
-        verify(integrationService, times(0)).delete(anyInt());
+        verify(integrationService,times(1)).getById(integrationId);
+        verify(integrationService,times(0)).delete(anyInt());
     }
 }
