@@ -30,9 +30,52 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Web controller for enrollment management in ACME demo application.
+ * <p>
+ * This controller provides the web interface for managing device enrollments
+ * through a Neo Brutalism styled user interface. It demonstrates the complete
+ * enrollment lifecycle including creation, viewing, and deletion of enrollments
+ * within the ACME demo environment.
+ * </p>
+ *
+ * <p>
+ * <b>Enrollment Management Features:</b>
+ * <ul>
+ * <li>List enrollments filtered by integration</li>
+ * <li>Create new device enrollments with validation</li>
+ * <li>View detailed enrollment information and status</li>
+ * <li>Delete enrollments (demo cleanup)</li>
+ * <li>Integration with authentication attempt creation</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Integration Flow:</b> Enrollments are created within the context of
+ * specific integrations, allowing the demo to show how multiple applications
+ * can have separate enrollment contexts while using the same Ezkey infrastructure.
+ * </p>
+ *
+ * <p>
+ * <b>UI Technology Stack:</b>
+ * <ul>
+ * <li><b>Templates:</b> Thymeleaf with Neo Brutalism styling</li>
+ * <li><b>Interactivity:</b> htmx for dynamic form submission</li>
+ * <li><b>Styling:</b> Custom CSS with bold, geometric design</li>
+ * <li><b>Navigation:</b> Seamless integration with auth attempt workflow</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.demo.acme.service.EnrollmentService
+ * @see org.ezkey.demo.acme.controller.AuthAttemptController
+ * @see org.ezkey.demo.acme.controller.IntegrationController
  */
 @Controller
 @RequestMapping("/enrollments")
@@ -135,5 +178,3 @@ public class EnrollmentController {
         return "redirect:/enrollments?integrationId=" + integrationId;
     }
 }
-
-

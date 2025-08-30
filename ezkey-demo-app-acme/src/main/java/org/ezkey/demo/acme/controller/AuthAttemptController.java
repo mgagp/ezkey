@@ -1,3 +1,13 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Controller: AuthAttemptController
+ * Description: Web controller for authentication attempt management in ACME demo application.
+ */
+
 package org.ezkey.demo.acme.controller;
 
 import java.time.Duration;
@@ -27,9 +37,53 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Controller for managing authentication attempts in the ACME demo application.
- * 
+ * Web controller for authentication attempt management in ACME demo application.
+ * <p>
+ * This controller provides the web interface for creating, monitoring, and managing
+ * authentication attempts through a Neo Brutalism styled user interface. It demonstrates
+ * the complete authentication flow including attempt creation, real-time status monitoring,
+ * and result handling within the ACME demo environment.
+ * </p>
+ *
+ * <p>
+ * <b>Authentication Flow Features:</b>
+ * <ul>
+ * <li>Create authentication attempts for enrolled devices</li>
+ * <li>Real-time monitoring of authentication status</li>
+ * <li>Display authentication results and outcomes</li>
+ * <li>Integration selection and enrollment filtering</li>
+ * <li>Live updates using Server-Sent Events (SSE)</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Real-time Updates:</b> Implements Server-Sent Events to provide live updates
+ * of authentication attempt status changes, creating a responsive user experience
+ * for monitoring authentication flows as they occur.
+ * </p>
+ *
+ * <p>
+ * <b>UI Technology Stack:</b>
+ * <ul>
+ * <li><b>Templates:</b> Thymeleaf with Neo Brutalism styling</li>
+ * <li><b>Interactivity:</b> htmx for dynamic updates</li>
+ * <li><b>Real-time:</b> Server-Sent Events for live status</li>
+ * <li><b>Styling:</b> Custom CSS with bold, geometric design</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ *
+ * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.demo.acme.service.AuthAttemptService
+ * @see org.ezkey.demo.acme.service.EnrollmentService
+ * @see org.ezkey.demo.acme.service.IntegrationService
  */
 @Controller
 @RequestMapping("/auth-attempts")

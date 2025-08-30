@@ -37,21 +37,43 @@ import reactor.core.publisher.Mono;
  * <p>
  * <b>Integration Operations:</b>
  * <ul>
- * <li>Retrieve all integrations</li>
- * <li>Get specific integration details</li>
- * <li>Create new integrations</li>
- * <li>Delete existing integrations</li>
+ * <li>Retrieve all integrations with internationalization support</li>
+ * <li>Get specific integration details by ID</li>
+ * <li>Create new integrations with validation</li>
+ * <li>Delete existing integrations (demo cleanup)</li>
  * </ul>
+ * </p>
+ *
+ * <p>
+ * <b>API Integration:</b> Communicates with the Ezkey Admin API running
+ * on port 9080 to manage integration lifecycle. Supports both reactive
+ * (Mono/Flux) and synchronous operation patterns for different use cases
+ * within the demo application.
  * </p>
  *
  * <p>
  * <b>Error Handling:</b> Implements robust error handling for network
  * failures and API errors, providing user-friendly error messages for
- * the demo interface.
+ * the demo interface. Includes proper logging for debugging and monitoring.
+ * </p>
+ *
+ * <p>
+ * <b>Internationalization:</b> Supports language-specific integration
+ * names and descriptions through the i18n fields, enabling localized
+ * content display in the demo user interface.
+ * </p>
+ *
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
  * </p>
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see org.ezkey.demo.acme.controller.IntegrationController
+ * @see org.ezkey.demo.acme.config.EzkeyApiClientConfig
  */
 @Service
 public class IntegrationService {
