@@ -33,6 +33,7 @@ import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,9 @@ public class AuthAttemptService {
     private final EnrollmentRepository enrollmentRepository;
 
     private final SignatureService signatureService;
+
+    @Value("${ezkey.auth-attempt.challenge-digits:2}")
+    private int challengeDigits;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -117,8 +121,7 @@ public class AuthAttemptService {
         // Generate challenge if required
         boolean shouldGenerateChallenge = Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) || Boolean.TRUE.equals(authRequest.getChallengeRequested());
         if (shouldGenerateChallenge){
-            Random random = new Random();
-            authAttempt.setAuthAttemptChallenge(100000 + random.nextInt(900000));
+            authAttempt.setAuthAttemptChallenge(generateChallenge());
             logger.debug("Generated challenge code for auth attempt: {}",authAttempt.getAuthAttemptChallenge());
         } else{
             authAttempt.setAuthAttemptChallenge(null);
@@ -563,5 +566,42 @@ public class AuthAttemptService {
         } else{
             return "REJECTED";
         }
+    }
+
+    /**
+     * Generates a challenge code with configurable number of digits.
+     * <p>
+     * This method generates a random challenge code based on the configured
+     * number of digits. The default is 2 digits, with a maximum of 6 digits.
+     * If a value greater than 6 is configured, it will be truncated to 6 with
+     * a trace log message.
+     * </p>
+     *
+     * @return the generated challenge code as an integer
+     * @since 2025
+     */
+    private Integer generateChallenge() {
+        int effectiveDigits = challengeDigits;
+        
+        // Validate and truncate if necessary
+        if (effectiveDigits > 6) {
+            logger.trace("Challenge digits configured as {} exceeds maximum of 6, truncating to 6", challengeDigits);
+            effectiveDigits = 6;
+        }
+        
+        // Ensure minimum of 1 digit
+        if (effectiveDigits < 1) {
+            effectiveDigits = 1;
+        }
+        
+        Random random = new Random();
+        
+        // Calculate the range for the specified number of digits
+        int minValue = (int) Math.pow(10, effectiveDigits - 1);
+        int maxValue = (int) Math.pow(10, effectiveDigits) - 1;
+        
+        // For 1 digit, minValue would be 1, for 2 digits minValue is 10, etc.
+        // Generate random number in the range [minValue, maxValue]
+        return minValue + random.nextInt(maxValue - minValue + 1);
     }
 }
