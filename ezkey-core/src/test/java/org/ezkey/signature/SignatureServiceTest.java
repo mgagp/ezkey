@@ -10,8 +10,14 @@
 
 package org.ezkey.signature;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashSet;
+import java.util.Set;
 
 
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +89,62 @@ class SignatureServiceTest {
         } catch (NumberFormatException e) {
             throw new AssertionError("Timestamp part of proof token should be a valid long");
         }
+    }
+
+    @Test
+    @DisplayName("Should generate secure challenge with valid digit count")
+    void testGenerateSecureChallenge() {
+        // Test 1-6 digits
+        for (int digits = 1; digits <= 6; digits++) {
+            // Act
+            Integer challenge = signatureService.generateSecureChallenge(digits);
+
+            // Assert
+            assertNotNull(challenge, "Challenge should not be null for " + digits + " digits");
+            assertTrue(challenge > 0, "Challenge should be positive for " + digits + " digits");
+
+            // Verify the challenge has the correct number of digits
+            String challengeStr = challenge.toString();
+            assertEquals(digits, challengeStr.length(), 
+                "Challenge should have exactly " + digits + " digits, got: " + challengeStr);
+
+            // Verify minimum value (no leading zeros)
+            int expectedMin = (int) Math.pow(10, digits - 1);
+            int expectedMax = (int) Math.pow(10, digits) - 1;
+            assertTrue(challenge >= expectedMin && challenge <= expectedMax,
+                "Challenge " + challenge + " should be between " + expectedMin + " and " + expectedMax);
+        }
+    }
+
+    @Test
+    @DisplayName("Should generate different secure challenges on multiple calls")
+    void testSecureChallengeRandomness() {
+        // Generate multiple challenges and verify they are different
+        Set<Integer> challenges = new HashSet<>();
+        int iterations = 100;
+        
+        for (int i = 0; i < iterations; i++) {
+            Integer challenge = signatureService.generateSecureChallenge(4);
+            challenges.add(challenge);
+        }
+        
+        // We should have most challenges being unique (allowing for some collision due to randomness)
+        assertTrue(challenges.size() > iterations * 0.8, 
+            "Should generate mostly unique challenges, got " + challenges.size() + " unique out of " + iterations);
+    }
+
+    @Test
+    @DisplayName("Should reject invalid digit counts for secure challenge")
+    void testSecureChallengeInvalidDigits() {
+        // Test invalid digit counts
+        assertThrows(IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(0),
+            "Should reject 0 digits");
+        assertThrows(IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(-1),
+            "Should reject negative digits");
+        assertThrows(IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(7),
+            "Should reject more than 6 digits");
+        assertThrows(IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(10),
+            "Should reject more than 6 digits");
     }
 
     @Test

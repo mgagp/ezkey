@@ -155,8 +155,7 @@ public class EnrollmentService {
         enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
         enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
         enrollment.setDevicePublicKey(null);
-        java.util.Random random = new java.util.Random();
-        enrollment.setEnrollmentChallenge(100000 + random.nextInt(900000)); // 6 digits
+        enrollment.setEnrollmentChallenge(signatureService.generateSecureChallenge(6)); // 6 digits for enrollment
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
 
         EnrollmentCreateResponse response = new EnrollmentCreateResponse();
