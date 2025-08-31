@@ -1,0 +1,44 @@
+{
+  "name": "ezkey-javascript-sdk",
+  "version": "1.0.0",
+  "description": "JavaScript/TypeScript SDK for Ezkey Admin and Auth APIs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npm run clean && npm run generate && npm run compile",
+    "clean": "rimraf dist generated",
+    "generate": "npm run generate-admin && npm run generate-auth",
+    "generate-admin": "openapi-generator-cli generate -i ../admin-api-spec.json -g typescript-fetch -o generated/admin --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=ezkey-admin-client,withoutRuntimeChecks=true",
+    "generate-auth": "openapi-generator-cli generate -i ../auth-api-spec.json -g typescript-fetch -o generated/auth --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=ezkey-auth-client,withoutRuntimeChecks=true",
+    "compile": "tsc",
+    "demo": "node dist/demo/demo.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "ezkey",
+    "mfa",
+    "authentication",
+    "sdk",
+    "typescript",
+    "javascript"
+  ],
+  "author": "Ezkey Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mgagp/ezkey.git",
+    "directory": "ezkey-sdk/javascript"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.7.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
