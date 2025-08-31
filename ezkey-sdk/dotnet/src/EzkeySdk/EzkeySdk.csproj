@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Ezkey.Sdk</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>Ezkey .NET SDK</Title>
+    <Description>.NET SDK for Ezkey Admin and Auth APIs</Description>
+    <Authors>Ezkey Contributors</Authors>
+    <Company>Ezkey Project</Company>
+    <Copyright>Copyright (c) 2025 Ezkey contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mgagp/ezkey</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mgagp/ezkey.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ezkey;mfa;authentication;sdk</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+  </ItemGroup>
+
+</Project>
