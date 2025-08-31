@@ -213,6 +213,49 @@ public class SignatureService {
     }
 
     /**
+     * Generates a cryptographically secure challenge number for enrollment and authentication.
+     * <p>
+     * This method creates a cryptographically secure random challenge number suitable for use
+     * in MFA scenarios where security is paramount. Unlike standard Random generators, this
+     * method uses SecureRandom to ensure the challenge cannot be predicted by attackers.
+     * </p>
+     *
+     * <p>
+     * <b>Security Properties:</b>
+     * <ul>
+     * <li>Uses {@link java.security.SecureRandom} for cryptographic strength</li>
+     * <li>Generates numbers in the range appropriate for the specified digit count</li>
+     * <li>Ensures minimum digit requirements (no leading zeros in multi-digit challenges)</li>
+     * <li>Suitable for MFA challenge-response authentication flows</li>
+     * </ul>
+     * </p>
+     *
+     * @param digits the number of digits for the challenge (minimum 1, maximum 6)
+     * @return a cryptographically secure random challenge number
+     * @throws IllegalArgumentException if digits is outside the valid range
+     * @since 2025
+     */
+    public Integer generateSecureChallenge(int digits) {
+        if (digits < 1 || digits > 6) {
+            throw new IllegalArgumentException("Challenge digits must be between 1 and 6, got: " + digits);
+        }
+        
+        try {
+            java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+            
+            // Calculate the range for the specified number of digits
+            int minValue = (int) Math.pow(10, digits - 1);
+            int maxValue = (int) Math.pow(10, digits) - 1;
+            
+            // For 1 digit, minValue would be 1, for 2 digits minValue is 10, etc.
+            // Generate secure random number in the range [minValue, maxValue]
+            return minValue + secureRandom.nextInt(maxValue - minValue + 1);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate secure challenge", e);
+        }
+    }
+
+    /**
      * Generates a cryptographically secure proof token for signature operations.
      * <p>
      * This method creates a random, unpredictable token suitable for use as a payload to be signed

@@ -13,7 +13,6 @@ package org.ezkey.authattempt.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -503,12 +502,13 @@ public class AuthAttemptService {
     }
 
     /**
-     * Generates a challenge code with configurable number of digits.
+     * Generates a challenge code with configurable number of digits using secure random generation.
      * <p>
-     * This method generates a random challenge code based on the configured
+     * This method generates a cryptographically secure challenge code based on the configured
      * number of digits. The default is 2 digits, with a maximum of 6 digits.
      * If a value greater than 6 is configured, it will be truncated to 6 with
-     * a trace log message.
+     * a trace log message. Challenge generation is delegated to {@link SignatureService}
+     * to ensure cryptographic security using SecureRandom.
      * </p>
      *
      * @return the generated challenge code as an integer
@@ -526,14 +526,8 @@ public class AuthAttemptService {
         if (effectiveDigits < 1){
             effectiveDigits = 1;
         }
-        Random random = new Random();
-
-        // Calculate the range for the specified number of digits
-        int minValue = (int) Math.pow(10,effectiveDigits - 1);
-        int maxValue = (int) Math.pow(10,effectiveDigits) - 1;
-
-        // For 1 digit, minValue would be 1, for 2 digits minValue is 10, etc.
-        // Generate random number in the range [minValue, maxValue]
-        return minValue + random.nextInt(maxValue - minValue + 1);
+        
+        // Use SignatureService for cryptographically secure challenge generation
+        return signatureService.generateSecureChallenge(effectiveDigits);
     }
 }

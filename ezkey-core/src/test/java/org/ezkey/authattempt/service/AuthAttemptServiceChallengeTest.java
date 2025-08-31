@@ -57,7 +57,8 @@ class AuthAttemptServiceChallengeTest {
     void testDefaultTwoDigitChallenge() {
         // Arrange
         ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 2);
-        setupMocksForChallengeGeneration(true);
+        setupBasicMocks(true);
+        when(signatureService.generateSecureChallenge(2)).thenReturn(42);
 
         // Act
         AuthAttemptCreateResponse response = authAttemptService.create(createChallengeRequest());
@@ -68,7 +69,7 @@ class AuthAttemptServiceChallengeTest {
         // We'll verify this by capturing the saved AuthAttempt
         verify(authAttemptRepository).save(argThat(authAttempt -> {
             Integer challenge = authAttempt.getAuthAttemptChallenge();
-            return challenge != null && challenge >= 10 && challenge <= 99;
+            return challenge != null && challenge.equals(42); // Mocked value for 2 digits
         }));
     }
 
@@ -77,7 +78,8 @@ class AuthAttemptServiceChallengeTest {
     void testOneDigitChallenge() {
         // Arrange
         ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 1);
-        setupMocksForChallengeGeneration(true);
+        setupBasicMocks(true);
+        when(signatureService.generateSecureChallenge(1)).thenReturn(5);
 
         // Act
         AuthAttemptCreateResponse response = authAttemptService.create(createChallengeRequest());
@@ -85,7 +87,7 @@ class AuthAttemptServiceChallengeTest {
         // Assert
         verify(authAttemptRepository).save(argThat(authAttempt -> {
             Integer challenge = authAttempt.getAuthAttemptChallenge();
-            return challenge != null && challenge >= 1 && challenge <= 9;
+            return challenge != null && challenge.equals(5); // Mocked value for 1 digit
         }));
     }
 
@@ -94,7 +96,8 @@ class AuthAttemptServiceChallengeTest {
     void testSixDigitChallenge() {
         // Arrange
         ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 6);
-        setupMocksForChallengeGeneration(true);
+        setupBasicMocks(true);
+        when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
 
         // Act
         AuthAttemptCreateResponse response = authAttemptService.create(createChallengeRequest());
@@ -102,7 +105,7 @@ class AuthAttemptServiceChallengeTest {
         // Assert
         verify(authAttemptRepository).save(argThat(authAttempt -> {
             Integer challenge = authAttempt.getAuthAttemptChallenge();
-            return challenge != null && challenge >= 100000 && challenge <= 999999;
+            return challenge != null && challenge.equals(123456); // Mocked value for 6 digits
         }));
     }
 
@@ -111,7 +114,8 @@ class AuthAttemptServiceChallengeTest {
     void testTruncationToSixDigits() {
         // Arrange
         ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 8);
-        setupMocksForChallengeGeneration(true);
+        setupBasicMocks(true);
+        when(signatureService.generateSecureChallenge(6)).thenReturn(123456); // Should be truncated to 6
 
         // Act
         AuthAttemptCreateResponse response = authAttemptService.create(createChallengeRequest());
@@ -119,7 +123,7 @@ class AuthAttemptServiceChallengeTest {
         // Assert - should generate 6-digit challenge despite being configured for 8
         verify(authAttemptRepository).save(argThat(authAttempt -> {
             Integer challenge = authAttempt.getAuthAttemptChallenge();
-            return challenge != null && challenge >= 100000 && challenge <= 999999;
+            return challenge != null && challenge.equals(123456); // Mocked value for 6 digits (truncated from 8)
         }));
     }
 
@@ -128,7 +132,7 @@ class AuthAttemptServiceChallengeTest {
     void testNoChallengeGeneration() {
         // Arrange
         ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 2);
-        setupMocksForChallengeGeneration(false);
+        setupBasicMocks(false);
 
         // Act
         AuthAttemptCreateResponse response = authAttemptService.create(createNoChallengeRequest());
@@ -139,7 +143,7 @@ class AuthAttemptServiceChallengeTest {
         ));
     }
 
-    private void setupMocksForChallengeGeneration(boolean challengeRequired) {
+    private void setupBasicMocks(boolean challengeRequired) {
         Enrollment enrollment = new Enrollment();
         enrollment.setEnrollmentId(1);
         enrollment.setAuthAttemptChallengeRequired(challengeRequired);
