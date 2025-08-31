@@ -22,6 +22,7 @@ import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
+import org.ezkey.authattempt.domain.AuthenticationResult;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -34,11 +35,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.ezkey.authattempt.domain.AuthenticationResult;
 
 @Service
 @Transactional
@@ -232,7 +233,7 @@ public class AuthAttemptService {
         }
         // Find valid (non-expired) unread auth attempt
         LocalDateTime now = LocalDateTime.now();
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(request.getEnrollmentId(), now).orElse(null);
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(request.getEnrollmentId(),now).orElse(null);
         if (authAttempt == null){
             throw new NoPendingAuthAttemptException("No pending authentication request");
         }
@@ -275,21 +276,18 @@ public class AuthAttemptService {
             response.setMessage("Auth attempt not read by device");
             return response;
         }
-        
         // Check if superseded by a newer authentication attempt for the same enrollment
-        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(
-            authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
-        if (newerAttempt.isPresent()) {
-            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}", 
-                authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
+        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(),authAttempt.getCreatedAt());
+        if (newerAttempt.isPresent()){
+            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}",authAttempt.getAuthAttemptId(),newerAttempt.get().getAuthAttemptId(),
+                    authAttempt.getEnrollmentId());
             response.setResult(AuthenticationResult.EXPIRED);
             response.setMessage("Authentication attempt superseded by newer request");
             return response;
         }
-        
         // Check if expired
         LocalDateTime now = LocalDateTime.now();
-        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
             response.setResult(AuthenticationResult.EXPIRED);
             response.setMessage("Authentication attempt expired");
             return response;
@@ -339,9 +337,9 @@ public class AuthAttemptService {
         authAttemptRepository.save(authAttempt);
 
         // Set result based on user's choice
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
             response.setResult(AuthenticationResult.APPROVED);
-        } else {
+        } else{
             response.setResult(AuthenticationResult.DENIED);
         }
         response.setMessage("Auth attempt completed");
@@ -350,123 +348,60 @@ public class AuthAttemptService {
 
     /**
      * Waits for authentication response completion with configurable timeout and polling.
-     * <p>
-     * This method implements a simple polling mechanism that checks the authentication status
-     * at regular intervals until either the device responds or the timeout is reached.
-     * The polling approach is chosen for its simplicity, robustness, and alignment with
-     * the project's principles of maintainability over maximum performance.
-     * </p>
-     *
-     * <p>
-     * <b>Polling Mechanism:</b>
-     * <ul>
-     * <li>Checks authentication status every <code>polling</code> seconds</li>
-     * <li>Continues until <code>timeout</code> is reached or authentication completes</li>
-     * <li>Returns immediately when <code>authAttemptResponded</code> becomes true</li>
-     * <li>Calculates status based on ENDPOINT.md rules</li>
-     * </ul>
-     * </p>
-     *
-     * <p>
-     * <b>Error Handling:</b>
-     * <ul>
-     * <li>Throws <code>ResourceNotFoundException</code> if auth attempt not found</li>
-     * <li>Throws <code>IllegalArgumentException</code> for invalid parameters</li>
-     * <li>Handles <code>InterruptedException</code> gracefully</li>
-     * <li>Logs polling progress for debugging</li>
-     * </ul>
-     * </p>
-     *
-     * <p>
-     * <b>Performance Considerations:</b>
-     * <ul>
-     * <li>Uses <code>Thread.sleep()</code> for simplicity</li>
-     * <li>One thread per wait operation</li>
-     * <li>Suitable for moderate load scenarios</li>
-     * <li>Can be optimized with thread pools if needed</li>
-     * </ul>
-     * </p>
-     *
-     * @param authAttemptId the authentication attempt ID to wait for
-     * @param request the wait request containing timeout and polling parameters
-     * @return AuthAttemptWaitResponse containing the final authentication status and metadata
-     * @throws ResourceNotFoundException if the authentication attempt is not found
-     * @throws IllegalArgumentException if the request parameters are invalid
-     * @throws RuntimeException if the wait operation is interrupted
+     * This refactored version avoids holding a single long-running transaction / connection.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthAttemptWaitResponse waitForResponse(Integer authAttemptId,AuthAttemptWaitRequest request) {
         logger.debug("Starting wait operation for auth attempt {} with timeout={}s, polling={}s",authAttemptId,request.getTimeout(),request.getPolling());
 
-        // Validate parameters
         validateWaitRequest(request);
 
-        // Verify auth attempt exists
-        AuthAttempt authAttempt = getById(authAttemptId);
-        logger.debug("Found auth attempt {} with status: read={}, responded={}, accepted={}",authAttemptId,authAttempt.getAuthAttemptRead(),
-                authAttempt.getAuthAttemptResponded(),authAttempt.getAuthAttemptAccepted());
-
-        // Check if superseded by a newer authentication attempt for the same enrollment
-        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(
-            authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
-        if (newerAttempt.isPresent()) {
-            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation", 
-                authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
-            return buildWaitResponse(authAttempt, "EXPIRED", false, 0);
-        }
-
         long startTime = System.currentTimeMillis();
-        long endTime = startTime + (request.getTimeout() * 1000L);
+        long deadline = startTime + (request.getTimeout() * 1000L);
         int pollCount = 0;
-        while (System.currentTimeMillis() < endTime){
+        while (true){
+            // Short-lived fetch (no long transaction held between iterations)
+            AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElseThrow(() -> new ResourceNotFoundException("Authorization attempt",authAttemptId));
+
+            // Superseded check
+            Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(),authAttempt.getCreatedAt());
+            if (newerAttempt.isPresent()){
+                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation",authAttemptId,newerAttempt.get().getAuthAttemptId(),
+                        authAttempt.getEnrollmentId());
+                return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
+            }
+            // Completed?
+            if (Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
+                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                logger.info("Auth attempt {} completed after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
+                return buildWaitResponse(authAttempt,false,waitDuration);
+            }
+            // Expired?
+            LocalDateTime now = LocalDateTime.now();
+            if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
+                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                logger.info("Auth attempt {} expired during wait at {}",authAttemptId,authAttempt.getExpiresAt());
+                return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
+            }
+            long nowMs = System.currentTimeMillis();
+            if (nowMs >= deadline){
+                int waitDuration = (int) ((nowMs - startTime) / 1000);
+                logger.info("Auth attempt {} timed out after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
+                return buildWaitResponse(authAttempt,true,waitDuration);
+            }
             try{
-                // Check if authentication is complete
-                if (Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
-                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                    logger.info("Auth attempt {} completed after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
-
-                    return buildWaitResponse(authAttempt,false,waitDuration);
-                }
-                
-                // Sleep before next check
                 Thread.sleep(request.getPolling() * 1000L);
-                pollCount++;
-
-                // Refresh auth attempt data
-                entityManager.refresh(authAttempt);
-                authAttempt = getById(authAttemptId);
-                
-                // Check if superseded by a newer authentication attempt for the same enrollment (in loop)
-                Optional<AuthAttempt> newerAttemptInLoop = authAttemptRepository.findNewerAttemptByEnrollmentId(
-                    authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
-                if (newerAttemptInLoop.isPresent()) {
-                    logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during polling", 
-                        authAttempt.getAuthAttemptId(), newerAttemptInLoop.get().getAuthAttemptId(), authAttempt.getEnrollmentId());
-                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                    return buildWaitResponse(authAttempt, "EXPIRED", false, waitDuration);
-                }
-                
-                // Check if expired (in loop)
-                LocalDateTime now = LocalDateTime.now();
-                if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
-                    logger.info("Auth attempt {} expired during polling at {}", authAttempt.getAuthAttemptId(), authAttempt.getExpiresAt());
-                    int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                    return buildWaitResponse(authAttempt, "EXPIRED", false, waitDuration);
-                }
-                
-                if (pollCount % 10 == 0){ // Log every 10th poll to avoid spam
-                    logger.debug("Auth attempt {} still pending after {} polls",authAttemptId,pollCount);
-                }
-            } catch (InterruptedException e){
+            } catch (InterruptedException ie){
                 Thread.currentThread().interrupt();
                 logger.warn("Wait operation for auth attempt {} was interrupted",authAttemptId);
-                throw new RuntimeException("Wait operation interrupted",e);
+                throw new RuntimeException("Wait operation interrupted",ie);
+            }
+            pollCount++;
+            if (pollCount % 10 == 0){
+                logger.debug("Auth attempt {} still pending after {} polls",authAttemptId,pollCount);
             }
         }
-        // Timeout reached
-        int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-        logger.info("Auth attempt {} timed out after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
-
-        return buildWaitResponse(authAttempt,true,waitDuration);
     }
 
     /**
@@ -523,10 +458,10 @@ public class AuthAttemptService {
      * @param waitDuration the actual duration waited in seconds
      * @return the complete AuthAttemptWaitResponse
      */
-    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt, String status, boolean timeoutReached, int waitDuration) {
+    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,String status,boolean timeoutReached,int waitDuration) {
         boolean completed = Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded());
 
-        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, LocalDateTime.now());
+        return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
     }
 
     /**
@@ -543,10 +478,9 @@ public class AuthAttemptService {
     private String calculateStatus(AuthAttempt authAttempt) {
         // Check if expired first (highest priority)
         LocalDateTime now = LocalDateTime.now();
-        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
             return "EXPIRED";
         }
-        
         // #1: authAttemptRead null or false : PENDING
         if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
             return "PENDING";
@@ -582,15 +516,14 @@ public class AuthAttemptService {
      */
     private Integer generateChallenge() {
         int effectiveDigits = challengeDigits;
-        
+
         // Validate and truncate if necessary
-        if (effectiveDigits > 6) {
-            logger.trace("Challenge digits configured as {} exceeds maximum of 6, truncating to 6", challengeDigits);
+        if (effectiveDigits > 6){
+            logger.trace("Challenge digits configured as {} exceeds maximum of 6, truncating to 6",challengeDigits);
             effectiveDigits = 6;
         }
-        
         // Ensure minimum of 1 digit
-        if (effectiveDigits < 1) {
+        if (effectiveDigits < 1){
             effectiveDigits = 1;
         }
         
