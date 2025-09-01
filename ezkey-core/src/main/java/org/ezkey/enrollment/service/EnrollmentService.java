@@ -316,14 +316,31 @@ public class EnrollmentService {
             enrollment.setEnrollmentVerified(true);
             enrollment.setEnrollmentValid(false);
             enrollment.setEnrollmentChallenge(null);
+            enrollment.setEnrollmentChallengeEmail(null);
             enrollmentRepository.save(enrollment);
             throw new IllegalArgumentException("Invalid challenge response");
+        }
+        
+        // Validate email challenge response if email challenge is enabled and set
+        if (emailService.isEmailChallengeEnabled() && enrollment.getEnrollmentChallengeEmail() != null) {
+            if (request.getEmailChallengeResponse() == null || 
+                !request.getEmailChallengeResponse().equals(enrollment.getEnrollmentChallengeEmail())) {
+                enrollment.setEnrollmentVerified(true);
+                enrollment.setEnrollmentValid(false);
+                enrollment.setEnrollmentChallenge(null);
+                enrollment.setEnrollmentChallengeEmail(null);
+                enrollmentRepository.save(enrollment);
+                throw new IllegalArgumentException("Invalid email challenge response");
+            }
         }
         // Confirm enrollment
         enrollment.setEnrollmentVerified(true);
         enrollment.setEnrollmentValid(true);
         enrollment.setEnrollmentActive(true);
         enrollment.setDevicePublicKey(request.getDevicePublicKey());
+        // Clear challenge values as they are no longer needed
+        enrollment.setEnrollmentChallenge(null);
+        enrollment.setEnrollmentChallengeEmail(null);
         enrollmentRepository.save(enrollment);
 
         EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();

@@ -77,6 +77,18 @@ public class EnrollmentVerifyRequestDto {
     private Integer challengeResponse;
 
     /**
+     * User's response to the enrollment email challenge.
+     * <p>
+     * Numeric response provided by the user for enrollment email verification
+     * when email challenge feature is enabled. This code is sent via email
+     * and must be entered in the mobile app to verify email access.
+     * </p>
+     */
+    @Schema(description = "User's response to the enrollment email challenge", 
+            example = "654321")
+    private Integer emailChallengeResponse;
+
+    /**
      * The mobile device's generated public key.
      * <p>
      * Contains the public key that the mobile device generated as part of
@@ -137,6 +149,24 @@ public class EnrollmentVerifyRequestDto {
      */
     public void setChallengeResponse(Integer challengeResponse) {
         this.challengeResponse = challengeResponse;
+    }
+
+    /**
+     * Gets the email challenge response.
+     *
+     * @return the email challenge response
+     */
+    public Integer getEmailChallengeResponse() {
+        return emailChallengeResponse;
+    }
+
+    /**
+     * Sets the email challenge response.
+     *
+     * @param emailChallengeResponse the email challenge response to set
+     */
+    public void setEmailChallengeResponse(Integer emailChallengeResponse) {
+        this.emailChallengeResponse = emailChallengeResponse;
     }
 
     /**

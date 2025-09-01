@@ -87,6 +87,17 @@ public class EnrollmentVerifyRequest {
     private Integer challengeResponse;
 
     /**
+     * Response to the enrollment email challenge.
+     * <p>
+     * Numeric value that must match the expected response to the enrollment
+     * email challenge sent via email when email challenge feature is enabled.
+     * This provides additional identity validation during enrollment verification
+     * and helps ensure the enrollee has access to the specified email address.
+     * </p>
+     */
+    private Integer emailChallengeResponse;
+
+    /**
      * Device's public key for cryptographic operations.
      * <p>
      * The device's public key that will be used for all future authentication
@@ -144,6 +155,24 @@ public class EnrollmentVerifyRequest {
      */
     public void setChallengeResponse(Integer challengeResponse) {
         this.challengeResponse = challengeResponse;
+    }
+
+    /**
+     * Gets the response to the enrollment email challenge.
+     *
+     * @return the email challenge response value
+     */
+    public Integer getEmailChallengeResponse() {
+        return emailChallengeResponse;
+    }
+
+    /**
+     * Sets the response to the enrollment email challenge.
+     *
+     * @param emailChallengeResponse the email challenge response value to set
+     */
+    public void setEmailChallengeResponse(Integer emailChallengeResponse) {
+        this.emailChallengeResponse = emailChallengeResponse;
     }
 
     /**
