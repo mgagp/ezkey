@@ -143,6 +143,27 @@ public class EnrollmentResponse {
     private Integer enrollmentChallenge;
 
     /**
+     * Email challenge value for enrollment verification.
+     * <p>
+     * Numeric email challenge token sent via email during the enrollment
+     * verification process when email challenge feature is enabled. This
+     * value must be entered by the user to complete enrollment verification
+     * and provides additional identity validation.
+     * </p>
+     */
+    private Integer enrollmentChallengeEmail;
+
+    /**
+     * Email address for enrollment verification.
+     * <p>
+     * Email address associated with this enrollment, used for sending
+     * email challenges when email challenge feature is enabled. Provides
+     * an additional layer of identity verification during enrollment.
+     * </p>
+     */
+    private String enrollmentEmail;
+
+    /**
      * Unique code for enrollment verification.
      * <p>
      * Cryptographic proof token used during enrollment verification step
@@ -320,6 +341,42 @@ public class EnrollmentResponse {
      */
     public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    /**
+     * Gets the email challenge value for enrollment verification.
+     *
+     * @return the enrollment email challenge value
+     */
+    public Integer getEnrollmentChallengeEmail() {
+        return enrollmentChallengeEmail;
+    }
+
+    /**
+     * Sets the email challenge value for enrollment verification.
+     *
+     * @param enrollmentChallengeEmail the enrollment email challenge value to set
+     */
+    public void setEnrollmentChallengeEmail(Integer enrollmentChallengeEmail) {
+        this.enrollmentChallengeEmail = enrollmentChallengeEmail;
+    }
+
+    /**
+     * Gets the email address for enrollment verification.
+     *
+     * @return the enrollment email address
+     */
+    public String getEnrollmentEmail() {
+        return enrollmentEmail;
+    }
+
+    /**
+     * Sets the email address for enrollment verification.
+     *
+     * @param enrollmentEmail the enrollment email address to set
+     */
+    public void setEnrollmentEmail(String enrollmentEmail) {
+        this.enrollmentEmail = enrollmentEmail;
     }
 
     /**

@@ -131,6 +131,18 @@ public class EnrollmentResponseDto {
     private Integer enrollmentChallenge;
 
     /**
+     * Email challenge value for enrollment verification.
+     * Used in the enrollment email challenge-response process when email validation is enabled.
+     */
+    private Integer enrollmentChallengeEmail;
+
+    /**
+     * Email address for enrollment verification.
+     * Used for sending email challenges when email validation is enabled.
+     */
+    private String enrollmentEmail;
+
+    /**
      * Unique code for enrollment verification.
      * Used for enrollment verification step.
      */
@@ -296,6 +308,42 @@ public class EnrollmentResponseDto {
      */
     public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    /**
+     * Gets the enrollment email challenge.
+     *
+     * @return the email challenge value for enrollment verification
+     */
+    public Integer getEnrollmentChallengeEmail() {
+        return enrollmentChallengeEmail;
+    }
+
+    /**
+     * Sets the enrollment email challenge.
+     *
+     * @param enrollmentChallengeEmail the email challenge value for enrollment verification to set
+     */
+    public void setEnrollmentChallengeEmail(Integer enrollmentChallengeEmail) {
+        this.enrollmentChallengeEmail = enrollmentChallengeEmail;
+    }
+
+    /**
+     * Gets the enrollment email address.
+     *
+     * @return the email address for enrollment verification
+     */
+    public String getEnrollmentEmail() {
+        return enrollmentEmail;
+    }
+
+    /**
+     * Sets the enrollment email address.
+     *
+     * @param enrollmentEmail the email address for enrollment verification to set
+     */
+    public void setEnrollmentEmail(String enrollmentEmail) {
+        this.enrollmentEmail = enrollmentEmail;
     }
 
     /**

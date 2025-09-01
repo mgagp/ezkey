@@ -69,6 +69,14 @@ public class EnrollmentCreateRequestDto {
     private String name;
 
     /**
+     * Email address for enrollment email challenge verification.
+     * Required when email challenge feature is enabled in configuration.
+     */
+    @Schema(description = "Email address for enrollment email challenge verification", 
+            example = "john.doe@example.com")
+    private String email;
+
+    /**
      * Indicates whether authentication attempts require challenge validation.
      * When true, auth attempts will include additional challenge data for verification.
      */
@@ -110,6 +118,24 @@ public class EnrollmentCreateRequestDto {
      */
     public void setName(String name){
         this.name = name;
+    }
+
+    /**
+     * Gets the email address for enrollment email challenge verification.
+     *
+     * @return the email address
+     */
+    public String getEmail(){
+        return email;
+    }
+
+    /**
+     * Sets the email address for enrollment email challenge verification.
+     *
+     * @param email the email address to set
+     */
+    public void setEmail(String email){
+        this.email = email;
     }
 
     /**

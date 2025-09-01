@@ -52,6 +52,8 @@ CREATE TABLE ezkey_enrollment (
     enrollment_valid BOOLEAN NOT NULL DEFAULT FALSE,  -- Final validation status - TRUE means enrollment is ready for authentication attempts
     enrollment_active BOOLEAN NOT NULL DEFAULT FALSE,  -- Operational flag controlling if this enrollment can be used for authentication
     enrollment_challenge INT DEFAULT NULL,  -- Optional numeric challenge for additional security during enrollment binding
+    enrollment_challenge_email INT DEFAULT NULL,  -- Optional email challenge (6 digits) for additional identity validation during enrollment process
+    enrollment_email VARCHAR(255),  -- Email address for enrollment email challenge verification and identity validation
     enrollment_proof_token TEXT NOT NULL,  -- Unique cryptographic token proving device received enrollment details (one-time use)
     auth_attempt_challenge_required BOOLEAN NOT NULL DEFAULT FALSE,  -- Configuration flag - if TRUE, authentication attempts require numeric challenge entry
     integration_private_key TEXT NOT NULL,  -- RSA-2048 private key for integration-side cryptographic operations (PEM format, encrypted at rest)
@@ -72,6 +74,8 @@ COMMENT ON COLUMN ezkey_enrollment.enrollment_verified IS 'State tracking flag -
 COMMENT ON COLUMN ezkey_enrollment.enrollment_valid IS 'Final validation flag - TRUE indicates enrollment passed all verification steps and is cryptographically sound for authentication';
 COMMENT ON COLUMN ezkey_enrollment.enrollment_active IS 'Operational control flag - FALSE disables authentication attempts for this enrollment while preserving enrollment data';
 COMMENT ON COLUMN ezkey_enrollment.enrollment_challenge IS 'Optional numeric challenge (4-6 digits) required during device binding for additional security - displayed in QR code or SMS';
+COMMENT ON COLUMN ezkey_enrollment.enrollment_challenge_email IS 'Optional email challenge (6 digits) for additional identity validation during enrollment process - sent via email when email challenge feature is enabled';
+COMMENT ON COLUMN ezkey_enrollment.enrollment_email IS 'Email address for enrollment email challenge verification and identity validation - used when email challenge feature is enabled in configuration';
 COMMENT ON COLUMN ezkey_enrollment.enrollment_proof_token IS 'One-time cryptographic token proving device successfully received enrollment details - used during binding verification process';
 COMMENT ON COLUMN ezkey_enrollment.auth_attempt_challenge_required IS 'Configuration flag - when TRUE, all authentication attempts for this enrollment require user to enter numeric challenge on mobile device';
 COMMENT ON COLUMN ezkey_enrollment.integration_private_key IS 'RSA-2048 private key for integration-side cryptographic operations (PEM format) - SENSITIVE DATA requiring encryption at rest and secure handling';

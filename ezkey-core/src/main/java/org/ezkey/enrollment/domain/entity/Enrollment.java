@@ -101,6 +101,20 @@ public class Enrollment {
     private Integer enrollmentChallenge;
 
     /**
+     * Email challenge value for enrollment verification.
+     * Used in the enrollment email challenge-response process when email validation is enabled.
+     */
+    @Column(name = "enrollment_challenge_email")
+    private Integer enrollmentChallengeEmail;
+
+    /**
+     * Email address for enrollment verification.
+     * Used for sending email challenges when email validation is enabled.
+     */
+    @Column(name = "enrollment_email")
+    private String enrollmentEmail;
+
+    /**
      * Unique enrollment proof token for identification.
      * Used for enrollment lookup and verification.
      */
@@ -221,6 +235,22 @@ public class Enrollment {
 
     public void setEnrollmentChallenge(Integer enrollmentChallenge) {
         this.enrollmentChallenge = enrollmentChallenge;
+    }
+
+    public Integer getEnrollmentChallengeEmail() {
+        return enrollmentChallengeEmail;
+    }
+
+    public void setEnrollmentChallengeEmail(Integer enrollmentChallengeEmail) {
+        this.enrollmentChallengeEmail = enrollmentChallengeEmail;
+    }
+
+    public String getEnrollmentEmail() {
+        return enrollmentEmail;
+    }
+
+    public void setEnrollmentEmail(String enrollmentEmail) {
+        this.enrollmentEmail = enrollmentEmail;
     }
 
     public String getEnrollmentProofToken() {

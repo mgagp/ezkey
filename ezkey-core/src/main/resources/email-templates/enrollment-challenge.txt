@@ -1,0 +1,19 @@
+Subject: Ezkey Enrollment Challenge - {{integrationName}}
+
+Hello,
+
+You are enrolling a new device for "{{enrollmentName}}" in the Ezkey MFA system for {{integrationName}}.
+
+Your enrollment challenge code is: {{challenge}}
+
+Please enter this 6-digit code in your device to complete the enrollment process.
+
+This code is required to verify your identity and ensure the security of your enrollment.
+
+If you did not initiate this enrollment, please ignore this email and contact your system administrator.
+
+Best regards,
+Ezkey MFA System
+
+---
+This is an automated message. Please do not reply to this email.

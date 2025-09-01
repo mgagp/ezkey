@@ -23,6 +23,7 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentCoreMapper;
+import org.ezkey.email.EmailService;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
@@ -78,19 +79,23 @@ public class EnrollmentService {
 
     private final IntegrationRepository integrationRepository;
 
+    private final EmailService emailService;
+
     /**
      * Constructs the enrollment service with required dependencies.
      *
      * @param enrollmentRepository the JPA repository for enrollment operations
-     * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
      * @param signatureService the cryptographic signature service
      * @param integrationRepository the JPA repository for integration operations
+     * @param emailService the email service for sending enrollment challenges
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService,IntegrationRepository integrationRepository){
+    public EnrollmentService(EnrollmentRepository enrollmentRepository, SignatureService signatureService, 
+                           IntegrationRepository integrationRepository, EmailService emailService){
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
         this.integrationRepository = integrationRepository;
+        this.emailService = emailService;
     }
 
     /**
@@ -141,6 +146,12 @@ public class EnrollmentService {
         if (request.getIntegrationId() == null){
             throw new IllegalArgumentException("Integration ID is required");
         }
+        
+        // Check if email challenge is enabled and email is required
+        if (emailService.isEmailChallengeEnabled() && (request.getEmail() == null || request.getEmail().trim().isEmpty())) {
+            throw new IllegalArgumentException("Email address is required when email challenge is enabled");
+        }
+        
         var enrollment = new Enrollment();
         enrollment.setIntegrationId(request.getIntegrationId());
         enrollment.setEnrollmentName(request.getName().trim());
@@ -156,7 +167,37 @@ public class EnrollmentService {
         enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
         enrollment.setDevicePublicKey(null);
         enrollment.setEnrollmentChallenge(signatureService.generateSecureChallenge(6)); // 6 digits for enrollment
+        
+        // Handle email challenge if enabled
+        if (emailService.isEmailChallengeEnabled() && request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            enrollment.setEnrollmentEmail(request.getEmail().trim());
+            enrollment.setEnrollmentChallengeEmail(signatureService.generateSecureChallenge(6)); // 6 digits for email challenge
+        }
+        
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
+        // Send email challenge if enabled
+        if (emailService.isEmailChallengeEnabled() && savedEnrollment.getEnrollmentEmail() != null) {
+            try {
+                // Get integration info for email
+                Optional<Integration> integrationOpt = integrationRepository.findById(savedEnrollment.getIntegrationId());
+                String integrationName = "Unknown Integration";
+                if (integrationOpt.isPresent() && !integrationOpt.get().getI18n().isEmpty()) {
+                    integrationName = integrationOpt.get().getI18n().get(0).getName();
+                }
+                
+                emailService.sendEnrollmentChallenge(
+                    savedEnrollment.getEnrollmentEmail(),
+                    savedEnrollment.getEnrollmentName(),
+                    savedEnrollment.getEnrollmentChallengeEmail(),
+                    integrationName
+                );
+            } catch (Exception e) {
+                logger.warn("Failed to send enrollment email challenge for enrollment {}: {}", 
+                    savedEnrollment.getEnrollmentId(), e.getMessage());
+                // Don't fail the enrollment creation if email sending fails
+            }
+        }
 
         EnrollmentCreateResponse response = new EnrollmentCreateResponse();
         response.setEnrollmentId(savedEnrollment.getEnrollmentId());

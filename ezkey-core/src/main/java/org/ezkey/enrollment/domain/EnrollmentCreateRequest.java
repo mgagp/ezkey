@@ -84,6 +84,16 @@ public class EnrollmentCreateRequest {
     private String name;
 
     /**
+     * Email address for enrollment email challenge verification.
+     * <p>
+     * When email challenge feature is enabled, this email address will be used
+     * to send a verification challenge to the enrollee. The challenge must be
+     * entered during the enrollment process to complete enrollment verification.
+     * </p>
+     */
+    private String email;
+
+    /**
      * Flag indicating if authentication attempts require additional challenges.
      * <p>
      * When true, authentication attempts using this enrollment will require
@@ -129,6 +139,24 @@ public class EnrollmentCreateRequest {
      */
     public void setName(String name) {
         this.name = name;
+    }
+
+    /**
+     * Gets the email address for enrollment email challenge verification.
+     *
+     * @return the email address
+     */
+    public String getEmail() {
+        return email;
+    }
+
+    /**
+     * Sets the email address for enrollment email challenge verification.
+     *
+     * @param email the email address to set
+     */
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     /**
