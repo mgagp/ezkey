@@ -56,6 +56,14 @@
                 <tr><td class="detail-label">Enrollment ID</td><td th:text="${enrollment.enrollmentId}">1</td></tr>
                 <tr><td class="detail-label">Integration ID</td><td th:text="${enrollment.integrationId}">1</td></tr>
                 <tr><td class="detail-label">Name</td><td th:text="${enrollment.enrollmentName}">Device Name</td></tr>
+                <tr th:if="${enrollment.enrollmentEmail != null and not #strings.isEmpty(enrollment.enrollmentEmail)}">
+                    <td class="detail-label">Email</td>
+                    <td th:text="${enrollment.enrollmentEmail}">user@example.com</td>
+                </tr>
+                <tr th:if="${enrollment.enrollmentChallengeEmail != null}">
+                    <td class="detail-label">Email Challenge</td>
+                    <td th:text="${enrollment.enrollmentChallengeEmail}">123456</td>
+                </tr>
                 <tr>
                     <td class="detail-label">Read</td>
                     <td><span class="status-badge" th:classappend="${enrollment.enrollmentRead} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentRead} ? 'YES' : 'NO'">YES</span></td>
