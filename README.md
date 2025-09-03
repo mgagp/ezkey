@@ -495,6 +495,58 @@ npx react-native run-android  # or run-ios
   - Admin: http://localhost:9080/swagger-ui.html
   - Auth: http://localhost:8080/swagger-ui.html
 
+## 🔍 Code Quality Tools
+
+Ezkey uses automated code quality tools to ensure high code standards and security:
+
+### Quality Tools Configured
+
+- **SpotBugs**: Static analysis for potential bugs and security vulnerabilities
+- **Checkstyle**: Code style validation using Google Java Style Guide
+- **PMD**: Code quality and best practices analysis
+- **JaCoCo**: Code coverage analysis
+
+### Running Quality Analysis
+
+Use the integrated quality analysis script:
+
+```bash
+# Run all quality tools
+./scripts/run-quality-analysis.sh
+```
+
+Or run individual tools:
+
+```bash
+# SpotBugs (security and bug detection)
+mvn spotbugs:spotbugs
+
+# Checkstyle (code style)
+mvn checkstyle:checkstyle
+
+# PMD (code quality)
+mvn pmd:pmd
+
+# All together
+mvn spotbugs:spotbugs checkstyle:checkstyle pmd:pmd
+```
+
+### Quality Reports
+
+Reports are generated in each module's `target/` directory:
+- **SpotBugs**: `target/spotbugsXml.xml`
+- **Checkstyle**: `target/checkstyle-result.xml` and `target/site/checkstyle.html`
+- **PMD**: `target/pmd.xml` and `target/site/pmd.html`
+- **JaCoCo**: `target/site/jacoco/index.html`
+
+### Improvement Plan
+
+See [`ezkey-docs/CODE_IMPROVEMENT_PLAN.md`](ezkey-docs/CODE_IMPROVEMENT_PLAN.md) for:
+- Current quality status
+- Critical security issues identified
+- Three-phase improvement roadmap
+- Implementation strategy
+
 ## API Overview
 
 ### Admin API Endpoints (`localhost:9080`)
