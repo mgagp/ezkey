@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Exclude generated code and test utilities -->
+    
+    <!-- Exclude MapStruct generated classes -->
+    <Match>
+        <Class name="~.*Impl"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="~.*Impl"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    
+    <!-- Exclude Spring Boot auto-configuration -->
+    <Match>
+        <Class name="~.*Application"/>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+    </Match>
+    
+    <!-- Exclude test-related false positives -->
+    <Match>
+        <Class name="~.*Test"/>
+    </Match>
+    <Match>
+        <Class name="~.*TestConfiguration"/>
+    </Match>
+    
+    <!-- Exclude demo projects from strict analysis in initial phase -->
+    <Match>
+        <Package name="~org\.ezkey\.demo\..*"/>
+    </Match>
+    
+    <!-- Exclude low-priority style issues for initial phase -->
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+    </Match>
+    <Match>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+    </Match>
+    <Match>
+        <Bug pattern="DLS_DEAD_LOCAL_STORE"/>
+    </Match>
+    
+    <!-- Exclude JPA entity serialization warnings -->
+    <Match>
+        <Class name="~.*entity\..*"/>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+</FindBugsFilter>

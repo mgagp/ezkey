@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Ezkey PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    
+    <description>PMD rules for Ezkey project - Phase 1 (Critical Issues)</description>
+    
+    <!-- Best Practices -->
+    <rule ref="category/java/bestpractices.xml/AvoidUsingHardCodedIP"/>
+    <rule ref="category/java/bestpractices.xml/CheckResultSet"/>
+    <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+    <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+    
+    <!-- Security -->
+    <rule ref="category/java/security.xml"/>
+    
+    <!-- Error Prone -->
+    <rule ref="category/java/errorprone.xml/AvoidBranchingStatementAsLastInLoop"/>
+    <rule ref="category/java/errorprone.xml/AvoidMultipleUnaryOperators"/>
+    <rule ref="category/java/errorprone.xml/AvoidUsingOctalValues"/>
+    <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
+    <rule ref="category/java/errorprone.xml/ClassCastExceptionWithToArray"/>
+    <rule ref="category/java/errorprone.xml/DontUseFloatTypeForLoopIndices"/>
+    <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+    <rule ref="category/java/errorprone.xml/JumbledIncrementer"/>
+    <rule ref="category/java/errorprone.xml/MisplacedNullCheck"/>
+    <rule ref="category/java/errorprone.xml/OverrideBothEqualsAndHashcode"/>
+    <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock"/>
+    <rule ref="category/java/errorprone.xml/UnconditionalIfStatement"/>
+    <rule ref="category/java/errorprone.xml/UnnecessaryConversionTemporary"/>
+    <rule ref="category/java/errorprone.xml/UnusedNullCheckInEquals"/>
+    <rule ref="category/java/errorprone.xml/UselessOperationOnImmutable"/>
+    
+    <!-- Performance -->
+    <rule ref="category/java/performance.xml/AvoidInstantiatingObjectsInLoops"/>
+    <rule ref="category/java/performance.xml/BigIntegerInstantiation"/>
+    <rule ref="category/java/performance.xml/BooleanInstantiation"/>
+    <rule ref="category/java/performance.xml/UseStringBufferForStringAppends"/>
+    
+    <!-- Multithreading -->
+    <rule ref="category/java/multithreading.xml/AvoidThreadGroup"/>
+    <rule ref="category/java/multithreading.xml/DontCallThreadRun"/>
+    <rule ref="category/java/multithreading.xml/DoubleCheckedLocking"/>
+    
+    <!-- Exclude test files and generated code -->
+    <exclude-pattern>.*/src/test/.*</exclude-pattern>
+    <exclude-pattern>.*Test.java</exclude-pattern>
+    <exclude-pattern>.*Impl.java</exclude-pattern>
+    <exclude-pattern>.*/demo/.*</exclude-pattern>
+</ruleset>

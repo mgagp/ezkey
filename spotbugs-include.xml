@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Include all critical and high-priority bugs for initial analysis -->
+    
+    <!-- Security vulnerabilities -->
+    <Match>
+        <Bug category="SECURITY"/>
+    </Match>
+    
+    <!-- Correctness bugs -->
+    <Match>
+        <Bug category="CORRECTNESS"/>
+    </Match>
+    
+    <!-- Performance issues -->
+    <Match>
+        <Bug category="PERFORMANCE"/>
+    </Match>
+    
+    <!-- Bad practice -->
+    <Match>
+        <Bug category="BAD_PRACTICE"/>
+    </Match>
+    
+    <!-- Multithreaded correctness -->
+    <Match>
+        <Bug category="MT_CORRECTNESS"/>
+    </Match>
+    
+    <!-- Include specific high-priority bug patterns -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_PARAM_DEREF"/>
+    </Match>
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+    </Match>
+    <Match>
+        <Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE"/>
+    </Match>
+    <Match>
+        <Bug pattern="XSS_REQUEST_PARAMETER_TO_SEND_ERROR"/>
+    </Match>
+    <Match>
+        <Bug pattern="HRS_REQUEST_PARAMETER_TO_HTTP_HEADER"/>
+    </Match>
+</FindBugsFilter>
