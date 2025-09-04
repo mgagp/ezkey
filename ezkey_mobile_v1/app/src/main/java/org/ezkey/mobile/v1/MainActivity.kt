@@ -236,8 +236,8 @@ class MainActivity : AppCompatActivity() {
         
         for (digits in 1..6) {
             val challenge = signatureService.generateSecureChallenge(digits)
-            val expectedMin = kotlin.math.pow(10.0, (digits - 1).toDouble()).toInt()
-            val expectedMax = kotlin.math.pow(10.0, digits.toDouble()).toInt() - 1
+            val expectedMin = Math.pow(10.0, (digits - 1).toDouble()).toInt()
+            val expectedMax = Math.pow(10.0, digits.toDouble()).toInt() - 1
             
             if (challenge in expectedMin..expectedMax) {
                 appendResult("✅ ${digits}-digit challenge: $challenge (valid range)")

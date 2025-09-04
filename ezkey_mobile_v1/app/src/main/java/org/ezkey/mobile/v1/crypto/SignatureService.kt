@@ -185,8 +185,8 @@ class SignatureService {
             val secureRandom = SecureRandom()
             
             // Calculate the range for the specified number of digits
-            val minValue = kotlin.math.pow(10.0, (digits - 1).toDouble()).toInt()
-            val maxValue = kotlin.math.pow(10.0, digits.toDouble()).toInt() - 1
+            val minValue = Math.pow(10.0, (digits - 1).toDouble()).toInt()
+            val maxValue = Math.pow(10.0, digits.toDouble()).toInt() - 1
             
             // Generate secure random number in the range [minValue, maxValue]
             minValue + secureRandom.nextInt(maxValue - minValue + 1)
