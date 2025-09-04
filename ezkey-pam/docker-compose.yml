@@ -1,0 +1,25 @@
+# ==================================================
+# docker-compose.yml
+# ==================================================
+version: '3.8'
+
+services:
+  ezkey-pam-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ezkey-pam-test
+    hostname: ezkey-test
+    ports:
+      - "2222:22"    # SSH accessible sur localhost:2222
+      - "2223:2222"   # SSH accessible sur localhost:2223
+    volumes:
+      - ./logs:/var/log/container    # Logs accessibles depuis l'host
+      - ./workspace:/home/testuser/workspace    # Workspace partagé
+    environment:
+      - MOCK_SUCCESS=1
+      - MOCK_DELAY=5
+      - DEBUG_MODE=1
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
