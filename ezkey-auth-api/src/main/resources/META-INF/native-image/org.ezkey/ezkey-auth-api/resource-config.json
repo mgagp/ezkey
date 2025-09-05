@@ -1,0 +1,24 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\Qapplication.properties\\E"
+      },
+      {
+        "pattern": "\\Qapplication-native.properties\\E"
+      },
+      {
+        "pattern": "\\Qapplication-*.properties\\E"
+      },
+      {
+        "pattern": "\\Qorg/hibernate/validator/ValidationMessages.properties\\E"
+      },
+      {
+        "pattern": "\\QValidationMessages.properties\\E"
+      }
+    ]
+  },
+  "bundles": [
+    { "name": "org.hibernate.validator.ValidationMessages" }
+  ]
+}

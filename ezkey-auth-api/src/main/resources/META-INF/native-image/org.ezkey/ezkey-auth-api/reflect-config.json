@@ -1,0 +1,61 @@
+[
+  {
+    "name": "org.ezkey.auth.AuthApplication",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] },
+      { "name": "main", "parameterTypes": ["java.lang.String[]"] }
+    ]
+  },
+  {
+    "name": "org.ezkey.auth.controller.EnrollmentController",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.ezkey.auth.controller.AuthAttemptController",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "org.ezkey.enrollment.dto.EnrollmentBindRequestDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.enrollment.dto.EnrollmentBindResponseDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto",
+    "allPublicMethods": true,
+    "allPublicFields": true
+  }
+]

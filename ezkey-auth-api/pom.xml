@@ -78,7 +78,83 @@
 	        <properties>
 	            <spring-boot.build-image.builder>paketobuildpacks/builder:tiny</spring-boot.build-image.builder>
 	            <spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
+	            <native.maven.plugin.version>0.10.3</native.maven.plugin.version>
 	        </properties>
+	        <dependencies>
+	            <!-- Native image support for Spring Boot -->
+	            <dependency>
+	                <groupId>org.junit.platform</groupId>
+	                <artifactId>junit-platform-launcher</artifactId>
+	                <scope>test</scope>
+	            </dependency>
+	        </dependencies>
+	        <build>
+	            <plugins>
+	                <!-- Spring Boot Maven Plugin with native image support -->
+	                <plugin>
+	                    <groupId>org.springframework.boot</groupId>
+	                    <artifactId>spring-boot-maven-plugin</artifactId>
+	                    <executions>
+	                        <execution>
+	                            <id>process-aot</id>
+	                            <goals>
+	                                <goal>process-aot</goal>
+	                            </goals>
+	                        </execution>
+	                        <execution>
+	                            <id>process-test-aot</id>
+	                            <goals>
+	                                <goal>process-test-aot</goal>
+	                            </goals>
+	                        </execution>
+	                    </executions>
+	                </plugin>
+	                <!-- Native Build Tools -->
+	                <plugin>
+	                    <groupId>org.graalvm.buildtools</groupId>
+	                    <artifactId>native-maven-plugin</artifactId>
+	                    <version>${native.maven.plugin.version}</version>
+	                    <extensions>true</extensions>
+	                    <configuration>
+	                        <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+	                        <metadataRepository>
+	                            <enabled>true</enabled>
+	                        </metadataRepository>
+	                        <requiredVersion>22.3</requiredVersion>
+	                        <buildArgs>
+	                            <buildArg>--verbose</buildArg>
+	                            <buildArg>--no-fallback</buildArg>
+	                            <buildArg>-H:+ReportExceptionStackTraces</buildArg>
+	                            <buildArg>-H:+AddAllCharsets</buildArg>
+	                            <buildArg>-H:IncludeResourceBundles=org.hibernate.validator.ValidationMessages</buildArg>
+	                            <!-- AWS Lambda optimizations -->
+	                            <buildArg>-H:+StaticExecutableWithDynamicLibC</buildArg>
+	                            <buildArg>-H:+RemoveSaturatedTypeFlows</buildArg>
+	                        </buildArgs>
+	                        <!-- Skip native compilation if no GraalVM, use buildpack instead -->
+	                        <skip>true</skip>
+	                    </configuration>
+	                    <executions>
+	                        <execution>
+	                            <id>test-native</id>
+	                            <goals>
+	                                <goal>test</goal>
+	                            </goals>
+	                        </execution>
+	                        <!-- Skip build-native execution, will use buildpack -->
+	                        <execution>
+	                            <id>build-native</id>
+	                            <goals>
+	                                <goal>compile-no-fork</goal>
+	                            </goals>
+	                            <configuration>
+	                                <skip>true</skip>
+	                            </configuration>
+	                        </execution>
+	                    </executions>
+	                </plugin>
+	            </plugins>
+	        </build>
 	    </profile>
 	</profiles>
 
