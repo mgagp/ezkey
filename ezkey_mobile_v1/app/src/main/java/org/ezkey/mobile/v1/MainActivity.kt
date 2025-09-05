@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.ezkey.mobile.v1.crypto.SignatureService
+import org.ezkey.mobile.v1.auth.AuthService
 import kotlin.system.exitProcess
 
 /**
@@ -32,8 +33,13 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var resultsTextView: TextView
     private lateinit var terminateButton: Button
+    private lateinit var checkPendingButton: Button
+    private lateinit var acceptButton: Button
     private lateinit var scrollView: ScrollView
     private val signatureService = SignatureService()
+    private val authService = AuthService()
+    
+    private var currentPendingAuth: org.ezkey.mobile.v1.auth.AuthAttemptPendingResponseDto? = null
     
     private val testResults = StringBuilder()
     
@@ -49,13 +55,13 @@ class MainActivity : AppCompatActivity() {
     
     private fun createUI() {
         // Create main layout
-        val layout = android.widget.LinearLayout(this).apply {
+        var layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
         }
         
         // App title
-        val titleTextView = TextView(this).apply {
+        var titleTextView = TextView(this).apply {
             text = "Ezkey Mobile V1 - Cryptographic Validation"
             textSize = 20f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -64,20 +70,92 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Results display with scrolling
-        scrollView = ScrollView(this)
-        resultsTextView = TextView(this).apply {
+        var tempScrollView = ScrollView(this).apply {
+            // Make scrollbar always visible
+            isVerticalScrollBarEnabled = true
+            isHorizontalScrollBarEnabled = true
+            scrollBarStyle = android.view.View.SCROLLBARS_INSIDE_OVERLAY
+            // Add some padding for better visibility
+            setPadding(8, 8, 8, 8)
+        }
+        
+        var tempResultsTextView = TextView(this).apply {
             text = "🔄 Initializing cryptographic validation tests...\n\n"
             textSize = 12f
             typeface = android.graphics.Typeface.MONOSPACE
             setPadding(16, 16, 16, 16)
             setBackgroundResource(android.R.color.black)
             setTextColor(android.graphics.Color.GREEN)
+            // Enable text selection for easier debugging
+            //isTextSelectable = true
+            // Set minimum height to ensure scrollbar appears
+            setMinHeight(400)
         }
-        scrollView.addView(resultsTextView)
+        
+        // Add the TextView to the ScrollView
+        tempScrollView.addView(tempResultsTextView)
+        
+        // Test button (temporary for debugging)
+        var testButton = Button(this).apply {
+            text = "🧪 TEST BUTTON"
+            textSize = 14f
+            setPadding(16, 16, 16, 16)
+            setBackgroundColor(android.graphics.Color.rgb(255, 165, 0)) // Orange color
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                android.util.Log.d("MainActivity", "🧪 TEST BUTTON PRESSED")
+                appendResult("🧪 TEST BUTTON PRESSED!")
+                appendResult("🎯 This confirms the UI is working")
+                appendResult("⏰ Timestamp: ${java.util.Date()}")
+            }
+        }
+        
+        // Clear logs button
+        var clearButton = Button(this).apply {
+            text = "🗑️ Clear Logs"
+            textSize = 14f
+            setPadding(16, 16, 16, 16)
+            setBackgroundColor(android.graphics.Color.rgb(128, 128, 128)) // Gray color
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                android.util.Log.d("MainActivity", "🗑️ CLEAR LOGS BUTTON PRESSED")
+                clearLogs()
+            }
+        }
+        
+        // Check Pending button
+        var tempCheckPendingButton = Button(this).apply {
+            text = "🔍 Check Pending Auth"
+            textSize = 16f
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(android.graphics.Color.BLUE)
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                android.util.Log.d("MainActivity", "🔘 BUTTON PRESSED: Check Pending Auth")
+                appendResult("🔘 BUTTON PRESSED: Check Pending Auth")
+                appendResult("⏰ Timestamp: ${java.util.Date()}")
+                appendResult("🔍 Testing button functionality...")
+                appendResult("✅ Button click detected - proceeding with auth check...")
+                checkPendingAuthentication()
+            }
+        }
+        
+        // Accept button (initially disabled)
+        var tempAcceptButton = Button(this).apply {
+            text = "✅ Accept Auth"
+            textSize = 16f
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(android.graphics.Color.GREEN)
+            setTextColor(android.graphics.Color.WHITE)
+            isEnabled = false
+            setOnClickListener {
+                acceptCurrentAuthentication()
+            }
+        }
         
         // Terminate button
-        terminateButton = Button(this).apply {
-            text = "Terminate Application"
+        var tempTerminateButton = Button(this).apply {
+            text = "❌ Terminate Application"
             textSize = 16f
             setPadding(24, 24, 24, 24)
             setBackgroundColor(android.graphics.Color.RED)
@@ -88,10 +166,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        // Assign all lateinit variables at once
+        scrollView = tempScrollView
+        resultsTextView = tempResultsTextView
+        checkPendingButton = tempCheckPendingButton
+        acceptButton = tempAcceptButton
+        terminateButton = tempTerminateButton
+        
         // Add views to layout
         layout.addView(titleTextView)
         layout.addView(scrollView, android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        layout.addView(testButton)
+        layout.addView(clearButton)
+        layout.addView(checkPendingButton)
+        layout.addView(acceptButton)
         layout.addView(terminateButton)
         
         setContentView(layout)
@@ -249,17 +338,148 @@ class MainActivity : AppCompatActivity() {
         appendResult("✅ All secure challenge tests: PASSED")
     }
     
-    private suspend fun appendResult(message: String) {
-        withContext(Dispatchers.Main) {
-            testResults.append(message).append("\n")
-            resultsTextView.text = testResults.toString()
-            
-            // Auto-scroll to bottom
-            scrollView.post {
-                scrollView.fullScroll(ScrollView.FOCUS_DOWN)
+    private fun appendResult(message: String) {
+        testResults.append(message).append("\n")
+        resultsTextView.text = testResults.toString()
+        
+        // Auto-scroll to bottom
+        scrollView.post {
+            scrollView.fullScroll(ScrollView.FOCUS_DOWN)
+        }
+    }
+    
+    private fun clearLogs() {
+        testResults.clear()
+        resultsTextView.text = "🧹 Logs cleared at ${java.util.Date()}\n\n"
+        android.util.Log.d("MainActivity", "🗑️ Logs cleared")
+    }
+    
+    private fun appendError(error: Throwable, context: String) {
+        appendResult("💥 ERROR in $context:")
+        appendResult("❌ Type: ${error.javaClass.simpleName}")
+        appendResult("❌ Message: ${error.message}")
+        appendResult("📊 Stack trace:")
+        
+        // Format stack trace for better readability
+        val stackTrace = error.stackTraceToString()
+        val lines = stackTrace.split("\n")
+        lines.forEach { line ->
+            if (line.trim().isNotEmpty()) {
+                appendResult("   $line")
+            }
+        }
+        appendResult("") // Empty line for separation
+    }
+    
+    private operator fun String.times(count: Int): String = this.repeat(count)
+    
+    /**
+     * Checks for pending authentication requests.
+     */
+    private fun checkPendingAuthentication() {
+        appendResult("🔘 BUTTON PRESSED: Check Pending Auth - t1")
+        appendResult("⏰ Timestamp: ${java.util.Date()}")
+        appendResult("=" * 60)
+
+        appendResult("🔘 BUTTON PRESSED: Check Pending Auth - t2")
+        
+        lifecycleScope.launch {
+            try {
+                appendResult("🚀 Starting authentication check process...")
+                appendResult("📱 Enrollment ID: 24 (Sue - Garage du coin inc.)")
+                appendResult("🌐 API URL: http://192.168.1.92:8080")
+                appendResult("🔐 Using hard-coded private key from 24.json")
+                appendResult("")
+                
+                appendResult("📋 STEP 1: Calling authService.checkPendingAuth()...")
+                val pendingAuth = authService.checkPendingAuth()
+
+             //   val pendingAuth =  org.ezkey.mobile.v1.auth.AuthAttemptPendingResponseDto(
+               //     authAttemptId = 123,
+              //      authAttemptProofToken = "test.proof.token.123456789",
+               //     authAttemptProofTokenSignedByIntegration = "test.integration.signature.abcdef",
+               //     authAttemptChallengeRequired = false
+               // )
+
+                appendResult("✅ Service call completed")
+                
+                if (pendingAuth != null) {
+                    currentPendingAuth = pendingAuth
+                    acceptButton.isEnabled = true
+                    
+                    appendResult("🎉 SUCCESS: PENDING AUTHENTICATION REQUEST FOUND!")
+                    appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
+                    appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
+                    appendResult("🎫 Proof Token: ${pendingAuth.authAttemptProofToken.take(50)}...")
+                    appendResult("🔏 Integration Signature: ${pendingAuth.authAttemptProofTokenSignedByIntegration.take(50)}...")
+                    appendResult("")
+                    appendResult("💡 Click 'Accept Auth' button to approve this request")
+                } else {
+                    currentPendingAuth = null
+                    acceptButton.isEnabled = false
+                    
+                    appendResult("ℹ️ RESULT: No pending authentication requests found")
+                    appendResult("💤 This is normal - no active auth attempts")
+                    appendResult("🔄 You can press the button again to check for new requests")
+                }
+                
+                appendResult("=" * 60)
+                
+            } catch (e: Exception) {
+                appendResult("💥 CRITICAL ERROR during authentication check!")
+                appendError(e, "authentication check")
+                appendResult("🔍 Troubleshooting:")
+                appendResult("   - Check if ezkey-auth-api is running on localhost:8080")
+                appendResult("   - Verify network connectivity")
+                appendResult("   - Check API endpoint /api/v1/auth-attempts/pending/24")
+                appendResult("   - Check if the device has internet permission")
+                
+                currentPendingAuth = null
+                acceptButton.isEnabled = false
             }
         }
     }
     
-    private operator fun String.times(count: Int): String = this.repeat(count)
+    /**
+     * Accepts the current pending authentication request.
+     */
+    private fun acceptCurrentAuthentication() {
+        val pendingAuth = currentPendingAuth
+        if (pendingAuth == null) {
+            appendResult("❌ No pending authentication request to accept")
+            return
+        }
+        
+        lifecycleScope.launch {
+            try {
+                appendResult("✅ Accepting authentication request...")
+                appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
+                appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
+                appendResult("=" * 60)
+                
+                val response = authService.acceptAuthAttempt(
+                    authAttemptId = pendingAuth.authAttemptId,
+                    authAttemptProofToken = pendingAuth.authAttemptProofToken,
+                    challengeRequired = pendingAuth.authAttemptChallengeRequired
+                )
+                
+                appendResult("🎉 AUTHENTICATION ACCEPTED SUCCESSFULLY!")
+                appendResult("📊 Result: ${response.result}")
+                appendResult("💬 Message: ${response.message}")
+                appendResult("")
+                appendResult("✅ The authentication request has been approved")
+                appendResult("🔒 The integration can now proceed with the authenticated operation")
+                
+                // Reset state
+                currentPendingAuth = null
+                acceptButton.isEnabled = false
+                
+                appendResult("=" * 60)
+                
+            } catch (e: Exception) {
+                appendResult("❌ ERROR accepting auth: ${e.message}")
+                appendResult("📊 Stack trace: ${e.stackTraceToString()}")
+            }
+        }
+    }
 }
