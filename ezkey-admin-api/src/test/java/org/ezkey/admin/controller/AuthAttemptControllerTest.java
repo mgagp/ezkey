@@ -1,7 +1,6 @@
 package org.ezkey.admin.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,14 +59,19 @@ class AuthAttemptControllerTest {
     private AuthAttemptMapper authAttemptMapper;
 
     private AuthAttempt authAttemptEntity;
+
     private AuthAttemptDto authAttemptDto;
+
     private AuthAttemptCreateRequestDto createRequestDto;
+
     private AuthAttemptCreateRequest createRequest;
+
     private AuthAttemptCreateResponse createResponseDomain;
+
     private AuthAttemptCreateResponseDto createResponseDto;
 
     @BeforeEach
-    void setUp(){
+    void setUp() {
         authAttemptEntity = new AuthAttempt();
         authAttemptEntity.setAuthAttemptId(100);
         authAttemptEntity.setEnrollmentId(55);
@@ -105,13 +109,11 @@ class AuthAttemptControllerTest {
         when(authAttemptService.getAll()).thenReturn(List.of(authAttemptEntity));
         when(authAttemptMapper.toDtoList(List.of(authAttemptEntity))).thenReturn(List.of(authAttemptDto));
 
-        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].authAttemptId").value(100))
-            .andExpect(jsonPath("$[0].enrollmentId").value(55));
+        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk()).andExpect(jsonPath("$[0].authAttemptId").value(100))
+                .andExpect(jsonPath("$[0].enrollmentId").value(55));
 
-        verify(authAttemptService, times(1)).getAll();
-        verify(authAttemptMapper, times(1)).toDtoList(List.of(authAttemptEntity));
+        verify(authAttemptService,times(1)).getAll();
+        verify(authAttemptMapper,times(1)).toDtoList(List.of(authAttemptEntity));
     }
 
     @Test
@@ -120,12 +122,10 @@ class AuthAttemptControllerTest {
         when(authAttemptService.getAll()).thenReturn(List.of());
         when(authAttemptMapper.toDtoList(List.of())).thenReturn(List.of());
 
-        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().json("[]"));
+        mockMvc.perform(get(BASE_URL).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk()).andExpect(content().json("[]"));
 
-        verify(authAttemptService, times(1)).getAll();
-        verify(authAttemptMapper, times(1)).toDtoList(List.of());
+        verify(authAttemptService,times(1)).getAll();
+        verify(authAttemptMapper,times(1)).toDtoList(List.of());
     }
 
     @Test
@@ -134,13 +134,11 @@ class AuthAttemptControllerTest {
         when(authAttemptService.getById(100)).thenReturn(authAttemptEntity);
         when(authAttemptMapper.toDto(authAttemptEntity)).thenReturn(authAttemptDto);
 
-        mockMvc.perform(get(BASE_URL + "/{id}",100).contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.authAttemptId").value(100))
-            .andExpect(jsonPath("$.enrollmentId").value(55));
+        mockMvc.perform(get(BASE_URL + "/{id}",100).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk()).andExpect(jsonPath("$.authAttemptId").value(100))
+                .andExpect(jsonPath("$.enrollmentId").value(55));
 
-        verify(authAttemptService, times(1)).getById(100);
-        verify(authAttemptMapper, times(1)).toDto(authAttemptEntity);
+        verify(authAttemptService,times(1)).getById(100);
+        verify(authAttemptMapper,times(1)).toDto(authAttemptEntity);
     }
 
     @Test
@@ -148,11 +146,10 @@ class AuthAttemptControllerTest {
     void getById_NotFound() throws Exception {
         when(authAttemptService.getById(999)).thenThrow(new ResourceNotFoundException("Authorization attempt",999));
 
-        mockMvc.perform(get(BASE_URL + "/{id}",999).contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNotFound());
+        mockMvc.perform(get(BASE_URL + "/{id}",999).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
 
-        verify(authAttemptService, times(1)).getById(999);
-        verify(authAttemptMapper, times(0)).toDto(any());
+        verify(authAttemptService,times(1)).getById(999);
+        verify(authAttemptMapper,times(0)).toDto(any());
     }
 
     @Test
@@ -164,13 +161,12 @@ class AuthAttemptControllerTest {
 
         String json = objectMapper.writeValueAsString(createRequestDto);
 
-        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.authAttemptId").value(200));
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.authAttemptId").value(200));
 
-        verify(authAttemptMapper, times(1)).toAuthAttemptCreateRequest(any(AuthAttemptCreateRequestDto.class));
-        verify(authAttemptService, times(1)).create(any(AuthAttemptCreateRequest.class));
-        verify(authAttemptMapper, times(1)).toAuthAttemptCreateResponseDto(createResponseDomain);
+        verify(authAttemptMapper,times(1)).toAuthAttemptCreateRequest(any(AuthAttemptCreateRequestDto.class));
+        verify(authAttemptService,times(1)).create(any(AuthAttemptCreateRequest.class));
+        verify(authAttemptMapper,times(1)).toAuthAttemptCreateResponseDto(createResponseDomain);
     }
 
     @Test
@@ -182,13 +178,12 @@ class AuthAttemptControllerTest {
 
         String json = objectMapper.writeValueAsString(createRequestDto);
 
-        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json))
-            .andExpect(status().isCreated());
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isCreated());
 
         ArgumentCaptor<AuthAttemptCreateRequest> captor = ArgumentCaptor.forClass(AuthAttemptCreateRequest.class);
         verify(authAttemptService).create(captor.capture());
         AuthAttemptCreateRequest passed = captor.getValue();
-        if (!passed.getEnrollmentId().equals(55) || !Boolean.TRUE.equals(passed.getChallengeRequested())) {
+        if (!passed.getEnrollmentId().equals(55) || !Boolean.TRUE.equals(passed.getChallengeRequested())){
             throw new AssertionError("Fields not propagated correctly");
         }
     }
@@ -201,10 +196,9 @@ class AuthAttemptControllerTest {
 
         String json = objectMapper.writeValueAsString(createRequestDto);
 
-        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json))
-            .andExpect(status().isBadRequest());
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isBadRequest());
 
-        verify(authAttemptService, times(1)).create(any(AuthAttemptCreateRequest.class));
+        verify(authAttemptService,times(1)).create(any(AuthAttemptCreateRequest.class));
     }
 
     @Test
@@ -215,8 +209,7 @@ class AuthAttemptControllerTest {
 
         String json = objectMapper.writeValueAsString(createRequestDto);
 
-        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json))
-            .andExpect(status().isInternalServerError());
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -230,7 +223,7 @@ class AuthAttemptControllerTest {
         waitRequest.setPolling(2);
         waitRequest.setTimeout(5);
 
-        AuthAttemptWaitResponse domainWaitResponse = new AuthAttemptWaitResponse(authAttemptEntity, "PENDING", false, false, 1, LocalDateTime.now());
+        AuthAttemptWaitResponse domainWaitResponse = new AuthAttemptWaitResponse(authAttemptEntity,"PENDING",false,false,1,LocalDateTime.now());
         AuthAttemptWaitResponseDto waitResponseDto = new AuthAttemptWaitResponseDto();
         waitResponseDto.setStatus("PENDING");
         waitResponseDto.setCompleted(false);
@@ -239,15 +232,13 @@ class AuthAttemptControllerTest {
 
         // mapper conversions
         when(authAttemptMapper.toAuthAttemptWaitRequest(any(AuthAttemptWaitRequestDto.class))).thenReturn(waitRequest);
-        when(authAttemptService.waitForResponse(100, waitRequest)).thenReturn(domainWaitResponse);
+        when(authAttemptService.waitForResponse(100,waitRequest)).thenReturn(domainWaitResponse);
         when(authAttemptMapper.toAuthAttemptWaitResponseDto(domainWaitResponse)).thenReturn(waitResponseDto);
 
-        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",100))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("PENDING"))
-            .andExpect(jsonPath("$.completed").value(false));
+        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",100)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.completed").value(false));
 
-        verify(authAttemptService, times(1)).waitForResponse(100, waitRequest);
+        verify(authAttemptService,times(1)).waitForResponse(100,waitRequest);
     }
 
     @Test
@@ -257,10 +248,9 @@ class AuthAttemptControllerTest {
         waitRequest.setPolling(2);
         waitRequest.setTimeout(5);
         when(authAttemptMapper.toAuthAttemptWaitRequest(any(AuthAttemptWaitRequestDto.class))).thenReturn(waitRequest);
-        when(authAttemptService.waitForResponse(999, waitRequest)).thenThrow(new ResourceNotFoundException("Authorization attempt",999));
+        when(authAttemptService.waitForResponse(999,waitRequest)).thenThrow(new ResourceNotFoundException("Authorization attempt",999));
 
-        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",999))
-            .andExpect(status().isNotFound());
+        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",999)).andExpect(status().isNotFound());
     }
 
     @Test
@@ -270,10 +260,9 @@ class AuthAttemptControllerTest {
         waitRequest.setPolling(10);
         waitRequest.setTimeout(5); // invalid because polling > timeout
         when(authAttemptMapper.toAuthAttemptWaitRequest(any(AuthAttemptWaitRequestDto.class))).thenReturn(waitRequest);
-        when(authAttemptService.waitForResponse(100, waitRequest)).thenThrow(new IllegalArgumentException("invalid"));
+        when(authAttemptService.waitForResponse(100,waitRequest)).thenThrow(new IllegalArgumentException("invalid"));
 
-        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=10",100))
-            .andExpect(status().isBadRequest());
+        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=10",100)).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -283,10 +272,9 @@ class AuthAttemptControllerTest {
         waitRequest.setPolling(2);
         waitRequest.setTimeout(5);
         when(authAttemptMapper.toAuthAttemptWaitRequest(any(AuthAttemptWaitRequestDto.class))).thenReturn(waitRequest);
-        when(authAttemptService.waitForResponse(100, waitRequest)).thenThrow(new RuntimeException("boom"));
+        when(authAttemptService.waitForResponse(100,waitRequest)).thenThrow(new RuntimeException("boom"));
 
-        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",100))
-            .andExpect(status().isInternalServerError());
+        mockMvc.perform(get(BASE_URL + "/{id}/wait?timeout=5&polling=2",100)).andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -294,11 +282,9 @@ class AuthAttemptControllerTest {
     void delete_Success() throws Exception {
         doNothing().when(authAttemptService).delete(100);
 
-        mockMvc.perform(delete(BASE_URL + "/{id}",100))
-            .andExpect(status().isNoContent())
-            .andExpect(content().string(""));
+        mockMvc.perform(delete(BASE_URL + "/{id}",100)).andExpect(status().isNoContent()).andExpect(content().string(""));
 
-        verify(authAttemptService, times(1)).delete(100);
+        verify(authAttemptService,times(1)).delete(100);
     }
 
     @Test
@@ -306,9 +292,8 @@ class AuthAttemptControllerTest {
     void delete_NotFound() throws Exception {
         org.mockito.Mockito.doThrow(new ResourceNotFoundException("Authorization attempt",999)).when(authAttemptService).delete(999);
 
-        mockMvc.perform(delete(BASE_URL + "/{id}",999))
-            .andExpect(status().isNotFound());
+        mockMvc.perform(delete(BASE_URL + "/{id}",999)).andExpect(status().isNotFound());
 
-        verify(authAttemptService, times(1)).delete(999);
+        verify(authAttemptService,times(1)).delete(999);
     }
 }

@@ -183,29 +183,40 @@ public class EnrollmentService {
      * @since 2025
      */
     public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
-        // 1) Fast, read‑only pre‑checks (no lock yet)
+        logger.info("Starting enrollment bind process for enrollment ID: {}",req.getEnrollmentId());
+
+        // 1) Fast, read-only pre-checks (no lock yet)
+        logger.debug("Step 1: Performing read-only pre-checks for enrollment ID: {}",req.getEnrollmentId());
         Enrollment snapshot = enrollmentRepository.findById(req.getEnrollmentId()).orElse(null);
         if (snapshot == null){
-            logger.warn("Enrollment not found for ID: {}",req.getEnrollmentId());
+            logger.warn("Validation failed: Enrollment not found for ID: {}",req.getEnrollmentId());
             throw new IllegalArgumentException("Enrollment binding failed");
         }
-        // Short‑circuit: if already processed, avoid acquiring a lock
+        logger.debug("Enrollment found: ID={}, Status={}, IntegrationId={}",snapshot.getEnrollmentId(),snapshot.getStatus(),snapshot.getIntegrationId());
+
+        // Short-circuit: if already processed, avoid acquiring a lock
         if (snapshot.getStatus() != EnrollmentStatus.CREATED){
-            logger.warn("Enrollment already processed: {}",snapshot.getEnrollmentId());
+            logger.warn("Validation failed: Enrollment already processed - ID: {}, Status: {}",snapshot.getEnrollmentId(),snapshot.getStatus());
             throw new IllegalStateException("Enrollment already bound by a device");
         }
+        logger.debug("Enrollment status validation passed: Status is CREATED");
+
         // Load integration and resolve i18n (do it before lock to keep lock window minimal)
+        logger.debug("Step 2: Loading integration for ID: {}",snapshot.getIntegrationId());
         Optional<Integration> integrationOpt = integrationRepository.findById(snapshot.getIntegrationId());
         if (integrationOpt.isEmpty()){
-            logger.warn("Integration not found for enrollment: {}",req.getEnrollmentId());
+            logger.warn("Validation failed: Integration not found for enrollment ID: {}, Integration ID: {}",req.getEnrollmentId(),snapshot.getIntegrationId());
             throw new IllegalStateException("Enrollment binding failed");
         }
         Integration integration = integrationOpt.get();
+        logger.debug("Integration loaded successfully: ID={}",integration.getId());
 
         String integrationName = null;
         String integrationDescription = null;
         var i18nList = integration.getI18n();
+        logger.debug("Step 3: Resolving i18n for language: {}",req.getLanguage());
         if (i18nList != null){
+            logger.debug("Found {} i18n entries for integration",i18nList.size());
             integration.getI18n().stream().filter(i18n -> i18n.getLanguage().equals(req.getLanguage())).findFirst().ifPresent(i18n -> {
                 // capture into effectively final holders
             });
@@ -213,24 +224,35 @@ public class EnrollmentService {
                 if (!i18nList.isEmpty()){
                     integrationName = i18nList.get(0).getName();
                     integrationDescription = i18nList.get(0).getDescription();
+                    logger.debug("Using fallback i18n: Name={}, Description={}",integrationName,integrationDescription);
                 }
             }
+        } else{
+            logger.debug("No i18n entries found for integration");
         }
-        // 2) Critical section: lock and re‑check just what can change
+        // 2) Critical section: lock and re-check just what can change
+        logger.debug("Step 4: Acquiring lock for enrollment ID: {}",req.getEnrollmentId());
         Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId()).orElse(null);
         if (enrollment == null){
+            logger.warn("Validation failed: Enrollment not found or already bound after lock acquisition for ID: {}",req.getEnrollmentId());
             // Either not found anymore or no longer in CREATED state (depending on the query)
             throw new IllegalArgumentException("Enrollment not found or already bound");
         }
+        logger.debug("Lock acquired successfully for enrollment ID: {}",enrollment.getEnrollmentId());
         if (enrollment.getStatus() != EnrollmentStatus.CREATED){
-            logger.warn("Enrollment already processed after lock: {}",enrollment.getEnrollmentId());
+            logger.warn("Validation failed: Enrollment already processed after lock - ID: {}, Status: {}",enrollment.getEnrollmentId(),enrollment.getStatus());
             throw new IllegalStateException("Enrollment already bound by a device");
         }
-        // 3) Mark as BOUND (read‑once guarantee)
+        logger.debug("Post-lock status validation passed: Status is CREATED");
+
+        // 3) Mark as BOUND (read-once guarantee)
+        logger.info("Step 5: Marking enrollment as BOUND - ID: {}",enrollment.getEnrollmentId());
         enrollment.setStatus(EnrollmentStatus.BOUND);
         enrollmentRepository.save(enrollment);
+        logger.info("Enrollment successfully bound - ID: {}, Status: BOUND",enrollment.getEnrollmentId());
 
-        // 4) Build response (use data resolved pre‑lock to minimize time under lock)
+        // 4) Build response (use data resolved pre-lock to minimize time under lock)
+        logger.debug("Step 6: Building bind response for enrollment ID: {}",enrollment.getEnrollmentId());
         EnrollmentBindResponse response = new EnrollmentBindResponse();
         response.setEnrollmentId(enrollment.getEnrollmentId());
         response.setEnrollmentName(snapshot.getEnrollmentName());
@@ -240,6 +262,7 @@ public class EnrollmentService {
         response.setIntegrationName(integrationName);
         response.setIntegrationDescription(integrationDescription);
 
+        logger.info("Enrollment bind process completed successfully for ID: {}",enrollment.getEnrollmentId());
         return response;
     }
 
@@ -256,47 +279,82 @@ public class EnrollmentService {
      * @throws IllegalStateException if enrollment is in invalid state
      */
     public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
+        logger.info("Starting enrollment verify process for enrollment ID: {}",request.getEnrollmentId());
+
         // Read-only pre-checks (no lock)
-        Enrollment snapshot = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalStateException("Enrollment already verified"));
+        logger.debug("Step 1: Performing read-only pre-checks for enrollment ID: {}",request.getEnrollmentId());
+        Enrollment snapshot = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> {
+            logger.warn("Validation failed: Enrollment not found for ID: {}",request.getEnrollmentId());
+            return new IllegalStateException("Enrollment already verified");
+        });
+        logger.debug("Enrollment found: ID={}, Status={}",snapshot.getEnrollmentId(),snapshot.getStatus());
         if (snapshot.getStatus() == EnrollmentStatus.VERIFIED){
+            logger.warn("Validation failed: Enrollment already verified - ID: {}, Status: {}",snapshot.getEnrollmentId(),snapshot.getStatus());
             throw new IllegalStateException("Enrollment already verified");
         }
+        logger.debug("Enrollment status validation passed: Status is not VERIFIED");
         if (snapshot.getStatus() != EnrollmentStatus.BOUND){
+            logger.warn("Validation failed: Enrollment must be bound before verification - ID: {}, Status: {}",snapshot.getEnrollmentId(),snapshot.getStatus());
             enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalStateException("Enrollment must be bound before verification");
         }
+        logger.debug("Enrollment status validation passed: Status is BOUND");
+
+        logger.debug("Step 2: Validating signature for enrollment ID: {}",request.getEnrollmentId());
         boolean valid = signatureService.validateSignature(snapshot.getEnrollmentProofToken(),request.getEnrollmentProofTokenSigned(),request.getDevicePublicKey());
         if (!valid){
+            logger.warn("Validation failed: Invalid bind proof token signature for enrollment ID: {}",request.getEnrollmentId());
             enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalArgumentException("Invalid bind proof token signature");
         }
+        logger.debug("Signature validation passed for enrollment ID: {}",request.getEnrollmentId());
+
+        logger.debug("Step 3: Validating challenge response for enrollment ID: {}",request.getEnrollmentId());
         if (!request.getChallengeResponse().equals(snapshot.getEnrollmentChallenge())){
+            logger.warn("Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {}, Received: {}",request.getEnrollmentId(),
+                    snapshot.getEnrollmentChallenge(),request.getChallengeResponse());
             enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalArgumentException("Invalid challenge response");
         }
+        logger.debug("Challenge response validation passed for enrollment ID: {}",request.getEnrollmentId());
         // Critical section: acquire lock and re-check before writing
+        logger.debug("Step 4: Acquiring lock for enrollment ID: {}",request.getEnrollmentId());
         Enrollment enrollment = enrollmentRepository.findAndLockBoundById(request.getEnrollmentId()).orElse(null);
         if (enrollment == null){
+            logger.warn("Validation failed: Enrollment not found or already verified after lock acquisition for ID: {}",request.getEnrollmentId());
             throw new IllegalStateException("Enrollment already verified");
         }
+        logger.debug("Lock acquired successfully for enrollment ID: {}",enrollment.getEnrollmentId());
         if (enrollment.getStatus() != EnrollmentStatus.BOUND){
+            logger.warn("Validation failed: Enrollment must be bound before verification after lock - ID: {}, Status: {}",enrollment.getEnrollmentId(),enrollment.getStatus());
             enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalStateException("Enrollment must be bound before verification");
         }
+        logger.debug("Post-lock status validation passed: Status is BOUND");
+
         // Guard against state changes between snapshot and lock
+        logger.debug("Step 5: Validating state consistency between snapshot and locked enrollment for ID: {}",request.getEnrollmentId());
         if (!snapshot.getEnrollmentProofToken().equals(enrollment.getEnrollmentProofToken())
                 || !snapshot.getEnrollmentChallenge().equals(enrollment.getEnrollmentChallenge())){
+            logger.warn("Validation failed: Enrollment state changed between snapshot and lock - ID: {}",request.getEnrollmentId());
             enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalStateException("Enrollment state changed");
         }
+        logger.debug("State consistency validation passed for enrollment ID: {}",request.getEnrollmentId());
+
         // Commit verified
+        logger.info("Step 6: Marking enrollment as VERIFIED - ID: {}",enrollment.getEnrollmentId());
         enrollment.setStatus(EnrollmentStatus.VERIFIED);
         enrollment.setActive(true);
         enrollment.setDevicePublicKey(request.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
+        logger.info("Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true",enrollment.getEnrollmentId());
 
+        logger.debug("Step 7: Building verify response for enrollment ID: {}",enrollment.getEnrollmentId());
         EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();
         response.setActive(true);
+
+        logger.info("Enrollment verify process completed successfully for ID: {}",enrollment.getEnrollmentId());
         return response;
     }
 

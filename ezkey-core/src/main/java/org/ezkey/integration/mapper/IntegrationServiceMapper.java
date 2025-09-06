@@ -50,6 +50,7 @@ public interface IntegrationServiceMapper {
      * @param integrationI18nCreate the domain I18n create object
      * @return the mapped entity with the parent integration ignored
      */
+    @Mapping(target = "id",ignore = true)
     @Mapping(target = "integration",ignore = true)
     IntegrationI18n map(IntegrationI18nCreate integrationI18nCreate);
 
