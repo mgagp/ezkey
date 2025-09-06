@@ -18,6 +18,7 @@ import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -78,6 +79,8 @@ public class EnrollmentService {
 
     private final IntegrationRepository integrationRepository;
 
+    private final EnrollmentTxHelper enrollmentTxHelper;
+
     /**
      * Constructs the enrollment service with required dependencies.
      *
@@ -87,10 +90,12 @@ public class EnrollmentService {
      * @param integrationRepository the JPA repository for integration operations
      */
     @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService,IntegrationRepository integrationRepository){
+    public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService,IntegrationRepository integrationRepository,
+            EnrollmentTxHelper enrollmentTxHelper){
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
         this.integrationRepository = integrationRepository;
+        this.enrollmentTxHelper = enrollmentTxHelper;
     }
 
     /**
@@ -145,10 +150,8 @@ public class EnrollmentService {
         enrollment.setIntegrationId(request.getIntegrationId());
         enrollment.setEnrollmentName(request.getName().trim());
         enrollment.setEnrollmentProofToken(signatureService.generateProofToken());
-        enrollment.setEnrollmentRead(false);
-        enrollment.setEnrollmentValid(false);
-        enrollment.setEnrollmentActive(false);
-        enrollment.setEnrollmentVerified(false);
+        enrollment.setStatus(EnrollmentStatus.CREATED);
+        enrollment.setActive(false);
         enrollment.setAuthAttemptChallengeRequired(request.getAuthAttemptChallengeRequired() != null ? request.getAuthAttemptChallengeRequired() : false);
         enrollment.setCreatedAt(LocalDateTime.now());
         RsaKeyPair integrationKeys = signatureService.generateRsaKeyPair(2048);
@@ -180,55 +183,62 @@ public class EnrollmentService {
      * @since 2025
      */
     public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
-        // 1. COMPLETE VALIDATION BEFORE LOCK (secure messages)
-        Enrollment enrollment = enrollmentRepository.findById(req.getEnrollmentId()).orElse(null);
-        if (enrollment == null){
+        // 1) Fast, read‑only pre‑checks (no lock yet)
+        Enrollment snapshot = enrollmentRepository.findById(req.getEnrollmentId()).orElse(null);
+        if (snapshot == null){
             logger.warn("Enrollment not found for ID: {}",req.getEnrollmentId());
             throw new IllegalArgumentException("Enrollment binding failed");
         }
-        // Validate integration exists
-        Optional<Integration> integrationOpt = integrationRepository.findById(enrollment.getIntegrationId());
+        // Short‑circuit: if already processed, avoid acquiring a lock
+        if (snapshot.getStatus() != EnrollmentStatus.CREATED){
+            logger.warn("Enrollment already processed: {}",snapshot.getEnrollmentId());
+            throw new IllegalStateException("Enrollment already bound by a device");
+        }
+        // Load integration and resolve i18n (do it before lock to keep lock window minimal)
+        Optional<Integration> integrationOpt = integrationRepository.findById(snapshot.getIntegrationId());
         if (integrationOpt.isEmpty()){
             logger.warn("Integration not found for enrollment: {}",req.getEnrollmentId());
             throw new IllegalStateException("Enrollment binding failed");
         }
         Integration integration = integrationOpt.get();
 
-        // 2. LOCK AND MARKING (only if validation OK)
-        enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId()).orElse(null);
-        if (enrollment == null){
-            throw new IllegalArgumentException("Enrollment not found or already bound");
-        }
-        // Double-check if already read (protection against race condition)
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
-            logger.warn("Enrollment already processed: {}",enrollment.getEnrollmentId());
-            throw new IllegalStateException("Enrollment already bound by a device");
-        }
-        // 3. IMMEDIATE MARKING (read-once guarantee)
-        enrollment.setEnrollmentRead(true);
-        enrollmentRepository.save(enrollment);
-
-        // 4. RESPONSE CREATION
-        EnrollmentBindResponse response = new EnrollmentBindResponse();
-        response.setEnrollmentId(enrollment.getEnrollmentId());
-        response.setEnrollmentName(enrollment.getEnrollmentName());
-        response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
-        response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
-
-        // Set integration details with language preference
-        integration.getI18n().stream().filter(i18n -> i18n.getLanguage().equals(req.getLanguage())).findFirst().ifPresent(i18n -> {
-            response.setIntegrationName(i18n.getName());
-            response.setIntegrationDescription(i18n.getDescription());
-        });
-
-        // Fallback to first available language if preferred not found
-        if (response.getIntegrationName() == null || response.getIntegrationDescription() == null){
-            if (!integration.getI18n().isEmpty()){
-                response.setIntegrationName(integration.getI18n().get(0).getName());
-                response.setIntegrationDescription(integration.getI18n().get(0).getDescription());
+        String integrationName = null;
+        String integrationDescription = null;
+        var i18nList = integration.getI18n();
+        if (i18nList != null){
+            integration.getI18n().stream().filter(i18n -> i18n.getLanguage().equals(req.getLanguage())).findFirst().ifPresent(i18n -> {
+                // capture into effectively final holders
+            });
+            if (integrationName == null || integrationDescription == null){
+                if (!i18nList.isEmpty()){
+                    integrationName = i18nList.get(0).getName();
+                    integrationDescription = i18nList.get(0).getDescription();
+                }
             }
         }
+        // 2) Critical section: lock and re‑check just what can change
+        Enrollment enrollment = enrollmentRepository.findAndLockUnreadById(req.getEnrollmentId()).orElse(null);
+        if (enrollment == null){
+            // Either not found anymore or no longer in CREATED state (depending on the query)
+            throw new IllegalArgumentException("Enrollment not found or already bound");
+        }
+        if (enrollment.getStatus() != EnrollmentStatus.CREATED){
+            logger.warn("Enrollment already processed after lock: {}",enrollment.getEnrollmentId());
+            throw new IllegalStateException("Enrollment already bound by a device");
+        }
+        // 3) Mark as BOUND (read‑once guarantee)
+        enrollment.setStatus(EnrollmentStatus.BOUND);
+        enrollmentRepository.save(enrollment);
+
+        // 4) Build response (use data resolved pre‑lock to minimize time under lock)
+        EnrollmentBindResponse response = new EnrollmentBindResponse();
+        response.setEnrollmentId(enrollment.getEnrollmentId());
+        response.setEnrollmentName(snapshot.getEnrollmentName());
+        response.setIntegrationPublicKey(snapshot.getIntegrationPublicKey());
+        response.setEnrollmentProofToken(snapshot.getEnrollmentProofToken());
         response.setIntegrationLogo(integration.getLogo());
+        response.setIntegrationName(integrationName);
+        response.setIntegrationDescription(integrationDescription);
 
         return response;
     }
@@ -246,42 +256,42 @@ public class EnrollmentService {
      * @throws IllegalStateException if enrollment is in invalid state
      */
     public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
-        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(request.getEnrollmentId());
-        if (enrollmentOpt.isEmpty()){
-            throw new IllegalArgumentException("Enrollment not found");
+        // Read-only pre-checks (no lock)
+        Enrollment snapshot = enrollmentRepository.findById(request.getEnrollmentId()).orElseThrow(() -> new IllegalStateException("Enrollment already verified"));
+        if (snapshot.getStatus() == EnrollmentStatus.VERIFIED){
+            throw new IllegalStateException("Enrollment already verified");
         }
-        Enrollment enrollment = enrollmentOpt.get();
-        if (!Boolean.TRUE.equals(enrollment.getEnrollmentRead())){
-            enrollment.setEnrollmentVerified(true);
-            enrollment.setEnrollmentValid(false);
-            enrollment.setEnrollmentChallenge(null);
-            enrollmentRepository.save(enrollment);
-            throw new IllegalStateException("Pair must be read before verification");
+        if (snapshot.getStatus() != EnrollmentStatus.BOUND){
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
+            throw new IllegalStateException("Enrollment must be bound before verification");
         }
-        if (Boolean.TRUE.equals(enrollment.getEnrollmentVerified())){
-            throw new IllegalStateException("Pair already verified");
-        }
-        // Validate signature, this device proof token is the one obtained from the bind request
-        boolean valid = signatureService.validateSignature(enrollment.getEnrollmentProofToken(),request.getEnrollmentProofTokenSigned(),request.getDevicePublicKey());
+        boolean valid = signatureService.validateSignature(snapshot.getEnrollmentProofToken(),request.getEnrollmentProofTokenSigned(),request.getDevicePublicKey());
         if (!valid){
-            enrollment.setEnrollmentVerified(true);
-            enrollment.setEnrollmentValid(false);
-            enrollment.setEnrollmentChallenge(null);
-            enrollmentRepository.save(enrollment);
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalArgumentException("Invalid bind proof token signature");
         }
-        // Validate challenge response
-        if (!request.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())){
-            enrollment.setEnrollmentVerified(true);
-            enrollment.setEnrollmentValid(false);
-            enrollment.setEnrollmentChallenge(null);
-            enrollmentRepository.save(enrollment);
+        if (!request.getChallengeResponse().equals(snapshot.getEnrollmentChallenge())){
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
             throw new IllegalArgumentException("Invalid challenge response");
         }
-        // Confirm enrollment
-        enrollment.setEnrollmentVerified(true);
-        enrollment.setEnrollmentValid(true);
-        enrollment.setEnrollmentActive(true);
+        // Critical section: acquire lock and re-check before writing
+        Enrollment enrollment = enrollmentRepository.findAndLockBoundById(request.getEnrollmentId()).orElse(null);
+        if (enrollment == null){
+            throw new IllegalStateException("Enrollment already verified");
+        }
+        if (enrollment.getStatus() != EnrollmentStatus.BOUND){
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
+            throw new IllegalStateException("Enrollment must be bound before verification");
+        }
+        // Guard against state changes between snapshot and lock
+        if (!snapshot.getEnrollmentProofToken().equals(enrollment.getEnrollmentProofToken())
+                || !snapshot.getEnrollmentChallenge().equals(enrollment.getEnrollmentChallenge())){
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
+            throw new IllegalStateException("Enrollment state changed");
+        }
+        // Commit verified
+        enrollment.setStatus(EnrollmentStatus.VERIFIED);
+        enrollment.setActive(true);
         enrollment.setDevicePublicKey(request.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
 

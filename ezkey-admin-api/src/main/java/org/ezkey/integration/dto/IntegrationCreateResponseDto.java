@@ -49,9 +49,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO for creating new Integration entities")
 public class IntegrationCreateResponseDto {
 
-    /*
+    /**
      * The unique identifier of the newly created integration.
      */
+    @Schema(description = "The unique identifier of the newly created integration", example = "42")
     private Integer id;
 
     /**

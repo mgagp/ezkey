@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for enrollment data in admin API.
  * <p>
@@ -37,9 +39,7 @@ package org.ezkey.enrollment.dto;
  * <p>
  * <b>Status Fields:</b>
  * <ul>
- * <li><b>enrollmentRead:</b> Flag indicating if the enrollment has been read by the device</li>
- * <li><b>enrollmentVerified:</b> Flag indicating if the enrollment is verified</li>
- * <li><b>enrollmentValid:</b> Flag indicating if the enrollment is valid</li>
+ * <li><b>enrollmentStatus:</b> Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)</li>
  * <li><b>enrollmentActive:</b> Flag indicating if the enrollment is currently active</li>
  * </ul>
  * </p>
@@ -80,66 +80,64 @@ package org.ezkey.enrollment.dto;
  * @see EnrollmentCreateRequestDto
  * @see EnrollmentCreateResponseDto
  */
+@Schema(description = "Response DTO containing complete enrollment information for administrative purposes")
 public class EnrollmentResponseDto {
 
     /**
      * Unique identifier for the enrollment.
      * Auto-generated primary key from the database.
      */
+    @Schema(description = "Unique identifier for the enrollment", example = "123")
     private Integer enrollmentId;
 
     /**
      * Integration identifier this enrollment belongs to.
      * Foreign key reference to the integration.
      */
+    @Schema(description = "Integration identifier this enrollment belongs to", example = "1")
     private Integer integrationId;
 
     /**
      * Human-readable name for the enrollment.
      * Used for display purposes in user interfaces.
      */
+    @Schema(description = "Human-readable name for the enrollment", example = "John's iPhone")
     private String enrollmentName;
 
     /**
-     * Flag indicating if the enrollment has been read by the device.
-     * Used to track enrollment status.
+     * Enrollment lifecycle status.
+     * Indicates the current state of the enrollment process.
      */
-    private Boolean enrollmentRead;
-
-    /**
-     * Flag indicating if the enrollment is verified.
-     * Used to track enrollment verification status.
-     */
-    private Boolean enrollmentVerified;
-
-    /**
-     * Flag indicating if the enrollment is valid.
-     * Used to track enrollment validity status.
-     */
-    private Boolean enrollmentValid;
+    @Schema(description = "Enrollment lifecycle status", example = "VERIFIED", 
+            allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID"})
+    private String enrollmentStatus;
 
     /**
      * Flag indicating if the enrollment is currently active.
      * Used to enable/disable enrollment.
      */
+    @Schema(description = "Flag indicating if the enrollment is currently active", example = "true")
     private Boolean enrollmentActive;
 
     /**
      * Challenge value for enrollment verification.
      * Used in the enrollment challenge-response process.
      */
+    @Schema(description = "Challenge value for enrollment verification", example = "123456")
     private Integer enrollmentChallenge;
 
     /**
      * Unique code for enrollment verification.
      * Used for enrollment verification step.
      */
+    @Schema(description = "Unique code for enrollment verification", example = "EZK-ABC123-DEF456")
     private String enrollmentProofToken;
 
     /**
      * Flag indicating if authentication attempts require challenge.
      * Used to configure authentication behavior.
      */
+    @Schema(description = "Flag indicating if authentication attempts require challenge", example = "false")
     private Boolean authAttemptChallengeRequired;
 
     /**
@@ -209,57 +207,21 @@ public class EnrollmentResponseDto {
     }
 
     /**
-     * Gets the enrollment read status.
+     * Gets the enrollment lifecycle status.
      *
-     * @return true if the enrollment has been read by the device, false otherwise
+     * @return the enrollment status (CREATED, BOUND, VERIFIED, INVALID)
      */
-    public Boolean getEnrollmentRead() {
-        return enrollmentRead;
+    public String getEnrollmentStatus() {
+        return enrollmentStatus;
     }
 
     /**
-     * Sets the enrollment read status.
+     * Sets the enrollment lifecycle status.
      *
-     * @param enrollmentRead true if the enrollment has been read by the device, false otherwise
+     * @param enrollmentStatus the enrollment status to set
      */
-    public void setEnrollmentRead(Boolean enrollmentRead) {
-        this.enrollmentRead = enrollmentRead;
-    }
-
-    /**
-     * Gets the enrollment verification status.
-     *
-     * @return true if the enrollment is verified, false otherwise
-     */
-    public Boolean getEnrollmentVerified() {
-        return enrollmentVerified;
-    }
-
-    /**
-     * Sets the enrollment verification status.
-     *
-     * @param enrollmentVerified true if the enrollment is verified, false otherwise
-     */
-    public void setEnrollmentVerified(Boolean enrollmentVerified) {
-        this.enrollmentVerified = enrollmentVerified;
-    }
-
-    /**
-     * Gets the enrollment validity status.
-     *
-     * @return true if the enrollment is valid, false otherwise
-     */
-    public Boolean getEnrollmentValid() {
-        return enrollmentValid;
-    }
-
-    /**
-     * Sets the enrollment validity status.
-     *
-     * @param enrollmentValid true if the enrollment is valid, false otherwise
-     */
-    public void setEnrollmentValid(Boolean enrollmentValid) {
-        this.enrollmentValid = enrollmentValid;
+    public void setEnrollmentStatus(String enrollmentStatus) {
+        this.enrollmentStatus = enrollmentStatus;
     }
 
     /**

@@ -19,6 +19,7 @@ import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 /**
@@ -86,6 +87,8 @@ public interface EnrollmentAdminMapper {
      * @see Enrollment
      * @see EnrollmentResponseDto
      */
+    @Mapping(source = "status", target = "enrollmentStatus")
+    @Mapping(source = "active", target = "enrollmentActive")
     EnrollmentResponseDto toResponse(Enrollment entity);
 
     /**

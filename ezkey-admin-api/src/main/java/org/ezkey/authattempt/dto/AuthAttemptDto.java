@@ -12,6 +12,8 @@ package org.ezkey.authattempt.dto;
 
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for authentication attempt data in admin API.
  * <p>
@@ -81,72 +83,84 @@ import java.time.LocalDateTime;
  * @see AuthAttemptCreateRequestDto
  * @see AuthAttemptCreateResponseDto
  */
+@Schema(description = "Response DTO containing complete authentication attempt information for administrative purposes")
 public class AuthAttemptDto {
 
     /**
      * Unique identifier for the authentication attempt.
      * Auto-generated primary key from the database.
      */
+    @Schema(description = "Unique identifier for the authentication attempt", example = "456")
     private Integer authAttemptId;
 
     /**
      * Enrollment identifier this authentication attempt belongs to.
      * Foreign key reference to the enrollment.
      */
+    @Schema(description = "Enrollment identifier this authentication attempt belongs to", example = "123")
     private Integer enrollmentId;
 
     /**
      * Flag indicating if the authentication attempt has been read by the device.
      * Used to track the status of the authentication flow.
      */
+    @Schema(description = "Flag indicating if the authentication attempt has been read by the device", example = "true")
     private Boolean authAttemptRead;
 
     /**
      * Flag indicating if the authentication attempt has been responded to.
      * Used to track whether the device has provided a response.
      */
+    @Schema(description = "Flag indicating if the authentication attempt has been responded to", example = "false")
     private Boolean authAttemptResponded;
 
     /**
      * Flag indicating if the authentication attempt is valid.
      * Used to track the validity of the authentication attempt.
      */
+    @Schema(description = "Flag indicating if the authentication attempt is valid", example = "true")
     private Boolean authAttemptValid;
 
     /**
      * Flag indicating if the authentication attempt was accepted.
      * Final result of the authentication process.
      */
+    @Schema(description = "Flag indicating if the authentication attempt was accepted", example = "true")
     private Boolean authAttemptAccepted;
 
     /**
      * Challenge value for the authentication attempt.
      * Used in the challenge-response authentication process.
      */
+    @Schema(description = "Challenge value for the authentication attempt", example = "789012")
     private Integer authAttemptChallenge;
 
     /**
      * Proof token for the authentication attempt.
      * Used for authentication verification.
      */
+    @Schema(description = "Proof token for the authentication attempt", example = "EZK-XYZ789-ABC123")
     private String authAttemptProofToken;
 
     /**
      * Device proof token validation result.
      * Indicates the validation status of the device proof token.
      */
+    @Schema(description = "Device proof token validation result", example = "VALID")
     private String deviceProofTokenValid;
 
     /**
      * Timestamp when the authentication attempt was created.
      * Used for auditing and tracking purposes.
      */
+    @Schema(description = "Timestamp when the authentication attempt was created", example = "2025-01-27T10:30:00")
     private LocalDateTime createdAt;
 
     /**
      * Timestamp when the authentication attempt expires.
      * Used to determine if the authentication attempt is still valid.
      */
+    @Schema(description = "Timestamp when the authentication attempt expires", example = "2025-01-27T10:35:00")
     private LocalDateTime expiresAt;
 
     /**

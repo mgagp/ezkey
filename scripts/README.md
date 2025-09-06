@@ -1,8 +1,8 @@
-# OpenAPI Specification Management
+# Ezkey Scripts
 
 ## Overview
 
-This directory contains scripts for standardizing OpenAPI specification management in Ezkey demo projects.
+This directory contains utility scripts for Ezkey project management, including OpenAPI specification management and database migration tools.
 
 ## Initial Problem
 
@@ -26,19 +26,55 @@ Demo projects were using two different approaches for OpenAPI specifications:
 - ❌ **Manual maintenance** : Requires updating the file
 - ❌ **Desynchronization risk** : Possibility of having obsolete DTOs
 
-## Synchronization Scripts
+## Database Migration Scripts
 
-### Bash Script (Linux/macOS/Git Bash)
+### Simple Scripts (Recommended)
+
+#### Bash Script (Linux/macOS/Git Bash)
+```bash
+./scripts/ezkey-flyway-simple.sh [COMMAND]
+```
+
+#### Windows Batch Script
+```cmd
+scripts\ezkey-flyway-simple.bat [COMMAND]
+```
+
+#### Available Commands
+- No argument : Run default migration
+- `--info` : Show migration info
+- `--repair` : Repair migration history
+- `--migrate` : Run migrations explicitly
+
+### Legacy Scripts (Complex)
+
+#### Bash Script (Linux/macOS/Git Bash)
+```bash
+./scripts/ezkey-flyway.sh [COMMAND]
+```
+
+#### Windows Batch Script
+```cmd
+scripts\ezkey-flyway.bat [COMMAND]
+```
+
+**Note:** The legacy scripts build the project and construct classpath manually. Use the simple scripts instead.
+
+## OpenAPI Specification Management
+
+### Synchronization Scripts
+
+#### Bash Script (Linux/macOS/Git Bash)
 ```bash
 ./scripts/update-openapi-specs.sh [OPTIONS]
 ```
 
-### Windows Batch Script
+#### Windows Batch Script
 ```cmd
 scripts\update-openapi-specs.bat [OPTIONS]
 ```
 
-### Available Options
+#### Available Options
 - `--app` : Update only demo-app-acme
 - `--device` : Update only demo-device
 - `--all` : Update both (default)

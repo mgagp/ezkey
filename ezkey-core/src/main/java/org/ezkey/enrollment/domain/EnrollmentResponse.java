@@ -101,25 +101,14 @@ public class EnrollmentResponse {
     private String enrollmentName;
 
     /**
-     * Flag indicating if the enrollment has been read by the device.
+     * Enrollment lifecycle status.
      * <p>
-     * Tracks whether the device has successfully retrieved and processed
-     * the enrollment information. Used to monitor enrollment lifecycle
-     * and identify enrollments that may need attention or cleanup.
+     * Indicates the current state of the enrollment process from creation
+     * through verification. Used to monitor enrollment lifecycle and
+     * determine what operations are allowed on the enrollment.
      * </p>
      */
-    private Boolean enrollmentRead;
-
-    /**
-     * Flag indicating if the enrollment is valid.
-     * <p>
-     * Indicates whether the enrollment has passed all validation checks
-     * and cryptographic verification. Invalid enrollments cannot be used
-     * for authentication operations and may require re-enrollment or
-     * administrative intervention.
-     * </p>
-     */
-    private Boolean enrollmentValid;
+    private String enrollmentStatus;
 
     /**
      * Flag indicating if the enrollment is currently active.
@@ -251,39 +240,21 @@ public class EnrollmentResponse {
     }
 
     /**
-     * Gets the enrollment read status flag.
+     * Gets the enrollment lifecycle status.
      *
-     * @return true if the enrollment has been read by the device, false otherwise
+     * @return the enrollment status (CREATED, BOUND, VERIFIED, INVALID)
      */
-    public Boolean getEnrollmentRead() {
-        return enrollmentRead;
+    public String getEnrollmentStatus() {
+        return enrollmentStatus;
     }
 
     /**
-     * Sets the enrollment read status flag.
+     * Sets the enrollment lifecycle status.
      *
-     * @param enrollmentRead true if the enrollment has been read by the device
+     * @param enrollmentStatus the enrollment status to set
      */
-    public void setEnrollmentRead(Boolean enrollmentRead) {
-        this.enrollmentRead = enrollmentRead;
-    }
-
-    /**
-     * Gets the enrollment validity status flag.
-     *
-     * @return true if the enrollment is valid, false otherwise
-     */
-    public Boolean getEnrollmentValid() {
-        return enrollmentValid;
-    }
-
-    /**
-     * Sets the enrollment validity status flag.
-     *
-     * @param enrollmentValid true if the enrollment is valid
-     */
-    public void setEnrollmentValid(Boolean enrollmentValid) {
-        this.enrollmentValid = enrollmentValid;
+    public void setEnrollmentStatus(String enrollmentStatus) {
+        this.enrollmentStatus = enrollmentStatus;
     }
 
     /**

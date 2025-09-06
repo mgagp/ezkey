@@ -14,10 +14,14 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 
 /**
  * JPA entity representing enrollment data in the Ezkey system.
@@ -66,32 +70,19 @@ public class Enrollment {
     private String enrollmentName;
 
     /**
-     * Flag indicating if the enrollment has been read by the device.
-     * Used to track enrollment status.
+     * Enrollment lifecycle status tracking.
+     * Indicates the current state of the enrollment process.
      */
-    @Column(name = "enrollment_read")
-    private Boolean enrollmentRead;
-
-    /**
-     * Flag indicating if the enrollment is verified.
-     * Used to track enrollment verification status.
-     */
-    @Column(name = "enrollment_verified")
-    private Boolean enrollmentVerified;
-
-    /**
-     * Flag indicating if the enrollment is valid.
-     * Used to track enrollment verification status.
-     */
-    @Column(name = "enrollment_valid")
-    private Boolean enrollmentValid;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "enrollment_status")
+    private EnrollmentStatus status;
 
     /**
      * Flag indicating if the enrollment is currently active.
-     * Used to enable/disable enrollment.
+     * Used to enable/disable enrollment for authentication operations.
      */
     @Column(name = "enrollment_active")
-    private Boolean enrollmentActive;
+    private Boolean active;
 
     /**
      * Challenge value for enrollment verification.
@@ -152,9 +143,8 @@ public class Enrollment {
         this.enrollmentName = enrollmentName;
         this.setEnrollmentProofToken(deviceProofToken);
         this.createdAt = LocalDateTime.now();
-        this.enrollmentRead = false;
-        this.enrollmentValid = false;
-        this.enrollmentActive = true;
+        this.status = EnrollmentStatus.CREATED;
+        this.active = false;
         // Don't set authAttemptChallengeRequired here - let it be set explicitly by the caller
     }
 
@@ -183,36 +173,20 @@ public class Enrollment {
         this.enrollmentName = enrollmentName;
     }
 
-    public Boolean getEnrollmentRead() {
-        return enrollmentRead;
+    public EnrollmentStatus getStatus() {
+        return status;
     }
 
-    public void setEnrollmentRead(Boolean enrollmentRead) {
-        this.enrollmentRead = enrollmentRead;
+    public void setStatus(EnrollmentStatus status) {
+        this.status = status;
     }
 
-    public Boolean getEnrollmentVerified() {
-        return enrollmentVerified;
+    public Boolean getActive() {
+        return active;
     }
 
-    public void setEnrollmentVerified(Boolean enrollmentVerified) {
-        this.enrollmentVerified = enrollmentVerified;
-    }
-
-    public Boolean getEnrollmentValid() {
-        return enrollmentValid;
-    }
-
-    public void setEnrollmentValid(Boolean enrollmentValid) {
-        this.enrollmentValid = enrollmentValid;
-    }
-
-    public Boolean getEnrollmentActive() {
-        return enrollmentActive;
-    }
-
-    public void setEnrollmentActive(Boolean enrollmentActive) {
-        this.enrollmentActive = enrollmentActive;
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public Integer getEnrollmentChallenge() {

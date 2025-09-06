@@ -52,12 +52,18 @@ public class AuthAttemptCreateRequestDto {
      * The enrollment ID for which the authentication attempt is requested.
      * Must reference an existing and active enrollment.
      */
+    @Schema(description = "The enrollment ID for which the authentication attempt is requested", 
+            example = "123", 
+            required = true)
     private Integer enrollmentId;
 
     /**
      * Indicates whether a challenge is requested for this authentication attempt.
      * When true, additional challenge data will be generated for verification.
      */
+    @Schema(description = "Indicates whether a challenge is requested for this authentication attempt", 
+            example = "false", 
+            required = true)
     private Boolean challengeRequested;
 
     /**
