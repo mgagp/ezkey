@@ -20,6 +20,7 @@ import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.AuthenticationResult;
@@ -110,13 +111,26 @@ public class AuthAttemptService {
         Enrollment enrollment = enrollmentRepository.findById(authRequest.getEnrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
+        // Supersession: Mark existing non-final attempts as EXPIRED
+        List<AuthAttempt> existingAttempts = authAttemptRepository.findByEnrollmentIdAndStatusIn(
+            authRequest.getEnrollmentId(), 
+            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)
+        );
+        
+        if (!existingAttempts.isEmpty()) {
+            List<Integer> attemptIds = existingAttempts.stream()
+                .map(AuthAttempt::getAuthAttemptId)
+                .toList();
+            
+            int updatedCount = authAttemptRepository.updateStatusForMultipleAttempts(attemptIds, AuthAttemptStatus.EXPIRED);
+            logger.info("Supersession: Marked {} existing auth attempts as EXPIRED for enrollment {}", updatedCount, authRequest.getEnrollmentId());
+        }
+
         // Create the authorization attempt
         AuthAttempt authAttempt = new AuthAttempt();
 
         authAttempt.setEnrollmentId(enrollment.getEnrollmentId());
-        authAttempt.setAuthAttemptRead(false);
-        authAttempt.setAuthAttemptResponded(false);
-        authAttempt.setAuthAttemptAccepted(false);
+        authAttempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
 
         // Generate challenge if required
         boolean shouldGenerateChallenge = Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) || Boolean.TRUE.equals(authRequest.getChallengeRequested());
@@ -231,20 +245,20 @@ public class AuthAttemptService {
             logger.warn("Device proof token already used for enrollment: {}",request.getEnrollmentId());
             throw new IllegalArgumentException("Authentication request failed");
         }
-        // Find valid (non-expired) unread auth attempt
+        // Find valid (non-expired) pending auth attempt
         LocalDateTime now = LocalDateTime.now();
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(request.getEnrollmentId(),now).orElse(null);
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(request.getEnrollmentId(), AuthAttemptStatus.PENDING.name(), now).orElse(null);
         if (authAttempt == null){
             throw new NoPendingAuthAttemptException("No pending authentication request");
         }
-        // Double-check if already read (protection against race condition)
-        if (Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
-            logger.warn("Auth attempt already processed: {}",authAttempt.getAuthAttemptId());
+        // Double-check if already processed (protection against race condition)
+        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING){
+            logger.warn("Auth attempt already processed: {} with status {}", authAttempt.getAuthAttemptId(), authAttempt.getAuthAttemptStatus());
             throw new IllegalStateException("Authentication request failed");
         }
-        // Record the device proof token to ensure unicity
+        // Record the device proof token to ensure unicity and update status to READ
         authAttempt.setDeviceProofToken(request.getDeviceProofToken());
-        authAttempt.setAuthAttemptRead(true);
+        authAttempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
         authAttemptRepository.save(authAttempt);
 
         AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
@@ -270,8 +284,8 @@ public class AuthAttemptService {
         }
         AuthAttempt authAttempt = authAttemptOpt.get();
 
-        // Check if read
-        if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
+        // Check if in READ status (device has claimed the attempt)
+        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ){
             response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Auth attempt not read by device");
             return response;
@@ -310,9 +324,7 @@ public class AuthAttemptService {
         boolean isDeviceProofTokenValid = signatureService.validateSignature(authAttempt.getAuthAttemptProofToken(),request.getAuthAttemptProofTokenSignedByDevice(),
                 devicePublicKey);
         if (!isDeviceProofTokenValid){
-            authAttempt.setAuthAttemptAccepted(false);
-            authAttempt.setAuthAttemptValid(false);
-            authAttempt.setAuthAttemptResponded(true);
+            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
             authAttemptRepository.save(authAttempt);
             response.setResult(AuthenticationResult.FAILED);
             response.setMessage("Invalid signature for auth attempt code");
@@ -321,19 +333,19 @@ public class AuthAttemptService {
         // Validate challenge if required
         if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
             if (request.getAuthAttemptChallengeResponse() == null || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
-                authAttempt.setAuthAttemptAccepted(false);
-                authAttempt.setAuthAttemptValid(false);
-                authAttempt.setAuthAttemptResponded(true);
+                authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
                 authAttemptRepository.save(authAttempt);
                 response.setResult(AuthenticationResult.FAILED);
                 response.setMessage("Challenge value mismatch");
                 return response;
             }
         }
-        // Update authorization attempt
-        authAttempt.setAuthAttemptAccepted(request.getAuthAttemptAccepted());
-        authAttempt.setAuthAttemptValid(true);
-        authAttempt.setAuthAttemptResponded(true);
+        // Update authorization attempt based on user decision
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
+        } else {
+            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
+        }
         authAttemptRepository.save(authAttempt);
 
         // Set result based on user's choice
@@ -372,9 +384,11 @@ public class AuthAttemptService {
                 return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
             }
             // Completed?
-            if (Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
+            if (authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
+                authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
+                authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID){
                 int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                logger.info("Auth attempt {} completed after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
+                logger.info("Auth attempt {} completed with status {} after {}s ({} polls)",authAttemptId,authAttempt.getAuthAttemptStatus(),waitDuration,pollCount);
                 return buildWaitResponse(authAttempt,false,waitDuration);
             }
             // Expired?
@@ -440,7 +454,9 @@ public class AuthAttemptService {
      */
     private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,boolean timeoutReached,int waitDuration) {
         String status = calculateStatus(authAttempt);
-        boolean completed = Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded());
+        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
+                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
+                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
 
         return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
     }
@@ -459,7 +475,9 @@ public class AuthAttemptService {
      * @return the complete AuthAttemptWaitResponse
      */
     private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,String status,boolean timeoutReached,int waitDuration) {
-        boolean completed = Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded());
+        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
+                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
+                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
 
         return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
     }
@@ -481,24 +499,8 @@ public class AuthAttemptService {
         if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
             return "EXPIRED";
         }
-        // #1: authAttemptRead null or false : PENDING
-        if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())){
-            return "PENDING";
-        }
-        // #2: authAttemptRead true and authAttemptResponded null or false : READ
-        else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())){
-            return "READ";
-        }
-        // #3: authAttemptValid null or false : INVALID
-        else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptValid())){
-            return "INVALID";
-        }
-        // #4: authAttemptAccepted null or false : REJECTED else ACCEPTED
-        else if (Boolean.TRUE.equals(authAttempt.getAuthAttemptAccepted())){
-            return "ACCEPTED";
-        } else{
-            return "REJECTED";
-        }
+        // Return the current status directly
+        return authAttempt.getAuthAttemptStatus().name();
     }
 
     /**

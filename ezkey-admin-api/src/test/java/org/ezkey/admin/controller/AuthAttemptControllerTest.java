@@ -19,6 +19,7 @@ import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
@@ -75,9 +76,7 @@ class AuthAttemptControllerTest {
         authAttemptEntity = new AuthAttempt();
         authAttemptEntity.setAuthAttemptId(100);
         authAttemptEntity.setEnrollmentId(55);
-        authAttemptEntity.setAuthAttemptRead(false);
-        authAttemptEntity.setAuthAttemptResponded(false);
-        authAttemptEntity.setAuthAttemptAccepted(false);
+        authAttemptEntity.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
         authAttemptEntity.setCreatedAt(LocalDateTime.of(2025,1,1,12,0,0));
 
         authAttemptDto = new AuthAttemptDto();

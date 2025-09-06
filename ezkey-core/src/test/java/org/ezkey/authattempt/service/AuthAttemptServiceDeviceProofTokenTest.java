@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -129,7 +130,7 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(mockEnrollment.getAuthAttemptChallengeRequired()).thenReturn(false);
 
         AuthAttempt mockAuthAttempt = mock(AuthAttempt.class);
-        when(mockAuthAttempt.getAuthAttemptRead()).thenReturn(false);
+        when(mockAuthAttempt.getAuthAttemptStatus()).thenReturn(AuthAttemptStatus.PENDING);
         when(mockAuthAttempt.getAuthAttemptId()).thenReturn(123);
         when(mockAuthAttempt.getAuthAttemptProofToken()).thenReturn("auth-attempt-token");
 
@@ -138,7 +139,7 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(signatureService.validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey))
                 .thenReturn(true);
         when(authAttemptRepository.existsByDeviceProofToken(deviceProofToken)).thenReturn(false); // Token is unique
-        when(authAttemptRepository.findAndLockMostRecentValidUnreadByEnrollmentId(eq(enrollmentId), any()))
+        when(authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(eq(enrollmentId), eq(AuthAttemptStatus.PENDING.name()), any()))
                 .thenReturn(Optional.of(mockAuthAttempt));
         when(signatureService.generateSignature(anyString(), anyString())).thenReturn("integration-signature");
 
@@ -148,7 +149,7 @@ class AuthAttemptServiceDeviceProofTokenTest {
         // Assert
         verify(authAttemptRepository).existsByDeviceProofToken(deviceProofToken);
         verify(mockAuthAttempt).setDeviceProofToken(deviceProofToken); // Verify token is stored
-        verify(mockAuthAttempt).setAuthAttemptRead(true);
+        verify(mockAuthAttempt).setAuthAttemptStatus(AuthAttemptStatus.READ);
         verify(authAttemptRepository).save(mockAuthAttempt);
     }
 

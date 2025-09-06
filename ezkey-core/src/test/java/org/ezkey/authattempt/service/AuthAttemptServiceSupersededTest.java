@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.AuthenticationResult;
@@ -93,10 +94,7 @@ class AuthAttemptServiceSupersededTest {
         olderAttempt = new AuthAttempt();
         olderAttempt.setAuthAttemptId(1);
         olderAttempt.setEnrollmentId(1);
-        olderAttempt.setAuthAttemptRead(true);
-        olderAttempt.setAuthAttemptResponded(false);
-        olderAttempt.setAuthAttemptValid(false);
-        olderAttempt.setAuthAttemptAccepted(false);
+        olderAttempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
         olderAttempt.setAuthAttemptProofToken("older-proof-token");
         olderAttempt.setCreatedAt(LocalDateTime.now().minusMinutes(5));
         olderAttempt.setExpiresAt(LocalDateTime.now().plusMinutes(10));
@@ -105,10 +103,7 @@ class AuthAttemptServiceSupersededTest {
         newerAttempt = new AuthAttempt();
         newerAttempt.setAuthAttemptId(2);
         newerAttempt.setEnrollmentId(1);
-        newerAttempt.setAuthAttemptRead(false);
-        newerAttempt.setAuthAttemptResponded(false);
-        newerAttempt.setAuthAttemptValid(false);
-        newerAttempt.setAuthAttemptAccepted(false);
+        newerAttempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
         newerAttempt.setAuthAttemptProofToken("newer-proof-token");
         newerAttempt.setCreatedAt(LocalDateTime.now().minusMinutes(1));
         newerAttempt.setExpiresAt(LocalDateTime.now().plusMinutes(10));

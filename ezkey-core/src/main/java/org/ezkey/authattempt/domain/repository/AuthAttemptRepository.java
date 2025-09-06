@@ -13,6 +13,7 @@ package org.ezkey.authattempt.domain.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -68,36 +69,34 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
     List<AuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(@Param("enrollmentId") Integer enrollmentId);
 
     /**
-     * Finds the most recent unread authorization attempt for a given enrollment ID.
+     * Finds the most recent pending authorization attempt for a given enrollment ID.
      * <p>
-     * This method returns the first (most recent) unread authorization attempt
-     * for the specified enrollment. Only attempts that haven't been read by the device
-     * are considered.
+     * This method returns the first (most recent) pending authorization attempt
+     * for the specified enrollment. Only attempts with PENDING status are considered.
      * </p>
      *
      * @param enrollmentId the enrollment ID to search for
-     * @return the most recent unread authorization attempt, or empty if none found
+     * @return the most recent pending authorization attempt, or empty if none found
      */
-    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptRead = false ORDER BY a.authAttemptId DESC")
-    Optional<AuthAttempt> findMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus = :status ORDER BY a.authAttemptId DESC")
+    Optional<AuthAttempt> findMostRecentByEnrollmentIdAndStatus(@Param("enrollmentId") Integer enrollmentId, @Param("status") AuthAttemptStatus status);
 
     /**
-     * Finds the most recent valid (non-expired) unread authorization attempt for a given enrollment ID.
+     * Finds the most recent valid (non-expired) pending authorization attempt for a given enrollment ID.
      * <p>
-     * This method returns the first (most recent) unread and non-expired authorization attempt
-     * for the specified enrollment. Only attempts that haven't been read by the device
-     * and haven't expired are considered.
+     * This method returns the first (most recent) pending and non-expired authorization attempt
+     * for the specified enrollment. Only attempts with PENDING status and haven't expired are considered.
      * </p>
      *
      * @param enrollmentId the enrollment ID to search for
      * @param now the current timestamp for expiration comparison
-     * @return the most recent valid unread authorization attempt, or empty if none found
+     * @return the most recent valid pending authorization attempt, or empty if none found
      */
-    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptRead = false AND a.expiresAt > :now ORDER BY a.authAttemptId DESC")
-    Optional<AuthAttempt> findMostRecentValidUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("now") java.time.LocalDateTime now);
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus = :status AND a.expiresAt > :now ORDER BY a.authAttemptId DESC")
+    Optional<AuthAttempt> findMostRecentValidByEnrollmentIdAndStatus(@Param("enrollmentId") Integer enrollmentId, @Param("status") AuthAttemptStatus status, @Param("now") java.time.LocalDateTime now);
 
     /**
-     * Finds and locks the most recent unread authorization attempt for a given enrollment ID.
+     * Finds and locks the most recent pending authorization attempt for a given enrollment ID.
      * <p>
      * This method uses SELECT FOR NO KEY UPDATE to lock the row atomically,
      * preventing race conditions and ensuring exclusive access to the auth attempt.
@@ -105,55 +104,56 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * </p>
      *
      * @param enrollmentId the enrollment ID to search for
-     * @return the most recent unread authorization attempt with row lock, or empty if none found
+     * @return the most recent pending authorization attempt with row lock, or empty if none found
      */
     @Query(value = """
             SELECT * FROM ezkey_auth_attempt
             WHERE enrollment_id = :enrollmentId
-              AND auth_attempt_read = false
+              AND auth_attempt_status = :status
             ORDER BY auth_attempt_id DESC
             LIMIT 1
             FOR NO KEY UPDATE
             """,nativeQuery = true)
-    Optional<AuthAttempt> findAndLockMostRecentUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    Optional<AuthAttempt> findAndLockMostRecentByEnrollmentIdAndStatus(@Param("enrollmentId") Integer enrollmentId, @Param("status") String status);
 
     /**
-     * Finds and locks the most recent valid (non-expired) unread authorization attempt for a given enrollment ID.
+     * Finds and locks the most recent valid (non-expired) pending authorization attempt for a given enrollment ID.
      * <p>
      * This method uses SELECT FOR NO KEY UPDATE to lock the row atomically,
      * preventing race conditions and ensuring exclusive access to the auth attempt.
-     * Only attempts that haven't been read by the device and haven't expired are considered.
+     * Only attempts with PENDING status and haven't expired are considered.
      * The lock is acquired at the row level to minimize contention.
      * </p>
      *
      * @param enrollmentId the enrollment ID to search for
      * @param now the current timestamp for expiration comparison
-     * @return the most recent valid unread authorization attempt with row lock, or empty if none found
+     * @return the most recent valid pending authorization attempt with row lock, or empty if none found
      */
     @Query(value = """
             SELECT * FROM ezkey_auth_attempt
             WHERE enrollment_id = :enrollmentId
-              AND auth_attempt_read = false
+              AND auth_attempt_status = :status
               AND expires_at > :now
             ORDER BY auth_attempt_id DESC
             LIMIT 1
             FOR NO KEY UPDATE
             """,nativeQuery = true)
-    Optional<AuthAttempt> findAndLockMostRecentValidUnreadByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("now") java.time.LocalDateTime now);
+    Optional<AuthAttempt> findAndLockMostRecentValidByEnrollmentIdAndStatus(@Param("enrollmentId") Integer enrollmentId, @Param("status") String status, @Param("now") java.time.LocalDateTime now);
 
     /**
-     * Updates the read status of an authorization attempt if it hasn't been read yet.
+     * Updates the status of an authorization attempt if it's currently pending.
      * <p>
-     * This method atomically updates the read status to true only if the current
-     * status is false, preventing race conditions in concurrent scenarios.
+     * This method atomically updates the status from PENDING to the new status,
+     * preventing race conditions in concurrent scenarios.
      * </p>
      *
      * @param authAttemptId the authorization attempt ID to update
-     * @return the number of rows affected (1 if updated, 0 if already read)
+     * @param newStatus the new status to set
+     * @return the number of rows affected (1 if updated, 0 if not pending)
      */
     @Modifying
-    @Query("UPDATE AuthAttempt a SET a.authAttemptRead = true WHERE a.authAttemptId = :authAttemptId AND a.authAttemptRead = false")
-    int setDeviceReadTrueIfNotRead(@Param("authAttemptId") Integer authAttemptId);
+    @Query("UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId = :authAttemptId AND a.authAttemptStatus = :currentStatus")
+    int updateStatusIfCurrent(@Param("authAttemptId") Integer authAttemptId, @Param("currentStatus") AuthAttemptStatus currentStatus, @Param("newStatus") AuthAttemptStatus newStatus);
 
     /**
      * Finds all authorization attempts for a given enrollment ID.
@@ -196,4 +196,31 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      */
     @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt > :createdAt ORDER BY a.createdAt DESC")
     Optional<AuthAttempt> findNewerAttemptByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("createdAt") java.time.LocalDateTime createdAt);
+
+    /**
+     * Finds all non-final authentication attempts for a given enrollment ID.
+     * <p>
+     * This method returns all authentication attempts that are not in final states
+     * (PENDING, READ) for the specified enrollment. Used for supersession logic.
+     * </p>
+     *
+     * @param enrollmentId the enrollment ID to search for
+     * @return list of non-final authentication attempts
+     */
+    @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus IN (:statuses)")
+    List<AuthAttempt> findByEnrollmentIdAndStatusIn(@Param("enrollmentId") Integer enrollmentId, @Param("statuses") List<AuthAttemptStatus> statuses);
+
+    /**
+     * Updates multiple authentication attempts to EXPIRED status.
+     * <p>
+     * This method atomically updates multiple authentication attempts to EXPIRED
+     * status, used for supersession when a new attempt is created.
+     * </p>
+     *
+     * @param authAttemptIds list of authentication attempt IDs to update
+     * @return the number of rows affected
+     */
+    @Modifying
+    @Query("UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId IN (:authAttemptIds)")
+    int updateStatusForMultipleAttempts(@Param("authAttemptIds") List<Integer> authAttemptIds, @Param("newStatus") AuthAttemptStatus newStatus);
 }

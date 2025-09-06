@@ -14,10 +14,14 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 
 /**
  * JPA entity representing an authorization attempt within the Ezkey system.
@@ -58,17 +62,9 @@ public class AuthAttempt {
     @Column(name = "enrollment_id",nullable = false)
     private Integer enrollmentId;
 
-    @Column(name = "auth_attempt_read",nullable = false)
-    private Boolean authAttemptRead = false;
-
-    @Column(name = "auth_attempt_responded",nullable = false)
-    private Boolean authAttemptResponded = false;
-
-    @Column(name = "auth_attempt_valid",nullable = false)
-    private Boolean authAttemptValid = false;
-
-    @Column(name = "auth_attempt_accepted",nullable = false)
-    private Boolean authAttemptAccepted = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_attempt_status",nullable = false)
+    private AuthAttemptStatus authAttemptStatus = AuthAttemptStatus.PENDING;
 
     @Column(name = "auth_attempt_challenge")
     private Integer authAttemptChallenge;
@@ -90,15 +86,16 @@ public class AuthAttempt {
      */
     public AuthAttempt(){
         this.createdAt = LocalDateTime.now();
+        this.authAttemptStatus = AuthAttemptStatus.PENDING;
     }
 
     /**
      * Constructs an authorization attempt with required fields.
      *
      * @param enrollmentId the enrollment ID associated with this attempt
-     * @param integrationProofToken the integration proof token for verification
+     * @param authAttemptProofToken the integration proof token for verification
      */
-    public AuthAttempt(Integer enrollmentId,String authAttemptProofToken){
+    public AuthAttempt(Integer enrollmentId, String authAttemptProofToken) {
         this();
         this.enrollmentId = enrollmentId;
         this.setAuthAttemptProofToken(authAttemptProofToken);
@@ -143,75 +140,21 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets whether the device has read the authorization attempt.
+     * Gets the authentication attempt status.
      *
-     * @return true if the device has read the attempt, false otherwise
+     * @return the authentication attempt status
      */
-    public Boolean getAuthAttemptRead() {
-        return authAttemptRead;
+    public AuthAttemptStatus getAuthAttemptStatus() {
+        return authAttemptStatus;
     }
 
     /**
-     * Sets whether the device has read the authorization attempt.
+     * Sets the authentication attempt status.
      *
-     * @param authAttemptRead true if the device has read the attempt, false otherwise
+     * @param authAttemptStatus the authentication attempt status to set
      */
-    public void setAuthAttemptRead(Boolean authAttemptRead) {
-        this.authAttemptRead = authAttemptRead;
-    }
-
-    /**
-     * Gets whether the device has responded the authorization attempt.
-     *
-     * @return true if the device has responded, false otherwise
-     */
-    public Boolean getAuthAttemptResponded() {
-        return authAttemptResponded;
-    }
-
-    /**
-     * Sets whether the device has responded the authorization attempt.
-     *
-     * @param authAttemptAccepted true if the device has responded, false otherwise
-     */
-    public void setAuthAttemptResponded(Boolean authAttemptResponded) {
-        this.authAttemptResponded = authAttemptResponded;
-    }
-
-    /**
-     * Gets whether the authorization attempt is valid.
-     *
-     * @return true if the attempt is valid, false otherwise
-     */
-    public Boolean getAuthAttemptValid() {
-        return authAttemptValid;
-    }
-
-    /**
-     * Sets whether the authorization attempt is valid.
-     *
-     * @param authAttemptValid true if the attempt is valid, false otherwise
-     */
-    public void setAuthAttemptValid(Boolean authAttemptValid) {
-        this.authAttemptValid = authAttemptValid;
-    }
-
-    /**
-     * Gets whether the device has accepted the authorization attempt.
-     *
-     * @return true if the device has accepted, false otherwise
-     */
-    public Boolean getAuthAttemptAccepted() {
-        return authAttemptAccepted;
-    }
-
-    /**
-     * Sets whether the device has accepted the authorization attempt.
-     *
-     * @param authAttemptAccepted true if the device has accepted, false otherwise
-     */
-    public void setAuthAttemptAccepted(Boolean authAttemptAccepted) {
-        this.authAttemptAccepted = authAttemptAccepted;
+    public void setAuthAttemptStatus(AuthAttemptStatus authAttemptStatus) {
+        this.authAttemptStatus = authAttemptStatus;
     }
 
     /**
@@ -224,7 +167,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the challenge code sent to the device for verification.
+     * Sets the challenge code for device verification.
      *
      * @param authAttemptChallenge the challenge code to set
      */
@@ -233,18 +176,18 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the authorization proof token.
+     * Gets the proof token for this authorization attempt.
      *
-     * @return the authorization proof token
+     * @return the proof token
      */
     public String getAuthAttemptProofToken() {
         return authAttemptProofToken;
     }
 
     /**
-     * Sets the authorization proof token.
+     * Sets the proof token for this authorization attempt.
      *
-     * @param authAttemptProofToken the authorization proof token to set
+     * @param authAttemptProofToken the proof token to set
      */
     public void setAuthAttemptProofToken(String authAttemptProofToken) {
         this.authAttemptProofToken = authAttemptProofToken;
@@ -269,7 +212,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the timestamp when the authorization attempt was created.
+     * Gets the creation timestamp.
      *
      * @return the creation timestamp
      */
@@ -278,7 +221,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the timestamp when the authorization attempt was created.
+     * Sets the creation timestamp.
      *
      * @param createdAt the creation timestamp to set
      */
@@ -287,7 +230,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Gets the timestamp when the authorization attempt expires.
+     * Gets the expiration timestamp.
      *
      * @return the expiration timestamp
      */
@@ -296,7 +239,7 @@ public class AuthAttempt {
     }
 
     /**
-     * Sets the timestamp when the authorization attempt expires.
+     * Sets the expiration timestamp.
      *
      * @param expiresAt the expiration timestamp to set
      */
@@ -304,4 +247,33 @@ public class AuthAttempt {
         this.expiresAt = expiresAt;
     }
 
+    /**
+     * Checks if this authorization attempt has expired.
+     *
+     * @return true if the attempt has expired, false otherwise
+     */
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    /**
+     * Checks if this authorization attempt is still valid (not expired).
+     *
+     * @return true if the attempt is still valid, false otherwise
+     */
+    public boolean isValid() {
+        return !isExpired();
+    }
+
+    @Override
+    public String toString() {
+        return "AuthAttempt{" +
+                "authAttemptId=" + authAttemptId +
+                ", enrollmentId=" + enrollmentId +
+                ", authAttemptStatus=" + authAttemptStatus +
+                ", authAttemptChallenge=" + authAttemptChallenge +
+                ", createdAt=" + createdAt +
+                ", expiresAt=" + expiresAt +
+                '}';
+    }
 }
