@@ -56,17 +56,18 @@
                 <tr><td class="detail-label">Enrollment ID</td><td th:text="${enrollment.enrollmentId}">1</td></tr>
                 <tr><td class="detail-label">Integration ID</td><td th:text="${enrollment.integrationId}">1</td></tr>
                 <tr><td class="detail-label">Name</td><td th:text="${enrollment.enrollmentName}">Device Name</td></tr>
+                <tr><td class="detail-label">Status</td><td><span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentStatus.name()}">CREATED</span></td></tr>
                 <tr>
                     <td class="detail-label">Read</td>
-                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentRead} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentRead} ? 'YES' : 'NO'">YES</span></td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'} ? 'YES' : 'NO'">YES</span></td>
                 </tr>
                 <tr>
                     <td class="detail-label">Verified</td>
-                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentVerified} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentVerified} ? 'YES' : 'NO'">YES</span></td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? 'YES' : 'NO'">YES</span></td>
                 </tr>
                 <tr>
                     <td class="detail-label">Valid</td>
-                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentValid} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentValid} ? 'YES' : 'NO'">YES</span></td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() != 'INVALID'} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentStatus.name() != 'INVALID'} ? 'YES' : 'NO'">YES</span></td>
                 </tr>
                 <tr>
                     <td class="detail-label">Active</td>
@@ -98,8 +99,8 @@
                 <div class="status-content">
                     <span class="status-label">Read Status</span>
                     <span class="status-value">
-                        <span th:if="${enrollment.enrollmentRead}" class="status-badge status-active">READ</span>
-                        <span th:unless="${enrollment.enrollmentRead}" class="status-badge status-inactive">UNREAD</span>
+                        <span th:if="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'}" class="status-badge status-active">READ</span>
+                        <span th:unless="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'}" class="status-badge status-inactive">UNREAD</span>
                         - Indicates if the enrollment has been read by the device
                     </span>
                 </div>
@@ -109,8 +110,8 @@
                 <div class="status-content">
                     <span class="status-label">Verification Status</span>
                     <span class="status-value">
-                        <span th:if="${enrollment.enrollmentVerified}" class="status-badge status-active">VERIFIED</span>
-                        <span th:unless="${enrollment.enrollmentVerified}" class="status-badge status-inactive">UNVERIFIED</span>
+                        <span th:if="${enrollment.enrollmentStatus.name() == 'VERIFIED'}" class="status-badge status-active">VERIFIED</span>
+                        <span th:unless="${enrollment.enrollmentStatus.name() == 'VERIFIED'}" class="status-badge status-inactive">UNVERIFIED</span>
                         - Indicates if the enrollment has been verified
                     </span>
                 </div>

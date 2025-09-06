@@ -39,6 +39,7 @@
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
+                    <th>Status</th>
                     <th>Read</th>
                     <th>Verified</th>
                     <th>Valid</th>
@@ -51,17 +52,18 @@
                 <tr th:each="enrollment : ${enrollments}" class="table-row">
                     <td><span class="integration-id" th:text="${enrollment.enrollmentId}">1</span></td>
                     <td><span class="integration-name" th:text="${enrollment.enrollmentName}">Device Name</span></td>
+                    <td><span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentStatus.name()}">CREATED</span></td>
                     <td>
-                        <span class="status-badge" th:classappend="${enrollment.enrollmentRead} ? ' status-active' : ' status-inactive'"
-                              th:text="${enrollment.enrollmentRead} ? 'YES' : 'NO'">YES</span>
+                        <span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'} ? ' status-active' : ' status-inactive'"
+                              th:text="${enrollment.enrollmentStatus.name() == 'BOUND' or enrollment.enrollmentStatus.name() == 'VERIFIED' or enrollment.enrollmentStatus.name() == 'INVALID'} ? 'YES' : 'NO'">YES</span>
                     </td>
                     <td>
-                        <span class="status-badge" th:classappend="${enrollment.enrollmentVerified} ? ' status-active' : ' status-inactive'"
-                              th:text="${enrollment.enrollmentVerified} ? 'YES' : 'NO'">YES</span>
+                        <span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? ' status-active' : ' status-inactive'"
+                              th:text="${enrollment.enrollmentStatus.name() == 'VERIFIED'} ? 'YES' : 'NO'">YES</span>
                     </td>
                     <td>
-                        <span class="status-badge" th:classappend="${enrollment.enrollmentValid} ? ' status-active' : ' status-inactive'"
-                              th:text="${enrollment.enrollmentValid} ? 'YES' : 'NO'">YES</span>
+                        <span class="status-badge" th:classappend="${enrollment.enrollmentStatus.name() != 'INVALID'} ? ' status-active' : ' status-inactive'"
+                              th:text="${enrollment.enrollmentStatus.name() != 'INVALID'} ? 'YES' : 'NO'">YES</span>
                     </td>
                     <td>
                         <span class="status-badge" th:classappend="${enrollment.enrollmentActive} ? ' status-active' : ' status-inactive'"
