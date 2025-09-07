@@ -91,13 +91,19 @@ public class EnrollmentController {
 
     /**
      * Lists enrollments for a given integration.
+     * If no integrationId is provided, redirects to the integrations list.
      *
-     * @param integrationId the integration identifier
+     * @param integrationId the integration identifier (optional)
      * @param model the view model
-     * @return template name
+     * @return template name or redirect
      */
     @GetMapping
-    public String listByIntegration(@RequestParam("integrationId") Integer integrationId, Model model) {
+    public String listByIntegration(@RequestParam(value = "integrationId", required = false) Integer integrationId, Model model) {
+        if (integrationId == null) {
+            logger.debug("No integrationId provided, redirecting to integrations list");
+            return "redirect:/integrations";
+        }
+        
         logger.debug("Displaying enrollment list for integration: {}", integrationId);
         List<EnrollmentResponseDto> enrollments = enrollmentService.getEnrollmentsByIntegrationSync(integrationId);
         model.addAttribute("pageTitle", "Enrollments - ACME Inc");

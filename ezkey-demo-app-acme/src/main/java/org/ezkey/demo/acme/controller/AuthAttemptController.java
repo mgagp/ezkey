@@ -194,27 +194,9 @@ public class AuthAttemptController {
                     enrichedAttempt.put("enrollmentName", "Unknown Enrollment");
                 }
                 
-                // Determine status based on DTO properties according to ENDPOINT.md rules
-                String status;
-                
-                // #1: authAttemptRead null ou false : PENDING
-                if (!Boolean.TRUE.equals(attempt.getAuthAttemptRead())) {
-                    status = "PENDING";
-                }
-                // #2: authAttemptRead et authAttemptResponded null ou false : READ
-                else if (!Boolean.TRUE.equals(attempt.getAuthAttemptResponded())) {
-                    status = "READ";
-                }
-                // #3: authAttemptValid null ou false : INVALID
-                else if (!Boolean.TRUE.equals(attempt.getAuthAttemptValid())) {
-                    status = "INVALID";
-                }
-                // #4: authAttemptAccepted null ou false : REJECTED sinon ACCEPTED
-                else if (Boolean.TRUE.equals(attempt.getAuthAttemptAccepted())) {
-                    status = "ACCEPTED";
-                } else {
-                    status = "REJECTED";
-                }
+                // Use the new authAttemptStatus field directly
+                String status = attempt.getAuthAttemptStatus() != null ? 
+                    attempt.getAuthAttemptStatus().getValue() : "PENDING";
                 enrichedAttempt.put("status", status);
                 
                 // Determine if challenge is required
@@ -335,27 +317,9 @@ public class AuthAttemptController {
                     enrichedAttempt.put("enrollmentName", "Unknown Enrollment");
                 }
                 
-                // Determine status based on DTO properties according to ENDPOINT.md rules
-                String status;
-                
-                // #1: authAttemptRead null ou false : PENDING
-                if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
-                    status = "PENDING";
-                }
-                // #2: authAttemptRead et authAttemptResponded null ou false : READ
-                else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())) {
-                    status = "READ";
-                }
-                // #3: authAttemptValid null ou false : INVALID
-                else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptValid())) {
-                    status = "INVALID";
-                }
-                // #4: authAttemptAccepted null ou false : REJECTED sinon ACCEPTED
-                else if (Boolean.TRUE.equals(authAttempt.getAuthAttemptAccepted())) {
-                    status = "ACCEPTED";
-                } else {
-                    status = "REJECTED";
-                }
+                // Use the new authAttemptStatus field directly
+                String status = authAttempt.getAuthAttemptStatus() != null ? 
+                    authAttempt.getAuthAttemptStatus().getValue() : "PENDING";
                 enrichedAttempt.put("status", status);
                 
                 // Determine if challenge is required
@@ -582,27 +546,9 @@ public class AuthAttemptController {
             
             String enrollmentName = enrollment != null ? enrollment.getEnrollmentName() : "Unknown";
             
-            // Calculate status based on DTO properties according to ENDPOINT.md rules
-            String status;
-            
-            // #1: authAttemptRead null or false : PENDING
-            if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptRead())) {
-                status = "PENDING";
-            }
-            // #2: authAttemptRead true and authAttemptResponded null or false : READ
-            else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptResponded())) {
-                status = "READ";
-            }
-            // #3: authAttemptValid null or false : INVALID
-            else if (!Boolean.TRUE.equals(authAttempt.getAuthAttemptValid())) {
-                status = "INVALID";
-            }
-            // #4: authAttemptAccepted null or false : REJECTED else ACCEPTED
-            else if (Boolean.TRUE.equals(authAttempt.getAuthAttemptAccepted())) {
-                status = "ACCEPTED";
-            } else {
-                status = "REJECTED";
-            }
+            // Use the new authAttemptStatus field directly
+            String status = authAttempt.getAuthAttemptStatus() != null ? 
+                authAttempt.getAuthAttemptStatus().getValue() : "PENDING";
             
             model.addAttribute("authAttempt", authAttempt);
             model.addAttribute("enrollmentName", enrollmentName);

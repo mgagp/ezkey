@@ -72,16 +72,34 @@
             box-shadow: 3px 3px 0 var(--acme-primary);
         }
         
-        .status-badge.status-approved {
+        .status-badge.status-read {
+            background: linear-gradient(135deg, var(--acme-primary) 0%, var(--acme-accent) 100%);
+            color: var(--acme-light);
+            box-shadow: 3px 3px 0 var(--acme-secondary);
+        }
+        
+        .status-badge.status-accepted {
             background: linear-gradient(135deg, var(--acme-success) 0%, var(--acme-accent) 100%);
             color: var(--acme-dark);
             box-shadow: 3px 3px 0 var(--acme-primary);
         }
         
-        .status-badge.status-denied {
+        .status-badge.status-rejected {
             background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-warning) 100%);
             color: var(--acme-light);
             box-shadow: 3px 3px 0 var(--acme-secondary);
+        }
+        
+        .status-badge.status-invalid {
+            background: linear-gradient(135deg, var(--acme-error) 0%, var(--acme-secondary) 100%);
+            color: var(--acme-light);
+            box-shadow: 3px 3px 0 var(--acme-dark);
+        }
+        
+        .status-badge.status-expired {
+            background: linear-gradient(135deg, var(--acme-gray) 0%, var(--acme-secondary) 100%);
+            color: var(--acme-dark);
+            box-shadow: 3px 3px 0 var(--acme-primary);
         }
         
         .action-buttons-row {

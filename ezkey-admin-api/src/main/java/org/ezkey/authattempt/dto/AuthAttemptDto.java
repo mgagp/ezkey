@@ -13,6 +13,7 @@ package org.ezkey.authattempt.dto;
 import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 
 /**
  * Response DTO for authentication attempt data in admin API.
@@ -38,12 +39,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * </p>
  *
  * <p>
- * <b>Status Fields:</b>
+ * <b>Status Field:</b>
  * <ul>
- * <li><b>authAttemptRead:</b> Flag indicating if the attempt has been read by the device</li>
- * <li><b>authAttemptResponded:</b> Flag indicating if the attempt has been responded to</li>
- * <li><b>authAttemptValid:</b> Flag indicating if the attempt is valid</li>
- * <li><b>authAttemptAccepted:</b> Flag indicating if the attempt was accepted</li>
+ * <li><b>authAttemptStatus:</b> Current lifecycle status of the authentication attempt (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)</li>
  * </ul>
  * </p>
  *
@@ -101,32 +99,11 @@ public class AuthAttemptDto {
     private Integer enrollmentId;
 
     /**
-     * Flag indicating if the authentication attempt has been read by the device.
-     * Used to track the status of the authentication flow.
+     * Current lifecycle status of the authentication attempt.
+     * Replaces multiple boolean flags with a single enum for clearer state management.
      */
-    @Schema(description = "Flag indicating if the authentication attempt has been read by the device",example = "true")
-    private Boolean authAttemptRead;
-
-    /**
-     * Flag indicating if the authentication attempt has been responded to.
-     * Used to track whether the device has provided a response.
-     */
-    @Schema(description = "Flag indicating if the authentication attempt has been responded to",example = "false")
-    private Boolean authAttemptResponded;
-
-    /**
-     * Flag indicating if the authentication attempt is valid.
-     * Used to track the validity of the authentication attempt.
-     */
-    @Schema(description = "Flag indicating if the authentication attempt is valid",example = "true")
-    private Boolean authAttemptValid;
-
-    /**
-     * Flag indicating if the authentication attempt was accepted.
-     * Final result of the authentication process.
-     */
-    @Schema(description = "Flag indicating if the authentication attempt was accepted",example = "true")
-    private Boolean authAttemptAccepted;
+    @Schema(description = "Current lifecycle status of the authentication attempt",example = "PENDING")
+    private AuthAttemptStatus authAttemptStatus;
 
     /**
      * Challenge value for the authentication attempt.
@@ -193,75 +170,21 @@ public class AuthAttemptDto {
     }
 
     /**
-     * Gets the authentication attempt read status.
+     * Gets the authentication attempt status.
      *
-     * @return true if the authentication attempt has been read by the device, false otherwise
+     * @return the current lifecycle status of the authentication attempt
      */
-    public Boolean getAuthAttemptRead() {
-        return authAttemptRead;
+    public AuthAttemptStatus getAuthAttemptStatus() {
+        return authAttemptStatus;
     }
 
     /**
-     * Sets the authentication attempt read status.
+     * Sets the authentication attempt status.
      *
-     * @param authAttemptRead true if the authentication attempt has been read by the device, false otherwise
+     * @param authAttemptStatus the current lifecycle status of the authentication attempt
      */
-    public void setAuthAttemptRead(Boolean authAttemptRead) {
-        this.authAttemptRead = authAttemptRead;
-    }
-
-    /**
-     * Gets the authentication attempt responded status.
-     *
-     * @return true if the authentication attempt has been responded to, false otherwise
-     */
-    public Boolean getAuthAttemptResponded() {
-        return authAttemptResponded;
-    }
-
-    /**
-     * Sets the authentication attempt responded status.
-     *
-     * @param authAttemptResponded true if the authentication attempt has been responded to, false otherwise
-     */
-    public void setAuthAttemptResponded(Boolean authAttemptResponded) {
-        this.authAttemptResponded = authAttemptResponded;
-    }
-
-    /**
-     * Gets the authentication attempt validity status.
-     *
-     * @return true if the authentication attempt is valid, false otherwise
-     */
-    public Boolean getAuthAttemptValid() {
-        return authAttemptValid;
-    }
-
-    /**
-     * Sets the authentication attempt validity status.
-     *
-     * @param authAttemptValid true if the authentication attempt is valid, false otherwise
-     */
-    public void setAuthAttemptValid(Boolean authAttemptValid) {
-        this.authAttemptValid = authAttemptValid;
-    }
-
-    /**
-     * Gets the authentication attempt accepted status.
-     *
-     * @return true if the authentication attempt was accepted, false otherwise
-     */
-    public Boolean getAuthAttemptAccepted() {
-        return authAttemptAccepted;
-    }
-
-    /**
-     * Sets the authentication attempt accepted status.
-     *
-     * @param authAttemptAccepted true if the authentication attempt was accepted, false otherwise
-     */
-    public void setAuthAttemptAccepted(Boolean authAttemptAccepted) {
-        this.authAttemptAccepted = authAttemptAccepted;
+    public void setAuthAttemptStatus(AuthAttemptStatus authAttemptStatus) {
+        this.authAttemptStatus = authAttemptStatus;
     }
 
     /**
