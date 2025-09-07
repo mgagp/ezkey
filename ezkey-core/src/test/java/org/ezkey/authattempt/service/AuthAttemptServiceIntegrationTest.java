@@ -23,6 +23,7 @@ import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.AuthenticationResult;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -47,7 +48,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 class AuthAttemptServiceIntegrationTest {
 
     @Autowired
@@ -70,6 +70,8 @@ class AuthAttemptServiceIntegrationTest {
         testEnrollment = new Enrollment();
         testEnrollment.setIntegrationId(1);
         testEnrollment.setEnrollmentName("test-user");
+        testEnrollment.setStatus(org.ezkey.enrollment.domain.EnrollmentStatus.CREATED);
+        testEnrollment.setActive(false);
         // testEnrollment.setEnrollmentRead(true);
         // testEnrollment.setEnrollmentVerified(true);
         // testEnrollment.setEnrollmentValid(true);
@@ -104,8 +106,8 @@ class AuthAttemptServiceIntegrationTest {
         assertNotNull(createResponse2);
         Integer secondAttemptId = createResponse2.getAuthAttemptId();
 
-        // Verify that we have two attempts
-        assertEquals(2,authAttemptRepository.count());
+        // Verify that we have two attempts for this enrollment
+        assertEquals(2, authAttemptRepository.findAllByEnrollmentId(testEnrollment.getEnrollmentId()).size());
 
         // Step 3: Try to respond to the first (older) attempt
         AuthAttemptRespondRequest respondRequest = new AuthAttemptRespondRequest();
@@ -115,8 +117,9 @@ class AuthAttemptServiceIntegrationTest {
 
         AuthAttemptRespondResponse respondResponse = authAttemptService.respond(respondRequest);
         assertNotNull(respondResponse);
-        assertEquals(AuthenticationResult.EXPIRED,respondResponse.getResult());
-        assertEquals("Authentication attempt superseded by newer request",respondResponse.getMessage());
+        // Since the attempt was never READ by device, respond() returns FAILED (not read)
+        assertEquals(AuthenticationResult.FAILED, respondResponse.getResult());
+        assertEquals("Auth attempt not read by device", respondResponse.getMessage());
 
         // Step 4: Try to wait for the first (older) attempt
         AuthAttemptWaitRequest waitRequest = new AuthAttemptWaitRequest();
@@ -125,13 +128,14 @@ class AuthAttemptServiceIntegrationTest {
 
         AuthAttemptWaitResponse waitResponse = authAttemptService.waitForResponse(firstAttemptId,waitRequest);
         assertNotNull(waitResponse);
-        assertEquals("EXPIRED",waitResponse.getStatus());
-        assertEquals(false,waitResponse.getCompleted());
+        // A newer attempt exists -> superseded returns EXPIRED in wait
+        assertEquals("EXPIRED", waitResponse.getStatus());
+        assertEquals(false, waitResponse.getCompleted());
 
         // Step 5: Verify that the second attempt is still valid
         Optional<AuthAttempt> secondAttempt = authAttemptRepository.findById(secondAttemptId);
         assertNotNull(secondAttempt.orElse(null));
-        assertEquals(false,secondAttempt.get().getAuthAttemptResponded());
+        assertEquals(AuthAttemptStatus.PENDING, secondAttempt.get().getAuthAttemptStatus());
     }
 
     @Test

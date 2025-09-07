@@ -1,13 +1,13 @@
 package org.ezkey.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.ezkey.dto.ErrorResponseDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.WebRequest;
-
-import static org.mockito.Mockito.*;
 
 class GlobalExceptionHandlerTest {
 
