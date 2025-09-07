@@ -75,13 +75,9 @@
 	<profiles>
 	    <profile>
 	        <id>native</id>
-	        <properties>
-	            <spring-boot.build-image.builder>paketobuildpacks/builder:tiny</spring-boot.build-image.builder>
-	            <spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
-	            <native.maven.plugin.version>0.10.3</native.maven.plugin.version>
-	        </properties>
+	        <!-- Inherit buildpack config and plugin version from parent native profile -->
 	        <dependencies>
-	            <!-- Native image support for Spring Boot -->
+	            <!-- Ensure JUnit launcher available for native test runs -->
 	            <dependency>
 	                <groupId>org.junit.platform</groupId>
 	                <artifactId>junit-platform-launcher</artifactId>
@@ -90,7 +86,7 @@
 	        </dependencies>
 	        <build>
 	            <plugins>
-	                <!-- Spring Boot Maven Plugin with native image support -->
+	                <!-- Spring Boot Maven Plugin with AOT goals for native -->
 	                <plugin>
 	                    <groupId>org.springframework.boot</groupId>
 	                    <artifactId>spring-boot-maven-plugin</artifactId>
@@ -109,7 +105,7 @@
 	                        </execution>
 	                    </executions>
 	                </plugin>
-	                <!-- Native Build Tools -->
+	                <!-- GraalVM Native Build Tools (used for local/native:compile when not using buildpacks) -->
 	                <plugin>
 	                    <groupId>org.graalvm.buildtools</groupId>
 	                    <artifactId>native-maven-plugin</artifactId>
@@ -131,7 +127,7 @@
 	                            <buildArg>-H:+StaticExecutableWithDynamicLibC</buildArg>
 	                            <buildArg>-H:+RemoveSaturatedTypeFlows</buildArg>
 	                        </buildArgs>
-	                        <!-- Skip native compilation if no GraalVM, use buildpack instead -->
+	                        <!-- Skip native compilation by default; prefer buildpacks -->
 	                        <skip>true</skip>
 	                    </configuration>
 	                    <executions>
@@ -141,7 +137,6 @@
 	                                <goal>test</goal>
 	                            </goals>
 	                        </execution>
-	                        <!-- Skip build-native execution, will use buildpack -->
 	                        <execution>
 	                            <id>build-native</id>
 	                            <goals>
