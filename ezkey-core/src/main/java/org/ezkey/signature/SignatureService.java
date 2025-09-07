@@ -84,6 +84,9 @@ public class SignatureService {
 
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
 
+    // Reuse a single SecureRandom instance
+    private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+
     /**
      * Generates a digital signature for the provided data using RSA private key.
      * <p>
@@ -241,8 +244,6 @@ public class SignatureService {
         }
         
         try {
-            java.security.SecureRandom secureRandom = new java.security.SecureRandom();
-            
             // Calculate the range for the specified number of digits
             int minValue = (int) Math.pow(10, digits - 1);
             int maxValue = (int) Math.pow(10, digits) - 1;
@@ -273,7 +274,6 @@ public class SignatureService {
      */
     public String generateProofToken() {
         try{
-            java.security.SecureRandom secureRandom = new java.security.SecureRandom();
             byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];
             secureRandom.nextBytes(randomBytes);
             long timestamp = System.currentTimeMillis();
