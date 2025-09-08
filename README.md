@@ -59,7 +59,7 @@ graph LR
 - **Admin API**: Complete management interface for integrations and enrollments
 - **Authentication API**: Mobile-focused API for device authentication
 - **Wait API**: Synchronous polling for authentication completion
-- **Mobile Application**: Cross-platform React Native app for end users
+- **Mobile Application**: Cross-platform mobile app for end users
 - **Secure**: Cryptographic key-based authentication with signature validation
 - **Open Source**: MIT licensed with comprehensive documentation
 - **Developer-Friendly**: REST APIs, OpenAPI documentation, and extensive examples
@@ -123,7 +123,7 @@ ezkey/
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
 ├── ezkey-sim-api/           # Simulation API for testing (port 8080)
 ├── ezkey-cli/               # Command Line Interface tool
-├── ezkey_mobile/            # Flutter mobile application
+├── ezkey_mobile/            # Mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
 ├── ezkey-demo-device/       # Demo device application
 └── ezkey-docs/              # Project documentation
@@ -368,7 +368,7 @@ Mobile-focused authentication API for:
 - **Mobile Integration**: Optimized for mobile app consumption
 
 #### 📱 **ezkey_mobile**
-Cross-platform React Native application featuring:
+Cross-platform mobile application featuring:
 - **QR Code Scanning**: Easy enrollment via QR codes
 - **Push Notifications**: Real-time authentication requests
 - **Secure Storage**: Encrypted key management
@@ -437,7 +437,7 @@ flowchart TD
 - **Java 21** or higher
 - **Maven 3.6+**
 - **PostgreSQL** (or H2 for development)
-- **React Native CLI** (for mobile development)
+- **Mobile development tools** (for mobile development)
 
 ### Database Setup
 
@@ -483,8 +483,7 @@ mvn spring-boot:run
 4. **Launch Mobile App**:
 ```bash
 cd ezkey_mobile
-npm install
-npx react-native run-android  # or run-ios
+# Follow mobile app setup instructions
 ```
 
 ### Access Points
@@ -583,7 +582,7 @@ See `ezkey-cli/README.md` for complete documentation and examples.
 - **Mapping**: MapStruct for DTO conversions
 - **Documentation**: SpringDoc OpenAPI
 - **Testing**: JUnit 5, Spring Boot Test
-- **Mobile**: React Native, Native Modules for cryptography
+- **Mobile**: Cross-platform mobile development
 - **Build**: Maven multi-module setup
 
 ### Code Standards
@@ -621,10 +620,10 @@ src/main/java/org/ezkey/
 │   └── exception/           # Custom exceptions
 ```
 
-#### React Native Structure
+#### Mobile App Structure
 ```
 src/
-├── components/              # React components
+├── components/              # UI components
 ├── services/                # API services
 ├── hooks/                   # Custom hooks
 ├── screens/                 # UI screens
@@ -660,14 +659,13 @@ mvn spring-boot:run
 npm install
 
 # Run application
-npx react-native run-android  # or run-ios
+# Follow mobile app specific instructions
 
 # Run tests
 npm test
 
 # Build release
-cd android && ./gradlew assembleRelease
-cd ios && xcodebuild -workspace EzkeyMobile.xcworkspace -scheme EzkeyMobile -configuration Release
+# Follow mobile app specific build instructions
 ```
 
 ### Testing Strategy
@@ -725,7 +723,7 @@ Use conventional commit messages:
 ```
 feat(admin-api): add integration export endpoint
 fix(auth-api): resolve enrollment binding issue
-docs(mobile): update React Native setup instructions
+docs(mobile): update mobile app setup instructions
 style(core): format according to Google style guide
 test(admin-api): add integration controller tests
 ```
@@ -775,7 +773,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Core entities and services
 - [x] Admin and Auth APIs
 - [x] **Wait API for synchronous authentication**
-- [x] React Native mobile application
+- [x] Mobile application
 - [x] Database migrations
 - [x] Development tooling
 
