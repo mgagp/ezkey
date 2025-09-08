@@ -82,9 +82,9 @@ class AuthAttemptControllerTest {
         authAttemptDto = new AuthAttemptDto();
         authAttemptDto.setAuthAttemptId(100);
         authAttemptDto.setEnrollmentId(55);
-        authAttemptDto.setAuthAttemptRead(false);
-        authAttemptDto.setAuthAttemptResponded(false);
-        authAttemptDto.setAuthAttemptAccepted(false);
+        //authAttemptDto.setAuthAttemptRead(false);
+        //authAttemptDto.setAuthAttemptResponded(false);
+        //authAttemptDto.setAuthAttemptAccepted(false);
         authAttemptDto.setCreatedAt(LocalDateTime.of(2025,1,1,12,0,0));
 
         createRequestDto = new AuthAttemptCreateRequestDto();
