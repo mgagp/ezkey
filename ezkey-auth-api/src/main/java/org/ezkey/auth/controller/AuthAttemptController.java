@@ -32,6 +32,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for mobile authentication attempt API v1.
@@ -78,6 +79,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
+@Tag(name = "Authentication Attempts", description = "Mobile authentication attempt operations for checking pending requests and submitting responses")
 public class AuthAttemptController {
 
     private final AuthAttemptService authAttemptService;

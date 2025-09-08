@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for mobile enrollment API v1.
@@ -78,6 +79,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
+@Tag(name = "Enrollments", description = "Mobile device enrollment operations for binding devices to user accounts and completing verification")
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
