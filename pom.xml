@@ -41,6 +41,7 @@
 		<module>ezkey-core</module>
 		<module>ezkey-admin-api</module>
 		<module>ezkey-auth-api</module>
+		<module>ezkey-sim-api</module>
 		<module>ezkey-demo-app-acme</module>
 		<module>ezkey-demo-device</module>
 	</modules>
