@@ -62,44 +62,57 @@ scripts\ezkey-flyway.bat [COMMAND]
 
 ## OpenAPI Specification Management
 
+### Centralized Specification System
+
+Ezkey now uses a centralized approach for managing OpenAPI specifications. All specifications are stored in the `specs/` directory and automatically synchronized across all projects.
+
 ### Synchronization Scripts
 
 #### Bash Script (Linux/macOS/Git Bash)
 ```bash
-./scripts/update-openapi-specs.sh [OPTIONS]
+./scripts/update-specs.sh [OPTIONS]
 ```
 
 #### Windows Batch Script
 ```cmd
-scripts\update-openapi-specs.bat [OPTIONS]
+scripts\update-specs.bat [OPTIONS]
 ```
 
 #### Available Options
-- `--app` : Update only demo-app-acme
-- `--device` : Update only demo-device
-- `--all` : Update both (default)
+- `--admin-only` : Update only admin-api specification
+- `--auth-only` : Update only auth-api specification
+- `--all` : Update all specifications (default)
 - `--help` : Display help
+
+### Legacy Scripts (Deprecated)
+
+The old scripts are still available but deprecated:
+- `update-openapi-specs.sh` - Use `update-specs.sh` instead
+- `update-openapi-specs.bat` - Use `update-specs.bat` instead
+
+### Additional Scripts
+
+- `format-specs.sh` - Format existing JSON specifications for better readability
 
 ## Recommended Workflow
 
 ### 1. Daily Development
 ```bash
 # Start the APIs
-mvn spring-boot:run -pl ezkey-auth-api
-mvn spring-boot:run -pl ezkey-admin-api
+mvn spring-boot:run -pl ezkey-auth-api &
+mvn spring-boot:run -pl ezkey-admin-api &
 
 # Update specs when API changes
-./scripts/update-openapi-specs.sh
+./scripts/update-specs.sh
 
 # Recompile demo projects
-mvn clean compile -pl ezkey-demo-device
-mvn clean compile -pl ezkey-demo-app-acme
+mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ```
 
 ### 2. Before Commit
 ```bash
 # Check that specs are up to date
-./scripts/update-openapi-specs.sh --all
+./scripts/update-specs.sh --all
 
 # Test that everything compiles
 mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
@@ -111,17 +124,31 @@ CI/CD builds use local files directly, ensuring stability.
 ## File Structure
 
 ```
+specs/                         # Centralized specifications
+├── admin-api/
+│   ├── openapi-spec.json      # Admin API specification
+│   └── README.md              # API documentation
+├── auth-api/
+│   ├── openapi-spec.json      # Auth API specification
+│   └── README.md              # API documentation
+└── README.md                  # Centralized specs documentation
+
 ezkey-demo-device/
-├── openapi-spec.json          # Auth API spec (local)
+├── openapi-spec.json          # Links to specs/auth-api/openapi-spec.json
 └── pom.xml                    # Uses local file
 
 ezkey-demo-app-acme/
-├── openapi-spec.json          # Admin API spec (local)
+├── openapi-spec.json          # Links to specs/admin-api/openapi-spec.json
 └── pom.xml                    # Uses local file
 
+ezkey-sdk/
+├── admin-api-spec.json        # Links to specs/admin-api/openapi-spec.json
+└── auth-api-spec.json         # Links to specs/auth-api/openapi-spec.json
+
 scripts/
-├── update-openapi-specs.sh    # Bash script
-├── update-openapi-specs.bat   # Windows script
+├── update-specs.sh            # Main bash script
+├── update-specs.bat           # Windows script
+├── setup-centralized-specs.sh # Initial setup script
 └── README.md                  # This documentation
 ```
 
