@@ -1,0 +1,85 @@
+"""
+Ezkey - Open Source MFA/Passkey Alternative
+
+Copyright (c) 2025 Ezkey contributors
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+
+CLI Component: Main CLI Entry Point
+Description: Main command line interface for ezkey
+"""
+
+import click
+
+from .config import ConfigManager
+from .commands import admin, auth, configure, database, db, openapi, sim
+
+
+@click.group(invoke_without_command=True)
+@click.option('--admin-url', help='Admin API URL')
+@click.option('--auth-url', help='Auth API URL')
+@click.option('--sim-url', help='Sim API URL')
+@click.option('--no-pretty', is_flag=True, help='Disable pretty printing of JSON output')
+@click.option('--timeout', type=int, help='Request timeout in milliseconds')
+@click.option('--verbose', is_flag=True, help='Enable verbose output')
+@click.version_option(version='1.0.0', prog_name='ezkey')
+@click.pass_context
+def cli(ctx, admin_url, auth_url, sim_url, no_pretty, timeout, verbose):
+    """
+    Ezkey CLI - Command line interface for Ezkey MFA system.
+    
+    The CLI follows the pattern: ezkey <api> <object> <action> [options]
+    
+    Use 'ezkey <command> --help' for more information on a specific command.
+    """
+    # Initialize configuration
+    config = ConfigManager()
+    
+    # Override config with command line options
+    overrides = {}
+    if admin_url is not None:
+        overrides['adminUrl'] = admin_url
+    if auth_url is not None:
+        overrides['authUrl'] = auth_url
+    if sim_url is not None:
+        overrides['simUrl'] = sim_url
+    if timeout is not None:
+        overrides['timeout'] = timeout
+    if no_pretty:
+        overrides['prettyPrint'] = False
+    
+    config.override(overrides)
+    
+    # Set up context
+    ctx.ensure_object(dict)
+    ctx.obj['config'] = config
+    ctx.obj['verbose'] = verbose
+    ctx.obj['pretty_print'] = not no_pretty and config.get('prettyPrint', True)
+    
+    # Show help if no subcommand is provided
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        click.echo("\nExamples:")
+        click.echo("  $ ezkey configure --admin-url http://localhost:9080 --auth-url http://localhost:8080")
+        click.echo("  $ ezkey admin integration create --name \"Test App\" --logo \"logo.png\"")
+        click.echo("  $ ezkey admin integration list")
+        click.echo("  $ ezkey auth enrollment bind --id 123")
+        click.echo("  $ ezkey sim keypair --key-size 2048")
+        click.echo("  $ ezkey database migrate")
+        click.echo("  $ ezkey openapi refresh --all")
+        click.echo()
+        click.echo("For more help on a specific command:")
+        click.echo("  $ ezkey <command> --help")
+
+
+# Add command groups
+cli.add_command(admin)
+cli.add_command(auth)
+cli.add_command(sim)
+cli.add_command(database)
+cli.add_command(db)  # Alias for database
+cli.add_command(openapi)
+cli.add_command(configure)
+
+
+if __name__ == '__main__':
+    cli()
