@@ -17,6 +17,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### 🔧 Development Tools
 - **[dev-tools/](dev-tools/)** - Development tools, configurations, and utilities
+- **[MAINTENANCE.md](MAINTENANCE.md)** - Documentation maintenance guidelines and standards
 
 ---
 

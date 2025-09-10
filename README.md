@@ -494,6 +494,29 @@ cd ezkey_mobile
   - Admin: http://localhost:9080/swagger-ui.html
   - Auth: http://localhost:8080/swagger-ui.html
 
+## 📚 Documentation
+
+### 📖 Core Documentation
+- **[Project Requirements Document](PRD.txt)** - Complete project specification
+- **[Architecture & Security](docs/ARCHITECTURE.md)** - System architecture, security design, and cryptographic implementation
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, OpenAPI documentation, and testing strategy
+- **[API Endpoints](docs/ENDPOINT.md)** - Detailed API reference and specifications
+- **[Cryptographic Implementation](docs/CRYPTO.md)** - Security and crypto details
+
+### 📊 Monitoring & Operations
+- **[Grafana Monitoring Setup](docs/monitoring/README.md)** - Production monitoring guide
+- **[Quick Setup Guide](docs/monitoring/QUICK_SETUP.md)** - 5-minute monitoring setup
+- **[Example Queries](docs/monitoring/example-queries.sql)** - SQL queries for monitoring
+
+### 🔧 Development Tools
+- **[Documentation Templates](docs/dev-tools/README_TEMPLATE.md)** - Standardized README template
+- **[Code Style Configuration](docs/dev-tools/)** - Eclipse and Google code style files
+
+### 📱 Module Documentation
+- **[Core Module](ezkey-core/README.md)** - Business logic and database management
+- **[CLI Tool](ezkey-cli/README.md)** - Command-line interface documentation
+- **[SDK Documentation](ezkey-sdk/README.md)** - Multi-language SDK guides
+
 ## API Overview
 
 ### Admin API Endpoints (`localhost:9080`)

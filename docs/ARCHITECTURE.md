@@ -100,50 +100,6 @@ ezkey/
 
 ---
 
-## API Security and Separation
-
-### Problem Statement
-Currently, Ezkey's REST APIs are monolithic:
-- Integration, enrollment, and authentication endpoints are accessible to all
-- Risk: Mobile applications could access organization-only endpoints
-
-### Recommended Approach: Physical Separation
-
-#### Architecture Decision
-**Hybrid Separation (mono-repo, multi-app)** - Recommended approach:
-- Single repository with multiple Spring Boot applications
-- Shared business logic in `ezkey-core`
-- Strong isolation between admin and mobile APIs
-
-#### API Separation
-
-| API Type | Application | Purpose | Endpoints |
-|----------|-------------|---------|-----------|
-| **Admin API** | `ezkey-admin-api` | Organization management | Integration creation, enrollment management, auth attempt creation |
-| **Auth API** | `ezkey-auth-api` | Mobile device operations | Enrollment consumption, authentication validation |
-
-#### Security Implementation
-
-##### Admin API Security
-- **Authentication**: JWT, OAuth2, API Key, or mutual TLS
-- **Authorization**: Role-based access control (RBAC)
-- **Network**: Optional IP/VPN access limitation
-- **Monitoring**: Comprehensive audit logging
-
-##### Mobile API Security
-- **Authentication**: Device ID, JWT, or OAuth2
-- **Authorization**: Strict endpoint limitation
-- **Validation**: Server-side token validation
-- **Rate Limiting**: Per-device request limits
-
-#### Benefits of Physical Separation
-- **Security**: Impossible for mobile to access admin endpoints
-- **Scalability**: Independent deployment and scaling
-- **Maintenance**: Clear separation of concerns
-- **Community**: Easier contribution and testing
-
----
-
 ## Authentication Security Evolution
 
 ### Current Implementation
@@ -288,6 +244,16 @@ HAVING COUNT(*) > 10 OR COUNT(DISTINCT ip_address) > 3;
 3. Add advanced security features
 4. Create security monitoring dashboard
 5. Plan for zero-trust architecture evolution
+
+---
+
+## 📖 Related Documentation
+
+- **[Development Guide](DEVELOPMENT.md)** - Development workflow and testing strategy
+- **[API Endpoints](ENDPOINT.md)** - Complete API documentation
+- **[Cryptographic Implementation](CRYPTO.md)** - Detailed crypto specifications
+- **[Main Project README](../README.md)** - Project overview and quick start
+- **[Monitoring Setup](monitoring/README.md)** - Production monitoring guide
 
 ---
 
