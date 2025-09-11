@@ -1,633 +1,435 @@
 # Ezkey API Endpoint Reference
 
-## 📋 Table of Contents
+## General Context
 
-- [Overview](#overview)
-- [Security Model](#security-model)
-- [Admin API Endpoints](#admin-api-endpoints)
-- [Auth API Endpoints](#auth-api-endpoints)
-- [Data Models](#data-models)
-- [Error Handling](#error-handling)
-- [Related Documentation](#related-documentation)
+Ezkey separates its backend APIs into two applications:
+- **admin-api** (internal): management of authentication requests (CRUD), accessible only to the organization.
+- **auth-api** (external, mobile): consumption of authentication requests by the Ezkey mobile application.
+
+The interaction model is **pull**: the mobile device fetches the request to validate (pending) by providing a cryptographic signature in the body, ensuring the authenticity of the request.
 
 ---
 
-## 🎯 Overview
+## 🔐 Token Security - Critical Design
 
-Ezkey provides two main APIs for different use cases:
+### **Security Principle: One-Time Use Token**
 
-- **Admin API** (Port 9080): Administrative management of integrations, enrollments, and authentication attempts
-- **Auth API** (Port 8080): Mobile device operations for enrollment and authentication
+Ezkey uses a **one-time proof token** system to ensure the integrity and security of the authentication process.
 
-### API Architecture
+#### **🔑 Two Types of Tokens**
 
+1. **`enrollmentProofToken`**: Permanent enrollment token, used to bind the device
+2. **`authAttemptProofToken`**: Unique token per authentication attempt, **CRITICAL for security**
+
+#### **🛡️ Security Mechanism**
+
+**Step 1 - PENDING**:
+- The server generates a unique `authAttemptProofToken` for each attempt
+- This token is **encrypted** with the integration's public key when sent
+- The mobile device **decrypts** the token with its private key
+- **The token can only be read once** (by the PENDING request)
+
+**Step 2 - RESPOND**:
+- The mobile device **signs** the `authAttemptProofToken` (in clear) with its private key
+- This signature proves that the device has received the original token
+- **Enhanced security**: impossible to replay an attempt without having the original token
+
+#### **⚠️ Critical Points for Developers**
+
+```java
+// ❌ INCORRECT - Never sign enrollmentProofToken for RESPOND
+String signature = signWithDeviceKey(enrollmentProofToken);
+
+// ✅ CORRECT - Always sign authAttemptProofToken for RESPOND  
+String signature = signWithDeviceKey(authAttemptProofToken);
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web App       │    │   Mobile App    │    │   Backend App   │
-│   (Frontend)    │    │   (User Device) │    │   (Your App)    │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          │ Admin API            │ Auth API             │ Admin API
-          │ (Port 9080)          │ (Port 8080)          │ (Port 9080)
-          │                      │                      │
-          ▼                      ▼                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Ezkey Backend                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │   Admin     │  │    Auth     │  │    Core     │            │
-│  │    API      │  │    API      │  │  Business   │            │
-│  │             │  │             │  │   Logic     │            │
-│  └─────────────┘  └─────────────┘  └─────────────┘            │
-└─────────────────────────────────────────────────────────────────┘
+
+#### **🎯 Why This Design?**
+
+1. **Anti-replay**: Each attempt has a unique token
+2. **Strong authentication**: Only the legitimate device can decrypt and sign
+3. **Traceability**: Each token can be traced to a specific attempt
+4. **Security by default**: Impossible to bypass without understanding the mechanism
+
+---
+
+## 1. Auth API Endpoints (mobile)
+
+### a) Retrieve pending request
+
+**POST /api/v1/auth-attempts/pending/{enrollmentId}**
+
+- **Description**: The mobile device queries the backend to check if there is a pending authentication request for its enrollmentId. The body contains a cryptographic signature proving the authenticity of the request.
+- **Why POST?**: The crypto signature is transmitted in the body, which is not possible with GET.
+
+**Request**
+```http
+POST /api/v1/auth-attempts/pending/{enrollmentId}
+Content-Type: application/json
+
+{
+  "timestamp": 1712345678,
+  "signature": "base64-encoded-signature",
+  "publicKey": "base64-encoded-public-key"
+}
+```
+
+**Response**
+- 200 OK + pending request details (or 204 No Content if no request)
+```json
+{
+  "authAttemptId": 123,
+  "challenge": "...",
+  "createdAt": "2024-06-01T12:34:56Z",
+  ...
+}
+```
+
+### b) Submit response to request
+
+**POST /api/v1/auth-attempts/respond/{authAttemptId}**
+
+- **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
+
+**Request**
+```http
+POST /api/v1/auth-attempts/respond/{authAttemptId}
+Content-Type: application/json
+
+{
+  "approved": true,
+  "responseSignature": "base64-encoded-signature",
+  "timestamp": 1712345699
+}
+```
+
+**Response**
+- 200 OK + validation result
+```json
+{
+  "status": "APPROVED"
+}
+```
+
+### c) Enrollment process (device binding)
+
+**GET /api/v1/enrollments/bind/{enrollmentId}**
+
+- **Description**: Initiates the process of binding an enrollment to a mobile device. The device retrieves the necessary information to start enrollment.
+
+**Request**
+```http
+GET /api/v1/enrollments/bind/456
+```
+
+**Response**
+- 200 OK + binding information
+```json
+{
+  "enrollmentId": 456,
+  "integrationPublicKey": "base64-encoded-integration-key",
+  "enrollmentCode": "EZK-ABC123-DEF456",
+  "enrollmentCodeSigned": "base64-encoded-signed-code"
+}
+```
+
+### d) Enrollment verification
+
+**POST /api/v1/enrollments/verify**
+
+- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and the enrollment code signature.
+
+**Request**
+```http
+POST /api/v1/enrollments/verify
+Content-Type: application/json
+
+{
+  "enrollmentId": 456,
+  "challengeResponse": 987654,
+  "devicePublicKey": "base64-encoded-device-public-key",
+  "enrollmentCode": "EZK-ABC123-DEF456",
+  "enrollmentCodeSigned": "base64-encoded-signed-enrollment-code"
+}
+```
+
+**Response**
+- 200 OK + verification confirmation
+```json
+{
+  "verified": true,
+  "enrollmentId": 456,
+  "status": "CONFIRMED"
+}
 ```
 
 ---
 
-## 🔐 Security Model
+## 2. Admin API Endpoints (internal)
 
-### Authentication Methods
+### a) Authentication request management
 
-- **Admin API**: Bearer token authentication (`bearerAuth`)
-- **Auth API**: Cryptographic signature authentication (`signatureAuth`)
+**GET    /api/v1/auth-attempts**          // List all authentication requests
+**POST   /api/v1/auth-attempts**         // Create an authentication request
+**GET    /api/v1/auth-attempts/{id}**    // Read a request
+**GET    /api/v1/auth-attempts/{id}/wait** // Wait for authentication response (POLLING)
+**DELETE /api/v1/auth-attempts/{id}**    // Delete a request
 
-### Security Principles
+#### **New Endpoint: Authentication Response Waiting**
 
-1. **One-Time Proof Tokens**: Each authentication attempt has a unique, single-use token
-2. **Cryptographic Signatures**: All mobile operations require device signatures
-3. **Read-Once Guarantee**: Authentication attempts can only be read once
-4. **Anti-Replay Protection**: Unique tokens prevent replay attacks
+**GET /api/v1/auth-attempts/{id}/wait**
 
----
+- **Description**: Allows applications to wait for the mobile device's response to an authentication request. Implements a polling mechanism with configurable timeout for synchronous behavior in the asynchronous MFA flow.
 
-## 🛠️ Admin API Endpoints
+**Query parameters:**
+- `timeout` (optional, default: 30s): Maximum wait duration in seconds (1-300)
+- `polling` (optional, default: 2s): Polling interval in seconds (1-60)
 
-**Base URL**: `http://localhost:9080` (Development) | `https://admin-api.ezkey.org` (Production)
-
-### Integrations Management
-
-#### List All Integrations
+**Request**
 ```http
-GET /api/v1/integrations
+GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
 ```
 
-**Response**: `200 OK`
-```json
-[
-  {
-    "id": 1,
-    "logo": "https://example.com/logo.png",
-    "i18n": [
-      {
-        "language": "en",
-        "name": "ACME Corporation",
-        "description": "Secure authentication system"
-      }
-    ]
-  }
-]
-```
-
-#### Get Integration by ID
-```http
-GET /api/v1/integrations/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Integration ID
-
-**Response**: `200 OK`
-```json
-{
-  "id": 1,
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "ACME Corporation",
-      "description": "Secure authentication system"
-    }
-  ]
-}
-```
-
-#### Create Integration
-```http
-POST /api/v1/integrations
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "ACME Corporation",
-      "description": "Secure authentication system for ACME applications"
-    }
-  ]
-}
-```
-
-**Response**: `201 Created`
-```json
-{
-  "id": 1
-}
-```
-
-#### Delete Integration
-```http
-DELETE /api/v1/integrations/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Integration ID
-
-**Response**: `204 No Content`
-
-### Enrollments Management
-
-#### List All Enrollments
-```http
-GET /api/v1/enrollments
-```
-
-**Response**: `200 OK`
-```json
-[
-  {
-    "id": 123,
-    "integrationId": 1,
-    "name": "John's iPhone",
-    "challengeRequired": true,
-    "active": false,
-    "createdAt": "2024-01-15T10:30:00Z"
-  }
-]
-```
-
-#### Get Enrollment by ID
-```http
-GET /api/v1/enrollments/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Enrollment ID
-
-**Response**: `200 OK`
-```json
-{
-  "id": 123,
-  "integrationId": 1,
-  "name": "John's iPhone",
-  "challengeRequired": true,
-  "active": false,
-  "createdAt": "2024-01-15T10:30:00Z"
-}
-```
-
-#### Create Enrollment
-```http
-POST /api/v1/enrollments
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "integrationId": 1,
-  "name": "John's iPhone",
-  "challengeRequired": true
-}
-```
-
-**Response**: `201 Created`
-```json
-{
-  "id": 123
-}
-```
-
-#### Delete Enrollment
-```http
-DELETE /api/v1/enrollments/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Enrollment ID
-
-**Response**: `204 No Content`
-
-### Authentication Attempts Management
-
-#### List All Auth Attempts
-```http
-GET /api/v1/auth-attempts
-```
-
-**Response**: `200 OK`
-```json
-[
-  {
-    "id": 456,
-    "enrollmentId": 123,
-    "challengeRequested": true,
-    "read": false,
-    "responded": false,
-    "valid": false,
-    "accepted": false,
-    "createdAt": "2024-01-15T11:00:00Z"
-  }
-]
-```
-
-#### Get Auth Attempt by ID
-```http
-GET /api/v1/auth-attempts/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Auth Attempt ID
-
-**Response**: `200 OK`
-```json
-{
-  "id": 456,
-  "enrollmentId": 123,
-  "challengeRequested": true,
-  "read": false,
-  "responded": false,
-  "valid": false,
-  "accepted": false,
-  "createdAt": "2024-01-15T11:00:00Z"
-}
-```
-
-#### Create Auth Attempt
-```http
-POST /api/v1/auth-attempts
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "enrollmentId": 123,
-  "challengeRequested": true
-}
-```
-
-**Response**: `201 Created`
-```json
-{
-  "id": 456
-}
-```
-
-#### Wait for Authentication Response
-```http
-GET /api/v1/auth-attempts/{id}/wait
-```
-
-**Parameters**:
-- `id` (path, integer): Auth Attempt ID
-- `timeout` (query, integer, optional): Maximum wait time in seconds (default: 30)
-- `polling` (query, integer, optional): Polling interval in seconds (default: 2)
-
-**Response**: `200 OK` (Authentication completed)
+**Response**
+- 200 OK: Authentication completed
 ```json
 {
   "authAttempt": {
-    "id": 456,
-    "enrollmentId": 123,
-    "challengeRequested": true,
-    "read": true,
-    "responded": true,
-    "valid": true,
-    "accepted": true,
-    "createdAt": "2024-01-15T11:00:00Z"
+    "authAttemptId": 123,
+    "enrollmentId": 456,
+    "authAttemptRead": true,
+    "authAttemptResponded": true,
+    "authAttemptValid": true,
+    "authAttemptAccepted": true,
+    "createdAt": "2024-06-01T12:34:56Z"
   },
   "status": "ACCEPTED",
   "completed": true,
   "timeoutReached": false,
   "waitDuration": 15,
-  "completedAt": "2024-01-15T11:00:15Z"
+  "completedAt": "2024-06-01T12:35:11Z"
 }
 ```
 
-**Response**: `408 Request Timeout` (Timeout reached)
-```json
-{
-  "authAttempt": {
-    "id": 456,
-    "enrollmentId": 123,
-    "challengeRequested": true,
-    "read": false,
-    "responded": false,
-    "valid": false,
-    "accepted": false,
-    "createdAt": "2024-01-15T11:00:00Z"
-  },
-  "status": "PENDING",
-  "completed": false,
-  "timeoutReached": true,
-  "waitDuration": 30,
-  "completedAt": null
-}
+- 408 Request Timeout: Timeout reached, authentication still pending
+- 404 Not Found: Auth attempt not found
+- 400 Bad Request: Invalid parameters
+
+**Status calculation rules (according to ENDPOINT.md):**
+1. `authAttemptRead` null or false: **PENDING**
+2. `authAttemptRead` true and `authAttemptResponded` null or false: **READ**
+3. `authAttemptValid` null or false: **INVALID**
+4. `authAttemptAccepted` null or false: **REJECTED** else **ACCEPTED**
+
+**⚠️ Supersession Rule:**
+When a newer authentication attempt is created for the same enrollment, older attempts are considered **EXPIRED** even if they haven't reached their timeout. This ensures that only the most recent authentication request for a person is valid.
+
+**GET Example**
 ```
-
-#### Delete Auth Attempt
-```http
-DELETE /api/v1/auth-attempts/{id}
-```
-
-**Parameters**:
-- `id` (path, integer): Auth Attempt ID
-
-**Response**: `204 No Content`
-
----
-
-## 📱 Auth API Endpoints
-
-**Base URL**: `http://localhost:8080` (Development) | `https://auth-api.ezkey.org` (Production)
-
-### Enrollment Operations
-
-#### Bind Device to Enrollment
-```http
-GET /api/v1/enrollments/bind/{enrollmentId}
-```
-
-**Parameters**:
-- `enrollmentId` (path, integer): Enrollment ID
-
-**Response**: `200 OK`
-```json
-{
-  "enrollmentId": 123,
-  "integrationId": 1,
-  "name": "John's iPhone",
-  "challengeRequired": true,
-  "challenge": 123456,
-  "enrollmentProofToken": "eyJhbGciOiJSUzI1NiJ9...",
-  "integrationPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-}
-```
-
-#### Verify Enrollment
-```http
-POST /api/v1/enrollments/verify
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "enrollmentId": 123,
-  "challengeResponse": 123456,
-  "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-  "enrollmentProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
-}
-```
-
-**Response**: `200 OK`
-```json
-{
-  "active": true
-}
-```
-
-### Authentication Operations
-
-#### Check for Pending Auth Requests
-```http
-POST /api/v1/auth-attempts/pending/{enrollmentId}
-Content-Type: application/json
-```
-
-**Parameters**:
-- `enrollmentId` (path, integer): Enrollment ID
-
-**Request Body**:
-```json
-{
-  "deviceProofToken": "eyJhbGciOiJSUzI1NiJ9...",
-  "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
-}
-```
-
-**Response**: `200 OK` (Pending request found)
-```json
-{
-  "id": 456,
-  "enrollmentId": 123,
-  "challengeRequested": true,
-  "challenge": 789012,
-  "authAttemptProofToken": "eyJhbGciOiJSUzI1NiJ9...",
-  "createdAt": "2024-01-15T11:00:00Z"
-}
-```
-
-**Response**: `204 No Content` (No pending request)
-
-#### Respond to Auth Attempt
-```http
-POST /api/v1/auth-attempts/respond/{authAttemptId}
-Content-Type: application/json
-```
-
-**Parameters**:
-- `authAttemptId` (path, integer): Auth Attempt ID
-
-**Request Body**:
-```json
-{
-  "accepted": true,
-  "authAttemptProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9...",
-  "challengeResponse": 789012
-}
-```
-
-**Response**: `200 OK`
-```json
-{
-  "valid": true
-}
-```
-
----
-
-## 📊 Data Models
-
-### Integration Models
-
-#### IntegrationCreateRequestDto
-```json
-{
-  "logo": "string",
-  "i18n": [
-    {
-      "language": "string",
-      "name": "string",
-      "description": "string"
+   {
+        "authAttemptId": 49,
+        "enrollmentId": 61,
+        "authAttemptRead": false,
+        "authAttemptResponded": false,
+        "authAttemptValid": false,
+        "authAttemptAccepted": false,
+        "authAttemptChallenge": null,
+        "authAttemptProofToken": "KstrTWXbywp5Zi-ACI1kIzGrj9thTUkn_-lcOxQxYR0.1755796478548.1HGz9A4uEyYjqdxbYg9U7A",
+        "deviceProofTokenValid": "false",
+        "createdAt": "2025-08-21T13:14:38.548701"
     }
-  ]
+```
+
+To display a status associated with a request, here are the rules in order of priority (#1 first)
+-authAttemptRead null or false: PENDING
+-authAttemptRead and authAttemptResponded null or false: READ
+-authAttemptValid null or false: INVALID
+-authAttemptAccepted null or false: REJECTED else ACCEPTED
+
+**Creation example**
+```http
+POST /api/v1/auth-attempts
+Content-Type: application/json
+
+{
+  "enrollmentId": "abc123",
+  "requestedBy": "app-backend",
+  "challenge": "...",
+  ...
 }
 ```
 
-#### IntegrationResponseDto
-```json
+### b) Enrollment management (CRUD)
+
+**GET    /api/v1/enrollments**           // Retrieve all enrollments
+**GET    /api/v1/enrollments/{id}**      // Retrieve an enrollment by ID
+**POST   /api/v1/enrollments**          // Create a new enrollment
+**DELETE /api/v1/enrollments/{id}**     // Delete an enrollment
+
+**Creating an enrollment**
+```http
+POST /api/v1/enrollments
+Content-Type: application/json
+
 {
-  "id": "integer",
-  "logo": "string",
-  "i18n": [
-    {
-      "language": "string",
-      "name": "string",
-      "description": "string"
-    }
-  ]
+  "integrationId": 123,
+  "name": "My Mobile Device",
+  "authAttemptChallengeRequired": true
 }
 ```
 
-### Enrollment Models
-
-#### EnrollmentCreateRequestDto
+**Response**
+- 201 Created + created enrollment details
 ```json
 {
-  "integrationId": "integer",
-  "name": "string",
-  "challengeRequired": "boolean"
+  "enrollmentId": 456,
+  "enrollmentCode": "EZK-ABC123-DEF456",
+  "enrollmentChallenge": 987654,
+  "createdAt": "2024-06-01T12:34:56Z"
 }
 ```
 
-#### EnrollmentResponseDto
+**Retrieving an enrollment**
+```http
+GET /api/v1/enrollments/456
+```
+
+**Response**
+- 200 OK + complete enrollment details
 ```json
 {
-  "id": "integer",
-  "integrationId": "integer",
-  "name": "string",
-  "challengeRequired": "boolean",
-  "active": "boolean",
-  "createdAt": "string (ISO 8601)"
+  "enrollmentId": 456,
+  "integrationId": 123,
+  "enrollmentName": "My Mobile Device",
+  "enrollmentRead": false,
+  "enrollmentConfirmed": false,
+  "enrollmentActive": true,
+  "enrollmentChallenge": 987654,
+  "authAttemptChallengeRequired": true,
+  "integrationPublicKey": "base64-encoded-key",
+  "authAttemptPublicKey": null,
+  "enrollmentCode": "EZK-ABC123-DEF456",
+  "createdAt": "2024-06-01T12:34:56Z"
 }
 ```
 
-### Auth Attempt Models
-
-#### AuthAttemptCreateRequestDto
-```json
-{
-  "enrollmentId": "integer",
-  "challengeRequested": "boolean"
-}
+**Retrieving all enrollments**
+```http
+GET /api/v1/enrollments
 ```
 
-#### AuthAttemptResponseDto
+**Response**
+- 200 OK + list of all enrollments
 ```json
-{
-  "id": "integer",
-  "enrollmentId": "integer",
-  "challengeRequested": "boolean",
-  "read": "boolean",
-  "responded": "boolean",
-  "valid": "boolean",
-  "accepted": "boolean",
-  "createdAt": "string (ISO 8601)"
-}
+[
+  {
+    "enrollmentId": 456,
+    "integrationId": 123,
+    "enrollmentName": "My Mobile Device",
+    "enrollmentRead": false,
+    "enrollmentConfirmed": false,
+    "enrollmentActive": true,
+    "enrollmentChallenge": 987654,
+    "authAttemptChallengeRequired": true,
+    "integrationPublicKey": "base64-encoded-key",
+    "authAttemptPublicKey": null,
+    "enrollmentCode": "EZK-ABC123-DEF456",
+    "createdAt": "2024-06-01T12:34:56Z"
+  }
+]
+```
+
+**Deleting an enrollment**
+```http
+DELETE /api/v1/enrollments/456
+```
+
+**Response**
+- 204 No Content (successful deletion)
+- 404 Not Found (enrollment not found)
+
+---
+
+## 3. Design choices summary
+
+- **pending**: clearly expresses the pending request for a given enrollment.
+- **respond**: standard, explicit for response submission.
+- **wait**: clearly indicates the intention to wait for authentication response.
+- **POST for pending**: allows transmission of crypto signature in the body, strengthening security.
+- **GET for wait**: read operation without modification, with query parameters for configuration.
+- **Clear separation** between management (admin-api) and consumption (auth-api).
+- **Enrollment process**: clear separation between binding (GET) and verification (POST) for security.
+- **Enrollment CRUD**: classic administrative enrollment management operations.
+
+---
+
+## 4. Additional notes
+
+- Always document return codes (200, 204, 400, 401, 403, 408, etc.).
+- Explain in the documentation that the model is pull (no push notification).
+- Specify the expected format for signature and public keys.
+- The `/wait` endpoint enables synchronous behavior in the asynchronous MFA flow.
+
+---
+
+**This file serves as a reference for the design and future documentation of Ezkey endpoints.**
+
+---
+
+## 5. Authentication Attempt Supersession
+
+### **Business Rule: One Active Attempt Per Person**
+
+Ezkey implements a **supersession rule** to ensure that only the most recent authentication attempt for a person is valid. This prevents confusion and ensures a clear authentication flow.
+
+#### **🔄 How It Works**
+
+1. **New Attempt Creation**: When a new authentication attempt is created for an enrollment
+2. **Older Attempts Expired**: All previous attempts for the same enrollment are considered **EXPIRED**
+3. **Conceptual Expiration**: This happens regardless of the actual timeout of older attempts
+
+#### **📋 Implementation Details**
+
+**APIs Affected:**
+- **RESPOND**: Returns `EXPIRED` status if a newer attempt exists
+- **WAIT**: Returns `EXPIRED` status if a newer attempt exists
+
+**Database Impact:**
+- No data modification (older attempts remain in database)
+- Index on `(enrollment_id, created_at DESC)` for performance
+- Query checks for newer attempts by `created_at` timestamp
+
+#### **🎯 Use Cases**
+
+1. **User Double-Click**: User accidentally creates multiple requests
+2. **Network Issues**: User retries authentication after timeout
+3. **Mobile App Refresh**: App creates new request after state loss
+4. **Security**: Ensures only the latest request is processed
+
+#### **📊 Example Scenario**
+
+```
+10:00:00 - User creates AuthAttempt A
+10:00:30 - User creates AuthAttempt B (A becomes expired)
+10:01:00 - Device tries to respond to A → EXPIRED
+10:01:30 - Device responds to B → ACCEPTED
+```
+
+#### **🔧 Technical Implementation**
+
+```sql
+-- Check for newer attempts
+SELECT * FROM ezkey_auth_attempt 
+WHERE enrollment_id = ? AND created_at > ? 
+ORDER BY created_at DESC
 ```
 
 ---
 
-## ⚠️ Error Handling
+## 6. Development rules
 
-### HTTP Status Codes
-
-| Code | Description | Usage |
-|------|-------------|-------|
-| `200` | OK | Successful GET, POST operations |
-| `201` | Created | Successful resource creation |
-| `204` | No Content | Successful deletion, no pending requests |
-| `400` | Bad Request | Invalid request parameters |
-| `401` | Unauthorized | Missing or invalid authentication |
-| `403` | Forbidden | Insufficient permissions |
-| `404` | Not Found | Resource not found |
-| `408` | Request Timeout | Wait operation timed out |
-| `500` | Internal Server Error | Server-side error |
-
-### Error Response Format
-
-```json
-{
-  "timestamp": "2024-01-15T11:00:00Z",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Invalid request parameters",
-  "path": "/api/v1/integrations"
-}
-```
-
----
-
-## 🔄 Authentication Flow
-
-### Complete Enrollment Flow
-
-1. **Create Integration** (Admin API)
-   ```http
-   POST /api/v1/integrations
-   ```
-
-2. **Create Enrollment** (Admin API)
-   ```http
-   POST /api/v1/enrollments
-   ```
-
-3. **Bind Device** (Auth API)
-   ```http
-   GET /api/v1/enrollments/bind/{enrollmentId}
-   ```
-
-4. **Verify Enrollment** (Auth API)
-   ```http
-   POST /api/v1/enrollments/verify
-   ```
-
-### Complete Authentication Flow
-
-1. **Create Auth Attempt** (Admin API)
-   ```http
-   POST /api/v1/auth-attempts
-   ```
-
-2. **Check Pending** (Auth API)
-   ```http
-   POST /api/v1/auth-attempts/pending/{enrollmentId}
-   ```
-
-3. **Respond to Auth** (Auth API)
-   ```http
-   POST /api/v1/auth-attempts/respond/{authAttemptId}
-   ```
-
-4. **Wait for Response** (Admin API)
-   ```http
-   GET /api/v1/auth-attempts/{id}/wait
-   ```
-
----
-
-## 📖 Related Documentation
-
-- **[Architecture & Security](ARCHITECTURE.md)** - System architecture and security design
-- **[Development Guide](DEVELOPMENT.md)** - Development workflow and testing strategy
-- **[Cryptographic Implementation](CRYPTO.md)** - Detailed crypto specifications
-- **[Main Project README](../README.md)** - Project overview and quick start
-- **[Monitoring Setup](monitoring/README.md)** - Production monitoring guide
-
----
-
-*This documentation is based on the actual OpenAPI specifications and reflects the current implementation of the Ezkey APIs. All endpoints, parameters, and response formats are validated against the live API specifications.*
+### Testing and validation
+- **DO NOT perform tests with curl or other validation tools** during development
+- **The user will perform the tests** for endpoint validation themselves
+- **Focus on implementation** and documentation rather than manual testing
+- **Use unit tests and integration tests** for automatic code validation 

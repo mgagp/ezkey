@@ -17,10 +17,13 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -75,6 +78,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class SignatureService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SignatureService.class);
 
     private static final int PROOF_TOKEN_RANDOM_BYTES = 32; // 256 bits
 
@@ -181,6 +186,13 @@ public class SignatureService {
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
             KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
             PublicKey publicKey = kf.generatePublic(spec);
+            if (publicKey instanceof RSAPublicKey){
+                RSAPublicKey rsaKey = (RSAPublicKey) publicKey;
+                if (rsaKey.getModulus().bitLength() < 2048){
+                    logger.warn("Weak RSA key detected: {} bits",rsaKey.getModulus().bitLength());
+                    return false;
+                }
+            }
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initVerify(publicKey);
             signature.update(data.getBytes(StandardCharsets.UTF_8));
@@ -239,20 +251,19 @@ public class SignatureService {
      * @since 2025
      */
     public Integer generateSecureChallenge(int digits) {
-        if (digits < 1 || digits > 6) {
+        if (digits < 1 || digits > 6){
             throw new IllegalArgumentException("Challenge digits must be between 1 and 6, got: " + digits);
         }
-        
-        try {
+        try{
             // Calculate the range for the specified number of digits
-            int minValue = (int) Math.pow(10, digits - 1);
-            int maxValue = (int) Math.pow(10, digits) - 1;
-            
+            int minValue = (int) Math.pow(10,digits - 1);
+            int maxValue = (int) Math.pow(10,digits) - 1;
+
             // For 1 digit, minValue would be 1, for 2 digits minValue is 10, etc.
             // Generate secure random number in the range [minValue, maxValue]
             return minValue + secureRandom.nextInt(maxValue - minValue + 1);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate secure challenge", e);
+        } catch (Exception e){
+            throw new RuntimeException("Failed to generate secure challenge",e);
         }
     }
 

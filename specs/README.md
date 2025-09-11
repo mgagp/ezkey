@@ -225,25 +225,6 @@ If projects fail to build after specification update:
    ls -la ezkey-demo-device/openapi-spec.json
    ```
 
-## Migration from Old Structure
-
-If you're migrating from the old structure:
-
-1. **Run Setup Script**:
-   ```bash
-   ./scripts/setup-centralized-specs.sh
-   ```
-
-2. **Update Project Configurations** (if needed):
-   - Demo projects should already reference local files
-   - SDK projects will be updated automatically
-
-3. **Test Everything**:
-   ```bash
-   ./scripts/update-specs.sh
-   mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
-   ```
-
 ## Support
 
 For issues with the centralized specification system:
