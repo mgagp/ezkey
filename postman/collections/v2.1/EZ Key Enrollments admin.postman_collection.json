@@ -1,0 +1,150 @@
+{
+	"info": {
+		"_postman_id": "140e4dcd-2ae6-4a72-90f2-a6a4e6de9843",
+		"name": "EZ Key Enrollments admin",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4087"
+	},
+	"item": [
+		{
+			"name": "create",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
+							"pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"Amanda Blow\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/enrollments",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
+							"pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{enrollmentId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete ID",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"applicationId\": 1,\r\n    \"name\": \"John Smith\",\r\n    \"isChallengeRequired\": false\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{enrollmentId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

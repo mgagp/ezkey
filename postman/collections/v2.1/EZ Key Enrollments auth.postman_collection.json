@@ -1,0 +1,179 @@
+{
+	"info": {
+		"_postman_id": "8ba6663c-3153-4378-b8f1-13ac06b3caa9",
+		"name": "EZ Key Enrollments auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4087"
+	},
+	"item": [
+		{
+			"name": "1 bind ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
+							"pm.environment.set(\"integrationPublicKey\", jsonData.integrationPublicKey);\r",
+							"pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/enrollments/bind/:enrollmentId",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments",
+						"bind",
+						":enrollmentId"
+					],
+					"variable": [
+						{
+							"key": "enrollmentId",
+							"value": "{{enrollmentId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2 generate device keypair",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"device_privateKey\", jsonData.privateKey);\r",
+							"pm.environment.set(\"device_publicKey\", jsonData.publicKey);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/keypair",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"keypair"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3 generate enrollment proof token signature",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"data\": \"{{enrollmentProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"sign"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4 verify",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeResponse\": {{enrollmentChallenge}},\r\n    \"devicePublicKey\": \"{{device_publicKey}}\",\r\n    \"enrollmentProofTokenSigned\": \"{{enrollment_proofkey_signature}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/enrollments/verify",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments",
+						"verify"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

@@ -1,0 +1,286 @@
+{
+	"info": {
+		"_postman_id": "8a99ab9b-c378-44dc-99cc-23569f7d7f59",
+		"name": "EZ Key Auth Attempts auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4087"
+	},
+	"item": [
+		{
+			"name": "1 sim generate device proof token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"device_proofToken\", jsonData.proofToken);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/prooftoken",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"prooftoken"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2 sim device prooftoken signature",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"device_prooftoken_signature\", jsonData.signature);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"data\": \"{{device_proofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"sign"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3 pending",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r",
+							"pm.environment.set(\"authAttemptProofToken\", jsonData.authAttemptProofToken);\r",
+							"pm.environment.set(\"authAttemptProofTokenSignedByIntegration\", jsonData.authAttemptProofTokenSignedByIntegration);\r",
+							"pm.environment.set(\"authAttemptChallengeRequired\", jsonData.authAttemptChallengeRequired);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"deviceProofToken\": \"{{device_proofToken}}\",\r\n    \"deviceProofTokenSigned\": \"{{device_prooftoken_signature}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/auth-attempts/pending/:enrollmentId",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						"pending",
+						":enrollmentId"
+					],
+					"variable": [
+						{
+							"key": "enrollmentId",
+							"value": "{{enrollmentId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5 validate auth prooftoken by integration",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"valid\", jsonData.valid);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/validate",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6 sign authAttempt prooftoken by device",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"authAttemptProofTokenSignedByDevice\", jsonData.signature);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"host": [
+						"{{base_url_sim_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sim",
+						"sign"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6 respond",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": true,\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/auth-attempts/respond/:authAttemptId",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						"respond",
+						":authAttemptId"
+					],
+					"variable": [
+						{
+							"key": "authAttemptId",
+							"value": "{{authAttemptId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "authAttemptChallengeResponse",
+			"value": "0"
+		}
+	]
+}
