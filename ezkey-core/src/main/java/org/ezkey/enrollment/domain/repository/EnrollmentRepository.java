@@ -120,4 +120,38 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     @Query("UPDATE Enrollment e SET e.status = :status WHERE e.enrollmentId = :enrollmentId")
     int updateEnrollmentStatus(@Param("enrollmentId") Integer enrollmentId,@Param("status") EnrollmentStatus status);
 
+    /**
+     * Checks if a device public key is already used by a verified enrollment.
+     * <p>
+     * This method provides security validation to prevent replay attacks and ensure
+     * that each device public key can only be associated with one verified enrollment.
+     * It implements the same security principle as AuthAttemptService for device
+     * proof token uniqueness, but for enrollment device public keys.
+     * </p>
+     *
+     * <p>
+     * <b>Security Purpose:</b>
+     * <ul>
+     * <li>Prevents replay attacks using the same device public key</li>
+     * <li>Ensures enrollment integrity by preventing key reuse</li>
+     * <li>Maintains one-to-one relationship between device public keys and enrollments</li>
+     * <li>Aligns with AuthAttemptService security model for consistency</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <b>Usage Context:</b>
+     * Called during enrollment verification to validate that the device public key
+     * has not been previously used to complete another enrollment. This prevents
+     * enrollment hijacking and ensures cryptographic identity uniqueness.
+     * </p>
+     *
+     * @param devicePublicKey the Base64-encoded device public key to check for uniqueness
+     * @return true if the device public key is already used by a verified enrollment, false otherwise
+     * @see org.ezkey.authattempt.service.AuthAttemptService#pending(org.ezkey.authattempt.domain.AuthAttemptPendingRequest)
+     * @since 2025
+     */
+    @Query("SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND e.status = 'VERIFIED'")
+    boolean existsByDevicePublicKeyAndVerified(@Param("devicePublicKey") String devicePublicKey);
+
 }

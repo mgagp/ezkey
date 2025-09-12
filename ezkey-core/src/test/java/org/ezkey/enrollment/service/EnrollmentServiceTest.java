@@ -331,6 +331,8 @@ class EnrollmentServiceTest {
         enrollment.setStatus(EnrollmentStatus.BOUND);
         when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
         when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+        // Mock the new uniqueness validation - return false (key is unique)
+        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
         when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.of(enrollment));
         when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 
@@ -345,6 +347,7 @@ class EnrollmentServiceTest {
         verify(enrollmentRepository, times(1)).findById(456);
         verify(signatureService, times(1)).validateSignature(
             "test-proof-token", "proof-token-signature", "device-public-key");
+        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
         verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
         verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
     }
@@ -404,6 +407,8 @@ class EnrollmentServiceTest {
         verify(enrollmentRepository, times(1)).findById(456);
         verify(signatureService, times(1)).validateSignature(
             "test-proof-token", "proof-token-signature", "device-public-key");
+        // Should not reach uniqueness validation due to signature failure
+        verify(enrollmentRepository, never()).existsByDevicePublicKeyAndVerified(anyString());
         verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
     }
 
@@ -415,6 +420,8 @@ class EnrollmentServiceTest {
         verifyRequest.setChallengeResponse(999999); // Wrong challenge
         when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
         when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+        // Mock the new uniqueness validation - return false (key is unique)
+        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
@@ -426,6 +433,7 @@ class EnrollmentServiceTest {
         verify(enrollmentRepository, times(1)).findById(456);
         verify(signatureService, times(1)).validateSignature(
             "test-proof-token", "proof-token-signature", "device-public-key");
+        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
         verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
     }
 
@@ -436,6 +444,8 @@ class EnrollmentServiceTest {
         enrollment.setStatus(EnrollmentStatus.BOUND);
         when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
         when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+        // Mock the new uniqueness validation - return false (key is unique)
+        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
         when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -448,8 +458,64 @@ class EnrollmentServiceTest {
         verify(enrollmentRepository, times(1)).findById(456);
         verify(signatureService, times(1)).validateSignature(
             "test-proof-token", "proof-token-signature", "device-public-key");
+        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
         verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
         verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    @DisplayName("verify() - Should throw IllegalArgumentException when device public key already used (Replay Attack Prevention)")
+    void verify_WhenDevicePublicKeyAlreadyUsed_ShouldThrowIllegalArgumentException() {
+        // Arrange
+        enrollment.setStatus(EnrollmentStatus.BOUND);
+        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+        // Mock the new uniqueness validation - return true (key already exists)
+        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(true);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
+            () -> enrollmentService.verify(verifyRequest));
+        
+        assertEquals("Device public key already registered", exception.getMessage());
+
+        // Verify service interactions
+        verify(enrollmentRepository, times(1)).findById(456);
+        verify(signatureService, times(1)).validateSignature(
+            "test-proof-token", "proof-token-signature", "device-public-key");
+        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
+        verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
+        // Should not proceed to lock acquisition or save
+        verify(enrollmentRepository, never()).findAndLockBoundById(anyInt());
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    @DisplayName("verify() - Should proceed successfully when device public key is unique")
+    void verify_WhenDevicePublicKeyIsUnique_ShouldProceedSuccessfully() {
+        // Arrange
+        enrollment.setStatus(EnrollmentStatus.BOUND);
+        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
+        // Mock the new uniqueness validation - return false (key is unique)
+        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
+        when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
+
+        // Act
+        EnrollmentVerifyResponse response = enrollmentService.verify(verifyRequest);
+
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.isActive());
+
+        // Verify service interactions
+        verify(enrollmentRepository, times(1)).findById(456);
+        verify(signatureService, times(1)).validateSignature(
+            "test-proof-token", "proof-token-signature", "device-public-key");
+        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
+        verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
+        verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
     }
 
     // ===== GET BY ID TESTS =====

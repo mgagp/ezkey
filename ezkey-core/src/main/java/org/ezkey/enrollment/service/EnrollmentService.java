@@ -267,16 +267,40 @@ public class EnrollmentService {
     }
 
     /**
-     * Verifies an enrollment.
+     * Verifies an enrollment with comprehensive security validation.
      * <p>
-     * This method handles the enrollment confirmation process, including
-     * signature validation and challenge verification.
+     * This method handles the enrollment confirmation process with multiple layers
+     * of security validation including signature verification, device public key
+     * uniqueness validation, and challenge verification. It implements the same
+     * security principles as AuthAttemptService to prevent replay attacks and
+     * ensure enrollment integrity.
      * </p>
      *
-     * @param request the verify request
-     * @return the verify response
-     * @throws IllegalArgumentException if enrollment not found or validation fails
-     * @throws IllegalStateException if enrollment is in invalid state
+     * <p>
+     * <b>Security Validations:</b>
+     * <ol>
+     * <li><b>Signature Validation:</b> Verifies device cryptographic signature</li>
+     * <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public key</li>
+     * <li><b>Challenge Verification:</b> Validates enrollment challenge response</li>
+     * <li><b>State Consistency:</b> Ensures enrollment state integrity</li>
+     * <li><b>Atomic Operations:</b> Uses row-level locking for thread safety</li>
+     * </ol>
+     * </p>
+     *
+     * <p>
+     * <b>Replay Attack Prevention:</b>
+     * Implements device public key uniqueness validation to ensure that each
+     * device public key can only be associated with one verified enrollment.
+     * This prevents enrollment hijacking and maintains cryptographic identity
+     * integrity across the system.
+     * </p>
+     *
+     * @param request the verify request containing device keys and signatures
+     * @return the verify response confirming successful enrollment
+     * @throws IllegalArgumentException if validation fails (signature, uniqueness, or challenge)
+     * @throws IllegalStateException if enrollment is in invalid state or already processed
+     * @see org.ezkey.authattempt.service.AuthAttemptService#pending(org.ezkey.authattempt.domain.AuthAttemptPendingRequest)
+     * @since 2025
      */
     public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
         logger.info("Starting enrollment verify process for enrollment ID: {}",request.getEnrollmentId());
@@ -309,7 +333,15 @@ public class EnrollmentService {
         }
         logger.debug("Signature validation passed for enrollment ID: {}",request.getEnrollmentId());
 
-        logger.debug("Step 3: Validating challenge response for enrollment ID: {}",request.getEnrollmentId());
+        logger.debug("Step 3: Validating device public key uniqueness for enrollment ID: {}",request.getEnrollmentId());
+        if (enrollmentRepository.existsByDevicePublicKeyAndVerified(request.getDevicePublicKey())) {
+            logger.warn("Validation failed: Device public key already used for verified enrollment - ID: {}, DevicePublicKey: {}",request.getEnrollmentId(),request.getDevicePublicKey());
+            enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
+            throw new IllegalArgumentException("Device public key already registered");
+        }
+        logger.debug("Device public key uniqueness validation passed for enrollment ID: {}",request.getEnrollmentId());
+
+        logger.debug("Step 4: Validating challenge response for enrollment ID: {}",request.getEnrollmentId());
         if (!request.getChallengeResponse().equals(snapshot.getEnrollmentChallenge())){
             logger.warn("Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {}, Received: {}",request.getEnrollmentId(),
                     snapshot.getEnrollmentChallenge(),request.getChallengeResponse());
@@ -318,7 +350,7 @@ public class EnrollmentService {
         }
         logger.debug("Challenge response validation passed for enrollment ID: {}",request.getEnrollmentId());
         // Critical section: acquire lock and re-check before writing
-        logger.debug("Step 4: Acquiring lock for enrollment ID: {}",request.getEnrollmentId());
+        logger.debug("Step 5: Acquiring lock for enrollment ID: {}",request.getEnrollmentId());
         Enrollment enrollment = enrollmentRepository.findAndLockBoundById(request.getEnrollmentId()).orElse(null);
         if (enrollment == null){
             logger.warn("Validation failed: Enrollment not found or already verified after lock acquisition for ID: {}",request.getEnrollmentId());
@@ -333,7 +365,7 @@ public class EnrollmentService {
         logger.debug("Post-lock status validation passed: Status is BOUND");
 
         // Guard against state changes between snapshot and lock
-        logger.debug("Step 5: Validating state consistency between snapshot and locked enrollment for ID: {}",request.getEnrollmentId());
+        logger.debug("Step 6: Validating state consistency between snapshot and locked enrollment for ID: {}",request.getEnrollmentId());
         if (!snapshot.getEnrollmentProofToken().equals(enrollment.getEnrollmentProofToken())
                 || !snapshot.getEnrollmentChallenge().equals(enrollment.getEnrollmentChallenge())){
             logger.warn("Validation failed: Enrollment state changed between snapshot and lock - ID: {}",request.getEnrollmentId());
@@ -343,14 +375,14 @@ public class EnrollmentService {
         logger.debug("State consistency validation passed for enrollment ID: {}",request.getEnrollmentId());
 
         // Commit verified
-        logger.info("Step 6: Marking enrollment as VERIFIED - ID: {}",enrollment.getEnrollmentId());
+        logger.info("Step 7: Marking enrollment as VERIFIED - ID: {}",enrollment.getEnrollmentId());
         enrollment.setStatus(EnrollmentStatus.VERIFIED);
         enrollment.setActive(true);
         enrollment.setDevicePublicKey(request.getDevicePublicKey());
         enrollmentRepository.save(enrollment);
         logger.info("Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true",enrollment.getEnrollmentId());
 
-        logger.debug("Step 7: Building verify response for enrollment ID: {}",enrollment.getEnrollmentId());
+        logger.debug("Step 8: Building verify response for enrollment ID: {}",enrollment.getEnrollmentId());
         EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();
         response.setActive(true);
 
