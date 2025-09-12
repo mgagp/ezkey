@@ -18,9 +18,6 @@ import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.exception.NoPendingAuthAttemptException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -92,7 +89,6 @@ public class AuthAttemptController {
      * @param authAttemptService the JPA-based authorization attempt service
      * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
      */
-    @Autowired
     public AuthAttemptController(AuthAttemptService authAttemptService,AuthAttemptMapper authAttemptMapper){
         this.authAttemptService = authAttemptService;
         this.authAttemptMapper = authAttemptMapper;
@@ -130,20 +126,9 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id,@RequestBody AuthAttemptPendingRequestDto request) {
-        try{
-            request.setEnrollmentId(id);
-            AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
-            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
-        } catch (NoPendingAuthAttemptException e){
-            // No pending authentication attempt found - normal state in MFA systems
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e){
-            // Invalid request parameters (enrollment not found, invalid signature, etc.)
-            return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e){
-            // State conflict (already read, etc.)
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
+        request.setEnrollmentId(id);
+        AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+        return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
     }
 
     /**
@@ -161,15 +146,17 @@ public class AuthAttemptController {
      * or 400 for invalid requests, or 409 for conflicting states
      */
     @PostMapping("/respond/{authAttemptId}")
+    @Operation(summary = "Submit authentication response", 
+               description = "Submits mobile device's response to an authentication request")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Authentication response submitted successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid response data or validation failed"),
+        @ApiResponse(responseCode = "409", description = "Authentication attempt state conflict"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<AuthAttemptRespondResponseDto> respond(@PathVariable("authAttemptId") Integer id,@RequestBody AuthAttemptRespondRequestDto request) {
-        try{
-            request.setAuthAttemptId(id);
-            AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
-            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
-        } catch (IllegalArgumentException e){
-            return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
+        request.setAuthAttemptId(id);
+        AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
+        return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
     }
 }

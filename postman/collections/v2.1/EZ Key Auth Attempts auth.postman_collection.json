@@ -135,7 +135,7 @@
 			"response": []
 		},
 		{
-			"name": "5 validate auth prooftoken by integration",
+			"name": "5 sim validate auth prooftoken by integration",
 			"event": [
 				{
 					"listen": "test",
@@ -177,7 +177,7 @@
 			"response": []
 		},
 		{
-			"name": "6 sign authAttempt prooftoken by device",
+			"name": "6 sim sign authAttempt prooftoken by device",
 			"event": [
 				{
 					"listen": "test",

@@ -18,8 +18,6 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +26,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -92,7 +93,6 @@ public class EnrollmentController {
      * @param enrollmentService JPA-based enrollment service
      * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
      */
-    @Autowired
     public EnrollmentController(EnrollmentService enrollmentService,EnrollmentAuthMapper enrollmentMapper){
         this.enrollmentService = enrollmentService;
         this.enrollmentMapper = enrollmentMapper;
@@ -113,23 +113,28 @@ public class EnrollmentController {
      * or 400 for invalid enrollment ID, or 409 if enrollment is already bound
      */
     @GetMapping("/bind/{enrollmentId}")
+    @Operation(summary = "Initiate device binding", 
+               description = "Retrieves enrollment binding information for mobile device enrollment process")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Enrollment binding information retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid enrollment ID or enrollment not found"),
+        @ApiResponse(responseCode = "409", description = "Enrollment already bound or expired"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<EnrollmentBindResponseDto> bind(
             @PathVariable("enrollmentId") Integer enrollmentId,
             @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
-        try{
-            String language = (acceptLanguage != null && !acceptLanguage.isEmpty())
-                ? acceptLanguage.split(",")[0].split("-")[0]
-                : "en";
-            EnrollmentBindRequest request = new EnrollmentBindRequest();
-            request.setEnrollmentId(enrollmentId);
-            request.setLanguage(language);
-            EnrollmentBindResponse response = enrollmentService.bind(request);
-            return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
-        } catch (IllegalArgumentException e){
-            return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
+        
+        String language = (acceptLanguage != null && !acceptLanguage.isEmpty())
+            ? acceptLanguage.split(",")[0].split("-")[0]
+            : "en";
+        
+        EnrollmentBindRequest request = new EnrollmentBindRequest();
+        request.setEnrollmentId(enrollmentId);
+        request.setLanguage(language);
+        
+        EnrollmentBindResponse response = enrollmentService.bind(request);
+        return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
     }
 
     /**
@@ -147,14 +152,18 @@ public class EnrollmentController {
      * or 400 for invalid verification data, or 409 if enrollment state conflicts
      */
     @PostMapping("/verify")
+    @Operation(summary = "Complete enrollment verification", 
+               description = "Submits device cryptographic keys and signatures to finalize enrollment")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Enrollment verification completed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid verification data or cryptographic validation failed"),
+        @ApiResponse(responseCode = "409", description = "Enrollment state conflict or already verified"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req) {
-        try{
-            EnrollmentVerifyResponse response = enrollmentService.verify(enrollmentMapper.toEnrollmentVerifyRequest(req));
-            return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
-        } catch (IllegalArgumentException e){
-            return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
+        EnrollmentVerifyResponse response = enrollmentService.verify(
+            enrollmentMapper.toEnrollmentVerifyRequest(req)
+        );
+        return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
     }
 }

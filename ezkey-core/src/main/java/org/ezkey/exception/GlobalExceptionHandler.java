@@ -97,6 +97,40 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles IllegalArgumentException - returns 400 Bad Request with empty body.
+     * <p>
+     * Maintains the security principle of minimal information disclosure while providing
+     * consistent error handling across all controllers. This exception typically indicates
+     * validation failures or invalid request parameters.
+     * </p>
+     *
+     * @param ex the IllegalArgumentException that was thrown
+     * @param request the web request that caused the exception
+     * @return ResponseEntity with 400 status and empty body
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Void> handleIllegalArgument(IllegalArgumentException ex,WebRequest request) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    /**
+     * Handles IllegalStateException - returns 409 Conflict with empty body.
+     * <p>
+     * Maintains the security principle of minimal information disclosure while providing
+     * consistent error handling across all controllers. This exception typically indicates
+     * state conflicts such as enrollment already processed or authentication attempt conflicts.
+     * </p>
+     *
+     * @param ex the IllegalStateException that was thrown
+     * @param request the web request that caused the exception
+     * @return ResponseEntity with 409 status and empty body
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Void> handleIllegalState(IllegalStateException ex,WebRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+
+    /**
      * Handles generic {@link Exception} and returns a standardized 500 Internal Server Error response.
      * <p>
      * This method serves as a catch-all for any unhandled exceptions that occur during request processing. It provides
