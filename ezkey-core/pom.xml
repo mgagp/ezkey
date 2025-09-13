@@ -98,11 +98,48 @@
 
 	<build>
 		<plugins>
-			<!-- Spring Boot Maven Plugin -->
+			<!-- Spring Boot Maven Plugin for Flyway migrations -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- Skip repackaging by default (library mode) -->
+					<skip>true</skip>
+					<mainClass>org.ezkey.core.EzkeyCoreApp</mainClass>
+				</configuration>
+				<executions>
+					<!-- Enable repackaging only when explicitly requested -->
+					<execution>
+						<id>repackage</id>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+						<configuration>
+							<skip>false</skip>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- Profile for building executable JAR for migrations -->
+		<profile>
+			<id>migration-jar</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+						<configuration>
+							<skip>false</skip>
+							<mainClass>org.ezkey.core.EzkeyCoreApp</mainClass>
+							<finalName>ezkey-migration</finalName>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

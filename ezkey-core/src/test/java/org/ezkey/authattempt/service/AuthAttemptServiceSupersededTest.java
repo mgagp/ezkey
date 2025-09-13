@@ -159,8 +159,8 @@ class AuthAttemptServiceSupersededTest {
             .thenReturn(Optional.of(newerAttempt));
 
         AuthAttemptWaitRequest request = new AuthAttemptWaitRequest();
-        request.setTimeout(30);
-        request.setPolling(2);
+        request.setTimeout(1);  // 1 second instead of 30
+        request.setPolling(1);  // 1 second instead of 2
 
         // When
         AuthAttemptWaitResponse response = authAttemptService.waitForResponse(1, request);
@@ -179,8 +179,8 @@ class AuthAttemptServiceSupersededTest {
             .thenReturn(Optional.empty());
 
         AuthAttemptWaitRequest request = new AuthAttemptWaitRequest();
-        request.setTimeout(30);
-        request.setPolling(2);
+        request.setTimeout(1);  // 1 second instead of 30
+        request.setPolling(1);  // 1 second instead of 2
 
         // When
         AuthAttemptWaitResponse response = authAttemptService.waitForResponse(1, request);

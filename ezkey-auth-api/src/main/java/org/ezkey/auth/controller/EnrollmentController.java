@@ -83,6 +83,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Enrollments", description = "Mobile device enrollment operations for binding devices to user accounts and completing verification")
 public class EnrollmentController {
 
+    // Rate limiting endpoint constants
+    public static final String ENDPOINT_VERIFY = "/verify";
+    public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
+
     private final EnrollmentService enrollmentService;
 
     private final EnrollmentAuthMapper enrollmentMapper;

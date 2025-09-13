@@ -79,6 +79,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Authentication Attempts", description = "Mobile authentication attempt operations for checking pending requests and submitting responses")
 public class AuthAttemptController {
 
+    // Rate limiting endpoint constants
+    public static final String ENDPOINT_PENDING = "/pending";
+    public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
+
     private final AuthAttemptService authAttemptService;
 
     private final AuthAttemptMapper authAttemptMapper;

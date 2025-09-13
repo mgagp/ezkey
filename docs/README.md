@@ -14,6 +14,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### 📊 Monitoring & Operations
 - **[monitoring/](monitoring/)** - Grafana dashboards, monitoring setup, and operational guides
+- **[OPERATIONAL.md](OPERATIONAL.md)** - Production deployment, security configuration, and operational best practices
 
 ### 🔧 Development Tools
 - **[dev-tools/](dev-tools/)** - Development tools, configurations, and utilities
@@ -31,8 +32,9 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### For System Administrators
 1. **Architecture**: Review [ARCHITECTURE.md](ARCHITECTURE.md) for deployment planning
-2. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
-3. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration
+2. **Operations**: Follow [OPERATIONAL.md](OPERATIONAL.md) for production deployment and security
+3. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
+4. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration
 
 ### For Contributors
 1. **Project Overview**: Start with [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -101,6 +103,25 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - Testing Strategy
 - Development Workflow
 - Quality Assurance
+
+### 📊 OPERATIONAL.md
+**Production deployment and operational best practices**
+- Rate limiting security and IP detection
+- Proxy configuration and SSL/TLS setup
+- Database configuration and security
+- Monitoring, logging, and performance tuning
+- Backup and recovery procedures
+- Troubleshooting guide
+
+**Key Sections:**
+- Rate Limiting Security
+- IP Detection and Proxy Configuration
+- Database Configuration
+- SSL/TLS Configuration
+- Logging and Monitoring
+- Performance Tuning
+- Security Headers
+- Backup and Recovery
 
 ---
 

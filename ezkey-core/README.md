@@ -10,6 +10,58 @@ This module provides:
 - **Mappers** : Conversion between DTOs and entities
 - **Migration Tools** : Database migration management via Flyway
 
+## Spring Boot Application
+
+The `ezkey-core` module includes a Spring Boot application (`EzkeyCoreApp`) specifically designed for database migration management. This application:
+
+- **Purpose**: Manages Flyway database migrations and potential future administrative tasks
+- **Design**: Non-web application (`WebApplicationType.NONE`) that runs and exits
+- **Integration**: Can be used as both a library dependency and a standalone migration tool
+- **Coexistence**: Designed to work alongside other modules without conflicts
+
+## Migration Usage
+
+### Running Migrations
+
+#### Option 1: Maven Spring Boot Plugin
+```bash
+# Run migrations (default)
+mvn spring-boot:run
+
+# Show migration information
+mvn spring-boot:run -Dspring-boot.run.arguments="--info"
+
+# Repair migration history
+mvn spring-boot:run -Dspring-boot.run.arguments="--repair"
+```
+
+#### Option 2: Executable JAR
+```bash
+# Build executable migration JAR
+mvn clean package -Pmigration-jar
+
+# Run migrations
+java -jar target/ezkey-migration.jar
+
+# Show migration information
+java -jar target/ezkey-migration.jar --info
+
+# Repair migration history
+java -jar target/ezkey-migration.jar --repair
+```
+
+### Available Commands
+
+- **No arguments** or `--migrate`: Run database migrations (default)
+- `--info`: Display migration information (current version, pending/applied migrations)
+- `--repair`: Repair migration history (useful after failed migrations)
+
+### Configuration
+
+The migration application uses the same database configuration as other modules:
+- Database connection: `application.properties`
+- Migration scripts: `src/main/resources/db/migration/`
+
 ## Project Structure
 
 ```

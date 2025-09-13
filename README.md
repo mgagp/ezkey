@@ -118,7 +118,7 @@ Ezkey is built with a modern multi-module architecture:
 
 ```
 ezkey/
-├── ezkey-core/              # Shared core module (entities, services, migrations)
+├── ezkey-core/              # Shared core module (entities, services, Flyway migrations)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
 ├── ezkey-sim-api/           # Simulation API for testing (port 8080)
@@ -666,6 +666,18 @@ mvn clean install
 # Run quality checks
 mvn checkstyle:check
 mvn clean verify
+
+# Database migrations (ezkey-core)
+cd ezkey-core
+mvn spring-boot:run                    # Run migrations
+mvn spring-boot:run -Dspring-boot.run.arguments="--info"  # Show migration info
+mvn spring-boot:run -Dspring-boot.run.arguments="--repair" # Repair migrations
+
+# Build executable migration JAR
+mvn clean package -Pmigration-jar      # Creates ezkey-migration.jar
+java -jar target/ezkey-migration.jar   # Run migrations
+java -jar target/ezkey-migration.jar --info  # Show info
+java -jar target/ezkey-migration.jar --repair # Repair
 
 # Run specific module
 cd ezkey-admin-api
