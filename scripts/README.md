@@ -28,25 +28,9 @@ Demo projects were using two different approaches for OpenAPI specifications:
 
 ## Database Migration Scripts
 
-### Simple Scripts (Recommended)
+### Spring Boot Mode Scripts (Recommended)
 
-#### Bash Script (Linux/macOS/Git Bash)
-```bash
-./scripts/ezkey-flyway-simple.sh [COMMAND]
-```
-
-#### Windows Batch Script
-```cmd
-scripts\ezkey-flyway-simple.bat [COMMAND]
-```
-
-#### Available Commands
-- No argument : Run default migration
-- `--info` : Show migration info
-- `--repair` : Repair migration history
-- `--migrate` : Run migrations explicitly
-
-### Legacy Scripts (Complex)
+These scripts use the modern Spring Boot Maven plugin approach with `mvn spring-boot:run`.
 
 #### Bash Script (Linux/macOS/Git Bash)
 ```bash
@@ -58,7 +42,40 @@ scripts\ezkey-flyway-simple.bat [COMMAND]
 scripts\ezkey-flyway.bat [COMMAND]
 ```
 
-**Note:** The legacy scripts build the project and construct classpath manually. Use the simple scripts instead.
+#### Available Commands
+- No argument : Run default migration
+- `--info` : Show migration info
+- `--repair` : Repair migration history
+- `--migrate` : Run migrations explicitly
+
+### JAR Mode Scripts (Production-Ready)
+
+These scripts build and run the executable JAR directly, suitable for production deployments.
+
+#### Bash Script (Linux/macOS/Git Bash)
+```bash
+./scripts/ezkey-flyway-jar.sh [COMMAND]
+```
+
+#### Windows Batch Script
+```cmd
+scripts\ezkey-flyway-jar.bat [COMMAND]
+```
+
+#### Available Commands
+- No argument : Run default migration
+- `--info` : Show migration info
+- `--repair` : Repair migration history
+- `--migrate` : Run migrations explicitly
+
+### Migration Tool Features
+
+Both script modes provide:
+- **Automatic JAR building** : Builds migration JAR if not present
+- **Spring Boot integration** : Uses the new `EzkeyCoreApp` application
+- **Command-line interface** : Supports all Flyway commands
+- **Cross-platform** : Works on Windows, Linux, and macOS
+- **Error handling** : Proper error messages and exit codes
 
 ## OpenAPI Specification Management
 
@@ -98,6 +115,9 @@ The old scripts are still available but deprecated:
 
 ### 1. Daily Development
 ```bash
+# Run database migrations
+./scripts/ezkey-flyway.sh
+
 # Start the APIs
 mvn spring-boot:run -pl ezkey-auth-api &
 mvn spring-boot:run -pl ezkey-admin-api &
@@ -111,6 +131,9 @@ mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 
 ### 2. Before Commit
 ```bash
+# Check migration status
+./scripts/ezkey-flyway.sh --info
+
 # Check that specs are up to date
 ./scripts/update-specs.sh --all
 
@@ -118,7 +141,18 @@ mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 ```
 
-### 3. CI/CD
+### 3. Production Deployment
+```bash
+# Build migration JAR for production
+cd ezkey-core
+mvn clean package -Pmigration-jar
+
+# Run migrations in production
+java -jar target/ezkey-migration.jar --info
+java -jar target/ezkey-migration.jar
+```
+
+### 4. CI/CD
 CI/CD builds use local files directly, ensuring stability.
 
 ## File Structure
@@ -146,6 +180,10 @@ ezkey-sdk/
 └── auth-api-spec.json         # Links to specs/auth-api/openapi-spec.json
 
 scripts/
+├── ezkey-flyway.sh            # Migration script (Spring Boot mode)
+├── ezkey-flyway.bat           # Migration script Windows (Spring Boot mode)
+├── ezkey-flyway-jar.sh        # Migration script (JAR mode)
+├── ezkey-flyway-jar.bat       # Migration script Windows (JAR mode)
 ├── update-specs.sh            # Main bash script
 ├── update-specs.bat           # Windows script
 ├── setup-centralized-specs.sh # Initial setup script

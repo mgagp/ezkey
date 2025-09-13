@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo Ezkey Flyway Migration Tool (Simple)
-echo ====================================
+echo Ezkey Flyway Migration Tool
+echo ===========================
 
 REM Get the directory where this script is located
 set SCRIPT_DIR=%~dp0
@@ -17,13 +17,20 @@ if not exist "%CORE_DIR%" (
 REM Change to the core directory
 cd /d "%CORE_DIR%"
 
-REM Use Maven exec plugin to run the application
+REM Check if migration JAR exists, build if needed
+set MIGRATION_JAR=target\ezkey-migration.jar
+if not exist "%MIGRATION_JAR%" (
+    echo Migration JAR not found. Building...
+    mvn clean package -Pmigration-jar -q
+)
+
+REM Run the migration application
 if "%1"=="" (
     echo Running default migration...
-    mvn exec:java -Dexec.mainClass="org.ezkey.core.EzkeyCoreApp" -q
+    mvn spring-boot:run -q
 ) else (
     echo Running Flyway command: %*
-    mvn exec:java -Dexec.mainClass="org.ezkey.core.EzkeyCoreApp" -Dexec.args="%*" -q
+    mvn spring-boot:run -Dspring-boot.run.arguments="%*" -q
 )
 
 echo Done!

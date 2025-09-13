@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-echo "Ezkey Flyway Migration Tool (Simple)"
-echo "===================================="
+echo "Ezkey Flyway Migration Tool"
+echo "==========================="
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,13 +17,20 @@ fi
 # Change to the core directory
 cd "$CORE_DIR"
 
-# Use Maven exec plugin to run the application
+# Check if migration JAR exists, build if needed
+MIGRATION_JAR="target/ezkey-migration.jar"
+if [ ! -f "$MIGRATION_JAR" ]; then
+    echo "Migration JAR not found. Building..."
+    mvn clean package -Pmigration-jar -q
+fi
+
+# Run the migration application
 if [ -z "$1" ]; then
     echo "Running default migration..."
-    mvn exec:java -Dexec.mainClass="org.ezkey.core.EzkeyCoreApp" -q
+    mvn spring-boot:run -q
 else
     echo "Running Flyway command: $*"
-    mvn exec:java -Dexec.mainClass="org.ezkey.core.EzkeyCoreApp" -Dexec.args="$*" -q
+    mvn spring-boot:run -Dspring-boot.run.arguments="$*" -q
 fi
 
 echo "Done!"
