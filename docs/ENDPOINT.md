@@ -10,6 +10,26 @@ The interaction model is **pull**: the mobile device fetches the request to vali
 
 ---
 
+## 📱 User-Initiated Polling Model
+
+### **Critical Design Principle: User Control**
+
+The pending endpoint (`POST /api/v1/auth-attempts/pending/{enrollmentId}`) follows a **user-initiated polling model**, not an automated polling system.
+
+**Key Points:**
+- **User Decision**: The mobile app polls only when the user explicitly requests to check for pending authentication attempts
+- **No Auto-Polling**: The app does NOT automatically poll every 2-3 seconds in the background
+- **Intentional Action**: Each pending request represents a deliberate user action to check for authentication requests
+- **Rate Limiting Context**: Rate limiting on pending is designed for normal user behavior, not automated systems
+
+**Why This Matters:**
+- Prevents "push fatigue attacks" where systems bombard users with notifications
+- Gives users control over when they want to authenticate
+- Allows for natural user interaction patterns
+- Simplifies the mobile app architecture by avoiding background polling complexity
+
+---
+
 ## 🔐 Token Security - Critical Design
 
 ### **Security Principle: One-Time Use Token**
