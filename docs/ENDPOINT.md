@@ -84,13 +84,13 @@ String signature = signWithDeviceKey(authAttemptProofToken);
 
 **Request**
 ```http
-POST /api/v1/auth-attempts/pending/{enrollmentId}
+POST /api/v1/auth-attempts/pending/456
 Content-Type: application/json
 
 {
-  "timestamp": 1712345678,
-  "signature": "base64-encoded-signature",
-  "publicKey": "base64-encoded-public-key"
+  "enrollmentId": 456,
+  "deviceProofToken": "eyJhbGciOiJSUzI1NiJ9...",
+  "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
 }
 ```
 
@@ -99,9 +99,9 @@ Content-Type: application/json
 ```json
 {
   "authAttemptId": 123,
-  "challenge": "...",
-  "createdAt": "2024-06-01T12:34:56Z",
-  ...
+  "authAttemptProofToken": "eyJhbGciOiJSUzI1NiJ9...",
+  "authAttemptProofTokenSignedByIntegration": "eyJhbGciOiJSUzI1NiJ9...",
+  "authAttemptChallengeRequired": true
 }
 ```
 
@@ -113,13 +113,14 @@ Content-Type: application/json
 
 **Request**
 ```http
-POST /api/v1/auth-attempts/respond/{authAttemptId}
+POST /api/v1/auth-attempts/respond/123
 Content-Type: application/json
 
 {
-  "approved": true,
-  "responseSignature": "base64-encoded-signature",
-  "timestamp": 1712345699
+  "authAttemptId": 123,
+  "authAttemptAccepted": true,
+  "authAttemptProofTokenSignedByDevice": "eyJhbGciOiJSUzI1NiJ9...",
+  "authAttemptChallengeResponse": 123456
 }
 ```
 
@@ -127,19 +128,27 @@ Content-Type: application/json
 - 200 OK + validation result
 ```json
 {
-  "status": "APPROVED"
+  "result": "APPROVED",
+  "message": "Authentication approved"
 }
 ```
 
 ### c) Enrollment process (device binding)
 
-**GET /api/v1/enrollments/bind/{enrollmentId}**
+**POST /api/v1/enrollments/bind**
 
-- **Description**: Initiates the process of binding an enrollment to a mobile device. The device retrieves the necessary information to start enrollment.
+- **Description**: Initiates the process of binding an enrollment to a mobile device using secure enrollment proof token. The device retrieves the necessary information to start enrollment.
 
 **Request**
 ```http
-GET /api/v1/enrollments/bind/456
+POST /api/v1/enrollments/bind
+Content-Type: application/json
+
+{
+  "enrollmentId": 456,
+  "enrollmentProofToken": "abc123-def456-ghi789",
+  "language": "en"
+}
 ```
 
 **Response**
@@ -147,9 +156,12 @@ GET /api/v1/enrollments/bind/456
 ```json
 {
   "enrollmentId": 456,
-  "integrationPublicKey": "base64-encoded-integration-key",
-  "enrollmentCode": "EZK-ABC123-DEF456",
-  "enrollmentCodeSigned": "base64-encoded-signed-code"
+  "enrollmentProofToken": "eyJhbGciOiJSUzI1NiJ9...",
+  "integrationPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+  "integrationName": "Acme Bank",
+  "integrationDescription": "Acme Bank provides secure online banking services.",
+  "integrationLogo": "https://acme.com/logo.png",
+  "enrollmentName": "John's iPhone"
 }
 ```
 
@@ -157,7 +169,7 @@ GET /api/v1/enrollments/bind/456
 
 **POST /api/v1/enrollments/verify**
 
-- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and the enrollment code signature.
+- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and the enrollment proof token signature.
 
 **Request**
 ```http
@@ -167,9 +179,8 @@ Content-Type: application/json
 {
   "enrollmentId": 456,
   "challengeResponse": 987654,
-  "devicePublicKey": "base64-encoded-device-public-key",
-  "enrollmentCode": "EZK-ABC123-DEF456",
-  "enrollmentCodeSigned": "base64-encoded-signed-enrollment-code"
+  "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+  "enrollmentProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
 }
 ```
 
@@ -177,9 +188,7 @@ Content-Type: application/json
 - 200 OK + verification confirmation
 ```json
 {
-  "verified": true,
-  "enrollmentId": 456,
-  "status": "CONFIRMED"
+  "active": true
 }
 ```
 
@@ -217,11 +226,11 @@ GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
   "authAttempt": {
     "authAttemptId": 123,
     "enrollmentId": 456,
-    "authAttemptRead": true,
-    "authAttemptResponded": true,
-    "authAttemptValid": true,
-    "authAttemptAccepted": true,
-    "createdAt": "2024-06-01T12:34:56Z"
+    "authAttemptStatus": "ACCEPTED",
+    "authAttemptChallenge": 789012,
+    "authAttemptProofToken": "EZK-XYZ789-ABC123",
+    "createdAt": "2024-06-01T12:34:56Z",
+    "expiresAt": "2024-06-01T12:39:56Z"
   },
   "status": "ACCEPTED",
   "completed": true,
@@ -245,26 +254,25 @@ GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
 When a newer authentication attempt is created for the same enrollment, older attempts are considered **EXPIRED** even if they haven't reached their timeout. This ensures that only the most recent authentication request for a person is valid.
 
 **GET Example**
-```
-   {
-        "authAttemptId": 49,
-        "enrollmentId": 61,
-        "authAttemptRead": false,
-        "authAttemptResponded": false,
-        "authAttemptValid": false,
-        "authAttemptAccepted": false,
-        "authAttemptChallenge": null,
-        "authAttemptProofToken": "KstrTWXbywp5Zi-ACI1kIzGrj9thTUkn_-lcOxQxYR0.1755796478548.1HGz9A4uEyYjqdxbYg9U7A",
-        "deviceProofTokenValid": "false",
-        "createdAt": "2025-08-21T13:14:38.548701"
-    }
+```json
+{
+  "authAttemptId": 49,
+  "enrollmentId": 61,
+  "authAttemptStatus": "PENDING",
+  "authAttemptChallenge": null,
+  "authAttemptProofToken": "KstrTWXbywp5Zi-ACI1kIzGrj9thTUkn_-lcOxQxYR0.1755796478548.1HGz9A4uEyYjqdxbYg9U7A",
+  "createdAt": "2025-08-21T13:14:38.548701",
+  "expiresAt": "2025-08-21T13:19:38.548701"
+}
 ```
 
-To display a status associated with a request, here are the rules in order of priority (#1 first)
--authAttemptRead null or false: PENDING
--authAttemptRead and authAttemptResponded null or false: READ
--authAttemptValid null or false: INVALID
--authAttemptAccepted null or false: REJECTED else ACCEPTED
+To display a status associated with a request, the `authAttemptStatus` field provides the calculated status:
+- **PENDING**: Authentication request created, waiting for device response
+- **READ**: Device has read the request but not yet responded
+- **INVALID**: Authentication failed validation
+- **REJECTED**: User denied the authentication request
+- **ACCEPTED**: User approved the authentication request
+- **EXPIRED**: Superseded by a newer authentication attempt
 
 **Creation example**
 ```http
@@ -272,14 +280,81 @@ POST /api/v1/auth-attempts
 Content-Type: application/json
 
 {
-  "enrollmentId": "abc123",
-  "requestedBy": "app-backend",
-  "challenge": "...",
-  ...
+  "enrollmentId": 123,
+  "challengeRequested": false
 }
 ```
 
-### b) Enrollment management (CRUD)
+**Response**
+- 201 Created + created auth attempt details
+```json
+{
+  "authAttemptId": 11
+}
+```
+
+### b) Integration management (CRUD)
+
+**GET    /api/v1/integrations**           // Retrieve all integrations
+**GET    /api/v1/integrations/{id}**      // Retrieve an integration by ID
+**POST   /api/v1/integrations**          // Create a new integration
+**DELETE /api/v1/integrations/{id}**     // Delete an integration
+
+**Creating an integration**
+```http
+POST /api/v1/integrations
+Content-Type: application/json
+
+{
+  "logo": "https://example.com/logo.png",
+  "i18n": [
+    {
+      "language": "en",
+      "name": "ACME Corporation",
+      "description": "Secure authentication system for ACME applications"
+    },
+    {
+      "language": "fr",
+      "name": "Corporation ACME",
+      "description": "Système d'authentification sécurisé pour les applications ACME"
+    }
+  ]
+}
+```
+
+**Response**
+- 201 Created + created integration details
+```json
+{
+  "id": 42
+}
+```
+
+**Retrieving an integration**
+```http
+GET /api/v1/integrations/42
+```
+
+**Response**
+- 200 OK + complete integration details
+```json
+{
+  "id": 42,
+  "logo": "https://example.com/logo.png",
+  "active": true,
+  "createdAt": "2024-06-01T12:34:56Z",
+  "i18n": [
+    {
+      "id": 1,
+      "language": "en",
+      "name": "ACME Corporation",
+      "description": "Secure authentication system for ACME applications"
+    }
+  ]
+}
+```
+
+### c) Enrollment management (CRUD)
 
 **GET    /api/v1/enrollments**           // Retrieve all enrollments
 **GET    /api/v1/enrollments/{id}**      // Retrieve an enrollment by ID
@@ -303,9 +378,7 @@ Content-Type: application/json
 ```json
 {
   "enrollmentId": 456,
-  "enrollmentCode": "EZK-ABC123-DEF456",
-  "enrollmentChallenge": 987654,
-  "createdAt": "2024-06-01T12:34:56Z"
+  "enrollmentChallenge": 987654
 }
 ```
 
@@ -321,15 +394,13 @@ GET /api/v1/enrollments/456
   "enrollmentId": 456,
   "integrationId": 123,
   "enrollmentName": "My Mobile Device",
-  "enrollmentRead": false,
-  "enrollmentConfirmed": false,
+  "enrollmentStatus": "VERIFIED",
   "enrollmentActive": true,
   "enrollmentChallenge": 987654,
+  "enrollmentProofToken": "EZK-ABC123-DEF456",
   "authAttemptChallengeRequired": true,
-  "integrationPublicKey": "base64-encoded-key",
-  "authAttemptPublicKey": null,
-  "enrollmentCode": "EZK-ABC123-DEF456",
-  "createdAt": "2024-06-01T12:34:56Z"
+  "integrationPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+  "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
 }
 ```
 
@@ -346,15 +417,13 @@ GET /api/v1/enrollments
     "enrollmentId": 456,
     "integrationId": 123,
     "enrollmentName": "My Mobile Device",
-    "enrollmentRead": false,
-    "enrollmentConfirmed": false,
+    "enrollmentStatus": "VERIFIED",
     "enrollmentActive": true,
     "enrollmentChallenge": 987654,
+    "enrollmentProofToken": "EZK-ABC123-DEF456",
     "authAttemptChallengeRequired": true,
-    "integrationPublicKey": "base64-encoded-key",
-    "authAttemptPublicKey": null,
-    "enrollmentCode": "EZK-ABC123-DEF456",
-    "createdAt": "2024-06-01T12:34:56Z"
+    "integrationPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+    "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
   }
 ]
 ```
