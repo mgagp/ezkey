@@ -10,6 +10,7 @@
 
 package org.ezkey.auth.controller;
 
+import org.ezkey.auth.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -19,11 +20,8 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
@@ -84,7 +82,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class EnrollmentController {
 
     // Rate limiting endpoint constants
+    public static final String ENDPOINT_BIND = "/bind";
     public static final String ENDPOINT_VERIFY = "/verify";
+    public static final String FULL_PATH_BIND = "/api/v1/enrollments" + ENDPOINT_BIND;
     public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
 
     private final EnrollmentService enrollmentService;
@@ -103,41 +103,40 @@ public class EnrollmentController {
     }
 
     /**
-     * Initiates the device binding process for mobile enrollment.
+     * Initiates the device binding process for mobile enrollment with proof token authentication.
      * <p>
      * The mobile device calls this endpoint to start the enrollment binding process.
-     * It retrieves enrollment information including the integration public key,
-     * proof token the device must use, and challenge data needed to complete the enrollment.
-     * This is typically called after scanning a QR code or following a deep link.
+     * It requires both the enrollment ID and enrollment proof token to prevent
+     * enumeration attacks and ensure secure access to enrollment data.
      * </p>
      *
-     * @param enrollmentId the enrollment ID to bind the device to
-     * @param acceptLanguage the preferred language for i18n fields (from Accept-Language header)
+     * <p>
+     * <b>Security Enhancement:</b> This endpoint now requires an enrollment proof token
+     * in addition to the enrollment ID, preventing attackers from systematically
+     * testing enrollment IDs to discover valid enrollments.
+     * </p>
+     *
+     * @param request the binding request containing enrollment ID, proof token, and language preference
      * @return ResponseEntity containing enrollment binding information with HTTP 200,
-     * or 400 for invalid enrollment ID, or 409 if enrollment is already bound
+     * or 400 for invalid enrollment ID/proof token, or 409 if enrollment is already bound
      */
-    @GetMapping("/bind/{enrollmentId}")
-    @Operation(summary = "Initiate device binding", 
-               description = "Retrieves enrollment binding information for mobile device enrollment process")
+    @PostMapping("/bind")
+    @Operation(summary = "Initiate device binding with proof token", 
+               description = "Retrieves enrollment binding information using secure enrollment proof token")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Enrollment binding information retrieved successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid enrollment ID or enrollment not found"),
-        @ApiResponse(responseCode = "409", description = "Enrollment already bound or expired"),
+        @ApiResponse(responseCode = "400", description = "Invalid enrollment ID, proof token, or enrollment expired"),
+        @ApiResponse(responseCode = "409", description = "Enrollment already bound or proof token already used"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<EnrollmentBindResponseDto> bind(
-            @PathVariable("enrollmentId") Integer enrollmentId,
-            @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
+    public ResponseEntity<EnrollmentBindResponseDto> bind(@RequestBody EnrollmentBindRequestDto request) {
+        // Validation: enrollmentId + enrollmentProofToken required
+        if (request.getEnrollmentId() == null || request.getEnrollmentProofToken() == null || request.getEnrollmentProofToken().trim().isEmpty()) {
+            throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
+        }
         
-        String language = (acceptLanguage != null && !acceptLanguage.isEmpty())
-            ? acceptLanguage.split(",")[0].split("-")[0]
-            : "en";
-        
-        EnrollmentBindRequest request = new EnrollmentBindRequest();
-        request.setEnrollmentId(enrollmentId);
-        request.setLanguage(language);
-        
-        EnrollmentBindResponse response = enrollmentService.bind(request);
+        EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
+        EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
         return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
     }
 

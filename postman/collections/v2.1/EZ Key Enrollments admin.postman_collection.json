@@ -58,7 +58,8 @@
 						"exec": [
 							"var jsonData = JSON.parse(pm.response.text());\r",
 							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
-							"pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);"
+							"pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);\r",
+							"pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
 						],
 						"type": "text/javascript",
 						"packages": {}

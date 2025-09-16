@@ -89,7 +89,6 @@ public class EnrollmentService {
      * @param signatureService the cryptographic signature service
      * @param integrationRepository the JPA repository for integration operations
      */
-    @Autowired
     public EnrollmentService(EnrollmentRepository enrollmentRepository,SignatureService signatureService,IntegrationRepository integrationRepository,
             EnrollmentTxHelper enrollmentTxHelper){
         this.enrollmentRepository = enrollmentRepository;
@@ -185,14 +184,14 @@ public class EnrollmentService {
     public EnrollmentBindResponse bind(EnrollmentBindRequest req) {
         logger.info("Starting enrollment bind process for enrollment ID: {}",req.getEnrollmentId());
 
-        // 1) Fast, read-only pre-checks (no lock yet)
-        logger.debug("Step 1: Performing read-only pre-checks for enrollment ID: {}",req.getEnrollmentId());
-        Enrollment snapshot = enrollmentRepository.findById(req.getEnrollmentId()).orElse(null);
+        // 1) Fast, read-only pre-checks with proof token validation (no lock yet)
+        logger.debug("Step 1: Performing read-only pre-checks with proof token validation for enrollment ID: {}",req.getEnrollmentId());
+        Enrollment snapshot = enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(req.getEnrollmentId(), req.getEnrollmentProofToken()).orElse(null);
         if (snapshot == null){
-            logger.warn("Validation failed: Enrollment not found for ID: {}",req.getEnrollmentId());
+            logger.warn("Validation failed: Enrollment not found or invalid proof token for ID: {}",req.getEnrollmentId());
             throw new IllegalArgumentException("Enrollment binding failed");
         }
-        logger.debug("Enrollment found: ID={}, Status={}, IntegrationId={}",snapshot.getEnrollmentId(),snapshot.getStatus(),snapshot.getIntegrationId());
+        logger.debug("Enrollment found with valid proof token: ID={}, Status={}, IntegrationId={}",snapshot.getEnrollmentId(),snapshot.getStatus(),snapshot.getIntegrationId());
 
         // Short-circuit: if already processed, avoid acquiring a lock
         if (snapshot.getStatus() != EnrollmentStatus.CREATED){
@@ -237,6 +236,12 @@ public class EnrollmentService {
             logger.warn("Validation failed: Enrollment not found or already bound after lock acquisition for ID: {}",req.getEnrollmentId());
             // Either not found anymore or no longer in CREATED state (depending on the query)
             throw new IllegalArgumentException("Enrollment not found or already bound");
+        }
+        
+        // Additional validation: ensure the proof token still matches after lock
+        if (!enrollment.getEnrollmentProofToken().equals(req.getEnrollmentProofToken())) {
+            logger.warn("Validation failed: Proof token mismatch after lock acquisition for ID: {}",req.getEnrollmentId());
+            throw new IllegalArgumentException("Enrollment binding failed");
         }
         logger.debug("Lock acquired successfully for enrollment ID: {}",enrollment.getEnrollmentId());
         if (enrollment.getStatus() != EnrollmentStatus.CREATED){

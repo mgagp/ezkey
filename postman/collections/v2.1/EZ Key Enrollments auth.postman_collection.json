@@ -24,10 +24,19 @@
 				}
 			],
 			"request": {
-				"method": "GET",
+				"method": "POST",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"enrollmentProofToken\": \"{{enrollmentProofToken}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
 				"url": {
-					"raw": "{{base_url}}/api/v1/enrollments/bind/:enrollmentId",
+					"raw": "{{base_url}}/api/v1/enrollments/bind",
 					"host": [
 						"{{base_url}}"
 					],
@@ -35,21 +44,14 @@
 						"api",
 						"v1",
 						"enrollments",
-						"bind",
-						":enrollmentId"
-					],
-					"variable": [
-						{
-							"key": "enrollmentId",
-							"value": "{{enrollmentId}}"
-						}
+						"bind"
 					]
 				}
 			},
 			"response": []
 		},
 		{
-			"name": "2 generate device keypair",
+			"name": "2 sim generate device keypair",
 			"event": [
 				{
 					"listen": "test",
@@ -83,7 +85,7 @@
 			"response": []
 		},
 		{
-			"name": "3 generate enrollment proof token signature",
+			"name": "3 sim generate enrollment proof token signature",
 			"event": [
 				{
 					"listen": "test",

@@ -39,6 +39,7 @@
 	<!-- Modules du projet -->
 	<modules>
 		<module>ezkey-core</module>
+		<module>ezkey-migration</module>
 		<module>ezkey-admin-api</module>
 		<module>ezkey-auth-api</module>
 		<module>ezkey-sim-api</module>

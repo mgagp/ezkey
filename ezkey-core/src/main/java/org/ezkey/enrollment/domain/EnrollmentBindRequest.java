@@ -65,6 +65,18 @@ public class EnrollmentBindRequest {
     private Integer enrollmentId;
 
     /**
+     * The enrollment proof token for authentication.
+     * <p>
+     * Unique cryptographic token generated during enrollment creation that must
+     * be provided to access enrollment binding information. This token prevents
+     * enumeration attacks by ensuring only parties with valid proof tokens can
+     * access enrollment data. The token must match the one generated during
+     * enrollment creation.
+     * </p>
+     */
+    private String enrollmentProofToken;
+
+    /**
      * The language code for internationalization of response fields.
      * <p>
      * Language code (e.g., "en", "fr", "es") requested for localized fields
@@ -109,6 +121,24 @@ public class EnrollmentBindRequest {
      */
     public void setLanguage(String language) {
         this.language = language;
+    }
+
+    /**
+     * Gets the enrollment proof token for authentication.
+     *
+     * @return the enrollment proof token
+     */
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
+    }
+
+    /**
+     * Sets the enrollment proof token for authentication.
+     *
+     * @param enrollmentProofToken the enrollment proof token to set
+     */
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
 }

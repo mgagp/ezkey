@@ -154,4 +154,29 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     @Query("SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND e.status = 'VERIFIED'")
     boolean existsByDevicePublicKeyAndVerified(@Param("devicePublicKey") String devicePublicKey);
 
+    /**
+     * Find enrollment by ID and proof token for secure binding.
+     * <p>
+     * This method provides secure access to enrollment data by requiring both
+     * the enrollment ID and the enrollment proof token. This prevents enumeration
+     * attacks where attackers could systematically test enrollment IDs to discover
+     * valid enrollments and obtain sensitive information.
+     * </p>
+     * 
+     * <p>
+     * <b>Security Purpose:</b>
+     * <ul>
+     * <li>Prevents enumeration attacks on enrollment IDs</li>
+     * <li>Ensures only parties with valid proof tokens can access enrollment data</li>
+     * <li>Protects sensitive enrollment information from unauthorized access</li>
+     * <li>Maintains enrollment proof token confidentiality</li>
+     * </ul>
+     * </p>
+     * 
+     * @param enrollmentId the enrollment ID
+     * @param enrollmentProofToken the enrollment proof token
+     * @return Optional enrollment if found and token matches
+     */
+    Optional<Enrollment> findByEnrollmentIdAndEnrollmentProofToken(Integer enrollmentId, String enrollmentProofToken);
+
 }

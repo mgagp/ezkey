@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.mapper;
 
+import org.ezkey.auth.dto.EnrollmentBindRequestDto;
+import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -31,6 +33,7 @@ import org.mapstruct.ReportingPolicy;
  * <p>
  * <b>Supported Conversions:</b>
  * <ul>
+ * <li><b>Bind Request:</b> EnrollmentBindRequestDto → EnrollmentBindRequest</li>
  * <li><b>Bind Response:</b> EnrollmentBindResponse → EnrollmentBindResponseDto</li>
  * <li><b>Verify Request:</b> EnrollmentVerifyRequestDto → EnrollmentVerifyRequest</li>
  * <li><b>Verify Response:</b> EnrollmentVerifyResponse → EnrollmentVerifyResponseDto</li>
@@ -78,6 +81,19 @@ import org.mapstruct.ReportingPolicy;
  */
 @Mapper(componentModel = "spring",unmappedTargetPolicy = ReportingPolicy.WARN)
 public interface EnrollmentAuthMapper {
+
+    /**
+     * Converts a bind request DTO to domain request for enrollment binding.
+     * <p>
+     * Maps mobile device binding requests to domain objects for processing
+     * enrollment binding. Handles enrollment ID, proof token, and language
+     * preferences for secure enrollment access.
+     * </p>
+     *
+     * @param request the mobile bind request DTO
+     * @return the corresponding domain bind request
+     */
+    EnrollmentBindRequest toEnrollmentBindRequest(EnrollmentBindRequestDto request);
 
     /**
      * Converts a domain bind response to DTO for mobile consumption.

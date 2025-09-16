@@ -144,6 +144,11 @@ public class RateLimitFilter implements Filter {
             return true;
         }
         
+        // Check for bind endpoint
+        if (requestUri.contains(EnrollmentController.FULL_PATH_BIND)) {
+            return true;
+        }
+        
         return false;
     }
     
@@ -219,6 +224,8 @@ public class RateLimitFilter implements Filter {
             return properties.getPending();
         } else if (bucketKey.contains(EnrollmentController.FULL_PATH_VERIFY)) {
             return properties.getVerify();
+        } else if (bucketKey.contains(EnrollmentController.FULL_PATH_BIND)) {
+            return properties.getBind();
         }
         
         // Default configuration

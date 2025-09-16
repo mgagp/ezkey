@@ -1,31 +1,66 @@
 # Ezkey Core
 
-The core module of Ezkey contains the shared business logic, entities, services, and database migration tools.
+The core module of Ezkey is a pure library containing shared business logic, entities, services, and repositories.
 
 ## Overview
 
 This module provides:
 - **JPA Entities** : Data models for authentication and integrations
 - **Business Services** : Logic for managing authentication attempts and enrollments
+- **Repositories** : Spring Data JPA repositories for data access
 - **Mappers** : Conversion between DTOs and entities
-- **Migration Tools** : Database migration management via Flyway
+- **Exception Classes** : Common exception definitions
+- **DTOs** : Shared data transfer objects
 
-## Spring Boot Application
+## Architecture
 
-The `ezkey-core` module includes a Spring Boot application (`EzkeyCoreApp`) specifically designed for database migration management. This application:
+The `ezkey-core` module is designed as a pure library:
 
-- **Purpose**: Manages Flyway database migrations and potential future administrative tasks
-- **Design**: Non-web application (`WebApplicationType.NONE`) that runs and exits
-- **Integration**: Can be used as both a library dependency and a standalone migration tool
-- **Coexistence**: Designed to work alongside other modules without conflicts
+- **Purpose**: Provides shared business logic and data models
+- **Design**: Standard JAR library without Spring Boot application
+- **Integration**: Used as a dependency by other modules
+- **Separation**: Database migrations are handled by the dedicated `ezkey-migration` module
 
-## Migration Usage
+## Usage as Library
+
+### Dependencies
+
+This module can be used as a dependency in other projects:
+
+```xml
+<dependency>
+    <groupId>org.ezkey</groupId>
+    <artifactId>ezkey-core</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+</dependency>
+```
+
+### Key Components
+
+#### Entities
+- `Integration` : Represents system integrations
+- `Enrollment` : Device enrollment information
+- `AuthAttempt` : Authentication attempt records
+
+#### Services
+- `EnrollmentService` : Manages device enrollments
+- `AuthAttemptService` : Handles authentication attempts
+- `SignatureService` : Cryptographic signature operations
+
+#### Repositories
+- `IntegrationRepository` : Data access for integrations
+- `EnrollmentRepository` : Data access for enrollments
+- `AuthAttemptRepository` : Data access for auth attempts
+
+## Database Migrations
+
+Database migrations are now handled by the dedicated `ezkey-migration` module. See the [Migration Module README](../ezkey-migration/README.md) for details.
 
 ### Running Migrations
 
-#### Option 1: Maven Spring Boot Plugin
+#### Option 1: Using the Migration Module
 ```bash
-# Run migrations (default)
+cd ezkey-migration
 mvn spring-boot:run
 
 # Show migration information
@@ -35,28 +70,47 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--info"
 mvn spring-boot:run -Dspring-boot.run.arguments="--repair"
 ```
 
-#### Option 2: Executable JAR
+#### Option 2: Using Scripts
 ```bash
-# Build executable migration JAR
-mvn clean package -Pmigration-jar
+# From project root
+./scripts/ezkey-flyway.sh
 
-# Run migrations
-java -jar target/ezkey-migration.jar
-
-# Show migration information
-java -jar target/ezkey-migration.jar --info
-
-# Repair migration history
-java -jar target/ezkey-migration.jar --repair
+# Or on Windows
+scripts\ezkey-flyway.bat
 ```
 
-### Available Commands
+## Development
 
-- **No arguments** or `--migrate`: Run database migrations (default)
-- `--info`: Display migration information (current version, pending/applied migrations)
-- `--repair`: Repair migration history (useful after failed migrations)
+### Building the Module
+```bash
+cd ezkey-core
+mvn clean compile
+```
 
-### Configuration
+### Running Tests
+```bash
+cd ezkey-core
+mvn test
+```
+
+### Dependencies
+
+This module depends on:
+- Spring Boot Data JPA
+- Spring Boot Validation
+- PostgreSQL Driver
+- MapStruct (for object mapping)
+- ZXing (for QR code generation)
+
+## Integration with Other Modules
+
+The core module is used by:
+- **ezkey-admin-api**: Administration API
+- **ezkey-auth-api**: Authentication API
+- **ezkey-migration**: Database migration application
+- **ezkey-demo-***: Demo applications
+
+## Configuration
 
 The migration application uses the same database configuration as other modules:
 - Database connection: `application.properties`

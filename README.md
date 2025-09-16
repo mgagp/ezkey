@@ -118,7 +118,8 @@ Ezkey is built with a modern multi-module architecture:
 
 ```
 ezkey/
-├── ezkey-core/              # Shared core module (entities, services, Flyway migrations)
+├── ezkey-core/              # Shared core library (entities, services, repositories)
+├── ezkey-migration/         # Database migration application (Flyway)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
 ├── ezkey-sim-api/           # Simulation API for testing (port 8080)
@@ -346,11 +347,19 @@ graph TB
 ### Core Components
 
 #### 🏗️ **ezkey-core**
-Central module containing:
+Pure library module containing:
 - **JPA Entities**: Integration, Enrollment, AuthAttempt
 - **Business Services**: Authentication logic, signature validation, polling
-- **Database Migrations**: Flyway-based schema management
+- **Repositories**: Spring Data JPA repositories
 - **Shared DTOs and Mappers**: Cross-module data structures
+- **Exception Classes**: Common exception definitions
+
+#### 🗄️ **ezkey-migration**
+Dedicated migration application:
+- **Flyway Integration**: Database schema management
+- **Standalone JAR**: Independent migration execution
+- **Spring Boot App**: Easy deployment and configuration
+- **Migration Scripts**: Automated database updates
 
 #### 🔧 **ezkey-admin-api** (Port 9080)
 Administration interface for:
@@ -451,12 +460,17 @@ docker run --name ezkey-postgres \
 
 2. **Run Database Migrations**:
 ```bash
-# Using the Flyway standalone tool
+# Using the dedicated migration application
 ./scripts/ezkey-flyway.sh
 
-# Or build and run with Maven
-cd ezkey-core
-mvn clean compile exec:java
+# Or run directly with Maven
+cd ezkey-migration
+mvn spring-boot:run
+
+# Or build and run the standalone JAR
+cd ezkey-migration
+mvn clean package -Pmigration-jar
+java -jar target/ezkey-migration.jar
 ```
 
 ### Running the APIs
@@ -513,7 +527,8 @@ cd ezkey_mobile
 - **[Code Style Configuration](docs/dev-tools/)** - Eclipse and Google code style files
 
 ### 📱 Module Documentation
-- **[Core Module](ezkey-core/README.md)** - Business logic and database management
+- **[Core Module](ezkey-core/README.md)** - Business logic and shared library
+- **[Migration Module](ezkey-migration/)** - Database migration application
 - **[CLI Tool](ezkey-cli/README.md)** - Command-line interface documentation
 - **[SDK Documentation](ezkey-sdk/README.md)** - Multi-language SDK guides
 

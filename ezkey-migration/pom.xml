@@ -12,14 +12,14 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	
-	<artifactId>ezkey-auth-api</artifactId>
-	<name>Ezkey Authentication API</name>
-	<description>Mobile authentication API for enrollment completion and authentication validation</description>
+	<artifactId>ezkey-migration</artifactId>
+	<name>Ezkey Migration</name>
+	<description>Database migration application for Ezkey using Flyway</description>
 	
 	<properties>
     	<m2e.apt.activation>jdt_apt</m2e.apt.activation>
 	</properties>
-	
+
 	<dependencies>
 		<!-- Core module dependency -->
 		<dependency>
@@ -30,7 +30,11 @@
 		<!-- Spring Boot Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -43,37 +47,18 @@
 			<optional>true</optional>
 		</dependency>
 		
-		<!-- API Documentation -->
+		<!-- Database -->
 		<dependency>
-			<groupId>org.springdoc</groupId>
-			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-		</dependency>
-		
-		<!-- Rate Limiting -->
-		<dependency>
-			<groupId>com.github.vladimir-bukhtoyarov</groupId>
-			<artifactId>bucket4j-core</artifactId>
-			<version>7.6.0</version>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.github.vladimir-bukhtoyarov</groupId>
-			<artifactId>bucket4j-jcache</artifactId>
-			<version>7.6.0</version>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.github.ben-manes.caffeine</groupId>
-			<artifactId>caffeine</artifactId>
-		</dependency>
-		
-		<!-- MapStruct Dependencies -->
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-processor</artifactId>
-			<scope>provided</scope>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 		
 		<!-- Test Dependencies -->
@@ -82,30 +67,42 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+        <!-- Added in-memory database for tests -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
-			<!-- Spring Boot Maven Plugin -->
+			<!-- Spring Boot Maven Plugin for migration application -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>org.ezkey.migration.EzkeyMigrationApp</mainClass>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
 
 	<profiles>
 	    <profile>
-	        <id>native</id>
-	        <properties>
-	            <spring-boot.build-image.builder>paketobuildpacks/builder:tiny</spring-boot.build-image.builder>
-	            <spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
-	        </properties>
+	        <id>migration-jar</id>
+	        <build>
+	            <plugins>
+	                <plugin>
+	                    <groupId>org.springframework.boot</groupId>
+	                    <artifactId>spring-boot-maven-plugin</artifactId>
+	                    <configuration>
+	                        <mainClass>org.ezkey.migration.EzkeyMigrationApp</mainClass>
+	                        <finalName>ezkey-migration</finalName>
+	                    </configuration>
+	                </plugin>
+	            </plugins>
+	        </build>
 	    </profile>
 	</profiles>
 

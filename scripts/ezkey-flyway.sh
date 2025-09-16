@@ -6,22 +6,25 @@ echo "==========================="
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORE_DIR="$SCRIPT_DIR/../ezkey-core"
+MIGRATION_DIR="$SCRIPT_DIR/../ezkey-migration"
 
-# Check if ezkey-core directory exists
-if [ ! -d "$CORE_DIR" ]; then
-    echo "Error: ezkey-core directory not found at $CORE_DIR"
+# Check if ezkey-migration directory exists
+if [ ! -d "$MIGRATION_DIR" ]; then
+    echo "Error: ezkey-migration directory not found at $MIGRATION_DIR"
     exit 1
 fi
 
-# Change to the core directory
-cd "$CORE_DIR"
+# Change to the migration directory
+cd "$MIGRATION_DIR"
 
 # Check if migration JAR exists, build if needed
-MIGRATION_JAR="target/ezkey-migration.jar"
-if [ ! -f "$MIGRATION_JAR" ]; then
+# Use wildcard to find the JAR with version
+MIGRATION_JAR=$(ls target/ezkey-migration-*.jar 2>/dev/null | head -1)
+if [ -z "$MIGRATION_JAR" ]; then
     echo "Migration JAR not found. Building..."
     mvn clean package -Pmigration-jar -q
+    # Re-find the JAR after building
+    MIGRATION_JAR=$(ls target/ezkey-migration-*.jar 2>/dev/null | head -1)
 fi
 
 # Run the migration application

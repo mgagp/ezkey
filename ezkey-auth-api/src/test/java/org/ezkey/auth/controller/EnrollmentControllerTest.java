@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.ezkey.auth.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
@@ -95,6 +96,7 @@ class EnrollmentControllerTest {
     @MockBean
     private EnrollmentAuthMapper enrollmentMapper;
 
+    private EnrollmentBindRequestDto bindRequestDto;
     private EnrollmentBindRequest bindRequest;
     private EnrollmentBindResponse bindResponse;
     private EnrollmentBindResponseDto bindResponseDto;
@@ -107,8 +109,14 @@ class EnrollmentControllerTest {
     @BeforeEach
     void setUp() {
         // Setup bind request test data
+        bindRequestDto = new EnrollmentBindRequestDto();
+        bindRequestDto.setEnrollmentId(123);
+        bindRequestDto.setEnrollmentProofToken("test-proof-token");
+        bindRequestDto.setLanguage("en");
+
         bindRequest = new EnrollmentBindRequest();
         bindRequest.setEnrollmentId(123);
+        bindRequest.setEnrollmentProofToken("test-proof-token");
         bindRequest.setLanguage("en");
 
         bindResponse = new EnrollmentBindResponse();
@@ -142,75 +150,102 @@ class EnrollmentControllerTest {
     // ===== BIND ENDPOINT TESTS =====
 
     @Test
-    @DisplayName("GET /api/v1/enrollments/bind/{enrollmentId} - Should return 200 when binding successful")
+    @DisplayName("POST /api/v1/enrollments/bind - Should return 200 when binding successful")
     void bind_WhenBindingSuccessful_ShouldReturn200() throws Exception {
         // Arrange
+        when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
+            .thenReturn(bindRequest);
         when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
             .thenReturn(bindResponse);
         when(enrollmentMapper.toEnrollmentBindResponseDto(bindResponse))
             .thenReturn(bindResponseDto);
 
+        String json = objectMapper.writeValueAsString(bindRequestDto);
+
         // Act & Assert
-        mockMvc.perform(get(BASE_URL + "/bind/{enrollmentId}", 123)
-                .header("Accept-Language", "en")
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(post(BASE_URL + "/bind")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
             .andExpect(status().isOk());
 
         // Verify service interactions
+        verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
         verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
         verify(enrollmentMapper, times(1)).toEnrollmentBindResponseDto(bindResponse);
     }
 
     @Test
-    @DisplayName("GET /api/v1/enrollments/bind/{enrollmentId} - Should return 400 on invalid enrollment ID")
+    @DisplayName("POST /api/v1/enrollments/bind - Should return 400 on invalid enrollment ID")
     void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
         // Arrange
+        EnrollmentBindRequestDto invalidRequestDto = new EnrollmentBindRequestDto();
+        invalidRequestDto.setEnrollmentId(999);
+        invalidRequestDto.setEnrollmentProofToken("invalid-proof-token");
+        invalidRequestDto.setLanguage("en");
+
+        when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
+            .thenReturn(bindRequest);
         when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
             .thenThrow(new IllegalArgumentException("Invalid enrollment ID"));
 
+        String json = objectMapper.writeValueAsString(invalidRequestDto);
+
         // Act & Assert
-        mockMvc.perform(get(BASE_URL + "/bind/{enrollmentId}", 999)
-                .header("Accept-Language", "en")
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(post(BASE_URL + "/bind")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
             .andExpect(status().isBadRequest());
 
         // Verify service interactions
+        verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
         verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
     }
 
     @Test
-    @DisplayName("GET /api/v1/enrollments/bind/{enrollmentId} - Should return 409 when enrollment already bound")
+    @DisplayName("POST /api/v1/enrollments/bind - Should return 409 when enrollment already bound")
     void bind_WhenEnrollmentAlreadyBound_ShouldReturn409() throws Exception {
         // Arrange
+        when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
+            .thenReturn(bindRequest);
         when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
             .thenThrow(new IllegalStateException("Enrollment already bound"));
 
+        String json = objectMapper.writeValueAsString(bindRequestDto);
+
         // Act & Assert
-        mockMvc.perform(get(BASE_URL + "/bind/{enrollmentId}", 123)
-                .header("Accept-Language", "en")
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(post(BASE_URL + "/bind")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
             .andExpect(status().isConflict());
 
         // Verify service interactions
+        verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
         verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
     }
 
     @Test
-    @DisplayName("GET /api/v1/enrollments/bind/{enrollmentId} - Should handle missing Accept-Language header")
+    @DisplayName("POST /api/v1/enrollments/bind - Should handle default language when not specified")
     void bind_WhenMissingAcceptLanguage_ShouldUseDefaultLanguage() throws Exception {
         // Arrange
+        when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
+            .thenReturn(bindRequest);
         when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
             .thenReturn(bindResponse);
         when(enrollmentMapper.toEnrollmentBindResponseDto(bindResponse))
             .thenReturn(bindResponseDto);
 
+        String json = objectMapper.writeValueAsString(bindRequestDto);
+
         // Act & Assert
-        mockMvc.perform(get(BASE_URL + "/bind/{enrollmentId}", 123)
-                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(post(BASE_URL + "/bind")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
             .andExpect(status().isOk());
 
         // Verify service interactions
+        verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
         verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
+        verify(enrollmentMapper, times(1)).toEnrollmentBindResponseDto(bindResponse);
     }
 
     // ===== VERIFY ENDPOINT TESTS =====

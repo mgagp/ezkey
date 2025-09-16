@@ -68,6 +68,12 @@ public class RateLimitProperties {
     private EndpointConfig verify = new EndpointConfig();
     
     /**
+     * Rate limiting configuration for enrollment binding endpoint.
+     * Controls how often devices can attempt enrollment binding with proof token.
+     */
+    private EndpointConfig bind = new EndpointConfig();
+    
+    /**
      * Configuration for a specific endpoint's rate limiting behavior.
      */
     public static class EndpointConfig {
@@ -140,5 +146,13 @@ public class RateLimitProperties {
     
     public void setVerify(EndpointConfig verify) {
         this.verify = verify;
+    }
+    
+    public EndpointConfig getBind() {
+        return bind;
+    }
+    
+    public void setBind(EndpointConfig bind) {
+        this.bind = bind;
     }
 }

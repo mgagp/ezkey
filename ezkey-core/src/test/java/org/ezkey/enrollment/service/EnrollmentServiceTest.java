@@ -124,6 +124,7 @@ class EnrollmentServiceTest {
         // Setup bind request
         bindRequest = new EnrollmentBindRequest();
         bindRequest.setEnrollmentId(456);
+        bindRequest.setEnrollmentProofToken("test-proof-token");
         bindRequest.setLanguage("en");
 
         // Setup verify request
@@ -223,7 +224,7 @@ class EnrollmentServiceTest {
     void bind_WhenValidRequest_ShouldBindEnrollmentSuccessfully() {
         // Arrange
         enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
         when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
         when(enrollmentRepository.findAndLockUnreadById(456)).thenReturn(Optional.of(enrollment));
         when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
@@ -239,7 +240,7 @@ class EnrollmentServiceTest {
         assertEquals("test-proof-token", response.getEnrollmentProofToken());
 
         // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
+        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
         verify(integrationRepository, times(1)).findById(123);
         verify(enrollmentRepository, times(1)).findAndLockUnreadById(456);
         verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
@@ -249,7 +250,7 @@ class EnrollmentServiceTest {
     @DisplayName("bind() - Should throw IllegalArgumentException when enrollment not found")
     void bind_WhenEnrollmentNotFound_ShouldThrowIllegalArgumentException() {
         // Arrange
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.empty());
+        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.empty());
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
@@ -258,7 +259,7 @@ class EnrollmentServiceTest {
         assertEquals("Enrollment binding failed", exception.getMessage());
 
         // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
+        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
         verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
     }
 
@@ -267,7 +268,7 @@ class EnrollmentServiceTest {
     void bind_WhenEnrollmentAlreadyBound_ShouldThrowIllegalStateException() {
         // Arrange
         enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -276,7 +277,7 @@ class EnrollmentServiceTest {
         assertEquals("Enrollment already bound by a device", exception.getMessage());
 
         // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
+        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
         verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
     }
 
@@ -285,7 +286,7 @@ class EnrollmentServiceTest {
     void bind_WhenIntegrationNotFound_ShouldThrowIllegalStateException() {
         // Arrange
         enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
         when(integrationRepository.findById(123)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -295,7 +296,7 @@ class EnrollmentServiceTest {
         assertEquals("Enrollment binding failed", exception.getMessage());
 
         // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
+        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
         verify(integrationRepository, times(1)).findById(123);
         verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
     }
@@ -305,7 +306,7 @@ class EnrollmentServiceTest {
     void bind_WhenLockAcquisitionFails_ShouldThrowIllegalArgumentException() {
         // Arrange
         enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
         when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
         when(enrollmentRepository.findAndLockUnreadById(456)).thenReturn(Optional.empty());
 
@@ -316,7 +317,7 @@ class EnrollmentServiceTest {
         assertEquals("Enrollment not found or already bound", exception.getMessage());
 
         // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
+        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
         verify(integrationRepository, times(1)).findById(123);
         verify(enrollmentRepository, times(1)).findAndLockUnreadById(456);
         verify(enrollmentRepository, never()).save(any(Enrollment.class));

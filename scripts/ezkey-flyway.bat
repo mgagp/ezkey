@@ -6,22 +6,25 @@ echo ===========================
 
 REM Get the directory where this script is located
 set SCRIPT_DIR=%~dp0
-set CORE_DIR=%SCRIPT_DIR%..\ezkey-core
+set MIGRATION_DIR=%SCRIPT_DIR%..\ezkey-migration
 
-REM Check if ezkey-core directory exists
-if not exist "%CORE_DIR%" (
-    echo Error: ezkey-core directory not found at %CORE_DIR%
+REM Check if ezkey-migration directory exists
+if not exist "%MIGRATION_DIR%" (
+    echo Error: ezkey-migration directory not found at %MIGRATION_DIR%
     exit /b 1
 )
 
-REM Change to the core directory
-cd /d "%CORE_DIR%"
+REM Change to the migration directory
+cd /d "%MIGRATION_DIR%"
 
 REM Check if migration JAR exists, build if needed
-set MIGRATION_JAR=target\ezkey-migration.jar
+REM Use wildcard to find the JAR with version
+for %%f in (target\ezkey-migration-*.jar) do set MIGRATION_JAR=%%f
 if not exist "%MIGRATION_JAR%" (
     echo Migration JAR not found. Building...
     mvn clean package -Pmigration-jar -q
+    REM Re-find the JAR after building
+    for %%f in (target\ezkey-migration-*.jar) do set MIGRATION_JAR=%%f
 )
 
 REM Run the migration application
