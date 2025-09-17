@@ -61,12 +61,14 @@ public class EzkeyAppController {
     }
 
     @PostMapping("/enrollment/bind")
-    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,@RequestParam(value = "language",defaultValue = "en") String language,Model model) {
+    public String bindEnrollment(@RequestParam("enrollmentId") Integer enrollmentId,
+                                 @RequestParam("enrollmentProofToken") String enrollmentProofToken,
+                                 @RequestParam(value = "language",defaultValue = "en") String language,Model model) {
         model.addAttribute("pageTitle","Enrollment - Bind");
         model.addAttribute("enrollmentId",enrollmentId);
         try{
-            // Call the bind API
-            EnrollmentBindResponseDto bindResponse = authApiService.bind(enrollmentId).block();
+            // Call the bind API with proof token
+            EnrollmentBindResponseDto bindResponse = authApiService.bind(enrollmentId, enrollmentProofToken, language).block();
             if (bindResponse != null){
                 // Generate device keys
                 KeyPair keyPair = cryptoService.generateDeviceKeyPair();
@@ -74,7 +76,7 @@ public class EzkeyAppController {
                 String devicePrivateKeyB64 = cryptoService.privateKeyToBase64(keyPair.getPrivate());
 
                 String integrationPublicKey = bindResponse.getIntegrationPublicKey();
-                String enrollmentProofToken = bindResponse.getEnrollmentProofToken();
+                String responseProofToken = bindResponse.getEnrollmentProofToken();
 
                 // Get integration information from the response
                 String integrationName = bindResponse.getIntegrationName();
@@ -88,13 +90,13 @@ public class EzkeyAppController {
                 // Save interim record before verify with integration information
                 Record record = new Record(enrollmentId,null, // integrationId - would be set if available
                         enrollmentName,null, // enrollmentUrl
-                        integrationPublicKey,enrollmentProofToken, // Store the proof token (not signed)
+                        integrationPublicKey,responseProofToken, // Store the proof token (not signed)
                         devicePublicKeyB64,devicePrivateKeyB64,null,"Device",null,integrationName,integrationDescription,integrationLogo);
                 storeService.save(record);
 
                 model.addAttribute("enrollmentId",enrollmentId);
                 model.addAttribute("enrollmentName",enrollmentName);
-                model.addAttribute("enrollmentProofToken",enrollmentProofToken);
+                model.addAttribute("enrollmentProofToken",responseProofToken);
                 model.addAttribute("integrationPublicKey",integrationPublicKey);
                 model.addAttribute("integrationName",integrationName);
                 model.addAttribute("integrationDescription",integrationDescription);

@@ -6,6 +6,7 @@ import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondResponseDto;
+import org.ezkey.demodevice.generated.dto.EnrollmentBindRequestDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentBindResponseDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
@@ -36,18 +37,32 @@ public class AuthApiService {
     }
 
     /**
-     * Calls GET /api/v1/enrollment/bind/{id} to start enrollment binding.
+     * Calls POST /api/v1/enrollments/bind to start enrollment binding with proof token.
      *
      * @param enrollmentId id to bind
+     * @param enrollmentProofToken proof token for authentication
+     * @param language preferred language for i18n fields
      * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
      */
-    public Mono<EnrollmentBindResponseDto> bind(Integer enrollmentId) {
-        String uri = String.format("/api/v1/enrollments/bind/%d",enrollmentId);
+    public Mono<EnrollmentBindResponseDto> bind(Integer enrollmentId, String enrollmentProofToken, String language) {
+        String uri = "/api/v1/enrollments/bind";
 
-        Mono<EnrollmentBindResponseDto> responseMono = authClient.get().uri(uri).retrieve().bodyToMono(EnrollmentBindResponseDto.class).timeout(Duration.ofSeconds(15));
+        // Create request DTO
+        EnrollmentBindRequestDto requestDto = new EnrollmentBindRequestDto()
+                .enrollmentId(enrollmentId)
+                .enrollmentProofToken(enrollmentProofToken)
+                .language(language);
 
-        Mono<EnrollmentBindResponseDto> errorHandledMono = responseMono.doOnError(e -> logger.error("Bind failed for {}",enrollmentId,e))
-                .onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex)).onErrorResume(Exception.class,ex -> Mono.error(ex));
+        WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
+        WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
+
+        Mono<EnrollmentBindResponseDto> responseMono = headersSpec.retrieve().bodyToMono(EnrollmentBindResponseDto.class).timeout(Duration.ofSeconds(15));
+
+        Mono<EnrollmentBindResponseDto> errorHandledMono = responseMono
+                .doOnSuccess(response -> logger.info("Bind API response for enrollment {}: {}", enrollmentId, response))
+                .doOnError(e -> logger.error("Bind failed for enrollment {} with proof token", enrollmentId, e))
+                .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
+                .onErrorResume(Exception.class, ex -> Mono.error(ex));
 
         return errorHandledMono;
     }

@@ -74,6 +74,7 @@
                     <td><span class="status-badge" th:classappend="${enrollment.enrollmentActive} ? ' status-active' : ' status-inactive'" th:text="${enrollment.enrollmentActive} ? 'YES' : 'NO'">YES</span></td>
                 </tr>
                 <tr><td class="detail-label">Challenge</td><td th:text="${enrollment.enrollmentChallenge}">123456</td></tr>
+                <tr th:if="${enrollment.enrollmentProofToken != null}"><td class="detail-label">Enrollment Proof Token</td><td style="word-break: break-all; font-family: 'Courier New', monospace; font-size: 0.9rem; background: var(--acme-gray); padding: 0.5rem; border-radius: 4px;" th:text="${enrollment.enrollmentProofToken}">EZK-ABC123-DEF456</td></tr>
                 <tr th:if="${enrollment.authAttemptChallengeRequired != null}"><td class="detail-label">Auth Attempt Challenge Required</td><td th:text="${enrollment.authAttemptChallengeRequired} ? 'YES' : 'NO'">YES</td></tr>
                 <tr th:if="${enrollment.integrationPublicKey != null}"><td class="detail-label">Integration Public Key</td><td style="word-break: break-all; font-family: 'Courier New', monospace;" th:text="${enrollment.integrationPublicKey}">PUBKEY</td></tr>
                 <tr th:if="${enrollment.devicePublicKey != null}"><td class="detail-label">Device Public Key</td><td style="word-break: break-all; font-family: 'Courier New', monospace;" th:text="${enrollment.devicePublicKey}">PUBKEY</td></tr>

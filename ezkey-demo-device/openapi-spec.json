@@ -45,6 +45,8 @@
         "tags": [
           "Enrollments"
         ],
+        "summary": "Complete enrollment verification",
+        "description": "Submits device cryptographic keys and signatures to finalize enrollment",
         "operationId": "verify",
         "requestBody": {
           "content": {
@@ -57,12 +59,104 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "409": {
+            "description": "Enrollment state conflict or already verified",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid verification data or cryptographic validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Enrollment verification completed successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/bind": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Initiate device binding with proof token",
+        "description": "Retrieves enrollment binding information using secure enrollment proof token",
+        "operationId": "bind",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentBindRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "409": {
+            "description": "Enrollment already bound or proof token already used",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Enrollment binding information retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
                 }
               }
             }
@@ -75,6 +169,8 @@
         "tags": [
           "Authentication Attempts"
         ],
+        "summary": "Submit authentication response",
+        "description": "Submits mobile device's response to an authentication request",
         "operationId": "respond",
         "parameters": [
           {
@@ -98,8 +194,38 @@
           "required": true
         },
         "responses": {
+          "409": {
+            "description": "Authentication attempt state conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
           "200": {
-            "description": "OK",
+            "description": "Authentication response submitted successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid response data or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -171,16 +297,6 @@
               }
             }
           },
-          "409": {
-            "description": "State conflict (auth attempt already read)",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Pending authentication request found",
             "content": {
@@ -190,42 +306,13 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/enrollments/bind/{enrollmentId}": {
-      "get": {
-        "tags": [
-          "Enrollments"
-        ],
-        "operationId": "bind",
-        "parameters": [
-          {
-            "name": "enrollmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
           },
-          {
-            "name": "Accept-Language",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
+          "409": {
+            "description": "State conflict (auth attempt already read)",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
                 }
               }
             }
@@ -283,6 +370,79 @@
           }
         },
         "description": "Response DTO for enrollment verification completion"
+      },
+      "EnrollmentBindRequestDto": {
+        "required": [
+          "enrollmentId",
+          "enrollmentProofToken"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "description": "Enrollment ID to bind to the mobile device",
+            "format": "int32",
+            "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token for authentication",
+            "example": "abc123-def456-ghi789"
+          },
+          "language": {
+            "type": "string",
+            "description": "Preferred language for i18n fields",
+            "example": "en"
+          }
+        },
+        "description": "Request DTO for enrollment binding initiation with proof token"
+      },
+      "EnrollmentBindResponseDto": {
+        "required": [
+          "enrollmentId",
+          "enrollmentProofToken",
+          "integrationPublicKey"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "description": "Enrollment ID that was bound to the mobile device",
+            "format": "int32",
+            "example": 123
+          },
+          "integrationPublicKey": {
+            "type": "string",
+            "description": "Integration's public key for cryptographic verification",
+            "example": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token to be signed by the device",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "integrationLogo": {
+            "type": "string",
+            "description": "Logo URL or base64-encoded image for the integration",
+            "example": "https://acme.com/logo.png"
+          },
+          "integrationName": {
+            "type": "string",
+            "description": "Display name of the integration",
+            "example": "Acme Bank"
+          },
+          "integrationDescription": {
+            "type": "string",
+            "description": "Description of the integration",
+            "example": "Acme Bank provides secure online banking services."
+          },
+          "enrollmentName": {
+            "type": "string",
+            "description": "Human-readable name for the enrollment",
+            "example": "John's iPhone"
+          }
+        },
+        "description": "Response DTO containing enrollment binding information"
       },
       "AuthAttemptRespondRequestDto": {
         "required": [
@@ -403,53 +563,6 @@
           }
         },
         "description": "Response DTO containing pending authentication attempt details"
-      },
-      "EnrollmentBindResponseDto": {
-        "required": [
-          "enrollmentId",
-          "enrollmentProofToken",
-          "integrationPublicKey"
-        ],
-        "type": "object",
-        "properties": {
-          "enrollmentId": {
-            "type": "integer",
-            "description": "Enrollment ID that was bound to the mobile device",
-            "format": "int32",
-            "example": 123
-          },
-          "integrationPublicKey": {
-            "type": "string",
-            "description": "Integration's public key for cryptographic verification",
-            "example": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-          },
-          "enrollmentProofToken": {
-            "type": "string",
-            "description": "Enrollment proof token to be signed by the device",
-            "example": "eyJhbGciOiJSUzI1NiJ9..."
-          },
-          "integrationLogo": {
-            "type": "string",
-            "description": "Logo URL or base64-encoded image for the integration",
-            "example": "https://acme.com/logo.png"
-          },
-          "integrationName": {
-            "type": "string",
-            "description": "Display name of the integration",
-            "example": "Acme Bank"
-          },
-          "integrationDescription": {
-            "type": "string",
-            "description": "Description of the integration",
-            "example": "Acme Bank provides secure online banking services."
-          },
-          "enrollmentName": {
-            "type": "string",
-            "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone"
-          }
-        },
-        "description": "Response DTO containing enrollment binding information"
       }
     },
     "securitySchemes": {

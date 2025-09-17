@@ -617,6 +617,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Authentication completed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -629,16 +639,6 @@
           },
           "404": {
             "description": "Auth attempt not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Authentication completed",
             "content": {
               "*/*": {
                 "schema": {
