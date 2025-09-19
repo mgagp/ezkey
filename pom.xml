@@ -61,6 +61,7 @@
 		<pmd.version>3.21.2</pmd.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<zxing.version>3.5.3</zxing.version>
+		<fmt-maven-plugin.version>3.2.0</fmt-maven-plugin.version>
 	</properties>
 	
 	<!-- Gestion centralisée des dépendances -->
@@ -119,6 +120,20 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<!-- Google Java Format Plugin -->
+				<plugin>
+					<groupId>com.coveo</groupId>
+					<artifactId>fmt-maven-plugin</artifactId>
+					<version>${fmt-maven-plugin.version}</version>
+					<executions>
+						<execution>
+							<goals>
+								<goal>format</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				
 				<!-- Maven Compiler Plugin -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -205,6 +220,10 @@
 		
 		<!-- Plugins appliqués à tous les modules -->
 		<plugins>
+			<plugin>
+				<groupId>com.coveo</groupId>
+				<artifactId>fmt-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
