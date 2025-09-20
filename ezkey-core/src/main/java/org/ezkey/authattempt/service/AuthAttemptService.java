@@ -33,7 +33,6 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -42,6 +41,82 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
+/**
+ * Core service for managing authentication attempts in the Ezkey MFA system.
+ * <p>
+ * This service is the central component of Ezkey's authentication flow, handling the complete
+ * lifecycle of MFA authentication attempts from creation to completion. It implements the
+ * mobile-first authentication model where devices poll for pending requests and submit
+ * cryptographically signed responses.
+ * </p>
+ * 
+ * <p>
+ * <b>Authentication Flow Support:</b>
+ * <ul>
+ * <li><b>Admin Flow:</b> Creates authentication attempts via Admin API for web applications</li>
+ * <li><b>Mobile Flow:</b> Processes pending requests and responses via Auth API for mobile devices</li>
+ * <li><b>Wait Flow:</b> Provides synchronous polling for web applications awaiting authentication</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>
+ * <b>Security Features:</b>
+ * <ul>
+ * <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using RSA-2048</li>
+ * <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through secure token-based identification</li>
+ * <li><b>Anti-Replay Protection:</b> Ensures device proof tokens are used only once</li>
+ * <li><b>Challenge-Based Security:</b> Implements configurable numeric challenges for additional verification</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>
+ * <b>Transaction Management:</b>
+ * This service uses Spring's declarative transaction management with appropriate propagation
+ * settings. The wait operation uses NOT_SUPPORTED propagation to avoid long-running transactions
+ * while maintaining data consistency for other operations.
+ * </p>
+ * 
+ * <p>
+ * <b>Integration Points:</b>
+ * <ul>
+ * <li><b>AuthAttemptRepository:</b> Data persistence layer for authentication attempts</li>
+ * <li><b>EnrollmentRepository:</b> Enrollment data access for validation and device management</li>
+ * <li><b>SignatureService:</b> Cryptographic operations for signature validation</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>
+ * <b>Error Handling:</b>
+ * Implements comprehensive error handling with secure error messages to prevent information
+ * leakage while providing detailed logging for debugging and monitoring purposes.
+ * </p>
+ * 
+ * <p>
+ * <b>Performance Considerations:</b>
+ * <ul>
+ * <li><b>Read-Once Guarantee:</b> Authentication attempts can only be read once to prevent replay attacks</li>
+ * <li><b>Efficient Polling:</b> Optimized database queries for pending request checking</li>
+ * <li><b>Timeout Management:</b> Configurable timeouts prevent resource exhaustion</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * </p>
+ * <p>
+ * <b>License:</b> MIT
+ * </p>
+ * 
+ * @author Ezkey contributors
+ * @since 2025
+ * @see AuthAttempt
+ * @see AuthAttemptCreateRequest
+ * @see AuthAttemptPendingRequest
+ * @see AuthAttemptRespondRequest
+ * @see AuthAttemptWaitRequest
+ * @see Enrollment
+ * @see SignatureService
+ */
 @Service
 @Transactional
 public class AuthAttemptService {
@@ -61,13 +136,12 @@ public class AuthAttemptService {
     private EntityManager entityManager;
 
     /**
-     * Constructs the authorization attempt service with required dependencies.
+     * Constructs the authentication attempt service with required dependencies.
      *
-     * @param authAttemptRepository the JPA repository for authorization attempts
+     * @param authAttemptRepository the JPA repository for authentication attempts
      * @param enrollmentRepository the JPA repository for enrollments
      * @param signatureService the signature service for cryptographic operations
      */
-    @Autowired
     public AuthAttemptService(AuthAttemptRepository authAttemptRepository,EnrollmentRepository enrollmentRepository,SignatureService signatureService){
         this.authAttemptRepository = authAttemptRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -75,34 +149,34 @@ public class AuthAttemptService {
     }
 
     /**
-     * Retrieves an authorization attempt by its ID.
+     * Retrieves an authentication attempt by its ID.
      *
-     * @param id the authorization attempt ID
-     * @return the authorization attempt entity
-     * @throws ResourceNotFoundException if the authorization attempt is not found
+     * @param id the authentication attempt ID
+     * @return the authentication attempt entity
+     * @throws ResourceNotFoundException if the authentication attempt is not found
      */
     public AuthAttempt getById(Integer id) {
-        return authAttemptRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Authorization attempt",id));
+        return authAttemptRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Authentication attempt",id));
     }
 
     /**
-     * Retrieves all authorization attempts.
+     * Retrieves all authentication attempts.
      *
-     * @return list of all authorization attempts
+     * @return list of all authentication attempts
      */
     public List<AuthAttempt> getAll() {
         return authAttemptRepository.findAll();
     }
 
     /**
-     * Creates a new authorization attempt.
+     * Creates a new authentication attempt.
      * <p>
-     * This method creates a new authorization attempt with the provided data,
+     * This method creates a new authentication attempt with the provided data,
      * validates the associated enrollment, and generates necessary codes and challenges.
      * </p>
      *
-     * @param authRequest the authorization attempt creation request
-     * @return the created authorization attempt response
+     * @param authRequest the authentication attempt creation request
+     * @return the created authentication attempt response
      * @throws IllegalArgumentException if the enrollment is not found or validation fails
      * @throws RuntimeException if the creation fails
      */
@@ -156,30 +230,33 @@ public class AuthAttemptService {
     }
 
     /**
-     * Updates an authorization attempt.
+     * Updates an authentication attempt.
      *
-     * @param authAttempt the authorization attempt to update
-     * @return the updated authorization attempt
+     * @param authAttempt the authentication attempt to update
+     * @return the updated authentication attempt
      */
     public AuthAttempt update(AuthAttempt authAttempt) {
         return authAttemptRepository.save(authAttempt);
     }
 
     /**
-     * Deletes an authorization attempt by its ID.
+     * Deletes an authentication attempt by its ID.
      *
-     * @param id the authorization attempt ID to delete
-     * @throws ResourceNotFoundException if the authorization attempt is not found
+     * @param id the authentication attempt ID to delete
+     * @throws ResourceNotFoundException if the authentication attempt is not found
      */
     public void delete(Integer id) {
         if (!authAttemptRepository.existsById(id)){
-            throw new ResourceNotFoundException("Authorization attempt",id);
+            throw new ResourceNotFoundException("Authentication attempt",id);
         }
         authAttemptRepository.deleteById(id);
     }
 
     /**
-     * Processes a pending authentication request.
+     * Process pending authentication attempt request using secure enrollment proof token.
+     * 
+     * Security Enhancement: Validates enrollment ownership through cryptographic proof token
+     * instead of relying on URL-based enrollment ID, preventing enumeration attacks.
      * <p>
      * This method implements the fundamental Ezkey security principle of read-once guarantee.
      * It validates the request completely before locking the authentication attempt to ensure
@@ -197,12 +274,20 @@ public class AuthAttemptService {
      * </p>
      *
      * <p>
+     * <b>Security Enhancement:</b> This method now uses enrollmentProofToken to find
+     * the enrollment instead of relying on enrollmentId from the URL path. This prevents
+     * enumeration attacks while maintaining the security of the authentication flow.
+     * </p>
+     *
+     * <p>
      * <b>Implementation Strategy:</b>
      * <ul>
-     * <li><b>Step 1:</b> Complete validation before any database modification</li>
-     * <li><b>Step 2:</b> Atomic lock and marking only if validation succeeds</li>
-     * <li><b>Step 3:</b> Immediate marking to preserve read-once guarantee</li>
-     * <li><b>Step 4:</b> Response generation with signed proof token</li>
+     * <li><b>Step 1:</b> Find enrollment by proof token and validate it's active</li>
+     * <li><b>Step 2:</b> Validate enrollment ID matches the proof token</li>
+     * <li><b>Step 3:</b> Complete validation before any database modification</li>
+     * <li><b>Step 4:</b> Atomic lock and marking only if validation succeeds</li>
+     * <li><b>Step 5:</b> Immediate marking to preserve read-once guarantee</li>
+     * <li><b>Step 6:</b> Response generation with signed proof token</li>
      * </ul>
      * </p>
      *
@@ -215,17 +300,25 @@ public class AuthAttemptService {
      * </ul>
      * </p>
      *
-     * @param request the pending authentication request
+     * @param request the pending request with enrollment proof token
      * @return the pending authentication response with proof token
-     * @throws IllegalArgumentException if validation fails (with secure error messages)
+     * @throws IllegalArgumentException if enrollment proof token is invalid
      * @throws IllegalStateException if the authentication attempt is already processed
      * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
      * @since 2025
      */
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
-        Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId()).orElse(null);
-        if (enrollment == null){
-            logger.warn("Enrollment not found for ID: {}",request.getEnrollmentId());
+        // NEW: Find enrollment by proof token instead of ID
+        Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
+            request.getEnrollmentProofToken(), true)
+            .orElseThrow(() -> {
+                logger.warn("Invalid enrollment proof token provided");
+                return new IllegalArgumentException("Authentication request failed");
+            });
+        
+        // Validate that the provided enrollment ID matches the proof token
+        if (!enrollment.getEnrollmentId().equals(request.getEnrollmentId())) {
+            logger.warn("Enrollment ID mismatch with proof token for enrollment: {}", enrollment.getEnrollmentId());
             throw new IllegalArgumentException("Authentication request failed");
         }
         // Validate device public key
@@ -273,6 +366,37 @@ public class AuthAttemptService {
         return response;
     }
 
+    /**
+     * Processes an authentication response from a mobile device.
+     * <p>
+     * This method handles the completion of an authentication attempt when a mobile device
+     * submits its response (approve/deny) with cryptographic proof. It validates the device
+     * signature, checks challenge responses if required, and updates the authentication
+     * attempt status accordingly.
+     * </p>
+     * 
+     * <p>
+     * <b>Security Validations:</b>
+     * <ul>
+     * <li><b>Signature Verification:</b> Validates device signature using enrollment public key</li>
+     * <li><b>Challenge Validation:</b> Verifies challenge response if required by enrollment</li>
+     * <li><b>Status Validation:</b> Ensures authentication attempt is in PENDING status</li>
+     * <li><b>Proof Token Validation:</b> Verifies authentication attempt proof token signature</li>
+     * </ul>
+     * </p>
+     * 
+     * <p>
+     * <b>Response Processing:</b>
+     * Based on the user's decision (accept/reject) and validation results, the method
+     * updates the authentication attempt status to ACCEPTED, REJECTED, or INVALID.
+     * </p>
+     *
+     * @param request the authentication response request from mobile device
+     * @return the authentication response result with status and message
+     * @see AuthAttemptRespondRequest
+     * @see AuthAttemptRespondResponse
+     * @see AuthenticationResult
+     */
     public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
         AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 

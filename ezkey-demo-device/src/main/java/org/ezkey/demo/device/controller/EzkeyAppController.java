@@ -186,8 +186,11 @@ public class EzkeyAppController {
             String deviceProofToken = cryptoService.generateProofToken();
             String deviceProofTokenSigned = cryptoService.signStringToBase64(deviceProofToken,cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
 
-            // Create pending request
-            AuthAttemptPendingRequestDto pendingRequest = new AuthAttemptPendingRequestDto().enrollmentId(enrollmentId).deviceProofToken(deviceProofToken)
+            // Create pending request with enrollmentProofToken
+            AuthAttemptPendingRequestDto pendingRequest = new AuthAttemptPendingRequestDto()
+                    .enrollmentId(enrollmentId)
+                    .enrollmentProofToken(rec.enrollmentProofToken())
+                    .deviceProofToken(deviceProofToken)
                     .deviceProofTokenSigned(deviceProofTokenSigned);
 
             logger.info("Checking for pending auth attempts for enrollment {}: {}",enrollmentId,pendingRequest);

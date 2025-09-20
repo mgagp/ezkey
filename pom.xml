@@ -61,7 +61,7 @@
 		<pmd.version>3.21.2</pmd.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<zxing.version>3.5.3</zxing.version>
-		<fmt-maven-plugin.version>3.2.0</fmt-maven-plugin.version>
+		<spotless.version>2.43.0</spotless.version>
 	</properties>
 	
 	<!-- Gestion centralisée des dépendances -->
@@ -120,15 +120,23 @@
 	<build>
 		<pluginManagement>
 			<plugins>
-				<!-- Google Java Format Plugin -->
+				<!-- Spotless Plugin (Google Java Format) -->
 				<plugin>
-					<groupId>com.coveo</groupId>
-					<artifactId>fmt-maven-plugin</artifactId>
-					<version>${fmt-maven-plugin.version}</version>
+					<groupId>com.diffplug.spotless</groupId>
+					<artifactId>spotless-maven-plugin</artifactId>
+					<version>${spotless.version}</version>
+					<configuration>
+						<java>
+							<googleJavaFormat>
+								<version>1.28.0</version>
+								<style>GOOGLE</style>
+							</googleJavaFormat>
+						</java>
+					</configuration>
 					<executions>
 						<execution>
 							<goals>
-								<goal>format</goal>
+								<goal>apply</goal>
 							</goals>
 						</execution>
 					</executions>
@@ -214,6 +222,14 @@
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
 					<version>${spring-boot.version}</version>
+					<configuration>
+						<excludes>
+							<exclude>
+								<groupId>org.projectlombok</groupId>
+								<artifactId>lombok</artifactId>
+							</exclude>
+						</excludes>
+					</configuration>
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -221,8 +237,8 @@
 		<!-- Plugins appliqués à tous les modules -->
 		<plugins>
 			<plugin>
-				<groupId>com.coveo</groupId>
-				<artifactId>fmt-maven-plugin</artifactId>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

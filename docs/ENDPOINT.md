@@ -77,18 +77,20 @@ String signature = signWithDeviceKey(authAttemptProofToken);
 
 ### a) Retrieve pending request
 
-**POST /api/v1/auth-attempts/pending/{enrollmentId}**
+**POST /api/v1/auth-attempts/pending**
 
-- **Description**: The mobile device queries the backend to check if there is a pending authentication request for its enrollmentId. The body contains a cryptographic signature proving the authenticity of the request.
+- **Description**: The mobile device queries the backend to check if there is a pending authentication request for its enrollment. The body contains a cryptographic signature proving the authenticity of the request and an enrollment proof token for secure enrollment identification.
 - **Why POST?**: The crypto signature is transmitted in the body, which is not possible with GET.
+- **Security Enhancement**: This endpoint now uses enrollmentProofToken in the request body instead of enrollmentId in the URL path to prevent enumeration attacks.
 
 **Request**
 ```http
-POST /api/v1/auth-attempts/pending/456
+POST /api/v1/auth-attempts/pending
 Content-Type: application/json
 
 {
   "enrollmentId": 456,
+  "enrollmentProofToken": "EZK-ABC123-DEF456",
   "deviceProofToken": "eyJhbGciOiJSUzI1NiJ9...",
   "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
 }

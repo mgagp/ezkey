@@ -179,4 +179,31 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
      */
     Optional<Enrollment> findByEnrollmentIdAndEnrollmentProofToken(Integer enrollmentId, String enrollmentProofToken);
 
+    /**
+     * Find active enrollment by proof token.
+     * Used for secure enrollment identification in PENDING requests.
+     * <p>
+     * This method provides secure access to enrollment data using only the
+     * enrollment proof token. This prevents enumeration attacks by removing
+     * the need to expose enrollment IDs in URLs while maintaining security
+     * through cryptographic proof token validation.
+     * </p>
+     * 
+     * <p>
+     * <b>Security Purpose:</b>
+     * <ul>
+     * <li>Prevents enumeration attacks on enrollment IDs</li>
+     * <li>Ensures only parties with valid proof tokens can access enrollment data</li>
+     * <li>Protects sensitive enrollment information from unauthorized access</li>
+     * <li>Validates that enrollment is active and can be used for authentication</li>
+     * </ul>
+     * </p>
+     * 
+     * @param enrollmentProofToken the cryptographic proof token
+     * @param active whether the enrollment is active
+     * @return enrollment if found and active
+     * @since 2025
+     */
+    Optional<Enrollment> findByEnrollmentProofTokenAndActive(String enrollmentProofToken, Boolean active);
+
 }

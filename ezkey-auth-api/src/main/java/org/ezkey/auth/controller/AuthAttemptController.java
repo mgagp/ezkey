@@ -10,6 +10,8 @@
 
 package org.ezkey.auth.controller;
 
+import java.util.NoSuchElementException;
+
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
@@ -18,12 +20,16 @@ import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,7 +49,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * <p>
  * <b>Auth API Endpoints (Mobile):</b>
  * <ul>
- * <li><b>POST /api/v1/auth-attempts/pending/{enrollmentId}</b> - Check for pending authentication requests</li>
+ * <li><b>POST /api/v1/auth-attempts/pending</b> - Check for pending authentication requests</li>
  * <li><b>POST /api/v1/auth-attempts/respond/{authAttemptId}</b> - Submit authentication response</li>
  * </ul>
  * </p>
@@ -79,6 +85,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Authentication Attempts", description = "Mobile authentication attempt operations for checking pending requests and submitting responses")
 public class AuthAttemptController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
+
     // Rate limiting endpoint constants
     public static final String ENDPOINT_PENDING = "/pending";
     public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
@@ -99,7 +107,10 @@ public class AuthAttemptController {
     }
 
     /**
-     * Checks for pending authentication requests for a mobile device.
+     * Retrieve pending authentication attempts for a mobile device.
+     * 
+     * Security Enhancement: Enrollment identification moved from URL path to request body
+     * using enrollmentProofToken to prevent enumeration attacks.
      * <p>
      * The mobile device polls this endpoint to check if there are pending authentication
      * requests for its enrollment. The request body contains a cryptographic signature
@@ -113,26 +124,40 @@ public class AuthAttemptController {
      * of pending requests (204 No Content) is a normal operational state, not an error.
      * </p>
      *
-     * @param id the enrollment ID to check for pending requests
-     * @param request the pending request DTO containing cryptographic signature
+     * <p>
+     * <b>Security Enhancement:</b> This endpoint now uses enrollmentProofToken in the
+     * request body instead of enrollmentId in the URL path to prevent enumeration attacks.
+     * The enrollmentProofToken provides cryptographic proof of enrollment ownership.
+     * </p>
+     *
+     * @param request the pending request containing enrollment proof token and device authentication
      * @return ResponseEntity containing pending authentication details with HTTP 200,
      * or 204 No Content if no pending requests, or 400 for invalid requests
+     * @throws IllegalArgumentException if enrollment proof token is invalid or enrollment not found
+     * @since 2025
      */
-    @PostMapping("/pending/{enrollmentId}")
-    @Operation(summary = "Check for pending authentication requests", 
-               description = "Mobile device polls for pending authentication requests. Returns 200 with request details or 204 if no pending requests exist.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Pending authentication request found", 
-                    content = @Content(schema = @Schema(implementation = AuthAttemptPendingResponseDto.class))),
-        @ApiResponse(responseCode = "204", description = "No pending authentication requests found (normal state)"),
-        @ApiResponse(responseCode = "400", description = "Invalid request (enrollment not found, invalid signature)"),
-        @ApiResponse(responseCode = "409", description = "State conflict (auth attempt already read)"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id,@RequestBody AuthAttemptPendingRequestDto request) {
-        request.setEnrollmentId(id);
-        AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
-        return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
+    @PostMapping("/pending")
+    @Operation(
+        summary = "Get pending authentication attempt",
+        description = "Retrieve pending authentication attempts using secure enrollment proof token. " +
+                     "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Pending authentication attempt found"),
+            @ApiResponse(responseCode = "204", description = "No pending authentication attempts"),
+            @ApiResponse(responseCode = "400", description = "Invalid request or enrollment proof token"),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        }
+    )
+    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
+        logger.info("Processing pending request for enrollment with proof token");
+        
+        try {
+            AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
+        } catch (NoSuchElementException e) {
+            logger.debug("No pending authentication attempts found");
+            return ResponseEntity.noContent().build();
+        }
     }
 
     /**

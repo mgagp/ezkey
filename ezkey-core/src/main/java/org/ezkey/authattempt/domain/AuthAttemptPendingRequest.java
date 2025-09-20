@@ -12,6 +12,7 @@ package org.ezkey.authattempt.domain;
 
 /**
  * Domain request object for retrieving pending authentication attempts.
+ * Updated to include enrollmentProofToken for secure enrollment identification.
  * <p>
  * This domain object represents the request data used internally by the service layer
  * to check for pending authentication attempts for a specific enrollment. It contains
@@ -40,6 +41,13 @@ package org.ezkey.authattempt.domain;
  * </p>
  *
  * <p>
+ * <b>Security Enhancement:</b> This domain object now includes enrollmentProofToken to
+ * prevent enumeration attacks by removing the enrollment ID from the URL path.
+ * The enrollmentProofToken provides cryptographic proof of enrollment ownership
+ * while maintaining the security of the authentication flow.
+ * </p>
+ *
+ * <p>
  * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  * </p>
  * <p>
@@ -55,14 +63,27 @@ package org.ezkey.authattempt.domain;
 public class AuthAttemptPendingRequest {
 
     /**
-     * The enrollment ID to check for pending authentication attempts.
+     * The enrollment ID for internal processing.
+     * Note: This field is validated against the enrollmentProofToken for security.
      * <p>
      * Must reference an existing and active enrollment. Used to identify
      * which device enrollment is requesting pending authentication attempts
      * and to filter authentication requests to the appropriate device.
+     * This field is validated against the enrollmentProofToken to prevent
+     * enumeration attacks and ensure enrollment ownership.
      * </p>
      */
     private Integer enrollmentId;
+
+    /**
+     * Cryptographic proof token that authenticates the enrollment.
+     * <p>
+     * This token replaces URL-based enrollment identification to prevent enumeration attacks.
+     * It provides cryptographic proof that the requesting device owns the enrollment
+     * and prevents unauthorized access to pending authentication attempts.
+     * </p>
+     */
+    private String enrollmentProofToken;
 
     /**
      * The device's proof token for authentication.
@@ -102,6 +123,24 @@ public class AuthAttemptPendingRequest {
      */
     public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
+    }
+
+    /**
+     * Gets the enrollment proof token.
+     *
+     * @return the enrollment proof token
+     */
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
+    }
+
+    /**
+     * Sets the enrollment proof token.
+     *
+     * @param enrollmentProofToken the enrollment proof token to set
+     */
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
     /**

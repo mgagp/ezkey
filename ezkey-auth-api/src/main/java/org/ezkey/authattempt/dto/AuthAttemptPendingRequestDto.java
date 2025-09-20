@@ -13,7 +13,8 @@ package org.ezkey.authattempt.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * Request DTO for checking pending authentication attempts in auth API.
+ * Request DTO for retrieving pending authentication attempts.
+ * Updated to include enrollmentProofToken for secure enrollment identification.
  * <p>
  * This DTO represents the request data sent by mobile devices to check for
  * pending authentication attempts. It contains cryptographic signatures that
@@ -34,9 +35,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * </p>
  *
  * <p>
+ * <b>Security Enhancement:</b> This DTO now includes enrollmentProofToken to
+ * prevent enumeration attacks by removing the enrollment ID from the URL path.
+ * The enrollmentProofToken provides cryptographic proof of enrollment ownership
+ * while maintaining the security of the authentication flow.
+ * </p>
+ *
+ * <p>
  * <b>Fields:</b>
  * <ul>
- * <li><b>enrollmentId:</b> Target enrollment to check for pending attempts</li>
+ * <li><b>enrollmentId:</b> Target enrollment to check for pending attempts (validated against proof token)</li>
+ * <li><b>enrollmentProofToken:</b> Cryptographic proof token that authenticates the enrollment</li>
  * <li><b>deviceProofToken:</b> Device's proof token for authentication</li>
  * <li><b>deviceProofTokenSigned:</b> Cryptographically signed device proof token</li>
  * </ul>
@@ -58,14 +67,28 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class AuthAttemptPendingRequestDto {
 
     /**
-     * The enrollment ID to check for pending authentication attempts.
+     * The enrollment ID for internal processing.
+     * Note: This field is validated against the enrollmentProofToken for security.
      * <p>
      * Must reference an existing and active enrollment. Used to identify
      * which device enrollment is requesting pending authentication attempts.
+     * This field is validated against the enrollmentProofToken to prevent
+     * enumeration attacks and ensure enrollment ownership.
      * </p>
      */
     @Schema(description = "Enrollment ID to check for pending authentication attempts",example = "123",required = true)
     private Integer enrollmentId;
+
+    /**
+     * Cryptographic proof token that authenticates the enrollment.
+     * <p>
+     * This token replaces URL-based enrollment identification to prevent enumeration attacks.
+     * It provides cryptographic proof that the requesting device owns the enrollment
+     * and prevents unauthorized access to pending authentication attempts.
+     * </p>
+     */
+    @Schema(description = "Cryptographic proof token that authenticates the enrollment",example = "EZK-ABC123-DEF456",required = true)
+    private String enrollmentProofToken;
 
     /**
      * The device's proof token for authentication.
@@ -105,6 +128,24 @@ public class AuthAttemptPendingRequestDto {
      */
     public void setEnrollmentId(Integer enrollmentId) {
         this.enrollmentId = enrollmentId;
+    }
+
+    /**
+     * Gets the enrollment proof token.
+     *
+     * @return the enrollment proof token
+     */
+    public String getEnrollmentProofToken() {
+        return enrollmentProofToken;
+    }
+
+    /**
+     * Sets the enrollment proof token.
+     *
+     * @param enrollmentProofToken the enrollment proof token to set
+     */
+    public void setEnrollmentProofToken(String enrollmentProofToken) {
+        this.enrollmentProofToken = enrollmentProofToken;
     }
 
     /**

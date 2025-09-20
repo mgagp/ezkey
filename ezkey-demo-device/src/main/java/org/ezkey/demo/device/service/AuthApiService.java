@@ -89,13 +89,14 @@ public class AuthApiService {
     }
 
     /**
-     * Calls POST /api/v1/auth-attempts/pending/{enrollmentId} to check for pending authentication attempts.
+     * Calls POST /api/v1/auth-attempts/pending to check for pending authentication attempts.
+     * Updated to use enrollmentProofToken for secure enrollment identification.
      *
-     * @param requestDto typed request DTO with enrollmentId, deviceProofToken, deviceProofTokenSigned
+     * @param requestDto typed request DTO with enrollmentId, enrollmentProofToken, deviceProofToken, deviceProofTokenSigned
      * @return typed response DTO with auth attempt details or null if no pending attempt
      */
     public Mono<AuthAttemptPendingResponseDto> pending(AuthAttemptPendingRequestDto requestDto) {
-        String uri = String.format("/api/v1/auth-attempts/pending/%d",requestDto.getEnrollmentId());
+        String uri = "/api/v1/auth-attempts/pending";
 
         WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
         WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);

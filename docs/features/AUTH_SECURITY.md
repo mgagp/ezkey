@@ -60,35 +60,36 @@ POST /api/v1/auth-attempts/respond/456
 
 ## Security Vulnerabilities
 
-### 🔴 CRITICAL: Enrollment ID Enumeration (PENDING)
+### ✅ RESOLVED: Enrollment ID Enumeration (PENDING)
 
-**Vulnerability**: 
+**Previous Vulnerability**: 
 ```java
 @PostMapping("/pending/{enrollmentId}")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id, ...)
 ```
 
-**Attack Vector**:
+**Attack Vector** (Previously):
 - Sequential enumeration: `/pending/1`, `/pending/2`, `/pending/3`...
 - Automated discovery of active enrollments
 - Information gathering about user base
 
-**Impact**:
+**Impact** (Previously):
 - **High**: Reveals active enrollment IDs
 - **Privacy**: Exposes user registration patterns
 - **Intelligence**: Provides attack surface mapping
 
-**Proof of Concept**:
-```bash
-# Automated enumeration script
-for i in {1..1000}; do
-  curl -X POST "http://auth-api:8080/api/v1/auth-attempts/pending/$i" \
-    -H "Content-Type: application/json" \
-    -d '{"enrollmentId":'$i',"deviceProofToken":"test","deviceProofTokenSigned":"test"}'
-done
+**Resolution Implemented**:
+```java
+@PostMapping("/pending")
+public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
+    // Uses enrollmentProofToken for secure enrollment identification
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
+        request.getEnrollmentProofToken(), true)
+        .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
+}
 ```
 
-**Current Protection**: ❌ None - Integer IDs are predictable and sequential
+**Current Protection**: ✅ **RESOLVED** - Uses cryptographic enrollmentProofToken for secure identification
 
 ### 🔴 CRITICAL: Rate Limiting Disabled by Default
 
@@ -210,7 +211,7 @@ logger.warn("Invalid signature for enrollment: {}", request.getEnrollmentId());
 
 | Vulnerability | Likelihood | Impact | Risk Level | Effort to Fix |
 |---------------|------------|--------|------------|---------------|
-| Enrollment ID Enumeration | High | High | 🔴 **Critical** | Low (2 hours) |
+| ✅ Enrollment ID Enumeration | High | High | ✅ **RESOLVED** | ✅ Completed |
 | Rate Limiting Disabled | High | High | 🔴 **Critical** | Minimal (config) |
 | Race Condition | Medium | Medium | 🟡 **Medium** | Medium (1 day) |
 | Timing Attack | Low | Medium | 🟡 **Medium** | High (3 days) |
@@ -220,30 +221,36 @@ logger.warn("Invalid signature for enrollment: {}", request.getEnrollmentId());
 
 ### Priority 1: Immediate Fixes (< 1 week)
 
-#### 1. Replace Integer IDs with UUIDs
+#### ✅ 1. Replace Integer IDs with UUIDs - COMPLETED
 
-**Current**:
+**Previous Implementation**:
 ```java
 @PostMapping("/pending/{enrollmentId}")
 public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") Integer id, ...)
 ```
 
-**Recommended**:
+**Implemented Solution**:
 ```java
-@PostMapping("/pending/{enrollmentId}")
-public ResponseEntity<AuthAttemptPendingResponseDto> pending(@PathVariable("enrollmentId") UUID enrollmentId, ...)
+@PostMapping("/pending")
+public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
+    // Uses enrollmentProofToken for secure enrollment identification
+    Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
+        request.getEnrollmentProofToken(), true)
+        .orElseThrow(() -> new IllegalArgumentException("Authentication request failed"));
+}
 ```
 
-**Database Migration**:
-```sql
--- Add UUID column
-ALTER TABLE ezkey_enrollment ADD COLUMN enrollment_uuid UUID DEFAULT gen_random_uuid();
--- Create unique index
-CREATE UNIQUE INDEX idx_enrollment_uuid ON ezkey_enrollment(enrollment_uuid);
--- Update application to use UUID for external APIs
+**Request Format**:
+```json
+{
+  "enrollmentId": 456,
+  "enrollmentProofToken": "EZK-ABC123-DEF456",
+  "deviceProofToken": "eyJhbGciOiJSUzI1NiJ9...",
+  "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
+}
 ```
 
-**Impact**: Eliminates enumeration attacks completely
+**Impact**: ✅ **COMPLETED** - Eliminates enumeration attacks by using cryptographic proof tokens instead of predictable integer IDs
 
 #### 2. Enable Rate Limiting by Default
 
@@ -386,7 +393,7 @@ public class AdaptiveSecurityService {
 ## Implementation Timeline
 
 ### Week 1: Critical Fixes
-- [ ] UUID implementation for enrollment IDs
+- [x] ✅ Enrollment proof token implementation for secure identification
 - [ ] Rate limiting enabled by default
 - [ ] Enhanced IP detection
 - [ ] Security monitoring alerts
@@ -541,10 +548,10 @@ security_alerts:
 The Ezkey authentication APIs demonstrate strong cryptographic design principles but require immediate attention to implementation vulnerabilities. The identified critical issues can be resolved with minimal effort while providing substantial security improvements.
 
 **Key Success Metrics**:
-- ✅ Eliminate enumeration vulnerabilities through UUID implementation
-- ✅ Prevent DoS attacks through default rate limiting
-- ✅ Reduce attack surface through enhanced monitoring
-- ✅ Maintain system usability while improving security posture
+- ✅ **COMPLETED**: Eliminate enumeration vulnerabilities through enrollment proof token implementation
+- [ ] Prevent DoS attacks through default rate limiting
+- [ ] Reduce attack surface through enhanced monitoring
+- ✅ **COMPLETED**: Maintain system usability while improving security posture
 
 **Next Steps**:
 1. Implement Priority 1 fixes within one week

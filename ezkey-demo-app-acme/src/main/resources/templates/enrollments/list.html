@@ -45,7 +45,6 @@
                     <th>Valid</th>
                     <th>Active</th>
                     <th>Challenge</th>
-                    <th>Proof Token</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
@@ -71,14 +70,6 @@
                               th:text="${enrollment.enrollmentActive} ? 'YES' : 'NO'">YES</span>
                     </td>
                     <td><span class="creation-date" th:text="${enrollment.enrollmentChallenge}">123456</span></td>
-                    <td>
-                        <span th:if="${enrollment.enrollmentProofToken != null}" 
-                              class="proof-token-preview" 
-                              th:title="${enrollment.enrollmentProofToken}"
-                              style="font-family: 'Courier New', monospace; font-size: 0.8rem; background: var(--acme-gray); padding: 0.2rem 0.4rem; border-radius: 3px; cursor: help;"
-                              th:text="${#strings.length(enrollment.enrollmentProofToken) > 12 ? #strings.substring(enrollment.enrollmentProofToken, 0, 12) + '...' : enrollment.enrollmentProofToken}">EZK-ABC123...</span>
-                        <span th:unless="${enrollment.enrollmentProofToken != null}" class="text-muted" style="font-size: 0.8rem;">-</span>
-                    </td>
                     <td class="actions-cell">
                         <div class="table-actions">
                             <a th:href="@{'/enrollments/' + ${enrollment.enrollmentId}}" class="neo-brutal-button secondary table-action-btn">👁️ View</a>

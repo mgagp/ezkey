@@ -627,8 +627,8 @@
               }
             }
           },
-          "404": {
-            "description": "Auth attempt not found",
+          "200": {
+            "description": "Authentication completed",
             "content": {
               "*/*": {
                 "schema": {
@@ -637,8 +637,8 @@
               }
             }
           },
-          "200": {
-            "description": "Authentication completed",
+          "404": {
+            "description": "Auth attempt not found",
             "content": {
               "*/*": {
                 "schema": {

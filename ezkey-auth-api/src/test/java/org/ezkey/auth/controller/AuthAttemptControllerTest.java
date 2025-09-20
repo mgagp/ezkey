@@ -160,7 +160,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(pendingRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/pending/{enrollmentId}", 123)
+        mockMvc.perform(post(BASE_URL + "/pending")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isOk());
@@ -183,7 +183,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(pendingRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/pending/{enrollmentId}", 123)
+        mockMvc.perform(post(BASE_URL + "/pending")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isNoContent());
@@ -204,7 +204,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(pendingRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/pending/{enrollmentId}", 123)
+        mockMvc.perform(post(BASE_URL + "/pending")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isBadRequest());
@@ -225,7 +225,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(pendingRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/pending/{enrollmentId}", 123)
+        mockMvc.perform(post(BASE_URL + "/pending")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isConflict());
