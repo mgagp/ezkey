@@ -164,25 +164,14 @@
         }
       }
     },
-    "/api/v1/auth-attempts/respond/{authAttemptId}": {
+    "/api/v1/auth-attempts/respond": {
       "post": {
         "tags": [
           "Authentication Attempts"
         ],
         "summary": "Submit authentication response",
-        "description": "Submits mobile device's response to an authentication request",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design.",
         "operationId": "respond",
-        "parameters": [
-          {
-            "name": "authAttemptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -237,25 +226,14 @@
         }
       }
     },
-    "/api/v1/auth-attempts/pending/{enrollmentId}": {
+    "/api/v1/auth-attempts/pending": {
       "post": {
         "tags": [
           "Authentication Attempts"
         ],
-        "summary": "Check for pending authentication requests",
-        "description": "Mobile device polls for pending authentication requests. Returns 200 with request details or 204 if no pending requests exist.",
+        "summary": "Get pending authentication attempt",
+        "description": "Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
         "operationId": "pending",
-        "parameters": [
-          {
-            "name": "enrollmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -267,8 +245,18 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "Pending authentication attempt found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                }
+              }
+            }
+          },
           "204": {
-            "description": "No pending authentication requests found (normal state)",
+            "description": "No pending authentication attempts",
             "content": {
               "*/*": {
                 "schema": {
@@ -278,7 +266,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (enrollment not found, invalid signature)",
+            "description": "Invalid request or enrollment proof token",
             "content": {
               "*/*": {
                 "schema": {
@@ -287,28 +275,8 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Pending authentication request found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "State conflict (auth attempt already read)",
+          "429": {
+            "description": "Rate limit exceeded",
             "content": {
               "*/*": {
                 "schema": {
@@ -508,7 +476,8 @@
         "required": [
           "deviceProofToken",
           "deviceProofTokenSigned",
-          "enrollmentId"
+          "enrollmentId",
+          "enrollmentProofToken"
         ],
         "type": "object",
         "properties": {
@@ -517,6 +486,11 @@
             "description": "Enrollment ID to check for pending authentication attempts",
             "format": "int32",
             "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Cryptographic proof token that authenticates the enrollment",
+            "example": "EZK-ABC123-DEF456"
           },
           "deviceProofToken": {
             "type": "string",

@@ -259,8 +259,10 @@ public class EzkeyAppController {
             // Sign the auth attempt proof token for the response (security: one-time use token)
             String responseSignature = cryptoService.signStringToBase64(authAttemptProofToken,cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
 
-            // Create respond request
-            AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto().authAttemptId(authAttemptId).authAttemptAccepted(approved)
+            // Create respond request with authAttemptId explicitly set
+            AuthAttemptRespondRequestDto respondRequest = new AuthAttemptRespondRequestDto()
+                    .authAttemptId(authAttemptId)
+                    .authAttemptAccepted(approved)
                     .authAttemptProofTokenSignedByDevice(responseSignature);
 
             // Add challenge response if provided
@@ -281,7 +283,7 @@ public class EzkeyAppController {
             logger.info("Responding to auth attempt {} for enrollment {}: {}",authAttemptId,enrollmentId,respondRequest);
 
             // Submit response
-            AuthAttemptRespondResponseDto respondResponse = authApiService.respond(authAttemptId,respondRequest).block();
+            AuthAttemptRespondResponseDto respondResponse = authApiService.respond(respondRequest).block();
             if (respondResponse != null){
                 logger.info("Auth response submitted successfully: {}",respondResponse);
 

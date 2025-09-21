@@ -109,13 +109,13 @@ Content-Type: application/json
 
 ### b) Submit response to request
 
-**POST /api/v1/auth-attempts/respond/{authAttemptId}**
+**POST /api/v1/auth-attempts/respond**
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
 
 **Request**
 ```http
-POST /api/v1/auth-attempts/respond/123
+POST /api/v1/auth-attempts/respond
 Content-Type: application/json
 
 {

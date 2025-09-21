@@ -49,7 +49,7 @@ import jakarta.persistence.PersistenceContext;
  * mobile-first authentication model where devices poll for pending requests and submit
  * cryptographically signed responses.
  * </p>
- * 
+ *
  * <p>
  * <b>Authentication Flow Support:</b>
  * <ul>
@@ -58,7 +58,7 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>Wait Flow:</b> Provides synchronous polling for web applications awaiting authentication</li>
  * </ul>
  * </p>
- * 
+ *
  * <p>
  * <b>Security Features:</b>
  * <ul>
@@ -68,14 +68,14 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>Challenge-Based Security:</b> Implements configurable numeric challenges for additional verification</li>
  * </ul>
  * </p>
- * 
+ *
  * <p>
  * <b>Transaction Management:</b>
  * This service uses Spring's declarative transaction management with appropriate propagation
  * settings. The wait operation uses NOT_SUPPORTED propagation to avoid long-running transactions
  * while maintaining data consistency for other operations.
  * </p>
- * 
+ *
  * <p>
  * <b>Integration Points:</b>
  * <ul>
@@ -84,13 +84,13 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>SignatureService:</b> Cryptographic operations for signature validation</li>
  * </ul>
  * </p>
- * 
+ *
  * <p>
  * <b>Error Handling:</b>
  * Implements comprehensive error handling with secure error messages to prevent information
  * leakage while providing detailed logging for debugging and monitoring purposes.
  * </p>
- * 
+ *
  * <p>
  * <b>Performance Considerations:</b>
  * <ul>
@@ -99,14 +99,14 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>Timeout Management:</b> Configurable timeouts prevent resource exhaustion</li>
  * </ul>
  * </p>
- * 
+ *
  * <p>
  * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  * </p>
  * <p>
  * <b>License:</b> MIT
  * </p>
- * 
+ *
  * @author Ezkey contributors
  * @since 2025
  * @see AuthAttempt
@@ -186,20 +186,14 @@ public class AuthAttemptService {
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
         // Supersession: Mark existing non-final attempts as EXPIRED
-        List<AuthAttempt> existingAttempts = authAttemptRepository.findByEnrollmentIdAndStatusIn(
-            authRequest.getEnrollmentId(), 
-            List.of(AuthAttemptStatus.PENDING, AuthAttemptStatus.READ)
-        );
-        
-        if (!existingAttempts.isEmpty()) {
-            List<Integer> attemptIds = existingAttempts.stream()
-                .map(AuthAttempt::getAuthAttemptId)
-                .toList();
-            
-            int updatedCount = authAttemptRepository.updateStatusForMultipleAttempts(attemptIds, AuthAttemptStatus.EXPIRED);
-            logger.info("Supersession: Marked {} existing auth attempts as EXPIRED for enrollment {}", updatedCount, authRequest.getEnrollmentId());
-        }
+        List<AuthAttempt> existingAttempts = authAttemptRepository.findByEnrollmentIdAndStatusIn(authRequest.getEnrollmentId(),
+                List.of(AuthAttemptStatus.PENDING,AuthAttemptStatus.READ));
+        if (!existingAttempts.isEmpty()){
+            List<Integer> attemptIds = existingAttempts.stream().map(AuthAttempt::getAuthAttemptId).toList();
 
+            int updatedCount = authAttemptRepository.updateStatusForMultipleAttempts(attemptIds,AuthAttemptStatus.EXPIRED);
+            logger.info("Supersession: Marked {} existing auth attempts as EXPIRED for enrollment {}",updatedCount,authRequest.getEnrollmentId());
+        }
         // Create the authorization attempt
         AuthAttempt authAttempt = new AuthAttempt();
 
@@ -254,7 +248,7 @@ public class AuthAttemptService {
 
     /**
      * Process pending authentication attempt request using secure enrollment proof token.
-     * 
+     *
      * Security Enhancement: Validates enrollment ownership through cryptographic proof token
      * instead of relying on URL-based enrollment ID, preventing enumeration attacks.
      * <p>
@@ -309,16 +303,14 @@ public class AuthAttemptService {
      */
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
         // NEW: Find enrollment by proof token instead of ID
-        Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(
-            request.getEnrollmentProofToken(), true)
-            .orElseThrow(() -> {
-                logger.warn("Invalid enrollment proof token provided");
-                return new IllegalArgumentException("Authentication request failed");
-            });
-        
+        Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(request.getEnrollmentProofToken(),true).orElseThrow(() -> {
+            logger.warn("Invalid enrollment proof token provided");
+            return new IllegalArgumentException("Authentication request failed");
+        });
+
         // Validate that the provided enrollment ID matches the proof token
-        if (!enrollment.getEnrollmentId().equals(request.getEnrollmentId())) {
-            logger.warn("Enrollment ID mismatch with proof token for enrollment: {}", enrollment.getEnrollmentId());
+        if (!enrollment.getEnrollmentId().equals(request.getEnrollmentId())){
+            logger.warn("Enrollment ID mismatch with proof token for enrollment: {}",enrollment.getEnrollmentId());
             throw new IllegalArgumentException("Authentication request failed");
         }
         // Validate device public key
@@ -340,13 +332,14 @@ public class AuthAttemptService {
         }
         // Find valid (non-expired) pending auth attempt
         LocalDateTime now = LocalDateTime.now();
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(request.getEnrollmentId(), AuthAttemptStatus.PENDING.name(), now).orElse(null);
+        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(request.getEnrollmentId(),AuthAttemptStatus.PENDING.name(),now)
+                .orElse(null);
         if (authAttempt == null){
             throw new NoPendingAuthAttemptException("No pending authentication request");
         }
         // Double-check if already processed (protection against race condition)
         if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING){
-            logger.warn("Auth attempt already processed: {} with status {}", authAttempt.getAuthAttemptId(), authAttempt.getAuthAttemptStatus());
+            logger.warn("Auth attempt already processed: {} with status {}",authAttempt.getAuthAttemptId(),authAttempt.getAuthAttemptStatus());
             throw new IllegalStateException("Authentication request failed");
         }
         // Record the device proof token to ensure unicity and update status to READ
@@ -374,7 +367,7 @@ public class AuthAttemptService {
      * signature, checks challenge responses if required, and updates the authentication
      * attempt status accordingly.
      * </p>
-     * 
+     *
      * <p>
      * <b>Security Validations:</b>
      * <ul>
@@ -384,7 +377,7 @@ public class AuthAttemptService {
      * <li><b>Proof Token Validation:</b> Verifies authentication attempt proof token signature</li>
      * </ul>
      * </p>
-     * 
+     *
      * <p>
      * <b>Response Processing:</b>
      * Based on the user's decision (accept/reject) and validation results, the method
@@ -465,9 +458,9 @@ public class AuthAttemptService {
             }
         }
         // Update authorization attempt based on user decision
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
             authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
-        } else {
+        } else{
             authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
         }
         authAttemptRepository.save(authAttempt);
@@ -508,9 +501,8 @@ public class AuthAttemptService {
                 return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
             }
             // Completed?
-            if (authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
-                authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
-                authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID){
+            if (authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
+                    || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID){
                 int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
                 logger.info("Auth attempt {} completed with status {} after {}s ({} polls)",authAttemptId,authAttempt.getAuthAttemptStatus(),waitDuration,pollCount);
                 return buildWaitResponse(authAttempt,false,waitDuration);
@@ -578,9 +570,8 @@ public class AuthAttemptService {
      */
     private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,boolean timeoutReached,int waitDuration) {
         String status = calculateStatus(authAttempt);
-        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
-                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
-                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
+        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
+                || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
 
         return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
     }
@@ -599,9 +590,8 @@ public class AuthAttemptService {
      * @return the complete AuthAttemptWaitResponse
      */
     private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,String status,boolean timeoutReached,int waitDuration) {
-        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || 
-                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED ||
-                           authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
+        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
+                || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
 
         return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
     }
@@ -621,7 +611,7 @@ public class AuthAttemptService {
         // Check if expired first (highest priority)
         LocalDateTime now = LocalDateTime.now();
         if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
-            return "EXPIRED";
+            return AuthAttemptStatus.EXPIRED.name();
         }
         // Return the current status directly
         return authAttempt.getAuthAttemptStatus().name();
@@ -652,7 +642,6 @@ public class AuthAttemptService {
         if (effectiveDigits < 1){
             effectiveDigits = 1;
         }
-        
         // Use SignatureService for cryptographically secure challenge generation
         return signatureService.generateSecureChallenge(effectiveDigits);
     }

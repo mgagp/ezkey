@@ -164,25 +164,14 @@
         }
       }
     },
-    "/api/v1/auth-attempts/respond/{authAttemptId}": {
+    "/api/v1/auth-attempts/respond": {
       "post": {
         "tags": [
           "Authentication Attempts"
         ],
         "summary": "Submit authentication response",
-        "description": "Submits mobile device's response to an authentication request",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design.",
         "operationId": "respond",
-        "parameters": [
-          {
-            "name": "authAttemptId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {

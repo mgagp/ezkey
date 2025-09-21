@@ -52,8 +52,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>
  * <b>Critical Test Coverage:</b>
  * <ul>
- * <li>POST /api/v1/auth-attempts/pending/{enrollmentId} - Mobile polling for pending requests</li>
- * <li>POST /api/v1/auth-attempts/respond/{authAttemptId} - Mobile response submission</li>
+ * <li>POST /api/v1/auth-attempts/pending - Mobile polling for pending requests</li>
+ * <li>POST /api/v1/auth-attempts/respond - Mobile response submission</li>
  * <li>Security validation - Cryptographic signature handling</li>
  * <li>State management - Proper status transitions</li>
  * <li>Error handling - Appropriate HTTP status codes</li>
@@ -127,6 +127,7 @@ class AuthAttemptControllerTest {
 
         // Setup respond request test data
         respondRequestDto = new AuthAttemptRespondRequestDto();
+        respondRequestDto.setAuthAttemptId(456);  // Set authAttemptId in DTO
         respondRequestDto.setAuthAttemptProofTokenSignedByDevice("test-proof-token");
         respondRequestDto.setAuthAttemptAccepted(true);
 
@@ -147,7 +148,7 @@ class AuthAttemptControllerTest {
     // ===== PENDING ENDPOINT TESTS =====
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/pending/{enrollmentId} - Should return 200 when pending request found")
+    @DisplayName("POST /api/v1/auth-attempts/pending - Should return 200 when pending request found")
     void pending_WhenPendingRequestFound_ShouldReturn200() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
@@ -172,7 +173,7 @@ class AuthAttemptControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/pending/{enrollmentId} - Should return 204 when no pending requests")
+    @DisplayName("POST /api/v1/auth-attempts/pending - Should return 204 when no pending requests")
     void pending_WhenNoPendingRequests_ShouldReturn204() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
@@ -193,7 +194,7 @@ class AuthAttemptControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/pending/{enrollmentId} - Should return 400 on invalid request")
+    @DisplayName("POST /api/v1/auth-attempts/pending - Should return 400 on invalid request")
     void pending_WhenInvalidRequest_ShouldReturn400() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
@@ -214,7 +215,7 @@ class AuthAttemptControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/pending/{enrollmentId} - Should return 409 on state conflict")
+    @DisplayName("POST /api/v1/auth-attempts/pending - Should return 409 on state conflict")
     void pending_WhenStateConflict_ShouldReturn409() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
@@ -237,7 +238,7 @@ class AuthAttemptControllerTest {
     // ===== RESPOND ENDPOINT TESTS =====
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/respond/{authAttemptId} - Should return 200 when response submitted successfully")
+    @DisplayName("POST /api/v1/auth-attempts/respond - Should return 200 when response submitted successfully")
     void respond_WhenResponseSubmitted_ShouldReturn200() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
@@ -250,7 +251,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(respondRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/respond/{authAttemptId}", 456)
+        mockMvc.perform(post(BASE_URL + "/respond")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isOk());
@@ -262,7 +263,7 @@ class AuthAttemptControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/respond/{authAttemptId} - Should return 400 on invalid response")
+    @DisplayName("POST /api/v1/auth-attempts/respond - Should return 400 on invalid response")
     void respond_WhenInvalidResponse_ShouldReturn400() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
@@ -273,7 +274,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(respondRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/respond/{authAttemptId}", 456)
+        mockMvc.perform(post(BASE_URL + "/respond")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isBadRequest());
@@ -283,7 +284,7 @@ class AuthAttemptControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth-attempts/respond/{authAttemptId} - Should return 409 on state conflict")
+    @DisplayName("POST /api/v1/auth-attempts/respond - Should return 409 on state conflict")
     void respond_WhenStateConflict_ShouldReturn409() throws Exception {
         // Arrange
         when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
@@ -294,7 +295,7 @@ class AuthAttemptControllerTest {
         String json = objectMapper.writeValueAsString(respondRequestDto);
 
         // Act & Assert
-        mockMvc.perform(post(BASE_URL + "/respond/{authAttemptId}", 456)
+        mockMvc.perform(post(BASE_URL + "/respond")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
             .andExpect(status().isConflict());

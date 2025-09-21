@@ -18,11 +18,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.ezkey.auth.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
+import org.ezkey.enrollment.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;

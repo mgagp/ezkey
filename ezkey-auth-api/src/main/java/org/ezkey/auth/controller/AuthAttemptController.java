@@ -23,7 +23,6 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,8 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,7 +47,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * <b>Auth API Endpoints (Mobile):</b>
  * <ul>
  * <li><b>POST /api/v1/auth-attempts/pending</b> - Check for pending authentication requests</li>
- * <li><b>POST /api/v1/auth-attempts/respond/{authAttemptId}</b> - Submit authentication response</li>
+ * <li><b>POST /api/v1/auth-attempts/respond</b> - Submit authentication response</li>
  * </ul>
  * </p>
  *
@@ -169,22 +166,21 @@ public class AuthAttemptController {
      * Returns 200 with the response status, or appropriate error codes for invalid requests.
      * </p>
      *
-     * @param id the authentication attempt ID to respond to
-     * @param request the response request DTO containing user's decision and signatures
+     * @param request the response request DTO containing authentication attempt ID, user's decision and signatures
      * @return ResponseEntity containing response confirmation with HTTP 200,
      * or 400 for invalid requests, or 409 for conflicting states
      */
-    @PostMapping("/respond/{authAttemptId}")
+    @PostMapping("/respond")
     @Operation(summary = "Submit authentication response", 
-               description = "Submits mobile device's response to an authentication request")
+               description = "Submits mobile device's response to an authentication request. " +
+                           "The authAttemptId is provided in the request body for uniform API design.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Authentication response submitted successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid response data or validation failed"),
         @ApiResponse(responseCode = "409", description = "Authentication attempt state conflict"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@PathVariable("authAttemptId") Integer id,@RequestBody AuthAttemptRespondRequestDto request) {
-        request.setAuthAttemptId(id);
+    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@Valid @RequestBody AuthAttemptRespondRequestDto request) {
         AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
         return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
     }

@@ -116,14 +116,13 @@ public class AuthApiService {
     }
 
     /**
-     * Calls POST /api/v1/auth-attempts/respond/{authAttemptId} to submit authentication response.
+     * Calls POST /api/v1/auth-attempts/respond to submit authentication response.
      *
-     * @param authAttemptId the authentication attempt ID
-     * @param requestDto typed request DTO with approved, responseSignature, etc.
+     * @param requestDto typed request DTO with authAttemptId, approved, responseSignature, etc.
      * @return typed response DTO with result
      */
-    public Mono<AuthAttemptRespondResponseDto> respond(Integer authAttemptId,AuthAttemptRespondRequestDto requestDto) {
-        String uri = String.format("/api/v1/auth-attempts/respond/%d",authAttemptId);
+    public Mono<AuthAttemptRespondResponseDto> respond(AuthAttemptRespondRequestDto requestDto) {
+        String uri = "/api/v1/auth-attempts/respond";
 
         WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
         WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
@@ -131,7 +130,7 @@ public class AuthApiService {
         Mono<AuthAttemptRespondResponseDto> responseMono = headersSpec.retrieve().bodyToMono(AuthAttemptRespondResponseDto.class).timeout(Duration.ofSeconds(15));
 
         Mono<AuthAttemptRespondResponseDto> errorHandledMono = responseMono.doOnSuccess(response -> logger.info("Respond API response: {}",response))
-                .doOnError(e -> logger.error("Respond failed for authAttemptId {}: {}",authAttemptId,requestDto,e))
+                .doOnError(e -> logger.error("Respond failed for authAttemptId {}: {}",requestDto.getAuthAttemptId(),requestDto,e))
                 .onErrorResume(WebClientResponseException.class,ex -> Mono.error(ex)).onErrorResume(Exception.class,ex -> Mono.error(ex));
 
         return errorHandledMono;
