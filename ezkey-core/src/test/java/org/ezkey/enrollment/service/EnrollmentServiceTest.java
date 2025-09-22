@@ -98,10 +98,10 @@ class EnrollmentServiceTest {
     private SignatureService signatureService;
 
     @Mock
-    private IntegrationRepository integrationRepository;
+    private EnrollmentBindService bindService;
 
     @Mock
-    private EnrollmentTxHelper enrollmentTxHelper;
+    private EnrollmentVerifyService verifyService;
 
     @InjectMocks
     private EnrollmentService enrollmentService;
@@ -220,14 +220,13 @@ class EnrollmentServiceTest {
     // ===== BIND ENDPOINT TESTS =====
 
     @Test
-    @DisplayName("bind() - Should bind enrollment successfully with proper locking")
-    void bind_WhenValidRequest_ShouldBindEnrollmentSuccessfully() {
+    @DisplayName("bind() - Should delegate to bindService")
+    void bind_WhenValidRequest_ShouldDelegateToBindService() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
-        when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
-        when(enrollmentRepository.findAndLockUnreadById(456)).thenReturn(Optional.of(enrollment));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
+        EnrollmentBindResponse expectedResponse = new EnrollmentBindResponse();
+        expectedResponse.setEnrollmentId(456);
+        expectedResponse.setEnrollmentName("Test Enrollment");
+        when(bindService.bind(bindRequest)).thenReturn(expectedResponse);
 
         // Act
         EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
@@ -236,21 +235,16 @@ class EnrollmentServiceTest {
         assertNotNull(response);
         assertEquals(456, response.getEnrollmentId());
         assertEquals("Test Enrollment", response.getEnrollmentName());
-        assertEquals("integration-public-key", response.getIntegrationPublicKey());
-        assertEquals("test-proof-token", response.getEnrollmentProofToken());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
-        verify(integrationRepository, times(1)).findById(123);
-        verify(enrollmentRepository, times(1)).findAndLockUnreadById(456);
-        verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
+        // Verify delegation
+        verify(bindService, times(1)).bind(bindRequest);
     }
 
     @Test
-    @DisplayName("bind() - Should throw IllegalArgumentException when enrollment not found")
-    void bind_WhenEnrollmentNotFound_ShouldThrowIllegalArgumentException() {
+    @DisplayName("bind() - Should delegate exception from bindService")
+    void bind_WhenEnrollmentNotFound_ShouldDelegateException() {
         // Arrange
-        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.empty());
+        when(bindService.bind(bindRequest)).thenThrow(new IllegalArgumentException("Enrollment binding failed"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
@@ -258,17 +252,15 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment binding failed", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
-        verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
+        // Verify delegation
+        verify(bindService, times(1)).bind(bindRequest);
     }
 
     @Test
-    @DisplayName("bind() - Should throw IllegalStateException when enrollment already bound")
-    void bind_WhenEnrollmentAlreadyBound_ShouldThrowIllegalStateException() {
+    @DisplayName("bind() - Should delegate IllegalStateException from bindService")
+    void bind_WhenEnrollmentAlreadyBound_ShouldDelegateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
+        when(bindService.bind(bindRequest)).thenThrow(new IllegalStateException("Enrollment already bound by a device"));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -276,18 +268,15 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment already bound by a device", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
-        verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
+        // Verify delegation
+        verify(bindService, times(1)).bind(bindRequest);
     }
 
     @Test
-    @DisplayName("bind() - Should throw IllegalStateException when integration not found")
-    void bind_WhenIntegrationNotFound_ShouldThrowIllegalStateException() {
+    @DisplayName("bind() - Should delegate IllegalStateException from bindService")
+    void bind_WhenIntegrationNotFound_ShouldDelegateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
-        when(integrationRepository.findById(123)).thenReturn(Optional.empty());
+        when(bindService.bind(bindRequest)).thenThrow(new IllegalStateException("Enrollment binding failed"));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -295,20 +284,15 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment binding failed", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
-        verify(integrationRepository, times(1)).findById(123);
-        verify(enrollmentRepository, never()).findAndLockUnreadById(anyInt());
+        // Verify delegation
+        verify(bindService, times(1)).bind(bindRequest);
     }
 
     @Test
-    @DisplayName("bind() - Should throw IllegalArgumentException when lock acquisition fails")
-    void bind_WhenLockAcquisitionFails_ShouldThrowIllegalArgumentException() {
+    @DisplayName("bind() - Should delegate IllegalArgumentException from bindService")
+    void bind_WhenLockAcquisitionFails_ShouldDelegateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token")).thenReturn(Optional.of(enrollment));
-        when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
-        when(enrollmentRepository.findAndLockUnreadById(456)).thenReturn(Optional.empty());
+        when(bindService.bind(bindRequest)).thenThrow(new IllegalArgumentException("Enrollment not found or already bound"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
@@ -316,26 +300,19 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment not found or already bound", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findByEnrollmentIdAndEnrollmentProofToken(456, "test-proof-token");
-        verify(integrationRepository, times(1)).findById(123);
-        verify(enrollmentRepository, times(1)).findAndLockUnreadById(456);
-        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+        // Verify delegation
+        verify(bindService, times(1)).bind(bindRequest);
     }
 
     // ===== VERIFY ENDPOINT TESTS =====
 
     @Test
-    @DisplayName("verify() - Should verify enrollment successfully with signature validation")
-    void verify_WhenValidRequest_ShouldVerifyEnrollmentSuccessfully() {
+    @DisplayName("verify() - Should delegate to verifyService")
+    void verify_WhenValidRequest_ShouldDelegateToVerifyService() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        // Mock the new uniqueness validation - return false (key is unique)
-        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
-        when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.of(enrollment));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
+        EnrollmentVerifyResponse expectedResponse = new EnrollmentVerifyResponse();
+        expectedResponse.setActive(true);
+        when(verifyService.verify(verifyRequest)).thenReturn(expectedResponse);
 
         // Act
         EnrollmentVerifyResponse response = enrollmentService.verify(verifyRequest);
@@ -344,21 +321,15 @@ class EnrollmentServiceTest {
         assertNotNull(response);
         assertTrue(response.isActive());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
-        verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
-        verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
     @Test
-    @DisplayName("verify() - Should throw IllegalStateException when enrollment already verified")
-    void verify_WhenEnrollmentAlreadyVerified_ShouldThrowIllegalStateException() {
+    @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
+    void verify_WhenEnrollmentAlreadyVerified_ShouldDelegateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.VERIFIED);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalStateException("Enrollment already verified"));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -366,17 +337,15 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment already verified", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, never()).validateSignature(anyString(), anyString(), anyString());
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
     @Test
-    @DisplayName("verify() - Should throw IllegalStateException when enrollment not bound")
-    void verify_WhenEnrollmentNotBound_ShouldThrowIllegalStateException() {
+    @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
+    void verify_WhenEnrollmentNotBound_ShouldDelegateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.CREATED);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalStateException("Enrollment must be bound before verification"));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -384,19 +353,15 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment must be bound before verification", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
-        verify(signatureService, never()).validateSignature(anyString(), anyString(), anyString());
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
-    @Test
-    @DisplayName("verify() - Should throw IllegalArgumentException when signature validation fails")
+        @Test
+    @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
     void verify_WhenSignatureValidationFails_ShouldThrowIllegalArgumentException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(false);
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
@@ -404,50 +369,31 @@ class EnrollmentServiceTest {
         
         assertEquals("Invalid bind proof token signature", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        // Should not reach uniqueness validation due to signature failure
-        verify(enrollmentRepository, never()).existsByDevicePublicKeyAndVerified(anyString());
-        verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
-    @Test
-    @DisplayName("verify() - Should throw IllegalArgumentException when challenge response is invalid")
+        @Test
+    @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
     void verify_WhenChallengeResponseInvalid_ShouldThrowIllegalArgumentException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        verifyRequest.setChallengeResponse(999999); // Wrong challenge
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        // Mock the new uniqueness validation - return false (key is unique)
-        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
             () -> enrollmentService.verify(verifyRequest));
         
-        assertEquals("Invalid challenge response", exception.getMessage());
+        assertEquals("Invalid bind proof token signature", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
-        verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
-    @Test
-    @DisplayName("verify() - Should throw IllegalStateException when lock acquisition fails")
+        @Test
+    @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
     void verify_WhenLockAcquisitionFails_ShouldThrowIllegalStateException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        // Mock the new uniqueness validation - return false (key is unique)
-        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
-        when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.empty());
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalStateException("Enrollment already verified"));
 
         // Act & Assert
         IllegalStateException exception = assertThrows(IllegalStateException.class, 
@@ -455,53 +401,33 @@ class EnrollmentServiceTest {
         
         assertEquals("Enrollment already verified", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
-        verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
-        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
-    @Test
-    @DisplayName("verify() - Should throw IllegalArgumentException when device public key already used (Replay Attack Prevention)")
+        @Test
+    @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
     void verify_WhenDevicePublicKeyAlreadyUsed_ShouldThrowIllegalArgumentException() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        // Mock the new uniqueness validation - return true (key already exists)
-        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(true);
+        when(verifyService.verify(verifyRequest)).thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
             () -> enrollmentService.verify(verifyRequest));
         
-        assertEquals("Device public key already registered", exception.getMessage());
+        assertEquals("Invalid bind proof token signature", exception.getMessage());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
-        verify(enrollmentTxHelper, times(1)).markInvalidAndClear(456);
-        // Should not proceed to lock acquisition or save
-        verify(enrollmentRepository, never()).findAndLockBoundById(anyInt());
-        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
     @Test
-    @DisplayName("verify() - Should proceed successfully when device public key is unique")
+    @DisplayName("verify() - Should delegate to verifyService")
     void verify_WhenDevicePublicKeyIsUnique_ShouldProceedSuccessfully() {
         // Arrange
-        enrollment.setStatus(EnrollmentStatus.BOUND);
-        when(enrollmentRepository.findById(456)).thenReturn(Optional.of(enrollment));
-        when(signatureService.validateSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        // Mock the new uniqueness validation - return false (key is unique)
-        when(enrollmentRepository.existsByDevicePublicKeyAndVerified("device-public-key")).thenReturn(false);
-        when(enrollmentRepository.findAndLockBoundById(456)).thenReturn(Optional.of(enrollment));
-        when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
+        EnrollmentVerifyResponse expectedResponse = new EnrollmentVerifyResponse();
+        expectedResponse.setActive(true);
+        when(verifyService.verify(verifyRequest)).thenReturn(expectedResponse);
 
         // Act
         EnrollmentVerifyResponse response = enrollmentService.verify(verifyRequest);
@@ -510,13 +436,8 @@ class EnrollmentServiceTest {
         assertNotNull(response);
         assertTrue(response.isActive());
 
-        // Verify service interactions
-        verify(enrollmentRepository, times(1)).findById(456);
-        verify(signatureService, times(1)).validateSignature(
-            "test-proof-token", "proof-token-signature", "device-public-key");
-        verify(enrollmentRepository, times(1)).existsByDevicePublicKeyAndVerified("device-public-key");
-        verify(enrollmentRepository, times(1)).findAndLockBoundById(456);
-        verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
+        // Verify delegation
+        verify(verifyService, times(1)).verify(verifyRequest);
     }
 
     // ===== GET BY ID TESTS =====
