@@ -45,11 +45,27 @@ class AuthAttemptServiceChallengeTest {
     @Mock
     private SignatureService signatureService;
 
+    @Mock
+    private AuthAttemptPendingService pendingService;
+
+    @Mock
+    private AuthAttemptRespondService respondService;
+
+    @Mock
+    private AuthAttemptWaitService waitService;
+
     private AuthAttemptService authAttemptService;
 
     @BeforeEach
     void setUp() {
-        authAttemptService = new AuthAttemptService(authAttemptRepository, enrollmentRepository, signatureService);
+        authAttemptService = new AuthAttemptService(
+            authAttemptRepository, 
+            enrollmentRepository, 
+            signatureService,
+            pendingService,
+            respondService,
+            waitService
+        );
     }
 
     @Test

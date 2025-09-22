@@ -12,7 +12,6 @@ package org.ezkey.authattempt.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -23,19 +22,16 @@ import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
-import org.ezkey.authattempt.domain.AuthenticationResult;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
@@ -44,10 +40,20 @@ import jakarta.persistence.PersistenceContext;
 /**
  * Core service for managing authentication attempts in the Ezkey MFA system.
  * <p>
- * This service is the central component of Ezkey's authentication flow, handling the complete
- * lifecycle of MFA authentication attempts from creation to completion. It implements the
- * mobile-first authentication model where devices poll for pending requests and submit
- * cryptographically signed responses.
+ * This service acts as the main coordinator for authentication attempt operations,
+ * delegating complex business logic to specialized services while maintaining a
+ * unified public API. It implements the mobile-first authentication model where
+ * devices poll for pending requests and submit cryptographically signed responses.
+ * </p>
+ *
+ * <p>
+ * <b>Architecture:</b>
+ * This service uses a delegation pattern to specialized services:
+ * <ul>
+ * <li><b>AuthAttemptPendingService:</b> Handles pending authentication request processing</li>
+ * <li><b>AuthAttemptRespondService:</b> Processes authentication responses from mobile devices</li>
+ * <li><b>AuthAttemptWaitService:</b> Manages polling and wait operations</li>
+ * </ul>
  * </p>
  *
  * <p>
@@ -72,8 +78,7 @@ import jakarta.persistence.PersistenceContext;
  * <p>
  * <b>Transaction Management:</b>
  * This service uses Spring's declarative transaction management with appropriate propagation
- * settings. The wait operation uses NOT_SUPPORTED propagation to avoid long-running transactions
- * while maintaining data consistency for other operations.
+ * settings. Specialized services handle their own transaction boundaries as needed.
  * </p>
  *
  * <p>
@@ -82,6 +87,7 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>AuthAttemptRepository:</b> Data persistence layer for authentication attempts</li>
  * <li><b>EnrollmentRepository:</b> Enrollment data access for validation and device management</li>
  * <li><b>SignatureService:</b> Cryptographic operations for signature validation</li>
+ * <li><b>Specialized Services:</b> Delegated business logic for specific operations</li>
  * </ul>
  * </p>
  *
@@ -97,6 +103,7 @@ import jakarta.persistence.PersistenceContext;
  * <li><b>Read-Once Guarantee:</b> Authentication attempts can only be read once to prevent replay attacks</li>
  * <li><b>Efficient Polling:</b> Optimized database queries for pending request checking</li>
  * <li><b>Timeout Management:</b> Configurable timeouts prevent resource exhaustion</li>
+ * <li><b>Service Separation:</b> Specialized services allow for targeted optimization</li>
  * </ul>
  * </p>
  *
@@ -116,6 +123,9 @@ import jakarta.persistence.PersistenceContext;
  * @see AuthAttemptWaitRequest
  * @see Enrollment
  * @see SignatureService
+ * @see AuthAttemptPendingService
+ * @see AuthAttemptRespondService
+ * @see AuthAttemptWaitService
  */
 @Service
 @Transactional
@@ -124,10 +134,13 @@ public class AuthAttemptService {
     private static final Logger logger = LoggerFactory.getLogger(AuthAttemptService.class);
 
     private final AuthAttemptRepository authAttemptRepository;
-
     private final EnrollmentRepository enrollmentRepository;
-
     private final SignatureService signatureService;
+
+    // Specialized services for specific operations
+    private final AuthAttemptPendingService pendingService;
+    private final AuthAttemptRespondService respondService;
+    private final AuthAttemptWaitService waitService;
 
     @Value("${ezkey.auth-attempt.challenge-digits:2}")
     private int challengeDigits;
@@ -141,11 +154,22 @@ public class AuthAttemptService {
      * @param authAttemptRepository the JPA repository for authentication attempts
      * @param enrollmentRepository the JPA repository for enrollments
      * @param signatureService the signature service for cryptographic operations
+     * @param pendingService the specialized service for pending operations
+     * @param respondService the specialized service for respond operations
+     * @param waitService the specialized service for wait operations
      */
-    public AuthAttemptService(AuthAttemptRepository authAttemptRepository,EnrollmentRepository enrollmentRepository,SignatureService signatureService){
+    public AuthAttemptService(AuthAttemptRepository authAttemptRepository,
+                            EnrollmentRepository enrollmentRepository,
+                            SignatureService signatureService,
+                            AuthAttemptPendingService pendingService,
+                            AuthAttemptRespondService respondService,
+                            AuthAttemptWaitService waitService) {
         this.authAttemptRepository = authAttemptRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
+        this.pendingService = pendingService;
+        this.respondService = respondService;
+        this.waitService = waitService;
     }
 
     /**
@@ -301,62 +325,22 @@ public class AuthAttemptService {
      * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
      * @since 2025
      */
+    /**
+     * Process pending authentication attempt request using secure enrollment proof token.
+     * <p>
+     * This method delegates to the specialized AuthAttemptPendingService to handle
+     * the complex logic of processing pending authentication requests while maintaining
+     * the same public API for backward compatibility.
+     * </p>
+     *
+     * @param request the pending request with enrollment proof token
+     * @return the pending authentication response with proof token
+     * @throws IllegalArgumentException if enrollment proof token is invalid
+     * @throws IllegalStateException if the authentication attempt is already processed
+     * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
+     */
     public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
-        // NEW: Find enrollment by proof token instead of ID
-        Enrollment enrollment = enrollmentRepository.findByEnrollmentProofTokenAndActive(request.getEnrollmentProofToken(),true).orElseThrow(() -> {
-            logger.warn("Invalid enrollment proof token provided");
-            return new IllegalArgumentException("Authentication request failed");
-        });
-
-        // Validate that the provided enrollment ID matches the proof token
-        if (!enrollment.getEnrollmentId().equals(request.getEnrollmentId())){
-            logger.warn("Enrollment ID mismatch with proof token for enrollment: {}",enrollment.getEnrollmentId());
-            throw new IllegalArgumentException("Authentication request failed");
-        }
-        // Validate device public key
-        String devicePublicKey = enrollment.getDevicePublicKey();
-        if (devicePublicKey == null){
-            logger.warn("Device public key missing for enrollment: {}",request.getEnrollmentId());
-            throw new IllegalStateException("Authentication request failed");
-        }
-        // Validate signature
-        boolean isValid = signatureService.validateSignature(request.getDeviceProofToken(),request.getDeviceProofTokenSigned(),devicePublicKey);
-        if (!isValid){
-            logger.warn("Invalid signature for enrollment: {}",request.getEnrollmentId());
-            throw new IllegalArgumentException("Authentication request failed");
-        }
-        // Check device proof token uniqueness
-        if (authAttemptRepository.existsByDeviceProofToken(request.getDeviceProofToken())){
-            logger.warn("Device proof token already used for enrollment: {}",request.getEnrollmentId());
-            throw new IllegalArgumentException("Authentication request failed");
-        }
-        // Find valid (non-expired) pending auth attempt
-        LocalDateTime now = LocalDateTime.now();
-        AuthAttempt authAttempt = authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(request.getEnrollmentId(),AuthAttemptStatus.PENDING.name(),now)
-                .orElse(null);
-        if (authAttempt == null){
-            throw new NoPendingAuthAttemptException("No pending authentication request");
-        }
-        // Double-check if already processed (protection against race condition)
-        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING){
-            logger.warn("Auth attempt already processed: {} with status {}",authAttempt.getAuthAttemptId(),authAttempt.getAuthAttemptStatus());
-            throw new IllegalStateException("Authentication request failed");
-        }
-        // Record the device proof token to ensure unicity and update status to READ
-        authAttempt.setDeviceProofToken(request.getDeviceProofToken());
-        authAttempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
-        authAttemptRepository.save(authAttempt);
-
-        AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
-        response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-        response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
-        response.setAuthAttemptProofTokenSignedByIntegration(signatureService.generateSignature(authAttempt.getAuthAttemptProofToken(),enrollment.getIntegrationPrivateKey()));
-        if (authAttempt.getAuthAttemptChallenge() != null){
-            response.setAuthAttemptChallengeRequired(true);
-        } else{
-            response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
-        }
-        return response;
+        return pendingService.pending(request);
     }
 
     /**
@@ -390,231 +374,35 @@ public class AuthAttemptService {
      * @see AuthAttemptRespondResponse
      * @see AuthenticationResult
      */
+    /**
+     * Processes an authentication response from a mobile device.
+     * <p>
+     * This method delegates to the specialized AuthAttemptRespondService to handle
+     * the complex logic of processing authentication responses while maintaining
+     * the same public API for backward compatibility.
+     * </p>
+     *
+     * @param request the authentication response request from mobile device
+     * @return the authentication response result with status and message
+     */
     public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
-        AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
-
-        Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
-        if (authAttemptOpt.isEmpty()){
-            response.setResult(AuthenticationResult.FAILED);
-            response.setMessage("Auth attempt record not found");
-            return response;
-        }
-        AuthAttempt authAttempt = authAttemptOpt.get();
-
-        // Check if in READ status (device has claimed the attempt)
-        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ){
-            response.setResult(AuthenticationResult.FAILED);
-            response.setMessage("Auth attempt not read by device");
-            return response;
-        }
-        // Check if superseded by a newer authentication attempt for the same enrollment
-        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(),authAttempt.getCreatedAt());
-        if (newerAttempt.isPresent()){
-            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}",authAttempt.getAuthAttemptId(),newerAttempt.get().getAuthAttemptId(),
-                    authAttempt.getEnrollmentId());
-            response.setResult(AuthenticationResult.EXPIRED);
-            response.setMessage("Authentication attempt superseded by newer request");
-            return response;
-        }
-        // Check if expired
-        LocalDateTime now = LocalDateTime.now();
-        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
-            response.setResult(AuthenticationResult.EXPIRED);
-            response.setMessage("Authentication attempt expired");
-            return response;
-        }
-        // Find the enrollment
-        Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null);
-        if (enrollment == null){
-            response.setResult(AuthenticationResult.FAILED);
-            response.setMessage("Enrollment record not found");
-            return response;
-        }
-        // Validate device public key
-        String devicePublicKey = enrollment.getDevicePublicKey();
-        if (devicePublicKey == null){
-            response.setResult(AuthenticationResult.FAILED);
-            response.setMessage("Device public key not found");
-            return response;
-        }
-        // Validate device signature
-        boolean isDeviceProofTokenValid = signatureService.validateSignature(authAttempt.getAuthAttemptProofToken(),request.getAuthAttemptProofTokenSignedByDevice(),
-                devicePublicKey);
-        if (!isDeviceProofTokenValid){
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-            authAttemptRepository.save(authAttempt);
-            response.setResult(AuthenticationResult.FAILED);
-            response.setMessage("Invalid signature for auth attempt code");
-            return response;
-        }
-        // Validate challenge if required
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())){
-            if (request.getAuthAttemptChallengeResponse() == null || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
-                authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-                authAttemptRepository.save(authAttempt);
-                response.setResult(AuthenticationResult.FAILED);
-                response.setMessage("Challenge value mismatch");
-                return response;
-            }
-        }
-        // Update authorization attempt based on user decision
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
-        } else{
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
-        }
-        authAttemptRepository.save(authAttempt);
-
-        // Set result based on user's choice
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
-            response.setResult(AuthenticationResult.APPROVED);
-        } else{
-            response.setResult(AuthenticationResult.DENIED);
-        }
-        response.setMessage("Auth attempt completed");
-        return response;
+        return respondService.respond(request);
     }
 
     /**
      * Waits for authentication response completion with configurable timeout and polling.
-     * This refactored version avoids holding a single long-running transaction / connection.
-     */
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public AuthAttemptWaitResponse waitForResponse(Integer authAttemptId,AuthAttemptWaitRequest request) {
-        logger.debug("Starting wait operation for auth attempt {} with timeout={}s, polling={}s",authAttemptId,request.getTimeout(),request.getPolling());
-
-        validateWaitRequest(request);
-
-        long startTime = System.currentTimeMillis();
-        long deadline = startTime + (request.getTimeout() * 1000L);
-        int pollCount = 0;
-        while (true){
-            // Short-lived fetch (no long transaction held between iterations)
-            AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElseThrow(() -> new ResourceNotFoundException("Authorization attempt",authAttemptId));
-
-            // Superseded check
-            Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(),authAttempt.getCreatedAt());
-            if (newerAttempt.isPresent()){
-                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation",authAttemptId,newerAttempt.get().getAuthAttemptId(),
-                        authAttempt.getEnrollmentId());
-                return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
-            }
-            // Completed?
-            if (authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
-                    || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID){
-                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                logger.info("Auth attempt {} completed with status {} after {}s ({} polls)",authAttemptId,authAttempt.getAuthAttemptStatus(),waitDuration,pollCount);
-                return buildWaitResponse(authAttempt,false,waitDuration);
-            }
-            // Expired?
-            LocalDateTime now = LocalDateTime.now();
-            if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
-                int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
-                logger.info("Auth attempt {} expired during wait at {}",authAttemptId,authAttempt.getExpiresAt());
-                return buildWaitResponse(authAttempt,"EXPIRED",false,waitDuration);
-            }
-            long nowMs = System.currentTimeMillis();
-            if (nowMs >= deadline){
-                int waitDuration = (int) ((nowMs - startTime) / 1000);
-                logger.info("Auth attempt {} timed out after {}s ({} polls)",authAttemptId,waitDuration,pollCount);
-                return buildWaitResponse(authAttempt,true,waitDuration);
-            }
-            try{
-                Thread.sleep(request.getPolling() * 1000L);
-            } catch (InterruptedException ie){
-                Thread.currentThread().interrupt();
-                logger.warn("Wait operation for auth attempt {} was interrupted",authAttemptId);
-                throw new RuntimeException("Wait operation interrupted",ie);
-            }
-            pollCount++;
-            if (pollCount % 10 == 0){
-                logger.debug("Auth attempt {} still pending after {} polls",authAttemptId,pollCount);
-            }
-        }
-    }
-
-    /**
-     * Validates the wait request parameters.
      * <p>
-     * Ensures that timeout and polling parameters are within acceptable ranges
-     * and that polling is not greater than timeout.
+     * This method delegates to the specialized AuthAttemptWaitService to handle
+     * the complex logic of polling and waiting while maintaining the same public
+     * API for backward compatibility.
      * </p>
      *
-     * @param request the wait request to validate
-     * @throws IllegalArgumentException if parameters are invalid
+     * @param authAttemptId the ID of the authentication attempt to wait for
+     * @param request the wait request containing timeout and polling configuration
+     * @return the wait response with final status and metadata
      */
-    private void validateWaitRequest(AuthAttemptWaitRequest request) {
-        if (request.getTimeout() == null || request.getTimeout() <= 0 || request.getTimeout() > 300){
-            throw new IllegalArgumentException("Timeout must be between 1 and 300 seconds");
-        }
-        if (request.getPolling() == null || request.getPolling() <= 0 || request.getPolling() > 60){
-            throw new IllegalArgumentException("Polling must be between 1 and 60 seconds");
-        }
-        if (request.getPolling() > request.getTimeout()){
-            throw new IllegalArgumentException("Polling interval cannot be greater than timeout");
-        }
-    }
-
-    /**
-     * Builds the wait response with calculated status and metadata.
-     * <p>
-     * Creates a complete AuthAttemptWaitResponse with the authentication attempt data,
-     * calculated status based on ENDPOINT.md rules, and wait operation metadata.
-     * </p>
-     *
-     * @param authAttempt the authentication attempt data
-     * @param timeoutReached whether the wait operation timed out
-     * @param waitDuration the actual duration waited in seconds
-     * @return the complete AuthAttemptWaitResponse
-     */
-    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,boolean timeoutReached,int waitDuration) {
-        String status = calculateStatus(authAttempt);
-        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
-                || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
-
-        return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
-    }
-
-    /**
-     * Builds the wait response with a specific status for special cases.
-     * <p>
-     * Creates a complete AuthAttemptWaitResponse with a specific status for cases
-     * where the normal status calculation doesn't apply (e.g., superseded attempts).
-     * </p>
-     *
-     * @param authAttempt the authentication attempt data
-     * @param status the specific status to use
-     * @param timeoutReached whether the wait operation timed out
-     * @param waitDuration the actual duration waited in seconds
-     * @return the complete AuthAttemptWaitResponse
-     */
-    private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt,String status,boolean timeoutReached,int waitDuration) {
-        boolean completed = authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.ACCEPTED || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.REJECTED
-                || authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.INVALID;
-
-        return new AuthAttemptWaitResponse(authAttempt,status,completed,timeoutReached,waitDuration,LocalDateTime.now());
-    }
-
-    /**
-     * Calculates the authentication status based on the rules defined in ENDPOINT.md.
-     * <p>
-     * This method implements the status calculation logic as specified in the project
-     * documentation. The status is determined by checking the authentication attempt
-     * flags in a specific order of priority.
-     * </p>
-     *
-     * @param authAttempt the authentication attempt entity
-     * @return the calculated status string (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
-     */
-    private String calculateStatus(AuthAttempt authAttempt) {
-        // Check if expired first (highest priority)
-        LocalDateTime now = LocalDateTime.now();
-        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
-            return AuthAttemptStatus.EXPIRED.name();
-        }
-        // Return the current status directly
-        return authAttempt.getAuthAttemptStatus().name();
+    public AuthAttemptWaitResponse waitForResponse(Integer authAttemptId, AuthAttemptWaitRequest request) {
+        return waitService.waitForResponse(authAttemptId, request);
     }
 
     /**

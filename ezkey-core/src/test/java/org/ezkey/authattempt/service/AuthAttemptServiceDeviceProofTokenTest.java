@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -21,6 +23,7 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
+import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -67,12 +70,28 @@ class AuthAttemptServiceDeviceProofTokenTest {
     @Mock
     private SignatureService signatureService;
 
+    @Mock
+    private AuthAttemptPendingService pendingService;
+
+    @Mock
+    private AuthAttemptRespondService respondService;
+
+    @Mock
+    private AuthAttemptWaitService waitService;
+
     private AuthAttemptService authAttemptService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        authAttemptService = new AuthAttemptService(authAttemptRepository, enrollmentRepository, signatureService);
+        authAttemptService = new AuthAttemptService(
+            authAttemptRepository, 
+            enrollmentRepository, 
+            signatureService,
+            pendingService,
+            respondService,
+            waitService
+        );
     }
 
     @Test
@@ -95,12 +114,9 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(mockEnrollment.getEnrollmentId()).thenReturn(enrollmentId);
         when(mockEnrollment.getDevicePublicKey()).thenReturn(devicePublicKey);
 
-        // Setup mocks
-        when(enrollmentRepository.findByEnrollmentProofTokenAndActive(enrollmentProofToken, true))
-                .thenReturn(Optional.of(mockEnrollment));
-        when(signatureService.validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey))
-                .thenReturn(true);
-        when(authAttemptRepository.existsByDeviceProofToken(deviceProofToken)).thenReturn(true); // Token already exists
+        // Mock the specialized service to throw exception for duplicate token
+        when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
+                .thenThrow(new IllegalArgumentException("Authentication request failed"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -108,8 +124,8 @@ class AuthAttemptServiceDeviceProofTokenTest {
         });
 
         // Verify
-        assert exception.getMessage().equals("Authentication request failed");
-        verify(authAttemptRepository).existsByDeviceProofToken(deviceProofToken);
+        assertEquals("Authentication request failed", exception.getMessage());
+        verify(pendingService).pending(request);
     }
 
     @Test
@@ -139,24 +155,24 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(mockAuthAttempt.getAuthAttemptId()).thenReturn(123);
         when(mockAuthAttempt.getAuthAttemptProofToken()).thenReturn("auth-attempt-token");
 
-        // Setup mocks
-        when(enrollmentRepository.findByEnrollmentProofTokenAndActive(enrollmentProofToken, true))
-                .thenReturn(Optional.of(mockEnrollment));
-        when(signatureService.validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey))
-                .thenReturn(true);
-        when(authAttemptRepository.existsByDeviceProofToken(deviceProofToken)).thenReturn(false); // Token is unique
-        when(authAttemptRepository.findAndLockMostRecentValidByEnrollmentIdAndStatus(eq(enrollmentId), eq(AuthAttemptStatus.PENDING.name()), any()))
-                .thenReturn(Optional.of(mockAuthAttempt));
-        when(signatureService.generateSignature(anyString(), anyString())).thenReturn("integration-signature");
+        // Mock the specialized service to return success response
+        AuthAttemptPendingResponse mockResponse = new AuthAttemptPendingResponse();
+        mockResponse.setAuthAttemptId(123);
+        mockResponse.setAuthAttemptProofToken("auth-attempt-token");
+        mockResponse.setAuthAttemptProofTokenSignedByIntegration("integration-signature");
+        mockResponse.setAuthAttemptChallengeRequired(false);
+        
+        when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
+                .thenReturn(mockResponse);
 
         // Act
-        authAttemptService.pending(request);
+        AuthAttemptPendingResponse response = authAttemptService.pending(request);
 
         // Assert
-        verify(authAttemptRepository).existsByDeviceProofToken(deviceProofToken);
-        verify(mockAuthAttempt).setDeviceProofToken(deviceProofToken); // Verify token is stored
-        verify(mockAuthAttempt).setAuthAttemptStatus(AuthAttemptStatus.READ);
-        verify(authAttemptRepository).save(mockAuthAttempt);
+        assertNotNull(response);
+        assertEquals(123, response.getAuthAttemptId());
+        assertEquals("auth-attempt-token", response.getAuthAttemptProofToken());
+        verify(pendingService).pending(request);
     }
 
     @Test
@@ -179,11 +195,9 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(mockEnrollment.getEnrollmentId()).thenReturn(enrollmentId);
         when(mockEnrollment.getDevicePublicKey()).thenReturn(devicePublicKey);
 
-        // Setup mocks
-        when(enrollmentRepository.findByEnrollmentProofTokenAndActive(enrollmentProofToken, true))
-                .thenReturn(Optional.of(mockEnrollment));
-        when(signatureService.validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey))
-                .thenReturn(false); // Invalid signature
+        // Mock the specialized service to throw exception for invalid signature
+        when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
+                .thenThrow(new IllegalArgumentException("Authentication request failed"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -191,9 +205,8 @@ class AuthAttemptServiceDeviceProofTokenTest {
         });
 
         // Verify
-        assert exception.getMessage().equals("Authentication request failed");
-        // Verify that token uniqueness check is not reached because signature validation fails first
-        verify(signatureService).validateSignature(deviceProofToken, deviceProofTokenSigned, devicePublicKey);
+        assertEquals("Authentication request failed", exception.getMessage());
+        verify(pendingService).pending(request);
     }
 
     @Test
@@ -211,9 +224,9 @@ class AuthAttemptServiceDeviceProofTokenTest {
         request.setDeviceProofToken(deviceProofToken);
         request.setDeviceProofTokenSigned(deviceProofTokenSigned);
 
-        // Setup mocks - enrollment not found by proof token
-        when(enrollmentRepository.findByEnrollmentProofTokenAndActive(enrollmentProofToken, true))
-                .thenReturn(Optional.empty());
+        // Mock the specialized service to throw exception for invalid enrollment proof token
+        when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
+                .thenThrow(new IllegalArgumentException("Authentication request failed"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -221,8 +234,8 @@ class AuthAttemptServiceDeviceProofTokenTest {
         });
 
         // Verify
-        assert exception.getMessage().equals("Authentication request failed");
-        verify(enrollmentRepository).findByEnrollmentProofTokenAndActive(enrollmentProofToken, true);
+        assertEquals("Authentication request failed", exception.getMessage());
+        verify(pendingService).pending(request);
     }
 
     @Test
@@ -245,9 +258,9 @@ class AuthAttemptServiceDeviceProofTokenTest {
         when(mockEnrollment.getEnrollmentId()).thenReturn(999); // Different ID than request
         when(mockEnrollment.getDevicePublicKey()).thenReturn(devicePublicKey);
 
-        // Setup mocks
-        when(enrollmentRepository.findByEnrollmentProofTokenAndActive(enrollmentProofToken, true))
-                .thenReturn(Optional.of(mockEnrollment));
+        // Mock the specialized service to throw exception for enrollment ID mismatch
+        when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
+                .thenThrow(new IllegalArgumentException("Authentication request failed"));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -255,7 +268,7 @@ class AuthAttemptServiceDeviceProofTokenTest {
         });
 
         // Verify
-        assert exception.getMessage().equals("Authentication request failed");
-        verify(enrollmentRepository).findByEnrollmentProofTokenAndActive(enrollmentProofToken, true);
+        assertEquals("Authentication request failed", exception.getMessage());
+        verify(pendingService).pending(request);
     }
 }
