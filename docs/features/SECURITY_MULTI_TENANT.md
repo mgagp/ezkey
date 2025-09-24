@@ -57,7 +57,7 @@ graph TD
 
 ## 2. Modèle de Données Multi-Tenant
 
-### 2.1 Nouvelles Entités
+### 2.1 Nouvelles Entités (à ajouter dans V1__initial_schema.sql)
 
 #### A. Table `ezkey_authorization`
 ```sql
@@ -81,19 +81,20 @@ CREATE TABLE ezkey_tenant (
     tenant_name VARCHAR(100) NOT NULL UNIQUE,
     admin_integration_id INT NOT NULL REFERENCES ezkey_integration(integration_id),
     admin_enrollment_id INT NOT NULL REFERENCES ezkey_enrollment(enrollment_id),
-    created_by_admin_id INT NOT NULL REFERENCES ezkey_authorization(authorization_id),
+    created_by_authorization_id INT NOT NULL REFERENCES ezkey_authorization(authorization_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );
 ```
 
-### 2.2 Modifications des Entités Existantes
+### 2.2 Modifications des Entités Existantes (dans V1__initial_schema.sql)
 
-#### A. Table `ezkey_integration` - Ajout du Flag Tenant
+#### A. Table `ezkey_integration` - Ajout des Colonnes Tenant
 ```sql
-ALTER TABLE ezkey_integration ADD COLUMN tenant_id INT REFERENCES ezkey_tenant(tenant_id);
-ALTER TABLE ezkey_integration ADD COLUMN is_admin_integration BOOLEAN DEFAULT FALSE;
-ALTER TABLE ezkey_integration ADD COLUMN created_by_authorization_id INT REFERENCES ezkey_authorization(authorization_id);
+-- Ajouter ces colonnes dans la définition initiale de ezkey_integration
+tenant_id INT REFERENCES ezkey_tenant(tenant_id),
+is_admin_integration BOOLEAN DEFAULT FALSE,
+created_by_authorization_id INT REFERENCES ezkey_authorization(authorization_id)
 ```
 
 **Logique des Flags :**
@@ -336,29 +337,32 @@ POST /api/v1/auth/refresh                     # Renouveler token
 
 ## 8. Migration et Déploiement
 
-### 8.1 Stratégie de Migration
+### 8.1 Stratégie de Migration (Pre-Release)
 
-**Phase 1 - Préparation :**
-1. Création des nouvelles tables
-2. Migration des données existantes
-3. Ajout des flags tenant aux intégrations
+**Contraintes Pre-Release :**
+- Modification directe de la migration Flyway V1 existante
+- Aucune donnée de production à préserver
+- Seules des données de test existent actuellement
 
-**Phase 2 - Sécurisation :**
-1. Implémentation Spring Security
-2. Création de l'intégration Admin Global (ID 0)
-3. Génération du premier enrollment admin
+**Approche Simplifiée :**
+1. **Modification V1__initial_schema.sql** - Ajout des nouvelles tables et colonnes
+2. **Reset complet** - Suppression et recréation de la base de données
+3. **Pas de migration progressive** - Implémentation directe du nouveau modèle
 
-**Phase 3 - CLI Integration :**
-1. Nouvelles commandes CLI
-2. Gestion des sessions
-3. Support multi-tenant
+### 8.2 Procédure de Déploiement
 
-### 8.2 Backward Compatibility
+**Étapes de Migration :**
+```sql
+-- 1. Suppression complète de la base (données test uniquement)
+DROP DATABASE ezkey_db;
+CREATE DATABASE ezkey_db;
 
-**Principe :** Maintenir la compatibilité avec les intégrations existantes
-- Les intégrations existantes deviennent des "tenants orphelins"
-- Migration automatique possible vers le modèle tenant
-- Support des deux modèles pendant la transition
+-- 2. Exécution de la migration V1 modifiée
+-- Toutes les nouvelles tables et colonnes sont créées d'un coup
+
+-- 3. Aucune migration de données nécessaire
+-- Les données test seront recréées via les APIs
+```
 
 ---
 
@@ -395,8 +399,9 @@ POST /api/v1/auth/refresh                     # Renouveler token
 ## 10. Roadmap d'Implémentation
 
 ### Phase 1 - Fondations (2-3 semaines)
+- [ ] Modification de la migration Flyway V1__initial_schema.sql
 - [ ] Création des nouvelles entités JPA
-- [ ] Migration de base de données
+- [ ] Reset et recréation de la base de données
 - [ ] Configuration Spring Security de base
 
 ### Phase 2 - Authentification (2-3 semaines)
