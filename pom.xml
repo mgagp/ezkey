@@ -254,4 +254,17 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>native</id>
+			<properties>
+				<!-- Buildpacks native image settings for all Boot apps -->
+				<spring-boot.build-image.builder>paketobuildpacks/builder-jammy-tiny</spring-boot.build-image.builder>
+				<spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
+				<!-- Centralize GraalVM Native Build Tools version -->
+				<native.maven.plugin.version>0.10.3</native.maven.plugin.version>
+			</properties>
+		</profile>
+	</profiles>	
 </project>

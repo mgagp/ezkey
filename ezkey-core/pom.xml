@@ -75,4 +75,18 @@
 
 	<!-- No build plugins needed for a pure library -->
 	<!-- Spring Boot plugin removed - migrations now handled by ezkey-migration module -->
+	
+	<profiles>
+		<profile>
+			<id>native</id>
+			<dependencies>
+				<!-- Ensure JUnit launcher available for native test runs in this module too -->
+				<dependency>
+					<groupId>org.junit.platform</groupId>
+					<artifactId>junit-platform-launcher</artifactId>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
 </project>

@@ -194,3 +194,10 @@ curl http://localhost:8080/actuator/health
 The ezkey-auth-api native build implementation is complete and ready for testing. The configuration supports both buildpack and direct GraalVM compilation approaches, with optimizations specifically for AWS Lambda deployment.
 
 The implementation includes comprehensive AOT processing, reflection configuration, and runtime hints to ensure all application components work correctly in native mode.
+
+My summary
+mvn spring-boot:build-image -pl ezkey-auth-api -Pnative  -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
+mvn spring-boot:build-image -pl ezkey-admin-api -Pnative  -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
+docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=native -d ezkey-auth-api-native
+docker run -p 9080:9080 -e SPRING_PROFILES_ACTIVE=native -d ezkey-admin-api-native
+

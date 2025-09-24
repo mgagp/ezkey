@@ -58,26 +58,45 @@ public class AuthNativeConfiguration {
 
         @Override
         public void registerHints(RuntimeHints hints,ClassLoader classLoader) {
+            hints.reflection() //
+                    .registerType(org.ezkey.authattempt.domain.entity.AuthAttempt.class) //
+                    .registerType(org.ezkey.enrollment.domain.entity.Enrollment.class) //
+                    .registerType(org.ezkey.integration.domain.entity.Integration.class);
+
             // Register enrollment DTOs for reflection
-            hints.reflection().registerType(EnrollmentBindRequestDto.class).registerType(EnrollmentBindResponseDto.class).registerType(EnrollmentVerifyRequestDto.class)
+            hints.reflection() //
+                    .registerType(EnrollmentBindRequestDto.class) //
+                    .registerType(EnrollmentBindResponseDto.class) //
+                    .registerType(EnrollmentVerifyRequestDto.class) //
                     .registerType(EnrollmentVerifyResponseDto.class);
 
             // Register auth attempt DTOs for reflection
-            hints.reflection().registerType(AuthAttemptPendingRequestDto.class).registerType(AuthAttemptPendingResponseDto.class)
-                    .registerType(AuthAttemptRespondRequestDto.class).registerType(AuthAttemptRespondResponseDto.class);
+            hints.reflection() //
+                    .registerType(AuthAttemptPendingRequestDto.class) //
+                    .registerType(AuthAttemptPendingResponseDto.class) //
+                    .registerType(AuthAttemptRespondRequestDto.class) //
+                    .registerType(AuthAttemptRespondResponseDto.class);
 
             // Register serialization hints for Jackson - using TypeReference
-            hints.serialization().registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentBindRequestDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentBindResponseDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentVerifyRequestDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentVerifyResponseDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptPendingRequestDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptPendingResponseDto.class))
-                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptRespondRequestDto.class))
+            hints.serialization() //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentBindRequestDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentBindResponseDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentVerifyRequestDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(EnrollmentVerifyResponseDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptPendingRequestDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptPendingResponseDto.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptRespondRequestDto.class)) //
                     .registerType(org.springframework.aot.hint.TypeReference.of(AuthAttemptRespondResponseDto.class));
 
+            hints.serialization() //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(org.ezkey.authattempt.domain.entity.AuthAttempt.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(org.ezkey.enrollment.domain.entity.Enrollment.class)) //
+                    .registerType(org.springframework.aot.hint.TypeReference.of(org.ezkey.integration.domain.entity.Integration.class));
+
             // Register resource patterns
-            hints.resources().registerPattern("application*.properties").registerPattern("META-INF/native-image/org.ezkey/ezkey-auth-api/*")
+            hints.resources() //
+                    .registerPattern("application*.properties") //
+                    .registerPattern("META-INF/native-image/org.ezkey/ezkey-auth-api/*") //
                     .registerPattern("ValidationMessages.properties");
         }
     }
