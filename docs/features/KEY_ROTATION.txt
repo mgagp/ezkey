@@ -1,0 +1,15 @@
+Lit le contexte de projet, on démarre un nouveau dossier d'analyse.
+Cette fois on examine la rotation de clés.
+Ezkey doit pouvoir changer certains éléments de sécurité une fois établis.
+Candidats à analyser: 
+enrollmentProofToken
+clé intégration
+clé device
+Il faut d'abord établir la raison, le scénario de pertinence de rotation pour chacun.
+En effet, avant de doter ezkey de la possibilité de changer un élément fondamental de sécurité, il faut comprendre ce qui a pu se passer dans le monde réel qui mène logiquement à cette action.
+Pour le enrollmentProofToken je vois comme scénario que le backend a été très récemment compromis et un plan de communication d'urgence avec les usagers (mobile) est établi. 
+Ce plan implique la création d'une demande d'authentification qui a de particulier que son contenu contient un attribut enrollmentProofTokenReplacement, integrationPublicKeyReplacement
+À valider: la terminologie Replacement... Ou Rotation ou Update... analyser le bon vocabulaire "attendu" et cohérent avec la terminologie des DTO en place.
+Dans l'idée du backend compromis, il va de soit que ces deux attributs doivent être mis-à-jour en même temps.
+Dans le scénario ou le device a été compromis, c'est plutôt le Verify DTO qui contiendrait devicePublicKeyReplacement
+Dans un premier temps, évalue la pertinence de ces idées en tant qu'expert en sécurité informatique.
