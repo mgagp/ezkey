@@ -20,8 +20,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.Tenant;
 
 /**
  * JPA entity representing an integration in the Ezkey system.
@@ -82,6 +87,40 @@ public class Integration {
      */
     @OneToMany(mappedBy = "integration",cascade = CascadeType.ALL,orphanRemoval = true,fetch = FetchType.LAZY)
     private List<IntegrationI18n> i18n;
+
+    /**
+     * Reference to the tenant this integration belongs to.
+     * <p>
+     * This field is required for multi-tenant data isolation.
+     * Each integration belongs to a specific tenant and can only
+     * be accessed by administrators of that tenant.
+     * </p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    /**
+     * Flag indicating whether this is a system integration.
+     * <p>
+     * System integrations are special integrations that are created
+     * by the system itself (like Ezkey admin interfaces) and are
+     * not managed by regular tenant administrators.
+     * </p>
+     */
+    @Column(name = "is_system_integration")
+    private Boolean isSystemIntegration = false;
+
+    /**
+     * Reference to the administrator who created this integration.
+     * <p>
+     * This field tracks the administrator responsible for creating
+     * this integration for audit and permission purposes.
+     * </p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_admin_id")
+    private EzkeyAdmin createdByAdmin;
 
     /**
      * Gets the unique identifier of the integration.
@@ -171,5 +210,59 @@ public class Integration {
      */
     public void setI18n(List<IntegrationI18n> i18n) {
         this.i18n = i18n;
+    }
+
+    /**
+     * Gets the tenant this integration belongs to.
+     *
+     * @return the tenant
+     */
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    /**
+     * Sets the tenant this integration belongs to.
+     *
+     * @param tenant the tenant
+     */
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
+    }
+
+    /**
+     * Gets the system integration flag.
+     *
+     * @return true if this is a system integration
+     */
+    public Boolean getIsSystemIntegration() {
+        return isSystemIntegration;
+    }
+
+    /**
+     * Sets the system integration flag.
+     *
+     * @param isSystemIntegration the system integration flag
+     */
+    public void setIsSystemIntegration(Boolean isSystemIntegration) {
+        this.isSystemIntegration = isSystemIntegration;
+    }
+
+    /**
+     * Gets the administrator who created this integration.
+     *
+     * @return the creating administrator
+     */
+    public EzkeyAdmin getCreatedByAdmin() {
+        return createdByAdmin;
+    }
+
+    /**
+     * Sets the administrator who created this integration.
+     *
+     * @param createdByAdmin the creating administrator
+     */
+    public void setCreatedByAdmin(EzkeyAdmin createdByAdmin) {
+        this.createdByAdmin = createdByAdmin;
     }
 }
