@@ -8,7 +8,7 @@
  * Description: Spring Data JPA repository for EzkeyAdmin entity operations.
  */
 
-package org.ezkey.admin.domain.repository;
+package org.ezkey.integration.domain.repository;
 
 import java.util.List;
 import java.util.Optional;

@@ -8,7 +8,7 @@
  * Description: Spring Data JPA repository for AdminToken entity operations.
  */
 
-package org.ezkey.adminauth.domain.repository;
+package org.ezkey.integration.domain.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;

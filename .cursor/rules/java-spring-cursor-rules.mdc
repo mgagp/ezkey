@@ -38,6 +38,7 @@ Configuration and Properties
 Dependency Injection and IoC
 - Use constructor injection over field injection for better testability.
 - Leverage Spring's IoC container for managing bean lifecycles.
+- Do NOT USED @Autowired, if tempted to use it, explain me and ask permission specifically.
 
 Testing
 - Write unit tests using JUnit 5 and Spring Boot Test.

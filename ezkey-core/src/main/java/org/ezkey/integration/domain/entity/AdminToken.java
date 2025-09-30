@@ -169,7 +169,7 @@ public class AdminToken {
      * and can be used to detect suspicious activity.
      * </p>
      */
-    @Column(name = "ip_address", columnDefinition = "INET")
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     /**

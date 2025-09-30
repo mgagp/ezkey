@@ -48,7 +48,7 @@ CREATE TABLE ezkey_admin_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     last_used_at TIMESTAMP,
-    ip_address INET,
+    ip_address VARCHAR(45),
     user_agent TEXT,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );
