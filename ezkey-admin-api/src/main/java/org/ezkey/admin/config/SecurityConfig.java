@@ -10,12 +10,15 @@
 
 package org.ezkey.admin.config;
 
+import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security configuration for admin API.
@@ -38,6 +41,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Autowired
+    private AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+
     /**
      * Password encoder bean for BCrypt hashing.
      *
@@ -51,9 +57,9 @@ public class SecurityConfig {
     /**
      * Security filter chain configuration.
      * <p>
-     * This configuration uses our custom UserDetailsService for database authentication
-     * and allows public access to authentication endpoints while requiring authentication
-     * for all other endpoints.
+     * This configuration supports both HTTP Basic authentication and Bearer token authentication.
+     * It uses our custom UserDetailsService for database authentication and our custom filter
+     * for bearer token validation.
      * </p>
      *
      * @param http the HttpSecurity configuration
@@ -74,7 +80,8 @@ public class SecurityConfig {
                 // Require authentication for all other endpoints
                 .anyRequest().authenticated()
             )
-            .httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")); // Use HTTP Basic authentication with our UserDetailsService
+            .httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")) // HTTP Basic authentication
+            .addFilterBefore(adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Bearer token authentication
         
         return http.build();
     }
