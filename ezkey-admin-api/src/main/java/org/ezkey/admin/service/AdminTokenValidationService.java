@@ -15,7 +15,6 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,8 +43,11 @@ public class AdminTokenValidationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminTokenValidationService.class);
 
-    @Autowired
-    private AdminTokenRepository tokenRepository;
+    private final AdminTokenRepository tokenRepository;
+
+    public AdminTokenValidationService(AdminTokenRepository tokenRepository) {
+        this.tokenRepository = tokenRepository;
+    }
 
     /**
      * Validates a bearer token and returns the associated admin if valid.

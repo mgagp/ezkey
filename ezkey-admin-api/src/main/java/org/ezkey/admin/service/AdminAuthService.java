@@ -16,7 +16,6 @@ import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,14 +48,19 @@ public class AdminAuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminAuthService.class);
 
-    @Autowired
-    private EzkeyAdminRepository adminRepository;
+    private final EzkeyAdminRepository adminRepository;
     
-    @Autowired
-    private AdminTokenRepository tokenRepository;
+    private final AdminTokenRepository tokenRepository;
     
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    public AdminAuthService(EzkeyAdminRepository adminRepository,
+                            AdminTokenRepository tokenRepository,
+                            BCryptPasswordEncoder passwordEncoder) {
+        this.adminRepository = adminRepository;
+        this.tokenRepository = tokenRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     /**
      * Authenticate administrator with username and password.

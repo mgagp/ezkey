@@ -11,7 +11,6 @@
 package org.ezkey.admin.config;
 
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,8 +40,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+    private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+
+    public SecurityConfig(AdminTokenAuthenticationFilter adminTokenAuthenticationFilter) {
+        this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
+    }
 
     /**
      * Password encoder bean for BCrypt hashing.

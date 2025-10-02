@@ -19,7 +19,6 @@ import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,8 +53,11 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(AdminTokenAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
-    @Autowired
-    private AdminTokenValidationService tokenValidationService;
+    private final AdminTokenValidationService tokenValidationService;
+
+    public AdminTokenAuthenticationFilter(AdminTokenValidationService tokenValidationService) {
+        this.tokenValidationService = tokenValidationService;
+    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, 

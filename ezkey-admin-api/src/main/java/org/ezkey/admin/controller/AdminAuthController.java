@@ -13,7 +13,6 @@ package org.ezkey.admin.controller;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.service.AdminAuthService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -45,8 +44,11 @@ public class AdminAuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
 
-    @Autowired
-    private AdminAuthService authService;
+    private final AdminAuthService authService;
+
+    public AdminAuthController(AdminAuthService authService) {
+        this.authService = authService;
+    }
 
     /**
      * Authenticate administrator with username and password.

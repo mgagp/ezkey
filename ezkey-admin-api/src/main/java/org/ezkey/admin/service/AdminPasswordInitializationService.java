@@ -12,7 +12,6 @@ package org.ezkey.admin.service;
 
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.SecureRandom;
 import java.util.UUID;
 
 /**
@@ -47,11 +45,14 @@ public class AdminPasswordInitializationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminPasswordInitializationService.class);
 
-    @Autowired
-    private EzkeyAdminRepository adminRepository;
+    private final EzkeyAdminRepository adminRepository;
     
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    public AdminPasswordInitializationService(EzkeyAdminRepository adminRepository, BCryptPasswordEncoder passwordEncoder) {
+        this.adminRepository = adminRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     /**
      * Detect and update placeholder admin password on application startup.

@@ -12,7 +12,6 @@ package org.ezkey.admin.service;
 
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -44,8 +43,11 @@ public class AdminUserDetailsService implements UserDetailsService {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminUserDetailsService.class);
 
-    @Autowired
-    private EzkeyAdminRepository adminRepository;
+    private final EzkeyAdminRepository adminRepository;
+
+    public AdminUserDetailsService(EzkeyAdminRepository adminRepository) {
+        this.adminRepository = adminRepository;
+    }
 
     /**
      * Load user details by username for Spring Security authentication.
