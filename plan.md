@@ -22,6 +22,71 @@ L'admin-api utilise actuellement un système d'authentification basique:
 
 ✅ **Sessions ultra-courtes** - 2-10 minutes typiques (Login → Action → Logout)
 
+---
+
+## État des Tables Admin Tokens
+
+### Tables Existantes (V2__add_multi_tenant_security.sql)
+
+#### 1. `ezkey_admin_tokens` - Bearer Tokens Complets
+**Status:** ✅ **UTILISÉE ACTIVEMENT**
+
+**Rôle:**
+- Tokens d'accès complets pour API Admin
+- Authentification bearer pour toutes les requêtes API
+
+**Caractéristiques:**
+- Durée de vie: 24 heures
+- Format: `ezkey_[UUID]`
+- Colonnes: `bearer_token`, `admin_id`, `expires_at`, `active`, etc.
+
+**Phase 2A (COMPLÉTÉE):**
+- ✅ Cleanup automatique (toutes les heures)
+- ✅ Rotation au login (1 seul token actif par admin)
+
+#### 2. `ezkey_admin_temp_tokens` - Tokens Temporaires MFA  
+**Status:** ⏳ **PRÉPARÉE POUR PHASE 4** (pas encore utilisée)
+
+**Rôle futur:**
+- Tokens temporaires pour flow MFA hybride
+- Pont entre authentification password et validation MFA
+
+**Caractéristiques:**
+- Durée de vie: 5 minutes (court délai)
+- Format: String unique
+- Colonnes: `temp_token`, `admin_id`, `expires_at`, `mfa_required`, `active`
+
+**État actuel:**
+- Table créée dans V2 migration
+- Entité JPA `AdminTempToken.java` existe
+- ⚠️ Aucun code ne l'utilise actuellement
+- Cleanup à implémenter lors de Phase 4
+
+**Flow MFA futur (Phase 4):**
+```
+1. Login (password) → Validate credentials
+2. Generate TEMP TOKEN (5 min) ← ezkey_admin_temp_tokens
+3. Create MFA auth attempt
+4. Mobile approve/deny
+5. Validate MFA response
+6. Invalidate temp token
+7. Generate BEARER TOKEN (24h) ← ezkey_admin_tokens
+```
+
+### Comparaison Tables
+
+| Aspect | `ezkey_admin_tokens` | `ezkey_admin_temp_tokens` |
+|--------|---------------------|--------------------------|
+| **Status** | ✅ Utilisée | ⏳ Prête pour Phase 4 |
+| **Durée** | 24 heures | 5 minutes |
+| **Usage** | Bearer tokens API | Tokens intermédiaires MFA |
+| **Phase 2A** | ✅ Cleanup + rotation | ❌ Pas encore applicable |
+| **Entité JPA** | `AdminToken.java` | `AdminTempToken.java` |
+| **Repository** | ✅ `AdminTokenRepository` | ❌ Pas créé |
+| **Code actif** | Oui | Non |
+
+---
+
 ## Objectifs
 
 1. **Rate Limiting sur Login** ✅ **COMPLÉTÉ**

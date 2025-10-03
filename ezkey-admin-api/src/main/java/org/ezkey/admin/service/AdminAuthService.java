@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
+import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -78,100 +79,168 @@ public class AdminAuthService {
     /**
      * Authenticate administrator with username and password.
      * <p>
-     * This method validates the administrator credentials and generates a bearer token
-     * for successful authentications. The token is valid for 24 hours.
+     * This method orchestrates the authentication flow by delegating to focused
+     * private methods. It validates credentials, rotates tokens, generates a new
+     * token, and returns the authentication response.
      * </p>
      *
      * @param request the login request containing username and password
      * @return AdminLoginResponseDto with authentication result
-     * @throws RuntimeException if authentication fails
      */
     public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
-        logger.info("🔐 Starting authentication for username: {}", request.getUsername());
+        logger.info("Authentication attempt for user: {}", request.getUsername());
         
         try {
-            // Find administrator by username
-            logger.info("📋 Looking up administrator in database...");
-            EzkeyAdmin admin = adminRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Administrator not found"));
+            // 1. Validate credentials (username, password, active status)
+            EzkeyAdmin admin = validateCredentials(request);
             
-            logger.info("✅ Administrator found - ID: {}, Type: {}, Active: {}", 
-                admin.getAdminId(), admin.getAdminType(), admin.getActive());
+            // 2. Rotate tokens if enabled (1 active token per admin)
+            rotateTokensIfEnabled(admin);
             
-            // Verify password
-            logger.info("🔑 Verifying password...");
-            if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
-                logger.warn("❌ Password verification failed for username: {}", request.getUsername());
-                throw new RuntimeException("Invalid password");
-            }
-            logger.info("✅ Password verification successful");
+            // 3. Generate and persist new token
+            AdminToken token = generateAndPersistToken(admin);
             
-            // Check if admin is active
-            if (!admin.getActive()) {
-                logger.warn("❌ Administrator account is inactive for username: {}", request.getUsername());
-                throw new RuntimeException("Administrator account is inactive");
-            }
-            logger.info("✅ Administrator account is active");
+            // 4. Update admin last login timestamp
+            updateLastLogin(admin);
             
-            // Rotate tokens on login (deactivate old tokens)
-            if (rotationProperties.isRotationOnLoginEnabled()) {
-                logger.info("🔄 Rotating tokens for admin {}...", admin.getUsername());
-                int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
-                
-                if (deactivated > 0) {
-                    logger.info("🔄 Rotated {} old tokens for admin {} on login", 
-                        deactivated, admin.getUsername());
-                } else {
-                    logger.debug("No old tokens to rotate for admin {}", admin.getUsername());
-                }
-            }
+            // 5. Build and return success response
+            return buildSuccessResponse(admin, token);
             
-            // Generate bearer token
-            logger.info("🎫 Generating bearer token...");
-            String bearerToken = "ezkey_" + UUID.randomUUID().toString().replace("-", "");
-            LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-            logger.info("✅ Bearer token generated - Expires at: {}", expiresAt);
-            
-            // Create token entity
-            logger.info("💾 Creating token entity...");
-            AdminToken token = new AdminToken();
-            token.setBearerToken(bearerToken);
-            token.setAdmin(admin);
-            token.setAdminType(admin.getAdminType().name());
-            token.setTenant(admin.getTenant());
-            token.setIntegration(admin.getIntegration());
-            token.setExpiresAt(expiresAt);
-            token.setCreatedAt(LocalDateTime.now());
-            token.setActive(true);
-            
-            // Save token
-            logger.info("💾 Saving token to database...");
-            tokenRepository.save(token);
-            logger.info("✅ Token saved successfully");
-            
-            // Update last login
-            logger.info("🕒 Updating last login timestamp...");
-            admin.setLastLoginAt(LocalDateTime.now());
-            adminRepository.save(admin);
-            logger.info("✅ Last login updated");
-            
-            // Return success response
-            logger.info("🎉 Authentication successful for username: {} - Token: {}...", 
-                request.getUsername(), bearerToken.substring(0, Math.min(20, bearerToken.length())));
-            
-            return new AdminLoginResponseDto(
-                bearerToken,
-                admin.getAdminType().name(),
-                admin.getUsername(),
-                expiresAt
-            );
-            
-        } catch (Exception e) {
-            logger.error("❌ Authentication failed for username: {} - Error: {}", 
-                request.getUsername(), e.getMessage());
-            // Return error response
-            return new AdminLoginResponseDto("Authentication failed: " + e.getMessage());
+        } catch (AuthenticationException e) {
+            logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
+            return buildErrorResponse(e.getMessage());
         }
+    }
+    
+    /**
+     * Validate admin credentials including username, password, and active status.
+     * <p>
+     * This method performs all credential validation checks and throws
+     * AuthenticationException if any check fails.
+     * </p>
+     *
+     * @param request the login request containing credentials
+     * @return the validated admin entity
+     * @throws AuthenticationException if validation fails
+     */
+    private EzkeyAdmin validateCredentials(AdminLoginRequestDto request) {
+        // Find admin by username
+        EzkeyAdmin admin = adminRepository.findByUsername(request.getUsername())
+            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
+        
+        // Verify password
+        if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
+            throw new AuthenticationException("Invalid credentials");
+        }
+        
+        // Check active status
+        if (!admin.getActive()) {
+            throw new AuthenticationException("Account is inactive");
+        }
+        
+        logger.debug("Credentials validated for admin: {}", admin.getUsername());
+        return admin;
+    }
+    
+    /**
+     * Rotate tokens on login if enabled in configuration.
+     * <p>
+     * Deactivates all existing active tokens for this admin to enforce
+     * the "one active token per admin" security policy.
+     * </p>
+     *
+     * @param admin the administrator whose tokens should be rotated
+     */
+    private void rotateTokensIfEnabled(EzkeyAdmin admin) {
+        if (!rotationProperties.isRotationOnLoginEnabled()) {
+            return;
+        }
+        
+        int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+        
+        if (deactivated > 0) {
+            logger.info("Rotated {} old tokens for admin: {}", deactivated, admin.getUsername());
+        }
+    }
+    
+    /**
+     * Generate a new bearer token and persist it to database.
+     * <p>
+     * Creates a new AdminToken entity with all necessary metadata
+     * and saves it to the database.
+     * </p>
+     *
+     * @param admin the administrator for whom to generate the token
+     * @return the persisted token entity
+     */
+    private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
+        String bearerToken = generateBearerToken();
+        LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+        
+        AdminToken token = new AdminToken();
+        token.setBearerToken(bearerToken);
+        token.setAdmin(admin);
+        token.setAdminType(admin.getAdminType().name());
+        token.setTenant(admin.getTenant());
+        token.setIntegration(admin.getIntegration());
+        token.setExpiresAt(expiresAt);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setActive(true);
+        
+        tokenRepository.save(token);
+        logger.debug("Token created for admin: {}", admin.getUsername());
+        
+        return token;
+    }
+    
+    /**
+     * Generate a secure bearer token string.
+     * <p>
+     * Format: ezkey_[UUID without hyphens]
+     * </p>
+     *
+     * @return the generated bearer token string
+     */
+    private String generateBearerToken() {
+        return "ezkey_" + UUID.randomUUID().toString().replace("-", "");
+    }
+    
+    /**
+     * Update the admin's last login timestamp.
+     *
+     * @param admin the administrator whose last login should be updated
+     */
+    private void updateLastLogin(EzkeyAdmin admin) {
+        admin.setLastLoginAt(LocalDateTime.now());
+        adminRepository.save(admin);
+    }
+    
+    /**
+     * Build success response DTO.
+     *
+     * @param admin the authenticated administrator
+     * @param token the generated token
+     * @return success response DTO
+     */
+    private AdminLoginResponseDto buildSuccessResponse(EzkeyAdmin admin, AdminToken token) {
+        logger.info("Authentication successful for: {}", admin.getUsername());
+        
+        return new AdminLoginResponseDto(
+            token.getBearerToken(),
+            admin.getAdminType().name(),
+            admin.getUsername(),
+            token.getExpiresAt()
+        );
+    }
+    
+    /**
+     * Build error response DTO.
+     *
+     * @param message the error message
+     * @return error response DTO
+     */
+    private AdminLoginResponseDto buildErrorResponse(String message) {
+        return new AdminLoginResponseDto("Authentication failed: " + message);
     }
 
     /**
