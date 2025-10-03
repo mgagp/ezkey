@@ -12,6 +12,7 @@ package org.ezkey.admin;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main Spring Boot application for Ezkey Admin API.
@@ -19,6 +20,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * This application provides administrative endpoints for managing integrations.
  * It scans both the core package (for shared services and entities) and the admin package (for admin-specific
  * controllers and configuration).
+ * </p>
+ *
+ * <p>
+ * <b>Scheduled Tasks:</b>
+ * This application enables scheduling for periodic tasks such as token cleanup.
+ * Scheduled tasks are configured via {@link org.springframework.scheduling.annotation.Scheduled}
+ * annotations and can be controlled through application properties.
  * </p>
  *
  * <p>
@@ -45,6 +53,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
                 "org.ezkey.tenant",        // NOUVEAU
                 "org.ezkey.adminauth",     // NOUVEAU
         })
+@EnableScheduling
 public class AdminApplication {
 
     /**

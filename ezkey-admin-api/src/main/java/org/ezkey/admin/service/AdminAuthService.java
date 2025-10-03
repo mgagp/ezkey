@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.service;
 
+import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -33,6 +34,14 @@ import java.util.UUID;
  * </p>
  *
  * <p>
+ * <b>Token Rotation:</b>
+ * When token rotation on login is enabled, this service deactivates all existing
+ * active tokens for an administrator when they log in, ensuring only one active
+ * token exists at any time. This improves security by limiting the attack surface
+ * and invalidating stolen tokens on next legitimate login.
+ * </p>
+ *
+ * <p>
  * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  * </p>
  * <p>
@@ -53,13 +62,17 @@ public class AdminAuthService {
     private final AdminTokenRepository tokenRepository;
     
     private final BCryptPasswordEncoder passwordEncoder;
+    
+    private final AdminTokenRotationProperties rotationProperties;
 
     public AdminAuthService(EzkeyAdminRepository adminRepository,
                             AdminTokenRepository tokenRepository,
-                            BCryptPasswordEncoder passwordEncoder) {
+                            BCryptPasswordEncoder passwordEncoder,
+                            AdminTokenRotationProperties rotationProperties) {
         this.adminRepository = adminRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
+        this.rotationProperties = rotationProperties;
     }
 
     /**
@@ -99,6 +112,19 @@ public class AdminAuthService {
                 throw new RuntimeException("Administrator account is inactive");
             }
             logger.info("✅ Administrator account is active");
+            
+            // Rotate tokens on login (deactivate old tokens)
+            if (rotationProperties.isRotationOnLoginEnabled()) {
+                logger.info("🔄 Rotating tokens for admin {}...", admin.getUsername());
+                int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+                
+                if (deactivated > 0) {
+                    logger.info("🔄 Rotated {} old tokens for admin {} on login", 
+                        deactivated, admin.getUsername());
+                } else {
+                    logger.debug("No old tokens to rotate for admin {}", admin.getUsername());
+                }
+            }
             
             // Generate bearer token
             logger.info("🎫 Generating bearer token...");

@@ -272,4 +272,45 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
      * @return the count of expired tokens
      */
     long countByExpiresAtBefore(LocalDateTime currentTime);
+
+    /**
+     * Deletes tokens that are expired AND inactive.
+     * <p>
+     * This method is used for token cleanup to remove tokens that are
+     * both expired and inactive from the database. Active tokens are
+     * preserved even if expired for audit trail purposes.
+     * </p>
+     *
+     * @param cutoff the cutoff timestamp (tokens expired before this are deleted)
+     * @return the number of tokens deleted
+     */
+    @Modifying
+    @Query("DELETE FROM AdminToken t WHERE t.expiresAt < :cutoff AND t.active = false")
+    int deleteByExpiresAtBeforeAndActiveFalse(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * Counts tokens that are expired AND inactive.
+     * <p>
+     * This method is used for monitoring to count how many tokens
+     * are eligible for cleanup (expired and inactive).
+     * </p>
+     *
+     * @param cutoff the cutoff timestamp
+     * @return the count of expired and inactive tokens
+     */
+    long countByExpiresAtBeforeAndActiveFalse(LocalDateTime cutoff);
+
+    /**
+     * Deactivates all active tokens for a specific administrator.
+     * <p>
+     * This method is used during login to enforce "one active token per admin"
+     * policy by deactivating all previous tokens when an administrator logs in.
+     * </p>
+     *
+     * @param adminId the ID of the administrator
+     * @return the number of tokens deactivated
+     */
+    @Modifying
+    @Query("UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active = true")
+    int deactivateAllTokensForAdmin(@Param("adminId") Integer adminId);
 }
