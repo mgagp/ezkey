@@ -216,7 +216,7 @@
 		"bearer": [
 			{
 				"key": "token",
-				"value": "ezkey_cdbadb7784094d2cbf8013fcd812f3c0",
+				"value": "{{token}}",
 				"type": "string"
 			}
 		]
