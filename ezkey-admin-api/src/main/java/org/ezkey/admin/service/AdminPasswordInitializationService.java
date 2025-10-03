@@ -11,10 +11,14 @@
 package org.ezkey.admin.service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
+import org.ezkey.admin.config.OrganizationProperties;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -48,11 +52,20 @@ public class AdminPasswordInitializationService {
 
     private final EzkeyAdminRepository adminRepository;
 
+    private final TenantRepository tenantRepository;
+
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public AdminPasswordInitializationService(EzkeyAdminRepository adminRepository,BCryptPasswordEncoder passwordEncoder){
+    private final OrganizationProperties organizationProperties;
+
+    public AdminPasswordInitializationService(EzkeyAdminRepository adminRepository,
+            TenantRepository tenantRepository,
+            BCryptPasswordEncoder passwordEncoder,
+            OrganizationProperties organizationProperties){
         this.adminRepository = adminRepository;
+        this.tenantRepository = tenantRepository;
         this.passwordEncoder = passwordEncoder;
+        this.organizationProperties = organizationProperties;
     }
 
     /**
@@ -112,7 +125,8 @@ public class AdminPasswordInitializationService {
      * <p>
      * This method creates the first administrator (admin zero) in the system
      * with GLOBAL_ADMIN privileges using a placeholder password that will be
-     * replaced immediately by the normal initialization flow.
+     * replaced immediately by the normal initialization flow. It also creates
+     * the system tenant representing the organization hosting this instance.
      * </p>
      * <p>
      * <b>Note:</b> This method is called only when Flyway migrations have not run
@@ -125,30 +139,77 @@ public class AdminPasswordInitializationService {
         logger.warn("⚠️ This should normally be done by Flyway migration V3__create_initial_admin.sql");
         logger.warn("⚠️ Creating admin via code fallback mechanism...");
         try{
-            // Use placeholder password (same as migration V3)
+            // Step 1: Create or find system tenant
+            Tenant systemTenant = createOrFindSystemTenant();
+            
+            // Step 2: Use placeholder password (same as migration V3)
             // This will trigger the initialization flow immediately after
             String placeholderHash = "$2a$10$placeholder.defined.at.first.execution";
 
-            // Create admin zero with same properties as V3 migration
+            // Step 3: Create admin zero with same properties as V3 migration
             EzkeyAdmin adminZero = new EzkeyAdmin("admin",placeholderHash,EzkeyAdmin.AdminType.GLOBAL_ADMIN);
             adminZero.setPasswordChangeRequired(true);
             adminZero.setMfaEnabled(true); // Aligned with V3 migration
             adminZero.setMfaRequired(true); // Aligned with V3 migration
             adminZero.setActive(true);
             adminZero.setCreatedAt(LocalDateTime.now());
+            adminZero.setTenant(systemTenant); // Link to system tenant (Option B)
 
-            // Save admin zero
+            // Step 4: Save admin zero
             adminRepository.save(adminZero);
-            logger.info("✅ Admin zero created successfully - ID: {}",adminZero.getAdminId());
+            logger.info("✅ Admin zero created successfully - ID: {}, Tenant: {}",
+                    adminZero.getAdminId(),systemTenant.getTenantName());
+            
+            // Step 5: Update tenant with creator admin
+            systemTenant.setCreatedByAdmin(adminZero);
+            tenantRepository.save(systemTenant);
+            logger.info("✅ System tenant linked to admin zero");
+            
             logger.info("🔄 Placeholder password detected, proceeding with initialization...");
 
-            // Now trigger the normal initialization flow by calling the main method
+            // Step 6: Trigger the normal initialization flow by calling the main method
             // This will generate a real password and log it
             initializeAdminPassword();
         } catch (Exception e){
             logger.error("❌ Failed to create admin zero: {}",e.getMessage(),e);
             throw new RuntimeException("Failed to create admin zero",e);
         }
+    }
+
+    /**
+     * Create or find the system tenant representing the organization hosting this instance.
+     * <p>
+     * This method creates a system tenant if it doesn't exist, or retrieves it if it already exists.
+     * The tenant name is customizable via configuration properties (ezkey.organization.name).
+     * </p>
+     *
+     * @return the system tenant
+     */
+    private Tenant createOrFindSystemTenant() {
+        String tenantName = organizationProperties.getName();
+        String tenantDescription = organizationProperties.getDescription();
+        
+        logger.info("🏢 Looking for system tenant: '{}'",tenantName);
+        
+        // Try to find existing tenant
+        Optional<Tenant> existingTenant = tenantRepository.findByTenantName(tenantName);
+        if (existingTenant.isPresent()){
+            logger.info("✅ System tenant found - ID: {}, Name: '{}'",
+                    existingTenant.get().getTenantId(),existingTenant.get().getTenantName());
+            return existingTenant.get();
+        }
+        
+        // Create new tenant
+        logger.info("🏢 Creating system tenant: '{}'",tenantName);
+        Tenant systemTenant = new Tenant(tenantName,tenantDescription);
+        systemTenant.setCreatedAt(LocalDateTime.now());
+        systemTenant.setActive(true);
+        
+        tenantRepository.save(systemTenant);
+        logger.info("✅ System tenant created successfully - ID: {}, Name: '{}'",
+                systemTenant.getTenantId(),systemTenant.getTenantName());
+        
+        return systemTenant;
     }
 
     /**

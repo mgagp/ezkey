@@ -198,6 +198,107 @@ Content-Type: application/json
 
 ## 2. Admin API Endpoints (internal)
 
+### Admin Authentication
+
+Base URL: `http://localhost:9080/api/v1/admin/auth`
+
+#### POST /login
+Authenticate admin user and receive bearer token for API access.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "secure-password-here"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "bearerToken": "ezkey_abc123def456...",
+  "adminType": "GLOBAL_ADMIN",
+  "username": "admin",
+  "expiresAt": "2025-10-04T10:00:00Z",
+  "passwordChangeRequired": false,
+  "message": "Authentication successful"
+}
+```
+
+**Failure Response (400 Bad Request):**
+```json
+{
+  "success": false,
+  "bearerToken": null,
+  "adminType": null,
+  "username": null,
+  "expiresAt": null,
+  "passwordChangeRequired": false,
+  "message": "Invalid credentials"
+}
+```
+
+**Rate Limited Response (429 Too Many Requests):**
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 300
+Content-Type: text/plain
+
+Too many login attempts. Please try again later.
+```
+
+**Rate Limiting:**
+- 5 requests per 5 minutes per IP address
+- Automatic IP blocking after 10 consecutive failures (30 minutes)
+- HTTP 429 when limit exceeded
+- `Retry-After` header indicates seconds until retry allowed
+
+**Security Notes:**
+- Password transmitted over HTTPS only
+- Bearer token expires after 24 hours
+- Failed attempts logged for security monitoring
+- IP-based rate limiting prevents brute force attacks
+
+#### POST /logout
+Revoke current bearer token and end session.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/logout
+Authorization: Bearer ezkey_abc123def456...
+```
+
+**Success Response:**
+```http
+HTTP/1.1 200 OK
+```
+
+**Unauthorized Response:**
+```http
+HTTP/1.1 401 Unauthorized
+
+Invalid or expired token
+```
+
+**Security Notes:**
+- Token immediately invalidated in database
+- Subsequent requests with same token will return 401
+- Recommended to call on explicit logout or session timeout
+
+#### Using Bearer Token
+All authenticated Admin API endpoints require the bearer token in the Authorization header:
+
+```http
+GET /api/v1/admin/integrations
+Authorization: Bearer ezkey_abc123def456...
+```
+
+---
+
 ### a) Authentication request management
 
 **GET    /api/v1/auth-attempts**          // List all authentication requests

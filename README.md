@@ -56,7 +56,7 @@ graph LR
 ## Features
 
 - **Multi-Module Architecture**: Separated APIs for different use cases
-- **Admin API**: Complete management interface for integrations and enrollments
+- **Admin API**: Complete management interface with secure authentication (login/logout), rate limiting, and multi-tenant administration
 - **Authentication API**: Mobile-focused API for device authentication
 - **Wait API**: Synchronous polling for authentication completion
 - **Mobile Application**: Cross-platform mobile app for end users

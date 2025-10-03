@@ -84,6 +84,41 @@ An MFA authentication flow, validated via cryptographic signature. Each attempt 
 - Challenge response (if required)
 - Cryptographic validation
 
+### Administration & Tenancy
+
+#### Tenant
+Represents an organization or isolated workspace within the Ezkey instance.
+
+**Tenant Types:**
+- **System Tenant**: The organization hosting this Ezkey instance (e.g., "Acme Corp")
+- **Application Tenants**: Departments or divisions within the organization (e.g., "HR", "IT")
+
+**Key Attributes:**
+- Unique identifier and name
+- Organization description
+- Created by admin reference
+- Active/inactive status
+
+#### Administrator
+User with elevated privileges to manage the Ezkey instance.
+
+**Administrator Types:**
+- **Global Admin**: Instance-wide access, linked to system tenant
+- **Tenant Admin**: Manages a specific tenant and its integrations
+- **Integration Admin**: Manages a single integration within a tenant
+
+**Key Features:**
+- Secure authentication (password + optional MFA)
+- Rate limiting protection against brute force
+- Token-based API access (Bearer tokens)
+- Audit trail (login history, actions)
+
+**Bootstrap Process:**
+On first startup, Ezkey automatically creates:
+1. **System Tenant** - Representing the hosting organization (configurable name)
+2. **Admin Zero** - First global administrator with generated password
+3. **Secure Initialization** - Password logged once, must be changed on first login
+
 ---
 
 ## 4. Product Principles

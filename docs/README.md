@@ -202,7 +202,11 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **Zero-trust architecture** evolution path
 
 ### 🌐 APIs
-- **Admin API** (Port 9080) - Organization management
+- **Admin API** (Port 9080) - Organization management with secure authentication
+  - Multi-tenant administration (Global, Tenant, Integration admins)
+  - Secure login/logout with rate limiting protection
+  - Bearer token authentication
+  - Integration and enrollment management
 - **Auth API** (Port 8080) - Mobile device operations
 - **RESTful design** with comprehensive OpenAPI documentation
 - **JWT authentication** and role-based access control

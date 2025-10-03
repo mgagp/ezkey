@@ -108,6 +108,179 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 
 ---
 
+## Admin API Authentication & Security
+
+### Admin Zero Bootstrap
+
+On first startup, Ezkey automatically initializes the admin authentication system:
+
+1. **System Tenant Creation**
+   - Default name: "Ezkey System" (configurable)
+   - Represents the organization hosting this instance
+   - Customizable via: `ezkey.organization.name` property
+
+2. **Admin Zero Creation**
+   - Username: `admin`
+   - Password: Randomly generated (UUID-based, 32 characters)
+   - Type: `GLOBAL_ADMIN` (full instance access)
+   - Password logged once at startup, must be changed on first login
+
+3. **Security Features**
+   - MFA enabled but not enforced initially (for bootstrap)
+   - Password change required flag set
+   - Admin linked to system tenant
+
+### Organization Configuration
+
+```properties
+# application.properties - Admin API
+ezkey.organization.name=Acme Corporation
+ezkey.organization.description=Acme Corp Ezkey MFA Instance
+```
+
+**Use Cases:**
+- **Single Organization**: Default "Ezkey System" for internal use
+- **Customer Instance**: Custom name like "Acme Corporation" for dedicated deployment
+- **Multi-Instance SaaS**: Different names per customer instance
+
+### Admin API Rate Limiting
+
+Protection against brute force attacks on admin login endpoint.
+
+**Configuration:**
+
+```properties
+# Admin API Rate Limiting
+ezkey.admin.rate-limit.enabled=true
+
+# Login endpoint protection
+ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.window-minutes=5
+ezkey.admin.rate-limit.login.key-strategy=client-ip
+
+# IP blocking after repeated failures
+ezkey.admin.rate-limit.login.block-after-failures=10
+ezkey.admin.rate-limit.login.block-duration-minutes=30
+```
+
+**Behavior:**
+- **5 login attempts** per 5 minutes per IP
+- **Automatic IP blocking** after 10 consecutive failures
+- **30-minute block duration** for blocked IPs
+- **429 Too Many Requests** response when rate limit exceeded
+- **Retry-After header** indicates when to retry
+
+**Monitoring:**
+
+```bash
+# Check rate limiting logs
+tail -f /var/log/ezkey/admin-api.log | grep "Rate limit"
+
+# Monitor blocked IPs
+grep "Client IP.*blocked" /var/log/ezkey/admin-api.log | awk '{print $NF}' | sort | uniq -c
+```
+
+### Admin Authentication Endpoints
+
+#### Login
+```http
+POST /api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "generated-password-here"
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "bearerToken": "ezkey_abc123...",
+  "adminType": "GLOBAL_ADMIN",
+  "username": "admin",
+  "expiresAt": "2025-10-04T10:00:00Z",
+  "passwordChangeRequired": true,
+  "message": "Authentication successful"
+}
+```
+
+**Rate Limited Response:**
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 300
+
+Too many login attempts. Please try again later.
+```
+
+#### Logout
+```http
+POST /api/v1/admin/auth/logout
+Authorization: Bearer ezkey_abc123...
+```
+
+**Success Response:**
+```http
+HTTP/1.1 200 OK
+```
+
+### Admin API Security Best Practices
+
+1. **Change Admin Zero Password Immediately**
+   - Use strong, unique password
+   - Enable MFA when available (roadmap)
+   
+2. **Configure Organization Name**
+   - Set meaningful name for your instance
+   - Helps identify instance in logs and audits
+
+3. **Monitor Rate Limiting**
+   - Watch for suspicious login patterns
+   - Investigate blocked IPs
+   - Adjust thresholds if needed
+
+4. **Use Behind Reverse Proxy**
+   - Cloudflare or Nginx recommended
+   - Proper IP detection configuration
+   - SSL/TLS termination
+
+5. **Regular Token Cleanup**
+   - Expired tokens cleaned automatically
+   - Review active sessions regularly
+   - Revoke tokens on suspicious activity
+
+### Troubleshooting
+
+#### Admin Zero Not Created
+
+**Symptom**: No admin user after fresh installation
+
+**Solution**:
+1. Check database migrations ran successfully: `mvn flyway:info -pl ezkey-migration`
+2. Check application logs for admin creation: `grep "Admin zero" logs/admin-api.log`
+3. If database was manually cleared, restart application to trigger fallback creation
+
+#### Rate Limiting Too Strict
+
+**Symptom**: Legitimate users getting blocked
+
+**Solution**:
+1. Increase request limit: `ezkey.admin.rate-limit.login.requests=10`
+2. Increase time window: `ezkey.admin.rate-limit.login.window-minutes=10`
+3. Monitor IP patterns to identify legitimate vs. attack traffic
+
+#### Custom Organization Name Not Applied
+
+**Symptom**: Still seeing "Ezkey System" as tenant name
+
+**Solution**:
+1. Verify property set in `config/application.properties`
+2. Restart application
+3. Check if tenant already exists with old name (property only affects new creation)
+
+---
+
 ## IP Detection and Proxy Configuration
 
 ### Cloudflare Configuration
