@@ -10,7 +10,9 @@
 
 package org.ezkey.admin.config;
 
+import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,6 +43,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+
+    @Autowired(required = false)
+    private AdminRateLimitFilter adminRateLimitFilter;
 
     public SecurityConfig(AdminTokenAuthenticationFilter adminTokenAuthenticationFilter) {
         this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
@@ -82,8 +87,15 @@ public class SecurityConfig {
                 // Require authentication for all other endpoints
                 .anyRequest().authenticated()
             )
-            .httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")) // HTTP Basic authentication
-            .addFilterBefore(adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Bearer token authentication
+            .httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")); // HTTP Basic authentication
+        
+        // Add rate limiting filter before authentication filter (if enabled)
+        if (adminRateLimitFilter != null) {
+            http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+        
+        // Add bearer token authentication filter
+        http.addFilterBefore(adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }

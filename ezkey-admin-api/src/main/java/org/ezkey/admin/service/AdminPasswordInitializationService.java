@@ -10,17 +10,18 @@
 
 package org.ezkey.admin.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.UUID;
 
 /**
  * Service for detecting and updating placeholder admin password.
@@ -46,67 +47,107 @@ public class AdminPasswordInitializationService {
     private static final Logger logger = LoggerFactory.getLogger(AdminPasswordInitializationService.class);
 
     private final EzkeyAdminRepository adminRepository;
-    
+
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public AdminPasswordInitializationService(EzkeyAdminRepository adminRepository, BCryptPasswordEncoder passwordEncoder) {
+    public AdminPasswordInitializationService(EzkeyAdminRepository adminRepository,BCryptPasswordEncoder passwordEncoder){
         this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     /**
-     * Detect and update placeholder admin password on application startup.
+     * Detect and create or update admin zero on application startup.
      * <p>
      * This method is called when the application is ready and checks if the admin
-     * user has a placeholder password. If so, it sets a simple initial password.
+     * user exists. If not, it creates the admin zero with a secure random password.
+     * If the admin exists with a placeholder password, it updates it.
      * </p>
      */
     @EventListener(ApplicationReadyEvent.class)
     public void initializeAdminPassword() {
-        logger.info("🚀 Application ready - Checking admin password initialization...");
-        
-        try {
+        logger.info("🚀 Application ready - Checking admin zero initialization...");
+        try{
             // Find the admin user
             logger.info("🔍 Looking up admin user in database...");
             EzkeyAdmin admin = adminRepository.findByUsername("admin").orElse(null);
-            
-            if (admin == null) {
-                logger.warn("⚠️ Admin user not found - skipping password initialization");
-                return; // Admin not found, skip initialization
+            if (admin == null){
+                logger.warn("⚠️ Admin zero not found - creating initial admin user...");
+                createAdminZero();
+                return;
             }
-            
-            logger.info("✅ Admin user found - ID: {}, Active: {}", admin.getAdminId(), admin.getActive());
-            
+            logger.info("✅ Admin user found - ID: {}, Active: {}",admin.getAdminId(),admin.getActive());
+
             // Check if password is placeholder
             String placeholderHash = "$2a$10$placeholder.defined.at.first.execution";
             logger.info("🔍 Checking if password is placeholder...");
-            
-            if (placeholderHash.equals(admin.getPasswordHash())) {
+            if (placeholderHash.equals(admin.getPasswordHash())){
                 logger.info("🎯 Placeholder password detected - generating secure initial password...");
-                
+
                 // Generate a secure random password like Spring Security does
                 String newPassword = generateSecurePassword();
                 String hashedPassword = passwordEncoder.encode(newPassword);
                 logger.info("🔐 Generated secure initial password");
-                
+
                 // Update admin password
                 admin.setPasswordHash(hashedPassword);
                 admin.setPasswordChangeRequired(true);
                 adminRepository.save(admin);
                 logger.info("✅ Admin password updated successfully");
-                
+
                 // Log the new password (only in development)
                 logger.info("🔐 Admin password initialized:");
                 logger.info("   Username: admin");
-                logger.info("   Password: {}", newPassword);
+                logger.info("   Password: {}",newPassword);
                 logger.info("   ⚠️  Please change this password immediately!");
-                
-            } else {
+            } else{
                 logger.info("✅ Admin password already initialized - no action needed");
             }
-            
-        } catch (Exception e) {
-            logger.error("❌ Failed to initialize admin password: {}", e.getMessage());
+        } catch (Exception e){
+            logger.error("❌ Failed to initialize admin password: {}",e.getMessage(),e);
+        }
+    }
+
+    /**
+     * Create the initial admin zero user with placeholder password.
+     * <p>
+     * This method creates the first administrator (admin zero) in the system
+     * with GLOBAL_ADMIN privileges using a placeholder password that will be
+     * replaced immediately by the normal initialization flow.
+     * </p>
+     * <p>
+     * <b>Note:</b> This method is called only when Flyway migrations have not run
+     * or when the database was manually cleared. It creates the admin with the
+     * same properties as V3__create_initial_admin.sql migration for consistency.
+     * </p>
+     */
+    private void createAdminZero() {
+        logger.info("🎬 Creating admin zero - the first administrator...");
+        logger.warn("⚠️ This should normally be done by Flyway migration V3__create_initial_admin.sql");
+        logger.warn("⚠️ Creating admin via code fallback mechanism...");
+        try{
+            // Use placeholder password (same as migration V3)
+            // This will trigger the initialization flow immediately after
+            String placeholderHash = "$2a$10$placeholder.defined.at.first.execution";
+
+            // Create admin zero with same properties as V3 migration
+            EzkeyAdmin adminZero = new EzkeyAdmin("admin",placeholderHash,EzkeyAdmin.AdminType.GLOBAL_ADMIN);
+            adminZero.setPasswordChangeRequired(true);
+            adminZero.setMfaEnabled(true); // Aligned with V3 migration
+            adminZero.setMfaRequired(true); // Aligned with V3 migration
+            adminZero.setActive(true);
+            adminZero.setCreatedAt(LocalDateTime.now());
+
+            // Save admin zero
+            adminRepository.save(adminZero);
+            logger.info("✅ Admin zero created successfully - ID: {}",adminZero.getAdminId());
+            logger.info("🔄 Placeholder password detected, proceeding with initialization...");
+
+            // Now trigger the normal initialization flow by calling the main method
+            // This will generate a real password and log it
+            initializeAdminPassword();
+        } catch (Exception e){
+            logger.error("❌ Failed to create admin zero: {}",e.getMessage(),e);
+            throw new RuntimeException("Failed to create admin zero",e);
         }
     }
 
@@ -121,6 +162,6 @@ public class AdminPasswordInitializationService {
      */
     private String generateSecurePassword() {
         // Generate a UUID-based password like Spring Security does
-        return UUID.randomUUID().toString().replace("-", "");
+        return UUID.randomUUID().toString().replace("-","");
     }
 }
