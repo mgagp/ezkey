@@ -12,8 +12,12 @@ package org.ezkey.admin.service;
 
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
+import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
+import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
+import org.ezkey.admin.util.PasswordValidator;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -81,7 +85,8 @@ public class AdminAuthService {
      * <p>
      * This method orchestrates the authentication flow by delegating to focused
      * private methods. It validates credentials, rotates tokens, generates a new
-     * token, and returns the authentication response.
+     * token, and returns the authentication response. If password change is required,
+     * the admin still receives a token but is reminded to change their password.
      * </p>
      *
      * @param request the login request containing username and password
@@ -103,7 +108,7 @@ public class AdminAuthService {
             // 4. Update admin last login timestamp
             updateLastLogin(admin);
             
-            // 5. Build and return success response
+            // 5. Build and return success response (with password change warning if needed)
             return buildSuccessResponse(admin, token);
             
         } catch (AuthenticationException e) {
@@ -217,6 +222,10 @@ public class AdminAuthService {
     
     /**
      * Build success response DTO.
+     * <p>
+     * If password change is required, includes a reminder in the response
+     * but still provides a valid bearer token to allow password change.
+     * </p>
      *
      * @param admin the authenticated administrator
      * @param token the generated token
@@ -225,12 +234,23 @@ public class AdminAuthService {
     private AdminLoginResponseDto buildSuccessResponse(EzkeyAdmin admin, AdminToken token) {
         logger.info("Authentication successful for: {}", admin.getUsername());
         
-        return new AdminLoginResponseDto(
+        AdminLoginResponseDto response = new AdminLoginResponseDto(
             token.getBearerToken(),
             admin.getAdminType().name(),
             admin.getUsername(),
             token.getExpiresAt()
         );
+        
+        // Add password change required flag if needed
+        if (admin.getPasswordChangeRequired() != null && admin.getPasswordChangeRequired()) {
+            response.setPasswordChangeRequired(true);
+            response.setMessage("Authentication successful - Password change required. " +
+                "Please use /change-password endpoint before performing other operations.");
+            logger.warn("⚠️  Admin {} logged in with passwordChangeRequired=true. " +
+                "Token issued for password change only.", admin.getUsername());
+        }
+        
+        return response;
     }
     
     /**
@@ -300,5 +320,120 @@ public class AdminAuthService {
         } catch (Exception e) {
             // Log error but don't throw exception
         }
+    }
+
+    /**
+     * Change administrator password.
+     * <p>
+     * This method changes the password for an authenticated administrator.
+     * It validates the current password, checks new password strength,
+     * updates the password hash, and invalidates all existing tokens for security.
+     * </p>
+     *
+     * @param admin the authenticated administrator
+     * @param request the password change request
+     * @return AdminPasswordChangeResponseDto with change result and enrollment reminder
+     */
+    public AdminPasswordChangeResponseDto changePassword(EzkeyAdmin admin, 
+                                                         AdminPasswordChangeRequestDto request) {
+        logger.info("Password change attempt for admin: {}", admin.getUsername());
+        
+        try {
+            // 1. Validate current password
+            if (!passwordEncoder.matches(request.getCurrentPassword(), admin.getPasswordHash())) {
+                logger.warn("Password change failed for {}: incorrect current password", admin.getUsername());
+                return createErrorResponse("Current password is incorrect");
+            }
+            
+            // 2. Validate new password strength
+            PasswordValidator.PasswordValidationResult validationResult = 
+                PasswordValidator.validate(request.getNewPassword());
+            
+            if (!validationResult.isValid()) {
+                logger.warn("Password change failed for {}: weak password", admin.getUsername());
+                return createErrorResponse(validationResult.getAllErrorsAsString());
+            }
+            
+            // 3. Check if new password is same as current (optional security check)
+            if (passwordEncoder.matches(request.getNewPassword(), admin.getPasswordHash())) {
+                logger.warn("Password change failed for {}: new password same as current", admin.getUsername());
+                return createErrorResponse("New password must be different from current password");
+            }
+            
+            // 4. Update password hash
+            String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+            admin.setPasswordHash(newPasswordHash);
+            admin.setPasswordChangeRequired(false);
+            admin.setLastPasswordChange(LocalDateTime.now());
+            
+            // 5. Invalidate all existing tokens (forced rotation for security)
+            int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+            logger.info("Invalidated {} tokens for admin {} after password change", 
+                deactivated, admin.getUsername());
+            
+            // 6. Save admin
+            adminRepository.save(admin);
+            
+            // 7. Build success response with enrollment reminder
+            AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto(
+                true,
+                "Password changed successfully. All existing tokens have been invalidated.",
+                false
+            );
+            
+            // 8. Add MFA enrollment reminder if applicable
+            addMfaEnrollmentReminderIfNeeded(admin, response);
+            
+            logger.info("Password changed successfully for admin: {}", admin.getUsername());
+            return response;
+            
+        } catch (Exception e) {
+            logger.error("Password change failed for {}: {}", admin.getUsername(), e.getMessage(), e);
+            return createErrorResponse("Password change failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Add MFA enrollment reminder to response if admin has unbound enrollment.
+     *
+     * @param admin the administrator
+     * @param response the response to modify
+     */
+    private void addMfaEnrollmentReminderIfNeeded(EzkeyAdmin admin, 
+                                                   AdminPasswordChangeResponseDto response) {
+        // Check if admin has MFA enrollment
+        if (admin.getMfaEnrollment() != null) {
+            Enrollment enrollment = admin.getMfaEnrollment();
+            
+            // Check if enrollment is not yet bound (device public key is null)
+            boolean isBound = enrollment.getDevicePublicKey() != null;
+            
+            if (!isBound) {
+                logger.info("Adding MFA enrollment reminder for admin: {}", admin.getUsername());
+                
+                AdminPasswordChangeResponseDto.MfaEnrollmentInfo enrollmentInfo = 
+                    new AdminPasswordChangeResponseDto.MfaEnrollmentInfo(
+                        enrollment.getEnrollmentId(),
+                        enrollment.getEnrollmentProofToken(),
+                        false,
+                        "Don't forget to bind your MFA enrollment for enhanced security"
+                    );
+                
+                response.setMfaEnrollment(enrollmentInfo);
+            }
+        }
+    }
+
+    /**
+     * Create error response for password change.
+     *
+     * @param message the error message
+     * @return error response
+     */
+    private AdminPasswordChangeResponseDto createErrorResponse(String message) {
+        AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto();
+        response.setSuccess(false);
+        response.setMessage(message);
+        return response;
     }
 }

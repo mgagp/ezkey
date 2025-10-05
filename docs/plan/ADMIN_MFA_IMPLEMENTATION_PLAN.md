@@ -218,33 +218,175 @@ Mettre en place les API manquantes nécessaires au flow MFA.
 
 ### 0.2 Renforcement Password Change Required
 
-**Problème actuel:** Flag `password_change_required` existe mais pas appliqué au login
+**Problème chicken-and-egg:** Admin avec `password_change_required=true` a besoin d'un token pour appeler `/change-password`, mais ne peut pas login.
 
-**Solution:** Modifier `AdminAuthService.authenticate()`
+**Solution implémentée:** Modifier `AdminAuthService.authenticate()`
 
-**Code à ajouter:**
+**Approche Phase 0 (Implémentée):**
 ```java
 public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
     // 1. Validate credentials
     EzkeyAdmin admin = validateCredentials(request);
     
-    // 2. NEW: Check password change required
+    // 2. Rotate tokens if enabled
+    rotateTokensIfEnabled(admin);
+    
+    // 3. Generate and persist new token
+    AdminToken token = generateAndPersistToken(admin);
+    
+    // 4. Build response with warning if password change required
+    AdminLoginResponseDto response = buildSuccessResponse(admin, token);
+    
     if (admin.getPasswordChangeRequired()) {
-        logger.warn("Password change required for admin: {}", admin.getUsername());
-        return AdminLoginResponseDto.builder()
-            .success(false)
-            .passwordChangeRequired(true)
-            .message("Password change required. Please change your password before logging in.")
-            .build();
+        response.setPasswordChangeRequired(true);
+        response.setMessage("Authentication successful - Password change required. " +
+            "Please use /change-password endpoint before performing other operations.");
+        logger.warn("⚠️  Admin {} logged in with passwordChangeRequired=true", 
+            admin.getUsername());
     }
     
-    // 3. Continue normal flow...
+    return response;
 }
 ```
 
-**Note:** Admin doit d'abord login avec ancien password pour obtenir token temporaire, puis utiliser ce token pour changer le password. Alternative: créer endpoint `/change-password-first-time` qui n'exige pas de token.
+**Comportement actuel (Phase 0):**
+- ✅ Admin avec `passwordChangeRequired=true` peut login et recevoir un token
+- ✅ Response inclut flag `passwordChangeRequired: true` + message d'avertissement
+- ✅ Admin peut utiliser ce token pour appeler `/change-password`
+- ⚠️ **LIMITATION TEMPORAIRE**: Admin peut aussi utiliser le token pour d'autres endpoints (sera corrigé Phase 0.3)
 
-**Décision:** Utiliser approche simple - admin peut login une fois avec password temporaire, reçoit bearer token, puis DOIT changer password. Tous les autres endpoints vérifient `password_change_required` et rejettent les requêtes.
+**Séquence typique:**
+```
+1. Admin login avec password temporaire → Reçoit token + warning passwordChangeRequired=true
+2. Admin appelle /change-password avec ce token → Password changé, passwordChangeRequired=false
+3. Admin re-login avec nouveau password → Login normal sans avertissement
+```
+
+### 0.3 Blocage Endpoints avec Password Change Required (PHASE FUTURE)
+
+⚠️ **IMPORTANT - À IMPLÉMENTER AVANT PRODUCTION**
+
+**Objectif:** Empêcher l'utilisation de tous les endpoints (sauf `/change-password` et `/logout`) tant que `passwordChangeRequired=true`.
+
+**Problème de sécurité:** 
+Actuellement, un admin avec `passwordChangeRequired=true` peut utiliser son token pour accéder à tous les endpoints. Cela réduit la sécurité car il peut continuer avec un password temporaire non changé.
+
+**Solution à implémenter:**
+
+**Option A: Filter/Interceptor (Recommandé)**
+```java
+@Component
+public class PasswordChangeRequiredFilter implements Filter {
+    
+    private final AdminAuthService authService;
+    
+    private static final List<String> ALLOWED_ENDPOINTS = List.of(
+        "/api/v1/admin/auth/login",
+        "/api/v1/admin/auth/logout",
+        "/api/v1/admin/auth/change-password"
+    );
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, 
+                        FilterChain chain) throws IOException, ServletException {
+        
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        String path = httpRequest.getRequestURI();
+        
+        // Skip filter for allowed endpoints
+        if (ALLOWED_ENDPOINTS.stream().anyMatch(path::endsWith)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
+        // Extract and validate token
+        String authHeader = httpRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            EzkeyAdmin admin = authService.validateToken(token);
+            
+            if (admin != null && admin.getPasswordChangeRequired()) {
+                // Block request, return 403 Forbidden
+                HttpServletResponse httpResponse = (HttpServletResponse) response;
+                httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                httpResponse.setContentType("application/json");
+                httpResponse.getWriter().write(
+                    "{\"error\":\"Password change required\",\"message\":" +
+                    "\"Please change your password using /change-password endpoint before " +
+                    "accessing other resources.\"}"
+                );
+                return;
+            }
+        }
+        
+        chain.doFilter(request, response);
+    }
+}
+```
+
+**Option B: Annotation + AOP (Alternative)**
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RequirePasswordChanged {
+}
+
+@Aspect
+@Component
+public class PasswordChangeRequiredAspect {
+    
+    @Before("@annotation(RequirePasswordChanged)")
+    public void checkPasswordChangeRequired(JoinPoint joinPoint) {
+        // Check admin passwordChangeRequired and throw exception if true
+    }
+}
+```
+
+**Tests à ajouter (Phase 0.3):**
+```java
+@Test
+public void testBlockedEndpointWithPasswordChangeRequired() {
+    // Login avec passwordChangeRequired=true → Get token
+    String token = loginAndGetToken("admin", "temp-password");
+    
+    // Try to access protected endpoint → 403 Forbidden
+    ResponseEntity<String> response = restTemplate.exchange(
+        "/api/v1/admin/integrations",
+        HttpMethod.GET,
+        new HttpEntity<>(createAuthHeaders(token)),
+        String.class
+    );
+    
+    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    assertTrue(response.getBody().contains("Password change required"));
+}
+
+@Test
+public void testAllowedEndpointsWithPasswordChangeRequired() {
+    String token = loginAndGetToken("admin", "temp-password");
+    
+    // /change-password should work → 200 OK
+    // /logout should work → 200 OK
+}
+```
+
+**Commit pour Phase 0.3:**
+```
+feat(security): Block endpoints when password change required
+
+- Add PasswordChangeRequiredFilter to intercept all requests
+- Allow only /login, /logout, /change-password endpoints
+- Return 403 Forbidden for other endpoints when passwordChangeRequired=true
+- Add comprehensive tests for endpoint blocking
+- Update security documentation
+
+Security: Ensures admins cannot use temporary passwords indefinitely
+```
+
+**Décision implémentation:**
+- ✅ **Phase 0 (Actuel)**: Login permissif avec warning (permet /change-password)
+- 🔜 **Phase 0.3 (Avant Prod)**: Filter/Interceptor bloque autres endpoints
+- 🔜 **Phase 1+**: MFA workflow avec temp tokens (5 min) pour flow hybride
 
 ### Tests Phase 0
 
@@ -258,12 +400,28 @@ public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
 - ✅ Password validation: no special char → error
 
 **Tests intégration:**
-- ✅ Login with passwordChangeRequired=true → reject with message
+- ✅ Login with passwordChangeRequired=true → success with token + warning
 - ✅ Change password → passwordChangeRequired=false
-- ✅ After password change → login successful
+- ✅ After password change → login successful without warning
 - ✅ Old tokens invalidated after password change
+- ✅ Response includes MFA enrollment reminder if applicable
 
-**Commit:** `feat: Add change-password API with enrollment reminder and enforce requirement`
+**Status Phase 0:**
+- ✅ **0.1**: Change password API implémentée et testée
+- ✅ **0.2**: Login permissif avec warning implémenté
+- ⏳ **0.3**: Blocage endpoints (PHASE FUTURE - Avant Production)
+
+**Commit:** `feat: Add change-password API with enrollment reminder
+
+- Implement POST /auth/change-password endpoint with bearer token auth
+- Add PasswordValidator utility with comprehensive strength checks
+- Include MFA enrollment reminder in change-password response
+- Login allowed with passwordChangeRequired=true (issues token + warning)
+- Invalidate all existing tokens after password change (forced rotation)
+- Add comprehensive password policy documentation
+
+Security: 12-char minimum, complexity requirements enforced
+Note: Phase 0.3 (endpoint blocking) to be implemented before production`
 
 ---
 

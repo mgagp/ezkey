@@ -62,6 +62,15 @@ public class AdminLoginResponseDto {
     private String message;
 
     /**
+     * Indicates if password change is required.
+     * <p>
+     * When true, the administrator must change their password
+     * before being able to use other API endpoints.
+     * </p>
+     */
+    private Boolean passwordChangeRequired;
+
+    /**
      * Default constructor for JSON serialization.
      */
     public AdminLoginResponseDto() {
@@ -93,6 +102,19 @@ public class AdminLoginResponseDto {
     public AdminLoginResponseDto(String message) {
         this.success = false;
         this.message = message;
+        this.passwordChangeRequired = false;
+    }
+
+    /**
+     * Constructs an error login response for password change requirement.
+     *
+     * @param message the error message
+     * @param passwordChangeRequired true if password change is required
+     */
+    public AdminLoginResponseDto(String message, Boolean passwordChangeRequired) {
+        this.success = false;
+        this.message = message;
+        this.passwordChangeRequired = passwordChangeRequired;
     }
 
     /**
@@ -204,6 +226,24 @@ public class AdminLoginResponseDto {
     }
 
     /**
+     * Gets the password change required status.
+     *
+     * @return true if password change is required
+     */
+    public Boolean getPasswordChangeRequired() {
+        return passwordChangeRequired;
+    }
+
+    /**
+     * Sets the password change required status.
+     *
+     * @param passwordChangeRequired the password change required status
+     */
+    public void setPasswordChangeRequired(Boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
+    }
+
+    /**
      * Returns a string representation of the login response.
      *
      * @return string representation
@@ -217,6 +257,7 @@ public class AdminLoginResponseDto {
                 ", username='" + username + '\'' +
                 ", expiresAt=" + expiresAt +
                 ", message='" + message + '\'' +
+                ", passwordChangeRequired=" + passwordChangeRequired +
                 '}';
     }
 }

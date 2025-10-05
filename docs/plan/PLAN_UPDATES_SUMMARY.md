@@ -147,11 +147,40 @@ plan.md                                     # Plan principal (racine)
 
 ---
 
-## 🚀 Prochaine Étape
+## 🚀 Statut Actuel
 
-**Ready to implement:** Phase 0 (Change Password API)
+**Phase 0 (Change Password API):** ✅ **IMPLÉMENTÉE ET TESTÉE**
 
-**Commande pour versionner les plans:**
+### Implémentation réalisée (2025-10-05)
+
+**Composants créés:**
+- ✅ `PasswordValidator.java` - Validation force password (12 chars min, complexité)
+- ✅ `AdminPasswordChangeRequestDto.java` - Request DTO avec validation
+- ✅ `AdminPasswordChangeResponseDto.java` - Response avec MFA enrollment reminder
+- ✅ `AdminAuthService.changePassword()` - Logique changement password avec rotation tokens
+- ✅ `AdminAuthController.changePassword()` - Endpoint POST `/auth/change-password`
+- ✅ Modification `authenticate()` - Login permissif avec warning si passwordChangeRequired
+
+**Séquence testée:**
+1. Login avec passwordChangeRequired=true → ✅ Token reçu + warning
+2. Change password avec token → ✅ Password changé, tokens invalidés
+3. Re-login avec nouveau password → ✅ Login normal sans warning
+
+**⚠️ LIMITATION TEMPORAIRE (Phase 0.3 à implémenter avant production):**
+Actuellement, un admin avec `passwordChangeRequired=true` peut utiliser son token pour accéder à tous les endpoints. La Phase 0.3 implémentera un filter pour bloquer l'accès aux endpoints autres que `/login`, `/logout` et `/change-password`.
+
+---
+
+## 🔜 Prochaine Étape
+
+**Option A:** Implémenter Phase 0.3 (Blocage endpoints) avant de continuer  
+**Option B:** Continuer avec Phase 1 (Bootstrap MFA) et revenir à Phase 0.3 avant production
+
+**Recommandation:** Phase 1 en développement, Phase 0.3 avant production.
+
+---
+
+## 📝 Commande pour versionner les plans:
 ```bash
 git add docs/plan/ADMIN_MFA_SECURITY_WORKFLOW.md
 git add docs/plan/ADMIN_MFA_PHASE6_CLI_ENROLLMENT.md
@@ -175,4 +204,5 @@ Status: Ready for Phase 0 implementation"
 **Document Version**: 1.0  
 **Created**: 2025-10-03  
 **Status**: ✅ Complet
+
 
