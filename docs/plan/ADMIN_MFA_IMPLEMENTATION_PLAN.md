@@ -1,10 +1,10 @@
 # Plan d'Implémentation: MFA Ezkey pour Admin API
 
-**Version:** 2.0  
+**Version:** 3.0  
 **Date:** 2025-10-03  
 **Updated:** 2025-10-06  
 **Auteur:** Ezkey Team  
-**Statut:** ✅ Phase 0 + Phase 1 Complétées
+**Statut:** ✅ Phase 0 + Phase 1 + Phase 0.3 Complétées
 
 ---
 
@@ -14,7 +14,7 @@
 |-------|-------------|--------|------|
 | **Phase 0** | Change Password API + Prerequisites | ✅ **COMPLÉTÉ** | 2025-10-05 |
 | **Phase 1** | Bootstrap Integration Zero + Enrollment Zero | ✅ **COMPLÉTÉ** | 2025-10-06 |
-| **Phase 0.3** | Endpoint Blocking (passwordChangeRequired) | 📋 **TODO** | Future |
+| **Phase 0.3** | Endpoint Blocking (passwordChangeRequired) | ✅ **COMPLÉTÉ** | 2025-10-06 |
 | **Phase 2** | MFA Flow Hybride (Password → Temp Token → MFA) | 📋 **TODO** | Future |
 | **Phase 3** | MFA Mode Configuration (dev/prod) | 📋 **TODO** | Future |
 | **Phase 4** | Tenant + Integration Admin MFA | 📋 **TODO** | Future |

@@ -78,6 +78,20 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
     Optional<AdminToken> findByBearerTokenAndActiveTrue(String bearerToken);
 
     /**
+     * Finds an active token by its bearer token string with admin eagerly loaded.
+     * <p>
+     * This method is used in filters where Hibernate session may be closed.
+     * It uses JOIN FETCH to eagerly load the associated admin to avoid
+     * LazyInitializationException.
+     * </p>
+     *
+     * @param bearerToken the bearer token string
+     * @return Optional containing the active token with admin loaded, empty otherwise
+     */
+    @Query("SELECT t FROM AdminToken t JOIN FETCH t.admin WHERE t.bearerToken = :bearerToken AND t.active = true")
+    Optional<AdminToken> findByBearerTokenAndActiveTrueWithAdmin(@Param("bearerToken") String bearerToken);
+
+    /**
      * Finds all tokens for a specific administrator.
      * <p>
      * This method is used to find all tokens belonging to a specific

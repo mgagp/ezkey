@@ -150,7 +150,8 @@ plan.md                                     # Plan principal (racine)
 ## 🚀 Statut Actuel
 
 **Phase 0 (Change Password API):** ✅ **IMPLÉMENTÉE ET TESTÉE**  
-**Phase 1 (Bootstrap Integration Zero + Enrollment Zero):** ✅ **IMPLÉMENTÉE ET TESTÉE**
+**Phase 1 (Bootstrap Integration Zero + Enrollment Zero):** ✅ **IMPLÉMENTÉE ET TESTÉE**  
+**Phase 0.3 (Endpoint Blocking - passwordChangeRequired):** ✅ **IMPLÉMENTÉE ET TESTÉE**
 
 ---
 
@@ -232,8 +233,47 @@ Logs hautement visibles (WARN level):
 5. Bind enrollment avec demo-device → ✅ POST /bind avec enrollmentId + enrollmentProofToken
 6. Verify avec challenge code → ✅ Enrollment VERIFIED
 
-**⚠️ LIMITATION TEMPORAIRE (Phase 0.3 à implémenter avant production):**
-Actuellement, un admin avec `passwordChangeRequired=true` peut utiliser son token pour accéder à tous les endpoints. La Phase 0.3 implémentera un filter pour bloquer l'accès aux endpoints autres que `/login`, `/logout` et `/change-password`.
+---
+
+### Phase 0.3: Endpoint Blocking - passwordChangeRequired ✅ **COMPLÉTÉ** (2025-10-06)
+
+**Composants créés:**
+- ✅ `PasswordChangeRequiredFilter.java` - Filter de sécurité qui bloque l'accès aux endpoints quand passwordChangeRequired=true
+- ✅ `PasswordChangeRequiredFilterConfig.java` - Configuration Spring pour enregistrer le filter
+- ✅ `AdminTokenRepository.findByBearerTokenAndActiveTrueWithAdmin()` - Query avec JOIN FETCH pour éviter LazyInitializationException
+- ✅ Logs de debug pour diagnostic des problèmes
+
+**Corrections techniques appliquées:**
+- ✅ **URL Pattern:** Correction de `/api/v1/admin/*` vers `/api/v1/*` (endpoints admin n'ont pas le préfixe `/admin`)
+- ✅ **LazyInitializationException:** Ajout de `JOIN FETCH t.admin` pour charger l'admin avec le token
+- ✅ **Filter Order:** Configuration order=1 pour s'exécuter avant les autres filters
+
+**Comportement sécurisé:**
+```
+Admin login avec passwordChangeRequired=true
+    ↓
+Reçoit bearer token valide
+    ↓
+✅ GET /integrations → 403 Forbidden (BLOCKED!)
+✅ POST /enrollments → 403 Forbidden (BLOCKED!)
+✅ DELETE /admins → 403 Forbidden (BLOCKED!)
+✅ POST /change-password → 200 OK (ALLOWED!)
+✅ POST /logout → 200 OK (ALLOWED!)
+    ↓
+Après change-password → passwordChangeRequired=false
+    ↓
+✅ Tous endpoints → 200 OK (UNBLOCKED!)
+```
+
+**Tests validés:**
+1. ✅ Login avec passwordChangeRequired=true → Token reçu + warning
+2. ✅ GET /integrations avec ce token → 403 Forbidden + message clair
+3. ✅ POST /change-password avec ce token → 200 OK (allowed)
+4. ✅ POST /logout avec ce token → 200 OK (allowed)
+5. ✅ Après change-password → Re-login → passwordChangeRequired=false
+6. ✅ GET /integrations avec nouveau token → 200 OK (débloqué)
+
+**Vulnérabilité fermée:** ✅ Admin ne peut plus utiliser password temporaire indéfiniment
 
 ---
 
@@ -254,10 +294,18 @@ Le endpoint `GET /admin/auth/mfa-enrollment` proposé initialement n'a **pas ét
 
 ## 🔜 Prochaine Étape
 
-**Option A:** Implémenter Phase 0.3 (Blocage endpoints) avant de continuer  
-**Option B:** Continuer avec Phase 2 (MFA Flow Hybride) et revenir à Phase 0.3 avant production
+**✅ Phase 0.3 COMPLÉTÉE!** La vulnérabilité de sécurité est maintenant fermée.
 
-**Recommandation:** Phase 2 en développement, Phase 0.3 avant production.
+**Prochaine étape recommandée:**
+**Phase 2: MFA Flow Hybride (Password → Temp Token → MFA → Bearer Token)**
+
+Cette phase implémentera le cœur du système MFA avec:
+- Endpoints `/mfa/attempt` et `/mfa/validate`
+- Gestion des tokens temporaires (5 min)
+- Intégration avec auth-api pour AuthAttempt
+- Flow complet: Password → Temp Token → MFA → Bearer Token
+
+**Base sécurisée établie:** Phase 0.3 garantit que tous les endpoints sont sécurisés avant l'ajout de nouvelles fonctionnalités.
 
 ---
 
