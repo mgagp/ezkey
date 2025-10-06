@@ -149,34 +149,115 @@ plan.md                                     # Plan principal (racine)
 
 ## 🚀 Statut Actuel
 
-**Phase 0 (Change Password API):** ✅ **IMPLÉMENTÉE ET TESTÉE**
+**Phase 0 (Change Password API):** ✅ **IMPLÉMENTÉE ET TESTÉE**  
+**Phase 1 (Bootstrap Integration Zero + Enrollment Zero):** ✅ **IMPLÉMENTÉE ET TESTÉE**
 
-### Implémentation réalisée (2025-10-05)
+---
+
+### Phase 0: Change Password API (2025-10-05)
 
 **Composants créés:**
 - ✅ `PasswordValidator.java` - Validation force password (12 chars min, complexité)
 - ✅ `AdminPasswordChangeRequestDto.java` - Request DTO avec validation
-- ✅ `AdminPasswordChangeResponseDto.java` - Response avec MFA enrollment reminder
+- ✅ `AdminPasswordChangeResponseDto.java` - Response avec MFA enrollment reminder **+ challenge code**
 - ✅ `AdminAuthService.changePassword()` - Logique changement password avec rotation tokens
 - ✅ `AdminAuthController.changePassword()` - Endpoint POST `/auth/change-password`
 - ✅ Modification `authenticate()` - Login permissif avec warning si passwordChangeRequired
 
 **Séquence testée:**
 1. Login avec passwordChangeRequired=true → ✅ Token reçu + warning
-2. Change password avec token → ✅ Password changé, tokens invalidés
+2. Change password avec token → ✅ Password changé, tokens invalidés, **credentials MFA complètes retournées**
 3. Re-login avec nouveau password → ✅ Login normal sans warning
+
+**Response change-password (Admin Global):**
+```json
+{
+  "success": true,
+  "passwordChangeRequired": false,
+  "mfaEnrollment": {
+    "enrollmentId": 1,
+    "enrollmentProofToken": "abc123-def456-ghi789",
+    "enrollmentChallenge": 542891,
+    "bound": false,
+    "message": "Use these credentials to bind your MFA enrollment for enhanced security"
+  }
+}
+```
+
+---
+
+### Phase 1: Bootstrap Integration Zero + Enrollment Zero (2025-10-06)
+
+**Composants créés:**
+- ✅ `AdminMfaProperties.java` - Configuration properties (mode dev/prod, bootstrap, auto-enrollment)
+- ✅ `IntegrationRepository.findByIsSystemIntegrationAndActiveTrue()` - Query pour Integration Zero
+- ✅ `AdminBootstrapService.java` - Bootstrap automatique au démarrage avec `@EventListener(ApplicationReadyEvent.class)`
+- ✅ Logs hautement visibles (WARN level, séparateurs 80 chars, instructions complètes)
+- ✅ Protection anti-énumération respectée (POST bind avec enrollmentProofToken)
+- ✅ Challenge code généré et inclus dans les logs
+
+**Configuration ajoutée (`application.properties`):**
+```properties
+ezkey.admin.mfa.mode=dev
+ezkey.admin.mfa.bootstrap.enabled=true
+ezkey.admin.mfa.bootstrap.auto-enrollment=true
+```
+
+**Flow Bootstrap:**
+```
+Application Startup
+    ↓
+AdminBootstrapService.bootstrapAdminMfa()
+    ↓
+Check Integration Zero exists?
+    ├─ Oui → Skip création Integration Zero
+    └─ Non → Créer Integration Zero avec RSA-2048 keys
+    ↓
+Check Admin Zero has enrollment?
+    ├─ Oui → Skip création Enrollment Zero
+    └─ Non (et auto-enrollment=true) → Créer Enrollment Zero
+    ↓
+Logs hautement visibles (WARN level):
+    - enrollmentId
+    - enrollmentProofToken
+    - enrollmentChallenge (6 digits)
+    - Instructions bind CLI + Demo-Device
+```
+
+**Séquence testée:**
+1. Fresh DB + Application startup → ✅ Integration Zero créée
+2. Enrollment Zero créée automatiquement → ✅ Challenge code généré
+3. Logs hautement visibles affichés → ✅ Credentials complètes
+4. Login + change-password → ✅ Credentials retournées dans response
+5. Bind enrollment avec demo-device → ✅ POST /bind avec enrollmentId + enrollmentProofToken
+6. Verify avec challenge code → ✅ Enrollment VERIFIED
 
 **⚠️ LIMITATION TEMPORAIRE (Phase 0.3 à implémenter avant production):**
 Actuellement, un admin avec `passwordChangeRequired=true` peut utiliser son token pour accéder à tous les endpoints. La Phase 0.3 implémentera un filter pour bloquer l'accès aux endpoints autres que `/login`, `/logout` et `/change-password`.
 
 ---
 
+## 🎯 Sources des Credentials MFA (Admin Global)
+
+| Source | Moment | Contenu |
+|--------|--------|---------|
+| **1. Logs Startup** | Au démarrage | enrollmentId + proofToken + challenge |
+| **2. Change-Password Response** | Flux imposé initial | enrollmentId + proofToken + challenge |
+| **~~3. GET Endpoint~~** | ~~N/A~~ | ❌ **NON IMPLÉMENTÉ (redondant)** |
+
+**Décision Design:**
+Le endpoint `GET /admin/auth/mfa-enrollment` proposé initialement n'a **pas été implémenté** car redondant avec la response `change-password` qui contient déjà toutes les credentials nécessaires (incluant le challenge code). L'admin a deux opportunités de récupérer les credentials:
+1. Logs au startup (recommandé de capturer)
+2. Response change-password (flux imposé, seule chance garantie)
+
+---
+
 ## 🔜 Prochaine Étape
 
 **Option A:** Implémenter Phase 0.3 (Blocage endpoints) avant de continuer  
-**Option B:** Continuer avec Phase 1 (Bootstrap MFA) et revenir à Phase 0.3 avant production
+**Option B:** Continuer avec Phase 2 (MFA Flow Hybride) et revenir à Phase 0.3 avant production
 
-**Recommandation:** Phase 1 en développement, Phase 0.3 avant production.
+**Recommandation:** Phase 2 en développement, Phase 0.3 avant production.
 
 ---
 
@@ -201,8 +282,9 @@ Status: Ready for Phase 0 implementation"
 
 ---
 
-**Document Version**: 1.0  
+**Document Version**: 2.0  
 **Created**: 2025-10-03  
-**Status**: ✅ Complet
+**Updated**: 2025-10-06  
+**Status**: ✅ Phase 0 + Phase 1 Complétées
 
 

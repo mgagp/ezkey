@@ -1,9 +1,24 @@
 # Plan d'Implémentation: MFA Ezkey pour Admin API
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** 2025-10-03  
+**Updated:** 2025-10-06  
 **Auteur:** Ezkey Team  
-**Statut:** Planning
+**Statut:** ✅ Phase 0 + Phase 1 Complétées
+
+---
+
+## 📊 Status Phases
+
+| Phase | Description | Status | Date |
+|-------|-------------|--------|------|
+| **Phase 0** | Change Password API + Prerequisites | ✅ **COMPLÉTÉ** | 2025-10-05 |
+| **Phase 1** | Bootstrap Integration Zero + Enrollment Zero | ✅ **COMPLÉTÉ** | 2025-10-06 |
+| **Phase 0.3** | Endpoint Blocking (passwordChangeRequired) | 📋 **TODO** | Future |
+| **Phase 2** | MFA Flow Hybride (Password → Temp Token → MFA) | 📋 **TODO** | Future |
+| **Phase 3** | MFA Mode Configuration (dev/prod) | 📋 **TODO** | Future |
+| **Phase 4** | Tenant + Integration Admin MFA | 📋 **TODO** | Future |
+| **Phase 5** | CLI Admin avec MFA Support | 📋 **TODO** | Future |
 
 ---
 
@@ -148,13 +163,13 @@ Admin peut login avec MFA ✅
 
 ---
 
-## Phase 0: Préconditions (1-2 jours)
+## Phase 0: Préconditions ✅ **COMPLÉTÉ** (2025-10-05)
 
 ### Objectif
 
 Mettre en place les API manquantes nécessaires au flow MFA.
 
-### 0.1 API de Changement de Mot de Passe
+### 0.1 API de Changement de Mot de Passe ✅ **IMPLÉMENTÉ**
 
 **Pourquoi:** Admin zero créé avec password temporaire → besoin de le changer
 
@@ -183,9 +198,18 @@ Mettre en place les API manquantes nécessaires au flow MFA.
 {
   "success": true,
   "message": "Password changed successfully",
-  "passwordChangeRequired": false
+  "passwordChangeRequired": false,
+  "mfaEnrollment": {
+    "enrollmentId": 1,
+    "enrollmentProofToken": "abc123-def456-ghi789",
+    "enrollmentChallenge": 542891,
+    "bound": false,
+    "message": "Use these credentials to bind your MFA enrollment for enhanced security"
+  }
 }
 ```
+
+**Note:** La réponse inclut automatiquement les credentials MFA complètes (enrollmentId, proofToken, challenge) si l'admin a un enrollment non-bound. Cela élimine le besoin d'un endpoint GET séparé.
 
 **Response Error (400 Bad Request):**
 ```json
@@ -216,13 +240,13 @@ Mettre en place les API manquantes nécessaires au flow MFA.
 - `AdminAuthController.changePassword()` (new endpoint)
 - `PasswordValidator.java` (utility class)
 
-### 0.2 Renforcement Password Change Required
+### 0.2 Renforcement Password Change Required ✅ **IMPLÉMENTÉ**
 
 **Problème chicken-and-egg:** Admin avec `password_change_required=true` a besoin d'un token pour appeler `/change-password`, mais ne peut pas login.
 
 **Solution implémentée:** Modifier `AdminAuthService.authenticate()`
 
-**Approche Phase 0 (Implémentée):**
+**Approche Phase 0 (✅ Implémentée):**
 ```java
 public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
     // 1. Validate credentials
@@ -425,7 +449,7 @@ Note: Phase 0.3 (endpoint blocking) to be implemented before production`
 
 ---
 
-## Phase 1: Bootstrap Integration Zero + Enrollment Zero (2-3 jours)
+## Phase 1: Bootstrap Integration Zero + Enrollment Zero ✅ **COMPLÉTÉ** (2025-10-06)
 
 ### Objectif
 
@@ -842,7 +866,21 @@ Optional<Integration> findByIsSystemIntegrationAndActiveTrue(Boolean isSystemInt
 - ✅ Set `ezkey.admin.mfa.bootstrap.enabled=false` → No bootstrap
 - ✅ Set `ezkey.admin.mfa.bootstrap.auto-enrollment=false` → Integration created, no enrollment
 
-**Commit:** `feat: Bootstrap Integration Zero and Enrollment Zero with enhanced logging`
+**Commit:** `feat: Bootstrap Integration Zero and Enrollment Zero with enhanced logging
+
+- Create AdminBootstrapService with @EventListener(ApplicationReadyEvent.class)
+- Generate Integration Zero with RSA-2048 keys for system tenant
+- Auto-create Enrollment Zero with challenge code generation
+- Add AdminMfaProperties for bootstrap configuration (mode, enabled, auto-enrollment)
+- Add IntegrationRepository.findByIsSystemIntegrationAndActiveTrue() query method
+- Implement highly visible logs (WARN level, 80-char separators)
+- Include complete credentials in logs: enrollmentId, proofToken, challenge
+- Respect anti-enumeration protection (POST bind instructions)
+- Add enrollment credentials to change-password response (all 3 values)
+- Tested: Fresh install → Bootstrap → Login → Change-password → Bind → Verify
+
+Configuration: ezkey.admin.mfa.bootstrap.enabled/auto-enrollment
+Security: Challenge code generation, proof token authentication`
 
 ---
 

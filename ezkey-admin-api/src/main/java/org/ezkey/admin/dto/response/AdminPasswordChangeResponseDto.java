@@ -192,6 +192,16 @@ public class AdminPasswordChangeResponseDto {
         private String enrollmentProofToken;
 
         /**
+         * Enrollment challenge code (6 digits) for verification.
+         * <p>
+         * This code must be provided during enrollment verification to prove
+         * that the admin has access to the enrollment credentials shown during
+         * the bootstrap process.
+         * </p>
+         */
+        private Integer enrollmentChallenge;
+
+        /**
          * Indicates if the enrollment is already bound.
          */
         private Boolean bound;
@@ -213,13 +223,15 @@ public class AdminPasswordChangeResponseDto {
          *
          * @param enrollmentId the enrollment ID
          * @param enrollmentProofToken the enrollment proof token
+         * @param enrollmentChallenge the enrollment challenge code (6 digits)
          * @param bound true if enrollment is already bound
          * @param message reminder message
          */
         public MfaEnrollmentInfo(Integer enrollmentId, String enrollmentProofToken, 
-                                Boolean bound, String message) {
+                                Integer enrollmentChallenge, Boolean bound, String message) {
             this.enrollmentId = enrollmentId;
             this.enrollmentProofToken = enrollmentProofToken;
+            this.enrollmentChallenge = enrollmentChallenge;
             this.bound = bound;
             this.message = message;
         }
@@ -258,6 +270,24 @@ public class AdminPasswordChangeResponseDto {
          */
         public void setEnrollmentProofToken(String enrollmentProofToken) {
             this.enrollmentProofToken = enrollmentProofToken;
+        }
+
+        /**
+         * Gets the enrollment challenge code.
+         *
+         * @return the challenge code (6 digits)
+         */
+        public Integer getEnrollmentChallenge() {
+            return enrollmentChallenge;
+        }
+
+        /**
+         * Sets the enrollment challenge code.
+         *
+         * @param enrollmentChallenge the challenge code (6 digits)
+         */
+        public void setEnrollmentChallenge(Integer enrollmentChallenge) {
+            this.enrollmentChallenge = enrollmentChallenge;
         }
 
         /**
@@ -306,6 +336,7 @@ public class AdminPasswordChangeResponseDto {
             return "MfaEnrollmentInfo{" +
                     "enrollmentId=" + enrollmentId +
                     ", enrollmentProofToken='" + enrollmentProofToken + '\'' +
+                    ", enrollmentChallenge=" + enrollmentChallenge +
                     ", bound=" + bound +
                     ", message='" + message + '\'' +
                     '}';

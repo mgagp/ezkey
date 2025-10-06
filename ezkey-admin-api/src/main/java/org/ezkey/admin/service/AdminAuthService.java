@@ -415,8 +415,9 @@ public class AdminAuthService {
                     new AdminPasswordChangeResponseDto.MfaEnrollmentInfo(
                         enrollment.getEnrollmentId(),
                         enrollment.getEnrollmentProofToken(),
+                        enrollment.getEnrollmentChallenge(),
                         false,
-                        "Don't forget to bind your MFA enrollment for enhanced security"
+                        "Use these credentials to bind your MFA enrollment for enhanced security"
                     );
                 
                 response.setMfaEnrollment(enrollmentInfo);
