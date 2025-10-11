@@ -46,6 +46,20 @@ public interface AdminTempTokenRepository extends JpaRepository<AdminTempToken, 
     List<AdminTempToken> findByAdminAdminIdAndActiveTrue(Integer adminId);
 
     /**
+     * Invalidate a specific temp token by token string.
+     * <p>
+     * Sets active=false for the temp token matching the given token string.
+     * Used for single-use temp token invalidation during MFA flows.
+     * </p>
+     *
+     * @param tempToken token string to invalidate
+     * @return count updated (should be 1 if token exists and is active, 0 otherwise)
+     */
+    @Modifying
+    @Query("UPDATE AdminTempToken t SET t.active = false WHERE t.tempToken = :tempToken AND t.active = true")
+    int invalidateTempToken(@Param("tempToken") String tempToken);
+
+    /**
      * Deactivate expired temp tokens.
      *
      * @param cutoff cutoff timestamp

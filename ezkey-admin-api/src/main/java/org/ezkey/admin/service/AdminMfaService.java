@@ -46,15 +46,18 @@ public class AdminMfaService {
     private final AuthAttemptService authAttemptService;
     private final AdminAuthService adminAuthService;
     private final AuthAttemptRepository authAttemptRepository;
+    private final AdminTempTokenTxHelper tempTokenTxHelper;
 
     public AdminMfaService(AdminTempTokenRepository tempTokenRepository,
                            AuthAttemptService authAttemptService,
                            AdminAuthService adminAuthService,
-                           AuthAttemptRepository authAttemptRepository) {
+                           AuthAttemptRepository authAttemptRepository,
+                           AdminTempTokenTxHelper tempTokenTxHelper) {
         this.tempTokenRepository = tempTokenRepository;
         this.authAttemptService = authAttemptService;
         this.adminAuthService = adminAuthService;
         this.authAttemptRepository = authAttemptRepository;
+        this.tempTokenTxHelper = tempTokenTxHelper;
     }
 
     /**
@@ -130,9 +133,8 @@ public class AdminMfaService {
         AuthAttemptWaitResponse waitResponse = authAttemptService.waitForResponse(authAttemptId, waitRequest);
 
         // 5. Invalidate temp token (single-use, regardless of outcome)
-        temp.setActive(false);
-        tempTokenRepository.save(temp);
-        logger.debug("🔒 Temp token invalidated for admin: {}", admin.getUsername());
+        // Use separate transaction helper to ensure commit even if exception is thrown
+        tempTokenTxHelper.invalidateTempToken(request.getTempToken(), admin.getUsername());
 
         // 6. Process wait response based on status
         String status = waitResponse.getStatus();
