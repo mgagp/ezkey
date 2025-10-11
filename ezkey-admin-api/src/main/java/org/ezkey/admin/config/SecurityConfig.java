@@ -47,7 +47,7 @@ public class SecurityConfig {
     @Autowired(required = false)
     private AdminRateLimitFilter adminRateLimitFilter;
 
-    public SecurityConfig(AdminTokenAuthenticationFilter adminTokenAuthenticationFilter) {
+    public SecurityConfig(AdminTokenAuthenticationFilter adminTokenAuthenticationFilter){
         this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     }
 
@@ -75,28 +75,25 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(authz -> authz
+        http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(authz -> authz
                 // Allow public access to authentication endpoints
                 .requestMatchers("/api/v1/admin/auth/**").permitAll()
+                // Allow public access to MFA endpoints (temp token in body)
+                .requestMatchers("/api/v1/admin/mfa/**").permitAll()
                 // Allow public access to health check endpoints
                 .requestMatchers("/actuator/**").permitAll()
                 // Allow public access to API documentation
-                .requestMatchers("/swagger-ui/**", "/api-docs/**").permitAll()
+                .requestMatchers("/swagger-ui/**","/api-docs/**").permitAll()
                 // Require authentication for all other endpoints
-                .anyRequest().authenticated()
-            )
-            .httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")); // HTTP Basic authentication
-        
+                .anyRequest().authenticated()).httpBasic(httpBasic -> httpBasic.realmName("Ezkey Admin API")); // HTTP Basic authentication
+
         // Add rate limiting filter before authentication filter (if enabled)
-        if (adminRateLimitFilter != null) {
-            http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        if (adminRateLimitFilter != null){
+            http.addFilterBefore(adminRateLimitFilter,UsernamePasswordAuthenticationFilter.class);
         }
-        
         // Add bearer token authentication filter
-        http.addFilterBefore(adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+        http.addFilterBefore(adminTokenAuthenticationFilter,UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

@@ -65,6 +65,21 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
     Optional<EzkeyAdmin> findByUsername(String username);
 
     /**
+     * Finds an administrator by username with MFA enrollment eagerly loaded.
+     * <p>
+     * This method is used for authentication to find the administrator
+     * and load their MFA enrollment in a single query using JOIN FETCH.
+     * This is essential for the MFA flow to correctly determine if MFA
+     * should be required during login.
+     * </p>
+     *
+     * @param username the unique username of the administrator
+     * @return Optional containing the administrator with enrollment if found, empty otherwise
+     */
+    @Query("SELECT a FROM EzkeyAdmin a LEFT JOIN FETCH a.mfaEnrollment WHERE a.username = :username")
+    Optional<EzkeyAdmin> findByUsernameWithEnrollment(@Param("username") String username);
+
+    /**
      * Finds an active administrator by username.
      * <p>
      * This method is used for authentication to find only active

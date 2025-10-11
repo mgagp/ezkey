@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.service;
 
+import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
@@ -18,8 +19,10 @@ import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.util.PasswordValidator;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.AdminTempToken;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.repository.AdminTempTokenRepository;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -66,18 +69,26 @@ public class AdminAuthService {
     
     private final AdminTokenRepository tokenRepository;
     
+    private final AdminTempTokenRepository tempTokenRepository;
+    
     private final BCryptPasswordEncoder passwordEncoder;
     
     private final AdminTokenRotationProperties rotationProperties;
+    
+    private final AdminMfaProperties mfaProperties;
 
     public AdminAuthService(EzkeyAdminRepository adminRepository,
                             AdminTokenRepository tokenRepository,
+                            AdminTempTokenRepository tempTokenRepository,
                             BCryptPasswordEncoder passwordEncoder,
-                            AdminTokenRotationProperties rotationProperties) {
+                            AdminTokenRotationProperties rotationProperties,
+                            AdminMfaProperties mfaProperties) {
         this.adminRepository = adminRepository;
         this.tokenRepository = tokenRepository;
+        this.tempTokenRepository = tempTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.rotationProperties = rotationProperties;
+        this.mfaProperties = mfaProperties;
     }
 
     /**
@@ -99,22 +110,142 @@ public class AdminAuthService {
             // 1. Validate credentials (username, password, active status)
             EzkeyAdmin admin = validateCredentials(request);
             
-            // 2. Rotate tokens if enabled (1 active token per admin)
+            // 2. Determine if MFA should be required
+            if (shouldRequireMfa(admin)) {
+                // Generate temp token (5 minutes)
+                AdminLoginResponseDto tempResponse = generateTempTokenResponse(admin);
+                return tempResponse;
+            }
+
+            // 3. Rotate tokens if enabled (1 active token per admin)
             rotateTokensIfEnabled(admin);
-            
-            // 3. Generate and persist new token
+
+            // 4. Generate and persist new token
             AdminToken token = generateAndPersistToken(admin);
-            
-            // 4. Update admin last login timestamp
+
+            // 5. Update admin last login timestamp
             updateLastLogin(admin);
-            
-            // 5. Build and return success response (with password change warning if needed)
+
+            // 6. Build and return success response (with password change warning if needed)
             return buildSuccessResponse(admin, token);
             
         } catch (AuthenticationException e) {
             logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
             return buildErrorResponse(e.getMessage());
         }
+    }
+
+    /**
+     * Decide if MFA should be required based on mode and admin enrollment.
+     */
+    private boolean shouldRequireMfa(EzkeyAdmin admin) {
+        // If password change required, keep existing behavior: allow login to change password
+        if (Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
+            logger.debug("MFA check: Password change required - MFA not required");
+            return false;
+        }
+
+        boolean enrollmentBound = admin.getMfaEnrollment() != null 
+            && admin.getMfaEnrollment().getDevicePublicKey() != null;
+
+        String mode = mfaProperties.getMode();
+        boolean mfaEnabled = Boolean.TRUE.equals(admin.getMfaEnabled());
+        boolean mfaRequired = Boolean.TRUE.equals(admin.getMfaRequired());
+
+        logger.info("🔐 MFA check for admin '{}': mode={}, enrollmentBound={}, mfaEnabled={}, mfaRequired={}", 
+            admin.getUsername(), mode, enrollmentBound, mfaEnabled, mfaRequired);
+
+        if (admin.getMfaEnrollment() != null) {
+            logger.debug("   Enrollment ID: {}, has device key: {}", 
+                admin.getMfaEnrollment().getEnrollmentId(),
+                admin.getMfaEnrollment().getDevicePublicKey() != null);
+        } else {
+            logger.debug("   No enrollment linked");
+        }
+
+        if ("prod".equalsIgnoreCase(mode)) {
+            // In prod, require MFA when enrollment is bound; if not bound, allow but nudge via UI/logs
+            boolean result = enrollmentBound;
+            logger.info("   → MFA required (prod mode): {}", result);
+            return result;
+        }
+
+        // dev mode: require MFA when enrollment is bound and admin flags indicate MFA enabled/required
+        boolean result = enrollmentBound && mfaEnabled && mfaRequired;
+        logger.info("   → MFA required (dev mode): {}", result);
+        return result;
+    }
+
+    /**
+     * Generate and persist a temp token, returning a response for MFA continuation.
+     */
+    private AdminLoginResponseDto generateTempTokenResponse(EzkeyAdmin admin) {
+        String tempToken = generateTempToken();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
+
+        AdminTempToken token = new AdminTempToken();
+        token.setTempToken(tempToken);
+        token.setAdmin(admin);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setExpiresAt(expiresAt);
+        token.setMfaRequired(true);
+        token.setActive(true);
+        tempTokenRepository.save(token);
+
+        AdminLoginResponseDto response = new AdminLoginResponseDto(tempToken,
+            "MFA verification required", expiresAt);
+        response.setUsername(admin.getUsername());
+        response.setAdminType(admin.getAdminType().name());
+        return response;
+    }
+
+    /**
+     * Generate secure temp token string.
+     */
+    private String generateTempToken() {
+        return "ezkey_temp_" + UUID.randomUUID().toString().replace("-", "");
+    }
+    
+    /**
+     * Generate temp token response after password change for seamless MFA flow.
+     * <p>
+     * This method creates a temporary token that allows the administrator to
+     * continue directly to the MFA flow after changing their password, without
+     * requiring a re-login. This provides a better user experience.
+     * </p>
+     *
+     * @param admin the administrator who changed their password
+     * @return AdminPasswordChangeResponseDto with temp token for MFA continuation
+     */
+    private AdminPasswordChangeResponseDto generateTempTokenResponseAfterPasswordChange(EzkeyAdmin admin) {
+        // Generate temp token (5 minutes validity)
+        String tempToken = generateTempToken();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
+        
+        // Save temp token to database
+        AdminTempToken token = new AdminTempToken();
+        token.setTempToken(tempToken);
+        token.setAdmin(admin);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setExpiresAt(expiresAt);
+        token.setMfaRequired(true);
+        token.setActive(true);
+        tempTokenRepository.save(token);
+        
+        logger.info("✅ Generated temp token for MFA flow after password change for admin: {} (expires: {})", 
+            admin.getUsername(), expiresAt);
+        
+        // Build response with temp token
+        AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto(
+            true,
+            "Password changed successfully. MFA verification required to complete authentication.",
+            false
+        );
+        response.setTempToken(tempToken);
+        response.setMfaRequired(true);
+        response.setExpiresAt(expiresAt);
+        
+        return response;
     }
     
     /**
@@ -123,14 +254,20 @@ public class AdminAuthService {
      * This method performs all credential validation checks and throws
      * AuthenticationException if any check fails.
      * </p>
+     * <p>
+     * <b>Note:</b> Uses findByUsernameWithEnrollment() to eagerly load the MFA
+     * enrollment in a single query. This is critical for shouldRequireMfa() to
+     * correctly determine if MFA should be required.
+     * </p>
      *
      * @param request the login request containing credentials
-     * @return the validated admin entity
+     * @return the validated admin entity with MFA enrollment loaded
      * @throws AuthenticationException if validation fails
      */
     private EzkeyAdmin validateCredentials(AdminLoginRequestDto request) {
-        // Find admin by username
-        EzkeyAdmin admin = adminRepository.findByUsername(request.getUsername())
+        // Find admin by username WITH enrollment (LEFT JOIN FETCH)
+        // This is critical for MFA flow - ensures enrollment is loaded for shouldRequireMfa() check
+        EzkeyAdmin admin = adminRepository.findByUsernameWithEnrollment(request.getUsername())
             .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
         
         // Verify password
@@ -196,6 +333,23 @@ public class AdminAuthService {
         logger.debug("Token created for admin: {}", admin.getUsername());
         
         return token;
+    }
+
+    /**
+     * Issue a bearer token after successful MFA validation.
+     * <p>
+     * Rotates tokens if configured, generates a new bearer token, updates last login,
+     * and returns a standard success response.
+     * </p>
+     *
+     * @param admin authenticated admin (MFA already satisfied)
+     * @return login response with bearer token
+     */
+    public AdminLoginResponseDto authenticateAfterMfa(EzkeyAdmin admin) {
+        rotateTokensIfEnabled(admin);
+        AdminToken token = generateAndPersistToken(admin);
+        updateLastLogin(admin);
+        return buildSuccessResponse(admin, token);
     }
     
     /**
@@ -374,15 +528,27 @@ public class AdminAuthService {
             // 6. Save admin
             adminRepository.save(admin);
             
-            // 7. Build success response with enrollment reminder
+            // 7. Reload admin with enrollment to check MFA requirement
+            // This is critical: we need fresh data with enrollment loaded for shouldRequireMfa()
+            EzkeyAdmin reloadedAdmin = adminRepository.findByUsernameWithEnrollment(admin.getUsername())
+                .orElse(admin); // Fallback to current admin if not found (should never happen)
+            
+            // 8. Check if MFA required after password change
+            if (shouldRequireMfa(reloadedAdmin)) {
+                // Generate temp token for seamless MFA flow (no re-login needed)
+                logger.info("🔐 MFA required after password change for admin: {}", admin.getUsername());
+                return generateTempTokenResponseAfterPasswordChange(reloadedAdmin);
+            }
+            
+            // 9. Build success response (no MFA required)
             AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto(
                 true,
                 "Password changed successfully. All existing tokens have been invalidated.",
                 false
             );
             
-            // 8. Add MFA enrollment reminder if applicable
-            addMfaEnrollmentReminderIfNeeded(admin, response);
+            // 10. Add MFA enrollment reminder if enrollment not bound yet
+            addMfaEnrollmentReminderIfNeeded(reloadedAdmin, response);
             
             logger.info("Password changed successfully for admin: {}", admin.getUsername());
             return response;

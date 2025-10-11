@@ -71,6 +71,20 @@ public class AdminLoginResponseDto {
     private Boolean passwordChangeRequired;
 
     /**
+     * Temporary token used to proceed with MFA validation when required.
+     * <p>
+     * Present when the system requires MFA and the login step issued
+     * a temporary token instead of a bearer token.
+     * </p>
+     */
+    private String tempToken;
+
+    /**
+     * Indicates if MFA is required to complete authentication.
+     */
+    private Boolean mfaRequired;
+
+    /**
      * Default constructor for JSON serialization.
      */
     public AdminLoginResponseDto() {
@@ -115,6 +129,21 @@ public class AdminLoginResponseDto {
         this.success = false;
         this.message = message;
         this.passwordChangeRequired = passwordChangeRequired;
+    }
+
+    /**
+     * Constructs a temp-token response for MFA flow.
+     *
+     * @param tempToken temporary token for MFA continuation
+     * @param message informational message
+     * @param expiresAt temp token expiry
+     */
+    public AdminLoginResponseDto(String tempToken, String message, LocalDateTime expiresAt) {
+        this.success = true;
+        this.mfaRequired = true;
+        this.tempToken = tempToken;
+        this.message = message;
+        this.expiresAt = expiresAt;
     }
 
     /**
@@ -244,6 +273,42 @@ public class AdminLoginResponseDto {
     }
 
     /**
+     * Gets the temporary token for MFA.
+     *
+     * @return temp token string
+     */
+    public String getTempToken() {
+        return tempToken;
+    }
+
+    /**
+     * Sets the temporary token for MFA.
+     *
+     * @param tempToken temp token
+     */
+    public void setTempToken(String tempToken) {
+        this.tempToken = tempToken;
+    }
+
+    /**
+     * Gets the MFA required flag.
+     *
+     * @return true if MFA required
+     */
+    public Boolean getMfaRequired() {
+        return mfaRequired;
+    }
+
+    /**
+     * Sets the MFA required flag.
+     *
+     * @param mfaRequired mfa required flag
+     */
+    public void setMfaRequired(Boolean mfaRequired) {
+        this.mfaRequired = mfaRequired;
+    }
+
+    /**
      * Returns a string representation of the login response.
      *
      * @return string representation
@@ -258,6 +323,8 @@ public class AdminLoginResponseDto {
                 ", expiresAt=" + expiresAt +
                 ", message='" + message + '\'' +
                 ", passwordChangeRequired=" + passwordChangeRequired +
+                ", mfaRequired=" + mfaRequired +
+                ", tempToken='" + (tempToken != null ? "[PROTECTED]" : "null") + '\'' +
                 '}';
     }
 }

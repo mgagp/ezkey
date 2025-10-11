@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.dto.response;
 
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
@@ -24,6 +26,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  * If the administrator has an unbound MFA enrollment, the response includes
  * enrollment credentials to remind the administrator to complete the binding
  * process for enhanced security.
+ * </p>
+ *
+ * <p>
+ * <b>MFA Flow Integration:</b>
+ * If MFA is required after password change (enrollment bound + MFA enabled),
+ * the response includes a temporary token to continue directly to the MFA flow
+ * without requiring a re-login. This provides a seamless user experience.
  * </p>
  *
  * <p>
@@ -54,6 +63,33 @@ public class AdminPasswordChangeResponseDto {
      * Should be false after successful password change.
      */
     private Boolean passwordChangeRequired;
+
+    /**
+     * Temporary token for MFA flow continuation.
+     * <p>
+     * When MFA is required after password change, this temp token
+     * allows the administrator to proceed directly to the MFA flow
+     * without re-login. The token is valid for 5 minutes.
+     * </p>
+     */
+    private String tempToken;
+
+    /**
+     * Indicates if MFA verification is required.
+     * <p>
+     * When true, the administrator must complete MFA verification
+     * using the provided temp token before receiving a bearer token.
+     * </p>
+     */
+    private Boolean mfaRequired;
+
+    /**
+     * Expiration timestamp for the temp token.
+     * <p>
+     * The temp token expires after 5 minutes for security.
+     * </p>
+     */
+    private LocalDateTime expiresAt;
 
     /**
      * MFA enrollment information if applicable.
@@ -157,6 +193,60 @@ public class AdminPasswordChangeResponseDto {
     }
 
     /**
+     * Gets the temporary token for MFA flow.
+     *
+     * @return the temp token
+     */
+    public String getTempToken() {
+        return tempToken;
+    }
+
+    /**
+     * Sets the temporary token for MFA flow.
+     *
+     * @param tempToken the temp token
+     */
+    public void setTempToken(String tempToken) {
+        this.tempToken = tempToken;
+    }
+
+    /**
+     * Gets the MFA required flag.
+     *
+     * @return true if MFA is required
+     */
+    public Boolean getMfaRequired() {
+        return mfaRequired;
+    }
+
+    /**
+     * Sets the MFA required flag.
+     *
+     * @param mfaRequired the MFA required flag
+     */
+    public void setMfaRequired(Boolean mfaRequired) {
+        this.mfaRequired = mfaRequired;
+    }
+
+    /**
+     * Gets the temp token expiration time.
+     *
+     * @return the expiration time
+     */
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    /**
+     * Sets the temp token expiration time.
+     *
+     * @param expiresAt the expiration time
+     */
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    /**
      * Returns a string representation of the password change response.
      *
      * @return string representation
@@ -167,6 +257,9 @@ public class AdminPasswordChangeResponseDto {
                 "success=" + success +
                 ", message='" + message + '\'' +
                 ", passwordChangeRequired=" + passwordChangeRequired +
+                ", tempToken='" + (tempToken != null ? "[PROTECTED]" : "null") + '\'' +
+                ", mfaRequired=" + mfaRequired +
+                ", expiresAt=" + expiresAt +
                 ", mfaEnrollment=" + mfaEnrollment +
                 '}';
     }
