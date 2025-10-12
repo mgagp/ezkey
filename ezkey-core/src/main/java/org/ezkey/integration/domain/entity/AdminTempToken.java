@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -105,7 +105,7 @@ public class AdminTempToken {
      * </p>
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Timestamp when the temporary token expires.
@@ -115,7 +115,7 @@ public class AdminTempToken {
      * </p>
      */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     /**
      * Flag indicating whether MFA is required for this token.
@@ -159,11 +159,11 @@ public class AdminTempToken {
      * @param admin the administrator who owns this token
      * @param expiresAt the expiration timestamp
      */
-    public AdminTempToken(String tempToken, EzkeyAdmin admin, LocalDateTime expiresAt) {
+    public AdminTempToken(String tempToken, EzkeyAdmin admin, OffsetDateTime expiresAt) {
         this.tempToken = tempToken;
         this.admin = admin;
         this.expiresAt = expiresAt;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
         this.mfaRequired = true;
         this.active = true;
     }
@@ -227,7 +227,7 @@ public class AdminTempToken {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -236,7 +236,7 @@ public class AdminTempToken {
      *
      * @param createdAt the creation timestamp
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -245,7 +245,7 @@ public class AdminTempToken {
      *
      * @return the expiration timestamp
      */
-    public LocalDateTime getExpiresAt() {
+    public OffsetDateTime getExpiresAt() {
         return expiresAt;
     }
 
@@ -254,7 +254,7 @@ public class AdminTempToken {
      *
      * @param expiresAt the expiration timestamp
      */
-    public void setExpiresAt(LocalDateTime expiresAt) {
+    public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
     }
 

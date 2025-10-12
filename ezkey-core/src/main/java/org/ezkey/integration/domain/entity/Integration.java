@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -78,7 +78,7 @@ public class Integration {
      * Automatically set when the entity is persisted.
      */
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Collection of internationalization entries for this integration.
@@ -181,7 +181,7 @@ public class Integration {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -190,7 +190,7 @@ public class Integration {
      *
      * @param createdAt the creation timestamp to set
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 

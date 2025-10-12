@@ -7,7 +7,7 @@ CREATE TABLE ezkey_tenant (
     tenant_name VARCHAR(100) NOT NULL UNIQUE,
     tenant_description TEXT,
     created_by_admin_id INT, -- Sera ajouté après création de ezkey_admin
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );
 
@@ -24,9 +24,9 @@ CREATE TABLE ezkey_admin (
     mfa_enrollment_id INT REFERENCES ezkey_enrollment(enrollment_id),
     password_change_required BOOLEAN DEFAULT FALSE NOT NULL,
     created_by_admin_id INT REFERENCES ezkey_admin(admin_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    last_login_at TIMESTAMP,
-    last_password_change TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    last_login_at TIMESTAMPTZ,
+    last_password_change TIMESTAMPTZ,
     active BOOLEAN DEFAULT TRUE NOT NULL,
     
     -- Contraintes de hiérarchie
@@ -45,9 +45,9 @@ CREATE TABLE ezkey_admin_tokens (
     admin_type VARCHAR(20) NOT NULL,
     tenant_id INT REFERENCES ezkey_tenant(tenant_id),
     integration_id INT REFERENCES ezkey_integration(integration_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    last_used_at TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    last_used_at TIMESTAMPTZ,
     ip_address VARCHAR(45),
     user_agent TEXT,
     active BOOLEAN DEFAULT TRUE NOT NULL
@@ -58,8 +58,8 @@ CREATE TABLE ezkey_admin_temp_tokens (
     temp_token_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     temp_token VARCHAR(255) NOT NULL UNIQUE,
     admin_id INT NOT NULL REFERENCES ezkey_admin(admin_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
     mfa_required BOOLEAN DEFAULT TRUE NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );

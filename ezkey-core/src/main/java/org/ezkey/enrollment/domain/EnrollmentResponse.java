@@ -10,7 +10,7 @@
 
 package org.ezkey.enrollment.domain;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Domain response object containing comprehensive enrollment data.
@@ -183,7 +183,7 @@ public class EnrollmentResponse {
      * enrollments by creation date in administrative interfaces.
      * </p>
      */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Gets the unique identifier for the enrollment.
@@ -370,7 +370,7 @@ public class EnrollmentResponse {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -379,7 +379,7 @@ public class EnrollmentResponse {
      *
      * @param createdAt the creation timestamp to set
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 

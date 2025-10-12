@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -117,7 +117,7 @@ public class Tenant {
      * </p>
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Flag indicating whether the tenant is active.
@@ -174,7 +174,7 @@ public class Tenant {
     public Tenant(String tenantName, String tenantDescription) {
         this.tenantName = tenantName;
         this.tenantDescription = tenantDescription;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
         this.active = true;
     }
 
@@ -255,7 +255,7 @@ public class Tenant {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -264,7 +264,7 @@ public class Tenant {
      *
      * @param createdAt the creation timestamp
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 

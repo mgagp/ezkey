@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -58,7 +58,7 @@ public class IntegrationResponse {
      * Timestamp when the integration was created.
      * Used for audit trails and sorting purposes.
      */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * List of internationalized content for the integration.
@@ -125,7 +125,7 @@ public class IntegrationResponse {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -134,7 +134,7 @@ public class IntegrationResponse {
      *
      * @param createdAt the creation timestamp to set
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 

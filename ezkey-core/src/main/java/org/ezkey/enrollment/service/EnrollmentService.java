@@ -10,7 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -201,7 +201,7 @@ public class EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.CREATED);
         enrollment.setActive(false);
         enrollment.setAuthAttemptChallengeRequired(request.getAuthAttemptChallengeRequired() != null ? request.getAuthAttemptChallengeRequired() : false);
-        enrollment.setCreatedAt(LocalDateTime.now());
+        enrollment.setCreatedAt(OffsetDateTime.now());
         RsaKeyPair integrationKeys = signatureService.generateRsaKeyPair(2048);
         enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
         enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());

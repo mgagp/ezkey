@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.domain;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 
@@ -100,7 +100,7 @@ public class AuthAttemptWaitResponse {
      * Timestamp when the wait operation completed.
      * Used for auditing and monitoring purposes.
      */
-    private LocalDateTime completedAt;
+    private OffsetDateTime completedAt;
 
     /**
      * Default constructor for AuthAttemptWaitResponse.
@@ -119,7 +119,7 @@ public class AuthAttemptWaitResponse {
      * @param completedAt timestamp when wait completed
      */
     public AuthAttemptWaitResponse(AuthAttempt authAttempt, String status, Boolean completed, 
-                                  Boolean timeoutReached, Integer waitDuration, LocalDateTime completedAt) {
+                                  Boolean timeoutReached, Integer waitDuration, OffsetDateTime completedAt) {
         this.authAttempt = authAttempt;
         this.status = status;
         this.completed = completed;
@@ -223,7 +223,7 @@ public class AuthAttemptWaitResponse {
      *
      * @return the completion timestamp
      */
-    public LocalDateTime getCompletedAt() {
+    public OffsetDateTime getCompletedAt() {
         return completedAt;
     }
 
@@ -232,7 +232,7 @@ public class AuthAttemptWaitResponse {
      *
      * @param completedAt the completion timestamp to set
      */
-    public void setCompletedAt(LocalDateTime completedAt) {
+    public void setCompletedAt(OffsetDateTime completedAt) {
         this.completedAt = completedAt;
     }
 

@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -161,7 +161,7 @@ public class AuthAttemptRespondService {
         }
 
         // Check if expired
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
             throw new IllegalStateException("Authentication attempt expired");
         }

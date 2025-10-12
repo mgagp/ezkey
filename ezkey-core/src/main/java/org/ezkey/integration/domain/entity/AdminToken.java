@@ -11,7 +11,7 @@
 package org.ezkey.integration.domain.entity;
 
 import java.net.InetAddress;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -140,7 +140,7 @@ public class AdminToken {
      * </p>
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Timestamp when the token expires.
@@ -150,7 +150,7 @@ public class AdminToken {
      * </p>
      */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     /**
      * Timestamp of the last time this token was used.
@@ -160,7 +160,7 @@ public class AdminToken {
      * </p>
      */
     @Column(name = "last_used_at")
-    private LocalDateTime lastUsedAt;
+    private OffsetDateTime lastUsedAt;
 
     /**
      * IP address from which the token was issued.
@@ -215,12 +215,12 @@ public class AdminToken {
      * @param adminType the type of administrator
      * @param expiresAt the expiration timestamp
      */
-    public AdminToken(String bearerToken, EzkeyAdmin admin, String adminType, LocalDateTime expiresAt) {
+    public AdminToken(String bearerToken, EzkeyAdmin admin, String adminType, OffsetDateTime expiresAt) {
         this.bearerToken = bearerToken;
         this.admin = admin;
         this.adminType = adminType;
         this.expiresAt = expiresAt;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
         this.active = true;
     }
 
@@ -337,7 +337,7 @@ public class AdminToken {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -346,7 +346,7 @@ public class AdminToken {
      *
      * @param createdAt the creation timestamp
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -355,7 +355,7 @@ public class AdminToken {
      *
      * @return the expiration timestamp
      */
-    public LocalDateTime getExpiresAt() {
+    public OffsetDateTime getExpiresAt() {
         return expiresAt;
     }
 
@@ -364,7 +364,7 @@ public class AdminToken {
      *
      * @param expiresAt the expiration timestamp
      */
-    public void setExpiresAt(LocalDateTime expiresAt) {
+    public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
     }
 
@@ -373,7 +373,7 @@ public class AdminToken {
      *
      * @return the last used timestamp
      */
-    public LocalDateTime getLastUsedAt() {
+    public OffsetDateTime getLastUsedAt() {
         return lastUsedAt;
     }
 
@@ -382,7 +382,7 @@ public class AdminToken {
      *
      * @param lastUsedAt the last used timestamp
      */
-    public void setLastUsedAt(LocalDateTime lastUsedAt) {
+    public void setLastUsedAt(OffsetDateTime lastUsedAt) {
         this.lastUsedAt = lastUsedAt;
     }
 

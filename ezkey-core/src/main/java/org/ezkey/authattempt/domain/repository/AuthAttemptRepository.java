@@ -195,7 +195,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
      * @return the newer authentication attempt if it exists, empty otherwise
      */
     @Query("SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt > :createdAt ORDER BY a.createdAt DESC")
-    Optional<AuthAttempt> findNewerAttemptByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("createdAt") java.time.LocalDateTime createdAt);
+    Optional<AuthAttempt> findNewerAttemptByEnrollmentId(@Param("enrollmentId") Integer enrollmentId, @Param("createdAt") java.time.OffsetDateTime createdAt);
 
     /**
      * Finds all non-final authentication attempts for a given enrollment ID.

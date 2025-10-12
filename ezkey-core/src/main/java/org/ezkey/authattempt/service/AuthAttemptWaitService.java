@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -210,7 +210,7 @@ public class AuthAttemptWaitService {
      * @return true if the attempt has expired
      */
     private boolean isAttemptExpired(AuthAttempt authAttempt) {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         return authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt());
     }
 
@@ -230,7 +230,7 @@ public class AuthAttemptWaitService {
         String status = calculateStatus(authAttempt);
         boolean completed = isAttemptCompleted(authAttempt);
 
-        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, LocalDateTime.now());
+        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, OffsetDateTime.now());
     }
 
     /**
@@ -249,7 +249,7 @@ public class AuthAttemptWaitService {
     private AuthAttemptWaitResponse buildWaitResponse(AuthAttempt authAttempt, String status, boolean timeoutReached, int waitDuration) {
         boolean completed = isAttemptCompleted(authAttempt);
 
-        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, LocalDateTime.now());
+        return new AuthAttemptWaitResponse(authAttempt, status, completed, timeoutReached, waitDuration, OffsetDateTime.now());
     }
 
     /**

@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -88,7 +88,7 @@ public class IntegrationService {
     public IntegrationCreateResponse createIntegration(IntegrationCreateRequest request){
         Integration integration = integrationServiceMapper.toEntity(request);
         integration.setActive(true);
-        integration.setCreatedAt(LocalDateTime.now());
+        integration.setCreatedAt(OffsetDateTime.now());
 
         // Set the parent reference for each i18n if present
         if (integration.getI18n() != null){

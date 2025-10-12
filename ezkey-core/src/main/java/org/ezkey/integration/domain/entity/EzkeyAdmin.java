@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -223,7 +223,7 @@ public class EzkeyAdmin {
      * </p>
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Timestamp of the last login for this administrator.
@@ -233,7 +233,7 @@ public class EzkeyAdmin {
      * </p>
      */
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    private OffsetDateTime lastLoginAt;
 
     /**
      * Timestamp of the last password change for this administrator.
@@ -243,7 +243,7 @@ public class EzkeyAdmin {
      * </p>
      */
     @Column(name = "last_password_change")
-    private LocalDateTime lastPasswordChange;
+    private OffsetDateTime lastPasswordChange;
 
     /**
      * Flag indicating whether the administrator account is active.
@@ -302,7 +302,7 @@ public class EzkeyAdmin {
         this.username = username;
         this.passwordHash = passwordHash;
         this.adminType = adminType;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
         this.active = true;
         this.mfaEnabled = true;
         this.mfaRequired = true;
@@ -512,7 +512,7 @@ public class EzkeyAdmin {
      *
      * @return the creation timestamp
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -521,7 +521,7 @@ public class EzkeyAdmin {
      *
      * @param createdAt the creation timestamp
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -530,7 +530,7 @@ public class EzkeyAdmin {
      *
      * @return the last login timestamp
      */
-    public LocalDateTime getLastLoginAt() {
+    public OffsetDateTime getLastLoginAt() {
         return lastLoginAt;
     }
 
@@ -539,7 +539,7 @@ public class EzkeyAdmin {
      *
      * @param lastLoginAt the last login timestamp
      */
-    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+    public void setLastLoginAt(OffsetDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
     }
 
@@ -548,7 +548,7 @@ public class EzkeyAdmin {
      *
      * @return the last password change timestamp
      */
-    public LocalDateTime getLastPasswordChange() {
+    public OffsetDateTime getLastPasswordChange() {
         return lastPasswordChange;
     }
 
@@ -557,7 +557,7 @@ public class EzkeyAdmin {
      *
      * @param lastPasswordChange the last password change timestamp
      */
-    public void setLastPasswordChange(LocalDateTime lastPasswordChange) {
+    public void setLastPasswordChange(OffsetDateTime lastPasswordChange) {
         this.lastPasswordChange = lastPasswordChange;
     }
 
