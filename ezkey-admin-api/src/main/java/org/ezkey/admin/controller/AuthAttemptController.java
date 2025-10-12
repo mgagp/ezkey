@@ -12,6 +12,9 @@ package org.ezkey.admin.controller;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.admin.audit.AuditHelper;
+import org.ezkey.audit.service.AuditService;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
@@ -91,19 +94,23 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthAttemptController {
 
     private final AuthAttemptService authAttemptService;
-
     private final AuthAttemptMapper authAttemptMapper;
+    private final AuditService auditService;
 
     /**
      * Constructs the authorization attempt controller with required dependencies.
      *
      * @param authAttemptService the JPA-based authorization attempt service
      * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
+     * @param auditService the audit logging service
      */
     @Autowired
-    public AuthAttemptController(AuthAttemptService authAttemptService,AuthAttemptMapper authAttemptMapper){
+    public AuthAttemptController(AuthAttemptService authAttemptService,
+                                AuthAttemptMapper authAttemptMapper,
+                                AuditService auditService){
         this.authAttemptService = authAttemptService;
         this.authAttemptMapper = authAttemptMapper;
+        this.auditService = auditService;
     }
 
     /**
@@ -178,14 +185,59 @@ public class AuthAttemptController {
     @PostMapping
     public ResponseEntity<AuthAttemptCreateResponseDto> create(
         @Parameter(description = "Auth attempt creation data", required = true)
-        @RequestBody AuthAttemptCreateRequestDto request){
+        @RequestBody AuthAttemptCreateRequestDto request,
+        HttpServletRequest httpRequest){
         try{
             AuthAttemptCreateResponse response = authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
+            
+            // Audit log: successful auth attempt creation
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("CREATE")
+                .eventStatus("SUCCESS")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .authAttemptId(response.getAuthAttemptId())
+                .eventDetails("Challenge required: " + request.getChallengeRequested())
+            );
+            
             return ResponseEntity.status(HttpStatus.CREATED).body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
         } catch (IllegalArgumentException e){
+            // Audit log: failed auth attempt creation (validation error)
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("CREATE")
+                .eventStatus("FAILURE")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .errorMessage(e.getMessage())
+            );
+            
             // Return 400 Bad Request with validation error message
             return ResponseEntity.badRequest().build();
         } catch (Exception e){
+            // Audit log: error during auth attempt creation
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("CREATE")
+                .eventStatus("ERROR")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .errorMessage(e.getMessage())
+            );
+            
             // Return 500 Internal Server Error for unexpected errors
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
