@@ -17,7 +17,9 @@ import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.Logo;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.LogoRepository;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.springframework.stereotype.Service;
 
@@ -47,16 +49,20 @@ public class IntegrationService {
 
     private final IntegrationServiceMapper integrationServiceMapper;
 
+    private final LogoRepository logoRepository;
+
     /**
      * Constructs the service with the required repository and mapper.
      *
      * @param integrationRepository the repository for Integration entities
      * @param integrationServiceMapper the mapper for converting between DTOs and
      * entities
+     * @param logoRepository the repository for Logo entities
      */
-    public IntegrationService(IntegrationRepository integrationRepository,IntegrationServiceMapper integrationServiceMapper){
+    public IntegrationService(IntegrationRepository integrationRepository,IntegrationServiceMapper integrationServiceMapper, LogoRepository logoRepository){
         this.integrationRepository = integrationRepository;
         this.integrationServiceMapper = integrationServiceMapper;
+        this.logoRepository = logoRepository;
     }
 
     /**
@@ -89,6 +95,16 @@ public class IntegrationService {
         Integration integration = integrationServiceMapper.toEntity(request);
         integration.setActive(true);
         integration.setCreatedAt(LocalDateTime.now());
+
+        // Resolve logo reference if logoId is provided
+        if (request.getLogoId() != null) {
+            Optional<Logo> logo = logoRepository.findById(request.getLogoId());
+            if (logo.isPresent()) {
+                integration.setLogoRef(logo.get());
+            } else {
+                throw new IllegalArgumentException("Logo with id " + request.getLogoId() + " not found");
+            }
+        }
 
         // Set the parent reference for each i18n if present
         if (integration.getI18n() != null){

@@ -56,9 +56,18 @@ public class IntegrationCreateRequestDto {
     /**
      * URL or path to the integration's logo image.
      * Displayed in the mobile app and web interfaces.
+     * @deprecated Use logoId instead to reference a managed logo
      */
-    @Schema(description = "URL or path to the integration's logo image",example = "https://example.com/logo.png")
+    @Deprecated
+    @Schema(description = "URL or path to the integration's logo image (DEPRECATED: use logoId instead)",example = "https://example.com/logo.png", deprecated = true)
     private String logo;
+
+    /**
+     * ID of the logo to use for this integration.
+     * References a logo from the ezkey_logo table.
+     */
+    @Schema(description = "ID of the logo to use for this integration (references ezkey_logo table)", example = "1")
+    private Integer logoId;
 
     /**
      * Optional list of internationalization entries.
@@ -71,7 +80,9 @@ public class IntegrationCreateRequestDto {
      * Gets the URL or path to the integration's logo.
      *
      * @return the logo URL/path
+     * @deprecated Use getLogoId() instead
      */
+    @Deprecated
     public String getLogo() {
         return logo;
     }
@@ -80,9 +91,29 @@ public class IntegrationCreateRequestDto {
      * Sets the URL or path to the integration's logo.
      *
      * @param logo the logo URL/path to set
+     * @deprecated Use setLogoId() instead
      */
+    @Deprecated
     public void setLogo(String logo) {
         this.logo = logo;
+    }
+
+    /**
+     * Gets the logo ID.
+     *
+     * @return the logo ID
+     */
+    public Integer getLogoId() {
+        return logoId;
+    }
+
+    /**
+     * Sets the logo ID.
+     *
+     * @param logoId the logo ID to set
+     */
+    public void setLogoId(Integer logoId) {
+        this.logoId = logoId;
     }
 
     /**

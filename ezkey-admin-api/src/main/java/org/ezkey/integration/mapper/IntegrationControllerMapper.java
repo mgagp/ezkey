@@ -159,6 +159,7 @@ public interface IntegrationControllerMapper {
      * <p>
      * This method maps all fields from the JPA entity to the domain response object,
      * excluding sensitive information like private keys for security purposes.
+     * Resolves the logo field from either logoRef or the deprecated logo field.
      * </p>
      *
      * @param integration the Integration entity to convert
@@ -166,7 +167,37 @@ public interface IntegrationControllerMapper {
      * @see Integration
      * @see IntegrationResponse
      */
+    @Mapping(target = "logoId", source = "logoRef.id")
+    @Mapping(target = "logo", expression = "java(resolveLogoUrl(integration))")
     IntegrationResponseDto toResponse(Integration integration);
+
+    /**
+     * Resolves the logo URL or data from an integration entity.
+     * <p>
+     * This method checks if the integration has a logo reference and returns
+     * either the logo URL or base64-encoded data. Falls back to the deprecated
+     * logo field for backward compatibility.
+     * </p>
+     *
+     * @param integration the integration entity
+     * @return the logo URL or data, or null if no logo is available
+     */
+    default String resolveLogoUrl(Integration integration) {
+        if (integration.getLogoRef() != null) {
+            // Prefer logo URL if available
+            if (integration.getLogoRef().getLogoUrl() != null && 
+                !integration.getLogoRef().getLogoUrl().trim().isEmpty()) {
+                return integration.getLogoRef().getLogoUrl();
+            }
+            // Fall back to logo data if URL not available
+            if (integration.getLogoRef().getLogoData() != null && 
+                !integration.getLogoRef().getLogoData().trim().isEmpty()) {
+                return integration.getLogoRef().getLogoData();
+            }
+        }
+        // Fall back to deprecated logo field for backward compatibility
+        return integration.getLogo();
+    }
 
     /**
      * Converts an IntegrationCreateResponse domain object to an IntegrationResponseDto.

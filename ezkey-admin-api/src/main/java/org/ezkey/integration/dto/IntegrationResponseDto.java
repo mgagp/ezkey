@@ -61,10 +61,19 @@ public class IntegrationResponseDto {
     /**
      * URL or path to the integration logo image.
      * Used for displaying the integration brand in user interfaces.
+     * @deprecated This field is computed from logoRef and kept for backward compatibility
      */
-    @Schema(description = "URL or path to the integration logo image", 
-            example = "https://example.com/logo.png")
+    @Deprecated
+    @Schema(description = "URL or path to the integration logo image (computed from logoRef)", 
+            example = "https://example.com/logo.png", deprecated = true)
     private String logo;
+
+    /**
+     * ID of the logo referenced by this integration.
+     * References a logo from the ezkey_logo table.
+     */
+    @Schema(description = "ID of the logo referenced by this integration", example = "1")
+    private Integer logoId;
 
     /**
      * Integration status flag.
@@ -110,7 +119,9 @@ public class IntegrationResponseDto {
      * Gets the URL or path to the integration logo image.
      *
      * @return the logo URL/path
+     * @deprecated This field is computed for backward compatibility
      */
+    @Deprecated
     public String getLogo() {
         return logo;
     }
@@ -119,9 +130,29 @@ public class IntegrationResponseDto {
      * Sets the URL or path to the integration logo image.
      *
      * @param logo the logo URL/path to set
+     * @deprecated This field is computed for backward compatibility
      */
+    @Deprecated
     public void setLogo(String logo) {
         this.logo = logo;
+    }
+
+    /**
+     * Gets the logo ID.
+     *
+     * @return the logo ID
+     */
+    public Integer getLogoId() {
+        return logoId;
+    }
+
+    /**
+     * Sets the logo ID.
+     *
+     * @param logoId the logo ID to set
+     */
+    public void setLogoId(Integer logoId) {
+        this.logoId = logoId;
     }
 
     /**
