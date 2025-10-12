@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -122,8 +122,8 @@ public class AuthAttemptWaitResponseDto {
      * Timestamp when the wait operation completed.
      * Used for auditing and monitoring purposes.
      */
-    @Schema(description = "Timestamp when wait operation completed")
-    private LocalDateTime completedAt;
+    @Schema(description = "Timestamp when wait operation completed",example = "2025-01-27T10:30:15+01:00")
+    private OffsetDateTime completedAt;
 
     /**
      * Default constructor for AuthAttemptWaitResponseDto.
@@ -142,7 +142,7 @@ public class AuthAttemptWaitResponseDto {
      * @param completedAt timestamp when wait completed
      */
     public AuthAttemptWaitResponseDto(AuthAttemptDto authAttempt, String status, Boolean completed, 
-                                     Boolean timeoutReached, Integer waitDuration, LocalDateTime completedAt) {
+                                     Boolean timeoutReached, Integer waitDuration, OffsetDateTime completedAt) {
         this.authAttempt = authAttempt;
         this.status = status;
         this.completed = completed;
@@ -246,7 +246,7 @@ public class AuthAttemptWaitResponseDto {
      *
      * @return the completion timestamp
      */
-    public LocalDateTime getCompletedAt() {
+    public OffsetDateTime getCompletedAt() {
         return completedAt;
     }
 
@@ -255,7 +255,7 @@ public class AuthAttemptWaitResponseDto {
      *
      * @param completedAt the completion timestamp to set
      */
-    public void setCompletedAt(LocalDateTime completedAt) {
+    public void setCompletedAt(OffsetDateTime completedAt) {
         this.completedAt = completedAt;
     }
 

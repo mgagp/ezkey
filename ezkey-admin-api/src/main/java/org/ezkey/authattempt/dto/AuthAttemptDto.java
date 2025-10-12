@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -123,15 +123,15 @@ public class AuthAttemptDto {
      * Timestamp when the authentication attempt was created.
      * Used for auditing and tracking purposes.
      */
-    @Schema(description = "Timestamp when the authentication attempt was created",example = "2025-01-27T10:30:00")
-    private LocalDateTime createdAt;
+    @Schema(description = "Timestamp when the authentication attempt was created",example = "2025-01-27T10:30:00+01:00")
+    private OffsetDateTime createdAt;
 
     /**
      * Timestamp when the authentication attempt expires.
      * Used to determine if the authentication attempt is still valid.
      */
-    @Schema(description = "Timestamp when the authentication attempt expires",example = "2025-01-27T10:35:00")
-    private LocalDateTime expiresAt;
+    @Schema(description = "Timestamp when the authentication attempt expires",example = "2025-01-27T10:35:00+01:00")
+    private OffsetDateTime expiresAt;
 
     /**
      * Gets the authentication attempt ID.
@@ -228,7 +228,7 @@ public class AuthAttemptDto {
      *
      * @return the timestamp when the authentication attempt was created
      */
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -237,7 +237,7 @@ public class AuthAttemptDto {
      *
      * @param createdAt the timestamp when the authentication attempt was created
      */
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -246,7 +246,7 @@ public class AuthAttemptDto {
      *
      * @return the timestamp when the authentication attempt expires
      */
-    public LocalDateTime getExpiresAt() {
+    public OffsetDateTime getExpiresAt() {
         return expiresAt;
     }
 
@@ -255,7 +255,7 @@ public class AuthAttemptDto {
      *
      * @param expiresAt the timestamp when the authentication attempt expires
      */
-    public void setExpiresAt(LocalDateTime expiresAt) {
+    public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
     }
 

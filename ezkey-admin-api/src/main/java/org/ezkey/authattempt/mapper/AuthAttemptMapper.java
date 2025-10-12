@@ -189,6 +189,6 @@ public interface AuthAttemptMapper {
      */
     AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptDto authAttempt, String status, 
                                                            Boolean completed, Boolean timeoutReached, 
-                                                           Integer waitDuration, java.time.LocalDateTime completedAt);
+                                                           Integer waitDuration, java.time.OffsetDateTime completedAt);
 
 }
