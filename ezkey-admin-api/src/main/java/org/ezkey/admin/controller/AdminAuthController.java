@@ -10,12 +10,14 @@
 
 package org.ezkey.admin.controller;
 
+import org.ezkey.admin.audit.AuditHelper;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.audit.service.AuditService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -51,12 +53,14 @@ public class AdminAuthController {
     private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
 
     private final AdminAuthService authService;
+    private final AuditService auditService;
 
     @Autowired(required = false)
     private AdminRateLimitFilter rateLimitFilter;
 
-    public AdminAuthController(AdminAuthService authService) {
+    public AdminAuthController(AdminAuthService authService, AuditService auditService) {
         this.authService = authService;
+        this.auditService = auditService;
     }
 
     /**
@@ -78,10 +82,10 @@ public class AdminAuthController {
         
         logger.info("🌐 Login request received for username: {}", request.getUsername());
         
-        AdminLoginResponseDto response = authService.authenticate(request);
+        String clientIp = AuditHelper.extractClientIp(httpRequest);
+        String userAgent = AuditHelper.extractUserAgent(httpRequest);
         
-        // Extract client IP for rate limiting tracking
-        String clientIp = extractClientIp(httpRequest);
+        AdminLoginResponseDto response = authService.authenticate(request);
         
         if (response.getSuccess()) {
             logger.info("✅ Login successful for username: {} from IP: {}", 
@@ -92,6 +96,19 @@ public class AdminAuthController {
                 rateLimitFilter.recordSuccessfulAttempt(clientIp);
             }
             
+            // Audit log: successful login
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ADMIN_AUTH")
+                .eventAction("LOGIN")
+                .eventStatus("SUCCESS")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(clientIp)
+                .userAgent(userAgent)
+                .eventDetails("Username: " + request.getUsername())
+            );
+            
             return ResponseEntity.ok(response);
         } else {
             logger.warn("❌ Login failed for username: {} from IP: {} - Reason: {}", 
@@ -101,6 +118,20 @@ public class AdminAuthController {
             if (rateLimitFilter != null) {
                 rateLimitFilter.recordFailedAttempt(clientIp);
             }
+            
+            // Audit log: failed login
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ADMIN_AUTH")
+                .eventAction("LOGIN")
+                .eventStatus("FAILURE")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(clientIp)
+                .userAgent(userAgent)
+                .eventDetails("Username: " + request.getUsername())
+                .errorMessage(response.getMessage())
+            );
             
             return ResponseEntity.badRequest().body(response);
         }
@@ -144,13 +175,41 @@ public class AdminAuthController {
      * @return ResponseEntity confirming logout
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<Void> logout(
+            @RequestHeader("Authorization") String authorization,
+            HttpServletRequest httpRequest) {
         try {
             // Extract bearer token from authorization header
             String bearerToken = authorization.replace("Bearer ", "");
             authService.logout(bearerToken);
+            
+            // Audit log: successful logout
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ADMIN_AUTH")
+                .eventAction("LOGOUT")
+                .eventStatus("SUCCESS")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+            );
+            
             return ResponseEntity.ok().build();
         } catch (Exception e) {
+            // Audit log: failed logout
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ADMIN_AUTH")
+                .eventAction("LOGOUT")
+                .eventStatus("ERROR")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .errorMessage(e.getMessage())
+            );
+            
             return ResponseEntity.badRequest().build();
         }
     }
@@ -182,7 +241,8 @@ public class AdminAuthController {
     @PostMapping("/change-password")
     public ResponseEntity<AdminPasswordChangeResponseDto> changePassword(
             @RequestHeader("Authorization") String authorization,
-            @Valid @RequestBody AdminPasswordChangeRequestDto request) {
+            @Valid @RequestBody AdminPasswordChangeRequestDto request,
+            HttpServletRequest httpRequest) {
         
         try {
             // Extract and validate bearer token
@@ -191,6 +251,20 @@ public class AdminAuthController {
             
             if (admin == null) {
                 logger.warn("Password change attempt with invalid token");
+                
+                // Audit log: failed password change (invalid token)
+                auditService.logEvent(new AuditService.AuditLogBuilder()
+                    .eventType("ADMIN_AUTH")
+                    .eventAction("PASSWORD_CHANGE")
+                    .eventStatus("FAILURE")
+                    .apiName("ADMIN_API")
+                    .endpointPath(httpRequest.getRequestURI())
+                    .httpMethod(httpRequest.getMethod())
+                    .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                    .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                    .errorMessage("Invalid or expired token")
+                );
+                
                 AdminPasswordChangeResponseDto errorResponse = new AdminPasswordChangeResponseDto();
                 errorResponse.setSuccess(false);
                 errorResponse.setMessage("Invalid or expired token");
@@ -204,15 +278,60 @@ public class AdminAuthController {
             
             if (response.getSuccess()) {
                 logger.info("✅ Password changed successfully for admin: {}", admin.getUsername());
+                
+                // Audit log: successful password change
+                auditService.logEvent(new AuditService.AuditLogBuilder()
+                    .eventType("ADMIN_AUTH")
+                    .eventAction("PASSWORD_CHANGE")
+                    .eventStatus("SUCCESS")
+                    .apiName("ADMIN_API")
+                    .endpointPath(httpRequest.getRequestURI())
+                    .httpMethod(httpRequest.getMethod())
+                    .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                    .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                    .adminId(admin.getAdminId())
+                    .eventDetails("Admin: " + admin.getUsername())
+                );
+                
                 return ResponseEntity.ok(response);
             } else {
                 logger.warn("❌ Password change failed for admin {}: {}", 
                     admin.getUsername(), response.getMessage());
+                
+                // Audit log: failed password change
+                auditService.logEvent(new AuditService.AuditLogBuilder()
+                    .eventType("ADMIN_AUTH")
+                    .eventAction("PASSWORD_CHANGE")
+                    .eventStatus("FAILURE")
+                    .apiName("ADMIN_API")
+                    .endpointPath(httpRequest.getRequestURI())
+                    .httpMethod(httpRequest.getMethod())
+                    .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                    .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                    .adminId(admin.getAdminId())
+                    .eventDetails("Admin: " + admin.getUsername())
+                    .errorMessage(response.getMessage())
+                );
+                
                 return ResponseEntity.badRequest().body(response);
             }
             
         } catch (Exception e) {
             logger.error("❌ Password change error: {}", e.getMessage(), e);
+            
+            // Audit log: error during password change
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ADMIN_AUTH")
+                .eventAction("PASSWORD_CHANGE")
+                .eventStatus("ERROR")
+                .apiName("ADMIN_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .errorMessage(e.getMessage())
+            );
+            
             AdminPasswordChangeResponseDto errorResponse = new AdminPasswordChangeResponseDto();
             errorResponse.setSuccess(false);
             errorResponse.setMessage("An error occurred during password change");
