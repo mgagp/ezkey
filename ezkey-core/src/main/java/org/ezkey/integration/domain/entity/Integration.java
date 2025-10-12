@@ -62,9 +62,19 @@ public class Integration {
     /**
      * URL or path to the integration's logo image.
      * Displayed in the mobile app and web interfaces.
+     * @deprecated Use logoRef instead for better logo management
      */
+    @Deprecated
     @Column(name = "integration_logo")
     private String logo;
+
+    /**
+     * Reference to the logo entity.
+     * Provides centralized logo management with validation.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "logo_id")
+    private Logo logoRef;
 
     /**
      * Flag indicating whether the integration is active and available for use.
@@ -144,7 +154,9 @@ public class Integration {
      * Gets the URL or path to the integration's logo.
      *
      * @return the logo URL/path
+     * @deprecated Use getLogoRef() instead for better logo management
      */
+    @Deprecated
     public String getLogo() {
         return logo;
     }
@@ -153,9 +165,29 @@ public class Integration {
      * Sets the URL or path to the integration's logo.
      *
      * @param logo the logo URL/path to set
+     * @deprecated Use setLogoRef() instead for better logo management
      */
+    @Deprecated
     public void setLogo(String logo) {
         this.logo = logo;
+    }
+
+    /**
+     * Gets the logo reference.
+     *
+     * @return the logo reference
+     */
+    public Logo getLogoRef() {
+        return logoRef;
+    }
+
+    /**
+     * Sets the logo reference.
+     *
+     * @param logoRef the logo reference to set
+     */
+    public void setLogoRef(Logo logoRef) {
+        this.logoRef = logoRef;
     }
 
     /**

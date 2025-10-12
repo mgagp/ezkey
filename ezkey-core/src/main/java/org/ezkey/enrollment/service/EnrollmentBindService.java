@@ -332,11 +332,37 @@ public class EnrollmentBindService {
         response.setEnrollmentName(enrollment.getEnrollmentName());
         response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
         response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
-        response.setIntegrationLogo(integration.getLogo());
+        response.setIntegrationLogo(resolveLogoForIntegration(integration));
         response.setIntegrationName(integrationName);
         response.setIntegrationDescription(integrationDescription);
 
         logger.info("Enrollment bind process completed successfully for ID: {}", enrollment.getEnrollmentId());
         return response;
+    }
+
+    /**
+     * Resolves the logo for an integration.
+     * <p>
+     * This method checks if the integration has a logo reference. If it does,
+     * it returns either the logo URL or the base64-encoded logo data.
+     * Falls back to the deprecated logo field if no logo reference exists.
+     * </p>
+     *
+     * @param integration the integration entity
+     * @return the logo URL or base64-encoded data, or null if no logo is available
+     */
+    private String resolveLogoForIntegration(Integration integration) {
+        if (integration.getLogoRef() != null) {
+            // Prefer logo URL if available
+            if (integration.getLogoRef().getLogoUrl() != null && !integration.getLogoRef().getLogoUrl().trim().isEmpty()) {
+                return integration.getLogoRef().getLogoUrl();
+            }
+            // Fall back to logo data if URL not available
+            if (integration.getLogoRef().getLogoData() != null && !integration.getLogoRef().getLogoData().trim().isEmpty()) {
+                return integration.getLogoRef().getLogoData();
+            }
+        }
+        // Fall back to deprecated logo field for backward compatibility
+        return integration.getLogo();
     }
 }
