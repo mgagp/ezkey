@@ -194,6 +194,31 @@ Content-Type: application/json
 }
 ```
 
+### e) Logo resource serving
+
+**GET /api/v1/logos/{id}/image**
+
+- **Description**: Retrieves a logo image by its ID. If the logo is stored as a URL, returns a redirect (302) to that URL. If stored as base64-encoded data, decodes and returns the image directly with the appropriate content type.
+
+**Request**
+```http
+GET /api/v1/logos/1/image
+```
+
+**Response**
+- 200 OK: Logo image data returned with appropriate content type
+- 302 Found: Redirect to external logo URL
+```http
+HTTP/1.1 302 Found
+Location: https://example.com/logo.png
+```
+- 404 Not Found: Logo not found
+
+**Usage**: This endpoint allows mobile applications to retrieve logo images during the enrollment binding process. The logo URL or data is provided in the enrollment bind response as `integrationLogo`, which can be:
+- A direct URL to use as-is
+- A reference URL like `/api/v1/logos/{id}/image` to fetch from this endpoint
+- Base64-encoded data that can be rendered directly
+
 ---
 
 ## 2. Admin API Endpoints (internal)
@@ -403,10 +428,88 @@ Content-Type: application/json
 **POST   /api/v1/integrations**          // Create a new integration
 **DELETE /api/v1/integrations/{id}**     // Delete an integration
 
+### b.1) Logo management (CRUD)
+
+**GET    /api/v1/logos**                  // Retrieve all logos
+**GET    /api/v1/logos/{id}**             // Retrieve a logo by ID
+**POST   /api/v1/logos**                  // Create a new logo
+**PUT    /api/v1/logos/{id}**             // Update an existing logo
+**DELETE /api/v1/logos/{id}**             // Delete a logo
+
+**Creating a logo**
+```http
+POST /api/v1/logos
+Content-Type: application/json
+Authorization: Bearer ezkey_abc123def456...
+
+{
+  "name": "acme-corp",
+  "logoUrl": "https://example.com/logo.png",
+  "contentType": "image/png"
+}
+```
+
+**Or with base64-encoded data:**
+```http
+POST /api/v1/logos
+Content-Type: application/json
+Authorization: Bearer ezkey_abc123def456...
+
+{
+  "name": "acme-corp-embedded",
+  "logoData": "data:image/png;base64,iVBORw0KGgoAAAANS...",
+  "contentType": "image/png"
+}
+```
+
+**Response**
+- 201 Created + created logo details
+```json
+{
+  "id": 1,
+  "name": "acme-corp",
+  "logoUrl": "https://example.com/logo.png",
+  "contentType": "image/png",
+  "createdAt": "2025-01-15T10:30:00",
+  "updatedAt": "2025-01-15T10:30:00"
+}
+```
+
+### b) Integration management (CRUD)
+
+**GET    /api/v1/integrations**           // Retrieve all integrations
+**GET    /api/v1/integrations/{id}**      // Retrieve an integration by ID
+**POST   /api/v1/integrations**          // Create a new integration
+**DELETE /api/v1/integrations/{id}**     // Delete an integration
+
 **Creating an integration**
 ```http
 POST /api/v1/integrations
 Content-Type: application/json
+Authorization: Bearer ezkey_abc123def456...
+
+{
+  "logoId": 1,
+  "i18n": [
+    {
+      "language": "en",
+      "name": "ACME Corporation",
+      "description": "Secure authentication system for ACME applications"
+    },
+    {
+      "language": "fr",
+      "name": "Corporation ACME",
+      "description": "Système d'authentification sécurisé pour les applications ACME"
+    }
+  ]
+}
+```
+
+**Or with legacy logo URL (deprecated):**
+```http
+POST /api/v1/integrations
+Content-Type: application/json
+Authorization: Bearer ezkey_abc123def456...
 
 {
   "logo": "https://example.com/logo.png",
@@ -443,6 +546,7 @@ GET /api/v1/integrations/42
 ```json
 {
   "id": 42,
+  "logoId": 1,
   "logo": "https://example.com/logo.png",
   "active": true,
   "createdAt": "2024-06-01T12:34:56Z",
@@ -456,6 +560,8 @@ GET /api/v1/integrations/42
   ]
 }
 ```
+
+**Note:** The `logo` field is computed from the referenced `logoId` for backward compatibility. New applications should use `logoId` to reference logos from the logo management system.
 
 ### c) Enrollment management (CRUD)
 
