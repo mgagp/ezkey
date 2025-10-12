@@ -2,7 +2,8 @@
  * Ezkey - Open Source MFA/Passkey Alternative
  *
  * Copyright (c) 2025 Ezkey contributors
- * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ * Licensed under the MIT License. See LICENSE file in the project root
+ * for full license information.
  *
  * Service: LogoService
  * Description: Business logic service for managing Logo entities.
@@ -25,9 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Business logic service for managing Logo entities.
  * <p>
- * This service provides operations for creating, retrieving, updating, and deleting
- * logos in the Ezkey system. Logos can be referenced by integrations to provide
- * consistent branding.
+ * This service provides operations for creating, retrieving, updating,
+ * and deleting logos in the Ezkey system. Logos can be referenced by
+ * integrations to provide consistent branding.
  * </p>
  *
  * <p>
@@ -52,7 +53,8 @@ public class LogoService {
      * @param logoRepository the repository for Logo operations
      * @param mapper the mapper for converting between entities and DTOs
      */
-    public LogoService(LogoRepository logoRepository, LogoServiceMapper mapper) {
+    public LogoService(final LogoRepository logoRepository,
+                       final LogoServiceMapper mapper) {
         this.logoRepository = logoRepository;
         this.mapper = mapper;
     }
@@ -62,19 +64,24 @@ public class LogoService {
      *
      * @param request the logo creation request
      * @return the created logo response
-     * @throws IllegalArgumentException if the logo name already exists or if neither logoUrl nor logoData is provided
+     * @throws IllegalArgumentException if the logo name already exists or
+     * if neither logoUrl nor logoData is provided
      */
     @Transactional
-    public LogoResponse createLogo(LogoCreateRequest request) {
+    public LogoResponse createLogo(final LogoCreateRequest request) {
         // Validate that logo name is unique
         if (logoRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("Logo with name '" + request.getName() + "' already exists");
+            throw new IllegalArgumentException("Logo with name '"
+                    + request.getName() + "' already exists");
         }
 
         // Validate that at least one source is provided
-        if ((request.getLogoUrl() == null || request.getLogoUrl().trim().isEmpty()) &&
-            (request.getLogoData() == null || request.getLogoData().trim().isEmpty())) {
-            throw new IllegalArgumentException("Either logoUrl or logoData must be provided");
+        if ((request.getLogoUrl() == null
+                || request.getLogoUrl().trim().isEmpty())
+                && (request.getLogoData() == null
+                || request.getLogoData().trim().isEmpty())) {
+            throw new IllegalArgumentException(
+                    "Either logoUrl or logoData must be provided");
         }
 
         Logo logo = mapper.toEntity(request);
@@ -104,7 +111,7 @@ public class LogoService {
      * @return Optional containing the logo if found
      */
     @Transactional(readOnly = true)
-    public Optional<LogoResponse> getLogoById(Integer id) {
+    public Optional<LogoResponse> getLogoById(final Integer id) {
         return logoRepository.findById(id)
                 .map(mapper::toResponse);
     }
@@ -116,7 +123,7 @@ public class LogoService {
      * @return Optional containing the logo if found
      */
     @Transactional(readOnly = true)
-    public Optional<LogoResponse> getLogoByName(String name) {
+    public Optional<LogoResponse> getLogoByName(final String name) {
         return logoRepository.findByName(name)
                 .map(mapper::toResponse);
     }
@@ -127,23 +134,30 @@ public class LogoService {
      * @param id the logo ID to update
      * @param request the logo update request
      * @return the updated logo response
-     * @throws IllegalArgumentException if the logo is not found or if the name conflicts with another logo
+     * @throws IllegalArgumentException if the logo is not found or if
+     * the name conflicts with another logo
      */
     @Transactional
-    public LogoResponse updateLogo(Integer id, LogoCreateRequest request) {
+    public LogoResponse updateLogo(final Integer id,
+                                   final LogoCreateRequest request) {
         Logo existingLogo = logoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Logo with id " + id + " not found"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Logo with id " + id + " not found"));
 
         // Check if name is being changed and if new name already exists
-        if (!existingLogo.getName().equals(request.getName()) &&
-            logoRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("Logo with name '" + request.getName() + "' already exists");
+        if (!existingLogo.getName().equals(request.getName())
+                && logoRepository.existsByName(request.getName())) {
+            throw new IllegalArgumentException("Logo with name '"
+                    + request.getName() + "' already exists");
         }
 
         // Validate that at least one source is provided
-        if ((request.getLogoUrl() == null || request.getLogoUrl().trim().isEmpty()) &&
-            (request.getLogoData() == null || request.getLogoData().trim().isEmpty())) {
-            throw new IllegalArgumentException("Either logoUrl or logoData must be provided");
+        if ((request.getLogoUrl() == null
+                || request.getLogoUrl().trim().isEmpty())
+                && (request.getLogoData() == null
+                || request.getLogoData().trim().isEmpty())) {
+            throw new IllegalArgumentException(
+                    "Either logoUrl or logoData must be provided");
         }
 
         existingLogo.setName(request.getName());
@@ -163,9 +177,10 @@ public class LogoService {
      * @throws IllegalArgumentException if the logo is not found
      */
     @Transactional
-    public void deleteLogo(Integer id) {
+    public void deleteLogo(final Integer id) {
         if (!logoRepository.existsById(id)) {
-            throw new IllegalArgumentException("Logo with id " + id + " not found");
+            throw new IllegalArgumentException(
+                    "Logo with id " + id + " not found");
         }
         logoRepository.deleteById(id);
     }
