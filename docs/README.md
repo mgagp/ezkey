@@ -20,6 +20,11 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[dev-tools/](dev-tools/)** - Development tools, configurations, and utilities
 - **[MAINTENANCE.md](MAINTENANCE.md)** - Documentation maintenance guidelines and standards
 
+### 🔒 Security & Compliance
+- **[../SECURITY.md](../SECURITY.md)** - Security policy and vulnerability disclosure
+- **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** - SOC2 compliance preparation roadmap
+- **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** - Quick wins for first 30 days of SOC2 preparation
+
 ---
 
 ## 🚀 Quick Start
@@ -35,6 +40,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 2. **Operations**: Follow [OPERATIONAL.md](OPERATIONAL.md) for production deployment and security
 3. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
 4. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration
+5. **Compliance**: Review [SOC2_PREPARATION.md](SOC2_PREPARATION.md) for compliance roadmap
 
 ### For Contributors
 1. **Project Overview**: Start with [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -122,6 +128,46 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - Performance Tuning
 - Security Headers
 - Backup and Recovery
+
+### 🔒 SOC2_PREPARATION.md
+**Comprehensive SOC2 compliance preparation roadmap**
+- SOC2 overview for open source projects
+- Unique challenges for open source MFA solutions
+- Three paths to compliance: Preparation, Self-hosting, SaaS
+- Tool assessment: Comply vs Probo
+- Current state assessment with gaps analysis
+- 12-18 month implementation roadmap
+- Phase-by-phase implementation guide
+- Quick wins and ongoing maintenance
+
+**Key Sections:**
+- SOC2 Overview for Open Source Projects
+- Three Paths to Compliance
+- Tool Assessment
+- Current State Assessment
+- Compliance Roadmap
+- Implementation Phases
+- Quick Wins (First 30 Days)
+- Appendix: SOC2 Trust Service Criteria
+
+### 🚀 SOC2_QUICK_START.md
+**First 30 days of SOC2 preparation - actionable quick wins**
+- Week 1-2: Documentation and tool setup
+- Week 3-4: Security improvements
+- GitHub security features configuration
+- Comply tool installation and setup
+- Initial policy creation
+- Security headers implementation
+- Enhanced audit logging
+- Password policy enforcement
+
+**Key Sections:**
+- GitHub Security Features
+- Comply Tool Setup
+- Security Policy Creation
+- Security Improvements
+- Verification Checklist
+- Next Steps
 
 ---
 

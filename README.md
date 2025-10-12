@@ -809,6 +809,43 @@ logging.level.org.springframework.web=WARN
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Security
+
+Ezkey takes security seriously. We are committed to providing a secure authentication solution.
+
+### Reporting Security Issues
+
+**Please DO NOT report security vulnerabilities through public GitHub issues.**
+
+Instead, please report security vulnerabilities to:
+- **Email**: security@ezkey.org
+
+See our [Security Policy](SECURITY.md) for full details on:
+- Vulnerability reporting process and response timelines
+- Disclosure policy and coordination
+- Security researcher recognition
+- Secure development practices
+
+### Security Features
+
+- **RSA-2048** cryptographic authentication with SHA-256
+- **One-time proof tokens** to prevent replay attacks
+- **Signature validation** on all authentication attempts
+- **Rate limiting** and abuse prevention
+- **Comprehensive audit logging** for security events
+- **Regular security updates** and dependency scanning
+
+### Compliance
+
+Ezkey is working towards SOC2 compliance. See our [SOC2 Preparation Roadmap](docs/SOC2_PREPARATION.md) for details on:
+- SOC2 overview for open source projects
+- Three paths to compliance (Preparation, Self-hosting, SaaS)
+- Tool assessment and selection
+- 12-18 month implementation roadmap
+- Quick wins for first 30 days
+
+For security best practices when deploying Ezkey, see [docs/OPERATIONAL.md](docs/OPERATIONAL.md).
+
 ## Support and Community
 
 - **Issues**: [GitHub Issues](https://github.com/your-org/ezkey/issues)
