@@ -12,6 +12,9 @@ package org.ezkey.auth.controller;
 
 import java.util.NoSuchElementException;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.auth.audit.AuditHelper;
+import org.ezkey.audit.service.AuditService;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
@@ -89,18 +92,22 @@ public class AuthAttemptController {
     public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
 
     private final AuthAttemptService authAttemptService;
-
     private final AuthAttemptMapper authAttemptMapper;
+    private final AuditService auditService;
 
     /**
      * Constructs the mobile authentication attempt controller with required dependencies.
      *
      * @param authAttemptService the JPA-based authorization attempt service
      * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
+     * @param auditService the audit logging service
      */
-    public AuthAttemptController(AuthAttemptService authAttemptService,AuthAttemptMapper authAttemptMapper){
+    public AuthAttemptController(AuthAttemptService authAttemptService,
+                                AuthAttemptMapper authAttemptMapper,
+                                AuditService auditService){
         this.authAttemptService = authAttemptService;
         this.authAttemptMapper = authAttemptMapper;
+        this.auditService = auditService;
     }
 
     /**
@@ -145,14 +152,36 @@ public class AuthAttemptController {
             @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
         }
     )
-    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
+    public ResponseEntity<AuthAttemptPendingResponseDto> pending(
+            @Valid @RequestBody AuthAttemptPendingRequestDto request,
+            HttpServletRequest httpRequest) {
         logger.info("Processing pending request for enrollment with proof token");
         
         try {
             AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+            
+            // Audit log: successful pending request (found)
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("PENDING")
+                .eventStatus("SUCCESS")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .authAttemptId(response.getAuthAttemptId())
+                .eventDetails("Pending auth attempt found")
+            );
+            
             return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
         } catch (NoSuchElementException e) {
             logger.debug("No pending authentication attempts found");
+            
+            // Audit log: no pending requests (normal case, don't log as we'd get too many)
+            // Only log when there's an actual pending request found
+            
             return ResponseEntity.noContent().build();
         }
     }
@@ -180,8 +209,44 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "409", description = "Authentication attempt state conflict"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@Valid @RequestBody AuthAttemptRespondRequestDto request) {
-        AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
-        return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
+    public ResponseEntity<AuthAttemptRespondResponseDto> respond(
+            @Valid @RequestBody AuthAttemptRespondRequestDto request,
+            HttpServletRequest httpRequest) {
+        try {
+            AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
+            
+            // Audit log: authentication response submitted
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("RESPOND")
+                .eventStatus("SUCCESS")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .authAttemptId(request.getAuthAttemptId())
+                .eventDetails("User decision: " + (request.getAuthAttemptAccepted() != null ? 
+                    (request.getAuthAttemptAccepted() ? "APPROVED" : "DENIED") : "UNKNOWN"))
+            );
+            
+            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
+        } catch (Exception e) {
+            // Audit log: failed authentication response
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("AUTH_ATTEMPT")
+                .eventAction("RESPOND")
+                .eventStatus("ERROR")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .authAttemptId(request.getAuthAttemptId())
+                .errorMessage(e.getMessage())
+            );
+            
+            throw e;
+        }
     }
 }

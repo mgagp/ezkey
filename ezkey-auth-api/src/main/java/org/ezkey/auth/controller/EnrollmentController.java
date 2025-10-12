@@ -10,6 +10,9 @@
 
 package org.ezkey.auth.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.auth.audit.AuditHelper;
+import org.ezkey.audit.service.AuditService;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -88,18 +91,22 @@ public class EnrollmentController {
     public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
 
     private final EnrollmentService enrollmentService;
-
     private final EnrollmentAuthMapper enrollmentMapper;
+    private final AuditService auditService;
 
     /**
      * Constructs the mobile enrollment controller with required dependencies.
      *
      * @param enrollmentService JPA-based enrollment service
      * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
+     * @param auditService the audit logging service
      */
-    public EnrollmentController(EnrollmentService enrollmentService,EnrollmentAuthMapper enrollmentMapper){
+    public EnrollmentController(EnrollmentService enrollmentService,
+                               EnrollmentAuthMapper enrollmentMapper,
+                               AuditService auditService){
         this.enrollmentService = enrollmentService;
         this.enrollmentMapper = enrollmentMapper;
+        this.auditService = auditService;
     }
 
     /**
@@ -129,15 +136,50 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "409", description = "Enrollment already bound or proof token already used"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<EnrollmentBindResponseDto> bind(@RequestBody EnrollmentBindRequestDto request) {
+    public ResponseEntity<EnrollmentBindResponseDto> bind(
+            @RequestBody EnrollmentBindRequestDto request,
+            HttpServletRequest httpRequest) {
         // Validation: enrollmentId + enrollmentProofToken required
         if (request.getEnrollmentId() == null || request.getEnrollmentProofToken() == null || request.getEnrollmentProofToken().trim().isEmpty()) {
             throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
         }
         
-        EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
-        EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
-        return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
+        try {
+            EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
+            EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
+            
+            // Audit log: successful enrollment bind
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ENROLLMENT")
+                .eventAction("BIND")
+                .eventStatus("SUCCESS")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .eventDetails("Language: " + request.getLanguage())
+            );
+            
+            return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
+        } catch (Exception e) {
+            // Audit log: failed enrollment bind
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ENROLLMENT")
+                .eventAction("BIND")
+                .eventStatus("FAILURE")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(request.getEnrollmentId())
+                .errorMessage(e.getMessage())
+            );
+            
+            throw e;
+        }
     }
 
     /**
@@ -163,10 +205,45 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "409", description = "Enrollment state conflict or already verified"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req) {
-        EnrollmentVerifyResponse response = enrollmentService.verify(
-            enrollmentMapper.toEnrollmentVerifyRequest(req)
-        );
-        return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
+    public ResponseEntity<EnrollmentVerifyResponseDto> verify(
+            @RequestBody EnrollmentVerifyRequestDto req,
+            HttpServletRequest httpRequest) {
+        try {
+            EnrollmentVerifyResponse response = enrollmentService.verify(
+                enrollmentMapper.toEnrollmentVerifyRequest(req)
+            );
+            
+            // Audit log: successful enrollment verification
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ENROLLMENT")
+                .eventAction("VERIFY")
+                .eventStatus("SUCCESS")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(req.getEnrollmentId())
+                .eventDetails("Enrollment verified and activated")
+            );
+            
+            return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
+        } catch (Exception e) {
+            // Audit log: failed enrollment verification
+            auditService.logEvent(new AuditService.AuditLogBuilder()
+                .eventType("ENROLLMENT")
+                .eventAction("VERIFY")
+                .eventStatus("FAILURE")
+                .apiName("AUTH_API")
+                .endpointPath(httpRequest.getRequestURI())
+                .httpMethod(httpRequest.getMethod())
+                .ipAddress(AuditHelper.extractClientIp(httpRequest))
+                .userAgent(AuditHelper.extractUserAgent(httpRequest))
+                .enrollmentId(req.getEnrollmentId())
+                .errorMessage(e.getMessage())
+            );
+            
+            throw e;
+        }
     }
 }
