@@ -1,154 +1,451 @@
-# Ezkey Migration Module
+# Ezkey Database Migrations
+
+**Migration Tool:** Flyway  
+**Database:** PostgreSQL 17+  
+**Version:** 2.0 (Passwordless-Only)
+
+---
 
 ## Overview
 
-The `ezkey-migration` module is a dedicated Spring Boot application responsible for managing database schema migrations using Flyway. This module provides a clean separation between the core library functionality and database migration operations.
+Ezkey uses Flyway for database schema versioning and migration management. Migrations are organized by logical subject for clarity and maintainability.
 
-## Features
+---
 
-- **Dedicated Migration App**: Separate from core library functionality
-- **Flyway Integration**: Automated database schema management
-- **Spring Boot CLI**: Command-line interface for migration operations
-- **Standalone JAR**: Can be run independently for migration tasks
-- **Configuration Management**: Environment-specific database configurations
+## Migration Structure
 
-## Usage
+### Current Migrations (V1-V3)
 
-### Running Migrations
+| Version | Name | Purpose | Lines | Status |
+|---------|------|---------|-------|--------|
+| **V1** | `initial_schema` | Core tables (enrollments, auth attempts, integrations) | 108 | ✅ Stable |
+| **V2** | `add_multi_tenant_security` | Multi-tenant tables (tenants, admins with password schema, tokens) | 79 | ✅ Stable |
+| **V3** | `create_system_tenant_and_admin_zero` | Transform to passwordless schema + system tenant + admin zero | 150 | ✅ Stable |
 
-#### Option 1: Using Maven
+**Total:** 3 migrations, ~337 lines
+
+**Note:** V3 consolidates what was originally V3-V9 in the planning phase:
+- Removes password infrastructure (`password_hash`, `mfa_enabled`, `mfa_required`, `password_change_required`)
+- Adds passwordless infrastructure (`challenge_required`, `recovery_codes`)
+- Drops `ezkey_admin_temp_tokens` table
+- Creates system tenant "Ezkey System"
+- Creates admin zero (bootstrap will complete enrollment + recovery codes)
+
+---
+
+## Migration Details
+
+### V1: Initial Schema
+
+**Purpose:** Establish core Ezkey tables
+
+**Tables Created:**
+- `ezkey_integration` - Applications using Ezkey
+- `ezkey_enrollment` - User-device bindings
+- `ezkey_auth_attempt` - Authentication requests
+- `ezkey_tenant` - Multi-tenant isolation
+- `ezkey_admin` - Administrative users (passwordless schema)
+- `ezkey_admin_tokens` - Bearer tokens for API access
+
+**Key Features:**
+- Ed25519 cryptographic keys for integrations
+- Enrollment proof tokens for device binding
+- Auth attempt proof tokens for authentication
+- Challenge support (6-digit codes)
+- Admin types: GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN
+
+### V2: Multi-Tenant Security
+
+**Purpose:** Add tenant isolation and admin hierarchy
+
+**Tables Created:**
+- `ezkey_tenant` - Multi-tenant isolation
+- `ezkey_admin` - Admin users (with password-based schema initially)
+- `ezkey_admin_tokens` - Bearer tokens for API access
+- `ezkey_admin_temp_tokens` - Temporary MFA tokens (removed in V3)
+
+**Enhancements:**
+- Foreign keys linking admins to tenants
+- Tenant assignment for integrations
+- Admin hierarchy constraints
+- Indexes for performance
+
+**Admin Types:**
+- **GLOBAL_ADMIN:** System-wide access
+- **TENANT_ADMIN:** Tenant-scoped access
+- **INTEGRATION_ADMIN:** Integration-scoped access
+
+### V3: Passwordless Schema Transformation + Admin Zero
+
+**Purpose:** Transform to passwordless-only authentication and create admin zero
+
+**Schema Transformations:**
+- **REMOVED:** `password_hash`, `mfa_enabled`, `mfa_required`, `password_change_required`, `last_password_change`
+- **ADDED:** `challenge_required` (6-digit challenge support), `recovery_codes` (emergency access)
+- **DROPPED:** `ezkey_admin_temp_tokens` table (no longer needed)
+
+**Data Created:**
+- System tenant "Ezkey System" (for global administrators)
+- Admin zero account (username: `admin`, passwordless-ready)
+- Updated admin hierarchy constraint (allows GLOBAL_ADMIN to have tenant_id)
+
+**Bootstrap Completion:**
+Bootstrap service will complete admin zero setup on first startup:
+- Create integration zero (system integration)
+- Create enrollment zero (device binding)
+- Generate 10 recovery codes (32-digit, 106-bit entropy)
+- Display credentials in logs (one-time opportunity)
+
+---
+
+## Migration Strategy
+
+### Consolidation Approach
+
+**Original Plan:** V3-V9 separate migrations for passwordless transformation
+**Final Implementation:** V3 consolidates all passwordless changes into single migration
+
+**Benefits:**
+- ✅ **Simpler deployment** - Single migration handles complete transformation
+- ✅ **Atomic operation** - All passwordless changes applied together
+- ✅ **Easier rollback** - Single point of failure/recovery
+- ✅ **Cleaner history** - Fewer migration files to maintain
+
+### Responsibility Split
+
+#### Flyway Migrations (Structural)
+
+**What belongs in migrations:**
+- Table schemas (CREATE TABLE)
+- Column definitions (data types, constraints)
+- Foreign keys and indexes
+- Structural data (system tenant, admin zero)
+- Schema evolution (ALTER TABLE, DROP TABLE)
+- Data transformation (password → passwordless)
+
+**What does NOT belong:**
+- Dynamic secrets (recovery codes, crypto keys)
+- Environment-specific data (configurable names)
+- Runtime-generated data (enrollments)
+
+#### Bootstrap Service (Dynamic)
+
+**What belongs in bootstrap:**
+- Generate recovery codes (10 × 32-digit, 106-bit entropy)
+- Create integration zero (system integration)
+- Create enrollment zero (device binding)
+- Generate cryptographic key pairs
+- Link admin zero to enrollment
+- Display initial credentials in logs
+
+**Bootstrap Execution:**
+- Runs automatically on first application startup
+- Detects missing admin zero enrollment
+- Creates complete passwordless infrastructure
+- Logs credentials for one-time capture
+
+---
+
+## Migration History (Pre-Consolidation)
+
+**Note:** Versions V4-V9 were consolidated into V3 (October 2025)
+
+**Original Evolution:**
+- V3: Create admin with password
+- V4: Reset password (test iteration)
+- V5: Allow global admin tenant
+- V6: Add passwordless columns
+- V7: Add recovery codes
+- V8: Deprecate passwords
+- V9: Remove passwords
+
+**Rationale for Consolidation:**
+- No production deployments exist yet
+- Simplified story: Passwordless from day 1
+- Removed password infrastructure artifacts
+- Clearer migration purpose per version
+
+**Impact:** Developers must reset database when pulling latest code.
+
+---
+
+## Migration Validation
+
+### Schema Consistency Check
+
+**All migrations are validated for:**
+- ✅ **English documentation** - All comments and descriptions in English
+- ✅ **Comprehensive comments** - Every table and column documented
+- ✅ **Consistent naming** - Follows project conventions
+- ✅ **Foreign key integrity** - All relationships properly defined
+- ✅ **Index optimization** - Performance indexes for common queries
+- ✅ **Constraint validation** - Business rules enforced at database level
+
+### Testing Process
+
+**Migration Testing:**
+1. **Clean database** - Start with empty PostgreSQL instance
+2. **Run all migrations** - Execute V1 → V2 → V3 in sequence
+3. **Validate schema** - Verify all tables, columns, constraints created
+4. **Test data insertion** - Confirm admin zero and system tenant created
+5. **Bootstrap validation** - Verify bootstrap service can complete setup
+
+**Result:** ✅ All migrations pass validation and create consistent passwordless schema
+
+---
+
+## Running Migrations
+
+### Fresh Installation
+
 ```bash
+# 1. Ensure PostgreSQL is running (Docker or native)
+docker ps  # Verify postgres container
+
+# 2. Ensure database exists
+# Database: ezkey_db
+# User: postgres
+# Password: ezkey (configurable)
+
+# 3. Run migrations
 cd ezkey-migration
 mvn spring-boot:run
+
+# Expected output:
+# Successfully applied 3 migrations to schema "public", now at version v3
 ```
 
-#### Option 2: Using the Scripts
-```bash
-# From project root
-./scripts/ezkey-flyway.sh
+### Migration Reset (Development)
 
-# Or on Windows
-scripts\ezkey-flyway.bat
+**When needed:**
+- After pulling consolidated migrations
+- When Flyway checksum fails
+- When testing clean install
+
+**Command:**
+```sql
+-- Connect to PostgreSQL
+docker exec -it [postgres-container] psql -U postgres -d ezkey_db
+
+-- Reset schema
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+-- Exit psql
+\q
 ```
 
-#### Option 3: Standalone JAR
-```bash
-cd ezkey-migration
-mvn clean package -Pmigration-jar
-java -jar target/ezkey-migration.jar
+Then run migrations again.
+
+### Verifying Migration State
+
+**Check Flyway history:**
+```sql
+SELECT version, description, installed_on, success
+FROM flyway_schema_history
+ORDER BY installed_rank;
 ```
 
-### Configuration
-
-The application uses standard Spring Boot configuration properties. Configuration can be provided via:
-
-- `application.properties` file
-- Environment variables
-- Command-line arguments
-
-#### Database Configuration
-```properties
-# Database connection
-spring.datasource.url=jdbc:postgresql://localhost:5432/ezkey_db
-spring.datasource.username=postgres
-spring.datasource.password=ezkey
-
-# Flyway configuration
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration
-spring.flyway.baseline-on-migrate=true
+**Expected result:**
+```
+version | description                              | success
+--------+------------------------------------------+---------
+1       | initial schema                           | true
+2       | add multi tenant security                | true
+3       | create system tenant and admin zero      | true
 ```
 
-#### Environment Variables
-```bash
-export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/ezkey_db
-export SPRING_DATASOURCE_USERNAME=postgres
-export SPRING_DATASOURCE_PASSWORD=ezkey
+**Verify admin zero:**
+```sql
+SELECT admin_id, username, admin_type, 
+       tenant_id IS NOT NULL as has_tenant,
+       challenge_required,
+       mfa_enrollment_id IS NULL as needs_bootstrap
+FROM ezkey_admin
+WHERE username = 'admin';
 ```
 
-## Architecture
+**Expected:**
+- username: 'admin'
+- admin_type: 'GLOBAL_ADMIN'
+- has_tenant: true (linked to system tenant)
+- challenge_required: false
+- needs_bootstrap: true (before bootstrap runs)
 
-### Dependencies
-- **ezkey-core**: Core business logic and entities
-- **Spring Boot**: Application framework
-- **Spring Data JPA**: Database access
-- **Flyway**: Database migration tool
-- **PostgreSQL**: Database driver
+---
 
-### Key Components
-- `EzkeyMigrationApp`: Main Spring Boot application class
-- `application.properties`: Configuration properties
-- Migration scripts: Located in `src/main/resources/db/migration/`
+## Bootstrap Integration
 
-## Development
+### Bootstrap Service Behavior
 
-### Building the Module
-```bash
-cd ezkey-migration
-mvn clean compile
+After V3 migration completes, `AdminBootstrapService` runs on first Admin API startup:
+
+**Detection Logic:**
+```java
+// Check if admin zero exists (created by V3)
+Optional<EzkeyAdmin> adminZero = adminRepository.findByUsername("admin");
+
+if (adminZero.isEmpty()) {
+    // Should not happen if V3 ran successfully
+    logger.error("Admin zero not found - V3 migration may have failed");
+    return;
+}
+
+// Check if admin already has enrollment
+if (adminZero.get().getMfaEnrollment() != null) {
+    logger.info("Admin zero already bootstrapped");
+    return;
+}
+
+// Complete bootstrap: enrollment + recovery codes
+createIntegrationZero();
+createEnrollmentZero();
+generateRecoveryCodes();
+linkAdminToEnrollment();
+logCredentials();
 ```
 
-### Running Tests
-```bash
-cd ezkey-migration
-mvn test
+**Bootstrap Output (First Run):**
+```
+================================================================================
+📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
+================================================================================
+
+✅ Admin Zero: admin (GLOBAL_ADMIN)
+✅ Enrollment Zero: Admin MFA (ID: 1)
+
+🔐 ENROLLMENT CREDENTIALS:
+   Enrollment ID: 1
+   Enrollment Proof Token: abc123xyz...def789
+   Challenge Code: 654321
+
+🔑 RECOVERY CODES (106-BIT ENTROPY):
+   1. 1234-5678-9012-3456-7890-1234-5678-9012
+   ... (10 codes total)
+================================================================================
 ```
 
-### Building the JAR
-```bash
-cd ezkey-migration
-mvn clean package -Pmigration-jar
+**Bootstrap Output (Subsequent Runs):**
+```
+✅ Admin zero already has enrollment (ID: 1)
+✅ Passwordless defaults configured for admin zero
 ```
 
-## Migration Scripts
+---
 
-Migration scripts are located in `src/main/resources/db/migration/` and follow Flyway naming conventions:
+## Migration Best Practices
 
-- `V{version}__{description}.sql`
-- Example: `V1__Initial_schema.sql`
+### 1. Version Numbering
+
+- Use sequential integers: V1, V2, V3...
+- Never reuse version numbers
+- Never modify applied migrations (checksum verification)
+
+### 2. Migration Content
+
+**Do:**
+- ✅ Create tables and columns
+- ✅ Add indexes and constraints
+- ✅ Insert structural data (system tenant)
+- ✅ Add documentation comments
+
+**Don't:**
+- ❌ Insert secrets (passwords, keys, recovery codes)
+- ❌ Insert user data (belongs in bootstrap/seed)
+- ❌ Add environment-specific values
+- ❌ Include test-only changes
+
+### 3. Testing Migrations
+
+**Before committing:**
+1. Reset database completely
+2. Run migrations from V1
+3. Verify all constraints work
+4. Run bootstrap service
+5. Test application functionality
+6. Check for SQL errors in logs
+
+### 4. Rollback Strategy
+
+**Flyway doesn't support automatic rollback for versioned migrations.**
+
+**Manual rollback:**
+```sql
+-- Drop schema and reapply up to previous version
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+-- Manually apply V1, V2 (skip V3)
+-- Or use Flyway target: mvn flyway:migrate -Dflyway.target=2
+```
+
+---
 
 ## Troubleshooting
 
-### Common Issues
+### "Checksum mismatch for migration V3"
 
-1. **Database Connection Failed**
-   - Verify PostgreSQL is running
-   - Check connection parameters in `application.properties`
-   - Ensure database exists
+**Cause:** V3 was modified after being applied
 
-2. **Migration Scripts Not Found**
-   - Verify scripts are in `src/main/resources/db/migration/`
-   - Check Flyway configuration in `application.properties`
+**Solution:**
+```sql
+-- Option 1: Reset database (recommended for development)
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
 
-3. **Permission Issues**
-   - Ensure database user has necessary permissions
-   - Check file permissions for migration scripts
-
-### Logging
-
-The application provides detailed logging for troubleshooting:
-
-```properties
-logging.level.org.ezkey=INFO
-logging.level.org.flywaydb=INFO
-logging.level.org.springframework.boot.autoconfigure.flyway=INFO
+-- Option 2: Repair Flyway (DANGEROUS - only if you understand implications)
+mvn flyway:repair
 ```
 
-## Integration
+### "Admin zero not found after V3"
 
-This module is designed to work seamlessly with the Ezkey ecosystem:
+**Cause:** V3 INSERT failed
 
-- **ezkey-core**: Provides entities and business logic
-- **ezkey-admin-api**: Uses migrated database schema
-- **ezkey-auth-api**: Uses migrated database schema
-- **Scripts**: Automated migration execution
+**Check:**
+```sql
+SELECT * FROM ezkey_admin WHERE username = 'admin';
+SELECT * FROM flyway_schema_history WHERE version = '3';
+```
 
-## Security
+**Solution:** Check migration logs for SQL errors, verify constraints
 
-- Database credentials should be provided via environment variables in production
-- Migration scripts are validated before execution
-- Flyway provides built-in protection against concurrent migrations
+### "Bootstrap creates duplicate admin"
 
-## License
+**Cause:** Bootstrap logic doesn't detect V3-created admin
 
-This module is part of the Ezkey project and is licensed under the MIT License.
+**Fix:** Review `AdminBootstrapService.findAdminZero()` logic
+
+---
+
+## Future Migrations
+
+**V4 and beyond:** Available for future features
+
+**Examples of future migrations:**
+- V4: Add admin audit log table
+- V5: Add multi-device support for admins
+- V6: Add TOTP backup authentication
+- V7: Add admin session management
+
+**Naming Convention:**
+```
+V{number}__{descriptive_snake_case_name}.sql
+
+Examples:
+V4__add_admin_audit_log.sql
+V5__add_multi_device_admin_support.sql
+```
+
+---
+
+## References
+
+- **Official Flyway Documentation:** https://flywaydb.org/documentation/
+- **Ezkey Admin Security Guide:** `docs/ADMIN_API_SECURITY_GUIDE.md`
+- **Architecture Overview:** `docs/ARCHITECTURE.md`
+- **Migration Archive:** `docs/plan/README_ARCHIVE.md` (V3-V9 evolution history)
+
+---
+
+**Last Updated:** October 13, 2025  
+**Contributors:** Ezkey Team

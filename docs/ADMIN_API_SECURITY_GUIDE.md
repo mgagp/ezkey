@@ -114,7 +114,7 @@ flowchart TB
 
 ### Step 1: Database Migration
 
-Run migrations V1-V9 to set up the passwordless-only schema:
+Run migrations V1-V3 to set up the passwordless-only schema:
 
 ```bash
 cd ezkey-migration
@@ -122,15 +122,16 @@ mvn spring-boot:run
 ```
 
 **Migrations:**
-- V1-V5: Core schema
-- V6: Add passwordless support
-- V7: Add recovery codes
-- V8-V9: Remove password infrastructure
+- V1: Initial schema (core tables for enrollments, auth attempts, integrations)
+- V2: Multi-tenant security (tenant isolation, admin types)
+- V3: System tenant and admin zero (passwordless infrastructure)
 
 **Result:**
-- `ezkey_admin` table without password columns
+- `ezkey_admin` table with passwordless-only schema (no password columns)
+- System tenant "Ezkey System" created
+- Admin zero created (bootstrap will complete with enrollment + recovery codes)
 - `challenge_required` per-admin flag
-- `recovery_codes` array (BCrypt hashed)
+- `recovery_codes` array column (BCrypt hashed, populated by bootstrap)
 
 ### Step 2: Bootstrap Admin Zero
 
@@ -841,7 +842,7 @@ If you have an existing installation with password-based authentication:
 2. **Fresh Install** - Easier to start fresh with passwordless-only
 3. **Contact Support** - For enterprise migration assistance
 
-**Migrations V8-V9 handle schema migration but assume fresh deployment.**
+**Migration V3 handles schema transformation from password-based to passwordless, but assumes fresh deployment.**
 
 ---
 
