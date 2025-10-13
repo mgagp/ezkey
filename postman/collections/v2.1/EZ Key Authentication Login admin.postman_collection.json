@@ -15,7 +15,9 @@
 						"exec": [
 							"var jsonData = JSON.parse(pm.response.text());\r",
 							"pm.environment.set(\"token\", jsonData.token);\r",
-							"pm.environment.set(\"tempToken\", jsonData.tempToken);"
+							"pm.environment.set(\"tempToken\", jsonData.tempToken);\r",
+							"pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r",
+							"pm.environment.set(\"challengeCode\", jsonData.challengeCode);"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -28,7 +30,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"username\": \"admin\",\r\n    \"password\": \"aszxASZX1212!!!!!\"\r\n}",
+					"raw": "{\r\n    \"username\": \"admin\",\r\n    \"authMode\": \"ezkey\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -46,6 +48,51 @@
 						"admin",
 						"auth",
 						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "passwordless-wait",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"token\", jsonData.token);\r",
+							"pm.environment.set(\"tempToken\", jsonData.tempToken);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"authAttemptId\": {{authAttemptId}},\r\n  \"challengeCode\": {{challengeCode}}\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/passwordless-wait",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"auth",
+						"passwordless-wait"
 					]
 				}
 			},
@@ -147,6 +194,60 @@
 						"admin",
 						"mfa",
 						"attempt"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "mfa validate",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"token\", jsonData.token);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"tempToken\": \"{{tempToken}}\",\r\n    \"authAttemptId\": {{authAttemptId}}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admin/mfa/validate",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"mfa",
+						"validate"
 					]
 				}
 			},
