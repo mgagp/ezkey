@@ -77,8 +77,12 @@ public class AuthAttemptRespondService {
     private static final Logger logger = LoggerFactory.getLogger(AuthAttemptRespondService.class);
 
     private final AuthAttemptRepository authAttemptRepository;
+
     private final EnrollmentRepository enrollmentRepository;
+
     private final SignatureService signatureService;
+
+    private final AuthAttemptTxHelper authAttemptTxHelper;
 
     /**
      * Constructs the respond service with required dependencies.
@@ -86,12 +90,13 @@ public class AuthAttemptRespondService {
      * @param authAttemptRepository the JPA repository for authentication attempts
      * @param enrollmentRepository the JPA repository for enrollments
      * @param signatureService the signature service for cryptographic operations
+     * @param authAttemptTxHelper the transaction helper for independent status commits
      */
-    public AuthAttemptRespondService(AuthAttemptRepository authAttemptRepository,
-                                   EnrollmentRepository enrollmentRepository,
-                                   SignatureService signatureService) {
+    public AuthAttemptRespondService(AuthAttemptRepository authAttemptRepository,EnrollmentRepository enrollmentRepository,SignatureService signatureService,
+            AuthAttemptTxHelper authAttemptTxHelper){
         this.authAttemptRepository = authAttemptRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.authAttemptTxHelper = authAttemptTxHelper;
         this.signatureService = signatureService;
     }
 
@@ -110,19 +115,19 @@ public class AuthAttemptRespondService {
     public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
         // Step 1: Validate and get the authentication attempt
         AuthAttempt authAttempt = validateAndGetAttempt(request);
-        
+
         // Step 2: Validate enrollment
         Enrollment enrollment = validateEnrollment(authAttempt);
-        
+
         // Step 3: Validate device signature
-        validateDeviceSignature(request, authAttempt, enrollment);
-        
+        validateDeviceSignature(request,authAttempt,enrollment);
+
         // Step 4: Validate challenge if required
-        validateChallenge(request, authAttempt, enrollment);
-        
+        validateChallenge(request,authAttempt,enrollment);
+
         // Step 5: Update attempt status
-        updateAttemptStatus(authAttempt, request);
-        
+        updateAttemptStatus(authAttempt,request);
+
         // Step 6: Build and return response
         return buildResponse(request);
     }
@@ -139,33 +144,27 @@ public class AuthAttemptRespondService {
      */
     private AuthAttempt validateAndGetAttempt(AuthAttemptRespondRequest request) {
         Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(request.getAuthAttemptId());
-        if (authAttemptOpt.isEmpty()) {
+        if (authAttemptOpt.isEmpty()){
             throw new IllegalArgumentException("Auth attempt record not found");
         }
-        
         AuthAttempt authAttempt = authAttemptOpt.get();
 
         // Check if in READ status (device has claimed the attempt)
-        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
+        if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ){
             throw new IllegalArgumentException("Auth attempt not read by device");
         }
-
         // Check if superseded by a newer authentication attempt for the same enrollment
-        Optional<AuthAttempt> newerAttempt = authAttemptRepository
-            .findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
-        if (newerAttempt.isPresent()) {
-            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}", 
-                       authAttempt.getAuthAttemptId(), newerAttempt.get().getAuthAttemptId(),
-                       authAttempt.getEnrollmentId());
+        Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(authAttempt.getEnrollmentId(),authAttempt.getCreatedAt());
+        if (newerAttempt.isPresent()){
+            logger.info("Auth attempt {} superseded by newer attempt {} for enrollment {}",authAttempt.getAuthAttemptId(),newerAttempt.get().getAuthAttemptId(),
+                    authAttempt.getEnrollmentId());
             throw new IllegalStateException("Authentication attempt superseded by newer request");
         }
-
         // Check if expired
         LocalDateTime now = LocalDateTime.now();
-        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
+        if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())){
             throw new IllegalStateException("Authentication attempt expired");
         }
-
         return authAttempt;
     }
 
@@ -180,15 +179,15 @@ public class AuthAttemptRespondService {
      * @return the validated enrollment
      */
     private Enrollment validateEnrollment(AuthAttempt authAttempt) {
-        Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId())
-            .orElseThrow(() -> new IllegalArgumentException("Enrollment record not found"));
+        Enrollment enrollment = enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElseThrow(() -> new IllegalArgumentException("Enrollment record not found"));
 
         // Validate device public key
         String devicePublicKey = enrollment.getDevicePublicKey();
-        if (devicePublicKey == null) {
+        if (devicePublicKey == null){
+            // Use TxHelper to commit INVALID status before throwing exception
+            authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
             throw new IllegalArgumentException("Device public key not found");
         }
-
         return enrollment;
     }
 
@@ -203,41 +202,49 @@ public class AuthAttemptRespondService {
      * @param authAttempt the authentication attempt
      * @param enrollment the enrollment containing device public key
      */
-    private void validateDeviceSignature(AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
+    private void validateDeviceSignature(AuthAttemptRespondRequest request,AuthAttempt authAttempt,Enrollment enrollment) {
         // Validate device signature
-        boolean isDeviceProofTokenValid = signatureService.validateSignature(
-            authAttempt.getAuthAttemptProofToken(),
-            request.getAuthAttemptProofTokenSignedByDevice(),
-            enrollment.getDevicePublicKey()
-        );
-        
-        if (!isDeviceProofTokenValid) {
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-            authAttemptRepository.save(authAttempt);
+        boolean isDeviceProofTokenValid = signatureService.validateSignature(authAttempt.getAuthAttemptProofToken(),request.getAuthAttemptProofTokenSignedByDevice(),
+                enrollment.getDevicePublicKey());
+        if (!isDeviceProofTokenValid){
+            // Use TxHelper to commit INVALID status before throwing exception
+            authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
             throw new IllegalArgumentException("Invalid signature for auth attempt code");
         }
     }
 
     /**
-     * Validates the challenge response if required by the enrollment.
+     * Validates the challenge response if required by the enrollment or auth attempt.
      * <p>
      * This method ensures the challenge response matches the expected value
-     * if challenge validation is required.
+     * if challenge validation is required. Challenge can be required either at
+     * enrollment level (permanent) or at auth attempt level (per-request).
+     * </p>
+     * <p>
+     * <b>Security:</b> If an auth attempt has a challenge code (authAttemptChallenge != null),
+     * the challenge MUST be validated regardless of enrollment settings. This prevents
+     * bypassing challenge verification when it was explicitly requested.
      * </p>
      *
      * @param request the authentication response request
      * @param authAttempt the authentication attempt
      * @param enrollment the enrollment containing challenge requirements
      */
-    private void validateChallenge(AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
-        // Validate challenge if required
-        if (Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired())) {
-            if (request.getAuthAttemptChallengeResponse() == null || 
-                !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())) {
-                authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-                authAttemptRepository.save(authAttempt);
+    private void validateChallenge(AuthAttemptRespondRequest request,AuthAttempt authAttempt,Enrollment enrollment) {
+        // Validate challenge if this auth attempt has a challenge code
+        // Challenge can be required at enrollment level OR per-request (authAttemptChallenge != null)
+        boolean challengeRequired = Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired()) || authAttempt.getAuthAttemptChallenge() != null;
+        if (challengeRequired){
+            if (request.getAuthAttemptChallengeResponse() == null || !request.getAuthAttemptChallengeResponse().equals(authAttempt.getAuthAttemptChallenge())){
+                // Use TxHelper to commit INVALID status before throwing exception
+                // This prevents rollback and ensures audit trail is preserved
+                authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
+
+                logger.warn("❌ Challenge validation failed for authAttemptId: {} (expected: {}, got: {})",authAttempt.getAuthAttemptId(),authAttempt.getAuthAttemptChallenge(),
+                        request.getAuthAttemptChallengeResponse());
                 throw new IllegalArgumentException("Challenge value mismatch");
             }
+            logger.debug("✅ Challenge validated successfully for authAttemptId: {}",authAttempt.getAuthAttemptId());
         }
     }
 
@@ -251,11 +258,11 @@ public class AuthAttemptRespondService {
      * @param authAttempt the authentication attempt to update
      * @param request the authentication response request
      */
-    private void updateAttemptStatus(AuthAttempt authAttempt, AuthAttemptRespondRequest request) {
+    private void updateAttemptStatus(AuthAttempt authAttempt,AuthAttemptRespondRequest request) {
         // Update authorization attempt based on user decision
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
             authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
-        } else {
+        } else{
             authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
         }
         authAttemptRepository.save(authAttempt);
@@ -275,14 +282,12 @@ public class AuthAttemptRespondService {
         AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
         // Set result based on user's choice
-        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
+        if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())){
             response.setResult(AuthenticationResult.APPROVED);
-        } else {
+        } else{
             response.setResult(AuthenticationResult.DENIED);
         }
-        
         response.setMessage("Auth attempt completed");
         return response;
     }
 }
-

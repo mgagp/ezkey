@@ -80,6 +80,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/auth/**").permitAll()
                 // Allow public access to MFA endpoints (temp token in body)
                 .requestMatchers("/api/v1/admin/mfa/**").permitAll()
+                // Allow public access to enrollment reset (recovery token in header)
+                .requestMatchers("/api/v1/admin/enrollments/**").permitAll()
                 // Allow public access to health check endpoints
                 .requestMatchers("/actuator/**").permitAll()
                 // Allow public access to API documentation

@@ -19,8 +19,12 @@ import java.util.UUID;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.integration.domain.entity.AdminTempToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.repository.AdminTempTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -63,19 +67,26 @@ public class AdminRecoveryService {
     private static final Logger logger = LoggerFactory.getLogger(AdminRecoveryService.class);
     
     private static final int RECOVERY_CODES_COUNT = 10;
-    private static final String RECOVERY_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No ambiguous chars
+    private static final String RECOVERY_CODE_CHARS = "0123456789"; // Digits only (106-bit entropy with 32 digits)
+    private static final int RECOVERY_CODE_LENGTH = 32; // 8 groups of 4 digits (paranoia-level: 106 bits)
     private static final int RECOVERY_TOKEN_VALIDITY_MINUTES = 30;
     
     private final EzkeyAdminRepository adminRepository;
     private final AdminTempTokenRepository tempTokenRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final SignatureService signatureService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom;
 
     public AdminRecoveryService(EzkeyAdminRepository adminRepository,
                                 AdminTempTokenRepository tempTokenRepository,
+                                EnrollmentRepository enrollmentRepository,
+                                SignatureService signatureService,
                                 BCryptPasswordEncoder passwordEncoder) {
         this.adminRepository = adminRepository;
         this.tempTokenRepository = tempTokenRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.signatureService = signatureService;
         this.passwordEncoder = passwordEncoder;
         this.secureRandom = new SecureRandom();
     }
@@ -83,7 +94,8 @@ public class AdminRecoveryService {
     /**
      * Generate recovery codes for an administrator.
      * <p>
-     * Generates 10 single-use recovery codes in format XXX-XXX-XXX.
+     * Generates 10 single-use recovery codes in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
+     * Each code contains 32 digits providing 106 bits of entropy (paranoia-level security).
      * Codes are cryptographically secure and BCrypt hashed before storage.
      * </p>
      *
@@ -107,22 +119,27 @@ public class AdminRecoveryService {
     }
 
     /**
-     * Generate a single recovery code in format XXX-XXX-XXX.
+     * Generate a single recovery code in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
      * <p>
-     * Uses SecureRandom for cryptographic security. Format is optimized for
-     * human entry (no ambiguous characters like O/0, I/1).
+     * Uses SecureRandom for cryptographic security. Format uses digits only (0-9)
+     * for unambiguous entry. 32 digits provide 106 bits of entropy - paranoia-level
+     * security resistant to brute force and quantum attacks.
+     * </p>
+     * <p>
+     * Security: 10^32 combinations = ~3 × 10^18 years at 1M attempts/sec
      * </p>
      *
-     * @return recovery code string (e.g., "A3K-9PZ-X7M")
+     * @return recovery code string (e.g., "1234-5678-9012-3456-7890-1234-5678-9012")
      */
     private String generateSingleRecoveryCode() {
         StringBuilder code = new StringBuilder();
         
-        for (int segment = 0; segment < 3; segment++) {
+        // Generate 8 groups of 4 digits (32 total)
+        for (int segment = 0; segment < 8; segment++) {
             if (segment > 0) {
                 code.append("-");
             }
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 4; i++) {
                 int index = secureRandom.nextInt(RECOVERY_CODE_CHARS.length());
                 code.append(RECOVERY_CODE_CHARS.charAt(index));
             }
@@ -208,6 +225,47 @@ public class AdminRecoveryService {
     }
 
     /**
+     * Validate recovery token and return associated admin.
+     * <p>
+     * Validates that the token is a recovery token (prefix check),
+     * exists in database, is active, and not expired.
+     * </p>
+     *
+     * @param recoveryToken the recovery token to validate
+     * @return the associated admin if token is valid
+     * @throws org.ezkey.admin.exception.AuthenticationException if token is invalid
+     */
+    public EzkeyAdmin validateRecoveryToken(String recoveryToken) {
+        logger.debug("🔍 Validating recovery token: {}...", recoveryToken.substring(0, Math.min(15, recoveryToken.length())));
+        
+        // 1. Verify it's a recovery token
+        if (!recoveryToken.startsWith("ezkey_recovery_")) {
+            logger.warn("❌ Invalid token format (not a recovery token)");
+            throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
+        }
+        
+        // 2. Find temp token in database
+        AdminTempToken tempToken = tempTokenRepository.findByTempTokenAndActiveTrue(recoveryToken)
+            .orElseThrow(() -> new org.ezkey.admin.exception.AuthenticationException("Invalid or expired recovery token"));
+        
+        // 3. Check expiration
+        if (tempToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            logger.warn("❌ Recovery token expired for admin: {}", tempToken.getAdmin().getUsername());
+            throw new org.ezkey.admin.exception.AuthenticationException("Recovery token expired");
+        }
+        
+        // 4. Verify it's a recovery token (mfaRequired = false for recovery)
+        if (Boolean.TRUE.equals(tempToken.getMfaRequired())) {
+            logger.warn("❌ Token is not a recovery token (MFA token instead)");
+            throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
+        }
+        
+        logger.debug("✅ Recovery token validated for admin: {}", tempToken.getAdmin().getUsername());
+        
+        return tempToken.getAdmin();
+    }
+
+    /**
      * Rotate recovery codes for an administrator.
      * <p>
      * Generates a new set of 10 recovery codes, invalidating all previous codes.
@@ -227,6 +285,61 @@ public class AdminRecoveryService {
         logger.info("✅ Recovery codes rotated for admin: {}", admin.getUsername());
         
         return result;
+    }
+
+    /**
+     * Reset enrollment after device loss - unbind old device and generate new credentials.
+     * <p>
+     * This method unbinds the old device (clears device_public_key) and generates
+     * new enrollment credentials (proof token and challenge) so the administrator
+     * can bind a new replacement device.
+     * </p>
+     * <p>
+     * <b>Security:</b> This operation invalidates the old device immediately,
+     * preventing a lost or stolen device from being used for authentication.
+     * </p>
+     *
+     * @param enrollmentId the enrollment ID to reset
+     * @param admin the administrator who owns the enrollment (from recovery token)
+     * @return the reset enrollment with new credentials
+     * @throws org.ezkey.admin.exception.AuthenticationException if enrollment doesn't belong to admin
+     */
+    public Enrollment resetEnrollment(Integer enrollmentId, EzkeyAdmin admin) {
+        logger.warn("🔄 Resetting enrollment {} for admin: {}", enrollmentId, admin.getUsername());
+        
+        // 1. Fetch enrollment
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
+        
+        // 2. Verify admin owns this enrollment (security check)
+        if (admin.getMfaEnrollment() == null || 
+            !admin.getMfaEnrollment().getEnrollmentId().equals(enrollmentId)) {
+            logger.error("❌ Admin {} attempted to reset enrollment {} which doesn't belong to them", 
+                admin.getUsername(), enrollmentId);
+            throw new org.ezkey.admin.exception.AuthenticationException(
+                "You don't have permission to reset this enrollment");
+        }
+        
+        // 3. Reset enrollment (unbind device)
+        enrollment.setDevicePublicKey(null); // Unbind old device
+        enrollment.setStatus(EnrollmentStatus.CREATED); // Back to initial state
+        
+        // 4. Generate new credentials
+        String newProofToken = signatureService.generateProofToken();
+        Integer newChallenge = signatureService.generateSecureChallenge(6);
+        
+        enrollment.setEnrollmentProofToken(newProofToken);
+        enrollment.setEnrollmentChallenge(newChallenge);
+        
+        // 5. Save enrollment
+        enrollmentRepository.save(enrollment);
+        
+        logger.warn("✅ Enrollment reset successful (ID: {}, old device unbound, new credentials generated)", 
+            enrollmentId);
+        logger.warn("🔐 New proof token: {}", newProofToken);
+        logger.warn("🔐 New challenge: {}", newChallenge);
+        
+        return enrollment;
     }
 
     /**
@@ -250,4 +363,5 @@ public class AdminRecoveryService {
         }
     }
 }
+
 

@@ -46,15 +46,18 @@ public class AdminRecoveryRequestDto {
     private String username;
 
     /**
-     * Recovery code in format XXX-XXX-XXX.
+     * Recovery code in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
      * <p>
-     * Recovery codes are 9-character alphanumeric codes (excluding ambiguous
-     * characters O/0, I/1) separated by dashes for easy entry.
+     * Recovery codes are 32-digit codes (0-9) separated by dashes into 8 groups
+     * of 4 digits. This provides 106 bits of entropy (paranoia-level security).
+     * </p>
+     * <p>
+     * Example: 1234-5678-9012-3456-7890-1234-5678-9012
      * </p>
      */
     @NotBlank(message = "Recovery code is required")
-    @Pattern(regexp = "^[A-Z2-9]{3}-[A-Z2-9]{3}-[A-Z2-9]{3}$", 
-             message = "Recovery code must be in format XXX-XXX-XXX")
+    @Pattern(regexp = "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$", 
+             message = "Recovery code must be 32 digits in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
     private String recoveryCode;
 
     /**

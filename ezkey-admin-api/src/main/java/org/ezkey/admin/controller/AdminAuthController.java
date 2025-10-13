@@ -322,7 +322,8 @@ public class AdminAuthController {
             );
             
             // Get admin to determine codes remaining
-            EzkeyAdmin admin = authService.validateToken(recoveryToken);
+            // Note: Use validateRecoveryToken (not validateToken) since it's a temp token, not bearer
+            EzkeyAdmin admin = recoveryService.validateRecoveryToken(recoveryToken);
             int codesRemaining = admin != null && admin.getRecoveryCodes() != null 
                 ? admin.getRecoveryCodes().length 
                 : 0;
