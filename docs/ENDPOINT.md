@@ -198,47 +198,92 @@ Content-Type: application/json
 
 ## 2. Admin API Endpoints (internal)
 
-### Admin Authentication
+### Admin Authentication (Passwordless-Only)
 
 Base URL: `http://localhost:9080/api/v1/admin/auth`
 
-#### POST /login
-Authenticate admin user and receive bearer token for API access.
+**Architecture:** Ezkey Admin API uses **passwordless-only authentication** - no passwords stored or transmitted. Admins authenticate using Ezkey's cryptographic authentication system ("eating our own dogfood").
 
-**Request:**
+**Prerequisites:**
+- Admin must have bound Ezkey enrollment (device with public key)
+- Device must be available to approve authentication requests
+- For emergency access, admins have 10 single-use recovery codes
+
+---
+
+#### POST /login (Passwordless)
+Authenticate admin user using Ezkey cryptographic authentication.
+
+**Two Authentication Modes:**
+1. **Single-call (no challenge):** Blocking wait for device approval - convenient
+2. **Two-call (with challenge):** Returns challenge code, requires separate wait - more secure
+
+**Request (Single-Call Mode):**
 ```http
 POST /api/v1/admin/auth/login
 Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "secure-password-here"
+  "challengeRequested": false
 }
 ```
 
-**Success Response (200 OK):**
+**Success Response (200 OK) - After Device Approval:**
 ```json
 {
   "success": true,
-  "bearerToken": "ezkey_abc123def456...",
+  "token": "ezkey_abc123def456...",
   "adminType": "GLOBAL_ADMIN",
   "username": "admin",
   "expiresAt": "2025-10-04T10:00:00Z",
-  "passwordChangeRequired": false,
   "message": "Authentication successful"
 }
 ```
 
-**Failure Response (400 Bad Request):**
+**Request (Two-Call Mode with Challenge):**
+```http
+POST /api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "challengeRequested": true
+}
+```
+
+**Pending Response (200 OK) - Immediate:**
 ```json
 {
   "success": false,
-  "bearerToken": null,
-  "adminType": null,
-  "username": null,
-  "expiresAt": null,
-  "passwordChangeRequired": false,
-  "message": "Invalid credentials"
+  "status": "pending",
+  "authAttemptId": 123,
+  "challengeCode": 654321,
+  "username": "admin",
+  "adminType": "GLOBAL_ADMIN",
+  "expiresAt": "2025-10-04T10:05:00Z",
+  "message": "Challenge verification required. Enter code 654321 on your device, then call /passwordless-wait."
+}
+```
+
+**Failure Responses:**
+```json
+// 400 Bad Request - No enrollment
+{
+  "success": false,
+  "message": "Authentication failed: No device enrolled for passwordless authentication"
+}
+
+// 400 Bad Request - Device rejected
+{
+  "success": false,
+  "message": "Authentication failed: Authentication rejected by device"
+}
+
+// 400 Bad Request - Timeout
+{
+  "success": false,
+  "message": "Authentication failed: Authentication timeout - no device response"
 }
 ```
 
@@ -252,16 +297,142 @@ Too many login attempts. Please try again later.
 ```
 
 **Rate Limiting:**
-- 5 requests per 5 minutes per IP address
+- 5 requests per minute per IP address
 - Automatic IP blocking after 10 consecutive failures (30 minutes)
 - HTTP 429 when limit exceeded
 - `Retry-After` header indicates seconds until retry allowed
 
 **Security Notes:**
-- Password transmitted over HTTPS only
+- **No passwords** - phishing resistant, cannot be stolen
+- Device-bound credentials (private key never leaves device)
+- Optional challenge code for high-security scenarios
 - Bearer token expires after 24 hours
-- Failed attempts logged for security monitoring
+- Cryptographic signatures prevent forgery
 - IP-based rate limiting prevents brute force attacks
+
+---
+
+#### POST /passwordless-wait (Two-Step Flow)
+Wait for device approval in challenge-based authentication.
+
+**Usage:** After receiving `authAttemptId` and `challengeCode` from `/login` with `challengeRequested: true`, call this endpoint to wait for device approval.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/passwordless-wait
+Content-Type: application/json
+
+{
+  "authAttemptId": 123,
+  "challengeCode": 654321
+}
+```
+
+**Success Response (200 OK) - After Device Approval:**
+```json
+{
+  "success": true,
+  "token": "ezkey_abc123def456...",
+  "adminType": "GLOBAL_ADMIN",
+  "username": "admin",
+  "expiresAt": "2025-10-04T10:00:00Z",
+  "message": "Authentication successful"
+}
+```
+
+**Security Notes:**
+- `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
+- Blocking call (up to 5 minutes timeout)
+- Device must enter matching challenge code before approval
+- Invalid challenge on device marks attempt as INVALID
+
+---
+
+#### POST /recover (Emergency Access)
+Authenticate using single-use recovery code when device is lost.
+
+**Request:**
+```http
+POST /api/v1/admin/auth/recover
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "recoveryCode": "1234-5678-9012-3456-7890-1234-5678-9012"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "recoveryToken": "ezkey_recovery_abc123...",
+  "expiresAt": "2025-10-04T10:30:00Z",
+  "codesRemaining": 9,
+  "message": "Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately."
+}
+```
+
+**Failure Response (403 Forbidden):**
+```json
+{
+  "success": false,
+  "message": "Recovery failed: Invalid recovery code"
+}
+```
+
+**Recovery Code Format:**
+- 32 digits in 8 groups of 4: `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`
+- 106-bit entropy (10^32 combinations = paranoia-level security)
+- Single-use only (removed from array after successful use)
+- 10 codes per admin (generated at account creation)
+
+**Security Notes:**
+- Recovery codes are BCrypt hashed (same security as passwords were)
+- Single-use enforcement (code removed after validation)
+- Recovery token expires after 30 minutes
+- Limited permissions (can only reset enrollment)
+- Rate limited: 3 attempts per 15 minutes per IP
+
+---
+
+#### POST /enrollments/reset (After Recovery)
+Reset enrollment after using recovery code (unbind lost device).
+
+**Request:**
+```http
+POST /api/v1/admin/enrollments/reset
+Authorization: Bearer ezkey_recovery_abc123...
+Content-Type: application/json
+
+{
+  "enrollmentId": 1
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "enrollmentId": 1,
+  "enrollmentProofToken": "new-token-xyz789...",
+  "enrollmentChallenge": 654321,
+  "integrationId": 1,
+  "message": "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
+}
+```
+
+**Usage Flow:**
+1. Use recovery code to get recovery token (30 min validity)
+2. Reset enrollment (unbinds old device)
+3. Bind new device with new credentials
+4. Resume normal passwordless login
+
+**Security Notes:**
+- Requires recovery token (obtained via `/recover`)
+- Unbinds old device (sets device_public_key to null)
+- Generates new enrollment credentials
+- Recovery token expires after use or 30 minutes
 
 #### POST /logout
 Revoke current bearer token and end session.

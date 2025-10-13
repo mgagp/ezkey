@@ -116,8 +116,8 @@ User with elevated privileges to manage the Ezkey instance.
 **Bootstrap Process:**
 On first startup, Ezkey automatically creates:
 1. **System Tenant** - Representing the hosting organization (configurable name)
-2. **Admin Zero** - First global administrator with generated password
-3. **Secure Initialization** - Password logged once, must be changed on first login
+2. **Admin Zero** - First global administrator with passwordless authentication
+3. **Secure Initialization** - Enrollment credentials and 10 recovery codes logged once (must be saved immediately)
 
 ---
 

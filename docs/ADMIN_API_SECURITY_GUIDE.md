@@ -1,7 +1,7 @@
-# Ezkey Admin API - Security Implementation Guide
+# Ezkey Admin API - Security Implementation Guide (Passwordless-Only)
 
-**Version:** 1.0  
-**Last Updated:** October 2025  
+**Version:** 2.0 (Passwordless)  
+**Last Updated:** October 13, 2025  
 **Audience:** Developers integrating Ezkey  
 **Status:** Production Ready
 
@@ -13,23 +13,32 @@
 2. [Security Architecture](#security-architecture)
 3. [Initial Setup Workflow](#initial-setup-workflow)
 4. [Daily Authentication Workflow](#daily-authentication-workflow)
-5. [Token Management](#token-management)
-6. [MFA Configuration](#mfa-configuration)
-7. [Security Best Practices](#security-best-practices)
-8. [Troubleshooting](#troubleshooting)
+5. [Challenge-Based Authentication](#challenge-based-authentication)
+6. [Emergency Recovery](#emergency-recovery)
+7. [Token Management](#token-management)
+8. [Security Best Practices](#security-best-practices)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-The Ezkey Admin API implements a **multi-layered security approach** combining:
-- **Password-based authentication** (BCrypt hashing)
-- **Multi-Factor Authentication (MFA)** using Ezkey's own MFA system
-- **Bearer token** management with automatic rotation
-- **Temporary tokens** for MFA flows
-- **Rate limiting** to prevent brute force attacks
+The Ezkey Admin API implements **passwordless-only authentication** - a revolutionary approach that eliminates passwords entirely. Ezkey "eats its own dogfood" by using its own cryptographic authentication system for admin access.
 
-This guide walks you through the complete security lifecycle from initial deployment to daily operations.
+### Key Security Features
+
+- ✅ **No passwords stored** - Nothing to steal, phish, or guess
+- ✅ **Device-bound credentials** - Private keys never leave the device
+- ✅ **Cryptographic signatures** - FIDO2-like authentication
+- ✅ **Recovery codes** - 106-bit entropy emergency access (paranoia-level)
+- ✅ **Bearer token management** - 24-hour tokens with rotation
+- ✅ **Rate limiting** - IP-based protection against brute force
+
+### Authentication Modes
+
+1. **Single-call (no challenge):** Blocking wait for device approval (convenient)
+2. **Two-call (with challenge):** Challenge code verification (secure)
+3. **Recovery mode:** Emergency access via single-use codes (rare)
 
 ---
 
@@ -44,21 +53,21 @@ flowchart TB
     end
     
     subgraph "Ezkey Admin API :9080"
-        B[Login Endpoint]
-        C[Password Change]
-        D[MFA Endpoints]
+        B[Passwordless Login]
+        C[Recovery Endpoint]
+        D[Enrollment Reset]
         E[Protected Resources]
     end
     
     subgraph "Ezkey Auth API :8080"
         F[Enrollment Binding]
-        G[Auth Attempt]
+        G[Auth Attempt Response]
     end
     
     subgraph "Security Layer"
         H[Rate Limiter]
         I[Token Manager]
-        J[MFA Validator]
+        J[Crypto Validator]
     end
     
     subgraph "Storage"
@@ -66,25 +75,23 @@ flowchart TB
     end
     
     subgraph "Device"
-        L[Demo Device / Mobile]
+        L[Ezkey Mobile / Demo Device]
     end
     
-    A -->|1. Login| H
+    A -->|1. Login Request| H
     H --> B
-    B -->|2. Issue Token| I
-    I --> K
+    B -->|2. Create Auth Attempt| K
     
-    A -->|3. Change Password| C
-    C -->|4. Generate Temp Token| D
+    L -->|3. Check Pending| G
+    L -->|4. Approve + Sign| J
     
-    A -->|5. MFA Attempt| D
-    D -->|6. Create Challenge| K
+    J -->|5. Validate Signature| K
+    B -->|6. Issue Bearer Token| I
+    I -->|7. Access| E
     
-    L -->|7. Approve| G
-    G -->|8. Validate| J
-    
-    D -->|9. Issue Bearer Token| I
-    I -->|10. Access| E
+    A -.->|Emergency| C
+    C -.->|Recovery Token| D
+    D -.->|New Credentials| F
     
     style H fill:#ffcccc
     style I fill:#ccffcc
@@ -95,1114 +102,763 @@ flowchart TB
 
 | Layer | Component | Purpose |
 |-------|-----------|---------|
-| **1. Authentication** | Password + MFA | Verify identity |
-| **2. Authorization** | Bearer Tokens | Access control |
-| **3. Rate Limiting** | IP-based limits | Prevent brute force |
-| **4. Token Rotation** | Automatic invalidation | Limit token lifetime |
-| **5. Audit** | Login tracking | Security monitoring |
+| **1. Authentication** | Passwordless Crypto | Verify identity via device signature |
+| **2. Authorization** | Bearer Tokens | Access control (24h expiry) |
+| **3. Rate Limiting** | IP-based limits | Prevent brute force (5/min) |
+| **4. Recovery** | Single-use codes | Emergency access (106-bit entropy) |
+| **5. Audit** | Database logging | Complete authentication trail |
 
 ---
 
 ## Initial Setup Workflow
 
-### Step 1: Application Bootstrap
+### Step 1: Database Migration
 
-When Ezkey Admin API starts for the first time, it automatically executes a **bootstrap process**:
+Run migrations V1-V9 to set up the passwordless-only schema:
 
-```mermaid
-sequenceDiagram
-    participant App as Admin API
-    participant Bootstrap as Bootstrap Service
-    participant DB as Database
-    participant Log as Console Logs
-    
-    Note over App,Log: First Startup
-    
-    App->>Bootstrap: Application Ready Event
-    Bootstrap->>DB: Check Integration Zero exists?
-    
-    alt Integration Zero NOT exists
-        Bootstrap->>DB: Create System Tenant
-        Bootstrap->>DB: Create Admin Zero (username: admin)
-        Bootstrap->>DB: Generate temp password
-        Bootstrap->>Log: ⚠️ ADMIN ZERO CREATED
-        Bootstrap->>Log: 📝 Username: admin
-        Bootstrap->>Log: 📝 Password: [generated-password]
-        Bootstrap->>Log: ⚠️ SAVE THESE CREDENTIALS NOW!
-        
-        Bootstrap->>DB: Create Integration Zero (RSA keys)
-        Bootstrap->>DB: Create Enrollment Zero
-        Bootstrap->>Log: 📱 ENROLLMENT CREDENTIALS:
-        Bootstrap->>Log: 📝 Enrollment ID: 1
-        Bootstrap->>Log: 📝 Proof Token: [token]
-        Bootstrap->>Log: 📝 Challenge: [6-digit-code]
-        Bootstrap->>Log: 🔗 Bind with demo-device or CLI
-    else Integration Zero exists
-        Bootstrap->>Log: ✅ System already initialized
-    end
+```bash
+cd ezkey-migration
+mvn spring-boot:run
 ```
 
-**Console Output Example:**
+**Migrations:**
+- V1-V5: Core schema
+- V6: Add passwordless support
+- V7: Add recovery codes
+- V8-V9: Remove password infrastructure
+
+**Result:**
+- `ezkey_admin` table without password columns
+- `challenge_required` per-admin flag
+- `recovery_codes` array (BCrypt hashed)
+
+### Step 2: Bootstrap Admin Zero
+
+Start the Admin API for the first time:
+
+```bash
+cd ezkey-admin-api
+mvn spring-boot:run
+```
+
+**Bootstrap Process (Automatic):**
+
+The system automatically creates "Admin Zero" on first startup if no admin exists:
+
 ```
 ================================================================================
-📱 ADMIN ZERO MFA ENROLLMENT - SAVE THESE CREDENTIALS NOW!
+📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
 ================================================================================
 
-✅ Integration Zero created: Ezkey System Admin
-✅ Enrollment Zero created: Admin MFA
-
-🔐 ADMIN ZERO LOGIN:
-   Username: admin
-   Password: kJ9mP2xL8qN4wR7vY3hF
+✅ Admin Zero: admin (GLOBAL_ADMIN)
+✅ Enrollment Zero: Admin MFA (ID: 1)
 
 🔐 ENROLLMENT CREDENTIALS:
    Enrollment ID: 1
-   Enrollment Proof Token: abc123-def456-ghi789-jkl012
-   Challenge Code: 542891
+   Enrollment Proof Token: abc123xyz...def789 (64 chars)
+   Challenge Code: 654321
 
-🔗 BIND OPTIONS:
+🔑 RECOVERY CODES (106-BIT ENTROPY - SAVE SECURELY):
+   1. 1234-5678-9012-3456-7890-1234-5678-9012
+   2. 4567-8901-2345-6789-0123-4567-8901-2345
+   3. 7890-1234-5678-9012-3456-7890-1234-5678
+   4. 0123-4567-8901-2345-6789-0123-4567-8901
+   5. 3456-7890-1234-5678-9012-3456-7890-1234
+   6. 6789-0123-4567-8901-2345-6789-0123-4567
+   7. 9012-3456-7890-1234-5678-9012-3456-7890
+   8. 2345-6789-0123-4567-8901-2345-6789-0123
+   9. 5678-9012-3456-7890-1234-5678-9012-3456
+  10. 8901-2345-6789-0123-4567-8901-2345-6789
 
-   Option A - CLI (Recommended):
-     ezkey admin enroll bind \
-       --enrollment-id 1 \
-       --enrollment-proof-token "abc123-def456-ghi789-jkl012"
-
-   Option B - Demo-Device:
-     1. Start: cd ezkey-demo-device && mvn spring-boot:run
-     2. Open: http://localhost:8082
-     3. Navigate: 'Bind Enrollment'
-     4. Enter credentials above
-
-⚠️  SECURITY NOTICE:
-   - These credentials are logged ONCE at startup
-   - Save them in a secure password manager
-   - You cannot retrieve them again without database access
-
+⚠️ CRITICAL: Save these credentials NOW.
+⚠️ Recovery codes cannot be retrieved later.
+⚠️ These codes are SINGLE-USE ONLY.
 ================================================================================
 ```
 
-**⚠️ Critical Actions:**
-1. **Save admin password immediately** - Copy it to a secure password manager
-2. **Save enrollment credentials** - You'll need them for MFA setup
-3. **Change password on first login** - This is enforced by the system
+**⚠️ CRITICAL ACTIONS:**
 
----
+1. **Copy enrollment credentials** - You need these to bind your device
+2. **Save recovery codes** - Print or store in password manager
+3. **Test recovery codes** - Verify at least one works before production
 
-### Step 2: First Login (Password Change Required)
+### Step 3: Bind Your Device
 
-```mermaid
-sequenceDiagram
-    participant Admin as Administrator
-    participant API as Admin API
-    participant DB as Database
-    
-    Note over Admin,DB: First Login Attempt
-    
-    Admin->>API: POST /api/v1/admin/auth/login
-    Note right of Admin: {username: "admin"<br/>password: "generated-password"}
-    
-    API->>DB: Validate credentials
-    DB-->>API: ✅ Valid (passwordChangeRequired=true)
-    
-    API->>DB: Generate Bearer Token A
-    DB-->>API: Token A created
-    
-    API-->>Admin: {success: true,<br/>token: "ezkey_abc123...",<br/>passwordChangeRequired: true,<br/>message: "Password change required"}
-    
-    Note over Admin: Bearer Token A received<br/>⚠️ Must change password
+Use the Demo Device or Ezkey Mobile app to bind enrollment:
+
+**Demo Device (http://localhost:8082):**
+1. Go to "Bind Enrollment"
+2. Enter credentials from bootstrap:
+   - Enrollment ID: `1`
+   - Enrollment Proof Token: `[64-char token]`
+3. Click "Bind"
+4. When prompted, enter Challenge Code: `654321`
+5. Click "Verify"
+
+**Result:**
+```
+✅ Enrollment bound successfully!
+Device public key registered for enrollment 1
 ```
 
-**Request:**
+**Verification (Database):**
+```sql
+SELECT enrollment_id, device_public_key IS NOT NULL as is_bound
+FROM ezkey_enrollment WHERE enrollment_id = 1;
+-- is_bound should be TRUE
+```
+
+### Step 4: Test Passwordless Login
+
+**Postman/cURL:**
 ```http
 POST http://localhost:9080/api/v1/admin/auth/login
 Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "kJ9mP2xL8qN4wR7vY3hF"
+  "challengeRequested": false
 }
 ```
 
-**Response:**
+**Expected Behavior:**
+1. ⏳ Request blocks (waiting for device)
+2. On device: Check "Pending Authentications" → See login request → Approve
+3. ✅ Postman receives bearer token
+
+**Success Response:**
 ```json
 {
   "success": true,
   "token": "ezkey_abc123def456...",
   "adminType": "GLOBAL_ADMIN",
   "username": "admin",
-  "expiresAt": "2025-10-10T10:00:00",
-  "passwordChangeRequired": true,
-  "message": "Authentication successful - Password change required"
-}
-```
-
-**⚠️ Important:**
-- Token is issued even with `passwordChangeRequired=true`
-- This token can ONLY be used for `/change-password` endpoint
-- After password change, this token is invalidated
-
----
-
-### Step 3: Change Password (Seamless MFA Flow)
-
-```mermaid
-sequenceDiagram
-    participant Admin as Administrator
-    participant API as Admin API
-    participant DB as Database
-    
-    Note over Admin,DB: Change Password Request
-    
-    Admin->>API: POST /api/v1/admin/auth/change-password
-    Note right of Admin: Authorization: Bearer ezkey_abc123...<br/>{currentPassword, newPassword}
-    
-    API->>DB: Validate current password
-    DB-->>API: ✅ Valid
-    
-    API->>API: Validate new password strength
-    Note right of API: Min 12 chars<br/>Uppercase + lowercase<br/>Digit + special char
-    
-    API->>DB: Update password hash (BCrypt)
-    API->>DB: Set passwordChangeRequired = false
-    API->>DB: Invalidate ALL tokens (Token A ❌)
-    
-    API->>DB: Reload admin with enrollment (JOIN FETCH)
-    API->>API: Check shouldRequireMfa(admin)
-    
-    alt MFA Required (enrollment bound)
-        API->>DB: Generate Temp Token B (5 min)
-        API-->>Admin: {success: true,<br/>tempToken: "ezkey_temp_xyz...",<br/>mfaRequired: true,<br/>expiresAt: "..."}
-        Note over Admin: ✅ Seamless flow!<br/>No re-login needed
-    else MFA Not Required
-        API-->>Admin: {success: true,<br/>message: "Password changed",<br/>mfaEnrollment: {...}}
-        Note over Admin: Enrollment reminder<br/>Must re-login
-    end
-```
-
-**Request:**
-```http
-POST http://localhost:9080/api/v1/admin/auth/change-password
-Authorization: Bearer ezkey_abc123def456...
-Content-Type: application/json
-
-{
-  "currentPassword": "kJ9mP2xL8qN4wR7vY3hF",
-  "newPassword": "MySecurePassword123!"
-}
-```
-
-**Response (MFA Required):**
-```json
-{
-  "success": true,
-  "message": "Password changed successfully. MFA verification required to complete authentication.",
-  "passwordChangeRequired": false,
-  "tempToken": "ezkey_temp_xyz789abc...",
-  "mfaRequired": true,
-  "expiresAt": "2025-10-09T12:52:00"
-}
-```
-
-**Response (MFA Not Required - Enrollment Not Bound):**
-```json
-{
-  "success": true,
-  "message": "Password changed successfully. All existing tokens have been invalidated.",
-  "passwordChangeRequired": false,
-  "mfaEnrollment": {
-    "enrollmentId": 1,
-    "enrollmentProofToken": "abc123-def456-ghi789-jkl012",
-    "enrollmentChallenge": 542891,
-    "bound": false,
-    "message": "Use these credentials to bind your MFA enrollment for enhanced security"
-  }
-}
-```
-
-**Password Validation Rules:**
-- ✅ Minimum 12 characters
-- ✅ At least 1 uppercase letter (A-Z)
-- ✅ At least 1 lowercase letter (a-z)
-- ✅ At least 1 digit (0-9)
-- ✅ At least 1 special character (!@#$%^&*...)
-- ✅ Maximum 128 characters (DoS protection)
-- ✅ Cannot be same as current password
-
----
-
-### Step 4: MFA Enrollment Binding (One-Time Setup)
-
-Before you can use MFA, you must bind your enrollment to a device.
-
-#### Option A: Using Demo Device (Development)
-
-```mermaid
-sequenceDiagram
-    participant Admin as Administrator
-    participant Browser as Demo Device<br/>:8082
-    participant AuthAPI as Auth API<br/>:8080
-    participant DB as Database
-    
-    Note over Admin,DB: Enrollment Binding Process
-    
-    Admin->>Browser: Open http://localhost:8082
-    Admin->>Browser: Click "Bind Enrollment"
-    Admin->>Browser: Enter enrollment credentials
-    Note right of Browser: Enrollment ID: 1<br/>Proof Token: abc123...<br/>Challenge: 542891
-    
-    Browser->>Browser: Generate RSA-2048 Key Pair
-    Note right of Browser: Device Private Key<br/>Device Public Key
-    
-    Browser->>AuthAPI: POST /api/v1/enrollments/bind
-    Note right of Browser: {enrollmentId: 1,<br/>enrollmentProofToken: "abc123..."}
-    
-    AuthAPI->>DB: Validate proof token
-    DB-->>AuthAPI: ✅ Valid enrollment
-    
-    AuthAPI-->>Browser: {integrationName: "Ezkey System Admin",<br/>enrollmentProofToken: "...",<br/>challengeRequired: true}
-    
-    Browser->>Browser: Sign proof token with device private key
-    
-    Browser->>AuthAPI: POST /api/v1/enrollments/verify
-    Note right of Browser: {enrollmentId: 1,<br/>devicePublicKey: "...",<br/>enrollmentProofTokenSigned: "...",<br/>challengeResponse: 542891}
-    
-    AuthAPI->>DB: Validate signature
-    AuthAPI->>DB: Validate challenge code
-    AuthAPI->>DB: Store device public key
-    DB-->>AuthAPI: ✅ Enrollment bound
-    
-    AuthAPI-->>Browser: {active: true}
-    Browser-->>Admin: ✅ Enrollment bound successfully!
-```
-
-**Demo Device Steps:**
-
-1. **Start demo device:**
-   ```bash
-   cd ezkey-demo-device
-   mvn spring-boot:run
-   ```
-
-2. **Open browser:**
-   ```
-   http://localhost:8082
-   ```
-
-3. **Bind enrollment:**
-   - Click "Bind Enrollment"
-   - Enter Enrollment ID: `1`
-   - Enter Proof Token: `abc123-def456-ghi789-jkl012`
-   - Enter Challenge Code: `542891`
-   - Click "Bind"
-
-4. **Verify success:**
-   ```
-   ✅ Enrollment bound successfully!
-   Device public key registered for enrollment 1
-   ```
-
-#### Option B: Using CLI (Production)
-
-```bash
-# Install Ezkey CLI (if not already installed)
-cd ezkey-cli-python
-pip install -r requirements.txt
-
-# Bind enrollment
-ezkey admin enroll bind \
-  --enrollment-id 1 \
-  --enrollment-proof-token "abc123-def456-ghi789-jkl012"
-
-# Follow interactive prompts to:
-# 1. Generate device RSA keys
-# 2. Enter challenge code (542891)
-# 3. Complete binding
-```
-
----
-
-### Step 5: Complete MFA Flow (After Password Change)
-
-If MFA was required after password change, you received a **temp token**. Use it to complete authentication:
-
-```mermaid
-sequenceDiagram
-    participant Admin as Administrator
-    participant AdminAPI as Admin API<br/>:9080
-    participant AuthAPI as Auth API<br/>:8080
-    participant Device as Demo Device<br/>:8082
-    participant DB as Database
-    
-    Note over Admin,DB: Continue from Step 3 (temp token received)
-    
-    Admin->>AdminAPI: POST /api/v1/admin/mfa/attempt
-    Note right of Admin: {tempToken: "ezkey_temp_xyz..."}
-    
-    AdminAPI->>DB: Validate temp token (active, not expired)
-    DB-->>AdminAPI: ✅ Valid (admin has enrollment)
-    
-    AdminAPI->>DB: Create AuthAttempt
-    Note right of DB: Status: PENDING<br/>Proof token: generated
-    
-    AdminAPI-->>Admin: {authAttemptId: 123}
-    
-    Note over Admin: Wait for device approval<br/>(polling or notification)
-    
-    Device->>AuthAPI: POST /api/v1/auth-attempts/pending
-    Note right of Device: {enrollmentId: 1,<br/>enrollmentProofToken: "...",<br/>deviceProofToken: "...",<br/>signed: "..."}
-    
-    AuthAPI->>DB: Find PENDING auth attempt
-    DB-->>AuthAPI: AuthAttempt #123
-    
-    AuthAPI-->>Device: {authAttemptId: 123,<br/>authAttemptProofToken: "...",<br/>challengeRequired: false}
-    
-    Device->>Device: Show approval dialog
-    Note right of Device: "Ezkey System Admin<br/>requests authentication"
-    
-    Device->>AuthAPI: POST /api/v1/auth-attempts/respond
-    Note right of Device: {authAttemptId: 123,<br/>authAttemptAccepted: true,<br/>authAttemptProofTokenSigned: "..."}
-    
-    AuthAPI->>DB: Validate signature
-    AuthAPI->>DB: Update status: ACCEPTED
-    DB-->>AuthAPI: ✅ Approved
-    
-    AuthAPI-->>Device: {result: "APPROVED"}
-    
-    Note over Admin: Check attempt status
-    
-    Admin->>AdminAPI: POST /api/v1/admin/mfa/validate
-    Note right of Admin: {tempToken: "ezkey_temp_xyz...",<br/>authAttemptId: 123}
-    
-    AdminAPI->>DB: Validate temp token
-    AdminAPI->>DB: Check attempt status = ACCEPTED
-    AdminAPI->>DB: Invalidate temp token (single-use)
-    
-    AdminAPI->>DB: Generate Bearer Token C (24h)
-    
-    AdminAPI-->>Admin: {success: true,<br/>token: "ezkey_def456...",<br/>adminType: "GLOBAL_ADMIN",<br/>expiresAt: "..."}
-    
-    Note over Admin: ✅ Fully authenticated!<br/>Ready for daily operations
-```
-
-**Step 5.1 - Create MFA Attempt:**
-```http
-POST http://localhost:9080/api/v1/admin/mfa/attempt
-Content-Type: application/json
-
-{
-  "tempToken": "ezkey_temp_xyz789abc..."
-}
-```
-
-**Response:**
-```json
-{
-  "authAttemptId": 123
-}
-```
-
-**Step 5.2 - Approve on Device:**
-
-Open demo device at `http://localhost:8082`:
-- Click "Check Pending Auth Attempts"
-- See request: "Ezkey System Admin requests authentication"
-- Click "Approve"
-
-**Step 5.3 - Validate MFA:**
-```http
-POST http://localhost:9080/api/v1/admin/mfa/validate
-Content-Type: application/json
-
-{
-  "tempToken": "ezkey_temp_xyz789abc...",
-  "authAttemptId": 123
-}
-```
-
-**Response (Final Bearer Token):**
-```json
-{
-  "success": true,
-  "token": "ezkey_def456ghi789...",
-  "adminType": "GLOBAL_ADMIN",
-  "username": "admin",
-  "expiresAt": "2025-10-10T07:47:00",
+  "expiresAt": "2025-10-14T10:00:00Z",
   "message": "Authentication successful"
 }
 ```
 
-**✅ Setup Complete!** Admin is now fully configured with MFA.
+**Setup Complete!** ✅
 
 ---
 
 ## Daily Authentication Workflow
 
-After initial setup, the daily login process is streamlined:
+### Scenario 1: Quick Login (No Challenge)
 
-```mermaid
-flowchart TD
-    Start([Administrator Needs Access]) --> Login[POST /login<br/>username + password]
-    
-    Login --> ValidateCreds{Credentials<br/>Valid?}
-    ValidateCreds -->|No| LoginFail[401 Unauthorized]
-    ValidateCreds -->|Yes| CheckMFA{MFA<br/>Required?}
-    
-    CheckMFA -->|No - Dev Mode| DirectToken[Issue Bearer Token<br/>24h validity]
-    CheckMFA -->|Yes - Prod/Bound| TempToken[Issue Temp Token<br/>5min validity]
-    
-    TempToken --> CreateAttempt[POST /mfa/attempt<br/>tempToken]
-    CreateAttempt --> WaitApproval[Wait for Device Approval]
-    
-    WaitApproval --> DeviceCheck[Device polls<br/>POST /pending]
-    DeviceCheck --> UserDecision{User<br/>Approves?}
-    
-    UserDecision -->|No| Denied[POST /respond<br/>accepted: false]
-    UserDecision -->|Yes| Approved[POST /respond<br/>accepted: true]
-    
-    Denied --> ValidateFail[POST /validate<br/>Returns 401]
-    Approved --> Validate[POST /validate<br/>tempToken + attemptId]
-    
-    Validate --> FinalToken[Issue Bearer Token<br/>24h validity]
-    
-    DirectToken --> AccessAPI[Access Protected<br/>Resources]
-    FinalToken --> AccessAPI
-    
-    AccessAPI --> End([Daily Operations])
-    LoginFail --> End
-    ValidateFail --> End
-    
-    style Start fill:#e1f5fe
-    style DirectToken fill:#c8e6c9
-    style TempToken fill:#fff9c4
-    style FinalToken fill:#c8e6c9
-    style AccessAPI fill:#c8e6c9
-    style End fill:#e1f5fe
-    style LoginFail fill:#ffcdd2
-    style ValidateFail fill:#ffcdd2
+**Use Case:** Daily admin tasks, low-risk operations
+
+**Flow:**
+```
+Admin → POST /login → (blocks) → Device Approval → Bearer Token
 ```
 
-### Scenario A: MFA Enabled (Production)
-
-**1. Login:**
+**Request:**
 ```http
-POST http://localhost:9080/api/v1/admin/auth/login
+POST /api/v1/admin/auth/login
 Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "MySecurePassword123!"
+  "challengeRequested": false
 }
 ```
 
-**Response (Temp Token):**
+**Timeline:**
+- `0s`: Request sent (blocks)
+- `5s`: Admin opens device, checks pending
+- `7s`: Admin approves
+- `7s`: Response received with bearer token
+
+**Advantages:**
+- ✅ Single API call
+- ✅ Automatic wait (no polling logic needed)
+- ✅ Simple integration
+
+**Disadvantages:**
+- ⏳ Blocking (up to 5 minutes)
+- ❌ No challenge verification (slightly less secure)
+
+---
+
+### Scenario 2: Secure Login (With Challenge)
+
+**Use Case:** High-security operations, sensitive data access, production systems
+
+**Flow:**
+```
+Admin → POST /login → Challenge Code → Device Entry → POST /passwordless-wait → Bearer Token
+```
+
+**Step 1 - Initiate Login:**
+```http
+POST /api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "challengeRequested": true
+}
+```
+
+**Step 1 Response (Immediate):**
 ```json
 {
-  "success": true,
-  "tempToken": "ezkey_temp_abc123...",
-  "mfaRequired": true,
-  "expiresAt": "2025-10-09T13:05:00",
-  "message": "MFA verification required",
-  "username": "admin"
+  "success": false,
+  "status": "pending",
+  "authAttemptId": 123,
+  "challengeCode": 654321,
+  "username": "admin",
+  "adminType": "GLOBAL_ADMIN",
+  "expiresAt": "2025-10-04T10:05:00Z",
+  "message": "Challenge verification required. Enter code 654321 on your device, then call /passwordless-wait."
 }
 ```
 
-**2-4. MFA Flow** (same as Step 5 above)
+**Step 2 - Display Challenge:**
+```
+UI displays: "Enter code 654321 on your Ezkey device"
+```
 
-**Total time:** ~30 seconds (depending on device approval)
+**Step 3 - Admin Actions on Device:**
+1. Check "Pending Authentications"
+2. See login request with challenge input field
+3. Enter code: `654321`
+4. Approve
 
-### Scenario B: MFA Disabled (Development)
-
-**1. Login:**
+**Step 4 - Wait for Completion:**
 ```http
-POST http://localhost:9080/api/v1/admin/auth/login
+POST /api/v1/admin/auth/passwordless-wait
 Content-Type: application/json
 
 {
-  "username": "admin",
-  "password": "MySecurePassword123!"
+  "authAttemptId": 123,
+  "challengeCode": 654321
 }
 ```
 
-**Response (Direct Bearer Token):**
+**Step 4 Response (After Approval):**
 ```json
 {
   "success": true,
   "token": "ezkey_abc123def456...",
   "adminType": "GLOBAL_ADMIN",
   "username": "admin",
-  "expiresAt": "2025-10-10T13:00:00",
+  "expiresAt": "2025-10-04T10:00:00Z",
   "message": "Authentication successful"
 }
 ```
 
-**Total time:** <1 second
+**Timeline:**
+- `0s`: Login with challenge (immediate response)
+- `0s-30s`: User sees challenge code, opens device
+- `30s`: User enters 654321 on device
+- `35s`: User approves on device
+- `35s`: `/passwordless-wait` returns bearer token
+
+**Advantages:**
+- ✅ Non-blocking initial request
+- ✅ Challenge verification adds security layer
+- ✅ Protection against device theft
+- ✅ Anti-enumeration protection (challengeCode proves legitimacy)
+
+**Security Enhancement:**
+The `challengeCode` serves two purposes:
+1. **User verification:** User must have seen the challenge code (proves legitimate login)
+2. **Anti-enumeration:** Prevents attackers from guessing authAttemptId values
+
+---
+
+## Challenge-Based Authentication
+
+### Why Use Challenges?
+
+**Without Challenge (Convenience):**
+```
+Risk: If device is stolen, thief can approve any login attempt
+```
+
+**With Challenge (Security):**
+```
+Protection: Even with stolen device, thief doesn't know the challenge code
+            displayed on the admin's screen
+```
+
+### Configuration
+
+**Per-Admin Default:**
+```sql
+-- Set challenge required for specific admin
+UPDATE ezkey_admin 
+SET challenge_required = true 
+WHERE username = 'admin';
+```
+
+**Per-Request Override:**
+```json
+// Override admin's default (convenience for trusted network)
+{
+  "username": "admin",
+  "challengeRequested": false
+}
+```
+
+### Challenge Code Properties
+
+- **Format:** 6-digit integer (000000-999999)
+- **Entropy:** ~20 bits (1 million combinations)
+- **Lifetime:** 5 minutes
+- **Display:** Admin screen shows code, user enters on device
+- **Validation:** Device-side validation before signature
+- **Audit:** Invalid challenges logged as INVALID status
+
+---
+
+## Emergency Recovery
+
+### When You Need Recovery
+
+**Scenario:** Admin loses their enrolled device (lost, stolen, broken)
+
+**Problem:** Cannot authenticate without device approval
+
+**Solution:** Single-use recovery codes (generated at account creation)
+
+### Recovery Workflow
+
+#### Step 1: Use Recovery Code
+
+```http
+POST /api/v1/admin/auth/recover
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "recoveryCode": "1234-5678-9012-3456-7890-1234-5678-9012"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "recoveryToken": "ezkey_recovery_abc123...",
+  "expiresAt": "2025-10-04T10:30:00Z",
+  "codesRemaining": 9,
+  "message": "Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately."
+}
+```
+
+**Notes:**
+- Recovery token expires after **30 minutes** (limited time window)
+- Code is **single-use** (removed from array after validation)
+- `codesRemaining` shows how many codes you have left
+
+#### Step 2: Reset Enrollment (Unbind Lost Device)
+
+```http
+POST /api/v1/admin/enrollments/reset
+Authorization: Bearer ezkey_recovery_abc123...
+Content-Type: application/json
+
+{
+  "enrollmentId": 1
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "enrollmentId": 1,
+  "enrollmentProofToken": "new-token-xyz789...",
+  "enrollmentChallenge": 123456,
+  "integrationId": 1,
+  "message": "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device."
+}
+```
+
+**Effect:**
+- Old device's public key removed (`device_public_key = NULL`)
+- Enrollment status reset to `CREATED` (ready for new bind)
+- New credentials generated for binding
+
+#### Step 3: Bind New Device
+
+Use new credentials from Step 2 to bind your new/replacement device:
+
+**Demo Device:**
+1. Go to "Bind Enrollment"
+2. Enter **NEW** credentials:
+   - Enrollment ID: `1`
+   - Enrollment Proof Token: `new-token-xyz789...`
+3. Bind and verify with challenge code: `123456`
+
+#### Step 4: Resume Normal Login
+
+After binding new device, passwordless login works as before:
+
+```http
+POST /api/v1/admin/auth/login
+{
+  "username": "admin"
+}
+```
+
+### Recovery Code Security
+
+**Format:** `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX` (32 digits)
+
+**Entropy:** 106 bits
+- 10^32 possible combinations
+- At 1 million attempts/second: 3 × 10^18 years to brute force
+- Resistant to quantum attacks (>100 bits recommended)
+
+**Storage:** BCrypt hashed (work factor 10)
+
+**Generation:** SecureRandom (cryptographically secure)
+
+**Best Practices:**
+- ✅ Print codes and store in safe
+- ✅ Store encrypted in password manager
+- ✅ Test one code before production
+- ❌ Never store in plaintext
+- ❌ Never share recovery codes
+- ❌ Never email recovery codes
 
 ---
 
 ## Token Management
 
-### Token Types
+### Bearer Token Lifecycle
 
-```mermaid
-graph TB
-    subgraph "Token Lifecycle"
-        A[Bearer Token] -->|24 hours| B[Expires]
-        C[Temp Token] -->|5 minutes| D[Expires]
-        
-        A -->|Used| E[Active]
-        E -->|Login again| F[Rotated - Old Invalid]
-        F -->|New token| A
-        
-        C -->|MFA validate| G[Single-Use]
-        G -->|Invalidated| D
-        
-        A -->|Password change| H[All Invalidated]
-        H -->|New token| A
-    end
-    
-    style A fill:#c8e6c9
-    style C fill:#fff9c4
-    style B fill:#ffcdd2
-    style D fill:#ffcdd2
-    style F fill:#ffcdd2
-    style G fill:#ffcdd2
-    style H fill:#ffcdd2
+**Token Properties:**
+```
+Format:    ezkey_[UUID without hyphens]
+Lifetime:  24 hours
+Storage:   PostgreSQL (ezkey_admin_tokens table)
+Fields:    bearer_token, admin_id, expires_at, active
 ```
 
-### Bearer Token Characteristics
-
-| Property | Value | Notes |
-|----------|-------|-------|
-| **Prefix** | `ezkey_` | Identifies Ezkey tokens |
-| **Validity** | 24 hours | Configurable |
-| **Format** | `ezkey_[UUID without dashes]` | 256-bit entropy |
-| **Storage** | Database (active flag) | Can be invalidated server-side |
-| **Rotation** | On login (optional) | Configured via `ezkey.admin.token.rotation-on-login` |
-| **Scope** | Full API access | All endpoints |
-
-**Using Bearer Token:**
-```http
-GET http://localhost:9080/api/v1/admin/integrations
-Authorization: Bearer ezkey_abc123def456ghi789...
-```
-
-### Temporary Token Characteristics
-
-| Property | Value | Notes |
-|----------|-------|-------|
-| **Prefix** | `ezkey_temp_` | Distinguishes from bearer tokens |
-| **Validity** | 5 minutes | Short-lived for security |
-| **Format** | `ezkey_temp_[UUID without dashes]` | 256-bit entropy |
-| **Usage** | Single-use | Invalidated after MFA validation |
-| **Purpose** | MFA flow only | Cannot access other endpoints |
-| **Generation** | Login or password change | When MFA required |
-
-**Using Temp Token:**
-```http
-POST http://localhost:9080/api/v1/admin/mfa/attempt
-Content-Type: application/json
-
-{
-  "tempToken": "ezkey_temp_xyz789abc..."
-}
-```
+**Token States:**
+- **ACTIVE + NOT EXPIRED:** Valid for API access
+- **ACTIVE + EXPIRED:** Invalid (rejected by validator)
+- **INACTIVE:** Revoked (logout, rotation)
 
 ### Token Rotation
 
-**Configuration:**
+**Automatic Rotation on Login:**
 ```properties
-# Enable automatic token rotation on login (recommended)
 ezkey.admin.token.rotation-on-login=true
 ```
 
 **Behavior:**
-- When enabled: All existing active tokens are deactivated on new login
-- Ensures only one active token per admin at any time
-- Limits attack surface if token is stolen
+- On successful login, all old active tokens are deactivated
+- Forces "one active token per admin" security policy
 - Invalidates stolen tokens on next legitimate login
 
-**Rotation Triggers:**
-1. New login (if rotation enabled)
-2. Password change (always)
-3. Manual logout
-
----
-
-## MFA Configuration
-
-### MFA Modes
-
-```mermaid
-graph LR
-    subgraph "Dev Mode (default)"
-        A[MFA Optional] --> B{Admin<br/>Choice}
-        B -->|Enabled| C[MFA Required]
-        B -->|Disabled| D[Password Only]
-    end
-    
-    subgraph "Prod Mode (recommended)"
-        E[MFA Required] --> F{Enrollment<br/>Bound?}
-        F -->|Yes| G[MFA Enforced]
-        F -->|No| H[Allow but Log Warning]
-    end
-    
-    style C fill:#c8e6c9
-    style G fill:#c8e6c9
-    style D fill:#fff9c4
-    style H fill:#fff9c4
+**Manual Rotation:**
+```http
+POST /api/v1/admin/auth/logout
+Authorization: Bearer ezkey_old_token...
 ```
 
-**Configuration:**
+Then login again to get new token.
+
+### Token Cleanup
+
+**Automatic Cleanup (Scheduled):**
 ```properties
-# Development mode: MFA optional
-ezkey.admin.mfa.mode=dev
-
-# Production mode: MFA required
-ezkey.admin.mfa.mode=prod
+ezkey.admin.token.cleanup.enabled=true
+ezkey.admin.token.cleanup.schedule=0 0 * * * *  # Hourly
 ```
 
-### MFA Decision Logic
-
-```java
-// Pseudo-code for shouldRequireMfa()
-if (passwordChangeRequired) {
-    return false; // Allow login to change password
-}
-
-boolean enrollmentBound = (admin.mfaEnrollment != null 
-    && admin.mfaEnrollment.devicePublicKey != null);
-
-if (mode == "prod") {
-    // Production: MFA required if enrollment bound
-    return enrollmentBound;
-} else {
-    // Dev: Check admin preferences
-    return enrollmentBound 
-        && admin.mfaEnabled 
-        && admin.mfaRequired;
-}
-```
-
-### Admin MFA Flags
-
-Each admin has three MFA-related flags in the database:
-
-| Flag | Type | Purpose | Default |
-|------|------|---------|---------|
-| `mfa_enabled` | Boolean | Admin has MFA capability | `true` |
-| `mfa_required` | Boolean | Admin must use MFA | `true` |
-| `mfa_enrollment_id` | Integer | Linked enrollment | `null → 1` |
-
-**Updating flags (SQL):**
-```sql
--- Disable MFA for specific admin (dev mode only)
-UPDATE ezkey_admin 
-SET mfa_required = false 
-WHERE username = 'admin';
-
--- Re-enable MFA
-UPDATE ezkey_admin 
-SET mfa_required = true 
-WHERE username = 'admin';
-```
+**Cleanup Logic:**
+- Deletes tokens that are **both expired AND inactive**
+- Preserves active tokens (even if expired) for audit
+- Runs on configurable schedule (default: hourly)
 
 ---
 
 ## Security Best Practices
 
-### 1. Password Management
+### 1. Device Security
 
-✅ **DO:**
-- Use strong, unique passwords (12+ characters)
-- Store passwords in a secure password manager
-- Change password immediately after first login
-- Use different passwords for dev/staging/prod environments
+**Critical:** The device stores your private key
+- ✅ Enable device passcode/biometric
+- ✅ Don't root/jailbreak device
+- ✅ Keep Ezkey app updated
+- ❌ Never share device unlocked
+- ❌ Never backup private keys
 
-❌ **DON'T:**
-- Reuse passwords across environments
-- Share passwords via insecure channels (email, chat)
-- Use common passwords or patterns
-- Store passwords in plain text files
+### 2. Recovery Codes Management
 
-### 2. Token Security
+**Storage Options (Ranked):**
+1. **Physical safe** - Print codes, store in fireproof safe
+2. **Password manager** - Encrypted storage (1Password, Bitwarden)
+3. **Encrypted USB** - Offline encrypted storage
 
-✅ **DO:**
-- Store bearer tokens securely (encrypted storage, secure cookies)
-- Use HTTPS in production (tokens in HTTP headers)
-- Implement token rotation on login
-- Set appropriate token expiration times
-- Clear tokens on logout
+**Never:**
+- ❌ Store in cloud plaintext (Dropbox, Google Drive)
+- ❌ Email to yourself
+- ❌ Take unencrypted screenshots
+- ❌ Share with anyone (even IT staff)
 
-❌ **DON'T:**
-- Store tokens in local storage (XSS vulnerability)
-- Log bearer tokens (use `[PROTECTED]` placeholder)
-- Share tokens between users or services
-- Use tokens after logout
-
-### 3. MFA Configuration
-
-✅ **DO:**
-- Enable MFA in production (`mode=prod`)
-- Bind enrollment to a secure device
-- Use demo-device only in development
-- Protect enrollment credentials (proof token, challenge)
-- Test MFA flow in staging before production
-
-❌ **DON'T:**
-- Disable MFA in production
-- Share enrollment credentials
-- Use same enrollment across multiple admins
-- Bind to untrusted devices
-
-### 4. Rate Limiting
-
-**Current Configuration:**
-```properties
-# Login endpoint protection
-ezkey.admin.rate-limit.login.requests=5
-ezkey.admin.rate-limit.login.window-minutes=5
-
-# IP blocking after repeated failures
-ezkey.admin.rate-limit.login.block-after-failures=10
-ezkey.admin.rate-limit.login.block-duration-minutes=30
+**Best Practice:**
+```bash
+# Test one recovery code immediately after bootstrap
+# This ensures codes work BEFORE you need them in emergency
+POST /recover with code #10
+If successful: You have 9 codes left
+If failed: Contact support immediately
 ```
 
-**Monitoring:**
-- Watch for `429 Too Many Requests` responses
-- Review blocked IPs in logs
-- Adjust limits based on legitimate usage patterns
+### 3. Challenge Mode Decision
+
+**Use challenge=false (convenience) when:**
+- Trusted network (office VPN)
+- Low-risk operations (read-only queries)
+- Device always with you
+
+**Use challenge=true (security) when:**
+- Public networks (coffee shop, airport)
+- High-risk operations (user deletion, key changes)
+- Compliance requirements (SOC2, PCI-DSS)
+- Production systems
+
+**Per-Admin Configuration:**
+```sql
+-- Set default for high-security admin
+UPDATE ezkey_admin 
+SET challenge_required = true 
+WHERE admin_type = 'GLOBAL_ADMIN';
+```
+
+### 4. Rate Limiting Configuration
+
+**Production Settings:**
+```properties
+# Login endpoint
+ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.window-minutes=1
+
+# IP blocking
+ezkey.admin.rate-limit.login.block-after-failures=10
+ezkey.admin.rate-limit.login.block-duration-minutes=30
+
+# Recovery endpoint (stricter)
+ezkey.admin.rate-limit.recovery.requests=3
+ezkey.admin.rate-limit.recovery.window-minutes=15
+```
 
 ### 5. Audit and Monitoring
 
 **Key Metrics to Monitor:**
-- Failed login attempts (potential brute force)
-- Password change frequency (potential compromise)
-- MFA approval/denial ratio (suspicious activity)
-- Token rotation frequency
-- Active token count per admin
+```sql
+-- Failed auth attempts (potential attacks)
+SELECT COUNT(*) 
+FROM ezkey_auth_attempt 
+WHERE auth_attempt_status = 'REJECTED' 
+AND created_at > NOW() - INTERVAL '1 hour';
 
-**Log Analysis:**
-```bash
-# Find failed login attempts
-grep "Authentication failed" admin-api.log
+-- Recovery code usage (unusual = investigation needed)
+SELECT admin_id, username, 
+       ARRAY_LENGTH(recovery_codes, 1) as codes_remaining
+FROM ezkey_admin
+WHERE ARRAY_LENGTH(recovery_codes, 1) < 10;
 
-# Find password changes
-grep "Password changed successfully" admin-api.log
-
-# Find MFA approvals
-grep "MFA approved" admin-api.log
-
-# Find rate limit violations
-grep "429 Too Many Requests" admin-api.log
+-- Active sessions per admin
+SELECT a.username, COUNT(t.token_id) as active_tokens
+FROM ezkey_admin a
+LEFT JOIN ezkey_admin_tokens t ON t.admin_id = a.admin_id
+WHERE t.active = true AND t.expires_at > NOW()
+GROUP BY a.admin_id, a.username;
 ```
 
 ---
 
 ## Troubleshooting
 
-### Issue 1: "Invalid credentials" on First Login
+### Problem: "No device enrolled for passwordless authentication"
 
-**Symptoms:**
-```json
-{
-  "success": false,
-  "message": "Invalid credentials"
-}
-```
+**Cause:** Admin account exists but enrollment not bound
 
-**Causes:**
-1. Incorrect password (typo)
-2. Username incorrect (not "admin")
-3. Password already changed and you're using old password
-
-**Resolution:**
-```bash
-# Check console logs for initial password
-grep "ADMIN ZERO CREATED" logs/admin-api.log
-
-# Reset password in database (emergency only)
-psql -d ezkey_db -c "
-UPDATE ezkey_admin 
-SET password_hash = '\$2a\$10\$...', 
-    password_change_required = true 
-WHERE username = 'admin';
-"
-```
-
----
-
-### Issue 2: Bearer Token After Password Change (Expected Temp Token)
-
-**Symptoms:**
-- Change password successful
-- Received bearer token instead of temp token
-- MFA not triggered
-
-**Causes:**
-1. MFA not configured (`mfa_required=false`)
-2. Enrollment not bound yet
-3. Dev mode with MFA disabled
-
-**Resolution:**
+**Solution:**
 ```sql
--- Check admin MFA configuration
-SELECT username, mfa_enabled, mfa_required, mfa_enrollment_id 
-FROM ezkey_admin 
-WHERE username = 'admin';
-
 -- Check enrollment status
-SELECT e.enrollment_id, e.enrollment_name, 
-       e.device_public_key IS NOT NULL as bound
-FROM ezkey_enrollment e
-WHERE e.enrollment_id = 1;
-
--- Enable MFA if needed
-UPDATE ezkey_admin 
-SET mfa_enabled = true, mfa_required = true 
-WHERE username = 'admin';
+SELECT a.username, e.enrollment_id, 
+       e.device_public_key IS NOT NULL as is_bound
+FROM ezkey_admin a
+LEFT JOIN ezkey_enrollment e ON e.enrollment_id = a.mfa_enrollment_id
+WHERE a.username = 'admin';
 ```
 
----
+If `is_bound = false`:
+1. Get enrollment credentials from bootstrap logs
+2. Bind device using Demo Device or Mobile app
+3. Retry login
 
-### Issue 3: Temp Token Expired
+### Problem: "Authentication timeout - no device response"
 
-**Symptoms:**
-```json
-{
-  "success": false,
-  "message": "Temp token expired"
-}
-```
+**Cause:** Device not checking for pending authentications
 
-**Causes:**
-- Took longer than 5 minutes to complete MFA flow
-- Temp token already used (single-use)
+**Solution:**
+1. Open Ezkey app on device
+2. Click "Check Pending Authentications"
+3. Approve the login request
+4. Timeout is 5 minutes - retry if expired
 
-**Resolution:**
-1. Re-login to get new temp token
-2. Complete MFA flow within 5 minutes
-3. Check system clock synchronization
+### Problem: "Challenge value mismatch"
 
----
+**Cause:** Wrong challenge code entered on device
 
-### Issue 4: MFA Attempt Not Found on Device
+**Solution:**
+1. Check challenge code from `/login` response
+2. Enter exact code on device (6 digits)
+3. Case sensitive: ensure correct digits
+4. Auth attempt marked INVALID - create new login request
 
-**Symptoms:**
-- Created MFA attempt successfully
-- Device doesn't show pending attempt
+### Problem: "Invalid recovery code"
 
-**Causes:**
-1. Wrong enrollment ID
-2. Device not polling correctly
-3. Enrollment not bound to device
+**Possible Causes:**
+1. Recovery code already used (single-use)
+2. Typo in code entry (32 digits, no ambiguous chars)
+3. Wrong admin username
 
-**Resolution:**
-```bash
-# Check enrollment binding
-curl http://localhost:8080/api/v1/enrollments/bind \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d '{
-    "enrollmentId": 1,
-    "enrollmentProofToken": "abc123-def456-ghi789-jkl012"
-  }'
+**Solution:**
+1. Verify code format: 8 groups of 4 digits
+2. Try another recovery code (you have 10 total)
+3. Check `codesRemaining` in response
+4. If all codes exhausted: Contact system administrator
 
-# Check pending attempts in database
-psql -d ezkey_db -c "
-SELECT auth_attempt_id, enrollment_id, 
-       auth_attempt_read, auth_attempt_responded 
-FROM ezkey_auth_attempt 
-WHERE enrollment_id = 1 
-ORDER BY created_at DESC LIMIT 5;
-"
-```
+### Problem: Rate limit exceeded
 
----
+**Cause:** Too many authentication attempts
 
-### Issue 5: Rate Limit Exceeded
-
-**Symptoms:**
+**Response:**
 ```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 300
 
-Too many login attempts. Please try again later.
+{
+  "success": false,
+  "message": "Rate limit exceeded. Try again in 5 minutes."
+}
 ```
 
-**Causes:**
-- Multiple failed login attempts (>5 in 5 minutes)
-- Automated scripts hitting login endpoint
-- IP blocked after 10 consecutive failures
-
-**Resolution:**
-```bash
-# Wait for rate limit window to expire (5 minutes)
-# Or clear rate limit cache (dev only)
-
-# Check blocked IPs
-grep "Rate limit exceeded" logs/admin-api.log
-
-# Adjust rate limits in production (application.properties)
-ezkey.admin.rate-limit.login.requests=10
-ezkey.admin.rate-limit.login.window-minutes=10
-```
+**Solution:**
+1. Wait for `Retry-After` duration (seconds)
+2. Check for automated systems hitting the endpoint
+3. If blocked (10+ failures): Wait 30 minutes
+4. Review audit logs for suspicious activity
 
 ---
 
-## Configuration Reference
+## Security Comparison
 
-### Complete Security Configuration
+### Traditional Password-Based Auth
 
-```properties
-# ==============================================
-# Admin API Security Configuration
-# ==============================================
-
-# Server
-server.port=9080
-
-# Database
-spring.datasource.url=jdbc:postgresql://localhost:5432/ezkey_db
-spring.datasource.username=postgres
-spring.datasource.password=ezkey
-
-# Rate Limiting
-ezkey.admin.rate-limit.enabled=true
-ezkey.admin.rate-limit.login.requests=5
-ezkey.admin.rate-limit.login.window-minutes=5
-ezkey.admin.rate-limit.login.block-after-failures=10
-ezkey.admin.rate-limit.login.block-duration-minutes=30
-
-# Token Management
-ezkey.admin.token.cleanup.enabled=true
-ezkey.admin.token.cleanup.schedule=0 0 * * * *
-ezkey.admin.token.rotation-on-login=true
-
-# MFA Configuration
-ezkey.admin.mfa.bootstrap.enabled=true
-ezkey.admin.mfa.mode=dev
-ezkey.admin.mfa.bootstrap.auto-enrollment=true
-
-# Organization
-ezkey.organization.name=Ezkey System
-ezkey.organization.description=Default system tenant
-
-# Logging
-logging.level.org.ezkey=INFO
-logging.level.org.ezkey.admin.service.AdminAuthService=DEBUG
+```
+❌ Passwords can be stolen (phishing, database breach)
+❌ Passwords can be guessed (brute force, dictionary)
+❌ Password reuse across services
+❌ Users forget passwords
+❌ Weak passwords chosen for convenience
+⚠️ MFA helps but password is still the weak link
 ```
 
-### Environment-Specific Settings
+### Ezkey Passwordless-Only Auth
 
-#### Development
-```properties
-ezkey.admin.mfa.mode=dev
-ezkey.admin.mfa.bootstrap.auto-enrollment=true
-ezkey.admin.token.rotation-on-login=false
-logging.level.org.ezkey=DEBUG
+```
+✅ No password to steal (nothing stored in database)
+✅ Cannot be guessed (106-bit recovery codes, cryptographic keys)
+✅ No password reuse (device-bound credentials)
+✅ Cannot be forgotten (device has key, recovery codes as backup)
+✅ Strong by default (Ed25519 cryptography)
+✅ Phishing resistant (cryptographic challenge-response)
 ```
 
-#### Staging
-```properties
-ezkey.admin.mfa.mode=prod
-ezkey.admin.mfa.bootstrap.auto-enrollment=false
-ezkey.admin.token.rotation-on-login=true
-logging.level.org.ezkey=INFO
-```
+**Threat Model Comparison:**
 
-#### Production
-```properties
-ezkey.admin.mfa.mode=prod
-ezkey.admin.mfa.bootstrap.auto-enrollment=false
-ezkey.admin.token.rotation-on-login=true
-logging.level.org.ezkey=WARN
-spring.datasource.url=${DATABASE_URL}
-spring.datasource.username=${DATABASE_USER}
-spring.datasource.password=${DATABASE_PASSWORD}
-```
+| Attack Vector | Password+MFA | Passwordless | Protection |
+|---------------|--------------|--------------|------------|
+| **Phishing** | ⚠️ Vulnerable | ✅ Immune | No secrets to steal |
+| **Brute Force** | ⚠️ Possible | ✅ Impossible | No password to guess |
+| **Database Breach** | ❌ Game over | ✅ No impact | No passwords stored |
+| **Device Theft** | ⚠️ SMS intercept | ⚠️ Biometric | Recovery codes needed |
+| **Man-in-Middle** | ❌ Session hijack | ✅ Signed requests | Cryptographic |
+| **Replay Attack** | ❌ Token reuse | ✅ Impossible | One-time proof tokens |
 
 ---
 
-## Quick Reference
+## API Reference Summary
 
-### Common API Endpoints
+### Authentication Endpoints
 
 | Endpoint | Method | Purpose | Auth Required |
 |----------|--------|---------|---------------|
-| `/api/v1/admin/auth/login` | POST | Initial authentication | No |
-| `/api/v1/admin/auth/logout` | POST | Invalidate token | Bearer Token |
-| `/api/v1/admin/auth/change-password` | POST | Change password | Bearer Token |
-| `/api/v1/admin/mfa/attempt` | POST | Create MFA challenge | Temp Token |
-| `/api/v1/admin/mfa/validate` | POST | Complete MFA flow | Temp Token |
-| `/api/v1/admin/integrations` | GET | Access protected resource | Bearer Token |
+| `/admin/auth/login` | POST | Passwordless login | No |
+| `/admin/auth/passwordless-wait` | POST | Wait for challenge approval | No |
+| `/admin/auth/recover` | POST | Emergency recovery code auth | No |
+| `/admin/enrollments/reset` | POST | Unbind lost device | Recovery token |
+| `/admin/auth/logout` | POST | Invalidate bearer token | Bearer token |
 
-### Response Status Codes
+### Protected Endpoints (Require Bearer Token)
 
-| Code | Meaning | Action |
-|------|---------|--------|
-| 200 | Success | Continue normal flow |
-| 201 | Created | Resource created successfully |
-| 400 | Bad Request | Check request format/validation |
-| 401 | Unauthorized | Check credentials or token |
-| 403 | Forbidden | Check permissions |
-| 404 | Not Found | Check resource exists |
-| 429 | Too Many Requests | Wait and retry (check Retry-After header) |
-| 500 | Server Error | Check server logs |
+All other Admin API endpoints require bearer token:
 
-### Useful Commands
-
-```bash
-# Start Admin API
-cd ezkey-admin-api && mvn spring-boot:run
-
-# Start Demo Device
-cd ezkey-demo-device && mvn spring-boot:run
-
-# Check database
-psql -d ezkey_db -c "SELECT * FROM ezkey_admin WHERE username = 'admin';"
-
-# View recent logins
-psql -d ezkey_db -c "
-SELECT username, last_login_at, mfa_enabled 
-FROM ezkey_admin 
-ORDER BY last_login_at DESC;
-"
-
-# Check active tokens
-psql -d ezkey_db -c "
-SELECT admin_id, bearer_token, expires_at, active 
-FROM ezkey_admin_token 
-WHERE active = true 
-ORDER BY created_at DESC;
-"
+```http
+GET /api/v1/admin/integrations
+Authorization: Bearer ezkey_abc123...
 ```
 
 ---
 
-## Summary
+## Production Deployment Checklist
 
-The Ezkey Admin API provides **enterprise-grade security** with:
-
-✅ **Multi-layered authentication** (password + MFA)  
-✅ **Automatic bootstrap** (zero manual setup)  
-✅ **Seamless MFA flow** (no re-login after password change)  
-✅ **Token management** (rotation, expiration, invalidation)  
-✅ **Rate limiting** (brute force protection)  
-✅ **Audit trail** (comprehensive logging)  
-
-**Time to Production:**
-- Initial setup: ~5 minutes
-- MFA configuration: ~3 minutes
-- Daily login: ~30 seconds (with MFA)
-
-**Support:**
-- Documentation: `docs/`
-- Issues: GitHub Issues
-- Security: Report privately to security@ezkey.org
+- [ ] ✅ Migrations V1-V9 executed successfully
+- [ ] ✅ Admin zero bootstrap logs captured (enrollment + recovery codes)
+- [ ] ✅ Recovery codes printed and stored in secure location
+- [ ] ✅ At least one recovery code tested and validated
+- [ ] ✅ Device bound successfully (device_public_key set)
+- [ ] ✅ Passwordless login tested (both modes)
+- [ ] ✅ Challenge-based login tested (if using challenge mode)
+- [ ] ✅ Rate limiting verified (test with invalid requests)
+- [ ] ✅ Audit logging reviewed (auth attempts, recovery usage)
+- [ ] ✅ Monitoring dashboards configured
+- [ ] ✅ Incident response plan documented
+- [ ] ✅ Team trained on recovery procedures
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: October 2025*  
-*Maintained by: Ezkey Team*
+## Migration from Password-Based (If Applicable)
 
+**Note:** As of v2.0, Ezkey Admin API is passwordless-only from initial deployment.
+
+If you have an existing installation with password-based authentication:
+
+1. **DO NOT MIGRATE** - This would require custom tooling
+2. **Fresh Install** - Easier to start fresh with passwordless-only
+3. **Contact Support** - For enterprise migration assistance
+
+**Migrations V8-V9 handle schema migration but assume fresh deployment.**
+
+---
+
+## Conclusion
+
+Ezkey Admin API demonstrates **passwordless authentication done right**:
+
+1. **Security by Default:** No passwords = no password attacks
+2. **User Friendly:** Device approval is intuitive
+3. **Enterprise Ready:** Recovery codes, rate limiting, audit trail
+4. **Future Proof:** Aligned with FIDO2/WebAuthn standards
+
+**The future is passwordless. Ezkey leads the way.** 🚀
+
+---
+
+**Questions or Issues?**
+- GitHub Issues: https://github.com/ezkey/ezkey
+- Documentation: `/docs` folder
+- Security: See `CRYPTO.md` for cryptographic details
