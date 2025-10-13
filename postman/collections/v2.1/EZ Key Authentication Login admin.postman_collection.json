@@ -99,6 +99,105 @@
 			"response": []
 		},
 		{
+			"name": "auth recover",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"recoveryToken\", jsonData.recoveryToken);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"username\": \"admin\",\r\n  \"recoveryCode\": \"7668-6427-9483-1866-7724-5212-5428-3193\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/recover",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"auth",
+						"recover"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "enrollments reset",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"token\", jsonData.token);\r",
+							"pm.environment.set(\"tempToken\", jsonData.tempToken);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{recoveryToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"enrollmentId\": 1\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admin/enrollments/reset",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admin",
+						"enrollments",
+						"reset"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "change password",
 			"event": [
 				{

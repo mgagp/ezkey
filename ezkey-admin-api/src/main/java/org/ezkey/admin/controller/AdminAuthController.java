@@ -13,11 +13,9 @@ package org.ezkey.admin.controller;
 import java.time.LocalDateTime;
 
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
-import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
-import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
@@ -161,71 +159,6 @@ public class AdminAuthController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Change administrator password.
-     * <p>
-     * This endpoint allows authenticated administrators to change their password.
-     * It validates the current password, checks new password strength, updates
-     * the password hash, and invalidates all existing tokens for security.
-     * </p>
-     * 
-     * <p>
-     * <b>Security Features:</b>
-     * <ul>
-     * <li>Requires valid bearer token for authentication</li>
-     * <li>Validates current password before allowing change</li>
-     * <li>Enforces strong password requirements (min 12 chars, uppercase, lowercase, digit, special char)</li>
-     * <li>Prevents reuse of current password</li>
-     * <li>Invalidates all existing tokens after successful change</li>
-     * <li>Includes MFA enrollment reminder if applicable</li>
-     * </ul>
-     * </p>
-     *
-     * @param authorization the authorization header containing the bearer token
-     * @param request the password change request containing current and new passwords
-     * @return ResponseEntity containing password change result with enrollment reminder
-     */
-    @PostMapping("/change-password")
-    public ResponseEntity<AdminPasswordChangeResponseDto> changePassword(
-            @RequestHeader("Authorization") String authorization,
-            @Valid @RequestBody AdminPasswordChangeRequestDto request) {
-        
-        try {
-            // Extract and validate bearer token
-            String bearerToken = authorization.replace("Bearer ", "");
-            EzkeyAdmin admin = authService.validateToken(bearerToken);
-            
-            if (admin == null) {
-                logger.warn("Password change attempt with invalid token");
-                AdminPasswordChangeResponseDto errorResponse = new AdminPasswordChangeResponseDto();
-                errorResponse.setSuccess(false);
-                errorResponse.setMessage("Invalid or expired token");
-                return ResponseEntity.status(401).body(errorResponse);
-            }
-            
-            logger.info("🔐 Password change request received for admin: {}", admin.getUsername());
-            
-            // Process password change
-            AdminPasswordChangeResponseDto response = authService.changePassword(admin, request);
-            
-            if (response.getSuccess()) {
-                logger.info("✅ Password changed successfully for admin: {}", admin.getUsername());
-                return ResponseEntity.ok(response);
-            } else {
-                logger.warn("❌ Password change failed for admin {}: {}", 
-                    admin.getUsername(), response.getMessage());
-                return ResponseEntity.badRequest().body(response);
-            }
-            
-        } catch (Exception e) {
-            logger.error("❌ Password change error: {}", e.getMessage(), e);
-            AdminPasswordChangeResponseDto errorResponse = new AdminPasswordChangeResponseDto();
-            errorResponse.setSuccess(false);
-            errorResponse.setMessage("An error occurred during password change");
-            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 

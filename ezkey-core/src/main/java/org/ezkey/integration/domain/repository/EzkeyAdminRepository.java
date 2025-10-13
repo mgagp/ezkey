@@ -163,39 +163,6 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
     List<EzkeyAdmin> findByCreatedByAdminAdminId(Integer createdByAdminId);
 
     /**
-     * Finds administrators with MFA enabled.
-     * <p>
-     * This method returns administrators who have MFA enabled
-     * for security monitoring and management.
-     * </p>
-     *
-     * @return list of administrators with MFA enabled
-     */
-    List<EzkeyAdmin> findByMfaEnabledTrue();
-
-    /**
-     * Finds administrators with MFA required.
-     * <p>
-     * This method returns administrators who are required to use MFA
-     * for all authentication attempts.
-     * </p>
-     *
-     * @return list of administrators with MFA required
-     */
-    List<EzkeyAdmin> findByMfaRequiredTrue();
-
-    /**
-     * Finds administrators with password change required.
-     * <p>
-     * This method returns administrators who must change their password
-     * on next login for security purposes.
-     * </p>
-     *
-     * @return list of administrators with password change required
-     */
-    List<EzkeyAdmin> findByPasswordChangeRequiredTrue();
-
-    /**
      * Checks if a username exists.
      * <p>
      * This method is used to validate username uniqueness

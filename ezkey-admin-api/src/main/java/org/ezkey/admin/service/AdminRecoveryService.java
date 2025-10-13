@@ -17,12 +17,12 @@ import java.util.List;
 import java.util.UUID;
 
 import org.ezkey.admin.exception.AuthenticationException;
-import org.ezkey.integration.domain.entity.AdminTempToken;
+import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.integration.domain.repository.AdminTempTokenRepository;
+import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
@@ -72,19 +72,19 @@ public class AdminRecoveryService {
     private static final int RECOVERY_TOKEN_VALIDITY_MINUTES = 30;
     
     private final EzkeyAdminRepository adminRepository;
-    private final AdminTempTokenRepository tempTokenRepository;
+    private final AdminTokenRepository tokenRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final SignatureService signatureService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom;
 
     public AdminRecoveryService(EzkeyAdminRepository adminRepository,
-                                AdminTempTokenRepository tempTokenRepository,
+                                AdminTokenRepository tokenRepository,
                                 EnrollmentRepository enrollmentRepository,
                                 SignatureService signatureService,
                                 BCryptPasswordEncoder passwordEncoder) {
         this.adminRepository = adminRepository;
-        this.tempTokenRepository = tempTokenRepository;
+        this.tokenRepository = tokenRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.signatureService = signatureService;
         this.passwordEncoder = passwordEncoder;
@@ -205,18 +205,20 @@ public class AdminRecoveryService {
         logger.warn("🔑 Recovery code used for admin: {} ({} codes remaining)", 
             username, remainingCodes.size());
         
-        // 5. Generate temporary recovery token (30 minutes, limited permissions)
+        // 5. Generate temporary recovery bearer token (30 minutes, limited permissions)
         String recoveryToken = "ezkey_recovery_" + UUID.randomUUID().toString().replace("-", "");
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(RECOVERY_TOKEN_VALIDITY_MINUTES);
         
-        AdminTempToken tempToken = new AdminTempToken();
-        tempToken.setTempToken(recoveryToken);
-        tempToken.setAdmin(admin);
-        tempToken.setCreatedAt(LocalDateTime.now());
-        tempToken.setExpiresAt(expiresAt);
-        tempToken.setMfaRequired(false); // Recovery mode - limited access, not MFA flow
-        tempToken.setActive(true);
-        tempTokenRepository.save(tempToken);
+        AdminToken token = new AdminToken();
+        token.setBearerToken(recoveryToken);
+        token.setAdmin(admin);
+        token.setAdminType(admin.getAdminType().name());
+        token.setTenant(admin.getTenant());
+        token.setIntegration(admin.getIntegration());
+        token.setCreatedAt(LocalDateTime.now());
+        token.setExpiresAt(expiresAt);
+        token.setActive(true);
+        tokenRepository.save(token);
         
         logger.info("✅ Recovery token issued for admin: {} (expires: {}, {} recovery codes remaining)",
             username, expiresAt, remainingCodes.size());
@@ -244,25 +246,25 @@ public class AdminRecoveryService {
             throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
         }
         
-        // 2. Find temp token in database
-        AdminTempToken tempToken = tempTokenRepository.findByTempTokenAndActiveTrue(recoveryToken)
+        // 2. Find recovery token in bearer tokens table
+        AdminToken token = tokenRepository.findByBearerTokenAndActiveTrue(recoveryToken)
             .orElseThrow(() -> new org.ezkey.admin.exception.AuthenticationException("Invalid or expired recovery token"));
         
         // 3. Check expiration
-        if (tempToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            logger.warn("❌ Recovery token expired for admin: {}", tempToken.getAdmin().getUsername());
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            logger.warn("❌ Recovery token expired for admin: {}", token.getAdmin().getUsername());
             throw new org.ezkey.admin.exception.AuthenticationException("Recovery token expired");
         }
         
-        // 4. Verify it's a recovery token (mfaRequired = false for recovery)
-        if (Boolean.TRUE.equals(tempToken.getMfaRequired())) {
-            logger.warn("❌ Token is not a recovery token (MFA token instead)");
+        // 4. Verify it's a recovery token (starts with ezkey_recovery_)
+        if (!recoveryToken.startsWith("ezkey_recovery_")) {
+            logger.warn("❌ Token is not a recovery token");
             throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
         }
         
-        logger.debug("✅ Recovery token validated for admin: {}", tempToken.getAdmin().getUsername());
+        logger.debug("✅ Recovery token validated for admin: {}", token.getAdmin().getUsername());
         
-        return tempToken.getAdmin();
+        return token.getAdmin();
     }
 
     /**

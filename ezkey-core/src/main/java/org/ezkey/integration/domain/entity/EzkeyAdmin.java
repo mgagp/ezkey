@@ -27,7 +27,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import org.ezkey.integration.domain.entity.AdminToken;
-import org.ezkey.integration.domain.entity.AdminTempToken;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 
 /**
@@ -48,12 +47,12 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
  * </p>
  *
  * <p>
- * <b>Security Features:</b>
+ * <b>Security Features (Passwordless-Only):</b>
  * <ul>
- * <li><b>Password Hashing:</b> Passwords are stored as BCrypt hashes</li>
- * <li><b>MFA Support:</b> Multi-factor authentication using Ezkey enrollment</li>
+ * <li><b>Passwordless Authentication:</b> Cryptographic authentication via Ezkey enrollment (FIDO2-like)</li>
+ * <li><b>Recovery Codes:</b> Emergency access via single-use BCrypt-hashed recovery codes</li>
  * <li><b>Token Management:</b> Bearer tokens for API authentication</li>
- * <li><b>Audit Trail:</b> Login tracking and password change history</li>
+ * <li><b>Audit Trail:</b> Login tracking and enrollment management</li>
  * </ul>
  * </p>
  *
@@ -122,16 +121,6 @@ public class EzkeyAdmin {
     private String username;
 
     /**
-     * BCrypt hashed password for the administrator.
-     * <p>
-     * This field stores the password hash using BCrypt algorithm
-     * with appropriate strength for security.
-     * </p>
-     */
-    @Column(name = "password_hash", nullable = false, length = 255)
-    private String passwordHash;
-
-    /**
      * Type of administrator determining their permissions.
      * <p>
      * This field determines the scope of authority and permissions
@@ -165,25 +154,6 @@ public class EzkeyAdmin {
     private Integration integration;
 
     /**
-     * Flag indicating whether MFA is enabled for this administrator.
-     * <p>
-     * When enabled, the administrator must use MFA for authentication.
-     * </p>
-     */
-    @Column(name = "mfa_enabled", nullable = false)
-    private Boolean mfaEnabled = true;
-
-    /**
-     * Flag indicating whether MFA is required for this administrator.
-     * <p>
-     * When required, the administrator cannot disable MFA and must
-     * use it for all authentication attempts.
-     * </p>
-     */
-    @Column(name = "mfa_required", nullable = false)
-    private Boolean mfaRequired = true;
-
-    /**
      * Reference to the MFA enrollment for this administrator.
      * <p>
      * This field links to the enrollment record used for MFA
@@ -193,35 +163,6 @@ public class EzkeyAdmin {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mfa_enrollment_id")
     private Enrollment mfaEnrollment;
-
-    /**
-     * Flag indicating whether password change is required.
-     * <p>
-     * When true, the administrator must change their password
-     * on next login for security purposes.
-     * </p>
-     */
-    @Column(name = "password_change_required", nullable = false)
-    private Boolean passwordChangeRequired = false;
-
-    /**
-     * Flag indicating whether passwordless authentication is enabled.
-     * <p>
-     * When true, the administrator can authenticate using only Ezkey cryptographic
-     * authentication without requiring a password. This provides superior security
-     * and aligns with modern passwordless authentication standards (FIDO2/WebAuthn).
-     * </p>
-     * <p>
-     * <b>Requirements for Passwordless Auth:</b>
-     * <ul>
-     * <li>This flag must be true</li>
-     * <li>MFA enrollment must be bound (device public key set)</li>
-     * <li>Password change must not be required</li>
-     * </ul>
-     * </p>
-     */
-    @Column(name = "passwordless_enabled", nullable = false)
-    private Boolean passwordlessEnabled = false;
 
     /**
      * Flag indicating whether challenge verification is required during passwordless auth.
@@ -241,13 +182,13 @@ public class EzkeyAdmin {
      * recovery code use removes the code from the array (single-use enforcement).
      * </p>
      * <p>
-     * <b>Format:</b> XXX-XXX-XXX (9 alphanumeric characters, dash-separated)
+     * <b>Format:</b> XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX (32 digits, 106-bit entropy)
      * <br>
      * <b>Count:</b> 10 codes per admin (generated during creation)
      * <br>
-     * <b>Storage:</b> BCrypt hashed (same security level as passwords)
+     * <b>Storage:</b> BCrypt hashed (paranoia-level security)
      * <br>
-     * <b>Usage:</b> Single-use, grants 30-minute limited access token
+     * <b>Usage:</b> Single-use, grants 30-minute limited access token for enrollment reset
      * </p>
      */
     @Column(name = "recovery_codes")
@@ -285,16 +226,6 @@ public class EzkeyAdmin {
     private LocalDateTime lastLoginAt;
 
     /**
-     * Timestamp of the last password change for this administrator.
-     * <p>
-     * This field is updated each time the administrator changes
-     * their password for audit purposes.
-     * </p>
-     */
-    @Column(name = "last_password_change")
-    private LocalDateTime lastPasswordChange;
-
-    /**
      * Flag indicating whether the administrator account is active.
      * <p>
      * Inactive administrators cannot authenticate to the system
@@ -315,16 +246,6 @@ public class EzkeyAdmin {
     private List<AdminToken> tokens;
 
     /**
-     * List of temporary tokens for this administrator.
-     * <p>
-     * This relationship includes all temporary tokens used
-     * for MFA authentication flows.
-     * </p>
-     */
-    @OneToMany(mappedBy = "admin")
-    private List<AdminTempToken> tempTokens;
-
-    /**
      * Default constructor for JPA.
      * <p>
      * This constructor is required by JPA and should not be used
@@ -338,24 +259,21 @@ public class EzkeyAdmin {
     /**
      * Constructs a new administrator with the specified details.
      * <p>
-     * This constructor creates a new administrator with the provided
-     * username, password hash, and type. The created timestamp is set
-     * to the current time and the administrator is marked as active.
+     * This constructor creates a new passwordless administrator with the provided
+     * username and type. The created timestamp is set to the current time and 
+     * the administrator is marked as active. Passwordless is the only authentication
+     * mode - no flag needed.
      * </p>
      *
      * @param username the unique username for the administrator
-     * @param passwordHash the BCrypt hashed password
      * @param adminType the type of administrator
      */
-    public EzkeyAdmin(String username, String passwordHash, AdminType adminType) {
+    public EzkeyAdmin(String username, AdminType adminType) {
         this.username = username;
-        this.passwordHash = passwordHash;
         this.adminType = adminType;
         this.createdAt = LocalDateTime.now();
         this.active = true;
-        this.mfaEnabled = true;
-        this.mfaRequired = true;
-        this.passwordChangeRequired = false;
+        this.challengeRequired = false;
     }
 
     /**
@@ -392,24 +310,6 @@ public class EzkeyAdmin {
      */
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    /**
-     * Gets the password hash.
-     *
-     * @return the password hash
-     */
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    /**
-     * Sets the password hash.
-     *
-     * @param passwordHash the password hash
-     */
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
     }
 
     /**
@@ -467,42 +367,6 @@ public class EzkeyAdmin {
     }
 
     /**
-     * Gets the MFA enabled status.
-     *
-     * @return true if MFA is enabled
-     */
-    public Boolean getMfaEnabled() {
-        return mfaEnabled;
-    }
-
-    /**
-     * Sets the MFA enabled status.
-     *
-     * @param mfaEnabled the MFA enabled status
-     */
-    public void setMfaEnabled(Boolean mfaEnabled) {
-        this.mfaEnabled = mfaEnabled;
-    }
-
-    /**
-     * Gets the MFA required status.
-     *
-     * @return true if MFA is required
-     */
-    public Boolean getMfaRequired() {
-        return mfaRequired;
-    }
-
-    /**
-     * Sets the MFA required status.
-     *
-     * @param mfaRequired the MFA required status
-     */
-    public void setMfaRequired(Boolean mfaRequired) {
-        this.mfaRequired = mfaRequired;
-    }
-
-    /**
      * Gets the MFA enrollment.
      *
      * @return the MFA enrollment
@@ -518,42 +382,6 @@ public class EzkeyAdmin {
      */
     public void setMfaEnrollment(Enrollment mfaEnrollment) {
         this.mfaEnrollment = mfaEnrollment;
-    }
-
-    /**
-     * Gets the password change required status.
-     *
-     * @return true if password change is required
-     */
-    public Boolean getPasswordChangeRequired() {
-        return passwordChangeRequired;
-    }
-
-    /**
-     * Sets the password change required status.
-     *
-     * @param passwordChangeRequired the password change required status
-     */
-    public void setPasswordChangeRequired(Boolean passwordChangeRequired) {
-        this.passwordChangeRequired = passwordChangeRequired;
-    }
-
-    /**
-     * Gets the passwordless enabled status.
-     *
-     * @return true if passwordless authentication is enabled
-     */
-    public Boolean getPasswordlessEnabled() {
-        return passwordlessEnabled;
-    }
-
-    /**
-     * Sets the passwordless enabled status.
-     *
-     * @param passwordlessEnabled the passwordless enabled status
-     */
-    public void setPasswordlessEnabled(Boolean passwordlessEnabled) {
-        this.passwordlessEnabled = passwordlessEnabled;
     }
 
     /**
@@ -647,24 +475,6 @@ public class EzkeyAdmin {
     }
 
     /**
-     * Gets the last password change timestamp.
-     *
-     * @return the last password change timestamp
-     */
-    public LocalDateTime getLastPasswordChange() {
-        return lastPasswordChange;
-    }
-
-    /**
-     * Sets the last password change timestamp.
-     *
-     * @param lastPasswordChange the last password change timestamp
-     */
-    public void setLastPasswordChange(LocalDateTime lastPasswordChange) {
-        this.lastPasswordChange = lastPasswordChange;
-    }
-
-    /**
      * Gets the active status.
      *
      * @return true if the administrator is active
@@ -701,24 +511,6 @@ public class EzkeyAdmin {
     }
 
     /**
-     * Gets the list of temporary tokens for this administrator.
-     *
-     * @return the list of temporary tokens
-     */
-    public List<AdminTempToken> getTempTokens() {
-        return tempTokens;
-    }
-
-    /**
-     * Sets the list of temporary tokens for this administrator.
-     *
-     * @param tempTokens the list of temporary tokens
-     */
-    public void setTempTokens(List<AdminTempToken> tempTokens) {
-        this.tempTokens = tempTokens;
-    }
-
-    /**
      * Returns a string representation of the administrator.
      *
      * @return string representation of the administrator
@@ -729,8 +521,7 @@ public class EzkeyAdmin {
                 "adminId=" + adminId +
                 ", username='" + username + '\'' +
                 ", adminType=" + adminType +
-                ", mfaEnabled=" + mfaEnabled +
-                ", mfaRequired=" + mfaRequired +
+                ", challengeRequired=" + challengeRequired +
                 ", active=" + active +
                 '}';
     }

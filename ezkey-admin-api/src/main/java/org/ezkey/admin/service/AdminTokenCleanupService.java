@@ -13,7 +13,6 @@ package org.ezkey.admin.service;
 import java.time.LocalDateTime;
 
 import org.ezkey.admin.config.AdminTokenCleanupProperties;
-import org.ezkey.integration.domain.repository.AdminTempTokenRepository;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,20 +72,17 @@ public class AdminTokenCleanupService {
     private static final Logger logger = LoggerFactory.getLogger(AdminTokenCleanupService.class);
 
     private final AdminTokenRepository tokenRepository;
-    private final AdminTempTokenRepository tempTokenRepository;
     private final AdminTokenCleanupProperties properties;
 
     /**
      * Constructs a new admin token cleanup service.
      *
-     * @param tokenRepository repository for admin token operations
+     * @param tokenRepository repository for admin bearer token operations
      * @param properties configuration properties for cleanup
      */
     public AdminTokenCleanupService(AdminTokenRepository tokenRepository,
-                                    AdminTempTokenRepository tempTokenRepository,
                                     AdminTokenCleanupProperties properties) {
         this.tokenRepository = tokenRepository;
-        this.tempTokenRepository = tempTokenRepository;
         this.properties = properties;
     }
 
@@ -118,21 +114,13 @@ public class AdminTokenCleanupService {
         logger.info("🧹 Starting token cleanup - cutoff: {}", cutoff);
 
         try {
-            // Delete tokens that are both expired AND inactive
+            // Delete bearer tokens that are both expired AND inactive
             int deleted = tokenRepository.deleteByExpiresAtBeforeAndActiveFalse(cutoff);
 
             if (deleted > 0) {
-                logger.info("🧹 Cleaned up {} expired tokens", deleted);
+                logger.info("🧹 Cleaned up {} expired bearer tokens", deleted);
             } else {
-                logger.debug("✅ No expired tokens to clean");
-            }
-
-            // Temp tokens: deactivate expired active, then delete old inactive
-            int deactivatedTemp = tempTokenRepository.deactivateExpiredTokens(cutoff);
-            LocalDateTime deleteCutoff = LocalDateTime.now().minusHours(1);
-            int deletedTemp = tempTokenRepository.deleteExpiredTokens(deleteCutoff);
-            if (deactivatedTemp > 0 || deletedTemp > 0) {
-                logger.info("🧹 Temp tokens cleanup: {} deactivated, {} deleted", deactivatedTemp, deletedTemp);
+                logger.debug("✅ No expired bearer tokens to clean");
             }
 
         } catch (Exception e) {

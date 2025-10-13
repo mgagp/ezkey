@@ -230,13 +230,11 @@ public class AdminBootstrapService {
             logger.info("✅ Admin already has enrollment (ID: {})",
                 adminZero.getMfaEnrollment().getEnrollmentId());
             
-            // Enable passwordless if not already enabled
-            if (!Boolean.TRUE.equals(adminZero.getPasswordlessEnabled())) {
-                adminZero.setPasswordlessEnabled(true);
+            // Set default challenge requirement if needed
+            if (adminZero.getChallengeRequired() == null) {
                 adminZero.setChallengeRequired(false);
-                adminZero.setPasswordChangeRequired(false); // No password change in passwordless
                 adminRepository.save(adminZero);
-                logger.info("✅ Passwordless authentication enabled for admin zero");
+                logger.info("✅ Passwordless defaults configured for admin zero");
             }
             return;
         }
@@ -290,11 +288,10 @@ public class AdminBootstrapService {
         // Link admin to enrollment
         adminZero.setMfaEnrollment(enrollmentZero);
         
-        // Enable passwordless authentication for admin zero
-        // This implements "Eat Your Own Dogfood" by demonstrating Ezkey passwordless auth
-        adminZero.setPasswordlessEnabled(true);
-        adminZero.setChallengeRequired(false); // No challenge by default for convenience
-        adminZero.setPasswordChangeRequired(false); // No password change needed in passwordless mode
+        // Configure passwordless authentication defaults
+        // Passwordless is the ONLY mode - no flag needed (implicit)
+        // Challenge is optional - default to false for convenience
+        adminZero.setChallengeRequired(false);
         
         // Generate recovery codes for emergency access
         AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();

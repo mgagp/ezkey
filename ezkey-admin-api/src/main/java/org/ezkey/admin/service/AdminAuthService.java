@@ -5,19 +5,15 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: AdminAuthService
- * Description: Service for administrator authentication.
+ * Description: Service for passwordless administrator authentication.
  */
 
 package org.ezkey.admin.service;
 
-import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
-import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
-import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
-import org.ezkey.admin.util.PasswordValidator;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -25,14 +21,10 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.enrollment.domain.entity.Enrollment;
-import org.ezkey.integration.domain.entity.AdminTempToken;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
-import org.ezkey.integration.domain.repository.AdminTempTokenRepository;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -42,18 +34,26 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Service for administrator authentication.
+ * Service for passwordless administrator authentication.
  * <p>
- * This service handles the authentication of administrators using username and password.
- * It generates bearer tokens for successful authentications and manages token lifecycle.
+ * This service handles passwordless authentication of administrators using Ezkey's
+ * cryptographic authentication system ("eating our own dogfood"). It eliminates
+ * passwords entirely, providing superior security through device-bound credentials.
+ * </p>
+ *
+ * <p>
+ * <b>Authentication Modes:</b>
+ * <ul>
+ * <li><b>Single-call (no challenge):</b> Blocking wait for device approval</li>
+ * <li><b>Two-call (with challenge):</b> Return challenge code, wait separately</li>
+ * </ul>
  * </p>
  *
  * <p>
  * <b>Token Rotation:</b>
  * When token rotation on login is enabled, this service deactivates all existing
  * active tokens for an administrator when they log in, ensuring only one active
- * token exists at any time. This improves security by limiting the attack surface
- * and invalidating stolen tokens on next legitimate login.
+ * token exists at any time.
  * </p>
  *
  * <p>
@@ -73,108 +73,45 @@ public class AdminAuthService {
     private static final Logger logger = LoggerFactory.getLogger(AdminAuthService.class);
 
     private final EzkeyAdminRepository adminRepository;
-    
     private final AdminTokenRepository tokenRepository;
-    
-    private final AdminTempTokenRepository tempTokenRepository;
-    
-    private final BCryptPasswordEncoder passwordEncoder;
-    
     private final AdminTokenRotationProperties rotationProperties;
-    
-    private final AdminMfaProperties mfaProperties;
-    
     private final AuthAttemptService authAttemptService;
-    
     private final AuthAttemptRepository authAttemptRepository;
-    
     private final AdminAuthAttemptTxHelper authAttemptTxHelper;
 
     public AdminAuthService(EzkeyAdminRepository adminRepository,
                             AdminTokenRepository tokenRepository,
-                            AdminTempTokenRepository tempTokenRepository,
-                            BCryptPasswordEncoder passwordEncoder,
                             AdminTokenRotationProperties rotationProperties,
-                            AdminMfaProperties mfaProperties,
                             AuthAttemptService authAttemptService,
                             AuthAttemptRepository authAttemptRepository,
                             AdminAuthAttemptTxHelper authAttemptTxHelper) {
         this.adminRepository = adminRepository;
         this.tokenRepository = tokenRepository;
-        this.tempTokenRepository = tempTokenRepository;
-        this.passwordEncoder = passwordEncoder;
         this.rotationProperties = rotationProperties;
-        this.mfaProperties = mfaProperties;
         this.authAttemptService = authAttemptService;
         this.authAttemptRepository = authAttemptRepository;
         this.authAttemptTxHelper = authAttemptTxHelper;
     }
 
     /**
-     * Authenticate administrator with username and password or passwordless mode.
+     * Authenticate administrator using passwordless Ezkey authentication.
      * <p>
-     * This method orchestrates the authentication flow by delegating to focused
-     * private methods. It supports two authentication modes:
-     * <ul>
-     * <li><b>password mode (default):</b> Traditional password + optional MFA</li>
-     * <li><b>ezkey mode:</b> Passwordless cryptographic authentication only</li>
-     * </ul>
+     * This is the only authentication method - passwords are not supported.
+     * Delegates to {@link #authenticatePasswordless(AdminLoginRequestDto)} internally.
      * </p>
      *
-     * @param request the login request containing username and auth mode
+     * @param request the login request containing username and optional challenge flag
      * @return AdminLoginResponseDto with authentication result
      */
     public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
-        // Determine authentication mode
-        String authMode = request.getAuthMode() != null ? request.getAuthMode() : "password";
-        
-        logger.info("Authentication attempt for user: {} (mode: {})", request.getUsername(), authMode);
+        logger.info("Passwordless authentication attempt for user: {}", request.getUsername());
         
         try {
-            // Route to appropriate authentication flow
-            if ("ezkey".equalsIgnoreCase(authMode)) {
-                return authenticatePasswordless(request);
-            } else {
-                return authenticateWithPassword(request);
-            }
+            return authenticatePasswordless(request);
         } catch (AuthenticationException e) {
             logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
             return buildErrorResponse(e.getMessage());
         }
-    }
-    
-    /**
-     * Authenticate administrator using traditional password + optional MFA.
-     * <p>
-     * This is the legacy authentication flow that validates password first,
-     * then optionally requires MFA if configured.
-     * </p>
-     *
-     * @param request the login request containing username and password
-     * @return AdminLoginResponseDto with authentication result
-     */
-    private AdminLoginResponseDto authenticateWithPassword(AdminLoginRequestDto request) {
-        // 1. Validate credentials (username, password, active status)
-        EzkeyAdmin admin = validateCredentials(request);
-        
-        // 2. Determine if MFA should be required
-        if (shouldRequireMfa(admin)) {
-            // Generate temp token (5 minutes)
-            AdminLoginResponseDto tempResponse = generateTempTokenResponse(admin);
-            return tempResponse;
-        }
-
-        // 3. Rotate tokens if enabled (1 active token per admin)
-        rotateTokensIfEnabled(admin);
-
-        // 4. Generate and persist new token
-        AdminToken token = generateAndPersistToken(admin);
-
-        // 5. Update admin last login timestamp
-        updateLastLogin(admin);
-
-        // 6. Build and return success response (with password change warning if needed)
-        return buildSuccessResponse(admin, token);
     }
     
     /**
@@ -185,7 +122,7 @@ public class AdminAuthService {
      * <ol>
      * <li>Validate username and passwordless eligibility</li>
      * <li>Create auth attempt internally</li>
-     * <li>Wait for device approval (blocking up to 5 minutes)</li>
+     * <li>Either wait for device approval (no challenge) or return challenge (2-step)</li>
      * <li>Issue bearer token on approval</li>
      * </ol>
      * </p>
@@ -200,7 +137,7 @@ public class AdminAuthService {
      * </p>
      *
      * @param request the login request with username and optional challenge flag
-     * @return AdminLoginResponseDto with bearer token or error
+     * @return AdminLoginResponseDto with bearer token or challenge info
      * @throws AuthenticationException if passwordless auth fails
      */
     private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto request) {
@@ -214,36 +151,25 @@ public class AdminAuthService {
             throw new AuthenticationException("Account is inactive");
         }
         
-        if (!Boolean.TRUE.equals(admin.getPasswordlessEnabled())) {
-            logger.warn("Passwordless not enabled for admin: {}", admin.getUsername());
-            throw new AuthenticationException("Passwordless authentication not enabled for this account");
-        }
-        
+        // Passwordless is the ONLY mode - no flag to check
+        // Just ensure enrollment exists and is bound
         if (admin.getMfaEnrollment() == null || admin.getMfaEnrollment().getDevicePublicKey() == null) {
             logger.warn("No bound enrollment for passwordless auth: {}", admin.getUsername());
             throw new AuthenticationException("No device enrolled for passwordless authentication");
         }
         
-        if (Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
-            logger.warn("Password change required blocks passwordless: {}", admin.getUsername());
-            throw new AuthenticationException("Password change required - use password authentication");
-        }
-        
         // 2. Create auth attempt in separate transaction that commits immediately
-        // CRITICAL: Use TxHelper with REQUIRES_NEW to commit before waitForResponse()
-        // waitForResponse() uses NOT_SUPPORTED propagation and won't see uncommitted changes
         Boolean challengeRequested = request.getChallengeRequested() != null 
             ? request.getChallengeRequested() 
-            : admin.getChallengeRequired(); // Use admin's default if not specified
+            : admin.getChallengeRequired();
         
         AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();
         attemptReq.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
         attemptReq.setChallengeRequested(challengeRequested);
         
-        // Use TxHelper to create and commit in separate transaction
         AuthAttemptCreateResponse attemptResponse = authAttemptTxHelper.createAuthAttempt(attemptReq);
         
-        logger.info("🔐 Passwordless auth attempt created and committed (ID: {}, challenge: {})", 
+        logger.info("🔐 Passwordless auth attempt created (ID: {}, challenge: {})", 
             attemptResponse.getAuthAttemptId(), challengeRequested);
         
         // 3. Branch based on challenge requirement
@@ -252,13 +178,12 @@ public class AdminAuthService {
             Integer challengeCode = attemptResponse.getAuthAttemptChallenge();
             
             if (challengeCode == null) {
-                logger.error("❌ Challenge was requested but not generated for authAttemptId: {}", 
+                logger.error("❌ Challenge requested but not generated for authAttemptId: {}", 
                     attemptResponse.getAuthAttemptId());
                 throw new IllegalStateException("Challenge code not generated");
             }
             
-            logger.info("📋 Passwordless with challenge: returning auth attempt info for admin: {} (challenge: {})",
-                admin.getUsername(), challengeCode);
+            logger.info("📋 Passwordless with challenge: returning auth attempt info (challenge: {})", challengeCode);
             
             AdminLoginResponseDto response = new AdminLoginResponseDto();
             response.setSuccess(false); // Not authenticated yet
@@ -274,19 +199,15 @@ public class AdminAuthService {
             return response;
         } else {
             // NO CHALLENGE MODE: Block and wait (single-call convenience)
-            logger.info("⏳ Passwordless (no challenge): waiting for device response for admin: {}...",
-                admin.getUsername());
+            logger.info("⏳ Passwordless (no challenge): waiting for device response...");
             
-            // Wait for device response (blocking, up to 5 minutes)
             AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
             AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(
                 attemptResponse.getAuthAttemptId(), waitReq);
             
-            // Process response
             String status = waitResp.getStatus();
             
             if ("ACCEPTED".equals(status)) {
-                // SUCCESS: Generate bearer token
                 rotateTokensIfEnabled(admin);
                 AdminToken token = generateAndPersistToken(admin);
                 updateLastLogin(admin);
@@ -301,7 +222,8 @@ public class AdminAuthService {
                 throw new AuthenticationException("Authentication rejected by device");
             }
             else if ("INVALID".equals(status)) {
-                logger.warn("❌ Passwordless auth invalid (signature/challenge failed) for admin: {}", admin.getUsername());
+                logger.warn("❌ Passwordless auth invalid (signature/challenge failed) for admin: {}", 
+                    admin.getUsername());
                 throw new AuthenticationException("Authentication failed - invalid signature or challenge");
             }
             else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
@@ -310,211 +232,10 @@ public class AdminAuthService {
                 throw new AuthenticationException("Authentication timeout - no device response");
             }
             else {
-                logger.error("❌ Unexpected passwordless auth status for admin {}: {}", 
-                    admin.getUsername(), status);
+                logger.error("❌ Unexpected passwordless auth status: {}", status);
                 throw new AuthenticationException("Authentication failed");
             }
         }
-    }
-
-    /**
-     * Decide if MFA should be required based on mode and admin enrollment.
-     */
-    private boolean shouldRequireMfa(EzkeyAdmin admin) {
-        // If password change required, keep existing behavior: allow login to change password
-        if (Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
-            logger.debug("MFA check: Password change required - MFA not required");
-            return false;
-        }
-
-        boolean enrollmentBound = admin.getMfaEnrollment() != null 
-            && admin.getMfaEnrollment().getDevicePublicKey() != null;
-
-        String mode = mfaProperties.getMode();
-        boolean mfaEnabled = Boolean.TRUE.equals(admin.getMfaEnabled());
-        boolean mfaRequired = Boolean.TRUE.equals(admin.getMfaRequired());
-
-        logger.info("🔐 MFA check for admin '{}': mode={}, enrollmentBound={}, mfaEnabled={}, mfaRequired={}", 
-            admin.getUsername(), mode, enrollmentBound, mfaEnabled, mfaRequired);
-
-        if (admin.getMfaEnrollment() != null) {
-            logger.debug("   Enrollment ID: {}, has device key: {}", 
-                admin.getMfaEnrollment().getEnrollmentId(),
-                admin.getMfaEnrollment().getDevicePublicKey() != null);
-        } else {
-            logger.debug("   No enrollment linked");
-        }
-
-        if ("prod".equalsIgnoreCase(mode)) {
-            // In prod, require MFA when enrollment is bound; if not bound, allow but nudge via UI/logs
-            boolean result = enrollmentBound;
-            logger.info("   → MFA required (prod mode): {}", result);
-            return result;
-        }
-
-        // dev mode: require MFA when enrollment is bound and admin flags indicate MFA enabled/required
-        boolean result = enrollmentBound && mfaEnabled && mfaRequired;
-        logger.info("   → MFA required (dev mode): {}", result);
-        return result;
-    }
-
-    /**
-     * Generate and persist a temp token, returning a response for MFA continuation.
-     */
-    private AdminLoginResponseDto generateTempTokenResponse(EzkeyAdmin admin) {
-        String tempToken = generateTempToken();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
-
-        AdminTempToken token = new AdminTempToken();
-        token.setTempToken(tempToken);
-        token.setAdmin(admin);
-        token.setCreatedAt(LocalDateTime.now());
-        token.setExpiresAt(expiresAt);
-        token.setMfaRequired(true);
-        token.setActive(true);
-        tempTokenRepository.save(token);
-
-        AdminLoginResponseDto response = new AdminLoginResponseDto(tempToken,
-            "MFA verification required", expiresAt);
-        response.setUsername(admin.getUsername());
-        response.setAdminType(admin.getAdminType().name());
-        return response;
-    }
-
-    /**
-     * Generate secure temp token string.
-     */
-    private String generateTempToken() {
-        return "ezkey_temp_" + UUID.randomUUID().toString().replace("-", "");
-    }
-    
-    /**
-     * Generate temp token response after password change for seamless MFA flow.
-     * <p>
-     * This method creates a temporary token that allows the administrator to
-     * continue directly to the MFA flow after changing their password, without
-     * requiring a re-login. This provides a better user experience.
-     * </p>
-     *
-     * @param admin the administrator who changed their password
-     * @return AdminPasswordChangeResponseDto with temp token for MFA continuation
-     */
-    private AdminPasswordChangeResponseDto generateTempTokenResponseAfterPasswordChange(EzkeyAdmin admin) {
-        // Generate temp token (5 minutes validity)
-        String tempToken = generateTempToken();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
-        
-        // Save temp token to database
-        AdminTempToken token = new AdminTempToken();
-        token.setTempToken(tempToken);
-        token.setAdmin(admin);
-        token.setCreatedAt(LocalDateTime.now());
-        token.setExpiresAt(expiresAt);
-        token.setMfaRequired(true);
-        token.setActive(true);
-        tempTokenRepository.save(token);
-        
-        logger.info("✅ Generated temp token for MFA flow after password change for admin: {} (expires: {})", 
-            admin.getUsername(), expiresAt);
-        
-        // Build response with temp token
-        AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto(
-            true,
-            "Password changed successfully. MFA verification required to complete authentication.",
-            false
-        );
-        response.setTempToken(tempToken);
-        response.setMfaRequired(true);
-        response.setExpiresAt(expiresAt);
-        
-        return response;
-    }
-    
-    /**
-     * Validate admin credentials including username, password, and active status.
-     * <p>
-     * This method performs all credential validation checks and throws
-     * AuthenticationException if any check fails.
-     * </p>
-     * <p>
-     * <b>Note:</b> Uses findByUsernameWithEnrollment() to eagerly load the MFA
-     * enrollment in a single query. This is critical for shouldRequireMfa() to
-     * correctly determine if MFA should be required.
-     * </p>
-     *
-     * @param request the login request containing credentials
-     * @return the validated admin entity with MFA enrollment loaded
-     * @throws AuthenticationException if validation fails
-     */
-    private EzkeyAdmin validateCredentials(AdminLoginRequestDto request) {
-        // Find admin by username WITH enrollment (LEFT JOIN FETCH)
-        // This is critical for MFA flow - ensures enrollment is loaded for shouldRequireMfa() check
-        EzkeyAdmin admin = adminRepository.findByUsernameWithEnrollment(request.getUsername())
-            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
-        
-        // Verify password
-        if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
-            throw new AuthenticationException("Invalid credentials");
-        }
-        
-        // Check active status
-        if (!admin.getActive()) {
-            throw new AuthenticationException("Account is inactive");
-        }
-        
-        logger.debug("Credentials validated for admin: {}", admin.getUsername());
-        return admin;
-    }
-    
-    /**
-     * Rotate tokens on login if enabled in configuration.
-     * <p>
-     * Deactivates all existing active tokens for this admin to enforce
-     * the "one active token per admin" security policy.
-     * </p>
-     *
-     * @param admin the administrator whose tokens should be rotated
-     */
-    private void rotateTokensIfEnabled(EzkeyAdmin admin) {
-        if (!rotationProperties.isRotationOnLoginEnabled()) {
-            return;
-        }
-        
-        int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
-        
-        if (deactivated > 0) {
-            logger.info("Rotated {} old tokens for admin: {}", deactivated, admin.getUsername());
-        }
-    }
-    
-    /**
-     * Generate a new bearer token and persist it to database.
-     * <p>
-     * Creates a new AdminToken entity with all necessary metadata
-     * and saves it to the database.
-     * </p>
-     *
-     * @param admin the administrator for whom to generate the token
-     * @return the persisted token entity
-     */
-    private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
-        String bearerToken = generateBearerToken();
-        LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-        
-        AdminToken token = new AdminToken();
-        token.setBearerToken(bearerToken);
-        token.setAdmin(admin);
-        token.setAdminType(admin.getAdminType().name());
-        token.setTenant(admin.getTenant());
-        token.setIntegration(admin.getIntegration());
-        token.setExpiresAt(expiresAt);
-        token.setCreatedAt(LocalDateTime.now());
-        token.setActive(true);
-        
-        tokenRepository.save(token);
-        logger.debug("Token created for admin: {}", admin.getUsername());
-        
-        return token;
     }
 
     /**
@@ -545,7 +266,7 @@ public class AdminAuthService {
         
         // 2. SECURITY: Verify challenge code to prevent enumeration attacks
         if (!challengeCode.equals(authAttempt.getAuthAttemptChallenge())) {
-            logger.warn("❌ Invalid challenge code for authAttemptId: {} (attempt to hijack authentication detected)", 
+            logger.warn("❌ Invalid challenge code for authAttemptId: {} (enumeration attack detected)", 
                 authAttemptId);
             throw new AuthenticationException("Invalid challenge code - authentication failed");
         }
@@ -556,7 +277,7 @@ public class AdminAuthService {
         EzkeyAdmin admin = adminRepository.findByMfaEnrollmentEnrollmentId(authAttempt.getEnrollmentId())
             .orElseThrow(() -> new IllegalArgumentException("Admin not found for this auth attempt"));
         
-        // 4. Wait for device response (reuse existing wait mechanism)
+        // 4. Wait for device response
         AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
         AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(authAttemptId, waitReq);
         
@@ -564,7 +285,6 @@ public class AdminAuthService {
         String status = waitResp.getStatus();
         
         if ("ACCEPTED".equals(status)) {
-            // SUCCESS: Generate bearer token
             rotateTokensIfEnabled(admin);
             AdminToken token = generateAndPersistToken(admin);
             updateLastLogin(admin);
@@ -579,8 +299,7 @@ public class AdminAuthService {
             throw new AuthenticationException("Authentication rejected by device");
         }
         else if ("INVALID".equals(status)) {
-            logger.warn("❌ Passwordless auth invalid (wrong challenge on device?) for admin: {}", 
-                admin.getUsername());
+            logger.warn("❌ Passwordless auth invalid (wrong challenge?) for admin: {}", admin.getUsername());
             throw new AuthenticationException("Authentication failed - invalid signature or challenge code");
         }
         else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
@@ -597,8 +316,8 @@ public class AdminAuthService {
     /**
      * Issue a bearer token after successful MFA validation.
      * <p>
-     * Rotates tokens if configured, generates a new bearer token, updates last login,
-     * and returns a standard success response.
+     * Used by recovery flow after device re-enrollment.
+     * Rotates tokens if configured, generates a new bearer token, updates last login.
      * </p>
      *
      * @param admin authenticated admin (MFA already satisfied)
@@ -609,6 +328,53 @@ public class AdminAuthService {
         AdminToken token = generateAndPersistToken(admin);
         updateLastLogin(admin);
         return buildSuccessResponse(admin, token);
+    }
+    
+    /**
+     * Rotate tokens on login if enabled in configuration.
+     * <p>
+     * Deactivates all existing active tokens for this admin to enforce
+     * the "one active token per admin" security policy.
+     * </p>
+     *
+     * @param admin the administrator whose tokens should be rotated
+     */
+    private void rotateTokensIfEnabled(EzkeyAdmin admin) {
+        if (!rotationProperties.isRotationOnLoginEnabled()) {
+            return;
+        }
+        
+        int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
+        
+        if (deactivated > 0) {
+            logger.info("Rotated {} old tokens for admin: {}", deactivated, admin.getUsername());
+        }
+    }
+    
+    /**
+     * Generate a new bearer token and persist it to database.
+     *
+     * @param admin the administrator for whom to generate the token
+     * @return the persisted token entity
+     */
+    private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
+        String bearerToken = generateBearerToken();
+        LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+        
+        AdminToken token = new AdminToken();
+        token.setBearerToken(bearerToken);
+        token.setAdmin(admin);
+        token.setAdminType(admin.getAdminType().name());
+        token.setTenant(admin.getTenant());
+        token.setIntegration(admin.getIntegration());
+        token.setExpiresAt(expiresAt);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setActive(true);
+        
+        tokenRepository.save(token);
+        logger.debug("Token created for admin: {}", admin.getUsername());
+        
+        return token;
     }
     
     /**
@@ -635,10 +401,6 @@ public class AdminAuthService {
     
     /**
      * Build success response DTO.
-     * <p>
-     * If password change is required, includes a reminder in the response
-     * but still provides a valid bearer token to allow password change.
-     * </p>
      *
      * @param admin the authenticated administrator
      * @param token the generated token
@@ -647,23 +409,12 @@ public class AdminAuthService {
     private AdminLoginResponseDto buildSuccessResponse(EzkeyAdmin admin, AdminToken token) {
         logger.info("Authentication successful for: {}", admin.getUsername());
         
-        AdminLoginResponseDto response = new AdminLoginResponseDto(
+        return new AdminLoginResponseDto(
             token.getBearerToken(),
             admin.getAdminType().name(),
             admin.getUsername(),
             token.getExpiresAt()
         );
-        
-        // Add password change required flag if needed
-        if (admin.getPasswordChangeRequired() != null && admin.getPasswordChangeRequired()) {
-            response.setPasswordChangeRequired(true);
-            response.setMessage("Authentication successful - Password change required. " +
-                "Please use /change-password endpoint before performing other operations.");
-            logger.warn("⚠️  Admin {} logged in with passwordChangeRequired=true. " +
-                "Token issued for password change only.", admin.getUsername());
-        }
-        
-        return response;
     }
     
     /**
@@ -733,133 +484,5 @@ public class AdminAuthService {
         } catch (Exception e) {
             // Log error but don't throw exception
         }
-    }
-
-    /**
-     * Change administrator password.
-     * <p>
-     * This method changes the password for an authenticated administrator.
-     * It validates the current password, checks new password strength,
-     * updates the password hash, and invalidates all existing tokens for security.
-     * </p>
-     *
-     * @param admin the authenticated administrator
-     * @param request the password change request
-     * @return AdminPasswordChangeResponseDto with change result and enrollment reminder
-     */
-    public AdminPasswordChangeResponseDto changePassword(EzkeyAdmin admin, 
-                                                         AdminPasswordChangeRequestDto request) {
-        logger.info("Password change attempt for admin: {}", admin.getUsername());
-        
-        try {
-            // 1. Validate current password
-            if (!passwordEncoder.matches(request.getCurrentPassword(), admin.getPasswordHash())) {
-                logger.warn("Password change failed for {}: incorrect current password", admin.getUsername());
-                return createErrorResponse("Current password is incorrect");
-            }
-            
-            // 2. Validate new password strength
-            PasswordValidator.PasswordValidationResult validationResult = 
-                PasswordValidator.validate(request.getNewPassword());
-            
-            if (!validationResult.isValid()) {
-                logger.warn("Password change failed for {}: weak password", admin.getUsername());
-                return createErrorResponse(validationResult.getAllErrorsAsString());
-            }
-            
-            // 3. Check if new password is same as current (optional security check)
-            if (passwordEncoder.matches(request.getNewPassword(), admin.getPasswordHash())) {
-                logger.warn("Password change failed for {}: new password same as current", admin.getUsername());
-                return createErrorResponse("New password must be different from current password");
-            }
-            
-            // 4. Update password hash
-            String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
-            admin.setPasswordHash(newPasswordHash);
-            admin.setPasswordChangeRequired(false);
-            admin.setLastPasswordChange(LocalDateTime.now());
-            
-            // 5. Invalidate all existing tokens (forced rotation for security)
-            int deactivated = tokenRepository.deactivateAllTokensForAdmin(admin.getAdminId());
-            logger.info("Invalidated {} tokens for admin {} after password change", 
-                deactivated, admin.getUsername());
-            
-            // 6. Save admin
-            adminRepository.save(admin);
-            
-            // 7. Reload admin with enrollment to check MFA requirement
-            // This is critical: we need fresh data with enrollment loaded for shouldRequireMfa()
-            EzkeyAdmin reloadedAdmin = adminRepository.findByUsernameWithEnrollment(admin.getUsername())
-                .orElse(admin); // Fallback to current admin if not found (should never happen)
-            
-            // 8. Check if MFA required after password change
-            if (shouldRequireMfa(reloadedAdmin)) {
-                // Generate temp token for seamless MFA flow (no re-login needed)
-                logger.info("🔐 MFA required after password change for admin: {}", admin.getUsername());
-                return generateTempTokenResponseAfterPasswordChange(reloadedAdmin);
-            }
-            
-            // 9. Build success response (no MFA required)
-            AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto(
-                true,
-                "Password changed successfully. All existing tokens have been invalidated.",
-                false
-            );
-            
-            // 10. Add MFA enrollment reminder if enrollment not bound yet
-            addMfaEnrollmentReminderIfNeeded(reloadedAdmin, response);
-            
-            logger.info("Password changed successfully for admin: {}", admin.getUsername());
-            return response;
-            
-        } catch (Exception e) {
-            logger.error("Password change failed for {}: {}", admin.getUsername(), e.getMessage(), e);
-            return createErrorResponse("Password change failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Add MFA enrollment reminder to response if admin has unbound enrollment.
-     *
-     * @param admin the administrator
-     * @param response the response to modify
-     */
-    private void addMfaEnrollmentReminderIfNeeded(EzkeyAdmin admin, 
-                                                   AdminPasswordChangeResponseDto response) {
-        // Check if admin has MFA enrollment
-        if (admin.getMfaEnrollment() != null) {
-            Enrollment enrollment = admin.getMfaEnrollment();
-            
-            // Check if enrollment is not yet bound (device public key is null)
-            boolean isBound = enrollment.getDevicePublicKey() != null;
-            
-            if (!isBound) {
-                logger.info("Adding MFA enrollment reminder for admin: {}", admin.getUsername());
-                
-                AdminPasswordChangeResponseDto.MfaEnrollmentInfo enrollmentInfo = 
-                    new AdminPasswordChangeResponseDto.MfaEnrollmentInfo(
-                        enrollment.getEnrollmentId(),
-                        enrollment.getEnrollmentProofToken(),
-                        enrollment.getEnrollmentChallenge(),
-                        false,
-                        "Use these credentials to bind your MFA enrollment for enhanced security"
-                    );
-                
-                response.setMfaEnrollment(enrollmentInfo);
-            }
-        }
-    }
-
-    /**
-     * Create error response for password change.
-     *
-     * @param message the error message
-     * @return error response
-     */
-    private AdminPasswordChangeResponseDto createErrorResponse(String message) {
-        AdminPasswordChangeResponseDto response = new AdminPasswordChangeResponseDto();
-        response.setSuccess(false);
-        response.setMessage(message);
-        return response;
     }
 }
