@@ -205,6 +205,55 @@ public class EzkeyAdmin {
     private Boolean passwordChangeRequired = false;
 
     /**
+     * Flag indicating whether passwordless authentication is enabled.
+     * <p>
+     * When true, the administrator can authenticate using only Ezkey cryptographic
+     * authentication without requiring a password. This provides superior security
+     * and aligns with modern passwordless authentication standards (FIDO2/WebAuthn).
+     * </p>
+     * <p>
+     * <b>Requirements for Passwordless Auth:</b>
+     * <ul>
+     * <li>This flag must be true</li>
+     * <li>MFA enrollment must be bound (device public key set)</li>
+     * <li>Password change must not be required</li>
+     * </ul>
+     * </p>
+     */
+    @Column(name = "passwordless_enabled", nullable = false)
+    private Boolean passwordlessEnabled = false;
+
+    /**
+     * Flag indicating whether challenge verification is required during passwordless auth.
+     * <p>
+     * When true, authentication attempts must include a 6-digit challenge code
+     * verification during device approval for enhanced security.
+     * </p>
+     */
+    @Column(name = "challenge_required", nullable = false)
+    private Boolean challengeRequired = false;
+
+    /**
+     * Array of BCrypt hashed recovery codes for emergency access.
+     * <p>
+     * Recovery codes are single-use codes that allow an administrator to regain
+     * access when their enrolled device is lost or unavailable. Each successful
+     * recovery code use removes the code from the array (single-use enforcement).
+     * </p>
+     * <p>
+     * <b>Format:</b> XXX-XXX-XXX (9 alphanumeric characters, dash-separated)
+     * <br>
+     * <b>Count:</b> 10 codes per admin (generated during creation)
+     * <br>
+     * <b>Storage:</b> BCrypt hashed (same security level as passwords)
+     * <br>
+     * <b>Usage:</b> Single-use, grants 30-minute limited access token
+     * </p>
+     */
+    @Column(name = "recovery_codes")
+    private String[] recoveryCodes;
+
+    /**
      * Reference to the administrator who created this account.
      * <p>
      * This field tracks the administrator responsible for creating
@@ -487,6 +536,60 @@ public class EzkeyAdmin {
      */
     public void setPasswordChangeRequired(Boolean passwordChangeRequired) {
         this.passwordChangeRequired = passwordChangeRequired;
+    }
+
+    /**
+     * Gets the passwordless enabled status.
+     *
+     * @return true if passwordless authentication is enabled
+     */
+    public Boolean getPasswordlessEnabled() {
+        return passwordlessEnabled;
+    }
+
+    /**
+     * Sets the passwordless enabled status.
+     *
+     * @param passwordlessEnabled the passwordless enabled status
+     */
+    public void setPasswordlessEnabled(Boolean passwordlessEnabled) {
+        this.passwordlessEnabled = passwordlessEnabled;
+    }
+
+    /**
+     * Gets the challenge required status.
+     *
+     * @return true if challenge verification is required during passwordless auth
+     */
+    public Boolean getChallengeRequired() {
+        return challengeRequired;
+    }
+
+    /**
+     * Sets the challenge required status.
+     *
+     * @param challengeRequired the challenge required status
+     */
+    public void setChallengeRequired(Boolean challengeRequired) {
+        this.challengeRequired = challengeRequired;
+    }
+
+    /**
+     * Gets the recovery codes array.
+     *
+     * @return array of BCrypt hashed recovery codes
+     */
+    public String[] getRecoveryCodes() {
+        return recoveryCodes;
+    }
+
+    /**
+     * Sets the recovery codes array.
+     *
+     * @param recoveryCodes array of BCrypt hashed recovery codes
+     */
+    public void setRecoveryCodes(String[] recoveryCodes) {
+        this.recoveryCodes = recoveryCodes;
     }
 
     /**

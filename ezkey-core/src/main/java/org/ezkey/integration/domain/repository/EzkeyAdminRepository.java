@@ -248,4 +248,19 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
     List<EzkeyAdmin> findByTenantAndAdminTypeAndActive(@Param("tenantId") Integer tenantId, 
                                                        @Param("adminType") AdminType adminType, 
                                                        @Param("active") Boolean active);
+
+    /**
+     * Find admin by MFA enrollment ID.
+     * <p>
+     * Used during passwordless authentication to identify which admin
+     * is associated with a specific enrollment when processing auth attempts.
+     * This is critical for the passwordless-wait flow where we need to determine
+     * the admin from the authAttempt's enrollment ID.
+     * </p>
+     *
+     * @param enrollmentId the MFA enrollment ID
+     * @return Optional containing the admin if found
+     */
+    @Query("SELECT a FROM EzkeyAdmin a WHERE a.mfaEnrollment.enrollmentId = :enrollmentId")
+    Optional<EzkeyAdmin> findByMfaEnrollmentEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 }

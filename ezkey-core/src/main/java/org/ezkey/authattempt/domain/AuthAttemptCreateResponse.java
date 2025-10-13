@@ -58,6 +58,16 @@ public class AuthAttemptCreateResponse {
     private Integer authAttemptId;
 
     /**
+     * Optional challenge code generated for this authentication attempt.
+     * <p>
+     * When challenge verification is required, this field contains the
+     * numeric challenge code (4-6 digits) that the user must enter on
+     * their device during approval. Null if no challenge was requested.
+     * </p>
+     */
+    private Integer authAttemptChallenge;
+
+    /**
      * Gets the authentication attempt ID.
      *
      * @return the unique identifier of the created authentication attempt
@@ -73,6 +83,24 @@ public class AuthAttemptCreateResponse {
      */
     public void setAuthAttemptId(Integer authAttemptId) {
         this.authAttemptId = authAttemptId;
+    }
+
+    /**
+     * Gets the authentication attempt challenge code.
+     *
+     * @return the challenge code, or null if no challenge
+     */
+    public Integer getAuthAttemptChallenge() {
+        return authAttemptChallenge;
+    }
+
+    /**
+     * Sets the authentication attempt challenge code.
+     *
+     * @param authAttemptChallenge the challenge code to set
+     */
+    public void setAuthAttemptChallenge(Integer authAttemptChallenge) {
+        this.authAttemptChallenge = authAttemptChallenge;
     }
 
 }

@@ -10,10 +10,15 @@
 
 package org.ezkey.admin.controller;
 
+import java.time.LocalDateTime;
+
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordChangeRequestDto;
+import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
+import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
+import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -51,12 +56,16 @@ public class AdminAuthController {
     private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
 
     private final AdminAuthService authService;
+    
+    private final org.ezkey.admin.service.AdminRecoveryService recoveryService;
 
     @Autowired(required = false)
     private AdminRateLimitFilter rateLimitFilter;
 
-    public AdminAuthController(AdminAuthService authService) {
+    public AdminAuthController(AdminAuthService authService,
+                                org.ezkey.admin.service.AdminRecoveryService recoveryService) {
         this.authService = authService;
+        this.recoveryService = recoveryService;
     }
 
     /**
@@ -217,6 +226,139 @@ public class AdminAuthController {
             errorResponse.setSuccess(false);
             errorResponse.setMessage("An error occurred during password change");
             return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * Wait for passwordless authentication completion.
+     * <p>
+     * This endpoint is used in the two-step passwordless flow when challenge
+     * verification is required. After receiving authAttemptId and challengeCode
+     * from the /login endpoint, the client displays the challenge to the user
+     * then calls this endpoint to wait for device approval.
+     * </p>
+     * <p>
+     * This endpoint blocks for up to 5 minutes waiting for the device response.
+     * </p>
+     * <p>
+     * <b>Security:</b> The challengeCode is required to prevent enumeration attacks
+     * on authAttemptId. Only clients that legitimately initiated the authentication
+     * and received the challenge can proceed.
+     * </p>
+     *
+     * @param request the wait request containing auth attempt ID and challenge code
+     * @return ResponseEntity with bearer token on success, error on failure
+     */
+    @PostMapping("/passwordless-wait")
+    public ResponseEntity<AdminLoginResponseDto> passwordlessWait(
+            @Valid @RequestBody AdminPasswordlessWaitRequestDto request) {
+        
+        try {
+            logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.getAuthAttemptId());
+            
+            AdminLoginResponseDto response = authService.waitForPasswordlessAuth(
+                request.getAuthAttemptId(), 
+                request.getChallengeCode()
+            );
+            
+            logger.info("✅ Passwordless authentication successful");
+            return ResponseEntity.ok(response);
+            
+        } catch (org.ezkey.admin.exception.AuthenticationException e) {
+            logger.warn("❌ Passwordless wait failed (authentication): {}", e.getMessage());
+            return ResponseEntity.status(403)
+                .body(new AdminLoginResponseDto("Authentication failed: " + e.getMessage()));
+            
+        } catch (IllegalArgumentException e) {
+            logger.warn("❌ Passwordless wait failed (invalid request): {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(new AdminLoginResponseDto("Invalid request: " + e.getMessage()));
+                
+        } catch (Exception e) {
+            logger.error("❌ Passwordless wait failed (unexpected): {}", e.getMessage(), e);
+            AdminLoginResponseDto errorResponse = new AdminLoginResponseDto();
+            errorResponse.setSuccess(false);
+            errorResponse.setMessage("An unexpected error occurred during authentication");
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * Recover admin access using a recovery code.
+     * <p>
+     * This endpoint allows administrators who have lost access to their enrolled
+     * device to regain access using one of their single-use recovery codes.
+     * The recovery code grants a temporary token (30 minutes validity) with
+     * limited permissions to re-bind enrollment only.
+     * </p>
+     * <p>
+     * <b>Security Features:</b>
+     * <ul>
+     * <li>Single-use recovery codes (removed from array after use)</li>
+     * <li>BCrypt hashed storage</li>
+     * <li>Limited token (30 min validity, enrollment binding only)</li>
+     * <li>Rate limited to prevent brute force</li>
+     * <li>Audit logged as critical security event</li>
+     * </ul>
+     * </p>
+     *
+     * @param request the recovery request containing username and recovery code
+     * @param httpRequest the HTTP servlet request for IP extraction
+     * @return ResponseEntity containing recovery token or error
+     */
+    @PostMapping("/recover")
+    public ResponseEntity<AdminRecoveryResponseDto> recover(
+            @Valid @RequestBody AdminRecoveryRequestDto request,
+            HttpServletRequest httpRequest) {
+        
+        String clientIp = extractClientIp(httpRequest);
+        
+        try {
+            logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.getUsername(), clientIp);
+            
+            String recoveryToken = recoveryService.validateRecoveryCode(
+                request.getUsername(), 
+                request.getRecoveryCode()
+            );
+            
+            // Get admin to determine codes remaining
+            EzkeyAdmin admin = authService.validateToken(recoveryToken);
+            int codesRemaining = admin != null && admin.getRecoveryCodes() != null 
+                ? admin.getRecoveryCodes().length 
+                : 0;
+            
+            AdminRecoveryResponseDto response = new AdminRecoveryResponseDto(
+                recoveryToken,
+                LocalDateTime.now().plusMinutes(30),
+                codesRemaining
+            );
+            
+            logger.warn("✅ Recovery successful for admin: {} ({} codes remaining)", 
+                request.getUsername(), codesRemaining);
+            
+            // Record successful attempt for rate limiting
+            if (rateLimitFilter != null) {
+                rateLimitFilter.recordSuccessfulAttempt(clientIp);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (org.ezkey.admin.exception.AuthenticationException e) {
+            logger.warn("❌ Recovery failed for admin: {} from IP: {} - Reason: {}", 
+                request.getUsername(), clientIp, e.getMessage());
+            
+            // Record failed attempt for rate limiting
+            if (rateLimitFilter != null) {
+                rateLimitFilter.recordFailedAttempt(clientIp);
+            }
+            
+            return ResponseEntity.status(403)
+                .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
+                
+        } catch (Exception e) {
+            logger.error("❌ Recovery error for admin: {} - {}", request.getUsername(), e.getMessage(), e);
+            return ResponseEntity.status(500)
+                .body(new AdminRecoveryResponseDto("An error occurred during recovery"));
         }
     }
 }

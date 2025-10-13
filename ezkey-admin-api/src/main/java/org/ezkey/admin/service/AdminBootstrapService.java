@@ -100,6 +100,8 @@ public class AdminBootstrapService {
     private final AdminMfaProperties mfaProperties;
 
     private final OrganizationProperties organizationProperties;
+    
+    private final AdminRecoveryService recoveryService;
 
     public AdminBootstrapService(
             IntegrationRepository integrationRepository,
@@ -108,7 +110,8 @@ public class AdminBootstrapService {
             TenantRepository tenantRepository,
             SignatureService signatureService,
             AdminMfaProperties mfaProperties,
-            OrganizationProperties organizationProperties) {
+            OrganizationProperties organizationProperties,
+            AdminRecoveryService recoveryService) {
         this.integrationRepository = integrationRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.adminRepository = adminRepository;
@@ -116,6 +119,7 @@ public class AdminBootstrapService {
         this.signatureService = signatureService;
         this.mfaProperties = mfaProperties;
         this.organizationProperties = organizationProperties;
+        this.recoveryService = recoveryService;
     }
 
     /**
@@ -225,6 +229,15 @@ public class AdminBootstrapService {
         if (adminZero.getMfaEnrollment() != null) {
             logger.info("✅ Admin already has enrollment (ID: {})",
                 adminZero.getMfaEnrollment().getEnrollmentId());
+            
+            // Enable passwordless if not already enabled
+            if (!Boolean.TRUE.equals(adminZero.getPasswordlessEnabled())) {
+                adminZero.setPasswordlessEnabled(true);
+                adminZero.setChallengeRequired(false);
+                adminZero.setPasswordChangeRequired(false); // No password change in passwordless
+                adminRepository.save(adminZero);
+                logger.info("✅ Passwordless authentication enabled for admin zero");
+            }
             return;
         }
 
@@ -276,32 +289,47 @@ public class AdminBootstrapService {
 
         // Link admin to enrollment
         adminZero.setMfaEnrollment(enrollmentZero);
+        
+        // Enable passwordless authentication for admin zero
+        // This implements "Eat Your Own Dogfood" by demonstrating Ezkey passwordless auth
+        adminZero.setPasswordlessEnabled(true);
+        adminZero.setChallengeRequired(false); // No challenge by default for convenience
+        adminZero.setPasswordChangeRequired(false); // No password change needed in passwordless mode
+        
+        // Generate recovery codes for emergency access
+        AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
+        adminZero.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+        
         adminRepository.save(adminZero);
 
         logger.info("✅ Enrollment Zero created (ID: {})", enrollmentZero.getEnrollmentId());
+        logger.info("✅ Passwordless authentication enabled for admin zero");
+        logger.info("✅ {} recovery codes generated for admin zero", recoveryCodes.getPlainCodes().size());
 
         // Log credentials with highly visible formatting
-        logAdminZeroEnrollmentCredentials(enrollmentZero);
+        logAdminZeroEnrollmentCredentials(enrollmentZero, recoveryCodes.getPlainCodes());
     }
 
     /**
      * Log admin zero enrollment credentials with highly visible formatting.
      * <p>
-     * This method logs enrollment credentials using WARN level with 80-character
-     * separator lines to ensure visibility in logs. Credentials are logged ONCE
-     * at startup and should be saved securely by the administrator.
+     * This method logs enrollment credentials and recovery codes using WARN level
+     * with 80-character separator lines to ensure visibility in logs. Credentials
+     * are logged ONCE at startup and should be saved securely by the administrator.
      * </p>
      *
      * @param enrollment the enrollment with credentials to log
+     * @param recoveryCodes the plain recovery codes to log
      */
-    private void logAdminZeroEnrollmentCredentials(Enrollment enrollment) {
+    private void logAdminZeroEnrollmentCredentials(Enrollment enrollment, java.util.List<String> recoveryCodes) {
         String separator = "=".repeat(80);
 
         logger.warn(""); // Blank line for visibility
         logger.warn(separator);
-        logger.warn("📱 ADMIN ZERO MFA ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
+        logger.warn("📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
         logger.warn(separator);
         logger.warn("");
+        logger.warn("✅ Admin Zero Created: admin (passwordless enabled)");
         logger.warn("✅ Integration Zero created: Ezkey System Admin");
         logger.warn("✅ Enrollment Zero created: {}", enrollment.getEnrollmentName());
         logger.warn("");
@@ -310,7 +338,12 @@ public class AdminBootstrapService {
         logger.warn("   Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
         logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
         logger.warn("");
-        logger.warn("🔗 BIND OPTIONS:");
+        logger.warn("🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):");
+        for (int i = 0; i < recoveryCodes.size(); i++) {
+            logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
+        }
+        logger.warn("");
+        logger.warn("🔗 BIND ENROLLMENT (Required before first login):");
         logger.warn("");
         logger.warn("   Option A - CLI (Recommended):");
         logger.warn("     ezkey admin enroll bind \\");
@@ -326,10 +359,17 @@ public class AdminBootstrapService {
         logger.warn("        - Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
         logger.warn("     5. During verify, enter Challenge Code: {}", enrollment.getEnrollmentChallenge());
         logger.warn("");
+        logger.warn("🔓 PASSWORDLESS LOGIN:");
+        logger.warn("   After binding enrollment, login with:");
+        logger.warn("   POST /api/v1/admin/auth/login");
+        logger.warn("   {{ \"username\": \"admin\", \"authMode\": \"ezkey\" }}");
+        logger.warn("");
         logger.warn("⚠️  SECURITY NOTICE:");
-        logger.warn("   - These credentials are logged ONCE at startup");
-        logger.warn("   - Save them in a secure password manager");
-        logger.warn("   - Use 'ezkey admin status' CLI command to view enrollment info after login");
+        logger.warn("   - NO PASSWORD - Ezkey is passwordless!");
+        logger.warn("   - Recovery codes are single-use emergency access only");
+        logger.warn("   - Save all credentials in a secure password manager");
+        logger.warn("   - These credentials cannot be retrieved again without database access");
+        logger.warn("   - Bind enrollment before attempting first login");
         logger.warn("");
         logger.warn(separator);
         logger.warn("");

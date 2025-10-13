@@ -85,6 +85,39 @@ public class AdminLoginResponseDto {
     private Boolean mfaRequired;
 
     /**
+     * Authentication attempt ID for passwordless two-step flow.
+     * <p>
+     * Present when passwordless login is initiated with challengeRequested=true.
+     * The client must use this ID along with the challengeCode to call
+     * /passwordless-wait endpoint.
+     * </p>
+     */
+    private Integer authAttemptId;
+
+    /**
+     * Challenge code for passwordless two-step flow.
+     * <p>
+     * A 6-digit code that the user must enter on their device during approval.
+     * Also serves as proof of legitimate authentication initiation when calling
+     * /passwordless-wait (anti-enumeration protection).
+     * </p>
+     */
+    private Integer challengeCode;
+
+    /**
+     * Status of the authentication attempt.
+     * <p>
+     * Used in passwordless two-step flow to indicate authentication state:
+     * <ul>
+     * <li><b>"pending"</b> - Waiting for device approval</li>
+     * <li><b>"accepted"</b> - Device approved (not used, returns token directly)</li>
+     * <li><b>"rejected"</b> - Device rejected (not used, returns error)</li>
+     * </ul>
+     * </p>
+     */
+    private String status;
+
+    /**
      * Default constructor for JSON serialization.
      */
     public AdminLoginResponseDto() {
@@ -309,6 +342,60 @@ public class AdminLoginResponseDto {
     }
 
     /**
+     * Gets the authentication attempt ID.
+     *
+     * @return the auth attempt ID
+     */
+    public Integer getAuthAttemptId() {
+        return authAttemptId;
+    }
+
+    /**
+     * Sets the authentication attempt ID.
+     *
+     * @param authAttemptId the auth attempt ID
+     */
+    public void setAuthAttemptId(Integer authAttemptId) {
+        this.authAttemptId = authAttemptId;
+    }
+
+    /**
+     * Gets the challenge code.
+     *
+     * @return the challenge code
+     */
+    public Integer getChallengeCode() {
+        return challengeCode;
+    }
+
+    /**
+     * Sets the challenge code.
+     *
+     * @param challengeCode the challenge code
+     */
+    public void setChallengeCode(Integer challengeCode) {
+        this.challengeCode = challengeCode;
+    }
+
+    /**
+     * Gets the authentication status.
+     *
+     * @return the status
+     */
+    public String getStatus() {
+        return status;
+    }
+
+    /**
+     * Sets the authentication status.
+     *
+     * @param status the status
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    /**
      * Returns a string representation of the login response.
      *
      * @return string representation
@@ -325,6 +412,9 @@ public class AdminLoginResponseDto {
                 ", passwordChangeRequired=" + passwordChangeRequired +
                 ", mfaRequired=" + mfaRequired +
                 ", tempToken='" + (tempToken != null ? "[PROTECTED]" : "null") + '\'' +
+                ", authAttemptId=" + authAttemptId +
+                ", challengeCode=" + (challengeCode != null ? "[PROTECTED]" : "null") +
+                ", status='" + status + '\'' +
                 '}';
     }
 }

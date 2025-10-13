@@ -18,6 +18,13 @@ import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminPasswordChangeResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.util.PasswordValidator;
+import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
+import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
+import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
+import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.AdminTempToken;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -76,62 +83,237 @@ public class AdminAuthService {
     private final AdminTokenRotationProperties rotationProperties;
     
     private final AdminMfaProperties mfaProperties;
+    
+    private final AuthAttemptService authAttemptService;
+    
+    private final AuthAttemptRepository authAttemptRepository;
+    
+    private final AdminAuthAttemptTxHelper authAttemptTxHelper;
 
     public AdminAuthService(EzkeyAdminRepository adminRepository,
                             AdminTokenRepository tokenRepository,
                             AdminTempTokenRepository tempTokenRepository,
                             BCryptPasswordEncoder passwordEncoder,
                             AdminTokenRotationProperties rotationProperties,
-                            AdminMfaProperties mfaProperties) {
+                            AdminMfaProperties mfaProperties,
+                            AuthAttemptService authAttemptService,
+                            AuthAttemptRepository authAttemptRepository,
+                            AdminAuthAttemptTxHelper authAttemptTxHelper) {
         this.adminRepository = adminRepository;
         this.tokenRepository = tokenRepository;
         this.tempTokenRepository = tempTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.rotationProperties = rotationProperties;
         this.mfaProperties = mfaProperties;
+        this.authAttemptService = authAttemptService;
+        this.authAttemptRepository = authAttemptRepository;
+        this.authAttemptTxHelper = authAttemptTxHelper;
     }
 
     /**
-     * Authenticate administrator with username and password.
+     * Authenticate administrator with username and password or passwordless mode.
      * <p>
      * This method orchestrates the authentication flow by delegating to focused
-     * private methods. It validates credentials, rotates tokens, generates a new
-     * token, and returns the authentication response. If password change is required,
-     * the admin still receives a token but is reminded to change their password.
+     * private methods. It supports two authentication modes:
+     * <ul>
+     * <li><b>password mode (default):</b> Traditional password + optional MFA</li>
+     * <li><b>ezkey mode:</b> Passwordless cryptographic authentication only</li>
+     * </ul>
+     * </p>
+     *
+     * @param request the login request containing username and auth mode
+     * @return AdminLoginResponseDto with authentication result
+     */
+    public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
+        // Determine authentication mode
+        String authMode = request.getAuthMode() != null ? request.getAuthMode() : "password";
+        
+        logger.info("Authentication attempt for user: {} (mode: {})", request.getUsername(), authMode);
+        
+        try {
+            // Route to appropriate authentication flow
+            if ("ezkey".equalsIgnoreCase(authMode)) {
+                return authenticatePasswordless(request);
+            } else {
+                return authenticateWithPassword(request);
+            }
+        } catch (AuthenticationException e) {
+            logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
+            return buildErrorResponse(e.getMessage());
+        }
+    }
+    
+    /**
+     * Authenticate administrator using traditional password + optional MFA.
+     * <p>
+     * This is the legacy authentication flow that validates password first,
+     * then optionally requires MFA if configured.
      * </p>
      *
      * @param request the login request containing username and password
      * @return AdminLoginResponseDto with authentication result
      */
-    public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
-        logger.info("Authentication attempt for user: {}", request.getUsername());
+    private AdminLoginResponseDto authenticateWithPassword(AdminLoginRequestDto request) {
+        // 1. Validate credentials (username, password, active status)
+        EzkeyAdmin admin = validateCredentials(request);
         
-        try {
-            // 1. Validate credentials (username, password, active status)
-            EzkeyAdmin admin = validateCredentials(request);
+        // 2. Determine if MFA should be required
+        if (shouldRequireMfa(admin)) {
+            // Generate temp token (5 minutes)
+            AdminLoginResponseDto tempResponse = generateTempTokenResponse(admin);
+            return tempResponse;
+        }
+
+        // 3. Rotate tokens if enabled (1 active token per admin)
+        rotateTokensIfEnabled(admin);
+
+        // 4. Generate and persist new token
+        AdminToken token = generateAndPersistToken(admin);
+
+        // 5. Update admin last login timestamp
+        updateLastLogin(admin);
+
+        // 6. Build and return success response (with password change warning if needed)
+        return buildSuccessResponse(admin, token);
+    }
+    
+    /**
+     * Authenticate administrator using passwordless Ezkey cryptographic authentication.
+     * <p>
+     * This method implements "eat your own dogfood" by using Ezkey's MFA system
+     * for admin authentication without passwords. The flow:
+     * <ol>
+     * <li>Validate username and passwordless eligibility</li>
+     * <li>Create auth attempt internally</li>
+     * <li>Wait for device approval (blocking up to 5 minutes)</li>
+     * <li>Issue bearer token on approval</li>
+     * </ol>
+     * </p>
+     * <p>
+     * <b>Security:</b> This provides superior security compared to passwords:
+     * <ul>
+     * <li>No password to steal or guess</li>
+     * <li>Phishing resistant (cryptographic signatures)</li>
+     * <li>Device-bound credentials</li>
+     * <li>Biometric verification on device</li>
+     * </ul>
+     * </p>
+     *
+     * @param request the login request with username and optional challenge flag
+     * @return AdminLoginResponseDto with bearer token or error
+     * @throws AuthenticationException if passwordless auth fails
+     */
+    private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto request) {
+        logger.info("🔐 Passwordless authentication initiated for user: {}", request.getUsername());
+        
+        // 1. Validate username and passwordless eligibility
+        EzkeyAdmin admin = adminRepository.findByUsernameWithEnrollment(request.getUsername())
+            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
+        
+        if (!admin.getActive()) {
+            throw new AuthenticationException("Account is inactive");
+        }
+        
+        if (!Boolean.TRUE.equals(admin.getPasswordlessEnabled())) {
+            logger.warn("Passwordless not enabled for admin: {}", admin.getUsername());
+            throw new AuthenticationException("Passwordless authentication not enabled for this account");
+        }
+        
+        if (admin.getMfaEnrollment() == null || admin.getMfaEnrollment().getDevicePublicKey() == null) {
+            logger.warn("No bound enrollment for passwordless auth: {}", admin.getUsername());
+            throw new AuthenticationException("No device enrolled for passwordless authentication");
+        }
+        
+        if (Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
+            logger.warn("Password change required blocks passwordless: {}", admin.getUsername());
+            throw new AuthenticationException("Password change required - use password authentication");
+        }
+        
+        // 2. Create auth attempt in separate transaction that commits immediately
+        // CRITICAL: Use TxHelper with REQUIRES_NEW to commit before waitForResponse()
+        // waitForResponse() uses NOT_SUPPORTED propagation and won't see uncommitted changes
+        Boolean challengeRequested = request.getChallengeRequested() != null 
+            ? request.getChallengeRequested() 
+            : admin.getChallengeRequired(); // Use admin's default if not specified
+        
+        AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();
+        attemptReq.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
+        attemptReq.setChallengeRequested(challengeRequested);
+        
+        // Use TxHelper to create and commit in separate transaction
+        AuthAttemptCreateResponse attemptResponse = authAttemptTxHelper.createAuthAttempt(attemptReq);
+        
+        logger.info("🔐 Passwordless auth attempt created and committed (ID: {}, challenge: {})", 
+            attemptResponse.getAuthAttemptId(), challengeRequested);
+        
+        // 3. Branch based on challenge requirement
+        if (challengeRequested) {
+            // CHALLENGE MODE: Return immediately with challenge info (non-blocking)
+            Integer challengeCode = attemptResponse.getAuthAttemptChallenge();
             
-            // 2. Determine if MFA should be required
-            if (shouldRequireMfa(admin)) {
-                // Generate temp token (5 minutes)
-                AdminLoginResponseDto tempResponse = generateTempTokenResponse(admin);
-                return tempResponse;
+            if (challengeCode == null) {
+                logger.error("❌ Challenge was requested but not generated for authAttemptId: {}", 
+                    attemptResponse.getAuthAttemptId());
+                throw new IllegalStateException("Challenge code not generated");
             }
-
-            // 3. Rotate tokens if enabled (1 active token per admin)
-            rotateTokensIfEnabled(admin);
-
-            // 4. Generate and persist new token
-            AdminToken token = generateAndPersistToken(admin);
-
-            // 5. Update admin last login timestamp
-            updateLastLogin(admin);
-
-            // 6. Build and return success response (with password change warning if needed)
-            return buildSuccessResponse(admin, token);
             
-        } catch (AuthenticationException e) {
-            logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
-            return buildErrorResponse(e.getMessage());
+            logger.info("📋 Passwordless with challenge: returning auth attempt info for admin: {} (challenge: {})",
+                admin.getUsername(), challengeCode);
+            
+            AdminLoginResponseDto response = new AdminLoginResponseDto();
+            response.setSuccess(false); // Not authenticated yet
+            response.setStatus("pending");
+            response.setAuthAttemptId(attemptResponse.getAuthAttemptId());
+            response.setChallengeCode(challengeCode);
+            response.setUsername(admin.getUsername());
+            response.setAdminType(admin.getAdminType().name());
+            response.setMessage("Challenge verification required. Enter code " + 
+                challengeCode + " on your device, then call /passwordless-wait.");
+            response.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+            
+            return response;
+        } else {
+            // NO CHALLENGE MODE: Block and wait (single-call convenience)
+            logger.info("⏳ Passwordless (no challenge): waiting for device response for admin: {}...",
+                admin.getUsername());
+            
+            // Wait for device response (blocking, up to 5 minutes)
+            AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
+            AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(
+                attemptResponse.getAuthAttemptId(), waitReq);
+            
+            // Process response
+            String status = waitResp.getStatus();
+            
+            if ("ACCEPTED".equals(status)) {
+                // SUCCESS: Generate bearer token
+                rotateTokensIfEnabled(admin);
+                AdminToken token = generateAndPersistToken(admin);
+                updateLastLogin(admin);
+                
+                logger.info("✅ Passwordless auth successful for admin: {} after {}s",
+                    admin.getUsername(), waitResp.getWaitDuration());
+                
+                return buildSuccessResponse(admin, token);
+            } 
+            else if ("REJECTED".equals(status)) {
+                logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
+                throw new AuthenticationException("Authentication rejected by device");
+            }
+            else if ("INVALID".equals(status)) {
+                logger.warn("❌ Passwordless auth invalid (signature/challenge failed) for admin: {}", admin.getUsername());
+                throw new AuthenticationException("Authentication failed - invalid signature or challenge");
+            }
+            else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
+                logger.warn("⏱️ Passwordless auth timeout for admin: {} after {}s",
+                    admin.getUsername(), waitResp.getWaitDuration());
+                throw new AuthenticationException("Authentication timeout - no device response");
+            }
+            else {
+                logger.error("❌ Unexpected passwordless auth status for admin {}: {}", 
+                    admin.getUsername(), status);
+                throw new AuthenticationException("Authentication failed");
+            }
         }
     }
 
@@ -335,6 +517,83 @@ public class AdminAuthService {
         return token;
     }
 
+    /**
+     * Wait for passwordless authentication completion with challenge verification.
+     * <p>
+     * This method is used in the two-step passwordless flow when challenge
+     * verification is required. It validates the challengeCode to prevent
+     * enumeration attacks, then waits for device approval.
+     * </p>
+     * <p>
+     * <b>Security:</b> The challengeCode must match the auth attempt's challenge
+     * to prevent attackers from enumerating authAttemptId values and hijacking
+     * authentication attempts.
+     * </p>
+     *
+     * @param authAttemptId the auth attempt ID from the login response
+     * @param challengeCode the challenge code from the login response (proof of legitimacy)
+     * @return AdminLoginResponseDto with bearer token if accepted
+     * @throws IllegalArgumentException if auth attempt is invalid
+     * @throws AuthenticationException if authentication fails or challenge is incorrect
+     */
+    public AdminLoginResponseDto waitForPasswordlessAuth(Integer authAttemptId, Integer challengeCode) {
+        logger.info("⏳ Waiting for passwordless auth completion (authAttemptId: {})", authAttemptId);
+        
+        // 1. Fetch auth attempt
+        AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId)
+            .orElseThrow(() -> new IllegalArgumentException("Auth attempt not found"));
+        
+        // 2. SECURITY: Verify challenge code to prevent enumeration attacks
+        if (!challengeCode.equals(authAttempt.getAuthAttemptChallenge())) {
+            logger.warn("❌ Invalid challenge code for authAttemptId: {} (attempt to hijack authentication detected)", 
+                authAttemptId);
+            throw new AuthenticationException("Invalid challenge code - authentication failed");
+        }
+        
+        logger.debug("✅ Challenge code verified for authAttemptId: {}", authAttemptId);
+        
+        // 3. Get admin from enrollment
+        EzkeyAdmin admin = adminRepository.findByMfaEnrollmentEnrollmentId(authAttempt.getEnrollmentId())
+            .orElseThrow(() -> new IllegalArgumentException("Admin not found for this auth attempt"));
+        
+        // 4. Wait for device response (reuse existing wait mechanism)
+        AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
+        AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(authAttemptId, waitReq);
+        
+        // 5. Process response
+        String status = waitResp.getStatus();
+        
+        if ("ACCEPTED".equals(status)) {
+            // SUCCESS: Generate bearer token
+            rotateTokensIfEnabled(admin);
+            AdminToken token = generateAndPersistToken(admin);
+            updateLastLogin(admin);
+            
+            logger.info("✅ Passwordless auth (with challenge) successful for admin: {} after {}s",
+                admin.getUsername(), waitResp.getWaitDuration());
+            
+            return buildSuccessResponse(admin, token);
+        } 
+        else if ("REJECTED".equals(status)) {
+            logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
+            throw new AuthenticationException("Authentication rejected by device");
+        }
+        else if ("INVALID".equals(status)) {
+            logger.warn("❌ Passwordless auth invalid (wrong challenge on device?) for admin: {}", 
+                admin.getUsername());
+            throw new AuthenticationException("Authentication failed - invalid signature or challenge code");
+        }
+        else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
+            logger.warn("⏱️ Passwordless auth timeout for admin: {} after {}s",
+                admin.getUsername(), waitResp.getWaitDuration());
+            throw new AuthenticationException("Authentication timeout - no device response");
+        }
+        else {
+            logger.error("❌ Unexpected passwordless auth status: {}", status);
+            throw new AuthenticationException("Authentication failed");
+        }
+    }
+    
     /**
      * Issue a bearer token after successful MFA validation.
      * <p>

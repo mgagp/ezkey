@@ -243,6 +243,7 @@ public class AuthAttemptService {
         // Create response
         AuthAttemptCreateResponse response = new AuthAttemptCreateResponse();
         response.setAuthAttemptId(savedAuthAttempt.getAuthAttemptId());
+        response.setAuthAttemptChallenge(savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
 
         return response;
     }
