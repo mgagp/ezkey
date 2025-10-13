@@ -14,38 +14,27 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Response DTO for enrollment verification completion in auth API.
- * <p>
- * This DTO represents the response data returned to mobile devices after they
- * complete enrollment verification. It provides confirmation of the verification
- * status and indicates whether the enrollment is now active and ready for
- * MFA authentication flows.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Returned by auth-api when mobile devices submit
- * enrollment verification requests. Provides immediate feedback on whether
- * the verification was successful and the enrollment is now active.
- * </p>
+ * <p>This DTO represents the response data returned to mobile devices after they complete
+ * enrollment verification. It provides confirmation of the verification status and indicates
+ * whether the enrollment is now active and ready for MFA authentication flows.
  *
- * <p>
- * <b>Enrollment Completion:</b> A successful response indicates that the
- * mobile device is now enrolled and can participate in authentication
- * attempts for the associated integration.
- * </p>
+ * <p><b>Usage Context:</b> Returned by auth-api when mobile devices submit enrollment verification
+ * requests. Provides immediate feedback on whether the verification was successful and the
+ * enrollment is now active.
  *
- * <p>
- * <b>Fields:</b>
+ * <p><b>Enrollment Completion:</b> A successful response indicates that the mobile device is now
+ * enrolled and can participate in authentication attempts for the associated integration.
+ *
+ * <p><b>Fields:</b>
+ *
  * <ul>
- * <li><b>active:</b> Indicates whether the enrollment is now active and ready for authentication</li>
+ *   <li><b>active:</b> Indicates whether the enrollment is now active and ready for authentication
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -55,40 +44,36 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO for enrollment verification completion")
 public class EnrollmentVerifyResponseDto {
 
-    /**
-     * Indicates whether the enrollment is now active and ready for authentication.
-     * <p>
-     * True means verification was successful, the device is now enrolled,
-     * and can participate in authentication attempts for the associated
-     * integration. False indicates verification failed.
-     * </p>
-     */
-    @Schema(description = "Whether the enrollment is now active and ready for authentication", 
-            example = "true", 
-            required = true)
-    private boolean active;
+  /**
+   * Indicates whether the enrollment is now active and ready for authentication.
+   *
+   * <p>True means verification was successful, the device is now enrolled, and can participate in
+   * authentication attempts for the associated integration. False indicates verification failed.
+   */
+  @Schema(
+      description = "Whether the enrollment is now active and ready for authentication",
+      example = "true",
+      required = true)
+  private boolean active;
 
-    /**
-     * Default constructor for EnrollmentVerifyResponseDto.
-     */
-    public EnrollmentVerifyResponseDto(){
-    }
+  /** Default constructor for EnrollmentVerifyResponseDto. */
+  public EnrollmentVerifyResponseDto() {}
 
-    /**
-     * Gets whether the enrollment is active.
-     *
-     * @return true if the enrollment is active, false otherwise
-     */
-    public boolean isActive(){
-        return active;
-    }
+  /**
+   * Gets whether the enrollment is active.
+   *
+   * @return true if the enrollment is active, false otherwise
+   */
+  public boolean isActive() {
+    return active;
+  }
 
-    /**
-     * Sets whether the enrollment is active.
-     *
-     * @param active true if the enrollment is active, false otherwise
-     */
-    public void setActive(boolean active){
-        this.active = active;
-    }
+  /**
+   * Sets whether the enrollment is active.
+   *
+   * @param active true if the enrollment is active, false otherwise
+   */
+  public void setActive(boolean active) {
+    this.active = active;
+  }
 }

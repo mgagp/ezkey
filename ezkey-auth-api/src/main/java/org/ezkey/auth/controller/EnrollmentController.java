@@ -10,6 +10,10 @@
 
 package org.ezkey.auth.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -24,50 +28,37 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for mobile enrollment API v1.
- * <p>
- * This controller provides REST endpoints for mobile device enrollment operations
- * in the auth-api (external). It handles the enrollment binding and verification
- * process where mobile devices link themselves to user accounts and complete
- * the cryptographic enrollment setup.
- * </p>
  *
- * <p>
- * <b>Auth API Endpoints (Mobile):</b>
+ * <p>This controller provides REST endpoints for mobile device enrollment operations in the
+ * auth-api (external). It handles the enrollment binding and verification process where mobile
+ * devices link themselves to user accounts and complete the cryptographic enrollment setup.
+ *
+ * <p><b>Auth API Endpoints (Mobile):</b>
+ *
  * <ul>
- * <li><b>GET /api/v1/enrollments/bind/{enrollmentId}</b> - Initiate device binding to enrollment</li>
- * <li><b>POST /api/v1/enrollments/verify</b> - Complete enrollment verification process</li>
+ *   <li><b>GET /api/v1/enrollments/bind/{enrollmentId}</b> - Initiate device binding to enrollment
+ *   <li><b>POST /api/v1/enrollments/verify</b> - Complete enrollment verification process
  * </ul>
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device
- * consumption. Mobile apps use these endpoints to complete the enrollment process
- * by linking devices to user accounts through cryptographic key exchange.
- * </p>
+ * <p><b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device consumption.
+ * Mobile apps use these endpoints to complete the enrollment process by linking devices to user
+ * accounts through cryptographic key exchange.
  *
- * <p>
- * <b>Enrollment Flow:</b>
+ * <p><b>Enrollment Flow:</b>
+ *
  * <ol>
- * <li>Mobile device scans QR code or deep link containing enrollmentId</li>
- * <li>Device calls bind endpoint to retrieve enrollment details and challenges</li>
- * <li>Device generates cryptographic keys and signs enrollment code</li>
- * <li>Device calls verify endpoint to complete enrollment with signatures</li>
+ *   <li>Mobile device scans QR code or deep link containing enrollmentId
+ *   <li>Device calls bind endpoint to retrieve enrollment details and challenges
+ *   <li>Device generates cryptographic keys and signs enrollment code
+ *   <li>Device calls verify endpoint to complete enrollment with signatures
  * </ol>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -78,95 +69,115 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @RestController
 @RequestMapping("/api/v1/enrollments")
-@Tag(name = "Enrollments", description = "Mobile device enrollment operations for binding devices to user accounts and completing verification")
+@Tag(
+    name = "Enrollments",
+    description =
+        "Mobile device enrollment operations for binding devices to user accounts and completing verification")
 public class EnrollmentController {
 
-    // Rate limiting endpoint constants
-    public static final String ENDPOINT_BIND = "/bind";
-    public static final String ENDPOINT_VERIFY = "/verify";
-    public static final String FULL_PATH_BIND = "/api/v1/enrollments" + ENDPOINT_BIND;
-    public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
+  // Rate limiting endpoint constants
+  public static final String ENDPOINT_BIND = "/bind";
+  public static final String ENDPOINT_VERIFY = "/verify";
+  public static final String FULL_PATH_BIND = "/api/v1/enrollments" + ENDPOINT_BIND;
+  public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
 
-    private final EnrollmentService enrollmentService;
+  private final EnrollmentService enrollmentService;
 
-    private final EnrollmentAuthMapper enrollmentMapper;
+  private final EnrollmentAuthMapper enrollmentMapper;
 
-    /**
-     * Constructs the mobile enrollment controller with required dependencies.
-     *
-     * @param enrollmentService JPA-based enrollment service
-     * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
-     */
-    public EnrollmentController(EnrollmentService enrollmentService,EnrollmentAuthMapper enrollmentMapper){
-        this.enrollmentService = enrollmentService;
-        this.enrollmentMapper = enrollmentMapper;
-    }
+  /**
+   * Constructs the mobile enrollment controller with required dependencies.
+   *
+   * @param enrollmentService JPA-based enrollment service
+   * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
+   */
+  public EnrollmentController(
+      EnrollmentService enrollmentService, EnrollmentAuthMapper enrollmentMapper) {
+    this.enrollmentService = enrollmentService;
+    this.enrollmentMapper = enrollmentMapper;
+  }
 
-    /**
-     * Initiates the device binding process for mobile enrollment with proof token authentication.
-     * <p>
-     * The mobile device calls this endpoint to start the enrollment binding process.
-     * It requires both the enrollment ID and enrollment proof token to prevent
-     * enumeration attacks and ensure secure access to enrollment data.
-     * </p>
-     *
-     * <p>
-     * <b>Security Enhancement:</b> This endpoint now requires an enrollment proof token
-     * in addition to the enrollment ID, preventing attackers from systematically
-     * testing enrollment IDs to discover valid enrollments.
-     * </p>
-     *
-     * @param request the binding request containing enrollment ID, proof token, and language preference
-     * @return ResponseEntity containing enrollment binding information with HTTP 200,
-     * or 400 for invalid enrollment ID/proof token, or 409 if enrollment is already bound
-     */
-    @PostMapping("/bind")
-    @Operation(summary = "Initiate device binding with proof token", 
-               description = "Retrieves enrollment binding information using secure enrollment proof token")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Enrollment binding information retrieved successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid enrollment ID, proof token, or enrollment expired"),
-        @ApiResponse(responseCode = "409", description = "Enrollment already bound or proof token already used"),
+  /**
+   * Initiates the device binding process for mobile enrollment with proof token authentication.
+   *
+   * <p>The mobile device calls this endpoint to start the enrollment binding process. It requires
+   * both the enrollment ID and enrollment proof token to prevent enumeration attacks and ensure
+   * secure access to enrollment data.
+   *
+   * <p><b>Security Enhancement:</b> This endpoint now requires an enrollment proof token in
+   * addition to the enrollment ID, preventing attackers from systematically testing enrollment IDs
+   * to discover valid enrollments.
+   *
+   * @param request the binding request containing enrollment ID, proof token, and language
+   *     preference
+   * @return ResponseEntity containing enrollment binding information with HTTP 200, or 400 for
+   *     invalid enrollment ID/proof token, or 409 if enrollment is already bound
+   */
+  @PostMapping("/bind")
+  @Operation(
+      summary = "Initiate device binding with proof token",
+      description = "Retrieves enrollment binding information using secure enrollment proof token")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Enrollment binding information retrieved successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid enrollment ID, proof token, or enrollment expired"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Enrollment already bound or proof token already used"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    public ResponseEntity<EnrollmentBindResponseDto> bind(@RequestBody EnrollmentBindRequestDto request) {
-        // Validation: enrollmentId + enrollmentProofToken required
-        if (request.getEnrollmentId() == null || request.getEnrollmentProofToken() == null || request.getEnrollmentProofToken().trim().isEmpty()) {
-            throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
-        }
-        
-        EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
-        EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
-        return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
+      })
+  public ResponseEntity<EnrollmentBindResponseDto> bind(
+      @RequestBody EnrollmentBindRequestDto request) {
+    // Validation: enrollmentId + enrollmentProofToken required
+    if (request.getEnrollmentId() == null
+        || request.getEnrollmentProofToken() == null
+        || request.getEnrollmentProofToken().trim().isEmpty()) {
+      throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
     }
 
-    /**
-     * Completes the enrollment verification process for mobile devices.
-     * <p>
-     * The mobile device submits its cryptographic keys and signed proof token
-     * to finalize the enrollment process. The device generates a public/private key pair,
-     * signs the proof token with its private key, and submits the public key
-     * and signature for verification. Once verified, the enrollment becomes active
-     * and the device can authenticate users. The proof token must be the one obtained from the bind endpoint.
-     * </p>
-     *
-     * @param req the verification request DTO containing device keys and signatures
-     * @return ResponseEntity containing verification confirmation with HTTP 200,
-     * or 400 for invalid verification data, or 409 if enrollment state conflicts
-     */
-    @PostMapping("/verify")
-    @Operation(summary = "Complete enrollment verification", 
-               description = "Submits device cryptographic keys and signatures to finalize enrollment")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Enrollment verification completed successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid verification data or cryptographic validation failed"),
-        @ApiResponse(responseCode = "409", description = "Enrollment state conflict or already verified"),
+    EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
+    EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
+    return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
+  }
+
+  /**
+   * Completes the enrollment verification process for mobile devices.
+   *
+   * <p>The mobile device submits its cryptographic keys and signed proof token to finalize the
+   * enrollment process. The device generates a public/private key pair, signs the proof token with
+   * its private key, and submits the public key and signature for verification. Once verified, the
+   * enrollment becomes active and the device can authenticate users. The proof token must be the
+   * one obtained from the bind endpoint.
+   *
+   * @param req the verification request DTO containing device keys and signatures
+   * @return ResponseEntity containing verification confirmation with HTTP 200, or 400 for invalid
+   *     verification data, or 409 if enrollment state conflicts
+   */
+  @PostMapping("/verify")
+  @Operation(
+      summary = "Complete enrollment verification",
+      description = "Submits device cryptographic keys and signatures to finalize enrollment")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Enrollment verification completed successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid verification data or cryptographic validation failed"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Enrollment state conflict or already verified"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    public ResponseEntity<EnrollmentVerifyResponseDto> verify(@RequestBody EnrollmentVerifyRequestDto req) {
-        EnrollmentVerifyResponse response = enrollmentService.verify(
-            enrollmentMapper.toEnrollmentVerifyRequest(req)
-        );
-        return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
-    }
+      })
+  public ResponseEntity<EnrollmentVerifyResponseDto> verify(
+      @RequestBody EnrollmentVerifyRequestDto req) {
+    EnrollmentVerifyResponse response =
+        enrollmentService.verify(enrollmentMapper.toEnrollmentVerifyRequest(req));
+    return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
+  }
 }

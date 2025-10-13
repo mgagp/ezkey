@@ -15,26 +15,25 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * Main Spring Boot application for Ezkey Sim API.
- * <p>
- * This application provides authentication endpoints for simulations.
- * </p>
+ *
+ * <p>This application provides authentication endpoints for simulations.
  *
  * @since 2025
  */
 @SpringBootApplication(
-        scanBasePackages = { //
-                "org.ezkey.sim", //
-                "org.ezkey.exception", //
-                "org.ezkey.signature", //
-        })
+    scanBasePackages = { //
+      "org.ezkey.sim", //
+      "org.ezkey.exception", //
+      "org.ezkey.signature", //
+    })
 public class SimApplication {
 
-    /**
-     * Main method to start the Ezkey Sim API application.
-     *
-     * @param args command line arguments
-     */
-    public static void main(String[] args) {
-        SpringApplication.run(SimApplication.class,args);
-    }
+  /**
+   * Main method to start the Ezkey Sim API application.
+   *
+   * @param args command line arguments
+   */
+  public static void main(String[] args) {
+    SpringApplication.run(SimApplication.class, args);
+  }
 }

@@ -16,52 +16,45 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main Spring Boot application for Ezkey Admin API.
- * <p>
- * This application provides administrative endpoints for managing integrations.
- * It scans both the core package (for shared services and entities) and the admin package (for admin-specific
+ *
+ * <p>This application provides administrative endpoints for managing integrations. It scans both
+ * the core package (for shared services and entities) and the admin package (for admin-specific
  * controllers and configuration).
- * </p>
  *
- * <p>
- * <b>Scheduled Tasks:</b>
- * This application enables scheduling for periodic tasks such as token cleanup.
- * Scheduled tasks are configured via {@link org.springframework.scheduling.annotation.Scheduled}
- * annotations and can be controlled through application properties.
- * </p>
+ * <p><b>Scheduled Tasks:</b> This application enables scheduling for periodic tasks such as token
+ * cleanup. Scheduled tasks are configured via {@link
+ * org.springframework.scheduling.annotation.Scheduled} annotations and can be controlled through
+ * application properties.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
- * <p>
- * <b>Usage:</b> Admin API application
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * <p><b>Usage:</b> Admin API application
  *
  * @author Ezkey contributors
  * @since 2025
  */
 @SpringBootApplication(
-        scanBasePackages = { 
-                "org.ezkey.admin", 
-                "org.ezkey.authattempt", 
-                "org.ezkey.enrollment", 
-                "org.ezkey.integration", 
-                "org.ezkey.exception", 
-                "org.ezkey.signature",
-                "org.ezkey.tenant",        // NOUVEAU
-                "org.ezkey.adminauth",     // NOUVEAU
-        })
+    scanBasePackages = {
+      "org.ezkey.admin",
+      "org.ezkey.authattempt",
+      "org.ezkey.enrollment",
+      "org.ezkey.integration",
+      "org.ezkey.exception",
+      "org.ezkey.signature",
+      "org.ezkey.tenant", // NOUVEAU
+      "org.ezkey.adminauth", // NOUVEAU
+    })
 @EnableScheduling
 public class AdminApplication {
 
-    /**
-     * Main method to start the Ezkey Admin API application.
-     *
-     * @param args command line arguments
-     */
-    public static void main(String[] args){
-        SpringApplication.run(AdminApplication.class,args);
-    }
+  /**
+   * Main method to start the Ezkey Admin API application.
+   *
+   * @param args command line arguments
+   */
+  public static void main(String[] args) {
+    SpringApplication.run(AdminApplication.class, args);
+  }
 }

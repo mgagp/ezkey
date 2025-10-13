@@ -12,40 +12,26 @@ package org.ezkey.enrollment.domain;
 
 /**
  * Domain response object for enrollment verification completion status.
- * <p>
- * This domain object represents the response data returned by the service layer
- * after processing enrollment verification requests. It provides a simple status
- * indicator confirming whether the enrollment has been successfully verified
- * and activated for authentication operations.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Returned by the EnrollmentService after processing
- * enrollment verification requests from devices. The service layer creates
- * this response object to communicate the verification outcome and enrollment
- * activation status back through the API layers.
- * </p>
+ * <p>This domain object represents the response data returned by the service layer after processing
+ * enrollment verification requests. It provides a simple status indicator confirming whether the
+ * enrollment has been successfully verified and activated for authentication operations.
  *
- * <p>
- * <b>Enrollment Flow:</b> This response represents the final outcome of the
- * enrollment verification process. When active is true, it indicates that
- * the device has successfully completed enrollment and the enrollment is
- * ready for authentication operations.
- * </p>
+ * <p><b>Usage Context:</b> Returned by the EnrollmentService after processing enrollment
+ * verification requests from devices. The service layer creates this response object to communicate
+ * the verification outcome and enrollment activation status back through the API layers.
  *
- * <p>
- * <b>Activation Status:</b> The active flag provides clear feedback about
- * whether the enrollment verification was successful and the enrollment
- * is now operational. This status determines whether the device can proceed
- * with authentication attempts using this enrollment.
- * </p>
+ * <p><b>Enrollment Flow:</b> This response represents the final outcome of the enrollment
+ * verification process. When active is true, it indicates that the device has successfully
+ * completed enrollment and the enrollment is ready for authentication operations.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Activation Status:</b> The active flag provides clear feedback about whether the enrollment
+ * verification was successful and the enrollment is now operational. This status determines whether
+ * the device can proceed with authentication attempts using this enrollment.
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -56,43 +42,39 @@ package org.ezkey.enrollment.domain;
  */
 public class EnrollmentVerifyResponse {
 
-    /**
-     * Flag indicating whether the enrollment is active after verification.
-     * <p>
-     * When true, indicates that the enrollment verification was successful
-     * and the enrollment is now active and ready for authentication operations.
-     * When false, indicates that verification failed or the enrollment could
-     * not be activated due to validation errors or security constraints.
-     * </p>
-     */
-    private boolean active;
+  /**
+   * Flag indicating whether the enrollment is active after verification.
+   *
+   * <p>When true, indicates that the enrollment verification was successful and the enrollment is
+   * now active and ready for authentication operations. When false, indicates that verification
+   * failed or the enrollment could not be activated due to validation errors or security
+   * constraints.
+   */
+  private boolean active;
 
-    /**
-     * Default constructor.
-     * <p>
-     * Creates an enrollment verification response with default values.
-     * The active status should be set explicitly using the setter method
-     * based on the verification outcome.
-     * </p>
-     */
-    public EnrollmentVerifyResponse(){
-    }
+  /**
+   * Default constructor.
+   *
+   * <p>Creates an enrollment verification response with default values. The active status should be
+   * set explicitly using the setter method based on the verification outcome.
+   */
+  public EnrollmentVerifyResponse() {}
 
-    /**
-     * Gets the enrollment activation status after verification.
-     *
-     * @return true if the enrollment is active and ready for authentication, false otherwise
-     */
-    public boolean isActive() {
-        return active;
-    }
+  /**
+   * Gets the enrollment activation status after verification.
+   *
+   * @return true if the enrollment is active and ready for authentication, false otherwise
+   */
+  public boolean isActive() {
+    return active;
+  }
 
-    /**
-     * Sets the enrollment activation status after verification.
-     *
-     * @param active true if the enrollment should be marked as active, false otherwise
-     */
-    public void setActive(boolean active) {
-        this.active = active;
-    }
+  /**
+   * Sets the enrollment activation status after verification.
+   *
+   * @param active true if the enrollment should be marked as active, false otherwise
+   */
+  public void setActive(boolean active) {
+    this.active = active;
+  }
 }

@@ -14,29 +14,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Response DTO for authentication attempt creation in admin API.
- * <p>
- * This DTO represents the response data returned when an authentication attempt
- * is successfully created through the admin API. It contains the created attempt's
- * ID.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Returned by admin API when creating authentication requests.
- * </p>
+ * <p>This DTO represents the response data returned when an authentication attempt is successfully
+ * created through the admin API. It contains the created attempt's ID.
  *
- * <p>
- * <b>Core Fields:</b>
+ * <p><b>Usage Context:</b> Returned by admin API when creating authentication requests.
+ *
+ * <p><b>Core Fields:</b>
+ *
  * <ul>
- * <li><b>authAttemptId:</b> Unique identifier of the created authentication attempt</li>
+ *   <li><b>authAttemptId:</b> Unique identifier of the created authentication attempt
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -46,29 +38,28 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO containing created authentication attempt details")
 public class AuthAttemptCreateResponseDto {
 
-    /**
-     * Unique identifier of the created authentication attempt.
-     * Used to reference this attempt in subsequent operations.
-     */
-    @Schema(description = "Unique identifier of the created authentication attempt",example = "11")
-    private Integer authAttemptId;
+  /**
+   * Unique identifier of the created authentication attempt. Used to reference this attempt in
+   * subsequent operations.
+   */
+  @Schema(description = "Unique identifier of the created authentication attempt", example = "11")
+  private Integer authAttemptId;
 
-    /**
-     * Gets the authentication attempt ID.
-     *
-     * @return the unique identifier of the created authentication attempt
-     */
-    public Integer getAuthAttemptId() {
-        return authAttemptId;
-    }
+  /**
+   * Gets the authentication attempt ID.
+   *
+   * @return the unique identifier of the created authentication attempt
+   */
+  public Integer getAuthAttemptId() {
+    return authAttemptId;
+  }
 
-    /**
-     * Sets the authentication attempt ID.
-     *
-     * @param authAttemptId the unique identifier of the created authentication attempt to set
-     */
-    public void setAuthAttemptId(Integer authAttemptId) {
-        this.authAttemptId = authAttemptId;
-    }
-
+  /**
+   * Sets the authentication attempt ID.
+   *
+   * @param authAttemptId the unique identifier of the created authentication attempt to set
+   */
+  public void setAuthAttemptId(Integer authAttemptId) {
+    this.authAttemptId = authAttemptId;
+  }
 }

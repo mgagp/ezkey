@@ -11,7 +11,6 @@
 package org.ezkey.authattempt.mapper;
 
 import java.util.List;
-
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -27,47 +26,39 @@ import org.mapstruct.ReportingPolicy;
 
 /**
  * MapStruct mapper interface for converting between AuthAttempt entities and DTOs in admin API.
- * <p>
- * This mapper provides bidirectional conversion between JPA entities and API DTOs
- * for the admin API context. It ensures clean separation between the domain layer
- * and the API layer while supporting complete CRUD operations for authorization attempts.
- * All mappings are type-safe and validated at compile time.
- * </p>
  *
- * <p>
- * <b>Supported Conversions:</b>
+ * <p>This mapper provides bidirectional conversion between JPA entities and API DTOs for the admin
+ * API context. It ensures clean separation between the domain layer and the API layer while
+ * supporting complete CRUD operations for authorization attempts. All mappings are type-safe and
+ * validated at compile time.
+ *
+ * <p><b>Supported Conversions:</b>
+ *
  * <ul>
- * <li><b>Entity → Response DTO:</b> AuthAttempt → AuthAttemptDto</li>
- * <li><b>Entity → Create Response:</b> AuthAttemptCreateResponse → AuthAttemptCreateResponseDto</li>
- * <li><b>Request DTO → Domain:</b> AuthAttemptCreateRequestDto → AuthAttemptCreateRequest</li>
- * <li><b>Request DTO → Domain:</b> AuthAttemptWaitRequestDto → AuthAttemptWaitRequest</li>
- * <li><b>Domain → Response DTO:</b> AuthAttemptWaitResponse → AuthAttemptWaitResponseDto</li>
- * <li><b>Wait Response:</b> AuthAttemptWaitResponseDto creation from components</li>
- * <li><b>Collections:</b> List conversions for all supported entity/DTO types</li>
+ *   <li><b>Entity → Response DTO:</b> AuthAttempt → AuthAttemptDto
+ *   <li><b>Entity → Create Response:</b> AuthAttemptCreateResponse → AuthAttemptCreateResponseDto
+ *   <li><b>Request DTO → Domain:</b> AuthAttemptCreateRequestDto → AuthAttemptCreateRequest
+ *   <li><b>Request DTO → Domain:</b> AuthAttemptWaitRequestDto → AuthAttemptWaitRequest
+ *   <li><b>Domain → Response DTO:</b> AuthAttemptWaitResponse → AuthAttemptWaitResponseDto
+ *   <li><b>Wait Response:</b> AuthAttemptWaitResponseDto creation from components
+ *   <li><b>Collections:</b> List conversions for all supported entity/DTO types
  * </ul>
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Used exclusively by the admin API to convert between
- * domain objects and DTOs for administrative operations on authorization attempts.
- * </p>
+ * <p><b>Usage Context:</b> Used exclusively by the admin API to convert between domain objects and
+ * DTOs for administrative operations on authorization attempts.
  *
- * <p>
- * <b>MapStruct Configuration:</b>
+ * <p><b>MapStruct Configuration:</b>
+ *
  * <ul>
- * <li><b>Component Model:</b> Spring integration for dependency injection</li>
- * <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration</li>
- * <li><b>Type Safety:</b> Compile-time validation of all mapping configurations</li>
- * <li><b>Performance:</b> Generated implementation for optimal runtime performance</li>
+ *   <li><b>Component Model:</b> Spring integration for dependency injection
+ *   <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration
+ *   <li><b>Type Safety:</b> Compile-time validation of all mapping configurations
+ *   <li><b>Performance:</b> Generated implementation for optimal runtime performance
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -82,113 +73,110 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptWaitRequest
  * @see AuthAttemptWaitResponse
  */
-@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN,componentModel = "spring")
+@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
 public interface AuthAttemptMapper {
 
-    /**
-     * Converts an EzkeyAuthAttempt entity to an EzkeyAuthAttemptDto.
-     * <p>
-     * This method maps all fields from the JPA entity to the response DTO,
-     * excluding sensitive information for security.
-     * </p>
-     *
-     * @param entity the EzkeyAuthAttempt entity to convert
-     * @return the corresponding EzkeyAuthAttemptDto
-     * @see AuthAttempt
-     * @see AuthAttemptDto
-     */
-    AuthAttemptDto toDto(AuthAttempt entity);
+  /**
+   * Converts an EzkeyAuthAttempt entity to an EzkeyAuthAttemptDto.
+   *
+   * <p>This method maps all fields from the JPA entity to the response DTO, excluding sensitive
+   * information for security.
+   *
+   * @param entity the EzkeyAuthAttempt entity to convert
+   * @return the corresponding EzkeyAuthAttemptDto
+   * @see AuthAttempt
+   * @see AuthAttemptDto
+   */
+  AuthAttemptDto toDto(AuthAttempt entity);
 
-    /**
-     * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptDto objects.
-     * <p>
-     * This method applies the individual entity-to-DTO mapping to each
-     * element in the input list, maintaining the order of elements.
-     * </p>
-     *
-     * @param entities the list of EzkeyAuthAttempt entities to convert
-     * @return the corresponding list of EzkeyAuthAttemptDto objects
-     * @see AuthAttempt
-     * @see AuthAttemptDto
-     */
-    List<AuthAttemptDto> toDtoList(List<AuthAttempt> entities);
+  /**
+   * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptDto objects.
+   *
+   * <p>This method applies the individual entity-to-DTO mapping to each element in the input list,
+   * maintaining the order of elements.
+   *
+   * @param entities the list of EzkeyAuthAttempt entities to convert
+   * @return the corresponding list of EzkeyAuthAttemptDto objects
+   * @see AuthAttempt
+   * @see AuthAttemptDto
+   */
+  List<AuthAttemptDto> toDtoList(List<AuthAttempt> entities);
 
-    /**
-     * Converts an EzkeyAuthAttemptCreateRequestDto to an EzkeyAuthAttemptCreateRequest domain object.
-     * <p>
-     * This method maps all fields from the request DTO to the domain object,
-     * preparing it for processing in the service layer.
-     * </p>
-     *
-     * @param request the EzkeyAuthAttemptCreateRequestDto to convert
-     * @return the corresponding EzkeyAuthAttemptCreateRequest domain object
-     * @see AuthAttemptCreateRequestDto
-     * @see AuthAttemptCreateRequest
-     */
-    AuthAttemptCreateRequest toAuthAttemptCreateRequest(AuthAttemptCreateRequestDto request);
+  /**
+   * Converts an EzkeyAuthAttemptCreateRequestDto to an EzkeyAuthAttemptCreateRequest domain object.
+   *
+   * <p>This method maps all fields from the request DTO to the domain object, preparing it for
+   * processing in the service layer.
+   *
+   * @param request the EzkeyAuthAttemptCreateRequestDto to convert
+   * @return the corresponding EzkeyAuthAttemptCreateRequest domain object
+   * @see AuthAttemptCreateRequestDto
+   * @see AuthAttemptCreateRequest
+   */
+  AuthAttemptCreateRequest toAuthAttemptCreateRequest(AuthAttemptCreateRequestDto request);
 
-    /**
-     * Converts an EzkeyAuthAttemptCreateResponse domain object to an EzkeyAuthAttemptCreateResponseDto.
-     * <p>
-     * This method maps all fields from the domain object to the response DTO,
-     * preparing it for return to the API client.
-     * </p>
-     *
-     * @param response the EzkeyAuthAttemptCreateResponse to convert
-     * @return the corresponding EzkeyAuthAttemptCreateResponseDto
-     * @see AuthAttemptCreateResponse
-     * @see AuthAttemptCreateResponseDto
-     */
-    AuthAttemptCreateResponseDto toAuthAttemptCreateResponseDto(AuthAttemptCreateResponse response);
+  /**
+   * Converts an EzkeyAuthAttemptCreateResponse domain object to an
+   * EzkeyAuthAttemptCreateResponseDto.
+   *
+   * <p>This method maps all fields from the domain object to the response DTO, preparing it for
+   * return to the API client.
+   *
+   * @param response the EzkeyAuthAttemptCreateResponse to convert
+   * @return the corresponding EzkeyAuthAttemptCreateResponseDto
+   * @see AuthAttemptCreateResponse
+   * @see AuthAttemptCreateResponseDto
+   */
+  AuthAttemptCreateResponseDto toAuthAttemptCreateResponseDto(AuthAttemptCreateResponse response);
 
-    /**
-     * Converts an AuthAttemptWaitRequestDto to an AuthAttemptWaitRequest domain object.
-     * <p>
-     * This method maps all fields from the request DTO to the domain object,
-     * preparing it for processing in the service layer.
-     * </p>
-     *
-     * @param request the AuthAttemptWaitRequestDto to convert
-     * @return the corresponding AuthAttemptWaitRequest domain object
-     * @see AuthAttemptWaitRequestDto
-     * @see AuthAttemptWaitRequest
-     */
-    AuthAttemptWaitRequest toAuthAttemptWaitRequest(AuthAttemptWaitRequestDto request);
+  /**
+   * Converts an AuthAttemptWaitRequestDto to an AuthAttemptWaitRequest domain object.
+   *
+   * <p>This method maps all fields from the request DTO to the domain object, preparing it for
+   * processing in the service layer.
+   *
+   * @param request the AuthAttemptWaitRequestDto to convert
+   * @return the corresponding AuthAttemptWaitRequest domain object
+   * @see AuthAttemptWaitRequestDto
+   * @see AuthAttemptWaitRequest
+   */
+  AuthAttemptWaitRequest toAuthAttemptWaitRequest(AuthAttemptWaitRequestDto request);
 
-    /**
-     * Converts an AuthAttemptWaitResponse domain object to an AuthAttemptWaitResponseDto.
-     * <p>
-     * This method maps all fields from the domain object to the response DTO,
-     * preparing it for return to the API client.
-     * </p>
-     *
-     * @param response the AuthAttemptWaitResponse to convert
-     * @return the corresponding AuthAttemptWaitResponseDto
-     * @see AuthAttemptWaitResponse
-     * @see AuthAttemptWaitResponseDto
-     */
-    AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptWaitResponse response);
+  /**
+   * Converts an AuthAttemptWaitResponse domain object to an AuthAttemptWaitResponseDto.
+   *
+   * <p>This method maps all fields from the domain object to the response DTO, preparing it for
+   * return to the API client.
+   *
+   * @param response the AuthAttemptWaitResponse to convert
+   * @return the corresponding AuthAttemptWaitResponseDto
+   * @see AuthAttemptWaitResponse
+   * @see AuthAttemptWaitResponseDto
+   */
+  AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptWaitResponse response);
 
-    /**
-     * Creates an AuthAttemptWaitResponseDto from its components.
-     * <p>
-     * This method constructs the wait response DTO from the authentication attempt data
-     * and calculated status information. It provides a clean way to build the response
-     * for the wait endpoint.
-     * </p>
-     *
-     * @param authAttempt the authentication attempt DTO
-     * @param status the calculated status string
-     * @param completed whether authentication is complete
-     * @param timeoutReached whether timeout was reached
-     * @param waitDuration actual wait duration in seconds
-     * @param completedAt timestamp when wait completed
-     * @return the constructed AuthAttemptWaitResponseDto
-     * @see AuthAttemptWaitResponseDto
-     * @see AuthAttemptDto
-     */
-    AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(AuthAttemptDto authAttempt, String status, 
-                                                           Boolean completed, Boolean timeoutReached, 
-                                                           Integer waitDuration, java.time.LocalDateTime completedAt);
-
+  /**
+   * Creates an AuthAttemptWaitResponseDto from its components.
+   *
+   * <p>This method constructs the wait response DTO from the authentication attempt data and
+   * calculated status information. It provides a clean way to build the response for the wait
+   * endpoint.
+   *
+   * @param authAttempt the authentication attempt DTO
+   * @param status the calculated status string
+   * @param completed whether authentication is complete
+   * @param timeoutReached whether timeout was reached
+   * @param waitDuration actual wait duration in seconds
+   * @param completedAt timestamp when wait completed
+   * @return the constructed AuthAttemptWaitResponseDto
+   * @see AuthAttemptWaitResponseDto
+   * @see AuthAttemptDto
+   */
+  AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(
+      AuthAttemptDto authAttempt,
+      String status,
+      Boolean completed,
+      Boolean timeoutReached,
+      Integer waitDuration,
+      java.time.LocalDateTime completedAt);
 }

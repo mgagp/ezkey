@@ -12,47 +12,38 @@ package org.ezkey.integration.domain;
 
 /**
  * Response DTO for the creation of a new Integration entity.
- * <p>
- * This DTO object contains the identifier of the newly created Integration in the system.
- * </p>
  *
- * <p>
- * <b>Usage:</b> Returned by controller methods after a successful Integration creation.
- * </p>
- * *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p>This DTO object contains the identifier of the newly created Integration in the system.
+ *
+ * <p><b>Usage:</b> Returned by controller methods after a successful Integration creation. *
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
  */
 public class IntegrationCreateResponse {
 
-    /**
-     * The unique identifier of the newly created Integration entity.
-     */
-    private Integer id;
+  /** The unique identifier of the newly created Integration entity. */
+  private Integer id;
 
-    /**
-     * Gets the unique identifier of the newly created Integration entity.
-     *
-     * @return the Integration entity ID
-     */
-    public Integer getId(){
-        return id;
-    }
+  /**
+   * Gets the unique identifier of the newly created Integration entity.
+   *
+   * @return the Integration entity ID
+   */
+  public Integer getId() {
+    return id;
+  }
 
-    /**
-     * Sets the unique identifier of the newly created Integration entity.
-     *
-     * @param id the Integration entity ID
-     */
-    public void setId(Integer id){
-        this.id = id;
-    }
-
+  /**
+   * Sets the unique identifier of the newly created Integration entity.
+   *
+   * @param id the Integration entity ID
+   */
+  public void setId(Integer id) {
+    this.id = id;
+  }
 }

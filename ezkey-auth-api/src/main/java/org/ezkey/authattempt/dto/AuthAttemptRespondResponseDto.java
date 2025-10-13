@@ -14,37 +14,27 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Response DTO for authentication attempt submissions in auth API.
- * <p>
- * This DTO represents the response data returned to mobile devices after they
- * submit their authentication attempt response. It provides clear, unambiguous
- * feedback on the authentication result.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Returned by auth-api when mobile devices submit
- * authentication responses. Provides immediate feedback on the authentication result.
- * </p>
+ * <p>This DTO represents the response data returned to mobile devices after they submit their
+ * authentication attempt response. It provides clear, unambiguous feedback on the authentication
+ * result.
  *
- * <p>
- * <b>Response Handling:</b> The mobile app should check the result field
- * to determine the authentication outcome. The message field provides additional
- * context for user feedback.
- * </p>
+ * <p><b>Usage Context:</b> Returned by auth-api when mobile devices submit authentication
+ * responses. Provides immediate feedback on the authentication result.
  *
- * <p>
- * <b>Fields:</b>
+ * <p><b>Response Handling:</b> The mobile app should check the result field to determine the
+ * authentication outcome. The message field provides additional context for user feedback.
+ *
+ * <p><b>Fields:</b>
+ *
  * <ul>
- * <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED, EXPIRED)</li>
- * <li><b>message:</b> Additional information or error details</li>
+ *   <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED, EXPIRED)
+ *   <li><b>message:</b> Additional information or error details
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -54,67 +44,64 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO for authentication attempt submissions")
 public class AuthAttemptRespondResponseDto {
 
-    /**
-     * The authentication result indicating the outcome of the authentication attempt.
-     * <p>
-     * Provides clear, unambiguous states:
-     * - APPROVED: User approved the authentication
-     * - DENIED: User denied the authentication
-     * - FAILED: Technical error occurred
-     * </p>
-     */
-    @Schema(description = "The authentication result", 
-            example = "APPROVED", 
-            allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
-            required = true)
-    private String result;
+  /**
+   * The authentication result indicating the outcome of the authentication attempt.
+   *
+   * <p>Provides clear, unambiguous states: - APPROVED: User approved the authentication - DENIED:
+   * User denied the authentication - FAILED: Technical error occurred
+   */
+  @Schema(
+      description = "The authentication result",
+      example = "APPROVED",
+      allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
+      required = true)
+  private String result;
 
-    /**
-     * Additional message providing context about the authentication result.
-     * <p>
-     * Contains success confirmation or detailed error information for
-     * user feedback. Mobile apps can display this message to inform
-     * users about the authentication attempt status.
-     * </p>
-     */
-    @Schema(description = "Success confirmation or error details for user feedback", 
-            example = "Authentication approved", 
-            required = true)
-    private String message;
+  /**
+   * Additional message providing context about the authentication result.
+   *
+   * <p>Contains success confirmation or detailed error information for user feedback. Mobile apps
+   * can display this message to inform users about the authentication attempt status.
+   */
+  @Schema(
+      description = "Success confirmation or error details for user feedback",
+      example = "Authentication approved",
+      required = true)
+  private String message;
 
-    /**
-     * Gets the authentication result.
-     *
-     * @return the authentication result
-     */
-    public String getResult() {
-        return result;
-    }
+  /**
+   * Gets the authentication result.
+   *
+   * @return the authentication result
+   */
+  public String getResult() {
+    return result;
+  }
 
-    /**
-     * Sets the authentication result.
-     *
-     * @param result the authentication result to set
-     */
-    public void setResult(String result) {
-        this.result = result;
-    }
+  /**
+   * Sets the authentication result.
+   *
+   * @param result the authentication result to set
+   */
+  public void setResult(String result) {
+    this.result = result;
+  }
 
-    /**
-     * Gets the response message.
-     *
-     * @return the response message
-     */
-    public String getMessage() {
-        return message;
-    }
+  /**
+   * Gets the response message.
+   *
+   * @return the response message
+   */
+  public String getMessage() {
+    return message;
+  }
 
-    /**
-     * Sets the response message.
-     *
-     * @param message the response message to set
-     */
-    public void setMessage(String message) {
-        this.message = message;
-    }
+  /**
+   * Sets the response message.
+   *
+   * @param message the response message to set
+   */
+  public void setMessage(String message) {
+    this.message = message;
+  }
 }

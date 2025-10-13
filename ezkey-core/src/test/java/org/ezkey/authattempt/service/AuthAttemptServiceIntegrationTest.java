@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -37,10 +36,9 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration test class for authentication attempt superseded logic.
- * <p>
- * Tests the complete flow where a newer authentication attempt makes
- * older attempts conceptually expired.
- * </p>
+ *
+ * <p>Tests the complete flow where a newer authentication attempt makes older attempts conceptually
+ * expired.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -49,113 +47,112 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class AuthAttemptServiceIntegrationTest {
 
-    @Autowired
-    private AuthAttemptService authAttemptService;
+  @Autowired private AuthAttemptService authAttemptService;
 
-    @Autowired
-    private AuthAttemptRepository authAttemptRepository;
+  @Autowired private AuthAttemptRepository authAttemptRepository;
 
-    @Autowired
-    private EnrollmentRepository enrollmentRepository;
+  @Autowired private EnrollmentRepository enrollmentRepository;
 
-    @Autowired
-    private SignatureService signatureService;
+  @Autowired private SignatureService signatureService;
 
-    private Enrollment testEnrollment;
+  private Enrollment testEnrollment;
 
-    @BeforeEach
-    void setUp() {
-        // Create test enrollment
-        testEnrollment = new Enrollment();
-        testEnrollment.setIntegrationId(1);
-        testEnrollment.setEnrollmentName("test-user");
-        testEnrollment.setStatus(org.ezkey.enrollment.domain.EnrollmentStatus.CREATED);
-        testEnrollment.setActive(false);
-        // testEnrollment.setEnrollmentRead(true);
-        // testEnrollment.setEnrollmentVerified(true);
-        // testEnrollment.setEnrollmentValid(true);
-        // testEnrollment.setEnrollmentActive(true);
-        testEnrollment.setEnrollmentProofToken("test-proof-token");
-        testEnrollment.setAuthAttemptChallengeRequired(false);
-        testEnrollment.setIntegrationPrivateKey("test-private-key");
-        testEnrollment.setIntegrationPublicKey("test-public-key");
-        testEnrollment.setDevicePublicKey("test-device-public-key");
-        testEnrollment.setCreatedAt(LocalDateTime.now());
+  @BeforeEach
+  void setUp() {
+    // Create test enrollment
+    testEnrollment = new Enrollment();
+    testEnrollment.setIntegrationId(1);
+    testEnrollment.setEnrollmentName("test-user");
+    testEnrollment.setStatus(org.ezkey.enrollment.domain.EnrollmentStatus.CREATED);
+    testEnrollment.setActive(false);
+    // testEnrollment.setEnrollmentRead(true);
+    // testEnrollment.setEnrollmentVerified(true);
+    // testEnrollment.setEnrollmentValid(true);
+    // testEnrollment.setEnrollmentActive(true);
+    testEnrollment.setEnrollmentProofToken("test-proof-token");
+    testEnrollment.setAuthAttemptChallengeRequired(false);
+    testEnrollment.setIntegrationPrivateKey("test-private-key");
+    testEnrollment.setIntegrationPublicKey("test-public-key");
+    testEnrollment.setDevicePublicKey("test-device-public-key");
+    testEnrollment.setCreatedAt(LocalDateTime.now());
 
-        testEnrollment = enrollmentRepository.save(testEnrollment);
-    }
+    testEnrollment = enrollmentRepository.save(testEnrollment);
+  }
 
-    @Test
-    void testCompleteFlow_NewerAttemptSupersedesOlder() {
-        // Step 1: Create first authentication attempt
-        AuthAttemptCreateRequest createRequest1 = new AuthAttemptCreateRequest();
-        createRequest1.setEnrollmentId(testEnrollment.getEnrollmentId());
-        createRequest1.setChallengeRequested(false);
+  @Test
+  void testCompleteFlow_NewerAttemptSupersedesOlder() {
+    // Step 1: Create first authentication attempt
+    AuthAttemptCreateRequest createRequest1 = new AuthAttemptCreateRequest();
+    createRequest1.setEnrollmentId(testEnrollment.getEnrollmentId());
+    createRequest1.setChallengeRequested(false);
 
-        AuthAttemptCreateResponse createResponse1 = authAttemptService.create(createRequest1);
-        assertNotNull(createResponse1);
-        Integer firstAttemptId = createResponse1.getAuthAttemptId();
+    AuthAttemptCreateResponse createResponse1 = authAttemptService.create(createRequest1);
+    assertNotNull(createResponse1);
+    Integer firstAttemptId = createResponse1.getAuthAttemptId();
 
-        // Step 2: Create second authentication attempt (newer)
-        AuthAttemptCreateRequest createRequest2 = new AuthAttemptCreateRequest();
-        createRequest2.setEnrollmentId(testEnrollment.getEnrollmentId());
-        createRequest2.setChallengeRequested(false);
+    // Step 2: Create second authentication attempt (newer)
+    AuthAttemptCreateRequest createRequest2 = new AuthAttemptCreateRequest();
+    createRequest2.setEnrollmentId(testEnrollment.getEnrollmentId());
+    createRequest2.setChallengeRequested(false);
 
-        AuthAttemptCreateResponse createResponse2 = authAttemptService.create(createRequest2);
-        assertNotNull(createResponse2);
-        Integer secondAttemptId = createResponse2.getAuthAttemptId();
+    AuthAttemptCreateResponse createResponse2 = authAttemptService.create(createRequest2);
+    assertNotNull(createResponse2);
+    Integer secondAttemptId = createResponse2.getAuthAttemptId();
 
-        // Verify that we have two attempts for this enrollment
-        assertEquals(2, authAttemptRepository.findAllByEnrollmentId(testEnrollment.getEnrollmentId()).size());
+    // Verify that we have two attempts for this enrollment
+    assertEquals(
+        2, authAttemptRepository.findAllByEnrollmentId(testEnrollment.getEnrollmentId()).size());
 
-        // Step 3: Try to respond to the first (older) attempt
-        AuthAttemptRespondRequest respondRequest = new AuthAttemptRespondRequest();
-        respondRequest.setAuthAttemptId(firstAttemptId);
-        respondRequest.setAuthAttemptAccepted(true);
-        respondRequest.setAuthAttemptProofTokenSignedByDevice("signed-token");
+    // Step 3: Try to respond to the first (older) attempt
+    AuthAttemptRespondRequest respondRequest = new AuthAttemptRespondRequest();
+    respondRequest.setAuthAttemptId(firstAttemptId);
+    respondRequest.setAuthAttemptAccepted(true);
+    respondRequest.setAuthAttemptProofTokenSignedByDevice("signed-token");
 
-        AuthAttemptRespondResponse respondResponse = authAttemptService.respond(respondRequest);
-        assertNotNull(respondResponse);
-        // Since the attempt was never READ by device, respond() returns FAILED (not read)
-        assertEquals(AuthenticationResult.FAILED, respondResponse.getResult());
-        assertEquals("Auth attempt not read by device", respondResponse.getMessage());
+    AuthAttemptRespondResponse respondResponse = authAttemptService.respond(respondRequest);
+    assertNotNull(respondResponse);
+    // Since the attempt was never READ by device, respond() returns FAILED (not read)
+    assertEquals(AuthenticationResult.FAILED, respondResponse.getResult());
+    assertEquals("Auth attempt not read by device", respondResponse.getMessage());
 
-        // Step 4: Try to wait for the first (older) attempt
-        AuthAttemptWaitRequest waitRequest = new AuthAttemptWaitRequest();
-        waitRequest.setTimeout(5);
-        waitRequest.setPolling(1);
+    // Step 4: Try to wait for the first (older) attempt
+    AuthAttemptWaitRequest waitRequest = new AuthAttemptWaitRequest();
+    waitRequest.setTimeout(5);
+    waitRequest.setPolling(1);
 
-        AuthAttemptWaitResponse waitResponse = authAttemptService.waitForResponse(firstAttemptId,waitRequest);
-        assertNotNull(waitResponse);
-        // A newer attempt exists -> superseded returns EXPIRED in wait
-        assertEquals("EXPIRED", waitResponse.getStatus());
-        assertEquals(false, waitResponse.getCompleted());
+    AuthAttemptWaitResponse waitResponse =
+        authAttemptService.waitForResponse(firstAttemptId, waitRequest);
+    assertNotNull(waitResponse);
+    // A newer attempt exists -> superseded returns EXPIRED in wait
+    assertEquals("EXPIRED", waitResponse.getStatus());
+    assertEquals(false, waitResponse.getCompleted());
 
-        // Step 5: Verify that the second attempt is still valid
-        Optional<AuthAttempt> secondAttempt = authAttemptRepository.findById(secondAttemptId);
-        assertNotNull(secondAttempt.orElse(null));
-        assertEquals(AuthAttemptStatus.PENDING, secondAttempt.get().getAuthAttemptStatus());
-    }
+    // Step 5: Verify that the second attempt is still valid
+    Optional<AuthAttempt> secondAttempt = authAttemptRepository.findById(secondAttemptId);
+    assertNotNull(secondAttempt.orElse(null));
+    assertEquals(AuthAttemptStatus.PENDING, secondAttempt.get().getAuthAttemptStatus());
+  }
 
-    @Test
-    void testNoSuperseding_WhenNoNewerAttempt() {
-        // Create single authentication attempt
-        AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
-        createRequest.setEnrollmentId(testEnrollment.getEnrollmentId());
-        createRequest.setChallengeRequested(false);
+  @Test
+  void testNoSuperseding_WhenNoNewerAttempt() {
+    // Create single authentication attempt
+    AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
+    createRequest.setEnrollmentId(testEnrollment.getEnrollmentId());
+    createRequest.setChallengeRequested(false);
 
-        AuthAttemptCreateResponse createResponse = authAttemptService.create(createRequest);
-        assertNotNull(createResponse);
-        Integer attemptId = createResponse.getAuthAttemptId();
+    AuthAttemptCreateResponse createResponse = authAttemptService.create(createRequest);
+    assertNotNull(createResponse);
+    Integer attemptId = createResponse.getAuthAttemptId();
 
-        // Try to wait for the attempt (should not be superseded)
-        AuthAttemptWaitRequest waitRequest = new AuthAttemptWaitRequest();
-        waitRequest.setTimeout(5);
-        waitRequest.setPolling(1);
+    // Try to wait for the attempt (should not be superseded)
+    AuthAttemptWaitRequest waitRequest = new AuthAttemptWaitRequest();
+    waitRequest.setTimeout(5);
+    waitRequest.setPolling(1);
 
-        AuthAttemptWaitResponse waitResponse = authAttemptService.waitForResponse(attemptId,waitRequest);
-        assertNotNull(waitResponse);
-        assertEquals("PENDING",waitResponse.getStatus());
-        assertEquals(false,waitResponse.getCompleted());
-    }
+    AuthAttemptWaitResponse waitResponse =
+        authAttemptService.waitForResponse(attemptId, waitRequest);
+    assertNotNull(waitResponse);
+    assertEquals("PENDING", waitResponse.getStatus());
+    assertEquals(false, waitResponse.getCompleted());
+  }
 }

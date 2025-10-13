@@ -7,17 +7,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
  * Phone simulator controller.
+ *
  * @since 2025
  */
 @Controller
 @RequestMapping("/phone")
 public class PhoneController {
 
-    @GetMapping
-    public String phoneHome(Model model) {
-        model.addAttribute("pageTitle", "Phone Simulator");
-        return "phone/home";
-    }
+  @GetMapping
+  public String phoneHome(Model model) {
+    model.addAttribute("pageTitle", "Phone Simulator");
+    return "phone/home";
+  }
 }
-
-

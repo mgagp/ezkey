@@ -10,40 +10,31 @@
 
 package org.ezkey.integration.dto;
 
-import java.util.List;
-
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 
 /**
  * Request DTO for creating new Integration entities in admin API.
- * <p>
- * This DTO contains the data required to create a new Integration through the admin API.
- * Integrations represent applications or systems that will be protected by Ezkey MFA.
- * It includes basic integration information and optional internationalization data
- * for multi-language support.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Used by administrators to create new integrations that
- * will use Ezkey for MFA authentication. Contains all necessary data for
- * integration setup including branding and localization.
- * </p>
+ * <p>This DTO contains the data required to create a new Integration through the admin API.
+ * Integrations represent applications or systems that will be protected by Ezkey MFA. It includes
+ * basic integration information and optional internationalization data for multi-language support.
  *
- * <p>
- * <b>Fields:</b>
+ * <p><b>Usage Context:</b> Used by administrators to create new integrations that will use Ezkey
+ * for MFA authentication. Contains all necessary data for integration setup including branding and
+ * localization.
+ *
+ * <p><b>Fields:</b>
+ *
  * <ul>
- * <li><b>code:</b> Unique business identifier for the integration</li>
- * <li><b>logo:</b> URL or path to the integration's logo image</li>
- * <li><b>i18n:</b> Optional internationalization data for multi-language support</li>
+ *   <li><b>code:</b> Unique business identifier for the integration
+ *   <li><b>logo:</b> URL or path to the integration's logo image
+ *   <li><b>i18n:</b> Optional internationalization data for multi-language support
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -53,53 +44,54 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Request DTO for creating new Integration entities")
 public class IntegrationCreateRequestDto {
 
-    /**
-     * URL or path to the integration's logo image.
-     * Displayed in the mobile app and web interfaces.
-     */
-    @Schema(description = "URL or path to the integration's logo image",example = "https://example.com/logo.png")
-    private String logo;
+  /**
+   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
+   */
+  @Schema(
+      description = "URL or path to the integration's logo image",
+      example = "https://example.com/logo.png")
+  private String logo;
 
-    /**
-     * Optional list of internationalization entries.
-     * Contains localized name and description for different languages.
-     */
-    @Schema(description = "List of internationalization entries for multi-language support")
-    private List<IntegrationI18nCreateDto> i18n;
+  /**
+   * Optional list of internationalization entries. Contains localized name and description for
+   * different languages.
+   */
+  @Schema(description = "List of internationalization entries for multi-language support")
+  private List<IntegrationI18nCreateDto> i18n;
 
-    /**
-     * Gets the URL or path to the integration's logo.
-     *
-     * @return the logo URL/path
-     */
-    public String getLogo() {
-        return logo;
-    }
+  /**
+   * Gets the URL or path to the integration's logo.
+   *
+   * @return the logo URL/path
+   */
+  public String getLogo() {
+    return logo;
+  }
 
-    /**
-     * Sets the URL or path to the integration's logo.
-     *
-     * @param logo the logo URL/path to set
-     */
-    public void setLogo(String logo) {
-        this.logo = logo;
-    }
+  /**
+   * Sets the URL or path to the integration's logo.
+   *
+   * @param logo the logo URL/path to set
+   */
+  public void setLogo(String logo) {
+    this.logo = logo;
+  }
 
-    /**
-     * Gets the list of internationalization entries.
-     *
-     * @return the list of i18n entries
-     */
-    public List<IntegrationI18nCreateDto> getI18n() {
-        return i18n;
-    }
+  /**
+   * Gets the list of internationalization entries.
+   *
+   * @return the list of i18n entries
+   */
+  public List<IntegrationI18nCreateDto> getI18n() {
+    return i18n;
+  }
 
-    /**
-     * Sets the list of internationalization entries.
-     *
-     * @param i18n the list of i18n entries to set
-     */
-    public void setI18n(List<IntegrationI18nCreateDto> i18n) {
-        this.i18n = i18n;
-    }
+  /**
+   * Sets the list of internationalization entries.
+   *
+   * @param i18n the list of i18n entries to set
+   */
+  public void setI18n(List<IntegrationI18nCreateDto> i18n) {
+    this.i18n = i18n;
+  }
 }

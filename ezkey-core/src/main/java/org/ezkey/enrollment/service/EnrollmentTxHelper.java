@@ -19,58 +19,47 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transactional helper service for enrollment state management and cleanup operations.
- * <p>
- * This service provides specialized transactional methods for managing enrollment lifecycle
- * and cleanup operations that require separate transaction boundaries. It handles critical
- * enrollment state transitions and ensures data consistency during enrollment invalidation
- * and cleanup processes.
- * </p>
  *
- * <p>
- * <b>Transaction Management:</b>
- * This service uses <code>Propagation.REQUIRES_NEW</code> to ensure that cleanup operations
- * are executed in separate transaction boundaries, preventing rollback of cleanup operations
- * if the calling transaction fails. This is essential for maintaining data integrity and
- * preventing orphaned enrollment data.
- * </p>
+ * <p>This service provides specialized transactional methods for managing enrollment lifecycle and
+ * cleanup operations that require separate transaction boundaries. It handles critical enrollment
+ * state transitions and ensures data consistency during enrollment invalidation and cleanup
+ * processes.
  *
- * <p>
- * <b>Key Responsibilities:</b>
+ * <p><b>Transaction Management:</b> This service uses <code>Propagation.REQUIRES_NEW</code> to
+ * ensure that cleanup operations are executed in separate transaction boundaries, preventing
+ * rollback of cleanup operations if the calling transaction fails. This is essential for
+ * maintaining data integrity and preventing orphaned enrollment data.
+ *
+ * <p><b>Key Responsibilities:</b>
+ *
  * <ul>
- * <li><b>Enrollment Invalidation:</b> Mark enrollments as invalid and clear sensitive data</li>
- * <li><b>State Cleanup:</b> Remove challenge data and deactivate enrollments</li>
- * <li><b>Transaction Isolation:</b> Ensure cleanup operations are not affected by parent transaction failures</li>
- * <li><b>Data Consistency:</b> Maintain enrollment state consistency across transaction boundaries</li>
+ *   <li><b>Enrollment Invalidation:</b> Mark enrollments as invalid and clear sensitive data
+ *   <li><b>State Cleanup:</b> Remove challenge data and deactivate enrollments
+ *   <li><b>Transaction Isolation:</b> Ensure cleanup operations are not affected by parent
+ *       transaction failures
+ *   <li><b>Data Consistency:</b> Maintain enrollment state consistency across transaction
+ *       boundaries
  * </ul>
- * </p>
  *
- * <p>
- * <b>Security Considerations:</b>
+ * <p><b>Security Considerations:</b>
+ *
  * <ul>
- * <li>Clears sensitive enrollment challenge data during invalidation</li>
- * <li>Prevents access to invalidated enrollments by setting active flag to false</li>
- * <li>Ensures cleanup operations are atomic and consistent</li>
- * <li>Protects against data leakage through proper state management</li>
+ *   <li>Clears sensitive enrollment challenge data during invalidation
+ *   <li>Prevents access to invalidated enrollments by setting active flag to false
+ *   <li>Ensures cleanup operations are atomic and consistent
+ *   <li>Protects against data leakage through proper state management
  * </ul>
- * </p>
  *
- * <p>
- * <b>Usage Context:</b>
- * This helper is typically used by enrollment services when handling enrollment failures,
- * timeout scenarios, or cleanup operations that need to be isolated from the main
- * transaction flow. It ensures that enrollment cleanup is performed reliably regardless
- * of the outcome of the primary enrollment operation.
- * </p>
+ * <p><b>Usage Context:</b> This helper is typically used by enrollment services when handling
+ * enrollment failures, timeout scenarios, or cleanup operations that need to be isolated from the
+ * main transaction flow. It ensures that enrollment cleanup is performed reliably regardless of the
+ * outcome of the primary enrollment operation.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
- * <p>
- * <b>Transaction Level:</b> Service-level transactional operations with isolation boundaries
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * <p><b>Transaction Level:</b> Service-level transactional operations with isolation boundaries
  *
  * @author Ezkey contributors
  * @since 2025
@@ -84,90 +73,83 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EnrollmentTxHelper {
 
-    private final EnrollmentRepository enrollmentRepository;
+  private final EnrollmentRepository enrollmentRepository;
 
-    /**
-     * Constructs the enrollment transactional helper with the required repository dependency.
-     * <p>
-     * This constructor initializes the service with the enrollment repository needed
-     * for database operations. The repository is injected through constructor injection
-     * to ensure immutability and proper dependency management.
-     * </p>
-     *
-     * @param enrollmentRepository the JPA repository for enrollment entity operations
-     * @throws IllegalArgumentException if enrollmentRepository is null
-     * @since 2025
-     */
-    public EnrollmentTxHelper(EnrollmentRepository enrollmentRepository){
-        this.enrollmentRepository = enrollmentRepository;
-    }
+  /**
+   * Constructs the enrollment transactional helper with the required repository dependency.
+   *
+   * <p>This constructor initializes the service with the enrollment repository needed for database
+   * operations. The repository is injected through constructor injection to ensure immutability and
+   * proper dependency management.
+   *
+   * @param enrollmentRepository the JPA repository for enrollment entity operations
+   * @throws IllegalArgumentException if enrollmentRepository is null
+   * @since 2025
+   */
+  public EnrollmentTxHelper(EnrollmentRepository enrollmentRepository) {
+    this.enrollmentRepository = enrollmentRepository;
+  }
 
-    /**
-     * Marks an enrollment as invalid and clears sensitive data in a separate transaction.
-     * <p>
-     * This method performs critical enrollment cleanup operations that must be executed
-     * in isolation from the calling transaction. It ensures that enrollment invalidation
-     * and data cleanup are performed atomically, regardless of the outcome of the parent
-     * transaction that triggered the cleanup.
-     * </p>
-     *
-     * <p>
-     * <b>Transaction Behavior:</b>
-     * Uses <code>Propagation.REQUIRES_NEW</code> to create a new transaction boundary,
-     * ensuring that cleanup operations are committed independently of any parent transaction.
-     * This prevents rollback of cleanup operations if the calling transaction fails.
-     * </p>
-     *
-     * <p>
-     * <b>Security Operations:</b>
-     * <ol>
-     * <li>Retrieves the enrollment by ID</li>
-     * <li>Validates enrollment exists and is not already verified</li>
-     * <li>Sets enrollment status to <code>INVALID</code></li>
-     * <li>Clears sensitive enrollment challenge data</li>
-     * <li>Deactivates the enrollment by setting active flag to false</li>
-     * <li>Persists the changes to the database</li>
-     * </ol>
-     * </p>
-     *
-     * <p>
-     * <b>Safety Checks:</b>
-     * <ul>
-     * <li>Returns silently if enrollment ID is null or enrollment not found</li>
-     * <li>Skips invalidation if enrollment is already in <code>VERIFIED</code> status</li>
-     * <li>Ensures atomic operation with proper transaction boundaries</li>
-     * </ul>
-     * </p>
-     *
-     * <p>
-     * <b>Usage Scenarios:</b>
-     * <ul>
-     * <li>Enrollment timeout handling</li>
-     * <li>Failed enrollment verification cleanup</li>
-     * <li>Security-related enrollment invalidation</li>
-     * <li>Manual enrollment cleanup operations</li>
-     * </ul>
-     * </p>
-     *
-     * @param enrollmentId the unique identifier of the enrollment to invalidate and clear
-     * @throws RuntimeException if database operation fails during cleanup
-     * @see EnrollmentStatus#INVALID
-     * @see EnrollmentStatus#VERIFIED
-     * @see org.springframework.transaction.annotation.Propagation#REQUIRES_NEW
-     * @since 2025
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markInvalidAndClear(Integer enrollmentId) {
-        Enrollment e = enrollmentRepository.findById(enrollmentId).orElse(null);
-        if (e == null){
-            return;
-        }
-        if (e.getStatus() == EnrollmentStatus.VERIFIED){
-            return;
-        }
-        e.setStatus(EnrollmentStatus.INVALID);
-        e.setEnrollmentChallenge(null);
-        e.setActive(false);
-        enrollmentRepository.save(e);
+  /**
+   * Marks an enrollment as invalid and clears sensitive data in a separate transaction.
+   *
+   * <p>This method performs critical enrollment cleanup operations that must be executed in
+   * isolation from the calling transaction. It ensures that enrollment invalidation and data
+   * cleanup are performed atomically, regardless of the outcome of the parent transaction that
+   * triggered the cleanup.
+   *
+   * <p><b>Transaction Behavior:</b> Uses <code>Propagation.REQUIRES_NEW</code> to create a new
+   * transaction boundary, ensuring that cleanup operations are committed independently of any
+   * parent transaction. This prevents rollback of cleanup operations if the calling transaction
+   * fails.
+   *
+   * <p><b>Security Operations:</b>
+   *
+   * <ol>
+   *   <li>Retrieves the enrollment by ID
+   *   <li>Validates enrollment exists and is not already verified
+   *   <li>Sets enrollment status to <code>INVALID</code>
+   *   <li>Clears sensitive enrollment challenge data
+   *   <li>Deactivates the enrollment by setting active flag to false
+   *   <li>Persists the changes to the database
+   * </ol>
+   *
+   * <p><b>Safety Checks:</b>
+   *
+   * <ul>
+   *   <li>Returns silently if enrollment ID is null or enrollment not found
+   *   <li>Skips invalidation if enrollment is already in <code>VERIFIED</code> status
+   *   <li>Ensures atomic operation with proper transaction boundaries
+   * </ul>
+   *
+   * <p><b>Usage Scenarios:</b>
+   *
+   * <ul>
+   *   <li>Enrollment timeout handling
+   *   <li>Failed enrollment verification cleanup
+   *   <li>Security-related enrollment invalidation
+   *   <li>Manual enrollment cleanup operations
+   * </ul>
+   *
+   * @param enrollmentId the unique identifier of the enrollment to invalidate and clear
+   * @throws RuntimeException if database operation fails during cleanup
+   * @see EnrollmentStatus#INVALID
+   * @see EnrollmentStatus#VERIFIED
+   * @see org.springframework.transaction.annotation.Propagation#REQUIRES_NEW
+   * @since 2025
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markInvalidAndClear(Integer enrollmentId) {
+    Enrollment e = enrollmentRepository.findById(enrollmentId).orElse(null);
+    if (e == null) {
+      return;
     }
+    if (e.getStatus() == EnrollmentStatus.VERIFIED) {
+      return;
+    }
+    e.setStatus(EnrollmentStatus.INVALID);
+    e.setEnrollmentChallenge(null);
+    e.setActive(false);
+    enrollmentRepository.save(e);
+  }
 }

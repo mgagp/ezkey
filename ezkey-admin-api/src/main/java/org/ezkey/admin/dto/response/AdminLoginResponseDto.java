@@ -14,213 +14,208 @@ import java.time.LocalDateTime;
 
 /**
  * Response DTO for passwordless administrator login.
- * <p>
- * This DTO contains the authentication response including the bearer token
- * and administrator information after successful passwordless login.
- * </p>
- * <p>
- * Supports two authentication flows:
- * <ul>
- * <li><b>Single-call (no challenge):</b> Returns bearer token immediately after device approval</li>
- * <li><b>Two-call (with challenge):</b> Returns authAttemptId and challengeCode, requires /passwordless-wait call</li>
- * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p>This DTO contains the authentication response including the bearer token and administrator
+ * information after successful passwordless login.
+ *
+ * <p>Supports two authentication flows:
+ *
+ * <ul>
+ *   <li><b>Single-call (no challenge):</b> Returns bearer token immediately after device approval
+ *   <li><b>Two-call (with challenge):</b> Returns authAttemptId and challengeCode, requires
+ *       /passwordless-wait call
+ * </ul>
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
  */
 public class AdminLoginResponseDto {
 
-    /**
-     * Indicates if the authentication was successful.
-     */
-    private Boolean success;
+  /** Indicates if the authentication was successful. */
+  private Boolean success;
 
-    /**
-     * Bearer token for subsequent API calls.
-     */
-    private String token;
+  /** Bearer token for subsequent API calls. */
+  private String token;
 
-    /**
-     * Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN).
-     */
-    private String adminType;
+  /** Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN). */
+  private String adminType;
 
-    /**
-     * Administrator username.
-     */
-    private String username;
+  /** Administrator username. */
+  private String username;
 
-    /**
-     * Token expiration timestamp.
-     */
-    private LocalDateTime expiresAt;
+  /** Token expiration timestamp. */
+  private LocalDateTime expiresAt;
 
-    /**
-     * Response message.
-     */
-    private String message;
+  /** Response message. */
+  private String message;
 
-    /**
-     * Authentication attempt ID for passwordless two-step flow.
-     * <p>
-     * Present when passwordless login is initiated with challengeRequested=true.
-     * The client must use this ID along with the challengeCode to call
-     * /passwordless-wait endpoint.
-     * </p>
-     */
-    private Integer authAttemptId;
+  /**
+   * Authentication attempt ID for passwordless two-step flow.
+   *
+   * <p>Present when passwordless login is initiated with challengeRequested=true. The client must
+   * use this ID along with the challengeCode to call /passwordless-wait endpoint.
+   */
+  private Integer authAttemptId;
 
-    /**
-     * Challenge code for passwordless two-step flow.
-     * <p>
-     * A 6-digit code that the user must enter on their device during approval.
-     * Also serves as proof of legitimate authentication initiation when calling
-     * /passwordless-wait (anti-enumeration protection).
-     * </p>
-     */
-    private Integer challengeCode;
+  /**
+   * Challenge code for passwordless two-step flow.
+   *
+   * <p>A 6-digit code that the user must enter on their device during approval. Also serves as
+   * proof of legitimate authentication initiation when calling /passwordless-wait (anti-enumeration
+   * protection).
+   */
+  private Integer challengeCode;
 
-    /**
-     * Status of the authentication attempt.
-     * <p>
-     * Used in passwordless two-step flow to indicate authentication state:
-     * <ul>
-     * <li><b>"pending"</b> - Waiting for device approval</li>
-     * <li><b>"accepted"</b> - Device approved (not used, returns token directly)</li>
-     * <li><b>"rejected"</b> - Device rejected (not used, returns error)</li>
-     * </ul>
-     * </p>
-     */
-    private String status;
+  /**
+   * Status of the authentication attempt.
+   *
+   * <p>Used in passwordless two-step flow to indicate authentication state:
+   *
+   * <ul>
+   *   <li><b>"pending"</b> - Waiting for device approval
+   *   <li><b>"accepted"</b> - Device approved (not used, returns token directly)
+   *   <li><b>"rejected"</b> - Device rejected (not used, returns error)
+   * </ul>
+   */
+  private String status;
 
-    /**
-     * Default constructor for JSON serialization.
-     */
-    public AdminLoginResponseDto() {
-        // Default constructor
-    }
+  /** Default constructor for JSON serialization. */
+  public AdminLoginResponseDto() {
+    // Default constructor
+  }
 
-    /**
-     * Constructs a successful login response.
-     *
-     * @param token the bearer token
-     * @param adminType the administrator type
-     * @param username the administrator username
-     * @param expiresAt the token expiration time
-     */
-    public AdminLoginResponseDto(String token, String adminType, String username, LocalDateTime expiresAt) {
-        this.success = true;
-        this.token = token;
-        this.adminType = adminType;
-        this.username = username;
-        this.expiresAt = expiresAt;
-        this.message = "Authentication successful";
-    }
+  /**
+   * Constructs a successful login response.
+   *
+   * @param token the bearer token
+   * @param adminType the administrator type
+   * @param username the administrator username
+   * @param expiresAt the token expiration time
+   */
+  public AdminLoginResponseDto(
+      String token, String adminType, String username, LocalDateTime expiresAt) {
+    this.success = true;
+    this.token = token;
+    this.adminType = adminType;
+    this.username = username;
+    this.expiresAt = expiresAt;
+    this.message = "Authentication successful";
+  }
 
-    /**
-     * Constructs an error response.
-     *
-     * @param message the error message
-     */
-    public AdminLoginResponseDto(String message) {
-        this.success = false;
-        this.message = message;
-    }
+  /**
+   * Constructs an error response.
+   *
+   * @param message the error message
+   */
+  public AdminLoginResponseDto(String message) {
+    this.success = false;
+    this.message = message;
+  }
 
-    // Getters and Setters
+  // Getters and Setters
 
-    public Boolean getSuccess() {
-        return success;
-    }
+  public Boolean getSuccess() {
+    return success;
+  }
 
-    public void setSuccess(Boolean success) {
-        this.success = success;
-    }
+  public void setSuccess(Boolean success) {
+    this.success = success;
+  }
 
-    public String getToken() {
-        return token;
-    }
+  public String getToken() {
+    return token;
+  }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
+  public void setToken(String token) {
+    this.token = token;
+  }
 
-    public String getAdminType() {
-        return adminType;
-    }
+  public String getAdminType() {
+    return adminType;
+  }
 
-    public void setAdminType(String adminType) {
-        this.adminType = adminType;
-    }
+  public void setAdminType(String adminType) {
+    this.adminType = adminType;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  public void setUsername(String username) {
+    this.username = username;
+  }
 
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
+  public LocalDateTime getExpiresAt() {
+    return expiresAt;
+  }
 
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+  public void setExpiresAt(LocalDateTime expiresAt) {
+    this.expiresAt = expiresAt;
+  }
 
-    public String getMessage() {
-        return message;
-    }
+  public String getMessage() {
+    return message;
+  }
 
-    public void setMessage(String message) {
-        this.message = message;
-    }
+  public void setMessage(String message) {
+    this.message = message;
+  }
 
-    public Integer getAuthAttemptId() {
-        return authAttemptId;
-    }
+  public Integer getAuthAttemptId() {
+    return authAttemptId;
+  }
 
-    public void setAuthAttemptId(Integer authAttemptId) {
-        this.authAttemptId = authAttemptId;
-    }
+  public void setAuthAttemptId(Integer authAttemptId) {
+    this.authAttemptId = authAttemptId;
+  }
 
-    public Integer getChallengeCode() {
-        return challengeCode;
-    }
+  public Integer getChallengeCode() {
+    return challengeCode;
+  }
 
-    public void setChallengeCode(Integer challengeCode) {
-        this.challengeCode = challengeCode;
-    }
+  public void setChallengeCode(Integer challengeCode) {
+    this.challengeCode = challengeCode;
+  }
 
-    public String getStatus() {
-        return status;
-    }
+  public String getStatus() {
+    return status;
+  }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+  public void setStatus(String status) {
+    this.status = status;
+  }
 
-    @Override
-    public String toString() {
-        return "AdminLoginResponseDto{" +
-                "success=" + success +
-                ", token='" + (token != null ? "[PROTECTED]" : "null") + '\'' +
-                ", adminType='" + adminType + '\'' +
-                ", username='" + username + '\'' +
-                ", expiresAt=" + expiresAt +
-                ", message='" + message + '\'' +
-                ", authAttemptId=" + authAttemptId +
-                ", challengeCode=" + (challengeCode != null ? "[PROTECTED]" : "null") +
-                ", status='" + status + '\'' +
-                '}';
-    }
+  @Override
+  public String toString() {
+    return "AdminLoginResponseDto{"
+        + "success="
+        + success
+        + ", token='"
+        + (token != null ? "[PROTECTED]" : "null")
+        + '\''
+        + ", adminType='"
+        + adminType
+        + '\''
+        + ", username='"
+        + username
+        + '\''
+        + ", expiresAt="
+        + expiresAt
+        + ", message='"
+        + message
+        + '\''
+        + ", authAttemptId="
+        + authAttemptId
+        + ", challengeCode="
+        + (challengeCode != null ? "[PROTECTED]" : "null")
+        + ", status='"
+        + status
+        + '\''
+        + '}';
+  }
 }

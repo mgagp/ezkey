@@ -17,39 +17,40 @@ import jakarta.validation.constraints.NotBlank;
 @Schema(description = "Request DTO for signing data with a private key")
 public class SignDataRequestDto {
 
-    @Schema(description = "Data to be signed", 
-            example = "Hello, World!", 
-            requiredMode = RequiredMode.REQUIRED)
-    @NotBlank(message = "Data to sign cannot be blank")
-    private String data;
+  @Schema(
+      description = "Data to be signed",
+      example = "Hello, World!",
+      requiredMode = RequiredMode.REQUIRED)
+  @NotBlank(message = "Data to sign cannot be blank")
+  private String data;
 
-    @Schema(description = "Base64-encoded PKCS#8 private key", 
-            example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...", 
-            requiredMode = RequiredMode.REQUIRED)
-    @NotBlank(message = "Private key cannot be blank")
-    private String privateKey;
+  @Schema(
+      description = "Base64-encoded PKCS#8 private key",
+      example = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...",
+      requiredMode = RequiredMode.REQUIRED)
+  @NotBlank(message = "Private key cannot be blank")
+  private String privateKey;
 
-    public SignDataRequestDto() {
-    }
+  public SignDataRequestDto() {}
 
-    public SignDataRequestDto(String data, String privateKey) {
-        this.data = data;
-        this.privateKey = privateKey;
-    }
+  public SignDataRequestDto(String data, String privateKey) {
+    this.data = data;
+    this.privateKey = privateKey;
+  }
 
-    public String getData() {
-        return data;
-    }
+  public String getData() {
+    return data;
+  }
 
-    public void setData(String data) {
-        this.data = data;
-    }
+  public void setData(String data) {
+    this.data = data;
+  }
 
-    public String getPrivateKey() {
-        return privateKey;
-    }
+  public String getPrivateKey() {
+    return privateKey;
+  }
 
-    public void setPrivateKey(String privateKey) {
-        this.privateKey = privateKey;
-    }
+  public void setPrivateKey(String privateKey) {
+    this.privateKey = privateKey;
+  }
 }

@@ -19,41 +19,35 @@ import org.springframework.web.context.request.WebRequest;
 
 /**
  * Global exception handler for the Ezkey Auth REST API.
- * <p>
- * This class provides centralized exception handling for all controllers in the Ezkey Auth API, ensuring consistent error
- * responses across the entire application. It intercepts exceptions thrown by controller methods and converts them into
- * standardized HTTP responses with appropriate status codes.
- * </p>
  *
- * <p>
- * The handler supports multiple exception types:
+ * <p>This class provides centralized exception handling for all controllers in the Ezkey Auth API,
+ * ensuring consistent error responses across the entire application. It intercepts exceptions
+ * thrown by controller methods and converts them into standardized HTTP responses with appropriate
+ * status codes.
+ *
+ * <p>The handler supports multiple exception types:
+ *
  * <ul>
- * <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with detailed error information</li>
- * <li><b>ValidationException:</b> Returns HTTP 400 with validation error details</li>
- * <li><b>IllegalArgumentException:</b> Returns HTTP 400 with argument error details</li>
- * <li><b>RuntimeException:</b> Returns HTTP 500 with generic error information</li>
- * <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500</li>
+ *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with detailed error information
+ *   <li><b>ValidationException:</b> Returns HTTP 400 with validation error details
+ *   <li><b>IllegalArgumentException:</b> Returns HTTP 400 with argument error details
+ *   <li><b>RuntimeException:</b> Returns HTTP 500 with generic error information
+ *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500
  * </ul>
- * </p>
  *
- * <p>
- * <b>Error Response Format:</b>
- * All error responses follow a consistent JSON structure with:
+ * <p><b>Error Response Format:</b> All error responses follow a consistent JSON structure with:
+ *
  * <ul>
- * <li><b>timestamp:</b> When the error occurred</li>
- * <li><b>status:</b> HTTP status code</li>
- * <li><b>error:</b> Error type description</li>
- * <li><b>message:</b> Detailed error message</li>
- * <li><b>path:</b> API endpoint where the error occurred</li>
+ *   <li><b>timestamp:</b> When the error occurred
+ *   <li><b>status:</b> HTTP status code
+ *   <li><b>error:</b> Error type description
+ *   <li><b>message:</b> Detailed error message
+ *   <li><b>path:</b> API endpoint where the error occurred
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -64,132 +58,126 @@ import org.springframework.web.context.request.WebRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Handles ResourceNotFoundException and returns HTTP 404.
-     * <p>
-     * This method catches ResourceNotFoundException instances and converts them into
-     * standardized HTTP 404 Not Found responses with detailed error information.
-     * </p>
-     *
-     * @param ex the ResourceNotFoundException that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity containing error details and HTTP 404 status
-     */
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
-        ErrorResponseDto errorResponse = new ErrorResponseDto(
-                "RESOURCE_NOT_FOUND",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
+  /**
+   * Handles ResourceNotFoundException and returns HTTP 404.
+   *
+   * <p>This method catches ResourceNotFoundException instances and converts them into standardized
+   * HTTP 404 Not Found responses with detailed error information.
+   *
+   * @param ex the ResourceNotFoundException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 404 status
+   */
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(
+      ResourceNotFoundException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "RESOURCE_NOT_FOUND",
+            ex.getMessage(),
+            request.getDescription(false).replace("uri=", ""));
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
+    return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+  }
 
+  /**
+   * Handles NoPendingAuthAttemptException and returns HTTP 204.
+   *
+   * <p>This method catches NoPendingAuthAttemptException instances and returns HTTP 204 No Content,
+   * as this represents a normal state in MFA systems where no pending authentication attempts are
+   * available.
+   *
+   * @param ex the NoPendingAuthAttemptException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity with HTTP 204 No Content status
+   */
+  @ExceptionHandler(NoPendingAuthAttemptException.class)
+  public ResponseEntity<Void> handleNoPendingAuthAttempt(
+      NoPendingAuthAttemptException ex, WebRequest request) {
+    return ResponseEntity.noContent().build();
+  }
 
-    /**
-     * Handles NoPendingAuthAttemptException and returns HTTP 204.
-     * <p>
-     * This method catches NoPendingAuthAttemptException instances and returns
-     * HTTP 204 No Content, as this represents a normal state in MFA systems
-     * where no pending authentication attempts are available.
-     * </p>
-     *
-     * @param ex the NoPendingAuthAttemptException that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity with HTTP 204 No Content status
-     */
-    @ExceptionHandler(NoPendingAuthAttemptException.class)
-    public ResponseEntity<Void> handleNoPendingAuthAttempt(NoPendingAuthAttemptException ex, WebRequest request) {
-        return ResponseEntity.noContent().build();
-    }
+  /**
+   * Handles IllegalStateException and returns HTTP 409.
+   *
+   * <p>This method catches IllegalStateException instances and converts them into standardized HTTP
+   * 409 Conflict responses, as these represent state conflicts in the authentication or enrollment
+   * process.
+   *
+   * @param ex the IllegalStateException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 409 status
+   */
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<ErrorResponseDto> handleIllegalStateException(
+      IllegalStateException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
 
-    /**
-     * Handles IllegalStateException and returns HTTP 409.
-     * <p>
-     * This method catches IllegalStateException instances and converts them into
-     * standardized HTTP 409 Conflict responses, as these represent state conflicts
-     * in the authentication or enrollment process.
-     * </p>
-     *
-     * @param ex the IllegalStateException that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity containing error details and HTTP 409 status
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponseDto> handleIllegalStateException(IllegalStateException ex, WebRequest request) {
-        ErrorResponseDto errorResponse = new ErrorResponseDto(
-                "CONFLICT",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
-    }
+  /**
+   * Handles IllegalArgumentException and returns HTTP 400.
+   *
+   * <p>This method catches IllegalArgumentException instances and converts them into standardized
+   * HTTP 400 Bad Request responses with argument error details.
+   *
+   * @param ex the IllegalArgumentException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(
+      IllegalArgumentException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INVALID_ARGUMENT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
 
-    /**
-     * Handles IllegalArgumentException and returns HTTP 400.
-     * <p>
-     * This method catches IllegalArgumentException instances and converts them into
-     * standardized HTTP 400 Bad Request responses with argument error details.
-     * </p>
-     *
-     * @param ex the IllegalArgumentException that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity containing error details and HTTP 400 status
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
-        ErrorResponseDto errorResponse = new ErrorResponseDto(
-                "INVALID_ARGUMENT",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
+  /**
+   * Handles RuntimeException and returns HTTP 500.
+   *
+   * <p>This method catches RuntimeException instances and converts them into standardized HTTP 500
+   * Internal Server Error responses with error details.
+   *
+   * @param ex the RuntimeException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 500 status
+   */
+  @ExceptionHandler(RuntimeException.class)
+  public ResponseEntity<ErrorResponseDto> handleRuntimeException(
+      RuntimeException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INTERNAL_ERROR",
+            "An unexpected error occurred",
+            request.getDescription(false).replace("uri=", ""));
 
-    /**
-     * Handles RuntimeException and returns HTTP 500.
-     * <p>
-     * This method catches RuntimeException instances and converts them into
-     * standardized HTTP 500 Internal Server Error responses with error details.
-     * </p>
-     *
-     * @param ex the RuntimeException that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity containing error details and HTTP 500 status
-     */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponseDto> handleRuntimeException(RuntimeException ex, WebRequest request) {
-        ErrorResponseDto errorResponse = new ErrorResponseDto(
-                "INTERNAL_ERROR",
-                "An unexpected error occurred",
-                request.getDescription(false).replace("uri=", "")
-        );
+    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  /**
+   * Handles all other exceptions and returns HTTP 500.
+   *
+   * <p>This method serves as a catch-all for any exceptions not handled by more specific exception
+   * handlers. It ensures that all exceptions result in a consistent error response.
+   *
+   * @param ex the Exception that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 500 status
+   */
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INTERNAL_SERVER_ERROR",
+            "An unexpected error occurred",
+            request.getDescription(false).replace("uri=", ""));
 
-    /**
-     * Handles all other exceptions and returns HTTP 500.
-     * <p>
-     * This method serves as a catch-all for any exceptions not handled by more specific
-     * exception handlers. It ensures that all exceptions result in a consistent error response.
-     * </p>
-     *
-     * @param ex the Exception that was thrown
-     * @param request the web request that caused the exception
-     * @return ResponseEntity containing error details and HTTP 500 status
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
-        ErrorResponseDto errorResponse = new ErrorResponseDto(
-                "INTERNAL_SERVER_ERROR",
-                "An unexpected error occurred",
-                request.getDescription(false).replace("uri=", "")
-        );
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 }

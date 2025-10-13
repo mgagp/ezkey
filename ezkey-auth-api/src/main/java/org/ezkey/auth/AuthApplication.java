@@ -15,31 +15,29 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * Main Spring Boot application for Ezkey Auth API.
- * <p>
- * This application provides authentication endpoints for mobile devices,
- * including enrollment and authentication attempts. It scans both the core package
- * (for shared services and entities) and the auth package (for auth-specific
- * controllers and configuration).
- * </p>
+ *
+ * <p>This application provides authentication endpoints for mobile devices, including enrollment
+ * and authentication attempts. It scans both the core package (for shared services and entities)
+ * and the auth package (for auth-specific controllers and configuration).
  *
  * @since 2025
  */
 @SpringBootApplication(
-        scanBasePackages = { //
-                "org.ezkey.auth", //
-                "org.ezkey.authattempt", //
-                "org.ezkey.enrollment", //
-                "org.ezkey.exception", //
-                "org.ezkey.signature", //
-        })
+    scanBasePackages = { //
+      "org.ezkey.auth", //
+      "org.ezkey.authattempt", //
+      "org.ezkey.enrollment", //
+      "org.ezkey.exception", //
+      "org.ezkey.signature", //
+    })
 public class AuthApplication {
 
-    /**
-     * Main method to start the Ezkey Auth API application.
-     *
-     * @param args command line arguments
-     */
-    public static void main(String[] args){
-        SpringApplication.run(AuthApplication.class,args);
-    }
+  /**
+   * Main method to start the Ezkey Auth API application.
+   *
+   * @param args command line arguments
+   */
+  public static void main(String[] args) {
+    SpringApplication.run(AuthApplication.class, args);
+  }
 }

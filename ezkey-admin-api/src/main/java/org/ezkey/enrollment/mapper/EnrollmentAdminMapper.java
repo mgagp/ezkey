@@ -11,7 +11,6 @@
 package org.ezkey.enrollment.mapper;
 
 import java.util.List;
-
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -24,44 +23,36 @@ import org.mapstruct.ReportingPolicy;
 
 /**
  * MapStruct mapper interface for converting between Enrollment entities and DTOs in admin API.
- * <p>
- * This mapper provides bidirectional conversion between JPA entities and API DTOs
- * for the admin API context. It ensures clean separation between the domain layer
- * and the API layer while supporting complete CRUD operations for enrollments.
- * All mappings are type-safe and validated at compile time.
- * </p>
  *
- * <p>
- * <b>Supported Conversions:</b>
+ * <p>This mapper provides bidirectional conversion between JPA entities and API DTOs for the admin
+ * API context. It ensures clean separation between the domain layer and the API layer while
+ * supporting complete CRUD operations for enrollments. All mappings are type-safe and validated at
+ * compile time.
+ *
+ * <p><b>Supported Conversions:</b>
+ *
  * <ul>
- * <li><b>Entity → Response DTO:</b> Enrollment → EnrollmentResponseDto</li>
- * <li><b>Create Response → DTO:</b> EnrollmentCreateResponse → EnrollmentCreateResponseDto</li>
- * <li><b>Request DTO → Domain:</b> EnrollmentCreateRequestDto → EnrollmentCreateRequest</li>
- * <li><b>Collections:</b> List conversions for all supported entity/DTO types</li>
+ *   <li><b>Entity → Response DTO:</b> Enrollment → EnrollmentResponseDto
+ *   <li><b>Create Response → DTO:</b> EnrollmentCreateResponse → EnrollmentCreateResponseDto
+ *   <li><b>Request DTO → Domain:</b> EnrollmentCreateRequestDto → EnrollmentCreateRequest
+ *   <li><b>Collections:</b> List conversions for all supported entity/DTO types
  * </ul>
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Used exclusively by the admin API to convert between
- * domain objects and DTOs for administrative operations on enrollments.
- * </p>
+ * <p><b>Usage Context:</b> Used exclusively by the admin API to convert between domain objects and
+ * DTOs for administrative operations on enrollments.
  *
- * <p>
- * <b>MapStruct Configuration:</b>
+ * <p><b>MapStruct Configuration:</b>
+ *
  * <ul>
- * <li><b>Component Model:</b> Spring integration for dependency injection</li>
- * <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration</li>
- * <li><b>Type Safety:</b> Compile-time validation of all mapping configurations</li>
- * <li><b>Performance:</b> Generated implementation for optimal runtime performance</li>
+ *   <li><b>Component Model:</b> Spring integration for dependency injection
+ *   <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration
+ *   <li><b>Type Safety:</b> Compile-time validation of all mapping configurations
+ *   <li><b>Performance:</b> Generated implementation for optimal runtime performance
  * </ul>
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -75,62 +66,57 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
 public interface EnrollmentAdminMapper {
 
-    /**
-     * Converts an Enrollment entity to an EnrollmentResponseDto.
-     * <p>
-     * This method maps all fields from the JPA entity to the response DTO,
-     * excluding sensitive information like private keys for security.
-     * </p>
-     *
-     * @param entity the Enrollment entity to convert
-     * @return the corresponding EnrollmentResponseDto
-     * @see Enrollment
-     * @see EnrollmentResponseDto
-     */
-    @Mapping(source = "status", target = "enrollmentStatus")
-    @Mapping(source = "active", target = "enrollmentActive")
-    EnrollmentResponseDto toResponse(Enrollment entity);
+  /**
+   * Converts an Enrollment entity to an EnrollmentResponseDto.
+   *
+   * <p>This method maps all fields from the JPA entity to the response DTO, excluding sensitive
+   * information like private keys for security.
+   *
+   * @param entity the Enrollment entity to convert
+   * @return the corresponding EnrollmentResponseDto
+   * @see Enrollment
+   * @see EnrollmentResponseDto
+   */
+  @Mapping(source = "status", target = "enrollmentStatus")
+  @Mapping(source = "active", target = "enrollmentActive")
+  EnrollmentResponseDto toResponse(Enrollment entity);
 
-    /**
-     * Converts a list of Enrollment entities to a list of EnrollmentResponseDto.
-     * <p>
-     * This method applies the individual entity-to-response mapping to each
-     * element in the input list, maintaining the order of elements.
-     * </p>
-     *
-     * @param entities the list of Enrollment entities to convert
-     * @return the corresponding list of EnrollmentResponseDto
-     * @see Enrollment
-     * @see EnrollmentResponseDto
-     */
-    List<EnrollmentResponseDto> toResponseList(List<Enrollment> entities);
+  /**
+   * Converts a list of Enrollment entities to a list of EnrollmentResponseDto.
+   *
+   * <p>This method applies the individual entity-to-response mapping to each element in the input
+   * list, maintaining the order of elements.
+   *
+   * @param entities the list of Enrollment entities to convert
+   * @return the corresponding list of EnrollmentResponseDto
+   * @see Enrollment
+   * @see EnrollmentResponseDto
+   */
+  List<EnrollmentResponseDto> toResponseList(List<Enrollment> entities);
 
-    /**
-     * Converts an EnrollmentCreateRequestDto to an EnrollmentCreateRequest domain object.
-     * <p>
-     * This method maps the request DTO from the API layer to the domain request object
-     * used by the service layer for enrollment creation operations.
-     * </p>
-     *
-     * @param request the EnrollmentCreateRequestDto from the API layer
-     * @return the corresponding EnrollmentCreateRequest domain object
-     * @see EnrollmentCreateRequestDto
-     * @see EnrollmentCreateRequest
-     */
-    EnrollmentCreateRequest toCreateRequest(EnrollmentCreateRequestDto request);
+  /**
+   * Converts an EnrollmentCreateRequestDto to an EnrollmentCreateRequest domain object.
+   *
+   * <p>This method maps the request DTO from the API layer to the domain request object used by the
+   * service layer for enrollment creation operations.
+   *
+   * @param request the EnrollmentCreateRequestDto from the API layer
+   * @return the corresponding EnrollmentCreateRequest domain object
+   * @see EnrollmentCreateRequestDto
+   * @see EnrollmentCreateRequest
+   */
+  EnrollmentCreateRequest toCreateRequest(EnrollmentCreateRequestDto request);
 
-    /**
-     * Converts an EnrollmentCreateResponse domain object to an EnrollmentCreateResponseDto.
-     * <p>
-     * This method maps the domain response object from the service layer to the response DTO
-     * returned by the API layer for enrollment creation operations.
-     * </p>
-     *
-     * @param response the EnrollmentCreateResponse domain object from the service layer
-     * @return the corresponding EnrollmentCreateResponseDto for the API layer
-     * @see EnrollmentCreateResponse
-     * @see EnrollmentCreateResponseDto
-     */
-    EnrollmentCreateResponseDto toCreateResponseDto(EnrollmentCreateResponse response);
-
+  /**
+   * Converts an EnrollmentCreateResponse domain object to an EnrollmentCreateResponseDto.
+   *
+   * <p>This method maps the domain response object from the service layer to the response DTO
+   * returned by the API layer for enrollment creation operations.
+   *
+   * @param response the EnrollmentCreateResponse domain object from the service layer
+   * @return the corresponding EnrollmentCreateResponseDto for the API layer
+   * @see EnrollmentCreateResponse
+   * @see EnrollmentCreateResponseDto
+   */
+  EnrollmentCreateResponseDto toCreateResponseDto(EnrollmentCreateResponse response);
 }

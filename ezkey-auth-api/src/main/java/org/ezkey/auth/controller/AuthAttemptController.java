@@ -10,8 +10,12 @@
 
 package org.ezkey.auth.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.NoSuchElementException;
-
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
@@ -28,46 +32,31 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 /**
  * REST controller for mobile authentication attempt API v1.
- * <p>
- * This controller provides REST endpoints for mobile device authentication operations
- * in the auth-api (external). It handles the mobile authentication flow where devices
- * check for pending authentication requests and submit their responses.
- * Uses cryptographic signatures for secure authentication validation.
- * </p>
  *
- * <p>
- * <b>Auth API Endpoints (Mobile):</b>
+ * <p>This controller provides REST endpoints for mobile device authentication operations in the
+ * auth-api (external). It handles the mobile authentication flow where devices check for pending
+ * authentication requests and submit their responses. Uses cryptographic signatures for secure
+ * authentication validation.
+ *
+ * <p><b>Auth API Endpoints (Mobile):</b>
+ *
  * <ul>
- * <li><b>POST /api/v1/auth-attempts/pending</b> - Check for pending authentication requests</li>
- * <li><b>POST /api/v1/auth-attempts/respond</b> - Submit authentication response</li>
+ *   <li><b>POST /api/v1/auth-attempts/pending</b> - Check for pending authentication requests
+ *   <li><b>POST /api/v1/auth-attempts/respond</b> - Submit authentication response
  * </ul>
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device
- * consumption. The mobile app uses these endpoints to implement the pull-based
- * authentication model with cryptographic signature validation.
- * </p>
+ * <p><b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device consumption.
+ * The mobile app uses these endpoints to implement the pull-based authentication model with
+ * cryptographic signature validation.
  *
- * <p>
- * <b>Security Model:</b> All requests include cryptographic signatures in the body
- * to ensure request authenticity and prevent unauthorized access.
- * </p>
+ * <p><b>Security Model:</b> All requests include cryptographic signatures in the body to ensure
+ * request authenticity and prevent unauthorized access.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -79,109 +68,121 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
-@Tag(name = "Authentication Attempts", description = "Mobile authentication attempt operations for checking pending requests and submitting responses")
+@Tag(
+    name = "Authentication Attempts",
+    description =
+        "Mobile authentication attempt operations for checking pending requests and submitting responses")
 public class AuthAttemptController {
 
-    private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
 
-    // Rate limiting endpoint constants
-    public static final String ENDPOINT_PENDING = "/pending";
-    public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
+  // Rate limiting endpoint constants
+  public static final String ENDPOINT_PENDING = "/pending";
+  public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
 
-    private final AuthAttemptService authAttemptService;
+  private final AuthAttemptService authAttemptService;
 
-    private final AuthAttemptMapper authAttemptMapper;
+  private final AuthAttemptMapper authAttemptMapper;
 
-    /**
-     * Constructs the mobile authentication attempt controller with required dependencies.
-     *
-     * @param authAttemptService the JPA-based authorization attempt service
-     * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
-     */
-    public AuthAttemptController(AuthAttemptService authAttemptService,AuthAttemptMapper authAttemptMapper){
-        this.authAttemptService = authAttemptService;
-        this.authAttemptMapper = authAttemptMapper;
+  /**
+   * Constructs the mobile authentication attempt controller with required dependencies.
+   *
+   * @param authAttemptService the JPA-based authorization attempt service
+   * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
+   */
+  public AuthAttemptController(
+      AuthAttemptService authAttemptService, AuthAttemptMapper authAttemptMapper) {
+    this.authAttemptService = authAttemptService;
+    this.authAttemptMapper = authAttemptMapper;
+  }
+
+  /**
+   * Retrieve pending authentication attempts for a mobile device.
+   *
+   * <p>Security Enhancement: Enrollment identification moved from URL path to request body using
+   * enrollmentProofToken to prevent enumeration attacks.
+   *
+   * <p>The mobile device polls this endpoint to check if there are pending authentication requests
+   * for its enrollment. The request body contains a cryptographic signature proving the
+   * authenticity of the request. Returns 200 with the pending request details, or 204 No Content if
+   * no pending requests exist.
+   *
+   * <p><b>MFA Security Context:</b> This endpoint implements the pull-based authentication model
+   * where devices regularly poll for pending authentication requests. The absence of pending
+   * requests (204 No Content) is a normal operational state, not an error.
+   *
+   * <p><b>Security Enhancement:</b> This endpoint now uses enrollmentProofToken in the request body
+   * instead of enrollmentId in the URL path to prevent enumeration attacks. The
+   * enrollmentProofToken provides cryptographic proof of enrollment ownership.
+   *
+   * @param request the pending request containing enrollment proof token and device authentication
+   * @return ResponseEntity containing pending authentication details with HTTP 200, or 204 No
+   *     Content if no pending requests, or 400 for invalid requests
+   * @throws IllegalArgumentException if enrollment proof token is invalid or enrollment not found
+   * @since 2025
+   */
+  @PostMapping("/pending")
+  @Operation(
+      summary = "Get pending authentication attempt",
+      description =
+          "Retrieve pending authentication attempts using secure enrollment proof token. "
+              + "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Pending authentication attempt found"),
+        @ApiResponse(responseCode = "204", description = "No pending authentication attempts"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request or enrollment proof token"),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+      })
+  public ResponseEntity<AuthAttemptPendingResponseDto> pending(
+      @Valid @RequestBody AuthAttemptPendingRequestDto request) {
+    logger.info("Processing pending request for enrollment with proof token");
+
+    try {
+      AuthAttemptPendingResponse response =
+          authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+      return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
+    } catch (NoSuchElementException e) {
+      logger.debug("No pending authentication attempts found");
+      return ResponseEntity.noContent().build();
     }
+  }
 
-    /**
-     * Retrieve pending authentication attempts for a mobile device.
-     * 
-     * Security Enhancement: Enrollment identification moved from URL path to request body
-     * using enrollmentProofToken to prevent enumeration attacks.
-     * <p>
-     * The mobile device polls this endpoint to check if there are pending authentication
-     * requests for its enrollment. The request body contains a cryptographic signature
-     * proving the authenticity of the request. Returns 200 with the pending request
-     * details, or 204 No Content if no pending requests exist.
-     * </p>
-     *
-     * <p>
-     * <b>MFA Security Context:</b> This endpoint implements the pull-based authentication
-     * model where devices regularly poll for pending authentication requests. The absence
-     * of pending requests (204 No Content) is a normal operational state, not an error.
-     * </p>
-     *
-     * <p>
-     * <b>Security Enhancement:</b> This endpoint now uses enrollmentProofToken in the
-     * request body instead of enrollmentId in the URL path to prevent enumeration attacks.
-     * The enrollmentProofToken provides cryptographic proof of enrollment ownership.
-     * </p>
-     *
-     * @param request the pending request containing enrollment proof token and device authentication
-     * @return ResponseEntity containing pending authentication details with HTTP 200,
-     * or 204 No Content if no pending requests, or 400 for invalid requests
-     * @throws IllegalArgumentException if enrollment proof token is invalid or enrollment not found
-     * @since 2025
-     */
-    @PostMapping("/pending")
-    @Operation(
-        summary = "Get pending authentication attempt",
-        description = "Retrieve pending authentication attempts using secure enrollment proof token. " +
-                     "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Pending authentication attempt found"),
-            @ApiResponse(responseCode = "204", description = "No pending authentication attempts"),
-            @ApiResponse(responseCode = "400", description = "Invalid request or enrollment proof token"),
-            @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
-        }
-    )
-    public ResponseEntity<AuthAttemptPendingResponseDto> pending(@Valid @RequestBody AuthAttemptPendingRequestDto request) {
-        logger.info("Processing pending request for enrollment with proof token");
-        
-        try {
-            AuthAttemptPendingResponse response = authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
-            return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
-        } catch (NoSuchElementException e) {
-            logger.debug("No pending authentication attempts found");
-            return ResponseEntity.noContent().build();
-        }
-    }
-
-    /**
-     * Submits the mobile device's response to an authentication request.
-     * <p>
-     * The mobile device uses this endpoint to submit the user's authentication response
-     * (approved, denied, or signature) for a specific authentication attempt.
-     * The response includes cryptographic signatures for validation.
-     * Returns 200 with the response status, or appropriate error codes for invalid requests.
-     * </p>
-     *
-     * @param request the response request DTO containing authentication attempt ID, user's decision and signatures
-     * @return ResponseEntity containing response confirmation with HTTP 200,
-     * or 400 for invalid requests, or 409 for conflicting states
-     */
-    @PostMapping("/respond")
-    @Operation(summary = "Submit authentication response", 
-               description = "Submits mobile device's response to an authentication request. " +
-                           "The authAttemptId is provided in the request body for uniform API design.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Authentication response submitted successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid response data or validation failed"),
+  /**
+   * Submits the mobile device's response to an authentication request.
+   *
+   * <p>The mobile device uses this endpoint to submit the user's authentication response (approved,
+   * denied, or signature) for a specific authentication attempt. The response includes
+   * cryptographic signatures for validation. Returns 200 with the response status, or appropriate
+   * error codes for invalid requests.
+   *
+   * @param request the response request DTO containing authentication attempt ID, user's decision
+   *     and signatures
+   * @return ResponseEntity containing response confirmation with HTTP 200, or 400 for invalid
+   *     requests, or 409 for conflicting states
+   */
+  @PostMapping("/respond")
+  @Operation(
+      summary = "Submit authentication response",
+      description =
+          "Submits mobile device's response to an authentication request. "
+              + "The authAttemptId is provided in the request body for uniform API design.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Authentication response submitted successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid response data or validation failed"),
         @ApiResponse(responseCode = "409", description = "Authentication attempt state conflict"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    public ResponseEntity<AuthAttemptRespondResponseDto> respond(@Valid @RequestBody AuthAttemptRespondRequestDto request) {
-        AuthAttemptRespondResponse response = authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
-        return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
-    }
+      })
+  public ResponseEntity<AuthAttemptRespondResponseDto> respond(
+      @Valid @RequestBody AuthAttemptRespondRequestDto request) {
+    AuthAttemptRespondResponse response =
+        authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
+    return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
+  }
 }

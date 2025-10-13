@@ -21,23 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transaction helper service for auth attempt status management.
- * <p>
- * This service provides methods that require independent transaction management,
- * particularly for operations that must commit regardless of the calling method's
- * transaction outcome (e.g., marking attempt as INVALID even when validation fails).
- * </p>
- * <p>
- * <b>Pattern:</b> Similar to {@link org.ezkey.enrollment.service.EnrollmentTxHelper},
- * this service uses REQUIRES_NEW propagation to ensure status updates persist
- * even when the caller's transaction rolls back.
- * </p>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p>This service provides methods that require independent transaction management, particularly
+ * for operations that must commit regardless of the calling method's transaction outcome (e.g.,
+ * marking attempt as INVALID even when validation fails).
+ *
+ * <p><b>Pattern:</b> Similar to {@link org.ezkey.enrollment.service.EnrollmentTxHelper}, this
+ * service uses REQUIRES_NEW propagation to ensure status updates persist even when the caller's
+ * transaction rolls back.
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -45,58 +40,55 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthAttemptTxHelper {
 
-    private static final Logger logger = LoggerFactory.getLogger(AuthAttemptTxHelper.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuthAttemptTxHelper.class);
 
-    private final AuthAttemptRepository authAttemptRepository;
+  private final AuthAttemptRepository authAttemptRepository;
 
-    public AuthAttemptTxHelper(AuthAttemptRepository authAttemptRepository) {
-        this.authAttemptRepository = authAttemptRepository;
+  public AuthAttemptTxHelper(AuthAttemptRepository authAttemptRepository) {
+    this.authAttemptRepository = authAttemptRepository;
+  }
+
+  /**
+   * Mark auth attempt as INVALID in an independent transaction.
+   *
+   * <p>This method commits immediately regardless of the calling method's transaction state. This
+   * ensures auth attempts are marked as INVALID even when validation throws an exception (e.g.,
+   * challenge mismatch, signature validation failure).
+   *
+   * <p><b>Security:</b> Critical for audit trail - we need to record INVALID attempts even when the
+   * response processing fails. This helps detect brute force attacks and provides accurate security
+   * metrics.
+   *
+   * @param authAttemptId the auth attempt ID to mark as invalid
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markAsInvalid(Integer authAttemptId) {
+    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (authAttempt != null) {
+      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
+      authAttemptRepository.save(authAttempt);
+      logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
     }
+    // Transaction commits here when method returns
+  }
 
-    /**
-     * Mark auth attempt as INVALID in an independent transaction.
-     * <p>
-     * This method commits immediately regardless of the calling method's transaction state.
-     * This ensures auth attempts are marked as INVALID even when validation throws an
-     * exception (e.g., challenge mismatch, signature validation failure).
-     * </p>
-     * <p>
-     * <b>Security:</b> Critical for audit trail - we need to record INVALID attempts
-     * even when the response processing fails. This helps detect brute force attacks
-     * and provides accurate security metrics.
-     * </p>
-     *
-     * @param authAttemptId the auth attempt ID to mark as invalid
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markAsInvalid(Integer authAttemptId) {
-        AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-        if (authAttempt != null) {
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.INVALID);
-            authAttemptRepository.save(authAttempt);
-            logger.warn("🔒 Auth attempt {} marked as INVALID (committed independently)", authAttemptId);
-        }
-        // Transaction commits here when method returns
+  /**
+   * Mark auth attempt as REJECTED in an independent transaction.
+   *
+   * <p>Similar to markAsInvalid, ensures the rejection is persisted even if subsequent processing
+   * fails.
+   *
+   * @param authAttemptId the auth attempt ID to mark as rejected
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markAsRejected(Integer authAttemptId) {
+    AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
+    if (authAttempt != null) {
+      authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
+      authAttemptRepository.save(authAttempt);
+      logger.debug(
+          "🔒 Auth attempt {} marked as REJECTED (committed independently)", authAttemptId);
     }
-
-    /**
-     * Mark auth attempt as REJECTED in an independent transaction.
-     * <p>
-     * Similar to markAsInvalid, ensures the rejection is persisted even if
-     * subsequent processing fails.
-     * </p>
-     *
-     * @param authAttemptId the auth attempt ID to mark as rejected
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markAsRejected(Integer authAttemptId) {
-        AuthAttempt authAttempt = authAttemptRepository.findById(authAttemptId).orElse(null);
-        if (authAttempt != null) {
-            authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
-            authAttemptRepository.save(authAttempt);
-            logger.debug("🔒 Auth attempt {} marked as REJECTED (committed independently)", authAttemptId);
-        }
-        // Transaction commits here when method returns
-    }
+    // Transaction commits here when method returns
+  }
 }
-

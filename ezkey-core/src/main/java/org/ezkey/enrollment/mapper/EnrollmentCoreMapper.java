@@ -9,10 +9,9 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface EnrollmentCoreMapper {
 
-    EnrollmentCreateResponse toCreateResponse(Enrollment enrollment);
+  EnrollmentCreateResponse toCreateResponse(Enrollment enrollment);
 
-    @Mapping(source = "status", target = "enrollmentStatus")
-    @Mapping(source = "active", target = "enrollmentActive")
-    EnrollmentResponse toResponse(Enrollment enrollment);
-
+  @Mapping(source = "status", target = "enrollmentStatus")
+  @Mapping(source = "active", target = "enrollmentActive")
+  EnrollmentResponse toResponse(Enrollment enrollment);
 }

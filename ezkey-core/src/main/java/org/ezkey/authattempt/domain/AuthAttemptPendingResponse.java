@@ -12,46 +12,30 @@ package org.ezkey.authattempt.domain;
 
 /**
  * Domain response object containing pending authentication attempt data.
- * <p>
- * This domain object represents the response data returned by the service layer
- * when a mobile device requests pending authentication attempts. It contains the
- * authentication challenge data that must be processed and signed by the mobile
- * device to complete the authentication flow.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Returned by the AuthAttemptService when mobile devices
- * successfully poll for pending authentication requests. The service layer
- * transforms internal authentication attempt entities into this domain response
- * object for consumption by API layers.
- * </p>
+ * <p>This domain object represents the response data returned by the service layer when a mobile
+ * device requests pending authentication attempts. It contains the authentication challenge data
+ * that must be processed and signed by the mobile device to complete the authentication flow.
  *
- * <p>
- * <b>Authentication Flow:</b> When a pending authentication attempt exists,
- * this response provides the mobile device with the necessary challenge data
- * and proof tokens that must be cryptographically signed to prove user
- * authentication and device ownership.
- * </p>
+ * <p><b>Usage Context:</b> Returned by the AuthAttemptService when mobile devices successfully poll
+ * for pending authentication requests. The service layer transforms internal authentication attempt
+ * entities into this domain response object for consumption by API layers.
  *
- * <p>
- * <b>Security Model:</b> Contains cryptographically signed proof tokens that
- * ensure authentication challenge integrity. The integration-signed proof token
- * prevents tampering and validates that challenges originate from legitimate
- * authentication requests within the system.
- * </p>
+ * <p><b>Authentication Flow:</b> When a pending authentication attempt exists, this response
+ * provides the mobile device with the necessary challenge data and proof tokens that must be
+ * cryptographically signed to prove user authentication and device ownership.
  *
- * <p>
- * <b>Challenge Processing:</b> When additional challenge validation is required,
- * the mobile device must provide supplementary authentication factors based on
- * the challenge requirements indicated in this response.
- * </p>
+ * <p><b>Security Model:</b> Contains cryptographically signed proof tokens that ensure
+ * authentication challenge integrity. The integration-signed proof token prevents tampering and
+ * validates that challenges originate from legitimate authentication requests within the system.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Challenge Processing:</b> When additional challenge validation is required, the mobile
+ * device must provide supplementary authentication factors based on the challenge requirements
+ * indicated in this response.
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -61,120 +45,112 @@ package org.ezkey.authattempt.domain;
  */
 public class AuthAttemptPendingResponse {
 
-    /**
-     * Unique identifier of the authentication attempt.
-     * <p>
-     * Used by the mobile device to reference this specific authentication
-     * attempt when submitting a response. This ID links the challenge
-     * response back to the original authentication request and ensures
-     * proper tracking throughout the authentication flow.
-     * </p>
-     */
-    private Integer authAttemptId;
+  /**
+   * Unique identifier of the authentication attempt.
+   *
+   * <p>Used by the mobile device to reference this specific authentication attempt when submitting
+   * a response. This ID links the challenge response back to the original authentication request
+   * and ensures proper tracking throughout the authentication flow.
+   */
+  private Integer authAttemptId;
 
-    /**
-     * Integration proof token for this authentication attempt.
-     * <p>
-     * Contains the challenge data that needs to be cryptographically signed
-     * by the mobile device. This token includes the authentication challenge
-     * information and contextual data required for the device to generate
-     * a valid authentication response.
-     * </p>
-     */
-    private String authAttemptProofToken;
+  /**
+   * Integration proof token for this authentication attempt.
+   *
+   * <p>Contains the challenge data that needs to be cryptographically signed by the mobile device.
+   * This token includes the authentication challenge information and contextual data required for
+   * the device to generate a valid authentication response.
+   */
+  private String authAttemptProofToken;
 
-    /**
-     * Cryptographically signed proof token.
-     * <p>
-     * Provides integrity protection and prevents tampering with the challenge
-     * data. This signature is generated by the integration system using its
-     * private key and can be verified by the mobile device to ensure the
-     * authenticity and integrity of the authentication challenge.
-     * </p>
-     */
-    private String authAttemptProofTokenSignedByIntegration;
+  /**
+   * Cryptographically signed proof token.
+   *
+   * <p>Provides integrity protection and prevents tampering with the challenge data. This signature
+   * is generated by the integration system using its private key and can be verified by the mobile
+   * device to ensure the authenticity and integrity of the authentication challenge.
+   */
+  private String authAttemptProofTokenSignedByIntegration;
 
-    /**
-     * Indicates whether additional challenge validation is required.
-     * <p>
-     * When true, the mobile device must provide additional challenge responses
-     * beyond the standard authentication. This may include biometric verification,
-     * PIN entry, or other multi-factor authentication requirements as determined
-     * by the authentication policy and risk assessment.
-     * </p>
-     */
-    private Boolean authAttemptChallengeRequired;
+  /**
+   * Indicates whether additional challenge validation is required.
+   *
+   * <p>When true, the mobile device must provide additional challenge responses beyond the standard
+   * authentication. This may include biometric verification, PIN entry, or other multi-factor
+   * authentication requirements as determined by the authentication policy and risk assessment.
+   */
+  private Boolean authAttemptChallengeRequired;
 
-    /**
-     * Gets the unique identifier of the authentication attempt.
-     *
-     * @return the authentication attempt ID
-     */
-    public Integer getAuthAttemptId() {
-        return authAttemptId;
-    }
+  /**
+   * Gets the unique identifier of the authentication attempt.
+   *
+   * @return the authentication attempt ID
+   */
+  public Integer getAuthAttemptId() {
+    return authAttemptId;
+  }
 
-    /**
-     * Sets the unique identifier of the authentication attempt.
-     *
-     * @param authAttemptId the authentication attempt ID to set
-     */
-    public void setAuthAttemptId(Integer authAttemptId) {
-        this.authAttemptId = authAttemptId;
-    }
+  /**
+   * Sets the unique identifier of the authentication attempt.
+   *
+   * @param authAttemptId the authentication attempt ID to set
+   */
+  public void setAuthAttemptId(Integer authAttemptId) {
+    this.authAttemptId = authAttemptId;
+  }
 
-    /**
-     * Gets the integration proof token containing challenge data.
-     *
-     * @return the authentication attempt proof token
-     */
-    public String getAuthAttemptProofToken() {
-        return authAttemptProofToken;
-    }
+  /**
+   * Gets the integration proof token containing challenge data.
+   *
+   * @return the authentication attempt proof token
+   */
+  public String getAuthAttemptProofToken() {
+    return authAttemptProofToken;
+  }
 
-    /**
-     * Sets the integration proof token containing challenge data.
-     *
-     * @param authAttemptProofToken the authentication attempt proof token to set
-     */
-    public void setAuthAttemptProofToken(String authAttemptProofToken) {
-        this.authAttemptProofToken = authAttemptProofToken;
-    }
+  /**
+   * Sets the integration proof token containing challenge data.
+   *
+   * @param authAttemptProofToken the authentication attempt proof token to set
+   */
+  public void setAuthAttemptProofToken(String authAttemptProofToken) {
+    this.authAttemptProofToken = authAttemptProofToken;
+  }
 
-    /**
-     * Gets the cryptographically signed proof token.
-     *
-     * @return the signed authentication attempt proof token
-     */
-    public String getAuthAttemptProofTokenSignedByIntegration() {
-        return authAttemptProofTokenSignedByIntegration;
-    }
+  /**
+   * Gets the cryptographically signed proof token.
+   *
+   * @return the signed authentication attempt proof token
+   */
+  public String getAuthAttemptProofTokenSignedByIntegration() {
+    return authAttemptProofTokenSignedByIntegration;
+  }
 
-    /**
-     * Sets the cryptographically signed proof token.
-     *
-     * @param authAttemptProofTokenSignedByIntegration the signed proof token to set
-     */
-    public void setAuthAttemptProofTokenSignedByIntegration(String authAttemptProofTokenSignedByIntegration) {
-        this.authAttemptProofTokenSignedByIntegration = authAttemptProofTokenSignedByIntegration;
-    }
+  /**
+   * Sets the cryptographically signed proof token.
+   *
+   * @param authAttemptProofTokenSignedByIntegration the signed proof token to set
+   */
+  public void setAuthAttemptProofTokenSignedByIntegration(
+      String authAttemptProofTokenSignedByIntegration) {
+    this.authAttemptProofTokenSignedByIntegration = authAttemptProofTokenSignedByIntegration;
+  }
 
-    /**
-     * Gets the additional challenge requirement flag.
-     *
-     * @return true if additional challenge validation is required, false otherwise
-     */
-    public Boolean getAuthAttemptChallengeRequired() {
-        return authAttemptChallengeRequired;
-    }
+  /**
+   * Gets the additional challenge requirement flag.
+   *
+   * @return true if additional challenge validation is required, false otherwise
+   */
+  public Boolean getAuthAttemptChallengeRequired() {
+    return authAttemptChallengeRequired;
+  }
 
-    /**
-     * Sets the additional challenge requirement flag.
-     *
-     * @param authAttemptChallengeRequired true if additional challenge validation is required
-     */
-    public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
-        this.authAttemptChallengeRequired = authAttemptChallengeRequired;
-    }
-
+  /**
+   * Sets the additional challenge requirement flag.
+   *
+   * @param authAttemptChallengeRequired true if additional challenge validation is required
+   */
+  public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
+    this.authAttemptChallengeRequired = authAttemptChallengeRequired;
+  }
 }

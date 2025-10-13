@@ -12,39 +12,26 @@ package org.ezkey.enrollment.domain;
 
 /**
  * Domain request object for retrieving enrollment binding information.
- * <p>
- * This domain object represents the request data used by the service layer
- * to fetch enrollment binding details for device configuration and display.
- * It includes localization support to provide appropriate integration and
- * application names in the user's preferred language.
- * </p>
  *
- * <p>
- * <b>Usage Context:</b> Used by the EnrollmentService when devices or
- * applications request enrollment binding information for display purposes.
- * The service layer transforms API DTOs into this domain object for
- * business logic processing and localized data retrieval.
- * </p>
+ * <p>This domain object represents the request data used by the service layer to fetch enrollment
+ * binding details for device configuration and display. It includes localization support to provide
+ * appropriate integration and application names in the user's preferred language.
  *
- * <p>
- * <b>Enrollment Flow:</b> This request typically occurs after enrollment
- * creation and before verification, allowing devices to display appropriate
- * integration context and user-friendly information about the enrollment
- * they are about to complete.
- * </p>
+ * <p><b>Usage Context:</b> Used by the EnrollmentService when devices or applications request
+ * enrollment binding information for display purposes. The service layer transforms API DTOs into
+ * this domain object for business logic processing and localized data retrieval.
  *
- * <p>
- * <b>Internationalization:</b> Supports language-specific requests to
- * provide localized integration names and descriptions, enhancing the
- * user experience by displaying content in the user's preferred language.
- * </p>
+ * <p><b>Enrollment Flow:</b> This request typically occurs after enrollment creation and before
+ * verification, allowing devices to display appropriate integration context and user-friendly
+ * information about the enrollment they are about to complete.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- * </p>
- * <p>
- * <b>License:</b> MIT
- * </p>
+ * <p><b>Internationalization:</b> Supports language-specific requests to provide localized
+ * integration names and descriptions, enhancing the user experience by displaying content in the
+ * user's preferred language.
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -54,91 +41,85 @@ package org.ezkey.enrollment.domain;
  */
 public class EnrollmentBindRequest {
 
-    /**
-     * Unique identifier of the enrollment to retrieve binding information for.
-     * <p>
-     * Must reference an existing enrollment. This ID is used to locate the
-     * specific enrollment and gather related integration and application
-     * context for display to the user during the enrollment process.
-     * </p>
-     */
-    private Integer enrollmentId;
+  /**
+   * Unique identifier of the enrollment to retrieve binding information for.
+   *
+   * <p>Must reference an existing enrollment. This ID is used to locate the specific enrollment and
+   * gather related integration and application context for display to the user during the
+   * enrollment process.
+   */
+  private Integer enrollmentId;
 
-    /**
-     * The enrollment proof token for authentication.
-     * <p>
-     * Unique cryptographic token generated during enrollment creation that must
-     * be provided to access enrollment binding information. This token prevents
-     * enumeration attacks by ensuring only parties with valid proof tokens can
-     * access enrollment data. The token must match the one generated during
-     * enrollment creation.
-     * </p>
-     */
-    private String enrollmentProofToken;
+  /**
+   * The enrollment proof token for authentication.
+   *
+   * <p>Unique cryptographic token generated during enrollment creation that must be provided to
+   * access enrollment binding information. This token prevents enumeration attacks by ensuring only
+   * parties with valid proof tokens can access enrollment data. The token must match the one
+   * generated during enrollment creation.
+   */
+  private String enrollmentProofToken;
 
-    /**
-     * The language code for internationalization of response fields.
-     * <p>
-     * Language code (e.g., "en", "fr", "es") requested for localized fields
-     * such as integration names and application descriptions. Used to fetch
-     * appropriate translations and provide a localized user experience
-     * during enrollment binding and device configuration.
-     * </p>
-     */
-    private String language;
+  /**
+   * The language code for internationalization of response fields.
+   *
+   * <p>Language code (e.g., "en", "fr", "es") requested for localized fields such as integration
+   * names and application descriptions. Used to fetch appropriate translations and provide a
+   * localized user experience during enrollment binding and device configuration.
+   */
+  private String language;
 
-    /**
-     * Gets the unique identifier of the enrollment.
-     *
-     * @return the enrollment ID
-     */
-    public Integer getEnrollmentId() {
-        return enrollmentId;
-    }
+  /**
+   * Gets the unique identifier of the enrollment.
+   *
+   * @return the enrollment ID
+   */
+  public Integer getEnrollmentId() {
+    return enrollmentId;
+  }
 
-    /**
-     * Sets the unique identifier of the enrollment.
-     *
-     * @param enrollmentId the enrollment ID to set
-     */
-    public void setEnrollmentId(Integer enrollmentId) {
-        this.enrollmentId = enrollmentId;
-    }
+  /**
+   * Sets the unique identifier of the enrollment.
+   *
+   * @param enrollmentId the enrollment ID to set
+   */
+  public void setEnrollmentId(Integer enrollmentId) {
+    this.enrollmentId = enrollmentId;
+  }
 
-    /**
-     * Gets the language code for internationalization.
-     *
-     * @return the language code (e.g., "en", "fr")
-     */
-    public String getLanguage() {
-        return language;
-    }
+  /**
+   * Gets the language code for internationalization.
+   *
+   * @return the language code (e.g., "en", "fr")
+   */
+  public String getLanguage() {
+    return language;
+  }
 
-    /**
-     * Sets the language code for internationalization.
-     *
-     * @param language the language code to set
-     */
-    public void setLanguage(String language) {
-        this.language = language;
-    }
+  /**
+   * Sets the language code for internationalization.
+   *
+   * @param language the language code to set
+   */
+  public void setLanguage(String language) {
+    this.language = language;
+  }
 
-    /**
-     * Gets the enrollment proof token for authentication.
-     *
-     * @return the enrollment proof token
-     */
-    public String getEnrollmentProofToken() {
-        return enrollmentProofToken;
-    }
+  /**
+   * Gets the enrollment proof token for authentication.
+   *
+   * @return the enrollment proof token
+   */
+  public String getEnrollmentProofToken() {
+    return enrollmentProofToken;
+  }
 
-    /**
-     * Sets the enrollment proof token for authentication.
-     *
-     * @param enrollmentProofToken the enrollment proof token to set
-     */
-    public void setEnrollmentProofToken(String enrollmentProofToken) {
-        this.enrollmentProofToken = enrollmentProofToken;
-    }
-
+  /**
+   * Sets the enrollment proof token for authentication.
+   *
+   * @param enrollmentProofToken the enrollment proof token to set
+   */
+  public void setEnrollmentProofToken(String enrollmentProofToken) {
+    this.enrollmentProofToken = enrollmentProofToken;
+  }
 }
