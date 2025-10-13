@@ -1,0 +1,34 @@
+{
+  "name": "wait",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/auth-attempts/:id/wait",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());"
+    },
+    "method": "GET",
+    "queryParams": [
+      {
+        "id": 0,
+        "key": "timeout",
+        "value": "30",
+        "isEnabled": true
+      },
+      {
+        "id": 1,
+        "key": "polling",
+        "value": "2",
+        "isEnabled": true
+      }
+    ],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

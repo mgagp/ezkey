@@ -1,0 +1,401 @@
+{
+  "name": "local",
+  "variables": {
+    "base_url": {
+      "value": "http://localhost:8080",
+      "type": "string",
+      "id": 0,
+      "isSecret": false
+    },
+    "base_url_sim_api": {
+      "value": "http://localhost:8081",
+      "type": "string",
+      "id": 1,
+      "isSecret": false
+    },
+    "base_url_admin_api": {
+      "value": "http://localhost:9080",
+      "type": "string",
+      "id": 2,
+      "isSecret": false
+    },
+    "application_id": {
+      "value": "",
+      "type": "string",
+      "id": 3,
+      "isSecret": false
+    },
+    "pair_id": {
+      "value": "",
+      "type": "string",
+      "id": 4,
+      "isSecret": false
+    },
+    "pair_challengeForDevice": {
+      "value": "",
+      "type": "string",
+      "id": 5,
+      "isSecret": false
+    },
+    "admin_code": {
+      "value": "",
+      "type": "string",
+      "id": 6,
+      "isSecret": false
+    },
+    "pair_applicationPublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 7,
+      "isSecret": false
+    },
+    "pair_bindCode": {
+      "value": "",
+      "type": "string",
+      "id": 8,
+      "isSecret": false
+    },
+    "pair_bindCodeSignature": {
+      "value": "",
+      "type": "string",
+      "id": 9,
+      "isSecret": false
+    },
+    "pair_devicePublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 10,
+      "isSecret": false
+    },
+    "pair_devicePrivateKey": {
+      "value": "",
+      "type": "string",
+      "id": 11,
+      "isSecret": false
+    },
+    "authentication_id": {
+      "value": "",
+      "type": "string",
+      "id": 12,
+      "isSecret": false
+    },
+    "deviceCode": {
+      "value": "",
+      "type": "string",
+      "id": 13,
+      "isSecret": false
+    },
+    "deviceCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 14,
+      "isSecret": false
+    },
+    "applicationCode": {
+      "value": "",
+      "type": "string",
+      "id": 15,
+      "isSecret": false
+    },
+    "applicationCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 16,
+      "isSecret": false
+    },
+    "integrationId": {
+      "value": "",
+      "type": "string",
+      "id": 17,
+      "isSecret": false
+    },
+    "enrollmentId": {
+      "value": "",
+      "type": "string",
+      "id": 18,
+      "isSecret": false
+    },
+    "enrollmentChallenge": {
+      "value": "",
+      "type": "string",
+      "id": 19,
+      "isSecret": false
+    },
+    "enrollment_enrollmentId": {
+      "value": "",
+      "type": "string",
+      "id": 20,
+      "isSecret": false
+    },
+    "enrollment_integrationPublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 21,
+      "isSecret": false
+    },
+    "enrollment_enrollmentCode": {
+      "value": "",
+      "type": "string",
+      "id": 22,
+      "isSecret": false
+    },
+    "enrollment_enrollmentCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 23,
+      "isSecret": false
+    },
+    "enrollment_simulationEnrollmentCodeSignature": {
+      "value": "",
+      "type": "string",
+      "id": 24,
+      "isSecret": false
+    },
+    "enrollment_simulationDevicePublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 25,
+      "isSecret": false
+    },
+    "enrollment_simulationDevicePrivateKey": {
+      "value": "",
+      "type": "string",
+      "id": 26,
+      "isSecret": false
+    },
+    "enrollment_simulationEnrollmentCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 27,
+      "isSecret": false
+    },
+    "authAttemptId": {
+      "value": "",
+      "type": "string",
+      "id": 28,
+      "isSecret": false
+    },
+    "simulationAuthAttemptEnrolleeCode": {
+      "value": "",
+      "type": "string",
+      "id": 29,
+      "isSecret": false
+    },
+    "simulationAuthAttemptEnrolleeCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 30,
+      "isSecret": false
+    },
+    "authAttemptCode": {
+      "value": "",
+      "type": "string",
+      "id": 31,
+      "isSecret": false
+    },
+    "authAttemptCodeSigned": {
+      "value": "",
+      "type": "string",
+      "id": 32,
+      "isSecret": false
+    },
+    "authAttemptChallengeRequired": {
+      "value": "",
+      "type": "string",
+      "id": 33,
+      "isSecret": false
+    },
+    "simulationAuthAttemptChallengeResponse": {
+      "value": "",
+      "type": "string",
+      "id": 34,
+      "isSecret": false
+    },
+    "env_simulationEnrollmentCodeSigned": {
+      "value": "VYHNieLn+hD9w2eOtFLlG6Hp6VkFG68ZJop18N3yBYWMmIcQ7UCb//ffTrmsxGHyDxDeCk0tUkaWVrnojQ4zuUS03WVW+KWOdklcqDtsogXHgMB3/77VJxxqqA65Jm0WglOlBFb6+oJ9nteB9p912kWqTCWWxmjp3WHQNApiyME6bdNVWl23ATpajT4QiY/WMXLtTNX4JDFQBiSWSf/es2OBqmAbtfdH579ELVKQYA5GWUP8ZXV4D/7JcPl+99EVcMAadbt4qgJjPFNhYMfYDyY8DDwR6n05cgf/XX8L6I/E1mXFys0q6GB0hfuMx+uI51cCLyM6SoI9i0HU3BUXgw==",
+      "type": "string",
+      "id": 35,
+      "isSecret": false
+    },
+    "env_simulationDevicePublicKey": {
+      "value": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAskhAVC29iW/1kLMsY/SeCe7wC/ecdOnHXK+49+NdnkD1GDmYitX6/z49kHumVWBdPcSLdclpsnEd3c/5AwYkWmYdOqsBnyT6uALFtkYzs/QQ2nCPy6sG95PR5iTsir/25zGN9/GrRk3K37+E4+AoMcubiC3M5E/DGimX0RVBhYX/TbAwH7VWswfXPOqSSP3so2VCath2DpJJJl9F3CsiutRbSdMgg+XJ1U2kiFD0W7i7eN0JYu4PDJU8IGfNMW5KPt5uI7JJlN829xKlu0rSgRQ3StDc4fmhYn1BCQ7mpOn3ti5z8LYEFHqs7U6a/Xzk2h37IQwrAu7++buRYLXwLwIDAQAB",
+      "type": "string",
+      "id": 36,
+      "isSecret": false
+    },
+    "env_simulationDevicePrivateKey": {
+      "value": "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCySEBULb2Jb/WQsyxj9J4J7vAL95x06cdcr7j3412eQPUYOZiK1fr/Pj2Qe6ZVYF09xIt1yWmycR3dz/kDBiRaZh06qwGfJPq4AsW2RjOz9BDacI/Lqwb3k9HmJOyKv/bnMY338atGTcrfv4Tj4Cgxy5uILczkT8MaKZfRFUGFhf9NsDAftVazB9c86pJI/eyjZUJq2HYOkkkmX0XcKyK61FtJ0yCD5cnVTaSIUPRbuLt43Qli7g8MlTwgZ80xbko+3m4jskmU3zb3EqW7StKBFDdK0Nzh+aFifUEJDuak6fe2LnPwtgQUeqztTpr9fOTaHfshDCsC7v75u5FgtfAvAgMBAAECggEASQMk8TSATGJhH575PYBHHstPXJ9N4GWDY3aFmmNviimRFpgz3Bvw/IopXVv+TTW3Sd4NvTG8yzrfH+GV2cKwraLnMokpE1tqIGTmQpUyhG6eXk893IuQwWC00/toMhSW0azuNs4utg6S2JpPGqHI5Ee9zQHwyMnPnY3OIm8Bk+QTIbaY+mqhUAJKd5enXtDr+0fsJny2Zs29BMQEiTzzBF9d6SBB+p4BWxUiAbHaJC/MahUyJUXr82SLy+jH7tky4Nt/ru/c6C6CSDgz6k0BH4W4xn8+bXa1k9zZUFtc2iOmZP7v3Jsex01xPCULKT/DQcPN4KkNh+h3kAWpWBwKXQKBgQDTf2stHPZ2BBIbygbuQKwlwzR51bAZXIQ9+cbIfcdFZi8bETavb5w4vAApfexy1d0M+9xXP8RK7fBJf4XqBwjn5QBljpkkTdteSBQmbF3oUxgbWVfkif1hLxoqrS3ZcOHfVwthAQ15ar43wTPpSWjZ03rfH0iQb2FdUiyXTDN4ZQKBgQDXy6O+Pr1fi3BP+AqDkwkB2mgU78f+gEYVCCjSx9qZImUL8nwbNUyV/H9Zo7hfOSSjX2eZ4c6QjGyOZZtKwjCtxg9hAIChsDBGjnRr2usIHW2RV4Q+tHJ55EhpgYsv11R8dYn+By84zC0qTmfa6QyfT5z5mSZkyUNEbueC9Id7AwKBgBkBA2a9+dVR/eITLGaWdsOwJFATF1KoQWoiUYH6fMiToBYPHuv2wf1jHJHLNV0OM6gJTq9x9n71SmcmEGrukfr4c+eNyEUmfzzSQK+aOC/zQvJYya9XMQGAVBOfjcAbPFjvLYU2XqVwHTTyPnTiHOdDvU8Ln8STpmsl/+eTNrKRAoGBALOsm5agmH7AE/CRnvd0anB/kF+2UjfmR/PlClCOFMWiLK4o5QqmczECvmo9dhra8lWQ7yriJ2KVeSGLGiTB0VQu78kdaPy3PUrR+7991Gm6TutQCg1Ho3U4DM7EDMb1rCPAnffDtZ696fEqvTA5EMhoulPcH2qVZQvKp7qSrWdPAoGBAMRxvCizj2jy7FbUQoPvQ6GYH01/mU+zhnyv+4sx3W8EQ1EP6TO2oFsdioSx4Irh73Xr59iff5+AYCYplPKrXgbMhzVwbZ3YU8Q3DT8JTe1yY3ECpMxhNBuE42zG2r370h6bmkRwQ7TunZDGHuGw6tMiRsyMq+aGLsEwxuGGiwhM",
+      "type": "string",
+      "id": 37,
+      "isSecret": false
+    },
+    "integrationPublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 38,
+      "isSecret": false
+    },
+    "deviceProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 39,
+      "isSecret": false
+    },
+    "deviceProofTokenSignedByIntegration": {
+      "value": "",
+      "type": "string",
+      "id": 40,
+      "isSecret": false
+    },
+    "simulationDeviceProofTokenSigned": {
+      "value": "",
+      "type": "string",
+      "id": 41,
+      "isSecret": false
+    },
+    "simulationDevicePublicKey": {
+      "value": "",
+      "type": "string",
+      "id": 42,
+      "isSecret": false
+    },
+    "simulationDevicePrivateKey": {
+      "value": "",
+      "type": "string",
+      "id": 43,
+      "isSecret": false
+    },
+    "simulationDeviceProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 44,
+      "isSecret": false
+    },
+    "integrationProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 45,
+      "isSecret": false
+    },
+    "integrationProofTokenSigned": {
+      "value": "",
+      "type": "string",
+      "id": 46,
+      "isSecret": false
+    },
+    "simulationAuthAttemptProofTokenSignedByDevice": {
+      "value": "",
+      "type": "string",
+      "id": 47,
+      "isSecret": false
+    },
+    "enrollmentProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 48,
+      "isSecret": false
+    },
+    "simulationEnrollmentProofTokenSigned": {
+      "value": "",
+      "type": "string",
+      "id": 49,
+      "isSecret": false
+    },
+    "simulationPendingDeviceProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 50,
+      "isSecret": false
+    },
+    "simulationPendingDeviceProofTokenSigned": {
+      "value": "",
+      "type": "string",
+      "id": 51,
+      "isSecret": false
+    },
+    "privateKey": {
+      "value": "",
+      "type": "string",
+      "id": 52,
+      "isSecret": false
+    },
+    "publicKey": {
+      "value": "",
+      "type": "string",
+      "id": 53,
+      "isSecret": false
+    },
+    "signature": {
+      "value": "",
+      "type": "string",
+      "id": 54,
+      "isSecret": false
+    },
+    "valid": {
+      "value": "",
+      "type": "string",
+      "id": 55,
+      "isSecret": false
+    },
+    "device_privateKey": {
+      "value": "",
+      "type": "string",
+      "id": 56,
+      "isSecret": false
+    },
+    "device_publicKey": {
+      "value": "",
+      "type": "string",
+      "id": 57,
+      "isSecret": false
+    },
+    "enrollment_proofkey_signature": {
+      "value": "",
+      "type": "string",
+      "id": 58,
+      "isSecret": false
+    },
+    "device_proofToken": {
+      "value": "",
+      "type": "string",
+      "id": 59,
+      "isSecret": false
+    },
+    "device_prooftoken_signature": {
+      "value": "",
+      "type": "string",
+      "id": 60,
+      "isSecret": false
+    },
+    "authAttemptProofTokenSignedByIntegration": {
+      "value": "",
+      "type": "string",
+      "id": 61,
+      "isSecret": false
+    },
+    "authAttemptProofToken": {
+      "value": "",
+      "type": "string",
+      "id": 62,
+      "isSecret": false
+    },
+    "authAttemptProofTokenSignedByDevice": {
+      "value": "",
+      "type": "string",
+      "id": 63,
+      "isSecret": false
+    },
+    "proofToken": {
+      "value": "",
+      "type": "string",
+      "id": 64,
+      "isSecret": false
+    },
+    "token": {
+      "value": "",
+      "type": "string",
+      "id": 65,
+      "isSecret": false
+    }
+  }
+}

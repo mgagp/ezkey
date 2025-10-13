@@ -1,0 +1,28 @@
+{
+  "name": "applications ID",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/integrations/:id",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "rq.test(\"Status code is 200\", function () {\n    rq.response.to.have.status(200);\n});"
+    },
+    "method": "GET",
+    "queryParams": [
+      {
+        "id": 0,
+        "key": "id",
+        "value": "1",
+        "isEnabled": true
+      }
+    ],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

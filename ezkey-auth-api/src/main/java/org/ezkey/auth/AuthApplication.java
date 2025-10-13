@@ -29,6 +29,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.enrollment", //
       "org.ezkey.exception", //
       "org.ezkey.signature", //
+      "org.ezkey.config", // Configuration properties
     })
 public class AuthApplication {
 

@@ -1,0 +1,30 @@
+{
+  "name": "validate",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/sim/validate",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"valid\", jsonData.valid);"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\r\n    \"data\": \"{{data}}\",\r\n    \"signature\": \"{{signature}}\",\r\n    \"publicKey\": \"{{publicKey}}\"\r\n}",
+    "bodyContainer": {
+      "text": "{\r\n    \"data\": \"{{data}}\",\r\n    \"signature\": \"{{signature}}\",\r\n    \"publicKey\": \"{{publicKey}}\"\r\n}"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

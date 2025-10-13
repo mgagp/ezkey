@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
 import java.util.Set;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,8 +59,9 @@ class SignatureServiceTest {
   /** Setup test data before each test method. */
   @BeforeEach
   void setUp() throws Exception {
-    // Initialize signature service
-    signatureService = new SignatureService();
+    // Initialize signature service with default configuration
+    EzkeyCoreProperties ezkeyCoreProperties = new EzkeyCoreProperties();
+    signatureService = new SignatureService(ezkeyCoreProperties);
 
     // Generate RSA key pair for testing via service API
     RsaKeyPair rsaKeyPair = signatureService.generateRsaKeyPair(2048);

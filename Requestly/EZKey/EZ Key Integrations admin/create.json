@@ -1,0 +1,30 @@
+{
+  "name": "create",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/integrations",
+    "scripts": {
+      "preRequest": "const now = new Date();\r\nconst yyyy = now.getFullYear();\r\nconst mm = String(now.getMonth() + 1).padStart(2, '0');\r\nconst dd = String(now.getDate()).padStart(2, '0');\r\nconst hh = String(now.getHours()).padStart(2, '0');\r\nconst mi = String(now.getMinutes()).padStart(2, '0');\r\nconst code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;\r\nrq.environment.set(\"admin_code\", code);\r\n",
+      "postResponse": "rq.test(\"Successful POST request\", function () {\n    rq.expect(rq.response.code).to.be.oneOf([200, 201]);\n});\n\nvar jsonData = JSON.parse(rq.response.text());\nrq.environment.set(\"integrationId\", jsonData.id);\n\n"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\n    \"logo\": \"https://acmemfg.com/wp-content/uploads/2020/10/cropped-acme-logo-favicon.png\",\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"La patate à Brigitte\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
+    "bodyContainer": {
+      "text": "{\n    \"logo\": \"https://acmemfg.com/wp-content/uploads/2020/10/cropped-acme-logo-favicon.png\",\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"La patate à Brigitte\",\n          \"description\": \"Administration\"\n        }\n    ]\n}"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

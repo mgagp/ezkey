@@ -13,6 +13,7 @@ package org.ezkey.enrollment.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
@@ -108,6 +109,7 @@ public class EnrollmentService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
+  private final EzkeyCoreProperties ezkeyCoreProperties;
 
   // Specialized services for specific operations
   private final EnrollmentBindService bindService;
@@ -118,16 +120,19 @@ public class EnrollmentService {
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param signatureService the cryptographic signature service
+   * @param ezkeyCoreProperties the ezkey core configuration properties
    * @param bindService the specialized service for binding operations
    * @param verifyService the specialized service for verification operations
    */
   public EnrollmentService(
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
+      EzkeyCoreProperties ezkeyCoreProperties,
       EnrollmentBindService bindService,
       EnrollmentVerifyService verifyService) {
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
+    this.ezkeyCoreProperties = ezkeyCoreProperties;
     this.bindService = bindService;
     this.verifyService = verifyService;
   }
@@ -187,7 +192,8 @@ public class EnrollmentService {
             ? request.getAuthAttemptChallengeRequired()
             : false);
     enrollment.setCreatedAt(LocalDateTime.now());
-    RsaKeyPair integrationKeys = signatureService.generateRsaKeyPair(2048);
+    RsaKeyPair integrationKeys =
+        signatureService.generateRsaKeyPair(ezkeyCoreProperties.getCrypto().getRsaKeySize());
     enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
     enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
     enrollment.setDevicePublicKey(null);

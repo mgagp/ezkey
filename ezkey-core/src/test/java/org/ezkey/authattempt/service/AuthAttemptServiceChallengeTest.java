@@ -20,6 +20,7 @@ import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.signature.SignatureService;
@@ -29,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthAttemptService Challenge Configuration Tests")
@@ -49,13 +49,17 @@ class AuthAttemptServiceChallengeTest {
 
   private AuthAttemptService authAttemptService;
 
+  private EzkeyCoreProperties ezkeyCoreProperties;
+
   @BeforeEach
   void setUp() {
+    ezkeyCoreProperties = new EzkeyCoreProperties();
     authAttemptService =
         new AuthAttemptService(
             authAttemptRepository,
             enrollmentRepository,
             signatureService,
+            ezkeyCoreProperties,
             pendingService,
             respondService,
             waitService);
@@ -65,7 +69,7 @@ class AuthAttemptServiceChallengeTest {
   @DisplayName("Should generate 2-digit challenge by default")
   void testDefaultTwoDigitChallenge() {
     // Arrange
-    ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 2);
+    ezkeyCoreProperties.getAuthAttempt().setChallengeDigits(2);
     setupBasicMocks(true);
     when(signatureService.generateSecureChallenge(2)).thenReturn(42);
 
@@ -89,7 +93,7 @@ class AuthAttemptServiceChallengeTest {
   @DisplayName("Should generate 1-digit challenge when configured")
   void testOneDigitChallenge() {
     // Arrange
-    ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 1);
+    ezkeyCoreProperties.getAuthAttempt().setChallengeDigits(1);
     setupBasicMocks(true);
     when(signatureService.generateSecureChallenge(1)).thenReturn(5);
 
@@ -110,7 +114,7 @@ class AuthAttemptServiceChallengeTest {
   @DisplayName("Should generate 6-digit challenge when configured")
   void testSixDigitChallenge() {
     // Arrange
-    ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 6);
+    ezkeyCoreProperties.getAuthAttempt().setChallengeDigits(6);
     setupBasicMocks(true);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
 
@@ -131,7 +135,7 @@ class AuthAttemptServiceChallengeTest {
   @DisplayName("Should truncate to 6 digits when configured with higher value")
   void testTruncationToSixDigits() {
     // Arrange
-    ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 8);
+    ezkeyCoreProperties.getAuthAttempt().setChallengeDigits(8);
     setupBasicMocks(true);
     when(signatureService.generateSecureChallenge(6))
         .thenReturn(123456); // Should be truncated to 6
@@ -154,7 +158,7 @@ class AuthAttemptServiceChallengeTest {
   @DisplayName("Should not generate challenge when not required")
   void testNoChallengeGeneration() {
     // Arrange
-    ReflectionTestUtils.setField(authAttemptService, "challengeDigits", 2);
+    ezkeyCoreProperties.getAuthAttempt().setChallengeDigits(2);
     setupBasicMocks(false);
 
     // Act

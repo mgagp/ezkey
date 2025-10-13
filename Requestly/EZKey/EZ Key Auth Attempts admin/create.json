@@ -1,0 +1,30 @@
+{
+  "name": "create",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/auth-attempts",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r\n"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}\r\n",
+    "bodyContainer": {
+      "text": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}\r\n"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

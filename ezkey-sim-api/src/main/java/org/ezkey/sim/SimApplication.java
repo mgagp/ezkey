@@ -25,6 +25,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.sim", //
       "org.ezkey.exception", //
       "org.ezkey.signature", //
+      "org.ezkey.config", //
     })
 public class SimApplication {
 

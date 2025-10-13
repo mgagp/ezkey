@@ -21,6 +21,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Objects;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -74,12 +75,19 @@ public class SignatureService {
 
   private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
 
-  private static final String RSA_ALGORITHM = "RSA";
-
-  private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
-
   // Reuse a single SecureRandom instance
   private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+
+  private final EzkeyCoreProperties ezkeyCoreProperties;
+
+  /**
+   * Constructs the signature service with configuration properties.
+   *
+   * @param ezkeyCoreProperties the ezkey core configuration properties
+   */
+  public SignatureService(EzkeyCoreProperties ezkeyCoreProperties) {
+    this.ezkeyCoreProperties = ezkeyCoreProperties;
+  }
 
   /**
    * Generates a digital signature for the provided data using RSA private key.
@@ -119,9 +127,10 @@ public class SignatureService {
     try {
       byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PrivateKey);
       PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
+      KeyFactory kf = KeyFactory.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
       PrivateKey privateKey = kf.generatePrivate(spec);
-      Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
+      Signature signature =
+          Signature.getInstance(ezkeyCoreProperties.getCrypto().getSignatureAlgorithm());
       signature.initSign(privateKey);
       signature.update(data.getBytes(StandardCharsets.UTF_8));
       byte[] signed = signature.sign();
@@ -167,16 +176,20 @@ public class SignatureService {
     try {
       byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PublicKey);
       X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
+      KeyFactory kf = KeyFactory.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
       PublicKey publicKey = kf.generatePublic(spec);
       if (publicKey instanceof RSAPublicKey) {
         RSAPublicKey rsaKey = (RSAPublicKey) publicKey;
-        if (rsaKey.getModulus().bitLength() < 2048) {
-          logger.warn("Weak RSA key detected: {} bits", rsaKey.getModulus().bitLength());
+        if (rsaKey.getModulus().bitLength() < ezkeyCoreProperties.getCrypto().getMinimumKeySize()) {
+          logger.warn(
+              "Weak RSA key detected: {} bits (minimum required: {} bits)",
+              rsaKey.getModulus().bitLength(),
+              ezkeyCoreProperties.getCrypto().getMinimumKeySize());
           return false;
         }
       }
-      Signature signature = Signature.getInstance("SHA256withRSA");
+      Signature signature =
+          Signature.getInstance(ezkeyCoreProperties.getCrypto().getSignatureAlgorithm());
       signature.initVerify(publicKey);
       signature.update(data.getBytes(StandardCharsets.UTF_8));
       byte[] signatureBytes = java.util.Base64.getDecoder().decode(signatureBase64);
@@ -199,7 +212,8 @@ public class SignatureService {
    */
   public RsaKeyPair generateRsaKeyPair(int keySize) {
     try {
-      KeyPairGenerator keyGen = KeyPairGenerator.getInstance(RSA_ALGORITHM);
+      KeyPairGenerator keyGen =
+          KeyPairGenerator.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
       keyGen.initialize(keySize);
       KeyPair keyPair = keyGen.generateKeyPair();
       String privateKeyBase64 =

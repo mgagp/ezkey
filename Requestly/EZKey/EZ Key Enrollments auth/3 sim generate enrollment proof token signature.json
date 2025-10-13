@@ -1,0 +1,30 @@
+{
+  "name": "3 sim generate enrollment proof token signature",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/sim/sign",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\r\n    \"data\": \"{{enrollmentProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+    "bodyContainer": {
+      "text": "{\r\n    \"data\": \"{{enrollmentProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

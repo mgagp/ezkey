@@ -1,0 +1,21 @@
+{
+  "name": "get",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r\nrq.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);\r\nrq.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
+    },
+    "method": "GET",
+    "queryParams": [],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

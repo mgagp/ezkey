@@ -1,0 +1,21 @@
+{
+  "name": "list all",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/auth-attempts",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());"
+    },
+    "method": "GET",
+    "queryParams": [],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

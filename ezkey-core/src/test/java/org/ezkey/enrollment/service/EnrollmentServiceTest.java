@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
@@ -42,6 +43,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 /**
  * Critical unit tests for {@link EnrollmentService}.
@@ -76,12 +79,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @see EnrollmentRepository
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Enrollment Service Critical Tests")
 class EnrollmentServiceTest {
 
   @Mock private EnrollmentRepository enrollmentRepository;
 
   @Mock private SignatureService signatureService;
+
+  @Mock private EzkeyCoreProperties ezkeyCoreProperties;
 
   @Mock private EnrollmentBindService bindService;
 
@@ -98,6 +104,11 @@ class EnrollmentServiceTest {
 
   @BeforeEach
   void setUp() {
+    // Setup configuration properties
+    EzkeyCoreProperties.Crypto crypto = new EzkeyCoreProperties.Crypto();
+    crypto.setRsaKeySize(2048);
+    when(ezkeyCoreProperties.getCrypto()).thenReturn(crypto);
+
     // Setup create request
     createRequest = new EnrollmentCreateRequest();
     createRequest.setIntegrationId(123);

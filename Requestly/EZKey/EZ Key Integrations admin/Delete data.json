@@ -1,0 +1,21 @@
+{
+  "name": "Delete data",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_admin_api}}/api/v1/integrations/:id",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "rq.test(\"Successful DELETE request\", function () {\n    rq.expect(rq.response.code).to.be.oneOf([200, 202, 204]);\n});\n"
+    },
+    "method": "DELETE",
+    "queryParams": [],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "1 sim generate device proof token",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/sim/prooftoken",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"device_proofToken\", jsonData.proofToken);\r\n"
+    },
+    "method": "GET",
+    "queryParams": [],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

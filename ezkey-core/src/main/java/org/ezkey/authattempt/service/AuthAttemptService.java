@@ -25,13 +25,13 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
+import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,14 +124,12 @@ public class AuthAttemptService {
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
+  private final EzkeyCoreProperties ezkeyCoreProperties;
 
   // Specialized services for specific operations
   private final AuthAttemptPendingService pendingService;
   private final AuthAttemptRespondService respondService;
   private final AuthAttemptWaitService waitService;
-
-  @Value("${ezkey.auth-attempt.challenge-digits:2}")
-  private int challengeDigits;
 
   @PersistenceContext private EntityManager entityManager;
 
@@ -141,6 +139,7 @@ public class AuthAttemptService {
    * @param authAttemptRepository the JPA repository for authentication attempts
    * @param enrollmentRepository the JPA repository for enrollments
    * @param signatureService the signature service for cryptographic operations
+   * @param ezkeyCoreProperties the ezkey core configuration properties
    * @param pendingService the specialized service for pending operations
    * @param respondService the specialized service for respond operations
    * @param waitService the specialized service for wait operations
@@ -149,12 +148,14 @@ public class AuthAttemptService {
       AuthAttemptRepository authAttemptRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
+      EzkeyCoreProperties ezkeyCoreProperties,
       AuthAttemptPendingService pendingService,
       AuthAttemptRespondService respondService,
       AuthAttemptWaitService waitService) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
+    this.ezkeyCoreProperties = ezkeyCoreProperties;
     this.pendingService = pendingService;
     this.respondService = respondService;
     this.waitService = waitService;
@@ -410,13 +411,13 @@ public class AuthAttemptService {
    * @since 2025
    */
   private Integer generateChallenge() {
-    int effectiveDigits = challengeDigits;
+    int effectiveDigits = ezkeyCoreProperties.getAuthAttempt().getChallengeDigits();
 
     // Validate and truncate if necessary
     if (effectiveDigits > 6) {
       logger.trace(
           "Challenge digits configured as {} exceeds maximum of 6, truncating to 6",
-          challengeDigits);
+          ezkeyCoreProperties.getAuthAttempt().getChallengeDigits());
       effectiveDigits = 6;
     }
     // Ensure minimum of 1 digit
