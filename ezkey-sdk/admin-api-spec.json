@@ -308,6 +308,159 @@
         }
       }
     },
+    "/api/v1/admin/enrollments/reset": {
+      "post": {
+        "tags": [
+          "admin-enrollment-controller"
+        ],
+        "operationId": "resetEnrollment",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentResetRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/recover": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "recover",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRecoveryRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRecoveryResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/passwordless-wait": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "passwordlessWait",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPasswordlessWaitRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/logout": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "logout",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/login": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integrations/{id}": {
       "get": {
         "tags": [
@@ -804,6 +957,152 @@
           }
         },
         "description": "Response DTO containing created authentication attempt details"
+      },
+      "EnrollmentResetRequestDto": {
+        "required": [
+          "enrollmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EnrollmentResetResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enrollmentProofToken": {
+            "type": "string"
+          },
+          "enrollmentChallenge": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminRecoveryRequestDto": {
+        "required": [
+          "recoveryCode",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "type": "string"
+          },
+          "recoveryCode": {
+            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$",
+            "type": "string"
+          }
+        }
+      },
+      "AdminRecoveryResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "recoveryToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "codesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AdminPasswordlessWaitRequestDto": {
+        "required": [
+          "authAttemptId",
+          "challengeCode"
+        ],
+        "type": "object",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "challengeCode": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AdminLoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "token": {
+            "type": "string"
+          },
+          "adminType": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "challengeCode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminLoginRequestDto": {
+        "required": [
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "type": "string"
+          },
+          "challengeRequested": {
+            "type": "boolean"
+          }
+        }
       },
       "IntegrationI18nResponseDto": {
         "type": "object",
