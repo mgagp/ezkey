@@ -104,7 +104,6 @@ import org.springframework.transaction.annotation.Transactional;
  * @see EnrollmentTxHelper
  */
 @Service
-@Transactional
 public class EnrollmentService {
 
   private final EnrollmentRepository enrollmentRepository;
@@ -147,6 +146,7 @@ public class EnrollmentService {
    * @return the enrollment entity
    * @throws ResourceNotFoundException if the enrollment is not found
    */
+  @Transactional(readOnly = true)
   public Enrollment getById(Integer id) {
     Optional<Enrollment> enrollment = enrollmentRepository.findById(id);
     if (enrollment.isEmpty()) {

@@ -69,7 +69,8 @@ class AuthAttemptServiceIntegrationTest {
     // testEnrollment.setEnrollmentVerified(true);
     // testEnrollment.setEnrollmentValid(true);
     // testEnrollment.setEnrollmentActive(true);
-    testEnrollment.setEnrollmentProofToken("test-proof-token");
+    // Generate unique proof token to avoid constraint violations
+    testEnrollment.setEnrollmentProofToken("test-proof-token-" + System.currentTimeMillis() + "-" + Thread.currentThread().getId());
     testEnrollment.setAuthAttemptChallengeRequired(false);
     testEnrollment.setIntegrationPrivateKey("test-private-key");
     testEnrollment.setIntegrationPublicKey("test-public-key");

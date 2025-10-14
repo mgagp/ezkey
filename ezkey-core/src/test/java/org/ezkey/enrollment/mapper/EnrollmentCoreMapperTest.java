@@ -22,8 +22,6 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * Critical unit tests for {@link EnrollmentCoreMapper}.
@@ -56,18 +54,18 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @see EnrollmentCreateResponse
  * @see EnrollmentResponse
  */
-@SpringBootTest
-@org.junit.jupiter.api.Disabled(
-    "Temporarily disabled due to MapStruct bean loading issue under Surefire; mapping is exercised indirectly by service tests")
 @DisplayName("Enrollment Core Mapper Critical Tests")
 class EnrollmentCoreMapperTest {
 
-  @Autowired private EnrollmentCoreMapper enrollmentCoreMapper;
+  private EnrollmentCoreMapper enrollmentCoreMapper;
 
   private Enrollment enrollment;
 
   @BeforeEach
   void setUp() {
+    // Create mapper instance directly (MapStruct generates implementation)
+    enrollmentCoreMapper = org.mapstruct.factory.Mappers.getMapper(EnrollmentCoreMapper.class);
+    
     enrollment = new Enrollment();
     enrollment.setEnrollmentId(123);
     enrollment.setIntegrationId(456);

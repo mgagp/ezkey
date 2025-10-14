@@ -116,7 +116,6 @@ import org.springframework.transaction.annotation.Transactional;
  * @see AuthAttemptWaitService
  */
 @Service
-@Transactional
 public class AuthAttemptService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptService.class);
@@ -168,6 +167,7 @@ public class AuthAttemptService {
    * @return the authentication attempt entity
    * @throws ResourceNotFoundException if the authentication attempt is not found
    */
+  @Transactional(readOnly = true)
   public AuthAttempt getById(Integer id) {
     return authAttemptRepository
         .findById(id)
@@ -179,6 +179,7 @@ public class AuthAttemptService {
    *
    * @return list of all authentication attempts
    */
+  @Transactional(readOnly = true)
   public List<AuthAttempt> getAll() {
     return authAttemptRepository.findAll();
   }
@@ -194,6 +195,7 @@ public class AuthAttemptService {
    * @throws IllegalArgumentException if the enrollment is not found or validation fails
    * @throws RuntimeException if the creation fails
    */
+  @Transactional
   public AuthAttemptCreateResponse create(AuthAttemptCreateRequest authRequest) {
     // Find the enrollment
     Enrollment enrollment =
@@ -261,6 +263,7 @@ public class AuthAttemptService {
    * @param authAttempt the authentication attempt to update
    * @return the updated authentication attempt
    */
+  @Transactional
   public AuthAttempt update(AuthAttempt authAttempt) {
     return authAttemptRepository.save(authAttempt);
   }
@@ -271,6 +274,7 @@ public class AuthAttemptService {
    * @param id the authentication attempt ID to delete
    * @throws ResourceNotFoundException if the authentication attempt is not found
    */
+  @Transactional
   public void delete(Integer id) {
     if (!authAttemptRepository.existsById(id)) {
       throw new ResourceNotFoundException("Authentication attempt", id);

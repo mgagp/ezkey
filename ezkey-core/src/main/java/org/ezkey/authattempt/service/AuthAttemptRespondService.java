@@ -104,23 +104,28 @@ public class AuthAttemptRespondService {
    * @return the authentication response result with status and message
    */
   public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
-    // Step 1: Validate and get the authentication attempt
-    AuthAttempt authAttempt = validateAndGetAttempt(request);
+    try {
+      // Step 1: Validate and get the authentication attempt
+      AuthAttempt authAttempt = validateAndGetAttempt(request);
 
-    // Step 2: Validate enrollment
-    Enrollment enrollment = validateEnrollment(authAttempt);
+      // Step 2: Validate enrollment
+      Enrollment enrollment = validateEnrollment(authAttempt);
 
-    // Step 3: Validate device signature
-    validateDeviceSignature(request, authAttempt, enrollment);
+      // Step 3: Validate device signature
+      validateDeviceSignature(request, authAttempt, enrollment);
 
-    // Step 4: Validate challenge if required
-    validateChallenge(request, authAttempt, enrollment);
+      // Step 4: Validate challenge if required
+      validateChallenge(request, authAttempt, enrollment);
 
-    // Step 5: Update attempt status
-    updateAttemptStatus(authAttempt, request);
+      // Step 5: Update attempt status
+      updateAttemptStatus(authAttempt, request);
 
-    // Step 6: Build and return response
-    return buildResponse(request);
+      // Step 6: Build and return response
+      return buildResponse(request);
+    } catch (IllegalArgumentException e) {
+      // Return FAILED response for validation errors
+      return new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
+    }
   }
 
   /**
