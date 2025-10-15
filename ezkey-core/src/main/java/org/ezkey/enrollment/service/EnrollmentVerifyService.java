@@ -150,7 +150,7 @@ public class EnrollmentVerifyService {
           "Validation failed: Enrollment already verified - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
-      throw new IllegalStateException("Enrollment already verified");
+      throw new IllegalStateException("Enrollment verification failed");
     }
 
     logger.debug("Enrollment status validation passed: Status is not VERIFIED");
@@ -218,7 +218,7 @@ public class EnrollmentVerifyService {
           request.getEnrollmentId(),
           request.getDevicePublicKey());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalArgumentException("Device public key already registered");
+      throw new IllegalArgumentException("Enrollment verification failed");
     }
 
     logger.debug(

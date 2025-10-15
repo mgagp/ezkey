@@ -101,6 +101,27 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles IllegalStateException and returns HTTP 409.
+   *
+   * <p>This method catches IllegalStateException instances and converts them into standardized HTTP
+   * 409 Conflict responses, as these represent state conflicts in the authentication or enrollment
+   * process.
+   *
+   * @param ex the IllegalStateException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 409 status
+   */
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<ErrorResponseDto> handleIllegalStateException(
+      IllegalStateException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  /**
    * Handles RuntimeException and returns HTTP 500.
    *
    * <p>This method catches RuntimeException instances and converts them into standardized HTTP 500
