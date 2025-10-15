@@ -55,9 +55,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * @see org.testcontainers.containers.PostgreSQLContainer
  * @see org.springframework.boot.testcontainers.service.connection.ServiceConnection
  */
-@Testcontainers
 @SpringBootTest(classes = TestApplication.class)
 @ActiveProfiles("test")
+@org.springframework.test.context.TestPropertySource(
+    properties = {
+      "spring.flyway.enabled=true",
+      "spring.flyway.locations=classpath:db/migration",
+      "spring.jpa.hibernate.ddl-auto=validate"
+    })
 public abstract class PostgreSQLTestBase {
 
   /**
@@ -76,12 +81,19 @@ public abstract class PostgreSQLTestBase {
    * <p><b>Configuration:</b> Uses PostgreSQL 15 with default settings optimized for testing.
    * The container is automatically configured as a Spring Boot service connection, so no
    * manual datasource configuration is required.
+   * 
+   * <p><b>Singleton Pattern:</b> The container is started once and shared across all test classes
+   * to avoid connection pool issues. This significantly improves test performance and reliability.
    */
-  @Container
   @ServiceConnection
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
-      .withDatabaseName("ezkey_test")
-      .withUsername("test")
-      .withPassword("test")
-      .withReuse(true); // Allow container reuse for better performance
+  static PostgreSQLContainer<?> postgres;
+  
+  static {
+    postgres = new PostgreSQLContainer<>("postgres:15")
+        .withDatabaseName("ezkey_test")
+        .withUsername("test")
+        .withPassword("test")
+        .withReuse(true);
+    postgres.start();
+  }
 }

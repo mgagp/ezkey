@@ -16,16 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
-import java.util.Optional;
+import org.ezkey.PostgreSQLTestBase;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -39,8 +37,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -56,10 +52,8 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @Transactional
-class ErrorHandlingBehaviorTest {
+class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
   @Autowired private AuthAttemptService authAttemptService;
   @Autowired private EnrollmentService enrollmentService;
@@ -68,7 +62,7 @@ class ErrorHandlingBehaviorTest {
   @Autowired private EnrollmentRepository enrollmentRepository;
   @Autowired private IntegrationRepository integrationRepository;
 
-  @PersistenceContext private EntityManager entityManager;
+  @Autowired private EntityManager entityManager;
 
   private Integration testIntegration;
   private Enrollment testEnrollment;
@@ -78,6 +72,7 @@ class ErrorHandlingBehaviorTest {
   void setUp() {
     // Create test integration
     testIntegration = new Integration();
+    testIntegration.setLogo("test-logo.png");
     testIntegration.setActive(true);
     testIntegration.setCreatedAt(LocalDateTime.now());
     testIntegration = integrationRepository.save(testIntegration);

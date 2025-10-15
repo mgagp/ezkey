@@ -21,15 +21,10 @@ import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.ezkey.PostgreSQLTestBase;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 
 /**
  * Critical unit tests for {@link AuthAttemptRepository}.
@@ -62,29 +57,44 @@ import org.springframework.test.context.TestPropertySource;
  * @see AuthAttempt
  * @see AuthAttemptStatus
  */
-@DataJpaTest
-@ActiveProfiles("test")
-@TestPropertySource(
-    properties = {
-      "spring.flyway.enabled=false",
-      "spring.jpa.hibernate.ddl-auto=create-drop",
-      "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
-    })
 @DisplayName("AuthAttempt Repository Critical Tests")
-class AuthAttemptRepositoryTest {
-
-  @Autowired private TestEntityManager entityManager;
+class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
 
   @Autowired private AuthAttemptRepository authAttemptRepository;
+  @Autowired private org.ezkey.enrollment.domain.repository.EnrollmentRepository enrollmentRepository;
+  @Autowired private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+  @Autowired private jakarta.persistence.EntityManager entityManager;
 
   private AuthAttempt authAttempt1;
   private AuthAttempt authAttempt2;
   private AuthAttempt authAttempt3;
-  private final Integer enrollmentId = 123;
+  private Integer enrollmentId;
   private final LocalDateTime now = LocalDateTime.now();
 
   @BeforeEach
   void setUp() {
+    // Create test integration first (required by enrollment foreign key)
+    org.ezkey.integration.domain.entity.Integration integration = new org.ezkey.integration.domain.entity.Integration();
+    integration.setLogo("test-logo.png");
+    integration.setActive(true);
+    integration.setCreatedAt(now);
+    integration = integrationRepository.save(integration);
+
+    // Create test enrollment (required by auth_attempt foreign key)
+    org.ezkey.enrollment.domain.entity.Enrollment enrollment = new org.ezkey.enrollment.domain.entity.Enrollment();
+    enrollment.setIntegrationId(integration.getId());
+    enrollment.setEnrollmentName("Test Enrollment");
+    enrollment.setEnrollmentProofToken("test-enrollment-proof-" + System.currentTimeMillis());
+    enrollment.setStatus(org.ezkey.enrollment.domain.EnrollmentStatus.VERIFIED);
+    enrollment.setActive(true);
+    enrollment.setAuthAttemptChallengeRequired(false);
+    enrollment.setIntegrationPublicKey("integration-public-key");
+    enrollment.setIntegrationPrivateKey("integration-private-key");
+    enrollment.setDevicePublicKey("device-public-key");
+    enrollment.setCreatedAt(now);
+    enrollment = enrollmentRepository.save(enrollment);
+    enrollmentId = enrollment.getEnrollmentId();
+
     // Create test auth attempts
     authAttempt1 = new AuthAttempt();
     authAttempt1.setEnrollmentId(enrollmentId);
@@ -111,16 +121,14 @@ class AuthAttemptRepositoryTest {
     authAttempt3.setExpiresAt(now.plusMinutes(15));
 
     // Save to database
-    entityManager.persistAndFlush(authAttempt1);
-    entityManager.persistAndFlush(authAttempt2);
-    entityManager.persistAndFlush(authAttempt3);
-    entityManager.clear();
+    authAttempt1 = authAttemptRepository.save(authAttempt1);
+    authAttempt2 = authAttemptRepository.save(authAttempt2);
+    authAttempt3 = authAttemptRepository.save(authAttempt3);
   }
 
   // ===== LOCKING OPERATIONS TESTS =====
 
   @Test
-  @Disabled("Requires PostgreSQL syntax FOR NO KEY UPDATE; H2 does not support it")
   @DisplayName(
       "findAndLockMostRecentByEnrollmentIdAndStatus() - Should find and lock most recent pending attempt")
   void findAndLockMostRecentByEnrollmentIdAndStatus_WhenPendingExists_ShouldReturnMostRecent() {
@@ -135,7 +143,6 @@ class AuthAttemptRepositoryTest {
   }
 
   @Test
-  @Disabled("Requires PostgreSQL syntax FOR NO KEY UPDATE; H2 does not support it")
   @DisplayName(
       "findAndLockMostRecentByEnrollmentIdAndStatus() - Should return empty when no pending attempts")
   void findAndLockMostRecentByEnrollmentIdAndStatus_WhenNoPendingExists_ShouldReturnEmpty() {
@@ -148,7 +155,6 @@ class AuthAttemptRepositoryTest {
   }
 
   @Test
-  @Disabled("Requires PostgreSQL syntax FOR NO KEY UPDATE; H2 does not support it")
   @DisplayName(
       "findAndLockMostRecentValidByEnrollmentIdAndStatus() - Should find valid non-expired attempt")
   void findAndLockMostRecentValidByEnrollmentIdAndStatus_WhenValidExists_ShouldReturnValid() {
@@ -164,7 +170,6 @@ class AuthAttemptRepositoryTest {
   }
 
   @Test
-  @Disabled("Requires PostgreSQL syntax FOR NO KEY UPDATE; H2 does not support it")
   @DisplayName(
       "findAndLockMostRecentValidByEnrollmentIdAndStatus() - Should return empty when expired")
   void findAndLockMostRecentValidByEnrollmentIdAndStatus_WhenExpired_ShouldReturnEmpty() {
@@ -180,6 +185,7 @@ class AuthAttemptRepositoryTest {
   // ===== STATUS UPDATE TESTS =====
 
   @Test
+  @org.springframework.transaction.annotation.Transactional
   @DisplayName("updateStatusIfCurrent() - Should update status when current status matches")
   void updateStatusIfCurrent_WhenCurrentStatusMatches_ShouldUpdateStatus() {
     // Act
@@ -191,12 +197,14 @@ class AuthAttemptRepositoryTest {
     assertEquals(1, updatedRows);
 
     // Verify the update
+    entityManager.flush();
     entityManager.clear();
-    AuthAttempt updated = entityManager.find(AuthAttempt.class, authAttempt1.getAuthAttemptId());
+    AuthAttempt updated = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.READ, updated.getAuthAttemptStatus());
   }
 
   @Test
+  @org.springframework.transaction.annotation.Transactional
   @DisplayName("updateStatusIfCurrent() - Should not update when current status doesn't match")
   void updateStatusIfCurrent_WhenCurrentStatusDoesNotMatch_ShouldNotUpdate() {
     // Act
@@ -210,12 +218,14 @@ class AuthAttemptRepositoryTest {
     assertEquals(0, updatedRows);
 
     // Verify no update occurred
+    entityManager.flush();
     entityManager.clear();
-    AuthAttempt unchanged = entityManager.find(AuthAttempt.class, authAttempt1.getAuthAttemptId());
+    AuthAttempt unchanged = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.PENDING, unchanged.getAuthAttemptStatus());
   }
 
   @Test
+  @org.springframework.transaction.annotation.Transactional
   @DisplayName("updateStatusForMultipleAttempts() - Should update multiple attempts to expired")
   void updateStatusForMultipleAttempts_WhenMultipleIds_ShouldUpdateAll() {
     // Arrange
@@ -230,9 +240,10 @@ class AuthAttemptRepositoryTest {
     assertEquals(2, updatedRows);
 
     // Verify the updates
+    entityManager.flush();
     entityManager.clear();
-    AuthAttempt updated1 = entityManager.find(AuthAttempt.class, authAttempt1.getAuthAttemptId());
-    AuthAttempt updated2 = entityManager.find(AuthAttempt.class, authAttempt2.getAuthAttemptId());
+    AuthAttempt updated1 = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
+    AuthAttempt updated2 = authAttemptRepository.findById(authAttempt2.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.EXPIRED, updated1.getAuthAttemptStatus());
     assertEquals(AuthAttemptStatus.EXPIRED, updated2.getAuthAttemptStatus());
   }
