@@ -10,6 +10,7 @@
 
 package org.ezkey.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
 /**
@@ -27,27 +28,46 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
+@Schema(description = "Standardized error response for all API errors")
 public class ErrorResponseDto {
 
   /**
    * Error code identifier. Used to categorize and identify specific error types (e.g., "NOT_FOUND",
    * "VALIDATION_ERROR").
    */
+  @Schema(
+      description = "Error code identifier for categorizing the error type",
+      example = "RESOURCE_NOT_FOUND",
+      required = true)
   private String code;
 
-  /** Human-readable error message. Provides a clear description of what went wrong. */
+  /**
+   * Human-readable error message. Provides a clear description of what went wrong.
+   */
+  @Schema(
+      description = "Human-readable error message describing what went wrong",
+      example = "The requested resource was not found",
+      required = true)
   private String message;
 
   /**
    * Timestamp when the error occurred. Automatically set to the current time when the error
    * response is created.
    */
+  @Schema(
+      description = "Timestamp when the error occurred",
+      example = "2025-10-15T14:30:00",
+      required = true)
   private LocalDateTime timestamp;
 
   /**
    * Optional request path that caused the error. Useful for debugging and identifying the
    * problematic endpoint.
    */
+  @Schema(
+      description = "Request path that caused the error",
+      example = "/api/v1/auth-attempts/123",
+      required = false)
   private String path;
 
   /**

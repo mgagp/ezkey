@@ -48,18 +48,23 @@
 			<scope>provided</scope>
 		</dependency>
 		
-		<!-- QR Code Generation -->
-		<dependency>
-			<groupId>com.google.zxing</groupId>
-			<artifactId>core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.google.zxing</groupId>
-			<artifactId>javase</artifactId>
-		</dependency>
-		
-		
-		<!-- Test Dependencies -->
+	<!-- QR Code Generation -->
+	<dependency>
+		<groupId>com.google.zxing</groupId>
+		<artifactId>core</artifactId>
+	</dependency>
+	<dependency>
+		<groupId>com.google.zxing</groupId>
+		<artifactId>javase</artifactId>
+	</dependency>
+	
+	<!-- OpenAPI/Swagger Annotations for DTOs -->
+	<dependency>
+		<groupId>org.springdoc</groupId>
+		<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+	</dependency>
+	
+	<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>

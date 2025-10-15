@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -26,6 +27,7 @@ import jakarta.validation.constraints.Size;
  * @author Ezkey contributors
  * @since 2025
  */
+@Schema(description = "Request DTO for passwordless administrator login")
 public class AdminLoginRequestDto {
 
   /**
@@ -33,6 +35,10 @@ public class AdminLoginRequestDto {
    *
    * <p>This field is required and must not be blank.
    */
+  @Schema(
+      description = "Administrator username for passwordless authentication",
+      example = "admin",
+      required = true)
   @NotBlank(message = "Username is required")
   @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
   private String username;
@@ -46,6 +52,11 @@ public class AdminLoginRequestDto {
    *
    * <p>If not specified, defaults to the admin's challenge_required setting.
    */
+  @Schema(
+      description =
+          "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+      example = "false",
+      required = false)
   private Boolean challengeRequested;
 
   /** Default constructor for JSON deserialization. */

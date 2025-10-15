@@ -102,7 +102,14 @@ public class IntegrationController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   @GetMapping
   public ResponseEntity<List<IntegrationResponseDto>> getAll() {
@@ -127,9 +134,30 @@ public class IntegrationController {
       description = "Returns details of a specific integration")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "Integration found"),
-        @ApiResponse(responseCode = "404", description = "Integration not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+        @ApiResponse(
+            responseCode = "200",
+            description = "Integration found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = IntegrationResponseDto.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Integration not found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   @GetMapping("/{id}")
   public ResponseEntity<IntegrationResponseDto> getById(
@@ -157,9 +185,30 @@ public class IntegrationController {
       description = "Creates a new integration with the provided data")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "201", description = "Integration created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid data"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+        @ApiResponse(
+            responseCode = "201",
+            description = "Integration created successfully",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = IntegrationCreateResponseDto.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid data",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   @PostMapping
   public ResponseEntity<IntegrationCreateResponseDto> create(
@@ -184,9 +233,26 @@ public class IntegrationController {
   @Operation(summary = "Delete integration", description = "Removes an integration from the system")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "204", description = "Integration deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Integration not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+        @ApiResponse(
+            responseCode = "204",
+            description = "Integration deleted successfully",
+            content = @io.swagger.v3.oas.annotations.media.Content()),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Integration not found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(

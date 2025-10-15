@@ -59,12 +59,12 @@
           "required": true
         },
         "responses": {
-          "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
+          "409": {
+            "description": "Enrollment state conflict or already verified",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
                 }
               }
             }
@@ -74,17 +74,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
                 }
               }
             }
           },
-          "409": {
-            "description": "Enrollment state conflict or already verified",
+          "400": {
+            "description": "Invalid verification data or cryptographic validation failed",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
                 }
               }
             }
@@ -126,7 +126,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
                 }
               }
             }
@@ -146,17 +156,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
                 }
               }
             }
@@ -183,32 +183,106 @@
           "required": true
         },
         "responses": {
-          "409": {
-            "description": "Authentication attempt state conflict",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Authentication response submitted successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                },
+                "examples": {
+                  "approved": {
+                    "summary": "User approved authentication",
+                    "value": {
+                      "result": "APPROVED",
+                      "message": "Authentication approved"
+                    }
+                  },
+                  "denied": {
+                    "summary": "User denied authentication",
+                    "value": {
+                      "result": "DENIED",
+                      "message": "Authentication denied by user"
+                    }
+                  },
+                  "failed": {
+                    "summary": "Authentication failed validation",
+                    "value": {
+                      "result": "FAILED",
+                      "message": "Challenge value mismatch"
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid response data or validation failed",
+            "description": "Invalid response data or cryptographic validation failed",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponseDto"
+                },
+                "example": {
+                  "code": "INVALID_ARGUMENT",
+                  "message": "Invalid device signature",
+                  "timestamp": "2025-10-15T10:30:00",
+                  "path": "/api/v1/auth-attempts/respond"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authentication attempt not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                },
+                "example": {
+                  "code": "RESOURCE_NOT_FOUND",
+                  "message": "Auth attempt record not found",
+                  "timestamp": "2025-10-15T10:30:00",
+                  "path": "/api/v1/auth-attempts/respond"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authentication attempt state conflict (already processed, superseded, or expired)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                },
+                "examples": {
+                  "alreadyProcessed": {
+                    "summary": "Attempt already processed",
+                    "value": {
+                      "code": "CONFLICT",
+                      "message": "Auth attempt not read by device",
+                      "timestamp": "2025-10-15T10:30:00",
+                      "path": "/api/v1/auth-attempts/respond"
+                    }
+                  },
+                  "superseded": {
+                    "summary": "Attempt superseded by newer request",
+                    "value": {
+                      "code": "CONFLICT",
+                      "message": "Authentication attempt superseded by newer request",
+                      "timestamp": "2025-10-15T10:30:00",
+                      "path": "/api/v1/auth-attempts/respond"
+                    }
+                  },
+                  "expired": {
+                    "summary": "Attempt expired",
+                    "value": {
+                      "code": "CONFLICT",
+                      "message": "Authentication attempt expired",
+                      "timestamp": "2025-10-15T10:30:00",
+                      "path": "/api/v1/auth-attempts/respond"
+                    }
+                  }
                 }
               }
             }
@@ -216,9 +290,15 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponseDto"
+                },
+                "example": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "An unexpected error occurred",
+                  "timestamp": "2025-10-15T10:30:00",
+                  "path": "/api/v1/auth-attempts/respond"
                 }
               }
             }
@@ -255,21 +335,35 @@
               }
             }
           },
-          "429": {
-            "description": "Rate limit exceeded"
+          "204": {
+            "description": "No pending authentication attempts",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request or enrollment proof token",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
                 }
               }
             }
           },
-          "204": {
-            "description": "No pending authentication attempts"
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                }
+              }
+            }
           }
         }
       }
@@ -310,37 +404,6 @@
           }
         },
         "description": "Request DTO for enrollment verification completion"
-      },
-      "ErrorResponseDto": {
-        "required": [
-          "code",
-          "message",
-          "timestamp"
-        ],
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Error code identifier for categorizing the error type",
-            "example": "RESOURCE_NOT_FOUND"
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message describing what went wrong",
-            "example": "The requested resource was not found"
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Timestamp when the error occurred",
-            "format": "date-time"
-          },
-          "path": {
-            "type": "string",
-            "description": "Request path that caused the error",
-            "example": "/api/v1/auth-attempts/123"
-          }
-        },
-        "description": "Standardized error response for all API errors"
       },
       "EnrollmentVerifyResponseDto": {
         "required": [
@@ -554,6 +617,38 @@
           }
         },
         "description": "Response DTO containing pending authentication attempt details"
+      },
+      "ErrorResponseDto": {
+        "required": [
+          "code",
+          "message",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code identifier for categorizing error types",
+            "example": "INVALID_ARGUMENT"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message",
+            "example": "Invalid device signature"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO 8601 timestamp when the error occurred",
+            "format": "date-time",
+            "example": "2025-10-15T10:30:00"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path that caused the error",
+            "example": "/api/v1/auth-attempts/respond"
+          }
+        },
+        "description": "Standard error response for validation failures and server errors"
       }
     },
     "securitySchemes": {

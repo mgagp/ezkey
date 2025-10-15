@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for admin enrollment management.
@@ -43,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/admin/enrollments")
+@Tag(name = "Admin Enrollment Management", description = "Administrator enrollment management and device recovery after loss")
 public class AdminEnrollmentController {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminEnrollmentController.class);

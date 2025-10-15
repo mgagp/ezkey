@@ -71,10 +71,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IntegrationResponseDto"
-                  }
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -104,7 +101,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/IntegrationCreateResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -124,7 +121,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/IntegrationCreateResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -308,6 +305,159 @@
         }
       }
     },
+    "/api/v1/admin/enrollments/reset": {
+      "post": {
+        "tags": [
+          "admin-enrollment-controller"
+        ],
+        "operationId": "resetEnrollment",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentResetRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/recover": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "recover",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRecoveryRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRecoveryResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/passwordless-wait": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "passwordlessWait",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPasswordlessWaitRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/logout": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "logout",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/login": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integrations/{id}": {
       "get": {
         "tags": [
@@ -335,17 +485,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/IntegrationResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/IntegrationResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -356,6 +496,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/IntegrationResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -384,13 +534,27 @@
         ],
         "responses": {
           "404": {
-            "description": "Integration not found"
-          },
-          "500": {
-            "description": "Internal server error"
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           },
           "204": {
             "description": "Integration deleted successfully"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         }
       }
@@ -617,16 +781,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Authentication completed",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -639,6 +793,16 @@
           },
           "404": {
             "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authentication completed",
             "content": {
               "*/*": {
                 "schema": {
@@ -715,6 +879,37 @@
           }
         },
         "description": "Create DTO for integration internationalization data"
+      },
+      "ErrorResponseDto": {
+        "required": [
+          "code",
+          "message",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code identifier for categorizing the error type",
+            "example": "RESOURCE_NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message describing what went wrong",
+            "example": "The requested resource was not found"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp when the error occurred",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path that caused the error",
+            "example": "/api/v1/auth-attempts/123"
+          }
+        },
+        "description": "Standardized error response for all API errors"
       },
       "IntegrationCreateResponseDto": {
         "type": "object",
@@ -804,6 +999,189 @@
           }
         },
         "description": "Response DTO containing created authentication attempt details"
+      },
+      "EnrollmentResetRequestDto": {
+        "required": [
+          "enrollmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EnrollmentResetResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enrollmentProofToken": {
+            "type": "string"
+          },
+          "enrollmentChallenge": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminRecoveryRequestDto": {
+        "required": [
+          "recoveryCode",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "type": "string"
+          },
+          "recoveryCode": {
+            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$",
+            "type": "string"
+          }
+        }
+      },
+      "AdminRecoveryResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "recoveryToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "codesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AdminPasswordlessWaitRequestDto": {
+        "required": [
+          "authAttemptId",
+          "challengeCode"
+        ],
+        "type": "object",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "challengeCode": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AdminLoginResponseDto": {
+        "required": [
+          "message",
+          "success"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the authentication was successful",
+            "example": true
+          },
+          "token": {
+            "type": "string",
+            "description": "Bearer token for authenticated API requests",
+            "example": "ezkey_abc123def456..."
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Type of administrator",
+            "example": "GLOBAL_ADMIN",
+            "enum": [
+              "GLOBAL_ADMIN",
+              "TENANT_ADMIN",
+              "INTEGRATION_ADMIN"
+            ]
+          },
+          "username": {
+            "type": "string",
+            "description": "Administrator username",
+            "example": "admin"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Token expiration timestamp",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message describing authentication result",
+            "example": "Authentication successful"
+          },
+          "authAttemptId": {
+            "type": "integer",
+            "description": "Authentication attempt ID for two-step flow (present when challengeRequested=true)",
+            "format": "int32",
+            "example": 123
+          },
+          "challengeCode": {
+            "type": "integer",
+            "description": "6-digit challenge code for device verification (present when challengeRequested=true)",
+            "format": "int32",
+            "example": 654321
+          },
+          "status": {
+            "type": "string",
+            "description": "Authentication attempt status",
+            "example": "pending",
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected"
+            ]
+          }
+        },
+        "description": "Response DTO for passwordless administrator login"
+      },
+      "AdminLoginRequestDto": {
+        "required": [
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "type": "string",
+            "description": "Administrator username for passwordless authentication",
+            "example": "admin"
+          },
+          "challengeRequested": {
+            "type": "boolean",
+            "description": "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+            "example": false
+          }
+        },
+        "description": "Request DTO for passwordless administrator login"
       },
       "IntegrationI18nResponseDto": {
         "type": "object",

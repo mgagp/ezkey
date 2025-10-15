@@ -121,14 +121,36 @@ public class EnrollmentController {
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "Enrollment binding information retrieved successfully"),
+            description = "Enrollment binding information retrieved successfully",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = EnrollmentBindResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid enrollment ID, proof token, or enrollment expired"),
+            description = "Invalid enrollment ID, proof token, or enrollment expired",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Enrollment already bound or proof token already used"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+            description = "Enrollment already bound or proof token already used",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   public ResponseEntity<EnrollmentBindResponseDto> bind(
       @RequestBody EnrollmentBindRequestDto request) {
@@ -165,14 +187,36 @@ public class EnrollmentController {
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "Enrollment verification completed successfully"),
+            description = "Enrollment verification completed successfully",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = EnrollmentVerifyResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid verification data or cryptographic validation failed"),
+            description = "Invalid verification data or cryptographic validation failed",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Enrollment state conflict or already verified"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+            description = "Enrollment state conflict or already verified",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   public ResponseEntity<EnrollmentVerifyResponseDto> verify(
       @RequestBody EnrollmentVerifyRequestDto req) {

@@ -126,14 +126,33 @@ public class AuthAttemptController {
       summary = "Get pending authentication attempt",
       description =
           "Retrieve pending authentication attempts using secure enrollment proof token. "
-              + "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Pending authentication attempt found"),
-        @ApiResponse(responseCode = "204", description = "No pending authentication attempts"),
+              + "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pending authentication attempt found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = AuthAttemptPendingResponseDto.class))),
+        @ApiResponse(
+            responseCode = "204",
+            description = "No pending authentication attempts",
+            content = @io.swagger.v3.oas.annotations.media.Content()),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid request or enrollment proof token"),
-        @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+            description = "Invalid request or enrollment proof token",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Rate limit exceeded",
+            content = @io.swagger.v3.oas.annotations.media.Content())
       })
   public ResponseEntity<AuthAttemptPendingResponseDto> pending(
       @Valid @RequestBody AuthAttemptPendingRequestDto request) {
@@ -172,12 +191,36 @@ public class AuthAttemptController {
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "Authentication response submitted successfully"),
+            description = "Authentication response submitted successfully",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = AuthAttemptRespondResponseDto.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Invalid response data or validation failed"),
-        @ApiResponse(responseCode = "409", description = "Authentication attempt state conflict"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+            description = "Invalid response data or validation failed",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Authentication attempt state conflict",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   public ResponseEntity<AuthAttemptRespondResponseDto> respond(
       @Valid @RequestBody AuthAttemptRespondRequestDto request) {

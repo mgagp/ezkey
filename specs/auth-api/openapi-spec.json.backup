@@ -59,12 +59,12 @@
           "required": true
         },
         "responses": {
-          "409": {
-            "description": "Enrollment state conflict or already verified",
+          "400": {
+            "description": "Invalid verification data or cryptographic validation failed",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -74,17 +74,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
           },
-          "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
+          "409": {
+            "description": "Enrollment state conflict or already verified",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -126,17 +126,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -156,7 +146,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -188,7 +188,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -208,7 +208,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -218,7 +218,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -255,35 +255,21 @@
               }
             }
           },
-          "204": {
-            "description": "No pending authentication attempts",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
+          "429": {
+            "description": "Rate limit exceeded"
           },
           "400": {
             "description": "Invalid request or enrollment proof token",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
           },
-          "429": {
-            "description": "Rate limit exceeded",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
-                }
-              }
-            }
+          "204": {
+            "description": "No pending authentication attempts"
           }
         }
       }
@@ -324,6 +310,37 @@
           }
         },
         "description": "Request DTO for enrollment verification completion"
+      },
+      "ErrorResponseDto": {
+        "required": [
+          "code",
+          "message",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code identifier for categorizing the error type",
+            "example": "RESOURCE_NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message describing what went wrong",
+            "example": "The requested resource was not found"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp when the error occurred",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path that caused the error",
+            "example": "/api/v1/auth-attempts/123"
+          }
+        },
+        "description": "Standardized error response for all API errors"
       },
       "EnrollmentVerifyResponseDto": {
         "required": [

@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for administrator authentication.
@@ -42,6 +43,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
+@Tag(name = "Admin Authentication", description = "Administrator authentication and session management for passwordless login and recovery")
 public class AdminAuthController {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);

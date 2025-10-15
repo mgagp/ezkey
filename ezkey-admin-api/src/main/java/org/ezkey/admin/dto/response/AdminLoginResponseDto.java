@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
 /**
@@ -33,24 +34,59 @@ import java.time.LocalDateTime;
  * @author Ezkey contributors
  * @since 2025
  */
+@Schema(description = "Response DTO for passwordless administrator login")
 public class AdminLoginResponseDto {
 
-  /** Indicates if the authentication was successful. */
+  /**
+   * Indicates if the authentication was successful.
+   */
+  @Schema(
+      description = "Indicates if the authentication was successful",
+      example = "true",
+      required = true)
   private Boolean success;
 
-  /** Bearer token for subsequent API calls. */
+  /**
+   * Bearer token for subsequent API calls.
+   */
+  @Schema(
+      description = "Bearer token for authenticated API requests",
+      example = "ezkey_abc123def456...",
+      required = false)
   private String token;
 
-  /** Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN). */
+  /**
+   * Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN).
+   */
+  @Schema(
+      description = "Type of administrator",
+      example = "GLOBAL_ADMIN",
+      allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN", "INTEGRATION_ADMIN"},
+      required = false)
   private String adminType;
 
-  /** Administrator username. */
+  /**
+   * Administrator username.
+   */
+  @Schema(description = "Administrator username", example = "admin", required = false)
   private String username;
 
-  /** Token expiration timestamp. */
+  /**
+   * Token expiration timestamp.
+   */
+  @Schema(
+      description = "Token expiration timestamp",
+      example = "2025-10-15T14:30:00",
+      required = false)
   private LocalDateTime expiresAt;
 
-  /** Response message. */
+  /**
+   * Response message.
+   */
+  @Schema(
+      description = "Response message describing authentication result",
+      example = "Authentication successful",
+      required = true)
   private String message;
 
   /**
@@ -59,6 +95,11 @@ public class AdminLoginResponseDto {
    * <p>Present when passwordless login is initiated with challengeRequested=true. The client must
    * use this ID along with the challengeCode to call /passwordless-wait endpoint.
    */
+  @Schema(
+      description =
+          "Authentication attempt ID for two-step flow (present when challengeRequested=true)",
+      example = "123",
+      required = false)
   private Integer authAttemptId;
 
   /**
@@ -68,6 +109,11 @@ public class AdminLoginResponseDto {
    * proof of legitimate authentication initiation when calling /passwordless-wait (anti-enumeration
    * protection).
    */
+  @Schema(
+      description =
+          "6-digit challenge code for device verification (present when challengeRequested=true)",
+      example = "654321",
+      required = false)
   private Integer challengeCode;
 
   /**
@@ -81,6 +127,11 @@ public class AdminLoginResponseDto {
    *   <li><b>"rejected"</b> - Device rejected (not used, returns error)
    * </ul>
    */
+  @Schema(
+      description = "Authentication attempt status",
+      example = "pending",
+      allowableValues = {"pending", "accepted", "rejected"},
+      required = false)
   private String status;
 
   /** Default constructor for JSON serialization. */
