@@ -21,7 +21,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -64,7 +64,7 @@ public class Integration {
 
   /** Timestamp when the integration was created. Automatically set when the entity is persisted. */
   @Column(name = "created_at")
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   /**
    * Collection of internationalization entries for this integration. Each entry contains localized
@@ -165,7 +165,7 @@ public class Integration {
    *
    * @return the creation timestamp
    */
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
@@ -174,7 +174,7 @@ public class Integration {
    *
    * @param createdAt the creation timestamp to set
    */
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 
