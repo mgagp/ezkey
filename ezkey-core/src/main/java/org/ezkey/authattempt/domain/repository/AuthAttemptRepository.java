@@ -93,7 +93,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   Optional<AuthAttempt> findMostRecentValidByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("status") AuthAttemptStatus status,
-      @Param("now") java.time.LocalDateTime now);
+      @Param("now") java.time.OffsetDateTime now);
 
   /**
    * Finds and locks the most recent pending authorization attempt for a given enrollment ID.
@@ -148,7 +148,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   Optional<AuthAttempt> findAndLockMostRecentValidByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("status") String status,
-      @Param("now") java.time.LocalDateTime now);
+      @Param("now") java.time.OffsetDateTime now);
 
   /**
    * Updates the status of an authorization attempt if it's currently pending.
@@ -208,7 +208,7 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
       "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt > :createdAt ORDER BY a.createdAt DESC")
   Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId,
-      @Param("createdAt") java.time.LocalDateTime createdAt);
+      @Param("createdAt") java.time.OffsetDateTime createdAt);
 
   /**
    * Finds all non-final authentication attempts for a given enrollment ID.

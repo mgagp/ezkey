@@ -10,7 +10,7 @@
 
 package org.ezkey.authattempt.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -189,7 +189,7 @@ public class AuthAttemptPendingService {
    */
   private AuthAttempt claimPendingAttempt(AuthAttemptPendingRequest request) {
     // Find valid (non-expired) pending auth attempt
-    LocalDateTime now = LocalDateTime.now();
+    OffsetDateTime now = OffsetDateTime.now();
     AuthAttempt authAttempt =
         authAttemptRepository
             .findAndLockMostRecentValidByEnrollmentIdAndStatus(
