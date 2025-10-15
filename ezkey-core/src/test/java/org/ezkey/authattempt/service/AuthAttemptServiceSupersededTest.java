@@ -17,7 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityManager;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -96,8 +96,8 @@ class AuthAttemptServiceSupersededTest {
     olderAttempt.setEnrollmentId(1);
     olderAttempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
     olderAttempt.setAuthAttemptProofToken("older-proof-token");
-    olderAttempt.setCreatedAt(LocalDateTime.now().minusMinutes(5));
-    olderAttempt.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+    olderAttempt.setCreatedAt(OffsetDateTime.now().minusMinutes(5));
+    olderAttempt.setExpiresAt(OffsetDateTime.now().plusMinutes(10));
 
     // Create newer authentication attempt
     newerAttempt = new AuthAttempt();
@@ -105,8 +105,8 @@ class AuthAttemptServiceSupersededTest {
     newerAttempt.setEnrollmentId(1);
     newerAttempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
     newerAttempt.setAuthAttemptProofToken("newer-proof-token");
-    newerAttempt.setCreatedAt(LocalDateTime.now().minusMinutes(1));
-    newerAttempt.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+    newerAttempt.setCreatedAt(OffsetDateTime.now().minusMinutes(1));
+    newerAttempt.setExpiresAt(OffsetDateTime.now().plusMinutes(10));
   }
 
   @Test
@@ -229,7 +229,7 @@ class AuthAttemptServiceSupersededTest {
     // Default mock for wait service - returns ACCEPTED
     AuthAttemptWaitResponse defaultResponse =
         new AuthAttemptWaitResponse(
-            olderAttempt, "ACCEPTED", true, false, 5, java.time.LocalDateTime.now());
+            olderAttempt, "ACCEPTED", true, false, 5, java.time.OffsetDateTime.now());
 
     when(waitService.waitForResponse(any(Integer.class), any(AuthAttemptWaitRequest.class)))
         .thenReturn(defaultResponse);
@@ -249,7 +249,7 @@ class AuthAttemptServiceSupersededTest {
     // Mock for superseded scenario
     AuthAttemptWaitResponse supersededResponse =
         new AuthAttemptWaitResponse(
-            olderAttempt, "EXPIRED", false, false, 10, java.time.LocalDateTime.now());
+            olderAttempt, "EXPIRED", false, false, 10, java.time.OffsetDateTime.now());
 
     when(waitService.waitForResponse(any(Integer.class), any(AuthAttemptWaitRequest.class)))
         .thenReturn(supersededResponse);

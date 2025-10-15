@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
@@ -87,7 +87,7 @@ class IntegrationServiceTest {
       Integration toSave = captor.getValue();
       assertThat(toSave.getActive()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
-      assertThat(toSave.getCreatedAt()).isBeforeOrEqualTo(LocalDateTime.now());
+      assertThat(toSave.getCreatedAt()).isBeforeOrEqualTo(OffsetDateTime.now());
       assertThat(toSave.getI18n()).hasSize(1);
       assertThat(toSave.getI18n().get(0).getIntegration()).isSameAs(toSave);
       verify(mapper).toEntity(req);

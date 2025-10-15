@@ -178,5 +178,5 @@ public interface AuthAttemptMapper {
       Boolean completed,
       Boolean timeoutReached,
       Integer waitDuration,
-      java.time.LocalDateTime completedAt);
+      java.time.OffsetDateTime completedAt);
 }

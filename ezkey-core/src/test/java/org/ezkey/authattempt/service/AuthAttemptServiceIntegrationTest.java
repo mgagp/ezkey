@@ -13,7 +13,7 @@ package org.ezkey.authattempt.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -75,7 +75,7 @@ class AuthAttemptServiceIntegrationTest {
     testEnrollment.setIntegrationPrivateKey("test-private-key");
     testEnrollment.setIntegrationPublicKey("test-public-key");
     testEnrollment.setDevicePublicKey("test-device-public-key");
-    testEnrollment.setCreatedAt(LocalDateTime.now());
+    testEnrollment.setCreatedAt(OffsetDateTime.now());
 
     testEnrollment = enrollmentRepository.save(testEnrollment);
   }

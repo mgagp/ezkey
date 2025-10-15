@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Response DTO for admin account recovery.
@@ -40,7 +40,7 @@ public class AdminRecoveryResponseDto {
   private String recoveryToken;
 
   /** Recovery token expiration timestamp. */
-  private LocalDateTime expiresAt;
+  private OffsetDateTime expiresAt;
 
   /** Response message. */
   private String message;
@@ -66,7 +66,7 @@ public class AdminRecoveryResponseDto {
    * @param codesRemaining number of codes remaining
    */
   public AdminRecoveryResponseDto(
-      String recoveryToken, LocalDateTime expiresAt, Integer codesRemaining) {
+      String recoveryToken, OffsetDateTime expiresAt, Integer codesRemaining) {
     this.success = true;
     this.recoveryToken = recoveryToken;
     this.expiresAt = expiresAt;
@@ -126,7 +126,7 @@ public class AdminRecoveryResponseDto {
    *
    * @return the expiration time
    */
-  public LocalDateTime getExpiresAt() {
+  public OffsetDateTime getExpiresAt() {
     return expiresAt;
   }
 
@@ -135,7 +135,7 @@ public class AdminRecoveryResponseDto {
    *
    * @param expiresAt the expiration time
    */
-  public void setExpiresAt(LocalDateTime expiresAt) {
+  public void setExpiresAt(OffsetDateTime expiresAt) {
     this.expiresAt = expiresAt;
   }
 

@@ -11,7 +11,7 @@
 package org.ezkey.integration.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -64,9 +64,9 @@ public class IntegrationResponseDto {
 
   /** Timestamp when the integration was created. Used for audit trails and sorting purposes. */
   @Schema(
-      description = "Timestamp when the integration was created",
-      example = "2025-01-15T10:30:00")
-  private LocalDateTime createdAt;
+      description = "Timestamp when the integration was created (with timezone)",
+      example = "2025-01-15T10:30:00+01:00")
+  private OffsetDateTime createdAt;
 
   /**
    * List of internationalized content for the integration. Contains localized names and
@@ -134,7 +134,7 @@ public class IntegrationResponseDto {
    *
    * @return the creation timestamp
    */
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
@@ -143,7 +143,7 @@ public class IntegrationResponseDto {
    *
    * @param createdAt the creation timestamp to set
    */
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 

@@ -11,7 +11,7 @@
 package org.ezkey.admin.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Response DTO for passwordless administrator login.
@@ -75,10 +75,10 @@ public class AdminLoginResponseDto {
    * Token expiration timestamp.
    */
   @Schema(
-      description = "Token expiration timestamp",
-      example = "2025-10-15T14:30:00",
+      description = "Token expiration timestamp (with timezone)",
+      example = "2025-10-15T14:30:00+01:00",
       required = false)
-  private LocalDateTime expiresAt;
+  private OffsetDateTime expiresAt;
 
   /**
    * Response message.
@@ -148,7 +148,7 @@ public class AdminLoginResponseDto {
    * @param expiresAt the token expiration time
    */
   public AdminLoginResponseDto(
-      String token, String adminType, String username, LocalDateTime expiresAt) {
+      String token, String adminType, String username, OffsetDateTime expiresAt) {
     this.success = true;
     this.token = token;
     this.adminType = adminType;
@@ -201,11 +201,11 @@ public class AdminLoginResponseDto {
     this.username = username;
   }
 
-  public LocalDateTime getExpiresAt() {
+  public OffsetDateTime getExpiresAt() {
     return expiresAt;
   }
 
-  public void setExpiresAt(LocalDateTime expiresAt) {
+  public void setExpiresAt(OffsetDateTime expiresAt) {
     this.expiresAt = expiresAt;
   }
 

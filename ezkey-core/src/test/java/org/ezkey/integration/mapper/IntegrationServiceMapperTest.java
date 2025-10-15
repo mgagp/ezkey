@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
@@ -90,7 +90,7 @@ class IntegrationServiceMapperTest {
     integration.setId(456);
     integration.setLogo("test-logo.png");
     integration.setActive(true);
-    integration.setCreatedAt(LocalDateTime.now().minusMinutes(10));
+    integration.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
   }
 
   // ===== MAP I18N TESTS =====
