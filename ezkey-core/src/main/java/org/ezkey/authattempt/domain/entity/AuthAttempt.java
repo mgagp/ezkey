@@ -18,7 +18,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 
 /**
@@ -70,14 +70,14 @@ public class AuthAttempt {
   private String deviceProofToken;
 
   @Column(name = "created_at", nullable = false)
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   @Column(name = "expires_at", nullable = false)
-  private LocalDateTime expiresAt;
+  private OffsetDateTime expiresAt;
 
   /** Default constructor for JPA. */
   public AuthAttempt() {
-    this.createdAt = LocalDateTime.now();
+    this.createdAt = OffsetDateTime.now();
     this.authAttemptStatus = AuthAttemptStatus.PENDING;
   }
 
@@ -208,7 +208,7 @@ public class AuthAttempt {
    *
    * @return the creation timestamp
    */
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
@@ -217,7 +217,7 @@ public class AuthAttempt {
    *
    * @param createdAt the creation timestamp to set
    */
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 
@@ -226,7 +226,7 @@ public class AuthAttempt {
    *
    * @return the expiration timestamp
    */
-  public LocalDateTime getExpiresAt() {
+  public OffsetDateTime getExpiresAt() {
     return expiresAt;
   }
 
@@ -235,7 +235,7 @@ public class AuthAttempt {
    *
    * @param expiresAt the expiration timestamp to set
    */
-  public void setExpiresAt(LocalDateTime expiresAt) {
+  public void setExpiresAt(OffsetDateTime expiresAt) {
     this.expiresAt = expiresAt;
   }
 
@@ -245,7 +245,7 @@ public class AuthAttempt {
    * @return true if the attempt has expired, false otherwise
    */
   public boolean isExpired() {
-    return LocalDateTime.now().isAfter(expiresAt);
+    return OffsetDateTime.now().isAfter(expiresAt);
   }
 
   /**

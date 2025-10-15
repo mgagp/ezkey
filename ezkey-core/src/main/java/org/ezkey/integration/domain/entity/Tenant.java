@@ -19,7 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -102,7 +102,7 @@ public class Tenant {
    * <p>This field is automatically set to the current timestamp when the tenant is created.
    */
   @Column(name = "created_at", nullable = false)
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   /**
    * Flag indicating whether the tenant is active.
@@ -152,7 +152,7 @@ public class Tenant {
   public Tenant(String tenantName, String tenantDescription) {
     this.tenantName = tenantName;
     this.tenantDescription = tenantDescription;
-    this.createdAt = LocalDateTime.now();
+    this.createdAt = OffsetDateTime.now();
     this.active = true;
   }
 
@@ -233,7 +233,7 @@ public class Tenant {
    *
    * @return the creation timestamp
    */
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
@@ -242,7 +242,7 @@ public class Tenant {
    *
    * @param createdAt the creation timestamp
    */
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 

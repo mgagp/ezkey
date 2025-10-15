@@ -11,7 +11,7 @@
 package org.ezkey.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Common error response DTO for standardized API error handling.
@@ -56,9 +56,9 @@ public class ErrorResponseDto {
    */
   @Schema(
       description = "Timestamp when the error occurred",
-      example = "2025-10-15T14:30:00",
+      example = "2025-10-15T14:30:00+00:00",
       required = true)
-  private LocalDateTime timestamp;
+  private OffsetDateTime timestamp;
 
   /**
    * Optional request path that caused the error. Useful for debugging and identifying the
@@ -81,7 +81,7 @@ public class ErrorResponseDto {
   public ErrorResponseDto(String code, String message) {
     this.code = code;
     this.message = message;
-    this.timestamp = LocalDateTime.now();
+    this.timestamp = OffsetDateTime.now();
   }
 
   /**
@@ -139,7 +139,7 @@ public class ErrorResponseDto {
    *
    * @return the error timestamp
    */
-  public LocalDateTime getTimestamp() {
+  public OffsetDateTime getTimestamp() {
     return timestamp;
   }
 
@@ -148,7 +148,7 @@ public class ErrorResponseDto {
    *
    * @param timestamp the error timestamp to set
    */
-  public void setTimestamp(LocalDateTime timestamp) {
+  public void setTimestamp(OffsetDateTime timestamp) {
     this.timestamp = timestamp;
   }
 

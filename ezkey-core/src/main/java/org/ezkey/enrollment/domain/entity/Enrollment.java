@@ -18,7 +18,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 
 /**
@@ -102,7 +102,7 @@ public class Enrollment {
 
   /** Timestamp when the enrollment was created. Used for audit trails and sorting purposes. */
   @Column(name = "created_at", nullable = false)
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   // Default constructor
   public Enrollment() {}
@@ -112,7 +112,7 @@ public class Enrollment {
     this.integrationId = integrationId;
     this.enrollmentName = enrollmentName;
     this.setEnrollmentProofToken(deviceProofToken);
-    this.createdAt = LocalDateTime.now();
+    this.createdAt = OffsetDateTime.now();
     this.status = EnrollmentStatus.CREATED;
     this.active = false;
     // Don't set authAttemptChallengeRequired here - let it be set explicitly by the caller
@@ -207,11 +207,11 @@ public class Enrollment {
     this.devicePublicKey = devicePublicKey;
   }
 
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 }

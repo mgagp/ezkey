@@ -21,7 +21,7 @@ CREATE TABLE ezkey_tenant (
     tenant_name VARCHAR(100) NOT NULL UNIQUE,
     tenant_description TEXT,
     created_by_admin_id INT, -- Will be added after ezkey_admin creation
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );
 
@@ -34,7 +34,7 @@ COMMENT ON COLUMN ezkey_tenant.tenant_id IS 'Primary key - unique identifier for
 COMMENT ON COLUMN ezkey_tenant.tenant_name IS 'Unique tenant name used for identification and display purposes';
 COMMENT ON COLUMN ezkey_tenant.tenant_description IS 'Optional description providing context about the tenant organization or purpose';
 COMMENT ON COLUMN ezkey_tenant.created_by_admin_id IS 'Foreign key to admin who created this tenant - will be populated after admin table creation';
-COMMENT ON COLUMN ezkey_tenant.created_at IS 'Audit timestamp recording when tenant was created - immutable value for compliance tracking';
+COMMENT ON COLUMN ezkey_tenant.created_at IS 'Audit timestamp with timezone recording when tenant was created - immutable value for compliance tracking';
 COMMENT ON COLUMN ezkey_tenant.active IS 'Operational control flag - when FALSE, disables tenant operations while preserving data';
 
 -- ============================================================================
@@ -54,9 +54,9 @@ CREATE TABLE ezkey_admin (
     mfa_enrollment_id INT REFERENCES ezkey_enrollment(enrollment_id),
     password_change_required BOOLEAN DEFAULT FALSE NOT NULL,
     created_by_admin_id INT REFERENCES ezkey_admin(admin_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    last_login_at TIMESTAMP,
-    last_password_change TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    last_login_at TIMESTAMPTZ,
+    last_password_change TIMESTAMPTZ,
     active BOOLEAN DEFAULT TRUE NOT NULL,
     
     -- Admin hierarchy constraints
@@ -83,9 +83,9 @@ COMMENT ON COLUMN ezkey_admin.mfa_required IS 'Flag indicating if MFA is require
 COMMENT ON COLUMN ezkey_admin.mfa_enrollment_id IS 'Foreign key to enrollment for MFA authentication - will be repurposed in V3 for passwordless auth';
 COMMENT ON COLUMN ezkey_admin.password_change_required IS 'Flag indicating if admin must change password on next login - will be removed in V3 passwordless migration';
 COMMENT ON COLUMN ezkey_admin.created_by_admin_id IS 'Foreign key to admin who created this admin user - supports audit trail';
-COMMENT ON COLUMN ezkey_admin.created_at IS 'Audit timestamp recording when admin was created - immutable value for compliance tracking';
-COMMENT ON COLUMN ezkey_admin.last_login_at IS 'Timestamp of last successful login - used for security monitoring and session management';
-COMMENT ON COLUMN ezkey_admin.last_password_change IS 'Timestamp of last password change - will be removed in V3 passwordless migration';
+COMMENT ON COLUMN ezkey_admin.created_at IS 'Audit timestamp with timezone recording when admin was created - immutable value for compliance tracking';
+COMMENT ON COLUMN ezkey_admin.last_login_at IS 'Timestamp with timezone of last successful login - used for security monitoring and session management';
+COMMENT ON COLUMN ezkey_admin.last_password_change IS 'Timestamp with timezone of last password change - will be removed in V3 passwordless migration';
 COMMENT ON COLUMN ezkey_admin.active IS 'Operational control flag - when FALSE, disables admin access while preserving data';
 
 -- ============================================================================
@@ -100,9 +100,9 @@ CREATE TABLE ezkey_admin_tokens (
     admin_type VARCHAR(20) NOT NULL,
     tenant_id INT REFERENCES ezkey_tenant(tenant_id),
     integration_id INT REFERENCES ezkey_integration(integration_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    last_used_at TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    last_used_at TIMESTAMPTZ,
     ip_address VARCHAR(45),
     user_agent TEXT,
     active BOOLEAN DEFAULT TRUE NOT NULL
@@ -119,9 +119,9 @@ COMMENT ON COLUMN ezkey_admin_tokens.admin_id IS 'Foreign key to admin user who 
 COMMENT ON COLUMN ezkey_admin_tokens.admin_type IS 'Admin type at time of token creation - used for authorization decisions';
 COMMENT ON COLUMN ezkey_admin_tokens.tenant_id IS 'Tenant scope at time of token creation - used for multi-tenant authorization';
 COMMENT ON COLUMN ezkey_admin_tokens.integration_id IS 'Integration scope at time of token creation - used for integration-specific authorization';
-COMMENT ON COLUMN ezkey_admin_tokens.created_at IS 'Audit timestamp recording when token was created';
-COMMENT ON COLUMN ezkey_admin_tokens.expires_at IS 'Token expiration timestamp - tokens automatically become invalid after this time';
-COMMENT ON COLUMN ezkey_admin_tokens.last_used_at IS 'Timestamp of last token usage - used for security monitoring and session management';
+COMMENT ON COLUMN ezkey_admin_tokens.created_at IS 'Audit timestamp with timezone recording when token was created';
+COMMENT ON COLUMN ezkey_admin_tokens.expires_at IS 'Token expiration timestamp with timezone - tokens automatically become invalid after this time';
+COMMENT ON COLUMN ezkey_admin_tokens.last_used_at IS 'Timestamp with timezone of last token usage - used for security monitoring and session management';
 COMMENT ON COLUMN ezkey_admin_tokens.ip_address IS 'IP address from which token was created - used for security monitoring';
 COMMENT ON COLUMN ezkey_admin_tokens.user_agent IS 'User agent string from token creation - used for security monitoring';
 COMMENT ON COLUMN ezkey_admin_tokens.active IS 'Operational control flag - when FALSE, disables token usage while preserving audit data';
@@ -135,8 +135,8 @@ CREATE TABLE ezkey_admin_temp_tokens (
     temp_token_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     temp_token VARCHAR(255) NOT NULL UNIQUE,
     admin_id INT NOT NULL REFERENCES ezkey_admin(admin_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
     mfa_required BOOLEAN DEFAULT TRUE NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL
 );
@@ -149,8 +149,8 @@ COMMENT ON TABLE ezkey_admin_temp_tokens IS
 COMMENT ON COLUMN ezkey_admin_temp_tokens.temp_token_id IS 'Primary key - unique identifier for the temporary token, auto-generated by database sequence';
 COMMENT ON COLUMN ezkey_admin_temp_tokens.temp_token IS 'Unique temporary token string used during MFA authentication flow';
 COMMENT ON COLUMN ezkey_admin_temp_tokens.admin_id IS 'Foreign key to admin user for whom this temporary token was created';
-COMMENT ON COLUMN ezkey_admin_temp_tokens.created_at IS 'Audit timestamp recording when temporary token was created';
-COMMENT ON COLUMN ezkey_admin_temp_tokens.expires_at IS 'Temporary token expiration timestamp - short-lived for security';
+COMMENT ON COLUMN ezkey_admin_temp_tokens.created_at IS 'Audit timestamp with timezone recording when temporary token was created';
+COMMENT ON COLUMN ezkey_admin_temp_tokens.expires_at IS 'Temporary token expiration timestamp with timezone - short-lived for security';
 COMMENT ON COLUMN ezkey_admin_temp_tokens.mfa_required IS 'Flag indicating if MFA verification is required before token can be used';
 COMMENT ON COLUMN ezkey_admin_temp_tokens.active IS 'Operational control flag - when FALSE, disables temporary token usage';
 

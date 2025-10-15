@@ -22,7 +22,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 
@@ -188,7 +188,7 @@ public class EzkeyAdmin {
    * <p>This field is automatically set to the current timestamp when the administrator is created.
    */
   @Column(name = "created_at", nullable = false)
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   /**
    * Timestamp of the last login for this administrator.
@@ -196,7 +196,7 @@ public class EzkeyAdmin {
    * <p>This field is updated each time the administrator successfully authenticates to the system.
    */
   @Column(name = "last_login_at")
-  private LocalDateTime lastLoginAt;
+  private OffsetDateTime lastLoginAt;
 
   /**
    * Flag indicating whether the administrator account is active.
@@ -239,7 +239,7 @@ public class EzkeyAdmin {
   public EzkeyAdmin(String username, AdminType adminType) {
     this.username = username;
     this.adminType = adminType;
-    this.createdAt = LocalDateTime.now();
+    this.createdAt = OffsetDateTime.now();
     this.active = true;
     this.challengeRequired = false;
   }
@@ -411,7 +411,7 @@ public class EzkeyAdmin {
    *
    * @return the creation timestamp
    */
-  public LocalDateTime getCreatedAt() {
+  public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
 
@@ -420,7 +420,7 @@ public class EzkeyAdmin {
    *
    * @param createdAt the creation timestamp
    */
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
   }
 
@@ -429,7 +429,7 @@ public class EzkeyAdmin {
    *
    * @return the last login timestamp
    */
-  public LocalDateTime getLastLoginAt() {
+  public OffsetDateTime getLastLoginAt() {
     return lastLoginAt;
   }
 
@@ -438,7 +438,7 @@ public class EzkeyAdmin {
    *
    * @param lastLoginAt the last login timestamp
    */
-  public void setLastLoginAt(LocalDateTime lastLoginAt) {
+  public void setLastLoginAt(OffsetDateTime lastLoginAt) {
     this.lastLoginAt = lastLoginAt;
   }
 
