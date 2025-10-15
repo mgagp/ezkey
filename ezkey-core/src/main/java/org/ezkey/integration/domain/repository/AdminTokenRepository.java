@@ -10,7 +10,7 @@
 
 package org.ezkey.integration.domain.repository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.AdminToken;
@@ -180,7 +180,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @param currentTime the current timestamp
    * @return list of expired tokens
    */
-  List<AdminToken> findByExpiresAtBefore(LocalDateTime currentTime);
+  List<AdminToken> findByExpiresAtBefore(OffsetDateTime currentTime);
 
   /**
    * Finds expired active tokens.
@@ -191,7 +191,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @param currentTime the current timestamp
    * @return list of expired active tokens
    */
-  List<AdminToken> findByExpiresAtBeforeAndActiveTrue(LocalDateTime currentTime);
+  List<AdminToken> findByExpiresAtBeforeAndActiveTrue(OffsetDateTime currentTime);
 
   /**
    * Finds tokens that have not been used recently.
@@ -202,7 +202,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @param lastUsedBefore the timestamp before which tokens should not have been used
    * @return list of tokens not used since the specified time
    */
-  List<AdminToken> findByLastUsedAtBefore(LocalDateTime lastUsedBefore);
+  List<AdminToken> findByLastUsedAtBefore(OffsetDateTime lastUsedBefore);
 
   /**
    * Deactivates expired tokens.
@@ -216,7 +216,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
   @Modifying
   @Query(
       "UPDATE AdminToken t SET t.active = false WHERE t.expiresAt < :currentTime AND t.active = true")
-  int deactivateExpiredTokens(@Param("currentTime") LocalDateTime currentTime);
+  int deactivateExpiredTokens(@Param("currentTime") OffsetDateTime currentTime);
 
   /**
    * Deactivates all tokens for a specific administrator.
@@ -263,7 +263,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @param currentTime the current timestamp
    * @return the count of expired tokens
    */
-  long countByExpiresAtBefore(LocalDateTime currentTime);
+  long countByExpiresAtBefore(OffsetDateTime currentTime);
 
   /**
    * Deletes tokens that are expired AND inactive.
@@ -276,7 +276,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    */
   @Modifying
   @Query("DELETE FROM AdminToken t WHERE t.expiresAt < :cutoff AND t.active = false")
-  int deleteByExpiresAtBeforeAndActiveFalse(@Param("cutoff") LocalDateTime cutoff);
+  int deleteByExpiresAtBeforeAndActiveFalse(@Param("cutoff") OffsetDateTime cutoff);
 
   /**
    * Counts tokens that are expired AND inactive.
@@ -287,7 +287,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @param cutoff the cutoff timestamp
    * @return the count of expired and inactive tokens
    */
-  long countByExpiresAtBeforeAndActiveFalse(LocalDateTime cutoff);
+  long countByExpiresAtBeforeAndActiveFalse(OffsetDateTime cutoff);
 
   /**
    * Deactivates all active tokens for a specific administrator.

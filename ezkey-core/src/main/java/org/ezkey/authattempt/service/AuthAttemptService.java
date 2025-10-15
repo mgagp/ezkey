@@ -12,7 +12,7 @@ package org.ezkey.authattempt.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -242,8 +242,8 @@ public class AuthAttemptService {
       logger.debug("No challenge code generated for auth attempt");
     }
     authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
-    authAttempt.setCreatedAt(LocalDateTime.now());
-    authAttempt.setExpiresAt(LocalDateTime.now().plusSeconds(120)); // TTL: 120 seconds
+    authAttempt.setCreatedAt(OffsetDateTime.now());
+    authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(120)); // TTL: 120 seconds
 
     // Save the authorization attempt
     AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
