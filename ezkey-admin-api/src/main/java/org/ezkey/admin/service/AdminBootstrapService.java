@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.OrganizationProperties;
@@ -189,7 +189,7 @@ public class AdminBootstrapService {
     Integration integrationZero = new Integration();
     integrationZero.setLogo(null); // No logo for system integration
     integrationZero.setActive(true);
-    integrationZero.setCreatedAt(LocalDateTime.now());
+    integrationZero.setCreatedAt(OffsetDateTime.now());
     integrationZero.setTenant(systemTenant);
     integrationZero.setIsSystemIntegration(true);
     integrationZero.setCreatedByAdmin(adminZero);
@@ -270,7 +270,7 @@ public class AdminBootstrapService {
     enrollmentZero.setAuthAttemptChallengeRequired(false);
     enrollmentZero.setIntegrationPublicKey(keyPair.base64PublicKey());
     enrollmentZero.setIntegrationPrivateKey(keyPair.base64PrivateKey());
-    enrollmentZero.setCreatedAt(LocalDateTime.now());
+    enrollmentZero.setCreatedAt(OffsetDateTime.now());
 
     enrollmentRepository.save(enrollmentZero);
 

@@ -11,7 +11,7 @@
 package org.ezkey.admin.service;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -204,7 +204,7 @@ public class AdminRecoveryService {
 
     // 5. Generate temporary recovery bearer token (30 minutes, limited permissions)
     String recoveryToken = "ezkey_recovery_" + UUID.randomUUID().toString().replace("-", "");
-    LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(RECOVERY_TOKEN_VALIDITY_MINUTES);
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(RECOVERY_TOKEN_VALIDITY_MINUTES);
 
     AdminToken token = new AdminToken();
     token.setBearerToken(recoveryToken);
@@ -212,7 +212,7 @@ public class AdminRecoveryService {
     token.setAdminType(admin.getAdminType().name());
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
-    token.setCreatedAt(LocalDateTime.now());
+    token.setCreatedAt(OffsetDateTime.now());
     token.setExpiresAt(expiresAt);
     token.setActive(true);
     tokenRepository.save(token);
@@ -257,7 +257,7 @@ public class AdminRecoveryService {
                         "Invalid or expired recovery token"));
 
     // 3. Check expiration
-    if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+    if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
       logger.warn("❌ Recovery token expired for admin: {}", token.getAdmin().getUsername());
       throw new org.ezkey.admin.exception.AuthenticationException("Recovery token expired");
     }
