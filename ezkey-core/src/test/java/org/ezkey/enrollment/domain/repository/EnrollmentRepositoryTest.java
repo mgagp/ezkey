@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -68,7 +68,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
   private Enrollment enrollment3;
   private Integer integrationId;
   private Integer integrationId2;
-  private final LocalDateTime now = LocalDateTime.now();
+  private final OffsetDateTime now = OffsetDateTime.now();
 
   @BeforeEach
   void setUp() {
@@ -98,7 +98,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     enrollment1.setAuthAttemptChallengeRequired(false);
     enrollment1.setIntegrationPublicKey("integration-public-key-1");
     enrollment1.setIntegrationPrivateKey("integration-private-key-1");
-    enrollment1.setCreatedAt(LocalDateTime.now().minusMinutes(10));
+    enrollment1.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
 
     enrollment2 = new Enrollment();
     enrollment2.setIntegrationId(integrationId);
@@ -110,7 +110,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     enrollment2.setAuthAttemptChallengeRequired(false);
     enrollment2.setIntegrationPublicKey("integration-public-key-2");
     enrollment2.setIntegrationPrivateKey("integration-private-key-2");
-    enrollment2.setCreatedAt(LocalDateTime.now().minusMinutes(5));
+    enrollment2.setCreatedAt(OffsetDateTime.now().minusMinutes(5));
 
     enrollment3 = new Enrollment();
     enrollment3.setIntegrationId(integrationId2); // Different integration
@@ -123,7 +123,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     enrollment3.setIntegrationPublicKey("integration-public-key-3");
     enrollment3.setIntegrationPrivateKey("integration-private-key-3");
     enrollment3.setDevicePublicKey("device-public-key-3");
-    enrollment3.setCreatedAt(LocalDateTime.now());
+    enrollment3.setCreatedAt(OffsetDateTime.now());
 
     // Save to database
     enrollment1 = enrollmentRepository.save(enrollment1);
@@ -339,7 +339,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     org.ezkey.integration.domain.entity.Integration newIntegration = new org.ezkey.integration.domain.entity.Integration();
     newIntegration.setLogo("new-test-logo.png");
     newIntegration.setActive(true);
-    newIntegration.setCreatedAt(LocalDateTime.now());
+    newIntegration.setCreatedAt(OffsetDateTime.now());
     newIntegration = integrationRepository.save(newIntegration);
 
     Enrollment newEnrollment = new Enrollment();
@@ -352,7 +352,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     newEnrollment.setAuthAttemptChallengeRequired(false);
     newEnrollment.setIntegrationPublicKey("new-integration-public-key");
     newEnrollment.setIntegrationPrivateKey("new-integration-private-key");
-    newEnrollment.setCreatedAt(LocalDateTime.now());
+    newEnrollment.setCreatedAt(OffsetDateTime.now());
 
     // Act
     Enrollment saved = enrollmentRepository.save(newEnrollment);

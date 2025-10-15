@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -77,7 +77,7 @@ class EnrollmentCoreMapperTest {
     enrollment.setIntegrationPublicKey("integration-public-key");
     enrollment.setIntegrationPrivateKey("integration-private-key");
     enrollment.setDevicePublicKey("device-public-key");
-    enrollment.setCreatedAt(LocalDateTime.now().minusMinutes(10));
+    enrollment.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
   }
 
   // ===== TO CREATE RESPONSE TESTS =====

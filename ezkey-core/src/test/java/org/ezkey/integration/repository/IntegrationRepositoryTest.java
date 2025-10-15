@@ -2,7 +2,7 @@ package org.ezkey.integration.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.IntegrationI18n;
@@ -32,7 +32,7 @@ class IntegrationRepositoryTest {
     Integration parent = new Integration();
     parent.setLogo("/logo.png");
     parent.setActive(true);
-    parent.setCreatedAt(LocalDateTime.now());
+    parent.setCreatedAt(OffsetDateTime.now());
 
     IntegrationI18n child = new IntegrationI18n();
     child.setLanguage("en");

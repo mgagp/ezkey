@@ -21,7 +21,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -87,7 +87,7 @@ class EnrollmentTxHelperTest {
     enrollment.setActive(false);
     enrollment.setIntegrationPublicKey("integration-public-key");
     enrollment.setIntegrationPrivateKey("integration-private-key");
-    enrollment.setCreatedAt(LocalDateTime.now());
+    enrollment.setCreatedAt(OffsetDateTime.now());
   }
 
   // ===== MARK INVALID AND CLEAR TESTS =====

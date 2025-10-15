@@ -20,7 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
@@ -139,7 +139,7 @@ class EnrollmentServiceTest {
     enrollment.setActive(false);
     enrollment.setIntegrationPublicKey("integration-public-key");
     enrollment.setIntegrationPrivateKey("integration-private-key");
-    enrollment.setCreatedAt(LocalDateTime.now());
+    enrollment.setCreatedAt(OffsetDateTime.now());
 
     // Setup integration entity
     integration = new Integration();

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.persistence.EntityManager;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.PostgreSQLTestBase;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -74,7 +74,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     testIntegration = new Integration();
     testIntegration.setLogo("test-logo.png");
     testIntegration.setActive(true);
-    testIntegration.setCreatedAt(LocalDateTime.now());
+    testIntegration.setCreatedAt(OffsetDateTime.now());
     testIntegration = integrationRepository.save(testIntegration);
 
     // Create test enrollment
@@ -88,7 +88,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     testEnrollment.setIntegrationPrivateKey("test-private-key");
     testEnrollment.setIntegrationPublicKey("test-public-key");
     testEnrollment.setDevicePublicKey("test-device-public-key");
-    testEnrollment.setCreatedAt(LocalDateTime.now());
+    testEnrollment.setCreatedAt(OffsetDateTime.now());
     testEnrollment = enrollmentRepository.save(testEnrollment);
 
     // Create test auth attempt
@@ -96,8 +96,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     testAuthAttempt.setEnrollmentId(testEnrollment.getEnrollmentId());
     testAuthAttempt.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
     testAuthAttempt.setAuthAttemptProofToken("test-proof-token");
-    testAuthAttempt.setCreatedAt(LocalDateTime.now());
-    testAuthAttempt.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+    testAuthAttempt.setCreatedAt(OffsetDateTime.now());
+    testAuthAttempt.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
     testAuthAttempt = authAttemptRepository.save(testAuthAttempt);
   }
 

@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -69,7 +69,7 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
   private AuthAttempt authAttempt2;
   private AuthAttempt authAttempt3;
   private Integer enrollmentId;
-  private final LocalDateTime now = LocalDateTime.now();
+  private final OffsetDateTime now = OffsetDateTime.now();
 
   @BeforeEach
   void setUp() {
