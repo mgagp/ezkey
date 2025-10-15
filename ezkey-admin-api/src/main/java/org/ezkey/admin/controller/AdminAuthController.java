@@ -12,7 +12,7 @@ package org.ezkey.admin.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
@@ -245,7 +245,7 @@ public class AdminAuthController {
 
       AdminRecoveryResponseDto response =
           new AdminRecoveryResponseDto(
-              recoveryToken, LocalDateTime.now().plusMinutes(30), codesRemaining);
+              recoveryToken, OffsetDateTime.now().plusMinutes(30), codesRemaining);
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",

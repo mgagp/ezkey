@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
@@ -195,7 +195,7 @@ public class AdminAuthService {
           "Challenge verification required. Enter code "
               + challengeCode
               + " on your device, then call /passwordless-wait.");
-      response.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+      response.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
 
       return response;
     } else {
@@ -365,7 +365,7 @@ public class AdminAuthService {
    */
   private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
     String bearerToken = generateBearerToken();
-    LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(24);
 
     AdminToken token = new AdminToken();
     token.setBearerToken(bearerToken);
@@ -374,7 +374,7 @@ public class AdminAuthService {
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
     token.setExpiresAt(expiresAt);
-    token.setCreatedAt(LocalDateTime.now());
+    token.setCreatedAt(OffsetDateTime.now());
     token.setActive(true);
 
     tokenRepository.save(token);
@@ -400,7 +400,7 @@ public class AdminAuthService {
    * @param admin the administrator whose last login should be updated
    */
   private void updateLastLogin(EzkeyAdmin admin) {
-    admin.setLastLoginAt(LocalDateTime.now());
+    admin.setLastLoginAt(OffsetDateTime.now());
     adminRepository.save(admin);
   }
 
@@ -450,12 +450,12 @@ public class AdminAuthService {
       }
 
       // Check if token is expired
-      if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+      if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
         return null;
       }
 
       // Update last used timestamp
-      token.setLastUsedAt(LocalDateTime.now());
+      token.setLastUsedAt(OffsetDateTime.now());
       tokenRepository.save(token);
 
       return token.getAdmin();

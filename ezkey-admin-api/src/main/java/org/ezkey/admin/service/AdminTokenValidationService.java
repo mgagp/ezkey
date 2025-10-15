@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -64,7 +64,7 @@ public class AdminTokenValidationService {
         AdminToken adminToken = tokenOptional.get();
 
         // Check if token is expired
-        if (adminToken.getExpiresAt().isAfter(LocalDateTime.now())) {
+        if (adminToken.getExpiresAt().isAfter(OffsetDateTime.now())) {
           EzkeyAdmin admin = adminToken.getAdmin();
 
           // Force loading of admin properties within transaction
@@ -100,7 +100,7 @@ public class AdminTokenValidationService {
       Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenAndActiveTrue(token);
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
-        adminToken.setLastUsedAt(LocalDateTime.now());
+        adminToken.setLastUsedAt(OffsetDateTime.now());
         tokenRepository.save(adminToken);
         logger.debug("✅ Updated last used timestamp for token");
       }

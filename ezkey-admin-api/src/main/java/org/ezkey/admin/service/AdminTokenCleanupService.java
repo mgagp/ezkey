@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.ezkey.admin.config.AdminTokenCleanupProperties;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.slf4j.Logger;
@@ -97,7 +97,7 @@ public class AdminTokenCleanupService {
       return;
     }
 
-    LocalDateTime cutoff = LocalDateTime.now();
+    OffsetDateTime cutoff = OffsetDateTime.now();
 
     logger.info("🧹 Starting token cleanup - cutoff: {}", cutoff);
 
@@ -126,7 +126,7 @@ public class AdminTokenCleanupService {
    */
   @Transactional(readOnly = true)
   public long getCleanupCandidatesCount() {
-    LocalDateTime now = LocalDateTime.now();
+    OffsetDateTime now = OffsetDateTime.now();
     return tokenRepository.countByExpiresAtBeforeAndActiveFalse(now);
   }
 }
