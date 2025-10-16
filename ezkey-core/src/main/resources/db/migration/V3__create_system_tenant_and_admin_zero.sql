@@ -145,3 +145,4 @@ COMMENT ON COLUMN ezkey_admin.admin_type IS
 --   - Generate 10 recovery codes (32-digit each)
 --   - Display credentials in logs (one-time opportunity to save)
 -- ============================================================================
+
