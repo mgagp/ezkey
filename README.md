@@ -617,7 +617,7 @@ See `ezkey-cli/README.md` for complete documentation and examples.
 
 ### Technology Stack
 
-- **Backend**: Java 21, Spring Boot 3.5.3, Spring Data JPA
+- **Backend**: Java 21, Spring Boot 3.4.10, Spring Data JPA
 - **Database**: PostgreSQL with Flyway migrations
 - **Mapping**: MapStruct for DTO conversions
 - **Documentation**: SpringDoc OpenAPI
