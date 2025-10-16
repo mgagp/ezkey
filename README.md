@@ -534,6 +534,8 @@ cd ezkey_mobile
 
 ## API Overview
 
+> **📅 Datetime Format**: All API responses return datetime fields in UTC with Z suffix (e.g., `"createdAt": "2025-10-16T15:52:52.764912Z"`). See [ENDPOINT.md](docs/ENDPOINT.md) for details.
+
 ### Admin API Endpoints (`localhost:9080`)
 
 #### Integrations

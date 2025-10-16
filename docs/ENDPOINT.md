@@ -73,6 +73,37 @@ String signature = signWithDeviceKey(authAttemptProofToken);
 
 ---
 
+## 🕐 Datetime Format - UTC Standard
+
+### **Standard: All Timestamps in UTC**
+
+Ezkey APIs return all datetime fields in **UTC (Coordinated Universal Time) with Z suffix** for consistency and timezone independence.
+
+**Format Pattern:**
+```
+yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
+```
+
+**Examples:**
+- `"createdAt": "2025-10-16T15:52:52.764912Z"`
+- `"expiresAt": "2025-10-16T16:56:19.433745Z"`
+- `"completedAt": "2025-10-16T11:55:55.925512Z"`
+
+**Key Points:**
+- **Z suffix**: Indicates UTC timezone (Zulu time)
+- **Microsecond precision**: Six decimal places for timestamps
+- **Database storage**: TIMESTAMPTZ preserves original timezone internally
+- **API responses**: Always converted to UTC for consistency
+- **Client responsibility**: Convert to local timezone for display if needed
+
+**Why UTC?**
+1. **Timezone independence**: Works globally without ambiguity
+2. **API best practice**: Standard for RESTful APIs
+3. **Consistency**: All timestamps use the same format
+4. **Sortability**: Direct string comparison for chronological ordering
+
+---
+
 ## 1. Auth API Endpoints (mobile)
 
 ### a) Retrieve pending request
