@@ -15,11 +15,12 @@ This document summarizes the upgrade of the Ezkey project from Spring Boot 3.3.1
 
 ### Dependencies Updated (via Spring Boot BOM)
 The following dependencies were automatically updated via the Spring Boot BOM:
-- Spring Framework: 6.1.x → 6.2.x
+- Spring Framework: 6.1.x → 6.2.11
 - Spring Security: 6.3.x → 6.4.x
-- Spring Data JPA: 3.3.x → 3.4.x
-- Hibernate: 6.5.x → 6.6.x
-- Jackson: 2.17.x → 2.18.x
+- Spring Data JPA: 3.3.x → 3.4.10
+- Hibernate: 6.5.x → 6.6.29.Final
+- Jackson: 2.17.x → 2.18.4
+- Hibernate Validator: 8.0.x → 8.0.3.Final
 - PostgreSQL Driver: Updated to latest compatible version
 
 ## Compatibility Verification
