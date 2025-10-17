@@ -12,6 +12,7 @@ package org.ezkey.admin.config;
 
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
+import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,8 +25,22 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security configuration for admin API.
  *
- * <p>This configuration provides basic security settings for the admin API, including password
- * encoding and endpoint access control.
+ * <p>This configuration provides security settings for the admin API, supporting multiple
+ * authentication methods:
+ *
+ * <ul>
+ *   <li><b>API Keys:</b> HTTP Basic Auth for machine-to-machine (M2M) authentication
+ *   <li><b>Bearer Tokens:</b> Token-based authentication for human administrators
+ *   <li><b>Rate Limiting:</b> Protection against brute force attacks
+ * </ul>
+ *
+ * <p><b>Filter Chain Order:</b>
+ *
+ * <ol>
+ *   <li>Rate Limiting Filter (if enabled)
+ *   <li>API Key Authentication Filter (HTTP Basic Auth)
+ *   <li>Admin Token Authentication Filter (Bearer tokens)
+ * </ol>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -39,12 +54,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+  private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
   @Autowired(required = false)
   private AdminRateLimitFilter adminRateLimitFilter;
 
-  public SecurityConfig(AdminTokenAuthenticationFilter adminTokenAuthenticationFilter) {
+  public SecurityConfig(
+      AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
+      ApiKeyAuthenticationFilter apiKeyAuthenticationFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
+    this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
   }
 
   /**
@@ -60,9 +79,14 @@ public class SecurityConfig {
   /**
    * Security filter chain configuration.
    *
-   * <p>This configuration supports both HTTP Basic authentication and Bearer token authentication.
-   * It uses our custom UserDetailsService for database authentication and our custom filter for
-   * bearer token validation.
+   * <p>This configuration supports multiple authentication methods:
+   *
+   * <ul>
+   *   <li><b>API Keys:</b> HTTP Basic Auth for M2M authentication
+   *   <li><b>Bearer Tokens:</b> Token-based authentication for admins
+   * </ul>
+   *
+   * <p><b>Filter Order:</b> Rate Limiting → API Key Auth → Bearer Token Auth
    *
    * @param http the HttpSecurity configuration
    * @return SecurityFilterChain
@@ -92,16 +116,22 @@ public class SecurityConfig {
                     // Require authentication for all other endpoints
                     .anyRequest()
                     .authenticated())
-        .httpBasic(
-            httpBasic -> httpBasic.realmName("Ezkey Admin API")); // HTTP Basic authentication
+        .httpBasic(httpBasic -> httpBasic.disable()) // Disable default HTTP Basic
+        .formLogin(formLogin -> formLogin.disable()); // Disable form login
 
-    // Add rate limiting filter before authentication filter (if enabled)
+    // Add rate limiting filter before all authentication filters (if enabled)
     if (adminRateLimitFilter != null) {
       http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
     }
+
     // Add bearer token authentication filter
     http.addFilterBefore(
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+    // Add API key authentication filter BEFORE bearer token filter
+    // This ensures API keys (HTTP Basic) are checked before bearer tokens
+    http.addFilterBefore(
+        apiKeyAuthenticationFilter, AdminTokenAuthenticationFilter.class);
 
     return http.build();
   }

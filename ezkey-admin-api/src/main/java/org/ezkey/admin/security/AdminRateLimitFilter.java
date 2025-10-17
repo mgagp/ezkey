@@ -187,11 +187,27 @@ public class AdminRateLimitFilter implements Filter {
   /**
    * Extracts client identifier for rate limiting.
    *
+   * <p>Priority order:
+   * <ol>
+   *   <li>CF-Connecting-IP (Cloudflare header)</li>
+   *   <li>X-Forwarded-For (standard proxy header)</li>
+   *   <li>X-Real-IP (nginx proxy header)</li>
+   *   <li>Fallback: Direct connection IP</li>
+   * </ol>
+   *
    * @param request the HTTP request
    * @return client identifier string
    */
   private String extractClientId(HttpServletRequest request) {
-    // Priority 1: X-Forwarded-For (standard proxy header)
+    // Priority 1: CF-Connecting-IP (Cloudflare header)
+    String cfConnectingIp = request.getHeader("CF-Connecting-IP");
+    if (cfConnectingIp != null && !cfConnectingIp.isEmpty()) {
+      if (isValidIP(cfConnectingIp)) {
+        return cfConnectingIp;
+      }
+    }
+
+    // Priority 2: X-Forwarded-For (standard proxy header)
     String xForwardedFor = request.getHeader("X-Forwarded-For");
     if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
       String firstIP = xForwardedFor.split(",")[0].trim();
@@ -200,7 +216,7 @@ public class AdminRateLimitFilter implements Filter {
       }
     }
 
-    // Priority 2: X-Real-IP (nginx proxy header)
+    // Priority 3: X-Real-IP (nginx proxy header)
     String xRealIP = request.getHeader("X-Real-IP");
     if (xRealIP != null && !xRealIP.isEmpty()) {
       if (isValidIP(xRealIP)) {

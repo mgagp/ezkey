@@ -501,6 +501,212 @@ Authorization: Bearer ezkey_abc123def456...
 
 ---
 
+## 🔑 API Keys Authentication (Machine-to-Machine)
+
+### **Overview**
+
+API Keys provide machine-to-machine (M2M) authentication for integrated applications, enabling server-to-server API calls without the login/logout overhead required for human administrators.
+
+**Use Cases:**
+- Backend servers calling Ezkey Admin API
+- CI/CD pipelines automating MFA operations
+- Scheduled jobs creating auth attempts
+- Third-party integrations
+
+**Authentication Methods:**
+- **Bearer Tokens:** For human administrators (requires passwordless login)
+- **API Keys:** For integrated applications (no login required)
+
+---
+
+### API Key Format
+
+API keys follow a Duo-style dual key system:
+
+```
+Integration Key: ezkey_ikey_a1b2c3d4e5f6g7h8i9j0  (public, safe to log)
+Secret Key:      ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0  (private, shown once)
+```
+
+**HTTP Basic Authentication:**
+```http
+Authorization: Basic base64(ezkey_ikey_xxx:ezkey_skey_xxx)
+```
+
+---
+
+### a) Create API Key
+
+**POST /api/v1/api-keys**
+
+Creates a new API key pair for an integration. The secret key is shown ONLY ONCE and cannot be retrieved later.
+
+**Request:**
+```http
+POST /api/v1/api-keys
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "integrationId": 123,
+  "description": "Production Server API Key",
+  "expiresAt": "2025-12-31T23:59:59Z",
+  "ipWhitelist": ["192.168.1.0/24", "10.0.0.100"]
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "apiKeyId": 42,
+  "integrationKey": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0",
+  "secretKey": "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+  "description": "Production Server API Key",
+  "createdAt": "2025-10-17T12:00:00Z",
+  "expiresAt": "2025-12-31T23:59:59Z",
+  "ipWhitelist": ["192.168.1.0/24", "10.0.0.100"],
+  "warning": "IMPORTANT: Save the secret key now. It will not be shown again."
+}
+```
+
+**Security Notes:**
+- Secret key shown ONLY ONCE - save immediately
+- Lost secret keys cannot be recovered - create new key instead
+- Expiration date optional but recommended (enforces rotation)
+- IP whitelist optional but recommended for production
+
+---
+
+### b) List API Keys for Integration
+
+**GET /api/v1/api-keys/integration/{integrationId}**
+
+Lists all active API keys for a specific integration. Secret keys are never included.
+
+**Request:**
+```http
+GET /api/v1/api-keys/integration/123
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "apiKeyId": 42,
+    "integrationId": 123,
+    "integrationKey": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0",
+    "description": "Production Server API Key",
+    "active": true,
+    "createdAt": "2025-10-17T12:00:00Z",
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "lastUsedAt": "2025-10-17T15:30:00Z",
+    "ipWhitelist": ["192.168.1.0/24"]
+  }
+]
+```
+
+---
+
+### c) Get API Key Details
+
+**GET /api/v1/api-keys/{keyId}**
+
+Retrieves details of a specific API key. Secret key is never included.
+
+**Request:**
+```http
+GET /api/v1/api-keys/42
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+{
+  "apiKeyId": 42,
+  "integrationId": 123,
+  "integrationKey": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0",
+  "description": "Production Server API Key",
+  "active": true,
+  "createdAt": "2025-10-17T12:00:00Z",
+  "expiresAt": "2025-12-31T23:59:59Z",
+  "lastUsedAt": "2025-10-17T15:30:00Z",
+  "ipWhitelist": ["192.168.1.0/24"]
+}
+```
+
+---
+
+### d) Revoke API Key
+
+**DELETE /api/v1/api-keys/{keyId}**
+
+Immediately revokes an API key, making it unusable. Preserved for audit.
+
+**Request:**
+```http
+DELETE /api/v1/api-keys/42
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (204 No Content):**
+```http
+HTTP/1.1 204 No Content
+```
+
+**Use Cases:**
+- Compromised key security incident
+- Key rotation cleanup after deploying new key
+- Decommissioning an application
+
+---
+
+### e) Using API Keys for Authentication
+
+Once created, use API keys with HTTP Basic Auth for all admin API calls:
+
+**Example: Create Auth Attempt with API Key**
+```http
+POST /api/v1/auth-attempts
+Authorization: Basic base64(ezkey_ikey_xxx:ezkey_skey_xxx)
+Content-Type: application/json
+
+{
+  "enrollmentId": 456,
+  "challengeRequested": false
+}
+```
+
+**Rate Limiting:**
+- 1000 requests per hour per integration key
+- Higher than admin login (designed for server usage)
+- Returns 429 Too Many Requests when limit exceeded
+
+---
+
+### f) API Key Rotation Best Practices
+
+**Recommended Rotation Process:**
+
+1. **Create new API key** (keep old one active)
+2. **Update application config** with new keys
+3. **Deploy and test** application with new keys
+4. **Monitor** that new key is being used (check lastUsedAt)
+5. **Revoke old key** once migration complete
+
+**Transition Period Support:**
+- Up to 5 active API keys per integration
+- Allows zero-downtime key rotation
+- Both old and new keys work during migration
+
+**Automatic Expiration:**
+- Set `expiresAt` when creating keys
+- System sends warnings before expiration (30/7/1 days)
+- Expired keys automatically deactivated
+- Forces regular rotation for enhanced security
+
+---
+
 ### a) Authentication request management
 
 **GET    /api/v1/auth-attempts**          // List all authentication requests

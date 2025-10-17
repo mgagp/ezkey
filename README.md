@@ -515,6 +515,7 @@ cd ezkey_mobile
 - **[Architecture & Security](docs/ARCHITECTURE.md)** - System architecture, security design, and cryptographic implementation
 - **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, OpenAPI documentation, and testing strategy
 - **[API Endpoints](docs/ENDPOINT.md)** - Detailed API reference and specifications
+- **[API Keys Guide](docs/API_KEYS_GUIDE.md)** - Complete guide for machine-to-machine authentication
 - **[Cryptographic Implementation](docs/CRYPTO.md)** - Security and crypto details
 
 ### 📊 Monitoring & Operations
@@ -554,6 +555,12 @@ cd ezkey_mobile
 - `POST /api/v1/auth-attempts` - Create auth attempt
 - `GET /api/v1/auth-attempts/{id}` - Get auth attempt status
 - `GET /api/v1/auth-attempts/{id}/wait` - **Wait for authentication completion**
+
+#### API Keys (M2M Authentication)
+- `POST /api/v1/api-keys` - Create new API key pair
+- `GET /api/v1/api-keys/integration/{id}` - List keys for integration
+- `GET /api/v1/api-keys/{id}` - Get API key details
+- `DELETE /api/v1/api-keys/{id}` - Revoke API key
 
 ### Auth API Endpoints (`localhost:8080`)
 
@@ -833,7 +840,9 @@ See our [Security Policy](SECURITY.md) for full details on:
 - **RSA-2048** cryptographic authentication with SHA-256
 - **One-time proof tokens** to prevent replay attacks
 - **Signature validation** on all authentication attempts
+- **API Keys** for secure machine-to-machine authentication
 - **Rate limiting** and abuse prevention
+- **IP whitelisting** for API keys (CIDR support)
 - **Comprehensive audit logging** for security events
 - **Regular security updates** and dependency scanning
 

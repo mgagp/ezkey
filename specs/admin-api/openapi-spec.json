@@ -31,6 +31,10 @@
   ],
   "tags": [
     {
+      "name": "API Keys",
+      "description": "API key management for machine-to-machine (M2M) authentication"
+    },
+    {
       "name": "Enrollments",
       "description": "Enrollment management API"
     },
@@ -310,6 +314,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthAttemptCreateResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/api-keys": {
+      "post": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Create new API key pair",
+        "description": "Generates a new API key pair for machine-to-machine authentication. The secret key is shown ONLY ONCE and cannot be retrieved later.",
+        "operationId": "createApiKey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "API key created successfully - SAVE THE SECRET KEY IMMEDIATELY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Integration not found or inactive",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Maximum active keys limit reached for integration",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
                 }
               }
             }
@@ -872,6 +948,12 @@
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
+                "API_KEY_CREATED",
+                "API_KEY_REVOKED",
+                "API_KEY_EXPIRED",
+                "API_KEY_AUTH_SUCCESS",
+                "API_KEY_AUTH_FAILED",
+                "API_KEY_IP_BLOCKED",
                 "SYSTEM_ERROR"
               ]
             }
@@ -973,6 +1055,141 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/api-keys/{keyId}": {
+      "get": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Get API key details",
+        "description": "Returns details of a specific API key. Secret key is never included.",
+        "operationId": "getApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "API key ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API key not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Revoke API key",
+        "description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes.",
+        "operationId": "revokeApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "API key ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API key revoked successfully"
+          },
+          "401": {
+            "description": "Unauthorized - admin token required"
+          },
+          "404": {
+            "description": "API key not found"
+          }
+        }
+      }
+    },
+    "/api/v1/api-keys/integration/{integrationId}": {
+      "get": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "List active API keys for integration",
+        "description": "Returns all active API keys for the specified integration. Secret keys are never included in responses.",
+        "operationId": "listApiKeys",
+        "parameters": [
+          {
+            "name": "integrationId",
+            "in": "path",
+            "description": "Integration ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 123
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of active API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyResponseDto"
+                  }
                 }
               }
             }
@@ -1144,6 +1361,100 @@
             "format": "int32",
             "description": "Unique identifier of the created authentication attempt",
             "example": 11
+          }
+        }
+      },
+      "ApiKeyCreateRequestDto": {
+        "type": "object",
+        "description": "Request to create a new API key for an integration",
+        "properties": {
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID to create the API key for",
+            "example": 123
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional human-readable description to identify this API key (e.g., 'Production Server')",
+            "example": "Production Server API Key",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiration date for automatic key rotation enforcement (null = no expiration)",
+            "example": "2025-12-31T23:59:59Z"
+          },
+          "ipWhitelist": {
+            "type": "array",
+            "description": "Optional array of IP addresses or CIDR ranges allowed to use this key (recommended for production)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.100"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "integrationId"
+        ]
+      },
+      "ApiKeyCreateResponseDto": {
+        "type": "object",
+        "description": "Response containing newly created API key pair with secret key shown ONCE",
+        "properties": {
+          "apiKeyId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the API key record",
+            "example": 42
+          },
+          "integrationKey": {
+            "type": "string",
+            "description": "Public integration key (safe to display, used as HTTP Basic Auth username)",
+            "example": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
+          },
+          "secretKey": {
+            "type": "string",
+            "description": "Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)",
+            "example": "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description to identify this API key",
+            "example": "Production Server API Key"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp in UTC",
+            "example": "2025-10-17T10:30:00Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiration date (null = no expiration)",
+            "example": "2025-12-31T23:59:59Z"
+          },
+          "ipWhitelist": {
+            "type": "array",
+            "description": "Optional IP whitelist (null = no restrictions)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.100"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "warning": {
+            "type": "string",
+            "description": "Security warning about saving the secret key",
+            "example": "IMPORTANT: Save the secret key now. It will not be shown again."
           }
         }
       },
@@ -1574,6 +1885,12 @@
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
+              "API_KEY_CREATED",
+              "API_KEY_REVOKED",
+              "API_KEY_EXPIRED",
+              "API_KEY_AUTH_SUCCESS",
+              "API_KEY_AUTH_FAILED",
+              "API_KEY_IP_BLOCKED",
               "SYSTEM_ERROR"
             ]
           },
@@ -1636,19 +1953,16 @@
       "PageAuditLogResponseDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "size": {
             "type": "integer",
@@ -1667,12 +1981,15 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
           },
           "empty": {
             "type": "boolean"
@@ -1682,7 +1999,15 @@
       "PageableObject": {
         "type": "object",
         "properties": {
-          "paged": {
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
             "type": "boolean"
           },
           "offset": {
@@ -1692,30 +2017,95 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "unpaged": {
+          "paged": {
             "type": "boolean"
-          },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
       "SortObject": {
         "type": "object",
         "properties": {
-          "sorted": {
-            "type": "boolean"
-          },
           "unsorted": {
             "type": "boolean"
           },
           "empty": {
             "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiKeyResponseDto": {
+        "type": "object",
+        "description": "Response containing API key details (secret key NOT included)",
+        "properties": {
+          "apiKeyId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the API key record",
+            "example": 42
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID this API key authenticates for",
+            "example": 123
+          },
+          "integrationKey": {
+            "type": "string",
+            "description": "Public integration key (safe to display)",
+            "example": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description to identify this API key",
+            "example": "Production Server API Key"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the key is active (false if revoked)",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp in UTC",
+            "example": "2025-10-17T10:30:00Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiration date (null = no expiration)",
+            "example": "2025-12-31T23:59:59Z"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last successful authentication timestamp (null if never used)",
+            "example": "2025-10-17T15:45:30Z"
+          },
+          "ipWhitelist": {
+            "type": "array",
+            "description": "Optional IP whitelist (null = no restrictions)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.100"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Revocation timestamp (null if active)",
+            "example": "2025-10-17T16:00:00Z"
+          },
+          "revokedByUsername": {
+            "type": "string",
+            "description": "Admin who revoked this key (null if active)",
+            "example": "admin"
           }
         }
       }
