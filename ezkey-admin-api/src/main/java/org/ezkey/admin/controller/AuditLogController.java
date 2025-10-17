@@ -55,82 +55,78 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/audit-logs")
-@Tag(name = "Audit Logs", description = "Audit log query and reporting API for security monitoring and compliance")
+@Tag(
+    name = "Audit Logs",
+    description = "Audit log query and reporting API for security monitoring and compliance")
 public class AuditLogController {
 
-    private final AuditLogService auditLogService;
-    private final AuditLogMapper auditLogMapper;
+  private final AuditLogService auditLogService;
+  private final AuditLogMapper auditLogMapper;
 
-    /**
-     * Constructs the audit log controller with required dependencies.
-     *
-     * @param auditLogService the audit log service
-     * @param auditLogMapper the MapStruct mapper for entity-DTO conversions
-     */
-    public AuditLogController(AuditLogService auditLogService, AuditLogMapper auditLogMapper) {
-        this.auditLogService = auditLogService;
-        this.auditLogMapper = auditLogMapper;
+  /**
+   * Constructs the audit log controller with required dependencies.
+   *
+   * @param auditLogService the audit log service
+   * @param auditLogMapper the MapStruct mapper for entity-DTO conversions
+   */
+  public AuditLogController(AuditLogService auditLogService, AuditLogMapper auditLogMapper) {
+    this.auditLogService = auditLogService;
+    this.auditLogMapper = auditLogMapper;
+  }
+
+  /**
+   * Query audit logs with optional filters and pagination.
+   *
+   * <p>Retrieves audit logs matching the specified criteria with pagination support. All filter
+   * parameters are optional - if none are provided, returns all audit logs (paginated).
+   *
+   * @param eventType optional event type filter
+   * @param eventStatus optional event status filter
+   * @param apiName optional API name filter
+   * @param enrollmentId optional enrollment ID filter
+   * @param adminId optional admin ID filter
+   * @param page page number (zero-based, default 0)
+   * @param size page size (default 20, max 100)
+   * @return ResponseEntity containing page of audit logs
+   */
+  @GetMapping
+  @Operation(
+      summary = "Query audit logs",
+      description =
+          "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Audit logs retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public ResponseEntity<Page<AuditLogResponseDto>> getAuditLogs(
+      @Parameter(description = "Filter by event type") @RequestParam(required = false)
+          EventType eventType,
+      @Parameter(description = "Filter by event status") @RequestParam(required = false)
+          EventStatus eventStatus,
+      @Parameter(description = "Filter by API name") @RequestParam(required = false)
+          ApiName apiName,
+      @Parameter(description = "Filter by enrollment ID") @RequestParam(required = false)
+          Integer enrollmentId,
+      @Parameter(description = "Filter by admin ID") @RequestParam(required = false)
+          Integer adminId,
+      @Parameter(description = "Page number (zero-based)") @RequestParam(defaultValue = "0")
+          int page,
+      @Parameter(description = "Page size (max 100)") @RequestParam(defaultValue = "20") int size) {
+
+    // Validate page size
+    if (size < 1 || size > 100) {
+      size = 20;
     }
 
-    /**
-     * Query audit logs with optional filters and pagination.
-     *
-     * <p>Retrieves audit logs matching the specified criteria with pagination support.
-     * All filter parameters are optional - if none are provided, returns all audit logs
-     * (paginated).
-     *
-     * @param eventType optional event type filter
-     * @param eventStatus optional event status filter
-     * @param apiName optional API name filter
-     * @param enrollmentId optional enrollment ID filter
-     * @param adminId optional admin ID filter
-     * @param page page number (zero-based, default 0)
-     * @param size page size (default 20, max 100)
-     * @return ResponseEntity containing page of audit logs
-     */
-    @GetMapping
-    @Operation(
-        summary = "Query audit logs",
-        description = "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting")
-    @ApiResponses(
-        value = {
-            @ApiResponse(responseCode = "200", description = "Audit logs retrieved successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid parameters"),
-            @ApiResponse(responseCode = "500", description = "Internal server error")
-        })
-    public ResponseEntity<Page<AuditLogResponseDto>> getAuditLogs(
-            @Parameter(description = "Filter by event type") 
-            @RequestParam(required = false) EventType eventType,
-            
-            @Parameter(description = "Filter by event status") 
-            @RequestParam(required = false) EventStatus eventStatus,
-            
-            @Parameter(description = "Filter by API name") 
-            @RequestParam(required = false) ApiName apiName,
-            
-            @Parameter(description = "Filter by enrollment ID") 
-            @RequestParam(required = false) Integer enrollmentId,
-            
-            @Parameter(description = "Filter by admin ID") 
-            @RequestParam(required = false) Integer adminId,
-            
-            @Parameter(description = "Page number (zero-based)") 
-            @RequestParam(defaultValue = "0") int page,
-            
-            @Parameter(description = "Page size (max 100)") 
-            @RequestParam(defaultValue = "20") int size) {
+    Pageable pageable = PageRequest.of(page, size);
 
-        // Validate page size
-        if (size < 1 || size > 100) {
-            size = 20;
-        }
-
-        Pageable pageable = PageRequest.of(page, size);
-        
-        Page<AuditLogResponseDto> auditLogs = auditLogService.findByFilters(
-                eventType, eventStatus, apiName, enrollmentId, adminId, pageable)
+    Page<AuditLogResponseDto> auditLogs =
+        auditLogService
+            .findByFilters(eventType, eventStatus, apiName, enrollmentId, adminId, pageable)
             .map(auditLogMapper::toResponseDto);
 
-        return ResponseEntity.ok(auditLogs);
-    }
+    return ResponseEntity.ok(auditLogs);
+  }
 }

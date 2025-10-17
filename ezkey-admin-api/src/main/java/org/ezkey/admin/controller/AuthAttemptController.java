@@ -103,7 +103,7 @@ public class AuthAttemptController {
    */
   @Autowired
   public AuthAttemptController(
-      AuthAttemptService authAttemptService, 
+      AuthAttemptService authAttemptService,
       AuthAttemptMapper authAttemptMapper,
       AuditLogService auditLogService) {
     this.authAttemptService = authAttemptService;
@@ -189,55 +189,60 @@ public class AuthAttemptController {
       @Parameter(description = "Auth attempt creation data", required = true) @RequestBody
           AuthAttemptCreateRequestDto request,
       HttpServletRequest httpRequest) {
-    
+
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
       AuthAttemptCreateResponse response =
           authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
-      
+
       // Audit successful auth attempt creation
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_CREATED)
-          .eventAction("auth_attempt_created")
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .authAttemptId(response.getAuthAttemptId())
-          .enrollmentId(request.getEnrollmentId())
-          .eventDetails("Challenge: " + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_CREATED)
+              .eventAction("auth_attempt_created")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .authAttemptId(response.getAuthAttemptId())
+              .enrollmentId(request.getEnrollmentId())
+              .eventDetails(
+                  "Challenge: "
+                      + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
+              .build());
 
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
       // Audit validation failure
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_CREATED)
-          .eventAction("auth_attempt_creation_failed")
-          .eventStatus(EventStatus.FAILURE)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .enrollmentId(request.getEnrollmentId())
-          .errorMessage(e.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_CREATED)
+              .eventAction("auth_attempt_creation_failed")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .enrollmentId(request.getEnrollmentId())
+              .errorMessage(e.getMessage())
+              .build());
 
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
       // Audit error
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_CREATED)
-          .eventAction("auth_attempt_creation_error")
-          .eventStatus(EventStatus.ERROR)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .enrollmentId(request.getEnrollmentId())
-          .errorMessage(e.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_CREATED)
+              .eventAction("auth_attempt_creation_error")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .enrollmentId(request.getEnrollmentId())
+              .errorMessage(e.getMessage())
+              .build());
 
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }

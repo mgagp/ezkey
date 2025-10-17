@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.1.0",
   "info": {
     "title": "Ezkey Admin API",
     "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication, enrollment recovery, and admin operations\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
@@ -49,6 +49,10 @@
     {
       "name": "Admin Authentication",
       "description": "Administrator authentication and session management for passwordless login and recovery"
+    },
+    {
+      "name": "Audit Logs",
+      "description": "Audit log query and reporting API for security monitoring and compliance"
     }
   ],
   "paths": {
@@ -114,8 +118,8 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
+          "400": {
+            "description": "Invalid data",
             "content": {
               "*/*": {
                 "schema": {
@@ -124,8 +128,8 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid data",
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -192,6 +196,16 @@
           "required": true
         },
         "responses": {
+          "201": {
+            "description": "Enrollment created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentCreateResponseDto"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid data",
             "content": {
@@ -204,16 +218,6 @@
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnrollmentCreateResponseDto"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Enrollment created successfully",
             "content": {
               "*/*": {
                 "schema": {
@@ -498,8 +502,8 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
+          "404": {
+            "description": "Integration not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -508,8 +512,8 @@
               }
             }
           },
-          "404": {
-            "description": "Integration not found",
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -544,8 +548,8 @@
           "204": {
             "description": "Integration deleted successfully"
           },
-          "500": {
-            "description": "Internal server error",
+          "404": {
+            "description": "Integration not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -554,8 +558,8 @@
               }
             }
           },
-          "404": {
-            "description": "Integration not found",
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -676,16 +680,6 @@
           }
         ],
         "responses": {
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Auth attempt found",
             "content": {
@@ -698,6 +692,16 @@
           },
           "404": {
             "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -732,11 +736,11 @@
           "204": {
             "description": "Auth attempt deleted successfully"
           },
-          "500": {
-            "description": "Internal server error"
-          },
           "404": {
             "description": "Auth attempt not found"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -767,10 +771,9 @@
             "description": "Maximum wait duration in seconds",
             "required": false,
             "schema": {
-              "maximum": 300,
-              "minimum": 1,
               "type": "string",
-              "default": "30"
+              "maximum": 300,
+              "minimum": 1
             },
             "example": 30
           },
@@ -780,37 +783,16 @@
             "description": "Polling interval in seconds",
             "required": false,
             "schema": {
-              "maximum": 60,
-              "minimum": 1,
               "type": "string",
-              "default": "2"
+              "maximum": 60,
+              "minimum": 1
             },
             "example": 2
           }
         ],
         "responses": {
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Authentication completed",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Auth attempt not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -829,12 +811,168 @@
               }
             }
           },
+          "404": {
+            "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid parameters (timeout, polling)",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Query audit logs",
+        "description": "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting",
+        "operationId": "getAuditLogs",
+        "parameters": [
+          {
+            "name": "arg0",
+            "in": "query",
+            "description": "Filter by event type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN_LOGIN",
+                "ADMIN_LOGOUT",
+                "ADMIN_PASSWORD_CHANGE",
+                "ADMIN_RECOVERY_USE",
+                "ENROLLMENT_CREATED",
+                "ENROLLMENT_DELETED",
+                "ENROLLMENT_BIND",
+                "ENROLLMENT_VERIFY",
+                "AUTH_ATTEMPT_CREATED",
+                "AUTH_ATTEMPT_PENDING",
+                "AUTH_ATTEMPT_RESPOND",
+                "SYSTEM_ERROR"
+              ]
+            }
+          },
+          {
+            "name": "arg1",
+            "in": "query",
+            "description": "Filter by event status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUCCESS",
+                "FAILURE",
+                "ERROR"
+              ]
+            }
+          },
+          {
+            "name": "arg2",
+            "in": "query",
+            "description": "Filter by API name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN_API",
+                "AUTH_API"
+              ]
+            }
+          },
+          {
+            "name": "arg3",
+            "in": "query",
+            "description": "Filter by enrollment ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arg4",
+            "in": "query",
+            "description": "Filter by admin ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arg5",
+            "in": "query",
+            "description": "Page number (zero-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "arg6",
+            "in": "query",
+            "description": "Page size (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit logs retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
                 }
               }
             }
@@ -847,6 +985,7 @@
     "schemas": {
       "IntegrationCreateRequestDto": {
         "type": "object",
+        "description": "Integration creation data",
         "properties": {
           "logo": {
             "type": "string",
@@ -860,15 +999,11 @@
               "$ref": "#/components/schemas/IntegrationI18nCreateDto"
             }
           }
-        },
-        "description": "Integration creation data"
+        }
       },
       "IntegrationI18nCreateDto": {
-        "required": [
-          "language",
-          "name"
-        ],
         "type": "object",
+        "description": "Create DTO for integration internationalization data",
         "properties": {
           "language": {
             "type": "string",
@@ -886,27 +1021,26 @@
             "example": "Secure authentication system for ACME applications"
           }
         },
-        "description": "Create DTO for integration internationalization data"
+        "required": [
+          "language",
+          "name"
+        ]
       },
       "IntegrationCreateResponseDto": {
         "type": "object",
+        "description": "Response DTO for creating new Integration entities",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "The unique identifier of the newly created integration",
             "format": "int32",
+            "description": "The unique identifier of the newly created integration",
             "example": 42
           }
-        },
-        "description": "Response DTO for creating new Integration entities"
+        }
       },
       "ErrorResponseDto": {
-        "required": [
-          "code",
-          "message",
-          "timestamp"
-        ],
         "type": "object",
+        "description": "Standardized error response for all API errors",
         "properties": {
           "code": {
             "type": "string",
@@ -920,8 +1054,9 @@
           },
           "timestamp": {
             "type": "string",
+            "format": "date-time",
             "description": "Timestamp when the error occurred",
-            "format": "date-time"
+            "example": "2025-10-15T14:30:00+00:00"
           },
           "path": {
             "type": "string",
@@ -929,19 +1064,20 @@
             "example": "/api/v1/auth-attempts/123"
           }
         },
-        "description": "Standardized error response for all API errors"
+        "required": [
+          "code",
+          "message",
+          "timestamp"
+        ]
       },
       "EnrollmentCreateRequestDto": {
-        "required": [
-          "integrationId",
-          "name"
-        ],
         "type": "object",
+        "description": "Enrollment creation data",
         "properties": {
           "integrationId": {
             "type": "integer",
-            "description": "The integration ID to which this enrollment belongs",
             "format": "int32",
+            "description": "The integration ID to which this enrollment belongs",
             "example": 1
           },
           "name": {
@@ -955,37 +1091,37 @@
             "example": true
           }
         },
-        "description": "Enrollment creation data"
+        "required": [
+          "integrationId",
+          "name"
+        ]
       },
       "EnrollmentCreateResponseDto": {
         "type": "object",
+        "description": "Response DTO containing created enrollment details",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Unique identifier of the created enrollment",
             "format": "int32",
+            "description": "Unique identifier of the created enrollment",
             "example": 21
           },
           "enrollmentChallenge": {
             "type": "integer",
-            "description": "Challenge number for enrollment verification",
             "format": "int32",
+            "description": "Challenge number for enrollment verification",
             "example": 154982
           }
-        },
-        "description": "Response DTO containing created enrollment details"
+        }
       },
       "AuthAttemptCreateRequestDto": {
-        "required": [
-          "challengeRequested",
-          "enrollmentId"
-        ],
         "type": "object",
+        "description": "Auth attempt creation data",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "The enrollment ID for which the authentication attempt is requested",
             "format": "int32",
+            "description": "The enrollment ID for which the authentication attempt is requested",
             "example": 123
           },
           "challengeRequested": {
@@ -994,31 +1130,34 @@
             "example": false
           }
         },
-        "description": "Auth attempt creation data"
+        "required": [
+          "challengeRequested",
+          "enrollmentId"
+        ]
       },
       "AuthAttemptCreateResponseDto": {
         "type": "object",
+        "description": "Response DTO containing created authentication attempt details",
         "properties": {
           "authAttemptId": {
             "type": "integer",
-            "description": "Unique identifier of the created authentication attempt",
             "format": "int32",
+            "description": "Unique identifier of the created authentication attempt",
             "example": 11
           }
-        },
-        "description": "Response DTO containing created authentication attempt details"
+        }
       },
       "EnrollmentResetRequestDto": {
-        "required": [
-          "enrollmentId"
-        ],
         "type": "object",
         "properties": {
           "enrollmentId": {
             "type": "integer",
             "format": "int32"
           }
-        }
+        },
+        "required": [
+          "enrollmentId"
+        ]
       },
       "EnrollmentResetResponseDto": {
         "type": "object",
@@ -1047,22 +1186,23 @@
         }
       },
       "AdminRecoveryRequestDto": {
-        "required": [
-          "recoveryCode",
-          "username"
-        ],
         "type": "object",
         "properties": {
           "username": {
+            "type": "string",
             "maxLength": 50,
-            "minLength": 3,
-            "type": "string"
+            "minLength": 3
           },
           "recoveryCode": {
-            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$",
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$"
           }
-        }
+        },
+        "required": [
+          "recoveryCode",
+          "username"
+        ]
       },
       "AdminRecoveryResponseDto": {
         "type": "object",
@@ -1087,10 +1227,6 @@
         }
       },
       "AdminPasswordlessWaitRequestDto": {
-        "required": [
-          "authAttemptId",
-          "challengeCode"
-        ],
         "type": "object",
         "properties": {
           "authAttemptId": {
@@ -1101,14 +1237,15 @@
             "type": "integer",
             "format": "int32"
           }
-        }
+        },
+        "required": [
+          "authAttemptId",
+          "challengeCode"
+        ]
       },
       "AdminLoginResponseDto": {
-        "required": [
-          "message",
-          "success"
-        ],
         "type": "object",
+        "description": "Response DTO for passwordless administrator login",
         "properties": {
           "success": {
             "type": "boolean",
@@ -1123,12 +1260,12 @@
           "adminType": {
             "type": "string",
             "description": "Type of administrator",
-            "example": "GLOBAL_ADMIN",
             "enum": [
               "GLOBAL_ADMIN",
               "TENANT_ADMIN",
               "INTEGRATION_ADMIN"
-            ]
+            ],
+            "example": "GLOBAL_ADMIN"
           },
           "username": {
             "type": "string",
@@ -1137,8 +1274,9 @@
           },
           "expiresAt": {
             "type": "string",
-            "description": "Token expiration timestamp",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Token expiration timestamp (with timezone)",
+            "example": "2025-10-15T14:30:00+01:00"
           },
           "message": {
             "type": "string",
@@ -1147,41 +1285,42 @@
           },
           "authAttemptId": {
             "type": "integer",
-            "description": "Authentication attempt ID for two-step flow (present when challengeRequested=true)",
             "format": "int32",
+            "description": "Authentication attempt ID for two-step flow (present when challengeRequested=true)",
             "example": 123
           },
           "challengeCode": {
             "type": "integer",
-            "description": "6-digit challenge code for device verification (present when challengeRequested=true)",
             "format": "int32",
+            "description": "6-digit challenge code for device verification (present when challengeRequested=true)",
             "example": 654321
           },
           "status": {
             "type": "string",
             "description": "Authentication attempt status",
-            "example": "pending",
             "enum": [
               "pending",
               "accepted",
               "rejected"
-            ]
+            ],
+            "example": "pending"
           }
         },
-        "description": "Response DTO for passwordless administrator login"
+        "required": [
+          "message",
+          "success"
+        ]
       },
       "AdminLoginRequestDto": {
-        "required": [
-          "username"
-        ],
         "type": "object",
+        "description": "Request DTO for passwordless administrator login",
         "properties": {
           "username": {
-            "maxLength": 50,
-            "minLength": 3,
             "type": "string",
             "description": "Administrator username for passwordless authentication",
-            "example": "admin"
+            "example": "admin",
+            "maxLength": 50,
+            "minLength": 3
           },
           "challengeRequested": {
             "type": "boolean",
@@ -1189,15 +1328,18 @@
             "example": false
           }
         },
-        "description": "Request DTO for passwordless administrator login"
+        "required": [
+          "username"
+        ]
       },
       "IntegrationI18nResponseDto": {
         "type": "object",
+        "description": "Response DTO for integration internationalization data",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Unique identifier for the internationalization record",
             "format": "int32",
+            "description": "Unique identifier for the internationalization record",
             "example": 1
           },
           "language": {
@@ -1215,16 +1357,16 @@
             "description": "Localized description of the integration",
             "example": "Secure authentication system for ACME applications"
           }
-        },
-        "description": "Response DTO for integration internationalization data"
+        }
       },
       "IntegrationResponseDto": {
         "type": "object",
+        "description": "Response DTO containing complete integration details",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Unique identifier for the integration",
             "format": "int32",
+            "description": "Unique identifier for the integration",
             "example": 1
           },
           "logo": {
@@ -1239,8 +1381,9 @@
           },
           "createdAt": {
             "type": "string",
-            "description": "Timestamp when the integration was created",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the integration was created (with timezone)",
+            "example": "2025-01-15T10:30:00+01:00"
           },
           "i18n": {
             "type": "array",
@@ -1249,22 +1392,22 @@
               "$ref": "#/components/schemas/IntegrationI18nResponseDto"
             }
           }
-        },
-        "description": "Response DTO containing complete integration details"
+        }
       },
       "EnrollmentResponseDto": {
         "type": "object",
+        "description": "Response DTO containing complete enrollment information for administrative purposes",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Unique identifier for the enrollment",
             "format": "int32",
+            "description": "Unique identifier for the enrollment",
             "example": 123
           },
           "integrationId": {
             "type": "integer",
-            "description": "Integration identifier this enrollment belongs to",
             "format": "int32",
+            "description": "Integration identifier this enrollment belongs to",
             "example": 1
           },
           "enrollmentName": {
@@ -1275,13 +1418,13 @@
           "enrollmentStatus": {
             "type": "string",
             "description": "Enrollment lifecycle status",
-            "example": "VERIFIED",
             "enum": [
               "CREATED",
               "BOUND",
               "VERIFIED",
               "INVALID"
-            ]
+            ],
+            "example": "VERIFIED"
           },
           "enrollmentActive": {
             "type": "boolean",
@@ -1290,8 +1433,8 @@
           },
           "enrollmentChallenge": {
             "type": "integer",
-            "description": "Challenge value for enrollment verification",
             "format": "int32",
+            "description": "Challenge value for enrollment verification",
             "example": 123456
           },
           "enrollmentProofToken": {
@@ -1310,28 +1453,27 @@
           "devicePublicKey": {
             "type": "string"
           }
-        },
-        "description": "Response DTO containing complete enrollment information for administrative purposes"
+        }
       },
       "AuthAttemptDto": {
         "type": "object",
+        "description": "Response DTO containing complete authentication attempt information for administrative purposes",
         "properties": {
           "authAttemptId": {
             "type": "integer",
-            "description": "Unique identifier for the authentication attempt",
             "format": "int32",
+            "description": "Unique identifier for the authentication attempt",
             "example": 456
           },
           "enrollmentId": {
             "type": "integer",
-            "description": "Enrollment identifier this authentication attempt belongs to",
             "format": "int32",
+            "description": "Enrollment identifier this authentication attempt belongs to",
             "example": 123
           },
           "authAttemptStatus": {
             "type": "string",
             "description": "Current lifecycle status of the authentication attempt",
-            "example": "PENDING",
             "enum": [
               "PENDING",
               "READ",
@@ -1339,12 +1481,13 @@
               "REJECTED",
               "ACCEPTED",
               "EXPIRED"
-            ]
+            ],
+            "example": "PENDING"
           },
           "authAttemptChallenge": {
             "type": "integer",
-            "description": "Challenge value for the authentication attempt",
             "format": "int32",
+            "description": "Challenge value for the authentication attempt",
             "example": 789012
           },
           "authAttemptProofToken": {
@@ -1354,34 +1497,37 @@
           },
           "createdAt": {
             "type": "string",
-            "description": "Timestamp when the authentication attempt was created",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the authentication attempt was created (with timezone)",
+            "example": "2025-01-27T10:30:00+01:00"
           },
           "expiresAt": {
             "type": "string",
-            "description": "Timestamp when the authentication attempt expires",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the authentication attempt expires (with timezone)",
+            "example": "2025-01-27T10:35:00+01:00"
           }
-        },
-        "description": "Response DTO containing complete authentication attempt information for administrative purposes"
+        }
       },
       "AuthAttemptWaitResponseDto": {
         "type": "object",
+        "description": "Response DTO for authentication wait operation",
         "properties": {
           "authAttempt": {
-            "$ref": "#/components/schemas/AuthAttemptDto"
+            "$ref": "#/components/schemas/AuthAttemptDto",
+            "description": "Complete authentication attempt data"
           },
           "status": {
             "type": "string",
             "description": "Calculated authentication status",
-            "example": "ACCEPTED",
             "enum": [
               "PENDING",
               "READ",
               "INVALID",
               "REJECTED",
               "ACCEPTED"
-            ]
+            ],
+            "example": "ACCEPTED"
           },
           "completed": {
             "type": "boolean",
@@ -1395,17 +1541,183 @@
           },
           "waitDuration": {
             "type": "integer",
-            "description": "Actual duration waited in seconds",
             "format": "int32",
+            "description": "Actual duration waited in seconds",
             "example": 15
           },
           "completedAt": {
             "type": "string",
-            "description": "Timestamp when wait operation completed",
+            "format": "date-time",
+            "description": "Timestamp when wait operation completed (with timezone)",
+            "example": "2025-01-27T10:30:15+01:00"
+          }
+        }
+      },
+      "AuditLogResponseDto": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "ADMIN_LOGIN",
+              "ADMIN_LOGOUT",
+              "ADMIN_PASSWORD_CHANGE",
+              "ADMIN_RECOVERY_USE",
+              "ENROLLMENT_CREATED",
+              "ENROLLMENT_DELETED",
+              "ENROLLMENT_BIND",
+              "ENROLLMENT_VERIFY",
+              "AUTH_ATTEMPT_CREATED",
+              "AUTH_ATTEMPT_PENDING",
+              "AUTH_ATTEMPT_RESPOND",
+              "SYSTEM_ERROR"
+            ]
+          },
+          "eventAction": {
+            "type": "string"
+          },
+          "eventStatus": {
+            "type": "string",
+            "enum": [
+              "SUCCESS",
+              "FAILURE",
+              "ERROR"
+            ]
+          },
+          "apiName": {
+            "type": "string",
+            "enum": [
+              "ADMIN_API",
+              "AUTH_API"
+            ]
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "adminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eventDetails": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
             "format": "date-time"
           }
-        },
-        "description": "Response DTO for authentication wait operation"
+        }
+      },
+      "PageAuditLogResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogResponseDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "paged": {
+            "type": "boolean"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "unpaged": {
+            "type": "boolean"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
       }
     },
     "securitySchemes": {

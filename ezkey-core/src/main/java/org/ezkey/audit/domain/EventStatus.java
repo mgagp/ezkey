@@ -23,12 +23,12 @@ package org.ezkey.audit.domain;
  * @since 2025
  */
 public enum EventStatus {
-    /** Event completed successfully */
-    SUCCESS,
-    
-    /** Event failed validation or authorization */
-    FAILURE,
-    
-    /** Event encountered an unexpected error */
-    ERROR
+  /** Event completed successfully */
+  SUCCESS,
+
+  /** Event failed validation or authorization */
+  FAILURE,
+
+  /** Event encountered an unexpected error */
+  ERROR
 }

@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Ezkey Admin API",
-    "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
+    "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication, enrollment recovery, and admin operations\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
     "contact": {
       "name": "Ezkey Team",
       "url": "https://ezkey.org",
@@ -35,12 +35,20 @@
       "description": "Enrollment management API"
     },
     {
+      "name": "Admin Enrollment Management",
+      "description": "Administrator enrollment management and device recovery after loss"
+    },
+    {
       "name": "Auth Attempts",
       "description": "Authentication attempt management API"
     },
     {
       "name": "Integrations",
       "description": "Integration management API"
+    },
+    {
+      "name": "Admin Authentication",
+      "description": "Administrator authentication and session management for passwordless login and recovery"
     }
   ],
   "paths": {
@@ -96,16 +104,6 @@
           "required": true
         },
         "responses": {
-          "400": {
-            "description": "Invalid data",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
           "201": {
             "description": "Integration created successfully",
             "content": {
@@ -118,6 +116,16 @@
           },
           "500": {
             "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid data",
             "content": {
               "*/*": {
                 "schema": {
@@ -308,7 +316,7 @@
     "/api/v1/admin/enrollments/reset": {
       "post": {
         "tags": [
-          "admin-enrollment-controller"
+          "Admin Enrollment Management"
         ],
         "operationId": "resetEnrollment",
         "parameters": [
@@ -348,7 +356,7 @@
     "/api/v1/admin/auth/recover": {
       "post": {
         "tags": [
-          "admin-auth-controller"
+          "Admin Authentication"
         ],
         "operationId": "recover",
         "requestBody": {
@@ -378,7 +386,7 @@
     "/api/v1/admin/auth/passwordless-wait": {
       "post": {
         "tags": [
-          "admin-auth-controller"
+          "Admin Authentication"
         ],
         "operationId": "passwordlessWait",
         "requestBody": {
@@ -408,7 +416,7 @@
     "/api/v1/admin/auth/logout": {
       "post": {
         "tags": [
-          "admin-auth-controller"
+          "Admin Authentication"
         ],
         "operationId": "logout",
         "parameters": [
@@ -431,7 +439,7 @@
     "/api/v1/admin/auth/login": {
       "post": {
         "tags": [
-          "admin-auth-controller"
+          "Admin Authentication"
         ],
         "operationId": "login",
         "requestBody": {
@@ -480,16 +488,6 @@
           }
         ],
         "responses": {
-          "404": {
-            "description": "Integration not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Integration found",
             "content": {
@@ -502,6 +500,16 @@
           },
           "500": {
             "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Integration not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -533,8 +541,11 @@
           }
         ],
         "responses": {
-          "404": {
-            "description": "Integration not found",
+          "204": {
+            "description": "Integration deleted successfully"
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -543,11 +554,8 @@
               }
             }
           },
-          "204": {
-            "description": "Integration deleted successfully"
-          },
-          "500": {
-            "description": "Internal server error",
+          "404": {
+            "description": "Integration not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -791,8 +799,8 @@
               }
             }
           },
-          "404": {
-            "description": "Auth attempt not found",
+          "200": {
+            "description": "Authentication completed",
             "content": {
               "*/*": {
                 "schema": {
@@ -801,8 +809,8 @@
               }
             }
           },
-          "200": {
-            "description": "Authentication completed",
+          "404": {
+            "description": "Auth attempt not found",
             "content": {
               "*/*": {
                 "schema": {
@@ -880,6 +888,18 @@
         },
         "description": "Create DTO for integration internationalization data"
       },
+      "IntegrationCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The unique identifier of the newly created integration",
+            "format": "int32",
+            "example": 42
+          }
+        },
+        "description": "Response DTO for creating new Integration entities"
+      },
       "ErrorResponseDto": {
         "required": [
           "code",
@@ -910,18 +930,6 @@
           }
         },
         "description": "Standardized error response for all API errors"
-      },
-      "IntegrationCreateResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "The unique identifier of the newly created integration",
-            "format": "int32",
-            "example": 42
-          }
-        },
-        "description": "Response DTO for creating new Integration entities"
       },
       "EnrollmentCreateRequestDto": {
         "required": [

@@ -17,12 +17,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.NoSuchElementException;
-import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
@@ -101,7 +101,7 @@ public class AuthAttemptController {
    * @param auditLogService the audit log service for security monitoring
    */
   public AuthAttemptController(
-      AuthAttemptService authAttemptService, 
+      AuthAttemptService authAttemptService,
       AuthAttemptMapper authAttemptMapper,
       AuditLogService auditLogService) {
     this.authAttemptService = authAttemptService;
@@ -168,8 +168,7 @@ public class AuthAttemptController {
             content = @io.swagger.v3.oas.annotations.media.Content())
       })
   public ResponseEntity<AuthAttemptPendingResponseDto> pending(
-      @Valid @RequestBody AuthAttemptPendingRequestDto request,
-      HttpServletRequest httpRequest) {
+      @Valid @RequestBody AuthAttemptPendingRequestDto request, HttpServletRequest httpRequest) {
     logger.info("Processing pending request for enrollment with proof token");
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
@@ -178,17 +177,18 @@ public class AuthAttemptController {
     try {
       AuthAttemptPendingResponse response =
           authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
-      
+
       // Audit pending request found
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_PENDING)
-          .eventAction("auth_attempt_pending_found")
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.AUTH_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .authAttemptId(response.getAuthAttemptId())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_PENDING)
+              .eventAction("auth_attempt_pending_found")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.AUTH_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .authAttemptId(response.getAuthAttemptId())
+              .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
     } catch (NoSuchElementException e) {
@@ -252,46 +252,51 @@ public class AuthAttemptController {
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   public ResponseEntity<AuthAttemptRespondResponseDto> respond(
-      @Valid @RequestBody AuthAttemptRespondRequestDto request,
-      HttpServletRequest httpRequest) {
-    
+      @Valid @RequestBody AuthAttemptRespondRequestDto request, HttpServletRequest httpRequest) {
+
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
       AuthAttemptRespondResponse response =
           authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
-      
+
       // Determine action based on acceptance status
-      String action = request.getAuthAttemptAccepted() != null && request.getAuthAttemptAccepted() 
-          ? "auth_attempt_approved" 
-          : "auth_attempt_denied";
-      
+      String action =
+          request.getAuthAttemptAccepted() != null && request.getAuthAttemptAccepted()
+              ? "auth_attempt_approved"
+              : "auth_attempt_denied";
+
       // Audit response
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_RESPOND)
-          .eventAction(action)
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.AUTH_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .authAttemptId(request.getAuthAttemptId())
-          .eventDetails("User " + (request.getAuthAttemptAccepted() ? "approved" : "denied") + " authentication")
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_RESPOND)
+              .eventAction(action)
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.AUTH_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .authAttemptId(request.getAuthAttemptId())
+              .eventDetails(
+                  "User "
+                      + (request.getAuthAttemptAccepted() ? "approved" : "denied")
+                      + " authentication")
+              .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
     } catch (Exception e) {
       // Audit response failure
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.AUTH_ATTEMPT_RESPOND)
-          .eventAction("auth_attempt_respond_failed")
-          .eventStatus(EventStatus.FAILURE)
-          .apiName(ApiName.AUTH_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .authAttemptId(request.getAuthAttemptId())
-          .errorMessage(e.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.AUTH_ATTEMPT_RESPOND)
+              .eventAction("auth_attempt_respond_failed")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.AUTH_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .authAttemptId(request.getAuthAttemptId())
+              .errorMessage(e.getMessage())
+              .build());
 
       throw e;
     }

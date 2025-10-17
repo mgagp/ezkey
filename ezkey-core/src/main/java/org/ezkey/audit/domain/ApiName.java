@@ -23,9 +23,9 @@ package org.ezkey.audit.domain;
  * @since 2025
  */
 public enum ApiName {
-    /** Admin API (port 9080) - internal administration */
-    ADMIN_API,
-    
-    /** Auth API (port 8080) - mobile device operations */
-    AUTH_API
+  /** Admin API (port 9080) - internal administration */
+  ADMIN_API,
+
+  /** Auth API (port 8080) - mobile device operations */
+  AUTH_API
 }

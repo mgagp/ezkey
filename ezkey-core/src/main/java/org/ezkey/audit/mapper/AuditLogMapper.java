@@ -31,19 +31,19 @@ import org.mapstruct.MappingConstants;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AuditLogMapper {
 
-    /**
-     * Convert AuditLog entity to response DTO.
-     *
-     * @param auditLog the entity to convert
-     * @return response DTO
-     */
-    AuditLogResponseDto toResponseDto(AuditLog auditLog);
+  /**
+   * Convert AuditLog entity to response DTO.
+   *
+   * @param auditLog the entity to convert
+   * @return response DTO
+   */
+  AuditLogResponseDto toResponseDto(AuditLog auditLog);
 
-    /**
-     * Convert list of AuditLog entities to response DTOs.
-     *
-     * @param auditLogs the entities to convert
-     * @return list of response DTOs
-     */
-    List<AuditLogResponseDto> toResponseDtoList(List<AuditLog> auditLogs);
+  /**
+   * Convert list of AuditLog entities to response DTOs.
+   *
+   * @param auditLogs the entities to convert
+   * @return list of response DTOs
+   */
+  List<AuditLogResponseDto> toResponseDtoList(List<AuditLog> auditLogs);
 }

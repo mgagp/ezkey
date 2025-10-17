@@ -13,8 +13,8 @@ package org.ezkey.audit.domain;
 /**
  * Enumeration of audit event types.
  *
- * <p>Defines all types of security-relevant events that are tracked in the audit log system
- * for monitoring, forensic analysis, and SOC2 compliance requirements.
+ * <p>Defines all types of security-relevant events that are tracked in the audit log system for
+ * monitoring, forensic analysis, and SOC2 compliance requirements.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -24,23 +24,23 @@ package org.ezkey.audit.domain;
  * @since 2025
  */
 public enum EventType {
-    // Admin authentication events
-    ADMIN_LOGIN,
-    ADMIN_LOGOUT,
-    ADMIN_PASSWORD_CHANGE,
-    ADMIN_RECOVERY_USE,
-    
-    // Enrollment events
-    ENROLLMENT_CREATED,
-    ENROLLMENT_DELETED,
-    ENROLLMENT_BIND,
-    ENROLLMENT_VERIFY,
-    
-    // Authentication attempt events
-    AUTH_ATTEMPT_CREATED,
-    AUTH_ATTEMPT_PENDING,
-    AUTH_ATTEMPT_RESPOND,
-    
-    // System events
-    SYSTEM_ERROR
+  // Admin authentication events
+  ADMIN_LOGIN,
+  ADMIN_LOGOUT,
+  ADMIN_PASSWORD_CHANGE,
+  ADMIN_RECOVERY_USE,
+
+  // Enrollment events
+  ENROLLMENT_CREATED,
+  ENROLLMENT_DELETED,
+  ENROLLMENT_BIND,
+  ENROLLMENT_VERIFY,
+
+  // Authentication attempt events
+  AUTH_ATTEMPT_CREATED,
+  AUTH_ATTEMPT_PENDING,
+  AUTH_ATTEMPT_RESPOND,
+
+  // System events
+  SYSTEM_ERROR
 }

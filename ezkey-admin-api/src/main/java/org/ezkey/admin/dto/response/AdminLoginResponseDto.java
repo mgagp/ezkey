@@ -37,27 +37,21 @@ import java.time.OffsetDateTime;
 @Schema(description = "Response DTO for passwordless administrator login")
 public class AdminLoginResponseDto {
 
-  /**
-   * Indicates if the authentication was successful.
-   */
+  /** Indicates if the authentication was successful. */
   @Schema(
       description = "Indicates if the authentication was successful",
       example = "true",
       required = true)
   private Boolean success;
 
-  /**
-   * Bearer token for subsequent API calls.
-   */
+  /** Bearer token for subsequent API calls. */
   @Schema(
       description = "Bearer token for authenticated API requests",
       example = "ezkey_abc123def456...",
       required = false)
   private String token;
 
-  /**
-   * Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN).
-   */
+  /** Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN). */
   @Schema(
       description = "Type of administrator",
       example = "GLOBAL_ADMIN",
@@ -65,24 +59,18 @@ public class AdminLoginResponseDto {
       required = false)
   private String adminType;
 
-  /**
-   * Administrator username.
-   */
+  /** Administrator username. */
   @Schema(description = "Administrator username", example = "admin", required = false)
   private String username;
 
-  /**
-   * Token expiration timestamp.
-   */
+  /** Token expiration timestamp. */
   @Schema(
       description = "Token expiration timestamp (with timezone)",
       example = "2025-10-15T14:30:00+01:00",
       required = false)
   private OffsetDateTime expiresAt;
 
-  /**
-   * Response message.
-   */
+  /** Response message. */
   @Schema(
       description = "Response message describing authentication result",
       example = "Authentication successful",

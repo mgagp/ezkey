@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
@@ -32,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * REST controller for administrator authentication.
@@ -49,7 +49,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
-@Tag(name = "Admin Authentication", description = "Administrator authentication and session management for passwordless login and recovery")
+@Tag(
+    name = "Admin Authentication",
+    description =
+        "Administrator authentication and session management for passwordless login and recovery")
 public class AdminAuthController {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
@@ -64,7 +67,7 @@ public class AdminAuthController {
   private AdminRateLimitFilter rateLimitFilter;
 
   public AdminAuthController(
-      AdminAuthService authService, 
+      AdminAuthService authService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
       AuditLogService auditLogService) {
     this.authService = authService;
@@ -104,15 +107,16 @@ public class AdminAuthController {
       }
 
       // Audit successful login
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_LOGIN)
-          .eventAction("login_success")
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .eventDetails("Username: " + request.getUsername())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_LOGIN)
+              .eventAction("login_success")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .eventDetails("Username: " + request.getUsername())
+              .build());
 
       return ResponseEntity.ok(response);
     } else {
@@ -128,16 +132,17 @@ public class AdminAuthController {
       }
 
       // Audit failed login
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_LOGIN)
-          .eventAction("login_failure")
-          .eventStatus(EventStatus.FAILURE)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .eventDetails("Username: " + request.getUsername())
-          .errorMessage(response.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_LOGIN)
+              .eventAction("login_failure")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .eventDetails("Username: " + request.getUsername())
+              .errorMessage(response.getMessage())
+              .build());
 
       return ResponseEntity.badRequest().body(response);
     }
@@ -155,8 +160,7 @@ public class AdminAuthController {
    */
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(
-      @RequestHeader("Authorization") String authorization,
-      HttpServletRequest httpRequest) {
+      @RequestHeader("Authorization") String authorization, HttpServletRequest httpRequest) {
     try {
       // Extract bearer token from authorization header
       String bearerToken = authorization.replace("Bearer ", "");
@@ -167,14 +171,15 @@ public class AdminAuthController {
       String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
       // Audit logout
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_LOGOUT)
-          .eventAction("logout_success")
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_LOGOUT)
+              .eventAction("logout_success")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .build());
 
       return ResponseEntity.ok().build();
     } catch (Exception e) {
@@ -286,16 +291,18 @@ public class AdminAuthController {
       }
 
       // Audit successful recovery
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_RECOVERY_USE)
-          .eventAction("recovery_code_used")
-          .eventStatus(EventStatus.SUCCESS)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .adminId(admin != null ? admin.getAdminId() : null)
-          .eventDetails("Username: " + request.getUsername() + ", Codes remaining: " + codesRemaining)
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_RECOVERY_USE)
+              .eventAction("recovery_code_used")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .adminId(admin != null ? admin.getAdminId() : null)
+              .eventDetails(
+                  "Username: " + request.getUsername() + ", Codes remaining: " + codesRemaining)
+              .build());
 
       return ResponseEntity.ok(response);
 
@@ -312,34 +319,36 @@ public class AdminAuthController {
       }
 
       // Audit failed recovery
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_RECOVERY_USE)
-          .eventAction("recovery_code_failed")
-          .eventStatus(EventStatus.FAILURE)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .eventDetails("Username: " + request.getUsername())
-          .errorMessage(e.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_RECOVERY_USE)
+              .eventAction("recovery_code_failed")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .eventDetails("Username: " + request.getUsername())
+              .errorMessage(e.getMessage())
+              .build());
 
       return ResponseEntity.status(403)
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
 
     } catch (Exception e) {
       logger.error("❌ Recovery error for admin: {} - {}", request.getUsername(), e.getMessage(), e);
-      
+
       // Audit error in recovery
-      auditLogService.log(AuditLog.builder()
-          .eventType(EventType.ADMIN_RECOVERY_USE)
-          .eventAction("recovery_error")
-          .eventStatus(EventStatus.ERROR)
-          .apiName(ApiName.ADMIN_API)
-          .ipAddress(clientIp)
-          .userAgent(userAgent)
-          .eventDetails("Username: " + request.getUsername())
-          .errorMessage(e.getMessage())
-          .build());
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ADMIN_RECOVERY_USE)
+              .eventAction("recovery_error")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .eventDetails("Username: " + request.getUsername())
+              .errorMessage(e.getMessage())
+              .build());
 
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));

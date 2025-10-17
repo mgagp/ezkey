@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.1.0",
   "info": {
     "title": "Ezkey Auth API",
     "description": "Authentication API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables mobile device authentication operations:\n- **Enrollments**: Device binding and verification for user accounts\n- **Auth Attempts**: Mobile authentication request handling and responses\n\nThe API follows a pull-based model where mobile devices poll for pending\nauthentication requests and submit cryptographic signatures for validation.\nAll operations use DTOs for requests and responses with comprehensive validation.\n",
@@ -59,18 +59,18 @@
           "required": true
         },
         "responses": {
-          "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
+          "200": {
+            "description": "Enrollment verification completed successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
+          "400": {
+            "description": "Invalid verification data or cryptographic validation failed",
             "content": {
               "*/*": {
                 "schema": {
@@ -89,12 +89,12 @@
               }
             }
           },
-          "200": {
-            "description": "Enrollment verification completed successfully",
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             }
@@ -121,16 +121,6 @@
           "required": true
         },
         "responses": {
-          "409": {
-            "description": "Enrollment already bound or proof token already used",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Enrollment binding information retrieved successfully",
             "content": {
@@ -141,8 +131,8 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
+          "400": {
+            "description": "Invalid enrollment ID, proof token, or enrollment expired",
             "content": {
               "*/*": {
                 "schema": {
@@ -151,8 +141,18 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+          "409": {
+            "description": "Enrollment already bound or proof token already used",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -183,16 +183,6 @@
           "required": true
         },
         "responses": {
-          "409": {
-            "description": "Authentication attempt state conflict",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
           "200": {
             "description": "Authentication response submitted successfully",
             "content": {
@@ -205,6 +195,16 @@
           },
           "400": {
             "description": "Invalid response data or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authentication attempt state conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -255,8 +255,8 @@
               }
             }
           },
-          "429": {
-            "description": "Rate limit exceeded"
+          "204": {
+            "description": "No pending authentication attempts"
           },
           "400": {
             "description": "Invalid request or enrollment proof token",
@@ -268,8 +268,8 @@
               }
             }
           },
-          "204": {
-            "description": "No pending authentication attempts"
+          "429": {
+            "description": "Rate limit exceeded"
           }
         }
       }
@@ -278,24 +278,19 @@
   "components": {
     "schemas": {
       "EnrollmentVerifyRequestDto": {
-        "required": [
-          "challengeResponse",
-          "devicePublicKey",
-          "enrollmentId",
-          "enrollmentProofTokenSigned"
-        ],
         "type": "object",
+        "description": "Request DTO for enrollment verification completion",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Enrollment ID being verified",
             "format": "int32",
+            "description": "Enrollment ID being verified",
             "example": 123
           },
           "challengeResponse": {
             "type": "integer",
-            "description": "User's response to the enrollment challenge",
             "format": "int32",
+            "description": "User's response to the enrollment challenge",
             "example": 123456
           },
           "devicePublicKey": {
@@ -309,15 +304,30 @@
             "example": "eyJhbGciOiJSUzI1NiJ9..."
           }
         },
-        "description": "Request DTO for enrollment verification completion"
+        "required": [
+          "challengeResponse",
+          "devicePublicKey",
+          "enrollmentId",
+          "enrollmentProofTokenSigned"
+        ]
+      },
+      "EnrollmentVerifyResponseDto": {
+        "type": "object",
+        "description": "Response DTO for enrollment verification completion",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the enrollment is now active and ready for authentication",
+            "example": true
+          }
+        },
+        "required": [
+          "active"
+        ]
       },
       "ErrorResponseDto": {
-        "required": [
-          "code",
-          "message",
-          "timestamp"
-        ],
         "type": "object",
+        "description": "Standardized error response for all API errors",
         "properties": {
           "code": {
             "type": "string",
@@ -331,8 +341,9 @@
           },
           "timestamp": {
             "type": "string",
+            "format": "date-time",
             "description": "Timestamp when the error occurred",
-            "format": "date-time"
+            "example": "2025-10-15T14:30:00+00:00"
           },
           "path": {
             "type": "string",
@@ -340,33 +351,20 @@
             "example": "/api/v1/auth-attempts/123"
           }
         },
-        "description": "Standardized error response for all API errors"
-      },
-      "EnrollmentVerifyResponseDto": {
         "required": [
-          "active"
-        ],
-        "type": "object",
-        "properties": {
-          "active": {
-            "type": "boolean",
-            "description": "Whether the enrollment is now active and ready for authentication",
-            "example": true
-          }
-        },
-        "description": "Response DTO for enrollment verification completion"
+          "code",
+          "message",
+          "timestamp"
+        ]
       },
       "EnrollmentBindRequestDto": {
-        "required": [
-          "enrollmentId",
-          "enrollmentProofToken"
-        ],
         "type": "object",
+        "description": "Request DTO for enrollment binding initiation with proof token",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Enrollment ID to bind to the mobile device",
             "format": "int32",
+            "description": "Enrollment ID to bind to the mobile device",
             "example": 123
           },
           "enrollmentProofToken": {
@@ -380,20 +378,19 @@
             "example": "en"
           }
         },
-        "description": "Request DTO for enrollment binding initiation with proof token"
-      },
-      "EnrollmentBindResponseDto": {
         "required": [
           "enrollmentId",
-          "enrollmentProofToken",
-          "integrationPublicKey"
-        ],
+          "enrollmentProofToken"
+        ]
+      },
+      "EnrollmentBindResponseDto": {
         "type": "object",
+        "description": "Response DTO containing enrollment binding information",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Enrollment ID that was bound to the mobile device",
             "format": "int32",
+            "description": "Enrollment ID that was bound to the mobile device",
             "example": 123
           },
           "integrationPublicKey": {
@@ -427,20 +424,20 @@
             "example": "John's iPhone"
           }
         },
-        "description": "Response DTO containing enrollment binding information"
+        "required": [
+          "enrollmentId",
+          "enrollmentProofToken",
+          "integrationPublicKey"
+        ]
       },
       "AuthAttemptRespondRequestDto": {
-        "required": [
-          "authAttemptAccepted",
-          "authAttemptId",
-          "authAttemptProofTokenSignedByDevice"
-        ],
         "type": "object",
+        "description": "Request DTO for submitting authentication attempt responses",
         "properties": {
           "authAttemptId": {
             "type": "integer",
-            "description": "Authentication attempt ID being responded to",
             "format": "int32",
+            "description": "Authentication attempt ID being responded to",
             "example": 123
           },
           "authAttemptProofTokenSignedByDevice": {
@@ -450,9 +447,8 @@
           },
           "authAttemptChallengeResponse": {
             "type": "integer",
-            "description": "User's response to authentication challenge (if required)",
             "format": "int32",
-            "nullable": true,
+            "description": "User's response to authentication challenge (if required)",
             "example": 123456
           },
           "authAttemptAccepted": {
@@ -461,25 +457,26 @@
             "example": true
           }
         },
-        "description": "Request DTO for submitting authentication attempt responses"
+        "required": [
+          "authAttemptAccepted",
+          "authAttemptId",
+          "authAttemptProofTokenSignedByDevice"
+        ]
       },
       "AuthAttemptRespondResponseDto": {
-        "required": [
-          "message",
-          "result"
-        ],
         "type": "object",
+        "description": "Response DTO for authentication attempt submissions",
         "properties": {
           "result": {
             "type": "string",
             "description": "The authentication result",
-            "example": "APPROVED",
             "enum": [
               "APPROVED",
               "DENIED",
               "FAILED",
               "EXPIRED"
-            ]
+            ],
+            "example": "APPROVED"
           },
           "message": {
             "type": "string",
@@ -487,21 +484,19 @@
             "example": "Authentication approved"
           }
         },
-        "description": "Response DTO for authentication attempt submissions"
+        "required": [
+          "message",
+          "result"
+        ]
       },
       "AuthAttemptPendingRequestDto": {
-        "required": [
-          "deviceProofToken",
-          "deviceProofTokenSigned",
-          "enrollmentId",
-          "enrollmentProofToken"
-        ],
         "type": "object",
+        "description": "Request DTO for checking pending authentication attempts",
         "properties": {
           "enrollmentId": {
             "type": "integer",
-            "description": "Enrollment ID to check for pending authentication attempts",
             "format": "int32",
+            "description": "Enrollment ID to check for pending authentication attempts",
             "example": 123
           },
           "enrollmentProofToken": {
@@ -520,21 +515,21 @@
             "example": "eyJhbGciOiJSUzI1NiJ9..."
           }
         },
-        "description": "Request DTO for checking pending authentication attempts"
+        "required": [
+          "deviceProofToken",
+          "deviceProofTokenSigned",
+          "enrollmentId",
+          "enrollmentProofToken"
+        ]
       },
       "AuthAttemptPendingResponseDto": {
-        "required": [
-          "authAttemptChallengeRequired",
-          "authAttemptId",
-          "authAttemptProofToken",
-          "authAttemptProofTokenSignedByIntegration"
-        ],
         "type": "object",
+        "description": "Response DTO containing pending authentication attempt details",
         "properties": {
           "authAttemptId": {
             "type": "integer",
-            "description": "Unique identifier of the authentication attempt",
             "format": "int32",
+            "description": "Unique identifier of the authentication attempt",
             "example": 123
           },
           "authAttemptProofToken": {
@@ -553,7 +548,12 @@
             "example": true
           }
         },
-        "description": "Response DTO containing pending authentication attempt details"
+        "required": [
+          "authAttemptChallengeRequired",
+          "authAttemptId",
+          "authAttemptProofToken",
+          "authAttemptProofTokenSignedByIntegration"
+        ]
       }
     },
     "securitySchemes": {

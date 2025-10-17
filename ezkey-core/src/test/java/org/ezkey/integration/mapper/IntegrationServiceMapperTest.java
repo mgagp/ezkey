@@ -72,7 +72,8 @@ class IntegrationServiceMapperTest {
   @BeforeEach
   void setUp() {
     // Create mapper instance directly (MapStruct generates implementation)
-    integrationServiceMapper = org.mapstruct.factory.Mappers.getMapper(IntegrationServiceMapper.class);
+    integrationServiceMapper =
+        org.mapstruct.factory.Mappers.getMapper(IntegrationServiceMapper.class);
 
     // Setup IntegrationCreateRequest
     integrationCreateRequest = new IntegrationCreateRequest();
@@ -106,7 +107,7 @@ class IntegrationServiceMapperTest {
     assertEquals(integrationI18nCreate.getLanguage(), result.getLanguage());
     assertEquals(integrationI18nCreate.getName(), result.getName());
     assertEquals(integrationI18nCreate.getDescription(), result.getDescription());
-    
+
     // Verify ignored fields are null
     assertNull(result.getId());
     assertNull(result.getIntegration());

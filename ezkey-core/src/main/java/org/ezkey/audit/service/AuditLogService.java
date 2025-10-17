@@ -27,14 +27,14 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service for audit log operations.
  *
- * <p>Provides audit logging functionality with transaction safety using REQUIRES_NEW
- * propagation to ensure audit logs are saved even if main transaction fails.
+ * <p>Provides audit logging functionality with transaction safety using REQUIRES_NEW propagation to
+ * ensure audit logs are saved even if main transaction fails.
  *
- * <p><b>Transaction Safety:</b> Uses REQUIRES_NEW to prevent audit logging from being
- * rolled back with the main transaction, ensuring comprehensive audit trails.
+ * <p><b>Transaction Safety:</b> Uses REQUIRES_NEW to prevent audit logging from being rolled back
+ * with the main transaction, ensuring comprehensive audit trails.
  *
- * <p><b>Error Handling:</b> Audit failures are logged but never thrown to avoid
- * disrupting main business operations.
+ * <p><b>Error Handling:</b> Audit failures are logged but never thrown to avoid disrupting main
+ * business operations.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -46,66 +46,66 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditLogService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
+  private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
 
-    private final AuditLogRepository auditLogRepository;
+  private final AuditLogRepository auditLogRepository;
 
-    public AuditLogService(AuditLogRepository auditLogRepository) {
-        this.auditLogRepository = auditLogRepository;
+  public AuditLogService(AuditLogRepository auditLogRepository) {
+    this.auditLogRepository = auditLogRepository;
+  }
+
+  /**
+   * Log an audit event in a separate transaction.
+   *
+   * <p>Uses REQUIRES_NEW propagation to ensure the audit log is saved even if the calling
+   * transaction is rolled back.
+   *
+   * @param auditLog the audit log to save
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void log(AuditLog auditLog) {
+    try {
+      auditLogRepository.save(auditLog);
+    } catch (Exception e) {
+      // Log error but don't throw to avoid disrupting main operation
+      log.error("Failed to save audit log: {}", e.getMessage(), e);
     }
+  }
 
-    /**
-     * Log an audit event in a separate transaction.
-     *
-     * <p>Uses REQUIRES_NEW propagation to ensure the audit log is saved
-     * even if the calling transaction is rolled back.
-     *
-     * @param auditLog the audit log to save
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void log(AuditLog auditLog) {
-        try {
-            auditLogRepository.save(auditLog);
-        } catch (Exception e) {
-            // Log error but don't throw to avoid disrupting main operation
-            log.error("Failed to save audit log: {}", e.getMessage(), e);
-        }
-    }
+  /**
+   * Find audit logs with filters and pagination.
+   *
+   * @param eventType optional event type filter
+   * @param eventStatus optional event status filter
+   * @param apiName optional API name filter
+   * @param enrollmentId optional enrollment ID filter
+   * @param adminId optional admin ID filter
+   * @param pageable pagination parameters
+   * @return page of audit logs
+   */
+  @Transactional(readOnly = true)
+  public Page<AuditLog> findByFilters(
+      EventType eventType,
+      EventStatus eventStatus,
+      ApiName apiName,
+      Integer enrollmentId,
+      Integer adminId,
+      Pageable pageable) {
+    return auditLogRepository.findByFilters(
+        eventType, eventStatus, apiName, enrollmentId, adminId, pageable);
+  }
 
-    /**
-     * Find audit logs with filters and pagination.
-     *
-     * @param eventType optional event type filter
-     * @param eventStatus optional event status filter
-     * @param apiName optional API name filter
-     * @param enrollmentId optional enrollment ID filter
-     * @param adminId optional admin ID filter
-     * @param pageable pagination parameters
-     * @return page of audit logs
-     */
-    @Transactional(readOnly = true)
-    public Page<AuditLog> findByFilters(
-            EventType eventType,
-            EventStatus eventStatus,
-            ApiName apiName,
-            Integer enrollmentId,
-            Integer adminId,
-            Pageable pageable) {
-        return auditLogRepository.findByFilters(
-                eventType, eventStatus, apiName, enrollmentId, adminId, pageable);
-    }
-
-    /**
-     * Delete audit logs older than retention period.
-     *
-     * @param retentionDays number of days to retain audit logs
-     * @return number of records deleted
-     */
-    @Transactional
-    public int deleteOldLogs(int retentionDays) {
-        OffsetDateTime cutoffDate = OffsetDateTime.now().minusDays(retentionDays);
-        int deleted = auditLogRepository.deleteOlderThan(cutoffDate);
-        log.info("Deleted {} audit logs older than {} days", deleted, retentionDays);
-        return deleted;
-    }
+  /**
+   * Delete audit logs older than retention period.
+   *
+   * @param retentionDays number of days to retain audit logs
+   * @return number of records deleted
+   */
+  @Transactional
+  public int deleteOldLogs(int retentionDays) {
+    OffsetDateTime cutoffDate = OffsetDateTime.now().minusDays(retentionDays);
+    int deleted = auditLogRepository.deleteOlderThan(cutoffDate);
+    log.info("Deleted {} audit logs older than {} days", deleted, retentionDays);
+    return deleted;
+  }
 }

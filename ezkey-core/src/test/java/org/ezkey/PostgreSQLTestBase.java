@@ -14,15 +14,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Base class for PostgreSQL-specific tests using TestContainers.
  *
  * <p>This class provides a shared PostgreSQL container for tests that require PostgreSQL-specific
- * features like FOR NO KEY UPDATE locking. It uses Spring Boot's service connection feature
- * to automatically configure the test datasource.
+ * features like FOR NO KEY UPDATE locking. It uses Spring Boot's service connection feature to
+ * automatically configure the test datasource.
  *
  * <p><b>Usage:</b> Extend this class for tests that need PostgreSQL-specific functionality:
  *
@@ -68,8 +66,8 @@ public abstract class PostgreSQLTestBase {
   /**
    * PostgreSQL container for tests requiring PostgreSQL-specific features.
    *
-   * <p>This container provides a real PostgreSQL database instance for testing features that
-   * are not available in H2, such as:
+   * <p>This container provides a real PostgreSQL database instance for testing features that are
+   * not available in H2, such as:
    *
    * <ul>
    *   <li><b>FOR NO KEY UPDATE:</b> PostgreSQL-specific row locking
@@ -78,22 +76,22 @@ public abstract class PostgreSQLTestBase {
    *   <li><b>Concurrency Testing:</b> Real database concurrency behavior
    * </ul>
    *
-   * <p><b>Configuration:</b> Uses PostgreSQL 15 with default settings optimized for testing.
-   * The container is automatically configured as a Spring Boot service connection, so no
-   * manual datasource configuration is required.
-   * 
+   * <p><b>Configuration:</b> Uses PostgreSQL 15 with default settings optimized for testing. The
+   * container is automatically configured as a Spring Boot service connection, so no manual
+   * datasource configuration is required.
+   *
    * <p><b>Singleton Pattern:</b> The container is started once and shared across all test classes
    * to avoid connection pool issues. This significantly improves test performance and reliability.
    */
-  @ServiceConnection
-  static PostgreSQLContainer<?> postgres;
-  
+  @ServiceConnection static PostgreSQLContainer<?> postgres;
+
   static {
-    postgres = new PostgreSQLContainer<>("postgres:15")
-        .withDatabaseName("ezkey_test")
-        .withUsername("test")
-        .withPassword("test")
-        .withReuse(true);
+    postgres =
+        new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("ezkey_test")
+            .withUsername("test")
+            .withPassword("test")
+            .withReuse(true);
     postgres.start();
   }
 }

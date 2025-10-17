@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.PostgreSQLTestBase;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
-import org.ezkey.PostgreSQLTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 class EnrollmentRepositoryTest extends PostgreSQLTestBase {
 
   @Autowired private EnrollmentRepository enrollmentRepository;
-  @Autowired private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
+  @Autowired
+  private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   @Autowired private jakarta.persistence.EntityManager entityManager;
 
   private Enrollment enrollment1;
@@ -73,14 +76,16 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
   @BeforeEach
   void setUp() {
     // Create test integrations first (required by enrollment foreign key)
-    org.ezkey.integration.domain.entity.Integration integration1 = new org.ezkey.integration.domain.entity.Integration();
+    org.ezkey.integration.domain.entity.Integration integration1 =
+        new org.ezkey.integration.domain.entity.Integration();
     integration1.setLogo("test-logo-1.png");
     integration1.setActive(true);
     integration1.setCreatedAt(now);
     integration1 = integrationRepository.save(integration1);
     integrationId = integration1.getId();
 
-    org.ezkey.integration.domain.entity.Integration integration2 = new org.ezkey.integration.domain.entity.Integration();
+    org.ezkey.integration.domain.entity.Integration integration2 =
+        new org.ezkey.integration.domain.entity.Integration();
     integration2.setLogo("test-logo-2.png");
     integration2.setActive(true);
     integration2.setCreatedAt(now);
@@ -336,7 +341,8 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
   void save_WhenNewEnrollment_ShouldSaveEnrollment() {
     // Arrange
     // Create a new integration for this test
-    org.ezkey.integration.domain.entity.Integration newIntegration = new org.ezkey.integration.domain.entity.Integration();
+    org.ezkey.integration.domain.entity.Integration newIntegration =
+        new org.ezkey.integration.domain.entity.Integration();
     newIntegration.setLogo("new-test-logo.png");
     newIntegration.setActive(true);
     newIntegration.setCreatedAt(OffsetDateTime.now());

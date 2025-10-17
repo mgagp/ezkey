@@ -65,7 +65,7 @@ class EnrollmentCoreMapperTest {
   void setUp() {
     // Create mapper instance directly (MapStruct generates implementation)
     enrollmentCoreMapper = org.mapstruct.factory.Mappers.getMapper(EnrollmentCoreMapper.class);
-    
+
     enrollment = new Enrollment();
     enrollment.setEnrollmentId(123);
     enrollment.setIntegrationId(456);

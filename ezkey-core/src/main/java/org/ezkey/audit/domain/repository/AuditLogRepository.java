@@ -26,8 +26,8 @@ import org.springframework.stereotype.Repository;
 /**
  * Spring Data JPA repository for audit log persistence.
  *
- * <p>Provides CRUD operations and custom queries for audit log entries
- * supporting security monitoring and compliance reporting.
+ * <p>Provides CRUD operations and custom queries for audit log entries supporting security
+ * monitoring and compliance reporting.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -39,39 +39,40 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
-    /**
-     * Find audit logs with optional filters and pagination.
-     *
-     * @param eventType optional event type filter
-     * @param eventStatus optional event status filter
-     * @param apiName optional API name filter
-     * @param enrollmentId optional enrollment ID filter
-     * @param adminId optional admin ID filter
-     * @param pageable pagination parameters
-     * @return page of audit logs matching criteria
-     */
-    @Query("SELECT a FROM AuditLog a WHERE " +
-           "(:eventType IS NULL OR a.eventType = :eventType) AND " +
-           "(:eventStatus IS NULL OR a.eventStatus = :eventStatus) AND " +
-           "(:apiName IS NULL OR a.apiName = :apiName) AND " +
-           "(:enrollmentId IS NULL OR a.enrollmentId = :enrollmentId) AND " +
-           "(:adminId IS NULL OR a.adminId = :adminId) " +
-           "ORDER BY a.createdAt DESC")
-    Page<AuditLog> findByFilters(
-            @Param("eventType") EventType eventType,
-            @Param("eventStatus") EventStatus eventStatus,
-            @Param("apiName") ApiName apiName,
-            @Param("enrollmentId") Integer enrollmentId,
-            @Param("adminId") Integer adminId,
-            Pageable pageable);
+  /**
+   * Find audit logs with optional filters and pagination.
+   *
+   * @param eventType optional event type filter
+   * @param eventStatus optional event status filter
+   * @param apiName optional API name filter
+   * @param enrollmentId optional enrollment ID filter
+   * @param adminId optional admin ID filter
+   * @param pageable pagination parameters
+   * @return page of audit logs matching criteria
+   */
+  @Query(
+      "SELECT a FROM AuditLog a WHERE "
+          + "(:eventType IS NULL OR a.eventType = :eventType) AND "
+          + "(:eventStatus IS NULL OR a.eventStatus = :eventStatus) AND "
+          + "(:apiName IS NULL OR a.apiName = :apiName) AND "
+          + "(:enrollmentId IS NULL OR a.enrollmentId = :enrollmentId) AND "
+          + "(:adminId IS NULL OR a.adminId = :adminId) "
+          + "ORDER BY a.createdAt DESC")
+  Page<AuditLog> findByFilters(
+      @Param("eventType") EventType eventType,
+      @Param("eventStatus") EventStatus eventStatus,
+      @Param("apiName") ApiName apiName,
+      @Param("enrollmentId") Integer enrollmentId,
+      @Param("adminId") Integer adminId,
+      Pageable pageable);
 
-    /**
-     * Delete audit logs older than the specified date.
-     *
-     * @param cutoffDate cutoff date for deletion
-     * @return number of records deleted
-     */
-    @Modifying
-    @Query("DELETE FROM AuditLog a WHERE a.createdAt < :cutoffDate")
-    int deleteOlderThan(@Param("cutoffDate") OffsetDateTime cutoffDate);
+  /**
+   * Delete audit logs older than the specified date.
+   *
+   * @param cutoffDate cutoff date for deletion
+   * @return number of records deleted
+   */
+  @Modifying
+  @Query("DELETE FROM AuditLog a WHERE a.createdAt < :cutoffDate")
+  int deleteOlderThan(@Param("cutoffDate") OffsetDateTime cutoffDate);
 }

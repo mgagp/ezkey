@@ -41,9 +41,7 @@ public class ErrorResponseDto {
       required = true)
   private String code;
 
-  /**
-   * Human-readable error message. Provides a clear description of what went wrong.
-   */
+  /** Human-readable error message. Provides a clear description of what went wrong. */
   @Schema(
       description = "Human-readable error message describing what went wrong",
       example = "The requested resource was not found",

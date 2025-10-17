@@ -19,8 +19,8 @@ import org.ezkey.audit.domain.EventType;
 /**
  * JPA entity representing an audit log entry.
  *
- * <p>Captures comprehensive information about security-relevant events across all Ezkey APIs
- * for monitoring, forensic analysis, and SOC2 compliance requirements.
+ * <p>Captures comprehensive information about security-relevant events across all Ezkey APIs for
+ * monitoring, forensic analysis, and SOC2 compliance requirements.
  *
  * <p><b>Database Table:</b> ezkey_audit_log
  *
@@ -35,283 +35,282 @@ import org.ezkey.audit.domain.EventType;
 @Table(name = "ezkey_audit_log")
 public class AuditLog {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "audit_log_id")
-    private Long auditLogId;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "audit_log_id")
+  private Long auditLogId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false, length = 50)
-    private EventType eventType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "event_type", nullable = false, length = 50)
+  private EventType eventType;
 
-    @Column(name = "event_action", nullable = false, length = 100)
-    private String eventAction;
+  @Column(name = "event_action", nullable = false, length = 100)
+  private String eventAction;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "event_status", nullable = false, length = 20)
-    private EventStatus eventStatus;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "event_status", nullable = false, length = 20)
+  private EventStatus eventStatus;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "api_name", nullable = false, length = 50)
-    private ApiName apiName;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "api_name", nullable = false, length = 50)
+  private ApiName apiName;
 
-    @Column(name = "ip_address", length = 45)
-    private String ipAddress;
+  @Column(name = "ip_address", length = 45)
+  private String ipAddress;
 
-    @Column(name = "user_agent", columnDefinition = "TEXT")
-    private String userAgent;
+  @Column(name = "user_agent", columnDefinition = "TEXT")
+  private String userAgent;
 
-    @Column(name = "admin_id")
-    private Integer adminId;
+  @Column(name = "admin_id")
+  private Integer adminId;
 
-    @Column(name = "integration_id")
-    private Integer integrationId;
+  @Column(name = "integration_id")
+  private Integer integrationId;
 
-    @Column(name = "enrollment_id")
-    private Integer enrollmentId;
+  @Column(name = "enrollment_id")
+  private Integer enrollmentId;
 
-    @Column(name = "auth_attempt_id")
-    private Integer authAttemptId;
+  @Column(name = "auth_attempt_id")
+  private Integer authAttemptId;
 
-    @Column(name = "tenant_id")
-    private Integer tenantId;
+  @Column(name = "tenant_id")
+  private Integer tenantId;
 
-    @Column(name = "event_details", columnDefinition = "TEXT")
-    private String eventDetails;
+  @Column(name = "event_details", columnDefinition = "TEXT")
+  private String eventDetails;
 
-    @Column(name = "error_message", columnDefinition = "TEXT")
-    private String errorMessage;
+  @Column(name = "error_message", columnDefinition = "TEXT")
+  private String errorMessage;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
-    private OffsetDateTime createdAt;
+  @Column(
+      name = "created_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
+  private OffsetDateTime createdAt;
 
-    /**
-     * Default constructor for JPA.
-     */
-    public AuditLog() {
-        this.createdAt = OffsetDateTime.now();
+  /** Default constructor for JPA. */
+  public AuditLog() {
+    this.createdAt = OffsetDateTime.now();
+  }
+
+  /**
+   * Builder pattern for creating audit log entries.
+   *
+   * @return new builder instance
+   */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** Builder class for AuditLog entity. */
+  public static class Builder {
+    private final AuditLog auditLog;
+
+    public Builder() {
+      this.auditLog = new AuditLog();
     }
 
-    /**
-     * Builder pattern for creating audit log entries.
-     *
-     * @return new builder instance
-     */
-    public static Builder builder() {
-        return new Builder();
+    public Builder eventType(EventType eventType) {
+      auditLog.eventType = eventType;
+      return this;
     }
 
-    /**
-     * Builder class for AuditLog entity.
-     */
-    public static class Builder {
-        private final AuditLog auditLog;
-
-        public Builder() {
-            this.auditLog = new AuditLog();
-        }
-
-        public Builder eventType(EventType eventType) {
-            auditLog.eventType = eventType;
-            return this;
-        }
-
-        public Builder eventAction(String eventAction) {
-            auditLog.eventAction = eventAction;
-            return this;
-        }
-
-        public Builder eventStatus(EventStatus eventStatus) {
-            auditLog.eventStatus = eventStatus;
-            return this;
-        }
-
-        public Builder apiName(ApiName apiName) {
-            auditLog.apiName = apiName;
-            return this;
-        }
-
-        public Builder ipAddress(String ipAddress) {
-            auditLog.ipAddress = ipAddress;
-            return this;
-        }
-
-        public Builder userAgent(String userAgent) {
-            auditLog.userAgent = userAgent;
-            return this;
-        }
-
-        public Builder adminId(Integer adminId) {
-            auditLog.adminId = adminId;
-            return this;
-        }
-
-        public Builder integrationId(Integer integrationId) {
-            auditLog.integrationId = integrationId;
-            return this;
-        }
-
-        public Builder enrollmentId(Integer enrollmentId) {
-            auditLog.enrollmentId = enrollmentId;
-            return this;
-        }
-
-        public Builder authAttemptId(Integer authAttemptId) {
-            auditLog.authAttemptId = authAttemptId;
-            return this;
-        }
-
-        public Builder tenantId(Integer tenantId) {
-            auditLog.tenantId = tenantId;
-            return this;
-        }
-
-        public Builder eventDetails(String eventDetails) {
-            auditLog.eventDetails = eventDetails;
-            return this;
-        }
-
-        public Builder errorMessage(String errorMessage) {
-            auditLog.errorMessage = errorMessage;
-            return this;
-        }
-
-        public AuditLog build() {
-            if (auditLog.eventType == null) {
-                throw new IllegalStateException("eventType is required");
-            }
-            if (auditLog.eventAction == null) {
-                throw new IllegalStateException("eventAction is required");
-            }
-            if (auditLog.eventStatus == null) {
-                throw new IllegalStateException("eventStatus is required");
-            }
-            if (auditLog.apiName == null) {
-                throw new IllegalStateException("apiName is required");
-            }
-            return auditLog;
-        }
+    public Builder eventAction(String eventAction) {
+      auditLog.eventAction = eventAction;
+      return this;
     }
 
-    // Getters and setters
-
-    public Long getAuditLogId() {
-        return auditLogId;
+    public Builder eventStatus(EventStatus eventStatus) {
+      auditLog.eventStatus = eventStatus;
+      return this;
     }
 
-    public void setAuditLogId(Long auditLogId) {
-        this.auditLogId = auditLogId;
+    public Builder apiName(ApiName apiName) {
+      auditLog.apiName = apiName;
+      return this;
     }
 
-    public EventType getEventType() {
-        return eventType;
+    public Builder ipAddress(String ipAddress) {
+      auditLog.ipAddress = ipAddress;
+      return this;
     }
 
-    public void setEventType(EventType eventType) {
-        this.eventType = eventType;
+    public Builder userAgent(String userAgent) {
+      auditLog.userAgent = userAgent;
+      return this;
     }
 
-    public String getEventAction() {
-        return eventAction;
+    public Builder adminId(Integer adminId) {
+      auditLog.adminId = adminId;
+      return this;
     }
 
-    public void setEventAction(String eventAction) {
-        this.eventAction = eventAction;
+    public Builder integrationId(Integer integrationId) {
+      auditLog.integrationId = integrationId;
+      return this;
     }
 
-    public EventStatus getEventStatus() {
-        return eventStatus;
+    public Builder enrollmentId(Integer enrollmentId) {
+      auditLog.enrollmentId = enrollmentId;
+      return this;
     }
 
-    public void setEventStatus(EventStatus eventStatus) {
-        this.eventStatus = eventStatus;
+    public Builder authAttemptId(Integer authAttemptId) {
+      auditLog.authAttemptId = authAttemptId;
+      return this;
     }
 
-    public ApiName getApiName() {
-        return apiName;
+    public Builder tenantId(Integer tenantId) {
+      auditLog.tenantId = tenantId;
+      return this;
     }
 
-    public void setApiName(ApiName apiName) {
-        this.apiName = apiName;
+    public Builder eventDetails(String eventDetails) {
+      auditLog.eventDetails = eventDetails;
+      return this;
     }
 
-    public String getIpAddress() {
-        return ipAddress;
+    public Builder errorMessage(String errorMessage) {
+      auditLog.errorMessage = errorMessage;
+      return this;
     }
 
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
+    public AuditLog build() {
+      if (auditLog.eventType == null) {
+        throw new IllegalStateException("eventType is required");
+      }
+      if (auditLog.eventAction == null) {
+        throw new IllegalStateException("eventAction is required");
+      }
+      if (auditLog.eventStatus == null) {
+        throw new IllegalStateException("eventStatus is required");
+      }
+      if (auditLog.apiName == null) {
+        throw new IllegalStateException("apiName is required");
+      }
+      return auditLog;
     }
+  }
 
-    public String getUserAgent() {
-        return userAgent;
-    }
+  // Getters and setters
 
-    public void setUserAgent(String userAgent) {
-        this.userAgent = userAgent;
-    }
+  public Long getAuditLogId() {
+    return auditLogId;
+  }
 
-    public Integer getAdminId() {
-        return adminId;
-    }
+  public void setAuditLogId(Long auditLogId) {
+    this.auditLogId = auditLogId;
+  }
 
-    public void setAdminId(Integer adminId) {
-        this.adminId = adminId;
-    }
+  public EventType getEventType() {
+    return eventType;
+  }
 
-    public Integer getIntegrationId() {
-        return integrationId;
-    }
+  public void setEventType(EventType eventType) {
+    this.eventType = eventType;
+  }
 
-    public void setIntegrationId(Integer integrationId) {
-        this.integrationId = integrationId;
-    }
+  public String getEventAction() {
+    return eventAction;
+  }
 
-    public Integer getEnrollmentId() {
-        return enrollmentId;
-    }
+  public void setEventAction(String eventAction) {
+    this.eventAction = eventAction;
+  }
 
-    public void setEnrollmentId(Integer enrollmentId) {
-        this.enrollmentId = enrollmentId;
-    }
+  public EventStatus getEventStatus() {
+    return eventStatus;
+  }
 
-    public Integer getAuthAttemptId() {
-        return authAttemptId;
-    }
+  public void setEventStatus(EventStatus eventStatus) {
+    this.eventStatus = eventStatus;
+  }
 
-    public void setAuthAttemptId(Integer authAttemptId) {
-        this.authAttemptId = authAttemptId;
-    }
+  public ApiName getApiName() {
+    return apiName;
+  }
 
-    public Integer getTenantId() {
-        return tenantId;
-    }
+  public void setApiName(ApiName apiName) {
+    this.apiName = apiName;
+  }
 
-    public void setTenantId(Integer tenantId) {
-        this.tenantId = tenantId;
-    }
+  public String getIpAddress() {
+    return ipAddress;
+  }
 
-    public String getEventDetails() {
-        return eventDetails;
-    }
+  public void setIpAddress(String ipAddress) {
+    this.ipAddress = ipAddress;
+  }
 
-    public void setEventDetails(String eventDetails) {
-        this.eventDetails = eventDetails;
-    }
+  public String getUserAgent() {
+    return userAgent;
+  }
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
+  public void setUserAgent(String userAgent) {
+    this.userAgent = userAgent;
+  }
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
+  public Integer getAdminId() {
+    return adminId;
+  }
 
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
+  public void setAdminId(Integer adminId) {
+    this.adminId = adminId;
+  }
 
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+  public Integer getIntegrationId() {
+    return integrationId;
+  }
+
+  public void setIntegrationId(Integer integrationId) {
+    this.integrationId = integrationId;
+  }
+
+  public Integer getEnrollmentId() {
+    return enrollmentId;
+  }
+
+  public void setEnrollmentId(Integer enrollmentId) {
+    this.enrollmentId = enrollmentId;
+  }
+
+  public Integer getAuthAttemptId() {
+    return authAttemptId;
+  }
+
+  public void setAuthAttemptId(Integer authAttemptId) {
+    this.authAttemptId = authAttemptId;
+  }
+
+  public Integer getTenantId() {
+    return tenantId;
+  }
+
+  public void setTenantId(Integer tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  public String getEventDetails() {
+    return eventDetails;
+  }
+
+  public void setEventDetails(String eventDetails) {
+    this.eventDetails = eventDetails;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+  }
+
+  public OffsetDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(OffsetDateTime createdAt) {
+    this.createdAt = createdAt;
+  }
 }

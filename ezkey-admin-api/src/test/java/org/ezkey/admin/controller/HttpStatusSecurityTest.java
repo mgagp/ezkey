@@ -11,19 +11,12 @@
 package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
-import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
-import org.ezkey.enrollment.service.EnrollmentService;
-import org.ezkey.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Security-focused HTTP status code validation tests.
@@ -61,12 +54,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class HttpStatusSecurityTest {
 
   /**
-   * Documents that AuthAttemptService.create() throws IllegalArgumentException for missing enrollment.
+   * Documents that AuthAttemptService.create() throws IllegalArgumentException for missing
+   * enrollment.
    *
-   * <p><b>Security Design:</b> Service throws IllegalArgumentException (not ResourceNotFoundException)
-   * because the controller catches it and returns 400 WITHOUT message, preventing enumeration.
+   * <p><b>Security Design:</b> Service throws IllegalArgumentException (not
+   * ResourceNotFoundException) because the controller catches it and returns 400 WITHOUT message,
+   * preventing enumeration.
    *
    * <p><b>Controller Pattern (AuthAttemptController.create() line 183):</b>
+   *
    * <pre>{@code
    * } catch (IllegalArgumentException e) {
    *     return ResponseEntity.badRequest().build();  // NO MESSAGE EXPOSED
@@ -74,10 +70,12 @@ class HttpStatusSecurityTest {
    * }</pre>
    *
    * <p><b>Security Goal:</b> Attacker cannot distinguish between:
+   *
    * <ul>
    *   <li>Enrollment doesn't exist (404) vs
    *   <li>Invalid request format (400)
    * </ul>
+   *
    * All return same 400, preventing enumeration.
    *
    * <p><b>Attack Prevention:</b> Random enrollment IDs all return 400, attacker cannot discover
@@ -118,10 +116,11 @@ class HttpStatusSecurityTest {
   /**
    * Documents that EnrollmentService.create() validation uses IllegalArgumentException.
    *
-   * <p><b>Security Design:</b> Service throws IllegalArgumentException which is caught by controller
-   * and returns 400 WITHOUT message.
+   * <p><b>Security Design:</b> Service throws IllegalArgumentException which is caught by
+   * controller and returns 400 WITHOUT message.
    *
    * <p><b>Controller Pattern (EnrollmentController.create() line 172):</b>
+   *
    * <pre>{@code
    * } catch (IllegalArgumentException e) {
    *     return ResponseEntity.badRequest().build();  // NO MESSAGE EXPOSED
@@ -129,7 +128,8 @@ class HttpStatusSecurityTest {
    * }</pre>
    */
   @Test
-  @DisplayName("SECURITY DOC: Enrollment validation uses IllegalArgumentException (caught in controller)")
+  @DisplayName(
+      "SECURITY DOC: Enrollment validation uses IllegalArgumentException (caught in controller)")
   void documentSecurityPattern_EnrollmentValidation() {
     // When: Service validates null integration ID
     // Then: Throws IllegalArgumentException
@@ -175,7 +175,7 @@ class HttpStatusSecurityTest {
     // Security validation: Messages in IllegalStateException are generic
     // Examples: "Authentication request failed", "Enrollment binding failed"
     // No specific IDs or state details exposed
-    
+
     assertTrue(true, "Handler added - IllegalStateException → 409 CONFLICT");
   }
 
@@ -185,6 +185,7 @@ class HttpStatusSecurityTest {
    * <p><b>Security Pattern:</b> All invalid enrollment IDs return same 400 status without messages.
    *
    * <p><b>Attack Prevention:</b>
+   *
    * <pre>
    * Attacker tries: POST {enrollmentId: 1} → 400 (no message)
    * Attacker tries: POST {enrollmentId: 99} → 400 (no message)
@@ -213,7 +214,7 @@ class HttpStatusSecurityTest {
     // - Enrollment exists but belongs to different integration
     // - Enrollment exists but is inactive
     // - Invalid enrollment ID format
-    
+
     assertTrue(true, "Anti-enumeration pattern documented and validated in controller code");
   }
 
@@ -224,6 +225,7 @@ class HttpStatusSecurityTest {
    * messages to prevent information leakage.
    *
    * <p><b>Safe Messages (Never Contain):</b>
+   *
    * <ul>
    *   <li>Database table names
    *   <li>SQL queries or errors
@@ -233,6 +235,7 @@ class HttpStatusSecurityTest {
    * </ul>
    *
    * <p><b>Two-Layer Strategy:</b>
+   *
    * <pre>
    * Internal logging: Detailed message with IDs, details
    * Public API response: Generic HTTP status only (no message)
@@ -266,6 +269,7 @@ class HttpStatusSecurityTest {
    * failure reasons.
    *
    * <p><b>Examples from codebase:</b>
+   *
    * <ul>
    *   <li>AuthAttemptPendingService: "Authentication request failed"
    *   <li>EnrollmentBindService: "Enrollment binding failed"
@@ -273,6 +277,7 @@ class HttpStatusSecurityTest {
    * </ul>
    *
    * <p><b>Why Generic:</b> Prevents attackers from learning:
+   *
    * <ul>
    *   <li>Whether specific resource exists
    *   <li>What validation failed (signature vs token vs challenge)
@@ -330,4 +335,3 @@ class HttpStatusSecurityTest {
     assertTrue(true, "IllegalStateException → 409 mapping consistent across APIs");
   }
 }
-

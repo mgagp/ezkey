@@ -42,12 +42,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Comprehensive error handling behavior characterization tests.
  *
- * <p>This test class characterizes the current error handling behavior across all services
- * in ezkey-core before implementing any refactoring. It documents how exceptions are currently
- * thrown, what messages are used, and what the expected behavior is for various error scenarios.
+ * <p>This test class characterizes the current error handling behavior across all services in
+ * ezkey-core before implementing any refactoring. It documents how exceptions are currently thrown,
+ * what messages are used, and what the expected behavior is for various error scenarios.
  *
- * <p><b>Purpose:</b> Establish a baseline of current error handling behavior to ensure that
- * any future refactoring preserves valid behaviors and only improves problematic ones.
+ * <p><b>Purpose:</b> Establish a baseline of current error handling behavior to ensure that any
+ * future refactoring preserves valid behaviors and only improves problematic ones.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -106,7 +106,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
   class ResourceNotFoundExceptionBehavior {
 
     @Test
-    @DisplayName("AuthAttemptService.getById() throws ResourceNotFoundException with correct message")
+    @DisplayName(
+        "AuthAttemptService.getById() throws ResourceNotFoundException with correct message")
     void testAuthAttemptServiceGetByIdThrowsResourceNotFoundException() {
       // Given: Non-existent auth attempt ID
       Integer nonExistentId = 99999;
@@ -114,8 +115,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
       // When & Then: Should throw ResourceNotFoundException with specific message format
       ResourceNotFoundException exception =
           assertThrows(
-              ResourceNotFoundException.class,
-              () -> authAttemptService.getById(nonExistentId));
+              ResourceNotFoundException.class, () -> authAttemptService.getById(nonExistentId));
 
       // Verify exception message format
       String expectedMessage = "Authentication attempt with id 99999 not found";
@@ -123,7 +123,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("AuthAttemptService.delete() throws ResourceNotFoundException with correct message")
+    @DisplayName(
+        "AuthAttemptService.delete() throws ResourceNotFoundException with correct message")
     void testAuthAttemptServiceDeleteThrowsResourceNotFoundException() {
       // Given: Non-existent auth attempt ID
       Integer nonExistentId = 99999;
@@ -131,8 +132,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
       // When & Then: Should throw ResourceNotFoundException with specific message format
       ResourceNotFoundException exception =
           assertThrows(
-              ResourceNotFoundException.class,
-              () -> authAttemptService.delete(nonExistentId));
+              ResourceNotFoundException.class, () -> authAttemptService.delete(nonExistentId));
 
       // Verify exception message format
       String expectedMessage = "Authentication attempt with id 99999 not found";
@@ -140,7 +140,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("EnrollmentService.getById() throws ResourceNotFoundException with correct message")
+    @DisplayName(
+        "EnrollmentService.getById() throws ResourceNotFoundException with correct message")
     void testEnrollmentServiceGetByIdThrowsResourceNotFoundException() {
       // Given: Non-existent enrollment ID
       Integer nonExistentId = 99999;
@@ -148,8 +149,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
       // When & Then: Should throw ResourceNotFoundException with specific message format
       ResourceNotFoundException exception =
           assertThrows(
-              ResourceNotFoundException.class,
-              () -> enrollmentService.getById(nonExistentId));
+              ResourceNotFoundException.class, () -> enrollmentService.getById(nonExistentId));
 
       // Verify exception message format
       String expectedMessage = "Enrollment with id 99999 not found";
@@ -162,7 +162,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
   class IllegalArgumentExceptionBehavior {
 
     @Test
-    @DisplayName("EnrollmentService.create() throws IllegalArgumentException for null integration ID")
+    @DisplayName(
+        "EnrollmentService.create() throws IllegalArgumentException for null integration ID")
     void testEnrollmentServiceCreateThrowsIllegalArgumentExceptionForNullIntegrationId() {
       // Given: Request with null integration ID
       EnrollmentCreateRequest request = new EnrollmentCreateRequest();
@@ -171,9 +172,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
       // When & Then: Should throw IllegalArgumentException with specific message
       IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> enrollmentService.create(request));
+          assertThrows(IllegalArgumentException.class, () -> enrollmentService.create(request));
 
       // Verify exception message
       String expectedMessage = "Integration ID is required";
@@ -181,8 +180,10 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("SignatureService.generateSecureChallenge() throws IllegalArgumentException for invalid digits")
-    void testSignatureServiceGenerateSecureChallengeThrowsIllegalArgumentExceptionForInvalidDigits() {
+    @DisplayName(
+        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for invalid digits")
+    void
+        testSignatureServiceGenerateSecureChallengeThrowsIllegalArgumentExceptionForInvalidDigits() {
       // Given: Invalid challenge digits
       int invalidDigits = 10; // Should be between 1 and 6
 
@@ -198,7 +199,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("SignatureService.generateSecureChallenge() throws IllegalArgumentException for zero digits")
+    @DisplayName(
+        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for zero digits")
     void testSignatureServiceGenerateSecureChallengeThrowsIllegalArgumentExceptionForZeroDigits() {
       // Given: Invalid challenge digits
       int invalidDigits = 0; // Should be between 1 and 6
@@ -220,7 +222,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
   class RuntimeExceptionBehavior {
 
     @Test
-    @DisplayName("SignatureService.generateSignature() throws RuntimeException for invalid private key")
+    @DisplayName(
+        "SignatureService.generateSignature() throws RuntimeException for invalid private key")
     void testSignatureServiceGenerateSignatureThrowsRuntimeExceptionForInvalidPrivateKey() {
       // Given: Invalid private key
       String invalidPrivateKey = "invalid-base64-key";
@@ -239,7 +242,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("SignatureService.generateRsaKeyPair() accepts invalid key size (current behavior)")
+    @DisplayName(
+        "SignatureService.generateRsaKeyPair() accepts invalid key size (current behavior)")
     void testSignatureServiceGenerateRsaKeyPairAcceptsInvalidKeySize() {
       // Given: Invalid key size (too small)
       int invalidKeySize = 512; // Should be at least 2048
@@ -254,7 +258,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     }
 
     @Test
-    @DisplayName("SignatureService.generateSecureChallenge() throws RuntimeException for cryptographic errors")
+    @DisplayName(
+        "SignatureService.generateSecureChallenge() throws RuntimeException for cryptographic errors")
     void testSignatureServiceGenerateSecureChallengeThrowsRuntimeExceptionForCryptoErrors() {
       // Given: Valid digits but potential crypto error scenario
       int validDigits = 3;
@@ -283,9 +288,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
       // When & Then: Should throw IllegalArgumentException (current behavior)
       IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> authAttemptService.create(request));
+          assertThrows(IllegalArgumentException.class, () -> authAttemptService.create(request));
 
       // Verify exception message
       String expectedMessage = "Enrollment not found for ID: 99999";
@@ -323,8 +326,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
       Object[] ids = {123, "uuid-123", 456, "user@example.com"};
 
       for (int i = 0; i < resources.length; i++) {
-        ResourceNotFoundException exception =
-            new ResourceNotFoundException(resources[i], ids[i]);
+        ResourceNotFoundException exception = new ResourceNotFoundException(resources[i], ids[i]);
 
         String expectedMessage = String.format("%s with id %s not found", resources[i], ids[i]);
         assertEquals(expectedMessage, exception.getMessage());
@@ -337,13 +339,11 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
       // Test various validation scenarios
       IllegalArgumentException exception1 =
           assertThrows(
-              IllegalArgumentException.class,
-              () -> signatureService.generateSecureChallenge(0));
+              IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(0));
 
       IllegalArgumentException exception2 =
           assertThrows(
-              IllegalArgumentException.class,
-              () -> signatureService.generateSecureChallenge(10));
+              IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(10));
 
       // Verify messages are descriptive
       assertTrue(exception1.getMessage().contains("Challenge digits must be between 1 and 6"));
@@ -361,23 +361,17 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     @DisplayName("Services use consistent error handling patterns")
     void testServicesUseConsistentErrorHandlingPatterns() {
       // Pattern 1: ResourceNotFoundException for missing entities
-      assertThrows(
-          ResourceNotFoundException.class,
-          () -> authAttemptService.getById(99999));
+      assertThrows(ResourceNotFoundException.class, () -> authAttemptService.getById(99999));
 
-      assertThrows(
-          ResourceNotFoundException.class,
-          () -> enrollmentService.getById(99999));
+      assertThrows(ResourceNotFoundException.class, () -> enrollmentService.getById(99999));
 
       // Pattern 2: IllegalArgumentException for invalid input
       assertThrows(
-          IllegalArgumentException.class,
-          () -> signatureService.generateSecureChallenge(0));
+          IllegalArgumentException.class, () -> signatureService.generateSecureChallenge(0));
 
       // Pattern 3: RuntimeException for technical failures
       assertThrows(
-          RuntimeException.class,
-          () -> signatureService.generateSignature("data", "invalid-key"));
+          RuntimeException.class, () -> signatureService.generateSignature("data", "invalid-key"));
     }
 
     @Test
@@ -385,9 +379,7 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
     void testErrorMessagesProvideSufficientContextForDebugging() {
       // Test that error messages include relevant context
       ResourceNotFoundException exception =
-          assertThrows(
-              ResourceNotFoundException.class,
-              () -> authAttemptService.getById(12345));
+          assertThrows(ResourceNotFoundException.class, () -> authAttemptService.getById(12345));
 
       String message = exception.getMessage();
       assertTrue(message.contains("Authentication attempt"));

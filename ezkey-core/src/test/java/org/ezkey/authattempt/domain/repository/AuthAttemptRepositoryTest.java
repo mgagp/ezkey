@@ -18,12 +18,12 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.PostgreSQLTestBase;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.ezkey.PostgreSQLTestBase;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -61,8 +61,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
 
   @Autowired private AuthAttemptRepository authAttemptRepository;
-  @Autowired private org.ezkey.enrollment.domain.repository.EnrollmentRepository enrollmentRepository;
-  @Autowired private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
+  @Autowired
+  private org.ezkey.enrollment.domain.repository.EnrollmentRepository enrollmentRepository;
+
+  @Autowired
+  private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   @Autowired private jakarta.persistence.EntityManager entityManager;
 
   private AuthAttempt authAttempt1;
@@ -74,14 +79,16 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
   @BeforeEach
   void setUp() {
     // Create test integration first (required by enrollment foreign key)
-    org.ezkey.integration.domain.entity.Integration integration = new org.ezkey.integration.domain.entity.Integration();
+    org.ezkey.integration.domain.entity.Integration integration =
+        new org.ezkey.integration.domain.entity.Integration();
     integration.setLogo("test-logo.png");
     integration.setActive(true);
     integration.setCreatedAt(now);
     integration = integrationRepository.save(integration);
 
     // Create test enrollment (required by auth_attempt foreign key)
-    org.ezkey.enrollment.domain.entity.Enrollment enrollment = new org.ezkey.enrollment.domain.entity.Enrollment();
+    org.ezkey.enrollment.domain.entity.Enrollment enrollment =
+        new org.ezkey.enrollment.domain.entity.Enrollment();
     enrollment.setIntegrationId(integration.getId());
     enrollment.setEnrollmentName("Test Enrollment");
     enrollment.setEnrollmentProofToken("test-enrollment-proof-" + System.currentTimeMillis());
@@ -199,7 +206,8 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
     // Verify the update
     entityManager.flush();
     entityManager.clear();
-    AuthAttempt updated = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
+    AuthAttempt updated =
+        authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.READ, updated.getAuthAttemptStatus());
   }
 
@@ -220,7 +228,8 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
     // Verify no update occurred
     entityManager.flush();
     entityManager.clear();
-    AuthAttempt unchanged = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
+    AuthAttempt unchanged =
+        authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.PENDING, unchanged.getAuthAttemptStatus());
   }
 
@@ -242,8 +251,10 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
     // Verify the updates
     entityManager.flush();
     entityManager.clear();
-    AuthAttempt updated1 = authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
-    AuthAttempt updated2 = authAttemptRepository.findById(authAttempt2.getAuthAttemptId()).orElseThrow();
+    AuthAttempt updated1 =
+        authAttemptRepository.findById(authAttempt1.getAuthAttemptId()).orElseThrow();
+    AuthAttempt updated2 =
+        authAttemptRepository.findById(authAttempt2.getAuthAttemptId()).orElseThrow();
     assertEquals(AuthAttemptStatus.EXPIRED, updated1.getAuthAttemptStatus());
     assertEquals(AuthAttemptStatus.EXPIRED, updated2.getAuthAttemptStatus());
   }
