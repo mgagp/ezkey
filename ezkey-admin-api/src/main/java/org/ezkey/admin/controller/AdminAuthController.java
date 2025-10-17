@@ -20,6 +20,12 @@ import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,13 +58,18 @@ public class AdminAuthController {
 
   private final org.ezkey.admin.service.AdminRecoveryService recoveryService;
 
+  private final AuditLogService auditLogService;
+
   @Autowired(required = false)
   private AdminRateLimitFilter rateLimitFilter;
 
   public AdminAuthController(
-      AdminAuthService authService, org.ezkey.admin.service.AdminRecoveryService recoveryService) {
+      AdminAuthService authService, 
+      org.ezkey.admin.service.AdminRecoveryService recoveryService,
+      AuditLogService auditLogService) {
     this.authService = authService;
     this.recoveryService = recoveryService;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -77,10 +88,11 @@ public class AdminAuthController {
 
     logger.info("🌐 Login request received for username: {}", request.getUsername());
 
-    AdminLoginResponseDto response = authService.authenticate(request);
+    // Extract client info for audit logging
+    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
-    // Extract client IP for rate limiting tracking
-    String clientIp = extractClientIp(httpRequest);
+    AdminLoginResponseDto response = authService.authenticate(request);
 
     if (response.getSuccess()) {
       logger.info(
@@ -90,6 +102,17 @@ public class AdminAuthController {
       if (rateLimitFilter != null) {
         rateLimitFilter.recordSuccessfulAttempt(clientIp);
       }
+
+      // Audit successful login
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_LOGIN)
+          .eventAction("login_success")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .eventDetails("Username: " + request.getUsername())
+          .build());
 
       return ResponseEntity.ok(response);
     } else {
@@ -104,34 +127,20 @@ public class AdminAuthController {
         rateLimitFilter.recordFailedAttempt(clientIp);
       }
 
+      // Audit failed login
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_LOGIN)
+          .eventAction("login_failure")
+          .eventStatus(EventStatus.FAILURE)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .eventDetails("Username: " + request.getUsername())
+          .errorMessage(response.getMessage())
+          .build());
+
       return ResponseEntity.badRequest().body(response);
     }
-  }
-
-  /**
-   * Extracts client IP address from HTTP request.
-   *
-   * <p>Checks X-Forwarded-For and X-Real-IP headers before falling back to direct connection IP.
-   * This matches the rate limiting filter logic.
-   *
-   * @param request the HTTP servlet request
-   * @return client IP address
-   */
-  private String extractClientIp(HttpServletRequest request) {
-    // Priority 1: X-Forwarded-For (standard proxy header)
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-      return xForwardedFor.split(",")[0].trim();
-    }
-
-    // Priority 2: X-Real-IP (nginx proxy header)
-    String xRealIP = request.getHeader("X-Real-IP");
-    if (xRealIP != null && !xRealIP.isEmpty()) {
-      return xRealIP;
-    }
-
-    // Fallback: Direct connection IP
-    return request.getRemoteAddr();
   }
 
   /**
@@ -141,14 +150,32 @@ public class AdminAuthController {
    * administrator from the system.
    *
    * @param authorization the authorization header containing the bearer token
+   * @param httpRequest the HTTP servlet request for audit logging
    * @return ResponseEntity confirming logout
    */
   @PostMapping("/logout")
-  public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {
+  public ResponseEntity<Void> logout(
+      @RequestHeader("Authorization") String authorization,
+      HttpServletRequest httpRequest) {
     try {
       // Extract bearer token from authorization header
       String bearerToken = authorization.replace("Bearer ", "");
       authService.logout(bearerToken);
+
+      // Extract client info for audit logging
+      String clientIp = AuditHelper.extractClientIp(httpRequest);
+      String userAgent = AuditHelper.extractUserAgent(httpRequest);
+
+      // Audit logout
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_LOGOUT)
+          .eventAction("logout_success")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .build());
+
       return ResponseEntity.ok().build();
     } catch (Exception e) {
       return ResponseEntity.badRequest().build();
@@ -229,7 +256,8 @@ public class AdminAuthController {
   public ResponseEntity<AdminRecoveryResponseDto> recover(
       @Valid @RequestBody AdminRecoveryRequestDto request, HttpServletRequest httpRequest) {
 
-    String clientIp = extractClientIp(httpRequest);
+    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
       logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.getUsername(), clientIp);
@@ -257,6 +285,18 @@ public class AdminAuthController {
         rateLimitFilter.recordSuccessfulAttempt(clientIp);
       }
 
+      // Audit successful recovery
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_RECOVERY_USE)
+          .eventAction("recovery_code_used")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .adminId(admin != null ? admin.getAdminId() : null)
+          .eventDetails("Username: " + request.getUsername() + ", Codes remaining: " + codesRemaining)
+          .build());
+
       return ResponseEntity.ok(response);
 
     } catch (org.ezkey.admin.exception.AuthenticationException e) {
@@ -271,11 +311,36 @@ public class AdminAuthController {
         rateLimitFilter.recordFailedAttempt(clientIp);
       }
 
+      // Audit failed recovery
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_RECOVERY_USE)
+          .eventAction("recovery_code_failed")
+          .eventStatus(EventStatus.FAILURE)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .eventDetails("Username: " + request.getUsername())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.status(403)
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
 
     } catch (Exception e) {
       logger.error("❌ Recovery error for admin: {} - {}", request.getUsername(), e.getMessage(), e);
+      
+      // Audit error in recovery
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ADMIN_RECOVERY_USE)
+          .eventAction("recovery_error")
+          .eventStatus(EventStatus.ERROR)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .eventDetails("Username: " + request.getUsername())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));
     }
