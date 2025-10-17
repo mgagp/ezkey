@@ -9,14 +9,15 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
     basePackages = {
       "org.ezkey.integration.domain.repository",
       "org.ezkey.authattempt.domain.repository",
-      "org.ezkey.enrollment.domain.repository"
+      "org.ezkey.enrollment.domain.repository",
+      "org.ezkey.audit.domain.repository"
     })
 @EntityScan(
     basePackages = {
       "org.ezkey.integration.domain.entity",
       "org.ezkey.authattempt.domain.entity",
       "org.ezkey.enrollment.domain.entity",
-      // Toutes les entités sont maintenant dans org.ezkey.integration.domain.entity
+      "org.ezkey.audit.domain.entity"
     })
 public class AdminJpaConfig {
   // Configuration for JPA repositories and entity scanning

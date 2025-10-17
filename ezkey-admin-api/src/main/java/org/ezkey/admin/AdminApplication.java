@@ -42,6 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.enrollment",
       "org.ezkey.integration",
       "org.ezkey.exception",
+      "org.ezkey.audit", //
       "org.ezkey.signature",
       "org.ezkey.config", // Configuration properties
       "org.ezkey.tenant", // NOUVEAU
