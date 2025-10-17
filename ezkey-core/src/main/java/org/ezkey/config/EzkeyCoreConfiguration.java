@@ -12,6 +12,7 @@ package org.ezkey.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Configuration class to enable ezkey-core properties.
@@ -31,6 +32,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties(EzkeyCoreProperties.class)
+@EnableScheduling
 public class EzkeyCoreConfiguration {
   // Configuration class - no additional implementation needed
 }

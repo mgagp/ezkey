@@ -85,6 +85,8 @@ class AuthAttemptControllerTest {
 
   @MockBean private AuthAttemptMapper authAttemptMapper;
 
+  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+
   private AuthAttemptPendingRequestDto pendingRequestDto;
   private AuthAttemptPendingRequest pendingRequest;
   private AuthAttemptPendingResponse pendingResponse;

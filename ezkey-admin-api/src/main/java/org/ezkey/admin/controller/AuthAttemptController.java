@@ -17,7 +17,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
@@ -85,17 +92,23 @@ public class AuthAttemptController {
 
   private final AuthAttemptMapper authAttemptMapper;
 
+  private final AuditLogService auditLogService;
+
   /**
    * Constructs the authorization attempt controller with required dependencies.
    *
    * @param authAttemptService the JPA-based authorization attempt service
    * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
+   * @param auditLogService the audit log service for security monitoring
    */
   @Autowired
   public AuthAttemptController(
-      AuthAttemptService authAttemptService, AuthAttemptMapper authAttemptMapper) {
+      AuthAttemptService authAttemptService, 
+      AuthAttemptMapper authAttemptMapper,
+      AuditLogService auditLogService) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -174,17 +187,58 @@ public class AuthAttemptController {
   @PostMapping
   public ResponseEntity<AuthAttemptCreateResponseDto> create(
       @Parameter(description = "Auth attempt creation data", required = true) @RequestBody
-          AuthAttemptCreateRequestDto request) {
+          AuthAttemptCreateRequestDto request,
+      HttpServletRequest httpRequest) {
+    
+    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+
     try {
       AuthAttemptCreateResponse response =
           authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
+      
+      // Audit successful auth attempt creation
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.AUTH_ATTEMPT_CREATED)
+          .eventAction("auth_attempt_created")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .authAttemptId(response.getAuthAttemptId())
+          .enrollmentId(request.getEnrollmentId())
+          .eventDetails("Challenge: " + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
+          .build());
+
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Return 400 Bad Request with validation error message
+      // Audit validation failure
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.AUTH_ATTEMPT_CREATED)
+          .eventAction("auth_attempt_creation_failed")
+          .eventStatus(EventStatus.FAILURE)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .enrollmentId(request.getEnrollmentId())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
-      // Return 500 Internal Server Error for unexpected errors
+      // Audit error
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.AUTH_ATTEMPT_CREATED)
+          .eventAction("auth_attempt_creation_error")
+          .eventStatus(EventStatus.ERROR)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .enrollmentId(request.getEnrollmentId())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }

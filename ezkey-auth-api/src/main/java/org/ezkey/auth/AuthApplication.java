@@ -28,6 +28,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.authattempt", //
       "org.ezkey.enrollment", //
       "org.ezkey.exception", //
+      "org.ezkey.audit", //
       "org.ezkey.signature", //
       "org.ezkey.config", // Configuration properties
     })

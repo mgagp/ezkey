@@ -49,15 +49,15 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 		</dependency>
 		
-	<!-- Rate Limiting -->
-	<dependency>
-		<groupId>com.bucket4j</groupId>
-		<artifactId>bucket4j_jdk17-core</artifactId>
-	</dependency>
-	<dependency>
-		<groupId>com.github.ben-manes.caffeine</groupId>
-		<artifactId>caffeine</artifactId>
-	</dependency>
+		<!-- Rate Limiting -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
 		
 		<!-- MapStruct Dependencies -->
 		<dependency>

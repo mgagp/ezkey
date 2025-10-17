@@ -15,7 +15,14 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
@@ -74,17 +81,23 @@ public class EnrollmentController {
 
   private final EnrollmentAdminMapper enrollmentMapper;
 
+  private final AuditLogService auditLogService;
+
   /**
    * Constructs the enrollment controller with required dependencies.
    *
    * @param enrollmentService the JPA-based enrollment service
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
+   * @param auditLogService the audit log service for security monitoring
    */
   @Autowired
   public EnrollmentController(
-      EnrollmentService enrollmentService, EnrollmentAdminMapper enrollmentMapper) {
+      EnrollmentService enrollmentService, 
+      EnrollmentAdminMapper enrollmentMapper,
+      AuditLogService auditLogService) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -163,17 +176,58 @@ public class EnrollmentController {
   @PostMapping
   public ResponseEntity<EnrollmentCreateResponseDto> create(
       @Parameter(description = "Enrollment creation data", required = true) @RequestBody
-          EnrollmentCreateRequestDto request) {
+          EnrollmentCreateRequestDto request,
+      HttpServletRequest httpRequest) {
+    
+    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+
     try {
       EnrollmentCreateResponse response =
           enrollmentService.create(enrollmentMapper.toCreateRequest(request));
+      
+      // Audit successful enrollment creation
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ENROLLMENT_CREATED)
+          .eventAction("enrollment_created")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .enrollmentId(response.getEnrollmentId())
+          .integrationId(request.getIntegrationId())
+          .eventDetails("Enrollment name: " + request.getName())
+          .build());
+
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(enrollmentMapper.toCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Return 400 Bad Request with validation error message
+      // Audit validation failure
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ENROLLMENT_CREATED)
+          .eventAction("enrollment_creation_failed")
+          .eventStatus(EventStatus.FAILURE)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .integrationId(request.getIntegrationId())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
-      // Return 500 Internal Server Error for unexpected errors
+      // Audit error
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ENROLLMENT_CREATED)
+          .eventAction("enrollment_creation_error")
+          .eventStatus(EventStatus.ERROR)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .integrationId(request.getIntegrationId())
+          .errorMessage(e.getMessage())
+          .build());
+
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
@@ -197,11 +251,45 @@ public class EnrollmentController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")
-          Integer id) {
+          Integer id,
+      HttpServletRequest httpRequest) {
+    
+    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+
     try {
+      // Get enrollment details before deletion for audit
+      var enrollment = enrollmentService.getById(id);
+      
       enrollmentService.delete(id);
+      
+      // Audit successful deletion
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ENROLLMENT_DELETED)
+          .eventAction("enrollment_deleted")
+          .eventStatus(EventStatus.SUCCESS)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .enrollmentId(id)
+          .integrationId(enrollment.getIntegrationId())
+          .eventDetails("Enrollment name: " + enrollment.getEnrollmentName())
+          .build());
+
       return ResponseEntity.noContent().build();
     } catch (ResourceNotFoundException e) {
+      // Audit not found
+      auditLogService.log(AuditLog.builder()
+          .eventType(EventType.ENROLLMENT_DELETED)
+          .eventAction("enrollment_deletion_failed")
+          .eventStatus(EventStatus.FAILURE)
+          .apiName(ApiName.ADMIN_API)
+          .ipAddress(clientIp)
+          .userAgent(userAgent)
+          .enrollmentId(id)
+          .errorMessage("Enrollment not found")
+          .build());
+
       return ResponseEntity.notFound().build();
     }
   }
