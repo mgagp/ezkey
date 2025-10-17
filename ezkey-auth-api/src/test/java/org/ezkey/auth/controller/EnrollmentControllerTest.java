@@ -82,6 +82,8 @@ class EnrollmentControllerTest {
 
   @MockBean private EnrollmentAuthMapper enrollmentMapper;
 
+  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+
   private EnrollmentBindRequestDto bindRequestDto;
   private EnrollmentBindRequest bindRequest;
   private EnrollmentBindResponse bindResponse;
