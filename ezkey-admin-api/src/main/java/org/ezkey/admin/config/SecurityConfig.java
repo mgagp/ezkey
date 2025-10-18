@@ -67,16 +67,6 @@ public class SecurityConfig {
   }
 
   /**
-   * Password encoder bean for BCrypt hashing.
-   *
-   * @return BCryptPasswordEncoder instance
-   */
-  @Bean
-  public BCryptPasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
-
-  /**
    * Security filter chain configuration.
    *
    * <p>This configuration supports multiple authentication methods:

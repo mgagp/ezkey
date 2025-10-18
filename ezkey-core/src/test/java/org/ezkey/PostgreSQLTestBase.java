@@ -37,7 +37,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * <ul>
  *   <li><b>Shared Container:</b> Single PostgreSQL container for all tests in the class
  *   <li><b>Service Connection:</b> Automatic datasource configuration via Spring Boot
- *   <li><b>PostgreSQL 15:</b> Uses latest stable PostgreSQL version
+ *   <li><b>PostgreSQL 17:</b> Uses latest stable PostgreSQL version
  *   <li><b>Test Profile:</b> Automatically uses "test" profile for configuration
  * </ul>
  *
@@ -76,9 +76,9 @@ public abstract class PostgreSQLTestBase {
    *   <li><b>Concurrency Testing:</b> Real database concurrency behavior
    * </ul>
    *
-   * <p><b>Configuration:</b> Uses PostgreSQL 15 with default settings optimized for testing. The
-   * container is automatically configured as a Spring Boot service connection, so no manual
-   * datasource configuration is required.
+   * <p><b>Configuration:</b> Uses PostgreSQL 17 (latest stable version) with default settings
+   * optimized for testing. The container is automatically configured as a Spring Boot service
+   * connection, so no manual datasource configuration is required.
    *
    * <p><b>Singleton Pattern:</b> The container is started once and shared across all test classes
    * to avoid connection pool issues. This significantly improves test performance and reliability.
@@ -87,7 +87,7 @@ public abstract class PostgreSQLTestBase {
 
   static {
     postgres =
-        new PostgreSQLContainer<>("postgres:15")
+        new PostgreSQLContainer<>("postgres:17")
             .withDatabaseName("ezkey_test")
             .withUsername("test")
             .withPassword("test")

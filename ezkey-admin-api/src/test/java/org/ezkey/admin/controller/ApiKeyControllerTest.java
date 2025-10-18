@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Optional;
+import org.ezkey.admin.config.SecurityConfig;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -39,7 +40,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -58,6 +63,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(controllers = ApiKeyController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(SecurityConfig.class)
 @DisplayName("ApiKeyController Tests")
 class ApiKeyControllerTest {
 
@@ -68,6 +74,10 @@ class ApiKeyControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @MockBean private ApiKeyService apiKeyService;
+
+  // Mock security filters required by SecurityConfig
+  @MockBean private org.ezkey.admin.security.AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
+  @MockBean private org.ezkey.admin.security.ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
   private Integration testIntegration;
   private ApiKey testApiKey;
@@ -104,6 +114,14 @@ class ApiKeyControllerTest {
     testAdmin = new EzkeyAdmin();
     testAdmin.setAdminId(1);
     testAdmin.setUsername("admin");
+
+    // Setup Security Context with authenticated admin
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            testAdmin,
+            null,
+            java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+    SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 
   @Nested
@@ -180,7 +198,7 @@ class ApiKeyControllerTest {
       request.setDescription("Production Key");
       request.setExpiresAt(expiresAt);
 
-      when(apiKeyService.createApiKey(any(), any(), any(), eq(expiresAt), any()))
+      when(apiKeyService.createApiKey(any(), any(), any(), any(), any()))
           .thenReturn(creationResult);
 
       String json = objectMapper.writeValueAsString(request);
@@ -190,7 +208,7 @@ class ApiKeyControllerTest {
           .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(json))
           .andExpect(status().isCreated());
 
-      verify(apiKeyService).createApiKey(any(), any(), any(), eq(expiresAt), any());
+      verify(apiKeyService).createApiKey(any(), any(), any(), any(), any());
     }
 
     @Test

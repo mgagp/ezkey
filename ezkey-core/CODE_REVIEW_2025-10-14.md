@@ -575,7 +575,7 @@ ezkey.core.auth-attempt.ttl-seconds=120
 ```java
 static PostgreSQLContainer<?> postgres;
 static {
-    postgres = new PostgreSQLContainer<>("postgres:15")
+    postgres = new PostgreSQLContainer<>("postgres:17")
         .withDatabaseName("ezkey_test")
         .withReuse(true);
     postgres.start(); // Single container for all test classes

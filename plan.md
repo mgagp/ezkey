@@ -79,7 +79,7 @@ ezkey.admin.token.rotation-on-login=true
 
 static PostgreSQLContainer<?> postgres;
 static {
-    postgres = new PostgreSQLContainer<>("postgres:15")
+    postgres = new PostgreSQLContainer<>("postgres:17")
         .withDatabaseName("ezkey_test")
         .withReuse(true);
     postgres.start();

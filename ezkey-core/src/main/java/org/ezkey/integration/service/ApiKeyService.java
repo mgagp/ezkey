@@ -85,12 +85,15 @@ public class ApiKeyService {
    *
    * @param apiKeyRepository the API key repository
    * @param integrationRepository the integration repository
+   * @param passwordEncoder the BCrypt password encoder for secret key hashing
    */
   public ApiKeyService(
-      ApiKeyRepository apiKeyRepository, IntegrationRepository integrationRepository) {
+      ApiKeyRepository apiKeyRepository,
+      IntegrationRepository integrationRepository,
+      BCryptPasswordEncoder passwordEncoder) {
     this.apiKeyRepository = apiKeyRepository;
     this.integrationRepository = integrationRepository;
-    this.passwordEncoder = new BCryptPasswordEncoder();
+    this.passwordEncoder = passwordEncoder;
     this.secureRandom = new SecureRandom();
   }
 

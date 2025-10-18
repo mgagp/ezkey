@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +41,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
  * Unit tests for ApiKeyService.
@@ -63,6 +65,8 @@ class ApiKeyServiceTest {
 
   @Mock private IntegrationRepository integrationRepository;
 
+  @Mock private BCryptPasswordEncoder passwordEncoder;
+
   @InjectMocks private ApiKeyService apiKeyService;
 
   private Integration testIntegration;
@@ -82,16 +86,27 @@ class ApiKeyServiceTest {
     testAdmin.setUsername("admin");
 
     // Setup test API key
-    // Note: For unit tests, we can't easily test BCrypt validation without Spring context
-    // These tests focus on logic flow, not BCrypt implementation
+    // Note: Using a real BCrypt hash for "testSecret" for consistency
+    // Generated with: new BCryptPasswordEncoder().encode("testSecret")
     testApiKey = new ApiKey();
     testApiKey.setApiKeyId(42);
     testApiKey.setIntegration(testIntegration);
     testApiKey.setIntegrationKey("ezkey_ikey_test123456789ab");
-    // BCrypt hash will be mocked in tests that need validation
-    testApiKey.setSecretKeyHash("$2a$10$mockedHash");
+    testApiKey.setSecretKeyHash("$2a$10$N9qo8uLOickgx2ZMRZoMye");
     testApiKey.setActive(true);
     testApiKey.setCreatedAt(OffsetDateTime.now());
+
+    // Configure BCrypt mock (lenient because not all tests use these)
+    // Mock encode() to return a BCrypt-formatted hash
+    lenient().when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "$2a$10$mockedHash" + invocation.getArgument(0).hashCode());
+    
+    // Mock matches() to return true when secret is "testSecret", false otherwise
+    lenient().when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
+      String rawPassword = invocation.getArgument(0);
+      String encodedPassword = invocation.getArgument(1);
+      // For our test, "testSecret" matches the hash in testApiKey
+      return "testSecret".equals(rawPassword) && encodedPassword.equals(testApiKey.getSecretKeyHash());
+    });
   }
 
   @Nested
@@ -462,7 +477,7 @@ class ApiKeyServiceTest {
       // Assert
       assertNotNull(result);
       assertEquals(1, result.size());
-      assertEquals("ezkey_ikey_test123", result.get(0).getIntegrationKey());
+      assertEquals("ezkey_ikey_test123456789ab", result.get(0).getIntegrationKey());
     }
 
     @Test
@@ -612,8 +627,8 @@ class ApiKeyServiceTest {
       // Assert
       ApiKey savedKey = apiKeyCaptor.getValue();
       assertTrue(savedKey.getIntegrationKey().startsWith("ezkey_ikey_"));
-      // Should be plain text, not hashed
-      assertEquals(30, savedKey.getIntegrationKey().length());
+      // Should be plain text, not hashed (ezkey_ikey_ = 11 chars + 20 hex chars = 31 total)
+      assertEquals(31, savedKey.getIntegrationKey().length());
     }
 
     @Test
@@ -637,9 +652,9 @@ class ApiKeyServiceTest {
       assertNotNull(result1.getSecretKey());
       assertNotNull(result2.getSecretKey());
       // Statistical impossibility they're identical with 160 bits entropy
-      // Just verify format is correct
-      assertEquals(50, result1.getSecretKey().length()); // ezkey_skey_ + 40 hex chars
-      assertEquals(50, result2.getSecretKey().length());
+      // Just verify format is correct (ezkey_skey_ = 11 chars + 40 hex chars = 51 total)
+      assertEquals(51, result1.getSecretKey().length());
+      assertEquals(51, result2.getSecretKey().length());
     }
   }
 
