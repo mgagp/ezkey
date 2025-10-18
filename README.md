@@ -516,6 +516,7 @@ cd ezkey_mobile
 - **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, OpenAPI documentation, and testing strategy
 - **[API Endpoints](docs/ENDPOINT.md)** - Detailed API reference and specifications
 - **[API Keys Guide](docs/API_KEYS_GUIDE.md)** - Complete guide for machine-to-machine authentication
+- **[API Keys - How It Works](docs/API_KEYS_HOW_IT_WORKS.md)** - Visual explanation with 15 Mermaid diagrams
 - **[Cryptographic Implementation](docs/CRYPTO.md)** - Security and crypto details
 
 ### 📊 Monitoring & Operations

@@ -31,9 +31,12 @@ import org.ezkey.enrollment.service.EnrollmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.ezkey.auth.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -68,7 +71,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * @see EnrollmentService
  * @see EnrollmentAuthMapper
  */
-@WebMvcTest(EnrollmentController.class)
+@WebMvcTest(controllers = EnrollmentController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(SecurityConfig.class)
 @DisplayName("Enrollment Controller Critical Tests")
 class EnrollmentControllerTest {
 
