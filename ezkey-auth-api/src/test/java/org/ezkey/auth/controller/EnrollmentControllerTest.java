@@ -144,8 +144,7 @@ class EnrollmentControllerTest {
     verifyResponse = new EnrollmentVerifyResponse();
     verifyResponse.setActive(true);
 
-    verifyResponseDto = new EnrollmentVerifyResponseDto();
-    verifyResponseDto.setActive(true);
+    verifyResponseDto = new EnrollmentVerifyResponseDto(true);
   }
 
   // ===== BIND ENDPOINT TESTS =====

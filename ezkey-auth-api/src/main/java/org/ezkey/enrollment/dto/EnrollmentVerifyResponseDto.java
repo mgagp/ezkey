@@ -26,54 +26,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * <p><b>Enrollment Completion:</b> A successful response indicates that the mobile device is now
  * enrolled and can participate in authentication attempts for the associated integration.
  *
- * <p><b>Fields:</b>
- *
- * <ul>
- *   <li><b>active:</b> Indicates whether the enrollment is now active and ready for authentication
- * </ul>
- *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
  * <p><b>License:</b> MIT
  *
+ * @param active Whether the enrollment is now active and ready for authentication
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentVerifyResponse
  * @see EnrollmentVerifyRequestDto
  */
 @Schema(description = "Response DTO for enrollment verification completion")
-public class EnrollmentVerifyResponseDto {
-
-  /**
-   * Indicates whether the enrollment is now active and ready for authentication.
-   *
-   * <p>True means verification was successful, the device is now enrolled, and can participate in
-   * authentication attempts for the associated integration. False indicates verification failed.
-   */
-  @Schema(
-      description = "Whether the enrollment is now active and ready for authentication",
-      example = "true",
-      required = true)
-  private boolean active;
-
-  /** Default constructor for EnrollmentVerifyResponseDto. */
-  public EnrollmentVerifyResponseDto() {}
-
-  /**
-   * Gets whether the enrollment is active.
-   *
-   * @return true if the enrollment is active, false otherwise
-   */
-  public boolean isActive() {
-    return active;
-  }
-
-  /**
-   * Sets whether the enrollment is active.
-   *
-   * @param active true if the enrollment is active, false otherwise
-   */
-  public void setActive(boolean active) {
-    this.active = active;
-  }
-}
+public record EnrollmentVerifyResponseDto(
+    @Schema(
+        description = "Whether the enrollment is now active and ready for authentication",
+        example = "true",
+        required = true)
+    boolean active
+) {}
