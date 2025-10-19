@@ -24,106 +24,25 @@ import jakarta.validation.constraints.Size;
  *
  * <p><b>License:</b> MIT
  *
+ * @param username Administrator username for passwordless authentication
+ * @param challengeRequested Request challenge verification on device (6-digit code)
  * @author Ezkey contributors
  * @since 2025
  */
 @Schema(description = "Request DTO for passwordless administrator login")
-public class AdminLoginRequestDto {
+public record AdminLoginRequestDto(
+    @Schema(
+        description = "Administrator username for passwordless authentication",
+        example = "admin",
+        required = true)
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+    String username,
 
-  /**
-   * Administrator username.
-   *
-   * <p>This field is required and must not be blank.
-   */
-  @Schema(
-      description = "Administrator username for passwordless authentication",
-      example = "admin",
-      required = true)
-  @NotBlank(message = "Username is required")
-  @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
-  private String username;
-
-  /**
-   * Challenge requested flag for passwordless authentication.
-   *
-   * <p>When true, the authentication attempt will include a 6-digit challenge code that must be
-   * verified on the device during approval. This provides an additional security layer for
-   * high-security scenarios.
-   *
-   * <p>If not specified, defaults to the admin's challenge_required setting.
-   */
-  @Schema(
-      description =
-          "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
-      example = "false",
-      required = false)
-  private Boolean challengeRequested;
-
-  /** Default constructor for JSON deserialization. */
-  public AdminLoginRequestDto() {
-    // Default constructor
-  }
-
-  /**
-   * Constructs a new passwordless login request.
-   *
-   * @param username the administrator username
-   * @param challengeRequested whether to request challenge verification
-   */
-  public AdminLoginRequestDto(String username, Boolean challengeRequested) {
-    this.username = username;
-    this.challengeRequested = challengeRequested;
-  }
-
-  /**
-   * Gets the username.
-   *
-   * @return the username
-   */
-  public String getUsername() {
-    return username;
-  }
-
-  /**
-   * Sets the username.
-   *
-   * @param username the username
-   */
-  public void setUsername(String username) {
-    this.username = username;
-  }
-
-  /**
-   * Gets the challenge requested flag.
-   *
-   * @return true if challenge verification is requested
-   */
-  public Boolean getChallengeRequested() {
-    return challengeRequested;
-  }
-
-  /**
-   * Sets the challenge requested flag.
-   *
-   * @param challengeRequested the challenge requested flag
-   */
-  public void setChallengeRequested(Boolean challengeRequested) {
-    this.challengeRequested = challengeRequested;
-  }
-
-  /**
-   * Returns a string representation of the login request.
-   *
-   * @return string representation
-   */
-  @Override
-  public String toString() {
-    return "AdminLoginRequestDto{"
-        + "username='"
-        + username
-        + '\''
-        + ", challengeRequested="
-        + challengeRequested
-        + '}';
-  }
-}
+    @Schema(
+        description =
+            "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+        example = "false",
+        required = false)
+    Boolean challengeRequested
+) {}

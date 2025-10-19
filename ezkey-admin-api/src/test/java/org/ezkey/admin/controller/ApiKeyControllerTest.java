@@ -132,9 +132,7 @@ class ApiKeyControllerTest {
     @DisplayName("POST /api-keys - Should return 201 when API key created successfully")
     void createApiKey_WhenValidRequest_ShouldReturn201() throws Exception {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(123);
-      request.setDescription("Production Server");
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Production Server", null, null);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any())).thenReturn(creationResult);
 
@@ -156,8 +154,7 @@ class ApiKeyControllerTest {
     @DisplayName("POST /api-keys - Should return 400 when integration not found")
     void createApiKey_WhenIntegrationNotFound_ShouldReturn400() throws Exception {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(999);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(999, null, null, null);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any()))
           .thenThrow(new IllegalArgumentException("Integration not found"));
@@ -174,8 +171,7 @@ class ApiKeyControllerTest {
     @DisplayName("POST /api-keys - Should return 409 when max keys limit reached")
     void createApiKey_WhenMaxKeysReached_ShouldReturn409() throws Exception {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(123);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, null, null, null);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any()))
           .thenThrow(new IllegalStateException("Maximum active keys limit reached"));
@@ -193,10 +189,7 @@ class ApiKeyControllerTest {
     void createApiKey_WithExpirationDate_ShouldSucceed() throws Exception {
       // Arrange
       OffsetDateTime expiresAt = OffsetDateTime.now().plusDays(90);
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(123);
-      request.setDescription("Production Key");
-      request.setExpiresAt(expiresAt);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Production Key", expiresAt, null);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any()))
           .thenReturn(creationResult);
@@ -216,9 +209,7 @@ class ApiKeyControllerTest {
     void createApiKey_WithIpWhitelist_ShouldSucceed() throws Exception {
       // Arrange
       String[] ipWhitelist = {"192.168.1.0/24", "10.0.0.100"};
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(123);
-      request.setIpWhitelist(ipWhitelist);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, null, null, ipWhitelist);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any())).thenReturn(creationResult);
 
@@ -339,8 +330,7 @@ class ApiKeyControllerTest {
     @DisplayName("Create API key - Secret should be shown in response")
     void createApiKey_ShouldReturnSecretInResponse() throws Exception {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto();
-      request.setIntegrationId(123);
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, null, null, null);
 
       when(apiKeyService.createApiKey(any(), any(), any(), any(), any())).thenReturn(creationResult);
 
@@ -384,4 +374,3 @@ class ApiKeyControllerTest {
     }
   }
 }
-

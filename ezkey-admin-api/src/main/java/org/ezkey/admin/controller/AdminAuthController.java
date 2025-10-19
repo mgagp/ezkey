@@ -89,7 +89,7 @@ public class AdminAuthController {
   public ResponseEntity<AdminLoginResponseDto> login(
       @Valid @RequestBody AdminLoginRequestDto request, HttpServletRequest httpRequest) {
 
-    logger.info("🌐 Login request received for username: {}", request.getUsername());
+    logger.info("🌐 Login request received for username: {}", request.username());
 
     // Extract client info for audit logging
     String clientIp = AuditHelper.extractClientIp(httpRequest);
@@ -99,7 +99,7 @@ public class AdminAuthController {
 
     if (response.getSuccess()) {
       logger.info(
-          "✅ Login successful for username: {} from IP: {}", request.getUsername(), clientIp);
+          "✅ Login successful for username: {} from IP: {}", request.username(), clientIp);
 
       // Record successful attempt for rate limiting (clears failure count)
       if (rateLimitFilter != null) {
@@ -115,14 +115,14 @@ public class AdminAuthController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .eventDetails("Username: " + request.getUsername())
+              .eventDetails("Username: " + request.username())
               .build());
 
       return ResponseEntity.ok(response);
     } else {
       logger.warn(
           "❌ Login failed for username: {} from IP: {} - Reason: {}",
-          request.getUsername(),
+          request.username(),
           clientIp,
           response.getMessage());
 
@@ -140,7 +140,7 @@ public class AdminAuthController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .eventDetails("Username: " + request.getUsername())
+              .eventDetails("Username: " + request.username())
               .errorMessage(response.getMessage())
               .build());
 
@@ -265,10 +265,10 @@ public class AdminAuthController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
-      logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.getUsername(), clientIp);
+      logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.username(), clientIp);
 
       String recoveryToken =
-          recoveryService.validateRecoveryCode(request.getUsername(), request.getRecoveryCode());
+          recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
 
       // Get admin to determine codes remaining
       // Note: Use validateRecoveryToken (not validateToken) since it's a temp token, not bearer
@@ -282,7 +282,7 @@ public class AdminAuthController {
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",
-          request.getUsername(),
+          request.username(),
           codesRemaining);
 
       // Record successful attempt for rate limiting
@@ -301,7 +301,7 @@ public class AdminAuthController {
               .userAgent(userAgent)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(
-                  "Username: " + request.getUsername() + ", Codes remaining: " + codesRemaining)
+                  "Username: " + request.username() + ", Codes remaining: " + codesRemaining)
               .build());
 
       return ResponseEntity.ok(response);
@@ -309,7 +309,7 @@ public class AdminAuthController {
     } catch (org.ezkey.admin.exception.AuthenticationException e) {
       logger.warn(
           "❌ Recovery failed for admin: {} from IP: {} - Reason: {}",
-          request.getUsername(),
+          request.username(),
           clientIp,
           e.getMessage());
 
@@ -327,7 +327,7 @@ public class AdminAuthController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .eventDetails("Username: " + request.getUsername())
+              .eventDetails("Username: " + request.username())
               .errorMessage(e.getMessage())
               .build());
 
@@ -335,7 +335,7 @@ public class AdminAuthController {
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
 
     } catch (Exception e) {
-      logger.error("❌ Recovery error for admin: {} - {}", request.getUsername(), e.getMessage(), e);
+      logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
 
       // Audit error in recovery
       auditLogService.log(
@@ -346,7 +346,7 @@ public class AdminAuthController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .eventDetails("Username: " + request.getUsername())
+              .eventDetails("Username: " + request.username())
               .errorMessage(e.getMessage())
               .build());
 

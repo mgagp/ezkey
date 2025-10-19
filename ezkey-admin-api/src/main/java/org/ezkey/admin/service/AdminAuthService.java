@@ -95,12 +95,12 @@ public class AdminAuthService {
    * @return AdminLoginResponseDto with authentication result
    */
   public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
-    logger.info("Passwordless authentication attempt for user: {}", request.getUsername());
+    logger.info("Passwordless authentication attempt for user: {}", request.username());
 
     try {
       return authenticatePasswordless(request);
     } catch (AuthenticationException e) {
-      logger.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
+      logger.warn("Authentication failed for {}: {}", request.username(), e.getMessage());
       return buildErrorResponse(e.getMessage());
     }
   }
@@ -132,12 +132,12 @@ public class AdminAuthService {
    * @throws AuthenticationException if passwordless auth fails
    */
   private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto request) {
-    logger.info("🔐 Passwordless authentication initiated for user: {}", request.getUsername());
+    logger.info("🔐 Passwordless authentication initiated for user: {}", request.username());
 
     // 1. Validate username and passwordless eligibility
     EzkeyAdmin admin =
         adminRepository
-            .findByUsernameWithEnrollment(request.getUsername())
+            .findByUsernameWithEnrollment(request.username())
             .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
 
     if (!admin.getActive()) {
@@ -153,8 +153,8 @@ public class AdminAuthService {
 
     // 2. Create auth attempt in separate transaction that commits immediately
     Boolean challengeRequested =
-        request.getChallengeRequested() != null
-            ? request.getChallengeRequested()
+        request.challengeRequested() != null
+            ? request.challengeRequested()
             : admin.getChallengeRequired();
 
     AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();

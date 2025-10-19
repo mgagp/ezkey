@@ -139,8 +139,8 @@ public class ApiKeyController {
 
     logger.info(
         "Creating API key for integration: {} with description: '{}'",
-        request.getIntegrationId(),
-        request.getDescription());
+        request.integrationId(),
+        request.description());
 
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
@@ -149,11 +149,11 @@ public class ApiKeyController {
       // Create API key via service
       ApiKeyService.ApiKeyCreationResult result =
           apiKeyService.createApiKey(
-              request.getIntegrationId(),
+              request.integrationId(),
               currentAdmin,
-              request.getDescription(),
-              request.getExpiresAt(),
-              request.getIpWhitelist());
+              request.description(),
+              request.expiresAt(),
+              request.ipWhitelist());
 
       // Map to response DTO
       ApiKeyCreateResponseDto response =
@@ -169,7 +169,7 @@ public class ApiKeyController {
       logger.info(
           "API key created successfully - ID: {}, Integration: {}, Admin: {}",
           result.getApiKeyId(),
-          request.getIntegrationId(),
+          request.integrationId(),
           currentAdmin.getUsername());
 
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
