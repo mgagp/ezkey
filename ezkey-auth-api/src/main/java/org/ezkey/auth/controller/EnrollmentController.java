@@ -298,7 +298,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(req.getEnrollmentId())
+              .enrollmentId(req.enrollmentId())
               .eventDetails("Enrollment activated")
               .build());
 
@@ -313,7 +313,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(req.getEnrollmentId())
+              .enrollmentId(req.enrollmentId())
               .errorMessage(e.getMessage())
               .build());
 

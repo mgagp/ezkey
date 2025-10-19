@@ -32,6 +32,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
+ * @param enrollmentId The enrollment ID being verified
+ * @param challengeResponse User's response to the enrollment challenge
+ * @param devicePublicKey The mobile device's generated public key
+ * @param enrollmentProofTokenSigned Device-signed enrollment proof token
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentVerifyRequest
@@ -39,125 +43,25 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @see EnrollmentVerifyResponseDto
  */
 @Schema(description = "Request DTO for enrollment verification completion")
-public class EnrollmentVerifyRequestDto {
+public record EnrollmentVerifyRequestDto(
+    @Schema(description = "Enrollment ID being verified", example = "123", required = true)
+    Integer enrollmentId,
 
-  /**
-   * The enrollment ID being verified.
-   *
-   * <p>Must reference the same enrollment ID that was used in the binding request. Links this
-   * verification request to the specific enrollment that the mobile device is trying to complete.
-   */
-  @Schema(description = "Enrollment ID being verified", example = "123", required = true)
-  private Integer enrollmentId;
+    @Schema(
+        description = "User's response to the enrollment challenge",
+        example = "123456",
+        required = true)
+    Integer challengeResponse,
 
-  /**
-   * User's response to the enrollment challenge.
-   *
-   * <p>Numeric response provided by the user for enrollment verification. This is typically a code
-   * displayed on the integration's website that the user must enter in the mobile app to prove
-   * enrollment intent.
-   */
-  @Schema(
-      description = "User's response to the enrollment challenge",
-      example = "123456",
-      required = true)
-  private Integer challengeResponse;
+    @Schema(
+        description = "Mobile device's generated public key",
+        example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+        required = true)
+    String devicePublicKey,
 
-  /**
-   * The mobile device's generated public key.
-   *
-   * <p>Contains the public key that the mobile device generated as part of its cryptographic key
-   * pair. This public key will be stored on the server and used to verify future authentication
-   * signatures from this device.
-   */
-  @Schema(
-      description = "Mobile device's generated public key",
-      example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-      required = true)
-  private String devicePublicKey;
-
-  /**
-   * Device-signed enrollment proof token.
-   *
-   * <p>Contains the enrollment proof token that was provided in the binding response, signed by the
-   * mobile device's private key. This signature proves that the device possesses the private key
-   * corresponding to the public key being registered.
-   */
-  @Schema(
-      description = "Device-signed enrollment proof token",
-      example = "eyJhbGciOiJSUzI1NiJ9...",
-      required = true)
-  private String enrollmentProofTokenSigned;
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment ID to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the challenge response.
-   *
-   * @return the challenge response
-   */
-  public Integer getChallengeResponse() {
-    return challengeResponse;
-  }
-
-  /**
-   * Sets the challenge response.
-   *
-   * @param challengeResponse the challenge response to set
-   */
-  public void setChallengeResponse(Integer challengeResponse) {
-    this.challengeResponse = challengeResponse;
-  }
-
-  /**
-   * Gets the device public key.
-   *
-   * @return the device public key
-   */
-  public String getDevicePublicKey() {
-    return devicePublicKey;
-  }
-
-  /**
-   * Sets the device public key.
-   *
-   * @param devicePublicKey the device public key to set
-   */
-  public void setDevicePublicKey(String devicePublicKey) {
-    this.devicePublicKey = devicePublicKey;
-  }
-
-  /**
-   * Gets the enrollment proof token signed.
-   *
-   * @return the enrollment proof token signed
-   */
-  public String getEnrollmentProofTokenSigned() {
-    return enrollmentProofTokenSigned;
-  }
-
-  /**
-   * Sets the enrollment proof token signed.
-   *
-   * @param enrollmentProofTokenSigned the enrollment proof token signed to set
-   */
-  public void setEnrollmentProofTokenSigned(String enrollmentProofTokenSigned) {
-    this.enrollmentProofTokenSigned = enrollmentProofTokenSigned;
-  }
-}
+    @Schema(
+        description = "Device-signed enrollment proof token",
+        example = "eyJhbGciOiJSUzI1NiJ9...",
+        required = true)
+    String enrollmentProofTokenSigned
+) {}

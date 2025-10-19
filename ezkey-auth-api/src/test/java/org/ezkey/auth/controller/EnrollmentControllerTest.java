@@ -118,16 +118,23 @@ class EnrollmentControllerTest {
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
 
-    bindResponseDto = new EnrollmentBindResponseDto();
-    bindResponseDto.setEnrollmentId(123);
-    bindResponseDto.setEnrollmentProofToken("test-proof-token");
-    bindResponseDto.setIntegrationPublicKey("test-public-key");
+    bindResponseDto = new EnrollmentBindResponseDto(
+        123,
+        "test-public-key",
+        "test-proof-token",
+        null,
+        null,
+        null,
+        null
+    );
 
     // Setup verify request test data
-    verifyRequestDto = new EnrollmentVerifyRequestDto();
-    verifyRequestDto.setEnrollmentId(123);
-    verifyRequestDto.setDevicePublicKey("device-public-key");
-    verifyRequestDto.setEnrollmentProofTokenSigned("proof-token-signature");
+    verifyRequestDto = new EnrollmentVerifyRequestDto(
+        123,
+        null,
+        "device-public-key",
+        "proof-token-signature"
+    );
 
     verifyRequest = new EnrollmentVerifyRequest();
     verifyRequest.setEnrollmentId(123);

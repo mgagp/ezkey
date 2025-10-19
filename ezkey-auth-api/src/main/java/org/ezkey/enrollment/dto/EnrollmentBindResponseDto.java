@@ -30,6 +30,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
+ * @param enrollmentId The enrollment ID that was bound to the mobile device
+ * @param integrationPublicKey The integration's public key for cryptographic verification
+ * @param enrollmentProofToken The enrollment proof token to be signed by the device
+ * @param integrationLogo The logo URL or base64-encoded image for the integration
+ * @param integrationName The display name of the integration
+ * @param integrationDescription The description of the integration
+ * @param enrollmentName The human-readable name for the enrollment
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentBindResponse
@@ -37,240 +44,46 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @see EnrollmentVerifyRequestDto
  */
 @Schema(description = "Response DTO containing enrollment binding information")
-public class EnrollmentBindResponseDto {
+public record EnrollmentBindResponseDto(
+    @Schema(
+        description = "Enrollment ID that was bound to the mobile device",
+        example = "123",
+        required = true)
+    Integer enrollmentId,
 
-  /**
-   * The enrollment ID for this binding operation.
-   *
-   * <p>Confirms the enrollment ID that was successfully bound to the mobile device. Used for
-   * reference in subsequent verification requests.
-   */
-  @Schema(
-      description = "Enrollment ID that was bound to the mobile device",
-      example = "123",
-      required = true)
-  private Integer enrollmentId;
+    @Schema(
+        description = "Integration's public key for cryptographic verification",
+        example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+        required = true)
+    String integrationPublicKey,
 
-  /**
-   * The integration's public key for cryptographic operations.
-   *
-   * <p>Contains the public key of the integration that created this enrollment. Used by the mobile
-   * device to verify signatures and validate integration authenticity during the enrollment
-   * process.
-   */
-  @Schema(
-      description = "Integration's public key for cryptographic verification",
-      example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-      required = true)
-  private String integrationPublicKey;
+    @Schema(
+        description = "Enrollment proof token to be signed by the device",
+        example = "eyJhbGciOiJSUzI1NiJ9...",
+        required = true)
+    String enrollmentProofToken,
 
-  /**
-   * The enrollment proof token that needs to be signed by the device.
-   *
-   * <p>Contains the challenge data that the mobile device must sign with its private key to
-   * complete enrollment verification. This token proves that the device possesses the cryptographic
-   * keys it claims to have.
-   */
-  @Schema(
-      description = "Enrollment proof token to be signed by the device",
-      example = "eyJhbGciOiJSUzI1NiJ9...",
-      required = true)
-  private String enrollmentProofToken;
+    @Schema(
+        description = "Logo URL or base64-encoded image for the integration",
+        example = "https://acme.com/logo.png",
+        required = false)
+    String integrationLogo,
 
-  /**
-   * The logo URL or base64-encoded image for the integration.
-   *
-   * <p>Provides a visual identifier for the integration, allowing the mobile device to display the
-   * integration's logo during the enrollment process.
-   */
-  @Schema(
-      description = "Logo URL or base64-encoded image for the integration",
-      example = "https://acme.com/logo.png",
-      required = false)
-  private String integrationLogo;
+    @Schema(
+        description = "Display name of the integration",
+        example = "Acme Bank",
+        required = false)
+    String integrationName,
 
-  /**
-   * The display name of the integration.
-   *
-   * <p>Human-readable name of the integration, shown to the user during enrollment to help identify
-   * the service or application being enrolled.
-   */
-  @Schema(description = "Display name of the integration", example = "Acme Bank", required = false)
-  private String integrationName;
+    @Schema(
+        description = "Description of the integration",
+        example = "Acme Bank provides secure online banking services.",
+        required = false)
+    String integrationDescription,
 
-  /**
-   * The description of the integration.
-   *
-   * <p>Provides additional context or information about the integration, such as its purpose or
-   * features, to assist the user during the enrollment process.
-   */
-  @Schema(
-      description = "Description of the integration",
-      example = "Acme Bank provides secure online banking services.",
-      required = false)
-  private String integrationDescription;
-
-  /**
-   * The human-readable name for the enrollment.
-   *
-   * <p>Human-readable name of the enrollment, shown to the user during enrollment to help identify
-   * the specific device or user account being enrolled.
-   */
-  @Schema(
-      description = "Human-readable name for the enrollment",
-      example = "John's iPhone",
-      required = false)
-  private String enrollmentName;
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment ID to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the integration's public key.
-   *
-   * @return the integration's public key
-   */
-  public String getIntegrationPublicKey() {
-    return integrationPublicKey;
-  }
-
-  /**
-   * Sets the integration's public key.
-   *
-   * @param integrationPublicKey the integration's public key to set
-   */
-  public void setIntegrationPublicKey(String integrationPublicKey) {
-    this.integrationPublicKey = integrationPublicKey;
-  }
-
-  /**
-   * Gets the enrollment proof token.
-   *
-   * @return the enrollment proof token
-   */
-  public String getEnrollmentProofToken() {
-    return enrollmentProofToken;
-  }
-
-  /**
-   * Sets the enrollment proof token.
-   *
-   * @param enrollmentProofToken the enrollment proof token to set
-   */
-  public void setEnrollmentProofToken(String enrollmentProofToken) {
-    this.enrollmentProofToken = enrollmentProofToken;
-  }
-
-  /**
-   * Gets the integration logo.
-   *
-   * @return the integration logo (URL or base64-encoded image)
-   */
-  public String getIntegrationLogo() {
-    return integrationLogo;
-  }
-
-  /**
-   * Sets the integration logo.
-   *
-   * @param integrationLogo the integration logo to set (URL or base64-encoded image)
-   */
-  public void setIntegrationLogo(String integrationLogo) {
-    this.integrationLogo = integrationLogo;
-  }
-
-  /**
-   * Gets the integration name.
-   *
-   * @return the integration name
-   */
-  public String getIntegrationName() {
-    return integrationName;
-  }
-
-  /**
-   * Sets the integration name.
-   *
-   * @param integrationName the integration name to set
-   */
-  public void setIntegrationName(String integrationName) {
-    this.integrationName = integrationName;
-  }
-
-  /**
-   * Gets the integration description.
-   *
-   * @return the integration description
-   */
-  public String getIntegrationDescription() {
-    return integrationDescription;
-  }
-
-  /**
-   * Sets the integration description.
-   *
-   * @param integrationDescription the integration description to set
-   */
-  public void setIntegrationDescription(String integrationDescription) {
-    this.integrationDescription = integrationDescription;
-  }
-
-  /**
-   * Gets the enrollment name.
-   *
-   * @return the enrollment name
-   */
-  public String getEnrollmentName() {
-    return enrollmentName;
-  }
-
-  /**
-   * Sets the enrollment name.
-   *
-   * @param enrollmentName the enrollment name to set
-   */
-  public void setEnrollmentName(String enrollmentName) {
-    this.enrollmentName = enrollmentName;
-  }
-
-  /**
-   * Returns a string representation of the EnrollmentBindResponseDto.
-   *
-   * @return string representation of the DTO
-   */
-  @Override
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append("EnrollmentBindResponseDto [enrollmentId=");
-    builder.append(enrollmentId);
-    builder.append(", integrationPublicKey=");
-    builder.append(integrationPublicKey);
-    builder.append(", enrollmentProofToken=");
-    builder.append(enrollmentProofToken);
-    builder.append(", integrationLogo=");
-    builder.append(integrationLogo);
-    builder.append(", integrationName=");
-    builder.append(integrationName);
-    builder.append(", integrationDescription=");
-    builder.append(integrationDescription);
-    builder.append(", enrollmentName=");
-    builder.append(enrollmentName);
-    builder.append("]");
-    return builder.toString();
-  }
-}
+    @Schema(
+        description = "Human-readable name for the enrollment",
+        example = "John's iPhone",
+        required = false)
+    String enrollmentName
+) {}
