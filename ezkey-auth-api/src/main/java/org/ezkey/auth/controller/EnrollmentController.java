@@ -172,9 +172,9 @@ public class EnrollmentController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     // Validation: enrollmentId + enrollmentProofToken required
-    if (request.getEnrollmentId() == null
-        || request.getEnrollmentProofToken() == null
-        || request.getEnrollmentProofToken().trim().isEmpty()) {
+    if (request.enrollmentId() == null
+        || request.enrollmentProofToken() == null
+        || request.enrollmentProofToken().trim().isEmpty()) {
 
       // Audit validation failure
       auditLogService.log(
@@ -185,7 +185,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .errorMessage("Enrollment ID and enrollment proof token are required")
               .build());
 
@@ -205,7 +205,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
@@ -219,7 +219,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
               .build());
 

@@ -263,7 +263,7 @@ public class AuthAttemptController {
 
       // Determine action based on acceptance status
       String action =
-          request.getAuthAttemptAccepted() != null && request.getAuthAttemptAccepted()
+          request.authAttemptAccepted() != null && request.authAttemptAccepted()
               ? "auth_attempt_approved"
               : "auth_attempt_denied";
 
@@ -276,10 +276,10 @@ public class AuthAttemptController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .authAttemptId(request.getAuthAttemptId())
+              .authAttemptId(request.authAttemptId())
               .eventDetails(
                   "User "
-                      + (request.getAuthAttemptAccepted() ? "approved" : "denied")
+                      + (request.authAttemptAccepted() ? "approved" : "denied")
                       + " authentication")
               .build());
 
@@ -294,7 +294,7 @@ public class AuthAttemptController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .authAttemptId(request.getAuthAttemptId())
+              .authAttemptId(request.authAttemptId())
               .errorMessage(e.getMessage())
               .build());
 

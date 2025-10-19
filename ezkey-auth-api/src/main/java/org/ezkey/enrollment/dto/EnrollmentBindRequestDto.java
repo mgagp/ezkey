@@ -50,95 +50,41 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @see org.ezkey.enrollment.dto.EnrollmentBindResponseDto
  */
 @Schema(description = "Request DTO for enrollment binding initiation with proof token")
-public class EnrollmentBindRequestDto {
+public record EnrollmentBindRequestDto(
+    /**
+     * The enrollment ID to bind to the mobile device.
+     *
+     * <p>Must reference an existing enrollment created through the admin API. This ID is typically
+     * obtained by the mobile device through QR code scanning or deep link navigation from the
+     * integration website.
+     */
+    @Schema(
+        description = "Enrollment ID to bind to the mobile device",
+        example = "123",
+        required = true)
+    Integer enrollmentId,
 
-  /**
-   * The enrollment ID to bind to the mobile device.
-   *
-   * <p>Must reference an existing enrollment created through the admin API. This ID is typically
-   * obtained by the mobile device through QR code scanning or deep link navigation from the
-   * integration website.
-   */
-  @Schema(
-      description = "Enrollment ID to bind to the mobile device",
-      example = "123",
-      required = true)
-  private Integer enrollmentId;
+    /**
+     * The enrollment proof token for authentication.
+     *
+     * <p>Must match the proof token generated during enrollment creation. This token prevents
+     * enumeration attacks by ensuring only parties with valid proof tokens can access enrollment
+     * data.
+     */
+    @Schema(
+        description = "Enrollment proof token for authentication",
+        example = "abc123-def456-ghi789",
+        required = true)
+    String enrollmentProofToken,
 
-  /**
-   * The enrollment proof token for authentication.
-   *
-   * <p>Must match the proof token generated during enrollment creation. This token prevents
-   * enumeration attacks by ensuring only parties with valid proof tokens can access enrollment
-   * data.
-   */
-  @Schema(
-      description = "Enrollment proof token for authentication",
-      example = "abc123-def456-ghi789",
-      required = true)
-  private String enrollmentProofToken;
-
-  /**
-   * Preferred language for internationalization.
-   *
-   * <p>Language code (e.g., "en", "fr", "es") requested for localized fields such as integration
-   * names and descriptions. Used to provide a localized user experience during enrollment binding
-   * and device configuration.
-   */
-  @Schema(description = "Preferred language for i18n fields", example = "en")
-  private String language;
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment ID to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the enrollment proof token.
-   *
-   * @return the enrollment proof token
-   */
-  public String getEnrollmentProofToken() {
-    return enrollmentProofToken;
-  }
-
-  /**
-   * Sets the enrollment proof token.
-   *
-   * @param enrollmentProofToken the enrollment proof token to set
-   */
-  public void setEnrollmentProofToken(String enrollmentProofToken) {
-    this.enrollmentProofToken = enrollmentProofToken;
-  }
-
-  /**
-   * Gets the preferred language.
-   *
-   * @return the language code
-   */
-  public String getLanguage() {
-    return language;
-  }
-
-  /**
-   * Sets the preferred language.
-   *
-   * @param language the language code to set
-   */
-  public void setLanguage(String language) {
-    this.language = language;
-  }
+    /**
+     * Preferred language for internationalization.
+     *
+     * <p>Language code (e.g., "en", "fr", "es") requested for localized fields such as integration
+     * names and descriptions. Used to provide a localized user experience during enrollment binding
+     * and device configuration.
+     */
+    @Schema(description = "Preferred language for i18n fields", example = "en")
+    String language
+) {
 }

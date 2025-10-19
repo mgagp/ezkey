@@ -101,11 +101,12 @@ class EnrollmentControllerTest {
 
   @BeforeEach
   void setUp() {
-    // Setup bind request test data
-    bindRequestDto = new EnrollmentBindRequestDto();
-    bindRequestDto.setEnrollmentId(123);
-    bindRequestDto.setEnrollmentProofToken("test-proof-token");
-    bindRequestDto.setLanguage("en");
+    // Setup bind request test data - Using record constructor
+    bindRequestDto = new EnrollmentBindRequestDto(
+        123,                      // enrollmentId
+        "test-proof-token",       // enrollmentProofToken
+        "en"                      // language
+    );
 
     bindRequest = new EnrollmentBindRequest();
     bindRequest.setEnrollmentId(123);
@@ -167,11 +168,12 @@ class EnrollmentControllerTest {
   @Test
   @DisplayName("POST /api/v1/enrollments/bind - Should return 400 on invalid enrollment ID")
   void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
-    // Arrange
-    EnrollmentBindRequestDto invalidRequestDto = new EnrollmentBindRequestDto();
-    invalidRequestDto.setEnrollmentId(999);
-    invalidRequestDto.setEnrollmentProofToken("invalid-proof-token");
-    invalidRequestDto.setLanguage("en");
+    // Arrange - Using record constructor
+    EnrollmentBindRequestDto invalidRequestDto = new EnrollmentBindRequestDto(
+        999,                      // enrollmentId
+        "invalid-proof-token",    // enrollmentProofToken
+        "en"                      // language
+    );
 
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);

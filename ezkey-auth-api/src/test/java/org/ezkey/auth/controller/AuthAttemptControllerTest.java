@@ -104,10 +104,13 @@ class AuthAttemptControllerTest {
 
   @BeforeEach
   void setUp() {
-    // Setup pending request test data
-    pendingRequestDto = new AuthAttemptPendingRequestDto();
-    pendingRequestDto.setDeviceProofToken("test-proof-token");
-    pendingRequestDto.setDeviceProofTokenSigned("test-signature");
+    // Setup pending request test data - Using record constructor
+    pendingRequestDto = new AuthAttemptPendingRequestDto(
+        123,                      // enrollmentId
+        "EZK-ABC123-DEF456",      // enrollmentProofToken
+        "test-proof-token",       // deviceProofToken
+        "test-signature"          // deviceProofTokenSigned
+    );
 
     pendingRequest = new AuthAttemptPendingRequest();
     pendingRequest.setEnrollmentId(123);
@@ -117,14 +120,21 @@ class AuthAttemptControllerTest {
     pendingResponse = new AuthAttemptPendingResponse();
     pendingResponse.setAuthAttemptId(456);
 
-    pendingResponseDto = new AuthAttemptPendingResponseDto();
-    pendingResponseDto.setAuthAttemptId(456);
+    // Using record constructor for AuthAttemptPendingResponseDto
+    pendingResponseDto = new AuthAttemptPendingResponseDto(
+        456,                                      // authAttemptId
+        "eyJhbGciOiJSUzI1NiJ9...",               // authAttemptProofToken
+        "eyJhbGciOiJSUzI1NiJ9...",               // authAttemptProofTokenSignedByIntegration
+        true                                      // authAttemptChallengeRequired
+    );
 
-    // Setup respond request test data
-    respondRequestDto = new AuthAttemptRespondRequestDto();
-    respondRequestDto.setAuthAttemptId(456); // Set authAttemptId in DTO
-    respondRequestDto.setAuthAttemptProofTokenSignedByDevice("test-proof-token");
-    respondRequestDto.setAuthAttemptAccepted(true);
+    // Setup respond request test data - Using record constructor
+    respondRequestDto = new AuthAttemptRespondRequestDto(
+        456,                                  // authAttemptId
+        "test-proof-token",                   // authAttemptProofTokenSignedByDevice
+        123456,                               // authAttemptChallengeResponse
+        true                                  // authAttemptAccepted
+    );
 
     respondRequest = new AuthAttemptRespondRequest();
     respondRequest.setAuthAttemptId(456);
@@ -135,9 +145,11 @@ class AuthAttemptControllerTest {
     respondResponse.setResult(AuthenticationResult.APPROVED);
     respondResponse.setMessage("Authentication approved");
 
-    respondResponseDto = new AuthAttemptRespondResponseDto();
-    respondResponseDto.setResult("APPROVED");
-    respondResponseDto.setMessage("Authentication approved");
+    // Using record constructor for AuthAttemptRespondResponseDto
+    respondResponseDto = new AuthAttemptRespondResponseDto(
+        "APPROVED",                    // result
+        "Authentication approved"      // message
+    );
   }
 
   // ===== PENDING ENDPOINT TESTS =====
