@@ -184,20 +184,17 @@ public class AdminAuthService {
           "📋 Passwordless with challenge: returning auth attempt info (challenge: {})",
           challengeCode);
 
-      AdminLoginResponseDto response = new AdminLoginResponseDto();
-      response.setSuccess(false); // Not authenticated yet
-      response.setStatus("pending");
-      response.setAuthAttemptId(attemptResponse.getAuthAttemptId());
-      response.setChallengeCode(challengeCode);
-      response.setUsername(admin.getUsername());
-      response.setAdminType(admin.getAdminType().name());
-      response.setMessage(
-          "Challenge verification required. Enter code "
-              + challengeCode
-              + " on your device, then call /passwordless-wait.");
-      response.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
+      String message = "Challenge verification required. Enter code "
+          + challengeCode
+          + " on your device, then call /passwordless-wait.";
 
-      return response;
+      return AdminLoginResponseDto.pendingPasswordless(
+          attemptResponse.getAuthAttemptId(),
+          challengeCode,
+          admin.getUsername(),
+          admin.getAdminType().name(),
+          message,
+          OffsetDateTime.now().plusMinutes(5));
     } else {
       // NO CHALLENGE MODE: Block and wait (single-call convenience)
       logger.info("⏳ Passwordless (no challenge): waiting for device response...");

@@ -97,7 +97,7 @@ public class AdminAuthController {
 
     AdminLoginResponseDto response = authService.authenticate(request);
 
-    if (response.getSuccess()) {
+    if (response.success()) {
       logger.info(
           "✅ Login successful for username: {} from IP: {}", request.username(), clientIp);
 
@@ -124,7 +124,7 @@ public class AdminAuthController {
           "❌ Login failed for username: {} from IP: {} - Reason: {}",
           request.username(),
           clientIp,
-          response.getMessage());
+          response.message());
 
       // Record failed attempt for rate limiting (may trigger IP blocking)
       if (rateLimitFilter != null) {
@@ -141,7 +141,7 @@ public class AdminAuthController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .eventDetails("Username: " + request.username())
-              .errorMessage(response.getMessage())
+              .errorMessage(response.message())
               .build());
 
       return ResponseEntity.badRequest().body(response);
@@ -229,10 +229,8 @@ public class AdminAuthController {
 
     } catch (Exception e) {
       logger.error("❌ Passwordless wait failed (unexpected): {}", e.getMessage(), e);
-      AdminLoginResponseDto errorResponse = new AdminLoginResponseDto();
-      errorResponse.setSuccess(false);
-      errorResponse.setMessage("An unexpected error occurred during authentication");
-      return ResponseEntity.status(500).body(errorResponse);
+      return ResponseEntity.status(500)
+          .body(new AdminLoginResponseDto("An unexpected error occurred during authentication"));
     }
   }
 
