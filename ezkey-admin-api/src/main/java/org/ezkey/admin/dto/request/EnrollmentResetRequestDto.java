@@ -31,49 +31,10 @@ import jakarta.validation.constraints.NotNull;
  *
  * @author Ezkey contributors
  * @since 2025
+ * @param enrollmentId the enrollment ID to reset
  */
-public class EnrollmentResetRequestDto {
-
-  /**
-   * The enrollment ID to reset.
-   *
-   * <p>This should be the administrator's MFA enrollment that needs to be reset due to device loss
-   * or compromise.
-   */
-  @NotNull(message = "Enrollment ID is required")
-  private Integer enrollmentId;
-
-  /** Default constructor for JSON deserialization. */
-  public EnrollmentResetRequestDto() {
-    // Default constructor
-  }
-
-  /**
-   * Constructs a new enrollment reset request.
-   *
-   * @param enrollmentId the enrollment ID to reset
-   */
-  public EnrollmentResetRequestDto(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment ID
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
+public record EnrollmentResetRequestDto(
+    @NotNull(message = "Enrollment ID is required") Integer enrollmentId) {
 
   /**
    * Returns a string representation of the enrollment reset request.
@@ -82,6 +43,6 @@ public class EnrollmentResetRequestDto {
    */
   @Override
   public String toString() {
-    return "EnrollmentResetRequestDto{" + "enrollmentId=" + enrollmentId + '}';
+    return "EnrollmentResetRequestDto{enrollmentId=" + enrollmentId + '}';
   }
 }

@@ -34,81 +34,12 @@ import jakarta.validation.constraints.NotNull;
  *
  * @author Ezkey contributors
  * @since 2025
+ * @param authAttemptId Authentication attempt ID from the login response
+ * @param challengeCode Challenge code from the login response (6-digit number)
  */
-public class AdminPasswordlessWaitRequestDto {
-
-  /**
-   * Authentication attempt ID from the login response.
-   *
-   * <p>This ID identifies the specific authentication attempt created during the passwordless login
-   * call.
-   */
-  @NotNull(message = "Auth attempt ID is required")
-  private Integer authAttemptId;
-
-  /**
-   * Challenge code from the login response.
-   *
-   * <p>This code proves that the client legitimately initiated the authentication and prevents
-   * enumeration attacks. Must match the challenge code returned in the login response.
-   *
-   * <p>The challenge code is a 6-digit number (000000-999999) providing 1/1,000,000 protection
-   * against guessing attacks.
-   */
-  @NotNull(message = "Challenge code is required for verification")
-  private Integer challengeCode;
-
-  /** Default constructor for JSON deserialization. */
-  public AdminPasswordlessWaitRequestDto() {
-    // Default constructor
-  }
-
-  /**
-   * Constructs a new passwordless wait request.
-   *
-   * @param authAttemptId the authentication attempt ID
-   * @param challengeCode the challenge code for verification
-   */
-  public AdminPasswordlessWaitRequestDto(Integer authAttemptId, Integer challengeCode) {
-    this.authAttemptId = authAttemptId;
-    this.challengeCode = challengeCode;
-  }
-
-  /**
-   * Gets the authentication attempt ID.
-   *
-   * @return the auth attempt ID
-   */
-  public Integer getAuthAttemptId() {
-    return authAttemptId;
-  }
-
-  /**
-   * Sets the authentication attempt ID.
-   *
-   * @param authAttemptId the auth attempt ID
-   */
-  public void setAuthAttemptId(Integer authAttemptId) {
-    this.authAttemptId = authAttemptId;
-  }
-
-  /**
-   * Gets the challenge code.
-   *
-   * @return the challenge code
-   */
-  public Integer getChallengeCode() {
-    return challengeCode;
-  }
-
-  /**
-   * Sets the challenge code.
-   *
-   * @param challengeCode the challenge code
-   */
-  public void setChallengeCode(Integer challengeCode) {
-    this.challengeCode = challengeCode;
-  }
+public record AdminPasswordlessWaitRequestDto(
+    @NotNull(message = "Auth attempt ID is required") Integer authAttemptId,
+    @NotNull(message = "Challenge code is required for verification") Integer challengeCode) {
 
   /**
    * Returns a string representation of the passwordless wait request.

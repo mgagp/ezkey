@@ -208,11 +208,11 @@ public class AdminAuthController {
       @Valid @RequestBody AdminPasswordlessWaitRequestDto request) {
 
     try {
-      logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.getAuthAttemptId());
+      logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
       AdminLoginResponseDto response =
           authService.waitForPasswordlessAuth(
-              request.getAuthAttemptId(), request.getChallengeCode());
+              request.authAttemptId(), request.challengeCode());
 
       logger.info("✅ Passwordless authentication successful");
       return ResponseEntity.ok(response);

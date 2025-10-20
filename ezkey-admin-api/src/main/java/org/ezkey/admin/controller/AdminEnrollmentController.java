@@ -102,7 +102,7 @@ public class AdminEnrollmentController {
 
       logger.warn(
           "🔄 Enrollment reset request for enrollmentId: {} with recovery token",
-          request.getEnrollmentId());
+          request.enrollmentId());
 
       // 2. Validate it's a recovery token (not bearer token)
       if (!token.startsWith("ezkey_recovery_")) {
@@ -118,7 +118,7 @@ public class AdminEnrollmentController {
 
       // 4. Reset enrollment (unbind old device, generate new credentials)
       Enrollment resetEnrollment =
-          recoveryService.resetEnrollment(request.getEnrollmentId(), admin);
+          recoveryService.resetEnrollment(request.enrollmentId(), admin);
 
       // 5. Build response with new credentials
       EnrollmentResetResponseDto response =
