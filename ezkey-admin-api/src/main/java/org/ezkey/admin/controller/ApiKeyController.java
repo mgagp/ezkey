@@ -326,23 +326,23 @@ public class ApiKeyController {
    * @return the response DTO
    */
   private ApiKeyResponseDto mapToResponseDto(ApiKey apiKey) {
-    ApiKeyResponseDto dto = new ApiKeyResponseDto();
-    dto.setApiKeyId(apiKey.getApiKeyId());
-    dto.setIntegrationId(apiKey.getIntegration().getId());
-    dto.setIntegrationKey(apiKey.getIntegrationKey());
-    dto.setDescription(apiKey.getDescription());
-    dto.setActive(apiKey.getActive());
-    dto.setCreatedAt(apiKey.getCreatedAt());
-    dto.setExpiresAt(apiKey.getExpiresAt());
-    dto.setLastUsedAt(apiKey.getLastUsedAt());
-    dto.setIpWhitelist(apiKey.getIpWhitelist());
-    dto.setRevokedAt(apiKey.getRevokedAt());
-
+    String revokedByUsername = null;
     if (apiKey.getRevokedByAdmin() != null) {
-      dto.setRevokedByUsername(apiKey.getRevokedByAdmin().getUsername());
+      revokedByUsername = apiKey.getRevokedByAdmin().getUsername();
     }
 
-    return dto;
+    return new ApiKeyResponseDto(
+        apiKey.getApiKeyId(),
+        apiKey.getIntegration().getId(),
+        apiKey.getIntegrationKey(),
+        apiKey.getDescription(),
+        apiKey.getActive(),
+        apiKey.getCreatedAt(),
+        apiKey.getExpiresAt(),
+        apiKey.getLastUsedAt(),
+        apiKey.getIpWhitelist(),
+        apiKey.getRevokedAt(),
+        revokedByUsername);
   }
 
   /**

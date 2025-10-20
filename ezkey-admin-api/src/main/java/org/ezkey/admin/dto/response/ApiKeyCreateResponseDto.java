@@ -4,12 +4,13 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: ApiKeyCreateResponseDto
+ * Record: ApiKeyCreateResponseDto
  * Description: Response DTO returned when creating a new API key.
  */
 
 package org.ezkey.admin.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
@@ -53,251 +54,57 @@ import java.time.OffsetDateTime;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see ApiKeyCreateRequestDto
+ * @param apiKeyId Database ID of the created API key
+ * @param integrationKey Public integration key (safe to display, used as HTTP Basic Auth username)
+ * @param secretKey Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)
+ * @param description Human-readable description of the API key
+ * @param createdAt Timestamp when the API key was created
+ * @param expiresAt Optional expiration timestamp
+ * @param ipWhitelist Optional IP whitelist
  */
 @Schema(description = "Response containing newly created API key pair with secret key shown ONCE")
-public class ApiKeyCreateResponseDto {
-
-  /** Database ID of the created API key. */
-  @Schema(description = "Unique identifier for the API key record", example = "42")
-  private Integer apiKeyId;
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ApiKeyCreateResponseDto(
+    @Schema(description = "Unique identifier for the API key record", example = "42")
+        Integer apiKeyId,
+    @Schema(description = "Public integration key (safe to display, used as HTTP Basic Auth username)",
+        example = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0")
+        String integrationKey,
+    @Schema(description = "Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)",
+        example = "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
+        String secretKey,
+    @Schema(description = "Optional description to identify this API key", example = "Production Server API Key")
+        String description,
+    @Schema(description = "Creation timestamp in UTC", example = "2025-10-17T10:30:00Z")
+        OffsetDateTime createdAt,
+    @Schema(description = "Optional expiration date (null = no expiration)", example = "2025-12-31T23:59:59Z")
+        OffsetDateTime expiresAt,
+    @Schema(description = "Optional IP whitelist (null = no restrictions)",
+        example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
+        String[] ipWhitelist) {
 
   /**
-   * Public integration key.
+   * Compact constructor that adds the security warning.
    *
-   * <p>Format: ezkey_ikey_[20 hex chars]
-   *
-   * <p>This key is safe to display and log. It is used as the username in HTTP Basic Auth.
+   * <p>This constructor automatically adds the warning message to remind administrators
+   * to save the secret key immediately.
    */
-  @Schema(
-      description = "Public integration key (safe to display, used as HTTP Basic Auth username)",
-      example = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0")
-  private String integrationKey;
+  public ApiKeyCreateResponseDto {
+    // Compact constructor - validation can be added here if needed
+  }
 
   /**
-   * Secret key (plain text - SHOWN ONCE ONLY).
+   * Gets the security warning message.
    *
-   * <p>Format: ezkey_skey_[40 hex chars]
-   *
-   * <p><b>CRITICAL:</b> This field contains the plain text secret key. It will NEVER be shown
-   * again. The administrator MUST save this immediately in a secure location.
-   *
-   * <p>Used as the password in HTTP Basic Auth.
-   */
-  @Schema(
-      description =
-          "Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)",
-      example = "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
-  private String secretKey;
-
-  /** Human-readable description of the API key. */
-  @Schema(
-      description = "Optional description to identify this API key",
-      example = "Production Server API Key")
-  private String description;
-
-  /** Timestamp when the API key was created. */
-  @Schema(description = "Creation timestamp in UTC", example = "2025-10-17T10:30:00Z")
-  private OffsetDateTime createdAt;
-
-  /** Optional expiration timestamp. */
-  @Schema(
-      description = "Optional expiration date (null = no expiration)",
-      example = "2025-12-31T23:59:59Z")
-  private OffsetDateTime expiresAt;
-
-  /** Optional IP whitelist. */
-  @Schema(
-      description = "Optional IP whitelist (null = no restrictions)",
-      example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
-  private String[] ipWhitelist;
-
-  /**
-   * Security warning message.
-   *
-   * <p>This field contains a critical warning reminding the administrator to save the secret key
+   * <p>This method provides a critical warning reminding the administrator to save the secret key
    * immediately as it will never be shown again.
+   *
+   * @return the security warning message
    */
-  @Schema(
-      description = "Security warning about saving the secret key",
+  @Schema(description = "Security warning about saving the secret key",
       example = "IMPORTANT: Save the secret key now. It will not be shown again.")
-  private String warning = "IMPORTANT: Save the secret key now. It will not be shown again.";
-
-  /** Default constructor for Jackson. */
-  public ApiKeyCreateResponseDto() {
-    // Default constructor
-  }
-
-  /**
-   * Full constructor for creating response.
-   *
-   * @param apiKeyId the API key ID
-   * @param integrationKey the integration key
-   * @param secretKey the secret key (plain text)
-   * @param description the description
-   * @param createdAt the creation timestamp
-   * @param expiresAt the expiration timestamp
-   * @param ipWhitelist the IP whitelist
-   */
-  public ApiKeyCreateResponseDto(
-      Integer apiKeyId,
-      String integrationKey,
-      String secretKey,
-      String description,
-      OffsetDateTime createdAt,
-      OffsetDateTime expiresAt,
-      String[] ipWhitelist) {
-    this.apiKeyId = apiKeyId;
-    this.integrationKey = integrationKey;
-    this.secretKey = secretKey;
-    this.description = description;
-    this.createdAt = createdAt;
-    this.expiresAt = expiresAt;
-    this.ipWhitelist = ipWhitelist;
-  }
-
-  /**
-   * Gets the API key ID.
-   *
-   * @return the API key ID
-   */
-  public Integer getApiKeyId() {
-    return apiKeyId;
-  }
-
-  /**
-   * Sets the API key ID.
-   *
-   * @param apiKeyId the API key ID
-   */
-  public void setApiKeyId(Integer apiKeyId) {
-    this.apiKeyId = apiKeyId;
-  }
-
-  /**
-   * Gets the integration key.
-   *
-   * @return the integration key
-   */
-  public String getIntegrationKey() {
-    return integrationKey;
-  }
-
-  /**
-   * Sets the integration key.
-   *
-   * @param integrationKey the integration key
-   */
-  public void setIntegrationKey(String integrationKey) {
-    this.integrationKey = integrationKey;
-  }
-
-  /**
-   * Gets the secret key.
-   *
-   * @return the secret key (plain text)
-   */
-  public String getSecretKey() {
-    return secretKey;
-  }
-
-  /**
-   * Sets the secret key.
-   *
-   * @param secretKey the secret key (plain text)
-   */
-  public void setSecretKey(String secretKey) {
-    this.secretKey = secretKey;
-  }
-
-  /**
-   * Gets the description.
-   *
-   * @return the description
-   */
-  public String getDescription() {
-    return description;
-  }
-
-  /**
-   * Sets the description.
-   *
-   * @param description the description
-   */
-  public void setDescription(String description) {
-    this.description = description;
-  }
-
-  /**
-   * Gets the creation timestamp.
-   *
-   * @return the creation timestamp
-   */
-  public OffsetDateTime getCreatedAt() {
-    return createdAt;
-  }
-
-  /**
-   * Sets the creation timestamp.
-   *
-   * @param createdAt the creation timestamp
-   */
-  public void setCreatedAt(OffsetDateTime createdAt) {
-    this.createdAt = createdAt;
-  }
-
-  /**
-   * Gets the expiration timestamp.
-   *
-   * @return the expiration timestamp
-   */
-  public OffsetDateTime getExpiresAt() {
-    return expiresAt;
-  }
-
-  /**
-   * Sets the expiration timestamp.
-   *
-   * @param expiresAt the expiration timestamp
-   */
-  public void setExpiresAt(OffsetDateTime expiresAt) {
-    this.expiresAt = expiresAt;
-  }
-
-  /**
-   * Gets the IP whitelist.
-   *
-   * @return the IP whitelist
-   */
-  public String[] getIpWhitelist() {
-    return ipWhitelist;
-  }
-
-  /**
-   * Sets the IP whitelist.
-   *
-   * @param ipWhitelist the IP whitelist
-   */
-  public void setIpWhitelist(String[] ipWhitelist) {
-    this.ipWhitelist = ipWhitelist;
-  }
-
-  /**
-   * Gets the warning message.
-   *
-   * @return the warning message
-   */
-  public String getWarning() {
-    return warning;
-  }
-
-  /**
-   * Sets the warning message.
-   *
-   * @param warning the warning message
-   */
-  public void setWarning(String warning) {
-    this.warning = warning;
+  public String warning() {
+    return "IMPORTANT: Save the secret key now. It will not be shown again.";
   }
 
   /**
