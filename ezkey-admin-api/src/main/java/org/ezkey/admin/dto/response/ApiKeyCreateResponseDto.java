@@ -61,6 +61,7 @@ import java.time.OffsetDateTime;
  * @param createdAt Timestamp when the API key was created
  * @param expiresAt Optional expiration timestamp
  * @param ipWhitelist Optional IP whitelist
+ * @param warning Security warning message to remind admin to save the secret key
  */
 @Schema(description = "Response containing newly created API key pair with secret key shown ONCE")
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -81,31 +82,10 @@ public record ApiKeyCreateResponseDto(
         OffsetDateTime expiresAt,
     @Schema(description = "Optional IP whitelist (null = no restrictions)",
         example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
-        String[] ipWhitelist) {
-
-  /**
-   * Compact constructor that adds the security warning.
-   *
-   * <p>This constructor automatically adds the warning message to remind administrators
-   * to save the secret key immediately.
-   */
-  public ApiKeyCreateResponseDto {
-    // Compact constructor - validation can be added here if needed
-  }
-
-  /**
-   * Gets the security warning message.
-   *
-   * <p>This method provides a critical warning reminding the administrator to save the secret key
-   * immediately as it will never be shown again.
-   *
-   * @return the security warning message
-   */
-  @Schema(description = "Security warning about saving the secret key",
-      example = "IMPORTANT: Save the secret key now. It will not be shown again.")
-  public String warning() {
-    return "IMPORTANT: Save the secret key now. It will not be shown again.";
-  }
+        String[] ipWhitelist,
+    @Schema(description = "Security warning about saving the secret key",
+        example = "IMPORTANT: Save the secret key now. It will not be shown again.")
+        String warning) {
 
   /**
    * Returns a string representation of the response.
@@ -130,6 +110,9 @@ public record ApiKeyCreateResponseDto(
         + createdAt
         + ", expiresAt="
         + expiresAt
+        + ", warning='"
+        + warning
+        + '\''
         + '}';
   }
 }

@@ -22,7 +22,7 @@ CREATE TABLE ezkey_api_key (
     integration_id INT NOT NULL REFERENCES ezkey_integration(integration_id),
     
     -- Duo-style keys
-    integration_key VARCHAR(30) NOT NULL UNIQUE,  -- ezkey_ikey_xxx (public identifier)
+    integration_key VARCHAR(255) NOT NULL UNIQUE, -- ezkey_ikey_xxx (public identifier)
     secret_key_hash VARCHAR(255) NOT NULL,        -- BCrypt hash of ezkey_skey_xxx
     
     -- Metadata

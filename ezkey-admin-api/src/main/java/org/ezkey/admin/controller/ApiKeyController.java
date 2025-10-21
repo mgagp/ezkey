@@ -164,7 +164,8 @@ public class ApiKeyController {
               result.getDescription(),
               result.getCreatedAt(),
               result.getExpiresAt(),
-              result.getIpWhitelist());
+              result.getIpWhitelist(),
+              "IMPORTANT: Save the secret key now. It will not be shown again.");
 
       logger.info(
           "API key created successfully - ID: {}, Integration: {}, Admin: {}",

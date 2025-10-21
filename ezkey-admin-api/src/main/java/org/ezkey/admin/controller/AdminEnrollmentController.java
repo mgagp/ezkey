@@ -108,9 +108,8 @@ public class AdminEnrollmentController {
       if (!token.startsWith("ezkey_recovery_")) {
         logger.warn("❌ Invalid token type - expected recovery token, got bearer token");
         return ResponseEntity.status(403)
-            .body(
-                new EnrollmentResetResponseDto(
-                    "Invalid token type. Use recovery token from /auth/recover endpoint."));
+            .body(EnrollmentResetResponseDto.error(
+                "Invalid token type. Use recovery token from /auth/recover endpoint."));
       }
 
       // 3. Validate recovery token and get admin
@@ -121,12 +120,11 @@ public class AdminEnrollmentController {
           recoveryService.resetEnrollment(request.enrollmentId(), admin);
 
       // 5. Build response with new credentials
-      EnrollmentResetResponseDto response =
-          new EnrollmentResetResponseDto(
-              resetEnrollment.getEnrollmentId(),
-              resetEnrollment.getEnrollmentProofToken(),
-              resetEnrollment.getEnrollmentChallenge(),
-              resetEnrollment.getIntegrationId());
+      EnrollmentResetResponseDto response = EnrollmentResetResponseDto.success(
+          resetEnrollment.getEnrollmentId(),
+          resetEnrollment.getEnrollmentProofToken(),
+          resetEnrollment.getEnrollmentChallenge(),
+          resetEnrollment.getIntegrationId());
 
       logger.warn(
           "✅ Enrollment reset successful for admin: {} (enrollmentId: {})",
@@ -138,19 +136,18 @@ public class AdminEnrollmentController {
     } catch (org.ezkey.admin.exception.AuthenticationException e) {
       logger.warn("❌ Enrollment reset failed (authentication): {}", e.getMessage());
       return ResponseEntity.status(403)
-          .body(new EnrollmentResetResponseDto("Reset failed: " + e.getMessage()));
+          .body(EnrollmentResetResponseDto.error("Reset failed: " + e.getMessage()));
 
     } catch (IllegalArgumentException e) {
       logger.warn("❌ Enrollment reset failed (invalid request): {}", e.getMessage());
       return ResponseEntity.badRequest()
-          .body(new EnrollmentResetResponseDto("Invalid request: " + e.getMessage()));
+          .body(EnrollmentResetResponseDto.error("Invalid request: " + e.getMessage()));
 
     } catch (Exception e) {
       logger.error("❌ Enrollment reset failed (unexpected): {}", e.getMessage(), e);
       return ResponseEntity.status(500)
-          .body(
-              new EnrollmentResetResponseDto(
-                  "An unexpected error occurred during enrollment reset"));
+          .body(EnrollmentResetResponseDto.error(
+              "An unexpected error occurred during enrollment reset"));
     }
   }
 }

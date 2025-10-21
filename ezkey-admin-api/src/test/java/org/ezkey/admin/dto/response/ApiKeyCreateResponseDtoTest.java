@@ -41,6 +41,7 @@ class ApiKeyCreateResponseDtoTest {
   private static final OffsetDateTime TEST_CREATED_AT = OffsetDateTime.of(2025, 10, 17, 10, 30, 0, 0, ZoneOffset.UTC);
   private static final OffsetDateTime TEST_EXPIRES_AT = OffsetDateTime.of(2025, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC);
   private static final String[] TEST_IP_WHITELIST = {"192.168.1.0/24", "10.0.0.100"};
+  private static final String TEST_WARNING = "IMPORTANT: Save the secret key now. It will not be shown again.";
 
   @Test
   @DisplayName("Should create record with all fields")
@@ -53,7 +54,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     // Assert
@@ -64,6 +66,7 @@ class ApiKeyCreateResponseDtoTest {
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.expiresAt()).isEqualTo(TEST_EXPIRES_AT);
     assertThat(dto.ipWhitelist()).containsExactly("192.168.1.0/24", "10.0.0.100");
+    assertThat(dto.warning()).isEqualTo(TEST_WARNING);
   }
 
   @Test
@@ -77,7 +80,8 @@ class ApiKeyCreateResponseDtoTest {
         null, // description
         TEST_CREATED_AT,
         null, // expiresAt
-        null  // ipWhitelist
+        null, // ipWhitelist
+        TEST_WARNING
     );
 
     // Assert
@@ -88,6 +92,7 @@ class ApiKeyCreateResponseDtoTest {
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.expiresAt()).isNull();
     assertThat(dto.ipWhitelist()).isNull();
+    assertThat(dto.warning()).isEqualTo(TEST_WARNING);
   }
 
   @Test
@@ -101,7 +106,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     // Act
@@ -126,7 +132,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     // Act
@@ -153,7 +160,8 @@ class ApiKeyCreateResponseDtoTest {
         null,
         TEST_CREATED_AT,
         null,
-        null
+        null,
+        TEST_WARNING
     );
 
     // Act
@@ -176,7 +184,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     ApiKeyCreateResponseDto dto2 = new ApiKeyCreateResponseDto(
@@ -186,7 +195,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     ApiKeyCreateResponseDto dto3 = new ApiKeyCreateResponseDto(
@@ -196,7 +206,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     // Assert
@@ -216,7 +227,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     ApiKeyCreateResponseDto dto2 = new ApiKeyCreateResponseDto(
@@ -226,7 +238,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        TEST_IP_WHITELIST
+        TEST_IP_WHITELIST,
+        TEST_WARNING
     );
 
     // Assert
@@ -247,7 +260,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        emptyWhitelist
+        emptyWhitelist,
+        TEST_WARNING
     );
 
     // Assert
@@ -268,7 +282,8 @@ class ApiKeyCreateResponseDtoTest {
         TEST_DESCRIPTION,
         TEST_CREATED_AT,
         TEST_EXPIRES_AT,
-        orderedWhitelist
+        orderedWhitelist,
+        TEST_WARNING
     );
 
     // Assert

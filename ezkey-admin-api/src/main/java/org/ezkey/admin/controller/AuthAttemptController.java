@@ -207,7 +207,7 @@ public class AuthAttemptController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .eventDetails(
                   "Challenge: "
                       + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
@@ -225,7 +225,7 @@ public class AuthAttemptController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
               .build());
 
@@ -240,7 +240,7 @@ public class AuthAttemptController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.getEnrollmentId())
+              .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
               .build());
 

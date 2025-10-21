@@ -29,6 +29,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  *   <li><b>Flyway Integration:</b> Automated database schema management
  *   <li><b>Spring Boot CLI:</b> Command-line interface for migration operations
  *   <li><b>Standalone JAR:</b> Can be run independently for migration tasks
+ *   <li><b>Non-Web Application:</b> Runs as CLI without web server (web-application-type=none)
  * </ul>
  *
  * <p><b>Usage Examples:</b>
@@ -42,6 +43,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * <p><b>Configuration:</b> The application uses standard Spring Boot configuration properties for
  * database connection and Flyway settings. Configuration can be provided via
  * application.properties, environment variables, or command-line arguments.
+ *
+ * <p><b>Security Note:</b> Web and security auto-configurations are disabled via
+ * application.properties since this is a CLI-only application.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

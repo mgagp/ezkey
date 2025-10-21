@@ -21,10 +21,30 @@
 	</properties>
 
 	<dependencies>
-		<!-- Core module dependency -->
+		<!-- Core module dependency (excluding web and security) -->
 		<dependency>
 			<groupId>org.ezkey</groupId>
 			<artifactId>ezkey-core</artifactId>
+			<exclusions>
+				<!-- Exclude Spring Security (not needed for CLI migration app) -->
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-security</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>spring-security-config</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>spring-security-web</artifactId>
+				</exclusion>
+				<!-- Exclude Web dependencies (not needed for CLI migration app) -->
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-web</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		
 		<!-- Spring Boot Starters -->
@@ -84,6 +104,13 @@
 				<configuration>
 					<mainClass>org.ezkey.migration.EzkeyMigrationApp</mainClass>
 				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
@@ -100,6 +127,13 @@
 	                        <mainClass>org.ezkey.migration.EzkeyMigrationApp</mainClass>
 	                        <finalName>ezkey-migration</finalName>
 	                    </configuration>
+	                    <executions>
+	                        <execution>
+	                            <goals>
+	                                <goal>repackage</goal>
+	                            </goals>
+	                        </execution>
+	                    </executions>
 	                </plugin>
 	            </plugins>
 	        </build>
