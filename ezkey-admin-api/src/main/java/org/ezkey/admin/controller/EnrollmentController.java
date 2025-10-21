@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.security.IntegrationAccessControl;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -33,6 +34,8 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,21 +86,26 @@ public class EnrollmentController {
 
   private final AuditLogService auditLogService;
 
+  private final IntegrationAccessControl accessControl;
+
   /**
    * Constructs the enrollment controller with required dependencies.
    *
    * @param enrollmentService the JPA-based enrollment service
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param accessControl the integration access control helper
    */
   @Autowired
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      IntegrationAccessControl accessControl) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
+    this.accessControl = accessControl;
   }
 
   /**
@@ -147,6 +155,11 @@ public class EnrollmentController {
           Integer id) {
     try {
       var enrollment = enrollmentService.getById(id);
+
+      // Verify access: API keys can only access enrollments for their own integration
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      accessControl.verifyAccess(authentication, enrollment.getIntegrationId());
+
       EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
@@ -183,6 +196,10 @@ public class EnrollmentController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
+      // Verify access: API keys can only create enrollments for their own integration
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      accessControl.verifyAccess(authentication, request.getIntegrationId());
+
       EnrollmentCreateResponse response =
           enrollmentService.create(enrollmentMapper.toCreateRequest(request));
 

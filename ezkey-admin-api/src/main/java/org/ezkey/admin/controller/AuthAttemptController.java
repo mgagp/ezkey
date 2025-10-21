@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.security.IntegrationAccessControl;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -36,10 +37,14 @@ import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -94,21 +99,31 @@ public class AuthAttemptController {
 
   private final AuditLogService auditLogService;
 
+  private final EnrollmentService enrollmentService;
+
+  private final IntegrationAccessControl accessControl;
+
   /**
    * Constructs the authorization attempt controller with required dependencies.
    *
    * @param authAttemptService the JPA-based authorization attempt service
    * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param enrollmentService the enrollment service for fetching enrollment details
+   * @param accessControl the integration access control helper
    */
   @Autowired
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
       AuthAttemptMapper authAttemptMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EnrollmentService enrollmentService,
+      IntegrationAccessControl accessControl) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
+    this.enrollmentService = enrollmentService;
+    this.accessControl = accessControl;
   }
 
   /**
@@ -158,6 +173,12 @@ public class AuthAttemptController {
           Integer id) {
     try {
       AuthAttempt authAttempt = authAttemptService.getById(id);
+
+      // Verify access: API keys can only access auth attempts for their own integration
+      Enrollment enrollment = enrollmentService.getById(authAttempt.getEnrollmentId());
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      accessControl.verifyAccess(authentication, enrollment.getIntegrationId());
+
       AuthAttemptDto response = authAttemptMapper.toDto(authAttempt);
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
@@ -194,6 +215,11 @@ public class AuthAttemptController {
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
+      // Verify access: API keys can only create auth attempts for their own integration
+      Enrollment enrollment = enrollmentService.getById(request.enrollmentId());
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      accessControl.verifyAccess(authentication, enrollment.getIntegrationId());
+
       AuthAttemptCreateResponse response =
           authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
 
@@ -352,6 +378,12 @@ public class AuthAttemptController {
       AuthAttemptWaitRequestDto requestDto = new AuthAttemptWaitRequestDto();
       requestDto.setTimeout(timeoutSeconds);
       requestDto.setPolling(pollingSeconds);
+
+      // Verify access before waiting: API keys can only wait for their own integration
+      AuthAttempt authAttempt = authAttemptService.getById(id);
+      Enrollment enrollment = enrollmentService.getById(authAttempt.getEnrollmentId());
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      accessControl.verifyAccess(authentication, enrollment.getIntegrationId());
 
       // Convert to domain object
       AuthAttemptWaitRequest request = authAttemptMapper.toAuthAttemptWaitRequest(requestDto);

@@ -24,7 +24,6 @@ import org.ezkey.integration.service.ApiKeyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -203,21 +202,20 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
   /**
    * Sets up Spring Security authentication context for API key.
    *
-   * <p>Creates an authentication token with ROLE_API_KEY and stores the integration information as
-   * the principal.
+   * <p>Creates an ApiKeyPrincipal authentication token with ROLE_API_KEY and stores the integration
+   * information for scoped authorization checks.
    *
    * @param integration the authenticated integration
    * @param request the HTTP request for additional details
    */
   private void setupApiKeyAuthentication(Integration integration, HttpServletRequest request) {
-    // Create authentication token
-    // Principal: Integration name (for logging/audit)
-    // Credentials: null (API key already validated)
-    // Authorities: ROLE_API_KEY (to distinguish from admin tokens)
-    UsernamePasswordAuthenticationToken authentication =
-        new UsernamePasswordAuthenticationToken(
-            "integration_" + integration.getId(), // Principal
-            null, // Credentials (not stored after validation)
+    // Create ApiKeyPrincipal with integration scoping
+    // This enables integration-scoped authorization checks in controllers
+    ApiKeyPrincipal authentication =
+        new ApiKeyPrincipal(
+            integration.getId().toString(), // API key ID (for audit)
+            integration.getId(), // Integration ID (for authorization)
+            "Integration #" + integration.getId(), // Integration description (for logging)
             Collections.singletonList(new SimpleGrantedAuthority(ROLE_API_KEY)));
 
     // Add request details
