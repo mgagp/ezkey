@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.security.IntegrationAccessControl;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -29,10 +30,13 @@ import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.ForbiddenException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,21 +87,26 @@ public class EnrollmentController {
 
   private final AuditLogService auditLogService;
 
+  private final IntegrationAccessControl accessControl;
+
   /**
    * Constructs the enrollment controller with required dependencies.
    *
    * @param enrollmentService the JPA-based enrollment service
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param accessControl the integration access control utility for API key detection
    */
   @Autowired
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      IntegrationAccessControl accessControl) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
+    this.accessControl = accessControl;
   }
 
   /**
@@ -118,6 +127,12 @@ public class EnrollmentController {
       })
   @GetMapping
   public ResponseEntity<List<EnrollmentResponseDto>> getAll() {
+    // Deny API key access to enrollment management
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (accessControl.isApiKey(auth)) {
+      throw new ForbiddenException("API keys cannot manage enrollments");
+    }
+
     List<EnrollmentResponseDto> enrollments =
         enrollmentMapper.toResponseList(enrollmentService.getAll());
     return ResponseEntity.ok(enrollments);
@@ -145,6 +160,12 @@ public class EnrollmentController {
   public ResponseEntity<EnrollmentResponseDto> getById(
       @Parameter(description = "Unique enrollment ID", example = "1") @PathVariable("id")
           Integer id) {
+    // Deny API key access to enrollment management
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (accessControl.isApiKey(auth)) {
+      throw new ForbiddenException("API keys cannot manage enrollments");
+    }
+
     try {
       var enrollment = enrollmentService.getById(id);
       EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
@@ -178,6 +199,12 @@ public class EnrollmentController {
       @Parameter(description = "Enrollment creation data", required = true) @RequestBody
           EnrollmentCreateRequestDto request,
       HttpServletRequest httpRequest) {
+
+    // Deny API key access to enrollment management
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (accessControl.isApiKey(auth)) {
+      throw new ForbiddenException("API keys cannot manage enrollments");
+    }
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
@@ -256,6 +283,12 @@ public class EnrollmentController {
       @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")
           Integer id,
       HttpServletRequest httpRequest) {
+
+    // Deny API key access to enrollment management
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (accessControl.isApiKey(auth)) {
+      throw new ForbiddenException("API keys cannot manage enrollments");
+    }
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);

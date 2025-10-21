@@ -81,6 +81,26 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles ForbiddenException and returns HTTP 403.
+   *
+   * <p>This method catches ForbiddenException instances and converts them into standardized HTTP 403
+   * Forbidden responses with access control error details.
+   *
+   * @param ex the ForbiddenException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 403 status
+   */
+  @ExceptionHandler(ForbiddenException.class)
+  public ResponseEntity<ErrorResponseDto> handleForbiddenException(
+      ForbiddenException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "ACCESS_FORBIDDEN", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+  }
+
+  /**
    * Handles IllegalArgumentException and returns HTTP 400.
    *
    * <p>This method catches IllegalArgumentException instances and converts them into standardized
