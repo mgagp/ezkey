@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: AuthAttemptDto
+ * Record: AuthAttemptDto
  * Description: Response DTO for authorization attempt data in admin API.
  */
 
@@ -44,7 +44,6 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * <ul>
  *   <li><b>authAttemptChallenge:</b> Challenge value for the authentication attempt
  *   <li><b>authAttemptProofToken:</b> Proof token for the authentication attempt
- *   <li><b>deviceProofTokenValid:</b> Device proof token validation result
  * </ul>
  *
  * <p><b>Metadata:</b>
@@ -62,6 +61,13 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  *
  * <p><b>License:</b> MIT
  *
+ * @param authAttemptId Unique identifier for the authentication attempt (auto-generated primary key)
+ * @param enrollmentId Enrollment identifier this authentication attempt belongs to (foreign key reference)
+ * @param authAttemptStatus Current lifecycle status of the authentication attempt (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+ * @param authAttemptChallenge Challenge value for the authentication attempt used in challenge-response process
+ * @param authAttemptProofToken Proof token for the authentication attempt used for verification
+ * @param createdAt Timestamp when the authentication attempt was created (with timezone)
+ * @param expiresAt Timestamp when the authentication attempt expires (with timezone)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.authattempt.domain.entity.AuthAttempt
@@ -71,183 +77,28 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
 @Schema(
     description =
         "Response DTO containing complete authentication attempt information for administrative purposes")
-public class AuthAttemptDto {
-
-  /**
-   * Unique identifier for the authentication attempt. Auto-generated primary key from the database.
-   */
-  @Schema(description = "Unique identifier for the authentication attempt", example = "456")
-  private Integer authAttemptId;
-
-  /**
-   * Enrollment identifier this authentication attempt belongs to. Foreign key reference to the
-   * enrollment.
-   */
-  @Schema(
-      description = "Enrollment identifier this authentication attempt belongs to",
-      example = "123")
-  private Integer enrollmentId;
-
-  /**
-   * Current lifecycle status of the authentication attempt. Replaces multiple boolean flags with a
-   * single enum for clearer state management.
-   */
-  @Schema(
-      description = "Current lifecycle status of the authentication attempt",
-      example = "PENDING")
-  private AuthAttemptStatus authAttemptStatus;
-
-  /**
-   * Challenge value for the authentication attempt. Used in the challenge-response authentication
-   * process.
-   */
-  @Schema(description = "Challenge value for the authentication attempt", example = "789012")
-  private Integer authAttemptChallenge;
-
-  /** Proof token for the authentication attempt. Used for authentication verification. */
-  @Schema(description = "Proof token for the authentication attempt", example = "EZK-XYZ789-ABC123")
-  private String authAttemptProofToken;
-
-  /**
-   * Timestamp when the authentication attempt was created. Used for auditing and tracking purposes.
-   */
-  @Schema(
-      description = "Timestamp when the authentication attempt was created (with timezone)",
-      example = "2025-01-27T10:30:00+01:00")
-  private OffsetDateTime createdAt;
-
-  /**
-   * Timestamp when the authentication attempt expires. Used to determine if the authentication
-   * attempt is still valid.
-   */
-  @Schema(
-      description = "Timestamp when the authentication attempt expires (with timezone)",
-      example = "2025-01-27T10:35:00+01:00")
-  private OffsetDateTime expiresAt;
-
-  /**
-   * Gets the authentication attempt ID.
-   *
-   * @return the unique identifier for the authentication attempt
-   */
-  public Integer getAuthAttemptId() {
-    return authAttemptId;
-  }
-
-  /**
-   * Sets the authentication attempt ID.
-   *
-   * @param authAttemptId the unique identifier for the authentication attempt to set
-   */
-  public void setAuthAttemptId(Integer authAttemptId) {
-    this.authAttemptId = authAttemptId;
-  }
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment identifier this authentication attempt belongs to
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment identifier this authentication attempt belongs to
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the authentication attempt status.
-   *
-   * @return the current lifecycle status of the authentication attempt
-   */
-  public AuthAttemptStatus getAuthAttemptStatus() {
-    return authAttemptStatus;
-  }
-
-  /**
-   * Sets the authentication attempt status.
-   *
-   * @param authAttemptStatus the current lifecycle status of the authentication attempt
-   */
-  public void setAuthAttemptStatus(AuthAttemptStatus authAttemptStatus) {
-    this.authAttemptStatus = authAttemptStatus;
-  }
-
-  /**
-   * Gets the authentication attempt challenge.
-   *
-   * @return the challenge value for the authentication attempt
-   */
-  public Integer getAuthAttemptChallenge() {
-    return authAttemptChallenge;
-  }
-
-  /**
-   * Sets the authentication attempt challenge.
-   *
-   * @param authAttemptChallenge the challenge value for the authentication attempt to set
-   */
-  public void setAuthAttemptChallenge(Integer authAttemptChallenge) {
-    this.authAttemptChallenge = authAttemptChallenge;
-  }
-
-  /**
-   * Gets the authentication attempt proof token.
-   *
-   * @return the proof token for the authentication attempt
-   */
-  public String getAuthAttemptProofToken() {
-    return authAttemptProofToken;
-  }
-
-  /**
-   * Sets the authentication attempt proof token.
-   *
-   * @param authAttemptProofToken the proof token for the authentication attempt to set
-   */
-  public void setAuthAttemptProofToken(String authAttemptProofToken) {
-    this.authAttemptProofToken = authAttemptProofToken;
-  }
-
-  /**
-   * Gets the creation timestamp.
-   *
-   * @return the timestamp when the authentication attempt was created
-   */
-  public OffsetDateTime getCreatedAt() {
-    return createdAt;
-  }
-
-  /**
-   * Sets the creation timestamp.
-   *
-   * @param createdAt the timestamp when the authentication attempt was created
-   */
-  public void setCreatedAt(OffsetDateTime createdAt) {
-    this.createdAt = createdAt;
-  }
-
-  /**
-   * Gets the expiration timestamp.
-   *
-   * @return the timestamp when the authentication attempt expires
-   */
-  public OffsetDateTime getExpiresAt() {
-    return expiresAt;
-  }
-
-  /**
-   * Sets the expiration timestamp.
-   *
-   * @param expiresAt the timestamp when the authentication attempt expires
-   */
-  public void setExpiresAt(OffsetDateTime expiresAt) {
-    this.expiresAt = expiresAt;
-  }
-}
+public record AuthAttemptDto(
+    @Schema(description = "Unique identifier for the authentication attempt", example = "456")
+        Integer authAttemptId,
+    @Schema(
+            description = "Enrollment identifier this authentication attempt belongs to",
+            example = "123")
+        Integer enrollmentId,
+    @Schema(
+            description = "Current lifecycle status of the authentication attempt",
+            example = "PENDING")
+        AuthAttemptStatus authAttemptStatus,
+    @Schema(description = "Challenge value for the authentication attempt", example = "789012")
+        Integer authAttemptChallenge,
+    @Schema(
+            description = "Proof token for the authentication attempt",
+            example = "EZK-XYZ789-ABC123")
+        String authAttemptProofToken,
+    @Schema(
+            description = "Timestamp when the authentication attempt was created (with timezone)",
+            example = "2025-01-27T10:30:00+01:00")
+        OffsetDateTime createdAt,
+    @Schema(
+            description = "Timestamp when the authentication attempt expires (with timezone)",
+            example = "2025-01-27T10:35:00+01:00")
+        OffsetDateTime expiresAt) {}

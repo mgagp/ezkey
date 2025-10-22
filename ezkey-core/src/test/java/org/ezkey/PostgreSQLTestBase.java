@@ -91,7 +91,7 @@ public abstract class PostgreSQLTestBase {
             .withDatabaseName("ezkey_test")
             .withUsername("test")
             .withPassword("test")
-            .withReuse(true);
+            .withReuse(false);
     postgres.start();
   }
 }

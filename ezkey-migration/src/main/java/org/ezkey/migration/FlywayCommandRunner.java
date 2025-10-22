@@ -16,6 +16,7 @@ import org.flywaydb.core.api.MigrationInfoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -64,6 +65,7 @@ import org.springframework.stereotype.Component;
  * @see org.springframework.boot.CommandLineRunner
  */
 @Component
+@Profile("!test")
 public class FlywayCommandRunner implements CommandLineRunner {
 
   private static final Logger log = LoggerFactory.getLogger(FlywayCommandRunner.class);
@@ -115,17 +117,29 @@ public class FlywayCommandRunner implements CommandLineRunner {
         default -> {
           log.error("Unknown operation: {}", operation);
           printUsage();
-          System.exit(1);
+          exitWithCode(1);
         }
       }
 
       log.info("Flyway operation '{}' completed successfully", operation);
-      System.exit(0);
+      exitWithCode(0);
 
     } catch (Exception e) {
       log.error("Flyway operation '{}' failed: {}", operation, e.getMessage(), e);
-      System.exit(1);
+      exitWithCode(1);
     }
+  }
+
+  /**
+   * Exits the application with the specified exit code.
+   *
+   * <p>This method is extracted to allow test subclasses to override the exit behavior without
+   * actually terminating the JVM during unit tests.
+   *
+   * @param code the exit code (0 for success, non-zero for failure)
+   */
+  protected void exitWithCode(int code) {
+    System.exit(code);
   }
 
   /**
@@ -181,7 +195,8 @@ public class FlywayCommandRunner implements CommandLineRunner {
       }
     }
 
-    int migrationsApplied = flyway.migrate().migrationsExecuted;
+    var result = flyway.migrate();
+    int migrationsApplied = result != null ? result.migrationsExecuted : 0;
     log.info("Successfully applied {} migration(s)", migrationsApplied);
 
     printMigrationInfo();
