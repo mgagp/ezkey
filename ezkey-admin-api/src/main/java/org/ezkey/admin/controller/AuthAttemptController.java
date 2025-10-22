@@ -348,10 +348,9 @@ public class AuthAttemptController {
           Integer pollingSeconds) {
 
     try {
-      // Build request DTO from parameters
-      AuthAttemptWaitRequestDto requestDto = new AuthAttemptWaitRequestDto();
-      requestDto.setTimeout(timeoutSeconds);
-      requestDto.setPolling(pollingSeconds);
+      // Build request DTO from parameters using record constructor
+      AuthAttemptWaitRequestDto requestDto = 
+          new AuthAttemptWaitRequestDto(timeoutSeconds, pollingSeconds);
 
       // Convert to domain object
       AuthAttemptWaitRequest request = authAttemptMapper.toAuthAttemptWaitRequest(requestDto);
