@@ -269,7 +269,10 @@ After updating, check your configuration is still valid:
 
 ```bash
 # View current configuration
-ezkey configure show
+ezkey configure get
+
+# Get specific value
+ezkey configure get --key adminUrl
 
 # Update if needed
 ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
