@@ -37,8 +37,8 @@ import java.nio.charset.StandardCharsets
 class AuthService {
     
     companion object {
-        private const val BASE_URL = "http://192.168.1.92:8080"
-        private const val ENROLLMENT_ID = 24 // Hard-coded for POC
+        private const val BASE_URL = "https://goateed-katalina-monsoonal.ngrok-free.dev"
+        private const val ENROLLMENT_ID = 3 // Hard-coded for POC
         private const val MEDIA_TYPE_JSON = "application/json; charset=utf-8"
     }
     
@@ -46,8 +46,8 @@ class AuthService {
     private val signatureService = SignatureService()
     
     // Hard-coded values from 24.json for POC
-    private val devicePrivateKeyBase64 = "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCgamDfY+L6IsF2t3Msaa+UYktJAfpM9m9pxYGmz/k22soT641GmDvkM8Ik21NaCzTgQaT8+Sdibt5bxLzpBkQ4txdhDtlpYYvxu/XS4My+xi+9yq9YzrKZkbpzzervH3WSgfrGf1e8FhpJ2EU5FbSeVRxbZqbXKsQHwvGrQV5JHA57s4IxI1bh0m7VL3ZZDgelrygrSIQOkBZJLYmvUmmM+utp8QbyQ46ViRKfu1NXssgPmtjS/xSds3pBYyp8y+so0+uLws6js9mGOex4fu238/pg1pee7d6nbYzy1fBWcxMYGYdXDL5F0UFmGHKEo451sq+Kj3qdFcYlHz5AkzONAgMBAAECggEAAfabV4PI80fGnckMAB10OF9lmklyAn9UbyZ4LXSUXijNjVkPyK8afvLO0i9CNP/Rg1pT7LaxIs7GXbgpzO5QANbln3RhK9C1hKovJyGrz9ZShXYI5FzcECFM92R447lUvov+gW+gjfaofRvhz2hZGaqWZyksxJH+hgIx5ADJglQjgo5XkslyjWjDjZWFwU+RGrxfml1kr8vYfWU7Q89lAzWhNAP4q2gBSrazzFZ7HZWyoAc0IcGSKZzfT3drD3LtAAC9zz/rP5yu6+ALeKZ5KCEXf8bLrZwQpxE26dMMs0MHABE1GH3VKc5OmzJSiGfmy+Z/7nezgF6rWrVZEfKG4QKBgQDWXbNPBO9pG1RvOwpnlwlEu8Oo2eS64gkBulZXatuPtWzBUrjuVvGNJfgB4VhAhOsQNBYqjw6Icb6QLQcEfCbJonRQpg4+ObN3jo8cAUZDq1N+KlMAjD8LdIiSDAAO9xVZwIo6kJu4HhbPDGW3EatHUXA9W1yunU2AaxEpfkWAkQKBgQC/kkFEhp1mPbGuzo8aTQnlIIkegPphzPXNVvr8suAaeJdSAOLJ8Lx6jUhTFa89kfQ8+Ma6aAk2e1pmilhXg9tnorvWxmLsSn1zoWBnHKD/Am4cwvqew1t4zUB1SblGixUgbuNY3yri+KEiHKIgW/KAFF3R6Vr1Fad8mQ2LndMBPQKBgQCjAmXT9QDJgIrYeqES3PujVNUYlXkl07Tdp4D4wL1trpyg9fLC60KL/w90/pNJnMnTbIhenKKEh1pN8K+hbXdhZTPmECBMmTwr8jBJL37q/mFjU3QCuqNGZrtjs9RnjOSjd5Klrkl73QWjNN40NC928CrVvZ/g+KVyvfgzAV6AwQKBgQCe6tbV383mqLsjRhsUOGBDANB+y4Ppabtmkgc3ZbPegbcVwcJgvyG7kEQ1GEH9E3zGr6E7tV4fIgkGEzHht3Jk8GxeaMhbOBgFuhNctjUgFoX9uglpdqoE9k/IfFYEHRBzjUlvygGrs5EH2TTtHxl2Am8p2SkpMsNz6wt/jHckCQKBgQCv/8nm1+7w7RmFb9k2lGT8TNvk2Mm86jC1DoT4w8fova5I4h8+BBTarSzxi0EFeks2C+xEv1yHBk14RMYf4rPWKwbDbtrppGIMEDFS142uKpiYY+Fs4SMoeRnLHDsWPyE6gouJd9OQNm71cE5nfvKSbbMbhPdWId0hSrtyNHzTrg=="
-    
+    private val devicePrivateKeyBase64 = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDxjNnamFBMhTNoTDZ6AU3KNcv8+TpBM14TzxaB1KOzf9WdbhALONm2uyuEMW5jehHLLnEOLJ2eMSBQ/AKjd3NpgvbfgrvRzslqCWJpp/HVGLQlmVaG+xjUW6vQNd3tSmGVXn60Y368VHybgzULWczD1rlgVQJJQwnrCEW72HiFimbQ6RpPKRA/GRZAJXyf7HZ/e42D5dOxUBgNWloMPy0uvmDAtep5GyEGmCUCY89ntfrrhuso06fArLwyWLdgton+TV5manpPU3haWWEasJFicXaqIBJbw9CordRGXjRDIUWDpxmxoa38G0VvQBQeatnf7jjN0lQ31Bavzk5CiM/NAgMBAAECggEADaQLpXmWh0u6ZHhxVyB9uR6in22fqZDyDiJSvhA5Emj0skhF5axXNyeIxJVaC4oYOSYtQkSovgc+MPSaXYrgXKQFtweV/bo0y6UuBpNyZ7tWaQ0owsSpWUy3/jEckEr0CdBlTWCVBqOqycl2FGcE1kZo/5StZV/AzqIP9hS6cagMH9oYqmA8jIzPCm2hb8+ctF+BV3/AH+Qhwt81rOK65lEwf0PVF5i5uyQAwPKM2Pdm3P1utlh9HZJSh80Gt+7FEG1SGUdncnEOEmMtLIT32U2qSS0bkdsviKjzNk6eG/9BkVS+arEekH3wpgq+7g2QuxBvk7uY8YHMk7s/q/JyLQKBgQDyQu8+UvxOGN1jAxrLcL+33BZiaUWCgcfb40avTFQMEnQjq9dDeATaOhHLSsQ6mPDZ7LjTbCNrGa2fCR/NOXPntzqvl67ph1CkBIfT7ObQCVvt2AVeyoH/uUex/PSR7uzaKHb29E26L/7qU4tkIaGAtU3utJx4Nca+M5YCzQd+lwKBgQD/P5cvt8WhYJaeVSLF1fEDz03O9/cm8oGMrbXVfY5RP/nOYJawukTf85/htbwX/QchG0hoIOcOplf9rg9yE4NO+5TTScCQlZ7F/ICVSvfd09OBSseTeYxslFZNgCNlsWva4zmPcgiJ7JYEXqK0f1idiFczd9LUZFx4iyw7ML3VOwKBgQC9eX5Wd18f0bCs9MurG7bGnRrgw0b7KHfg0aQCDKebfX9aOtc0zJS2/T3XitVoox+UweFYcjZNWJsDTIaT4wB01UjP9sl1mkCG14hIRvvK79b3ccHZfncoQ4gAfD/oNz8F7SoGQdLc8RblvIvDt83xtVuLe7T5C84yCnSkIilfZwKBgHws6JVLVzciMURH8MnEQiNzV8wnsDJfag0ReVOqaHE4qYPwU38Yr2cwM4jwC9izvSMrDbeywhXLcSU158e8nHXxSL7ds3PjhkGVjMyUky903QGaaqthR6KPK8k6XH4dqXXsc1VIycSnt3favlcHWQoSiTG9ynCPfrkaI+OL295/AoGBAM/SHCiMPexN8rtBQcAop//mRtwvA8wdPpwbVSiLctSXFoDyW2raiKYCGJ5J3V/TmjwBsFvhEhEBQqoq3nlnxbq3o+glsyM/zg/OE3d2uj8wIltDRKBT0v60hZSFM+0BiBg1rIFHX/fM4toQET3gEIcRhmnneNyIUCS0hLZ9PlB+"
+
     /**
      * Checks for pending authentication requests for the hard-coded enrollment.
      * 
@@ -71,8 +71,12 @@ class AuthService {
             
             // Prepare request payload
             android.util.Log.d("AuthService", "📋 STEP 3: Preparing request payload...")
+            val enrollmentProofToken = "wiHKoa-qVqSdj83Kg8kTnfWHUJkjOC-eKMVqNMiPAHY.1761340112663.JEypt05tUml7wyyQBDp9XQ" // Hard-coded for POC
+            android.util.Log.d("AuthService", "🎫 Enrollment Proof Token: ${enrollmentProofToken.take(20)}...")
+            
             val requestPayload = JSONObject().apply {
                 put("enrollmentId", ENROLLMENT_ID)
+                put("enrollmentProofToken", enrollmentProofToken)
                 put("deviceProofToken", deviceProofToken)
                 put("deviceProofTokenSigned", deviceProofTokenSigned)
             }
@@ -83,22 +87,41 @@ class AuthService {
             
             // Make API call
             android.util.Log.d("AuthService", "📋 STEP 4: Making HTTP POST request...")
-            android.util.Log.d("AuthService", "🌐 URL: $BASE_URL/api/v1/auth-attempts/pending/$ENROLLMENT_ID")
+            val fullUrl = "$BASE_URL/api/v1/auth-attempts/pending"
+            android.util.Log.d("AuthService", "🌐 URL: $fullUrl")
             android.util.Log.d("AuthService", "📤 Method: POST")
             android.util.Log.d("AuthService", "📋 Content-Type: $MEDIA_TYPE_JSON")
+            android.util.Log.d("AuthService", "📋 Content-Length: ${payloadJson.length}")
             
             val request = Request.Builder()
-                .url("$BASE_URL/api/v1/auth-attempts/pending/$ENROLLMENT_ID")
+                .url(fullUrl)
                 .post(payloadJson.toRequestBody(MEDIA_TYPE_JSON.toMediaType()))
                 .build()
             
+            // Log request headers
+            android.util.Log.d("AuthService", "📤 REQUEST HEADERS:")
+            request.headers.forEach { (name, value) ->
+                android.util.Log.d("AuthService", "   $name: $value")
+            }
+            
             android.util.Log.d("AuthService", "📤 Sending request...")
+            val startTime = System.currentTimeMillis()
             val response = httpClient.newCall(request).execute()
-            android.util.Log.d("AuthService", "📥 Response received!")
+            val endTime = System.currentTimeMillis()
+            val duration = endTime - startTime
+            
+            android.util.Log.d("AuthService", "📥 Response received in ${duration}ms!")
             android.util.Log.d("AuthService", "📊 HTTP Status Code: ${response.code}")
-            android.util.Log.d("AuthService", "📋 Response Headers: ${response.headers}")
+            android.util.Log.d("AuthService", "📊 Response Time: ${duration}ms")
+            
+            // Log response headers
+            android.util.Log.d("AuthService", "📥 RESPONSE HEADERS:")
+            response.headers.forEach { (name, value) ->
+                android.util.Log.d("AuthService", "   $name: $value")
+            }
             
             val responseBody = response.body?.string()
+            android.util.Log.d("AuthService", "📥 Response Body Length: ${responseBody?.length ?: 0}")
             android.util.Log.d("AuthService", "📥 Response Body: $responseBody")
             
             when (response.code) {
@@ -166,20 +189,41 @@ class AuthService {
             
             // Make API call
             android.util.Log.d("AuthService", "📋 STEP 3: Making HTTP POST request to accept...")
-            android.util.Log.d("AuthService", "🌐 URL: $BASE_URL/api/v1/auth-attempts/respond/$authAttemptId")
+            val fullUrl = "$BASE_URL/api/v1/auth-attempts/respond"
+            android.util.Log.d("AuthService", "🌐 URL: $fullUrl")
             android.util.Log.d("AuthService", "📤 Method: POST")
+            android.util.Log.d("AuthService", "📋 Content-Type: $MEDIA_TYPE_JSON")
+            android.util.Log.d("AuthService", "📋 Content-Length: ${payloadJson.length}")
             
             val request = Request.Builder()
-                .url("$BASE_URL/api/v1/auth-attempts/respond/$authAttemptId")
+                .url(fullUrl)
                 .post(payloadJson.toRequestBody(MEDIA_TYPE_JSON.toMediaType()))
                 .build()
             
+            // Log request headers
+            android.util.Log.d("AuthService", "📤 ACCEPT REQUEST HEADERS:")
+            request.headers.forEach { (name, value) ->
+                android.util.Log.d("AuthService", "   $name: $value")
+            }
+            
             android.util.Log.d("AuthService", "📤 Sending accept request...")
+            val startTime = System.currentTimeMillis()
             val response = httpClient.newCall(request).execute()
-            android.util.Log.d("AuthService", "📥 Accept response received!")
+            val endTime = System.currentTimeMillis()
+            val duration = endTime - startTime
+            
+            android.util.Log.d("AuthService", "📥 Accept response received in ${duration}ms!")
             android.util.Log.d("AuthService", "📊 HTTP Status Code: ${response.code}")
+            android.util.Log.d("AuthService", "📊 Response Time: ${duration}ms")
+            
+            // Log response headers
+            android.util.Log.d("AuthService", "📥 ACCEPT RESPONSE HEADERS:")
+            response.headers.forEach { (name, value) ->
+                android.util.Log.d("AuthService", "   $name: $value")
+            }
             
             val responseBody = response.body?.string()
+            android.util.Log.d("AuthService", "📥 Accept Response Body Length: ${responseBody?.length ?: 0}")
             android.util.Log.d("AuthService", "📥 Accept Response Body: $responseBody")
             
             if (response.code == 200) {

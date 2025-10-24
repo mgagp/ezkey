@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        
         // Terminate button
         var tempTerminateButton = Button(this).apply {
             text = "❌ Terminate Application"
@@ -482,4 +483,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    
+    /**
+     * Starts the device enrollment process.
+     */
 }
