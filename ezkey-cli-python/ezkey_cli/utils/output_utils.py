@@ -97,3 +97,8 @@ class OutputUtils:
     def echo(message: str, nl: bool = True) -> None:
         """Echo a message to stdout."""
         click.echo(message, nl=nl)
+    
+    @staticmethod
+    def output_json(data: Any, pretty_print: bool = True) -> None:
+        """Output JSON data."""
+        click.echo(JsonUtils.format_output(data, pretty_print))
