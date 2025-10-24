@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -112,6 +113,7 @@ public class ApiKeyController {
    * @param request the API key creation request
    * @return ResponseEntity containing the new API key pair with secret shown once
    */
+  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   @Operation(
       summary = "Create new API key pair",
@@ -193,6 +195,7 @@ public class ApiKeyController {
    * @param integrationId the integration ID
    * @return ResponseEntity containing list of API keys
    */
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/integration/{integrationId}")
   @Operation(
       summary = "List active API keys for integration",
@@ -235,6 +238,7 @@ public class ApiKeyController {
    * @param keyId the API key ID
    * @return ResponseEntity containing the API key details
    */
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{keyId}")
   @Operation(
       summary = "Get API key details",
@@ -285,6 +289,7 @@ public class ApiKeyController {
    * @param keyId the API key ID to revoke
    * @return ResponseEntity with no content on success
    */
+  @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{keyId}")
   @Operation(
       summary = "Revoke API key",

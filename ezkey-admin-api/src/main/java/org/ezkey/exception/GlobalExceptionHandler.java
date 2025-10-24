@@ -13,6 +13,7 @@ package org.ezkey.exception;
 import org.ezkey.dto.ErrorResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -28,6 +29,7 @@ import org.springframework.web.context.request.WebRequest;
  * <p>The handler supports multiple exception types:
  *
  * <ul>
+ *   <li><b>AuthorizationDeniedException:</b> Returns HTTP 403 with access denied information
  *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with detailed error information
  *   <li><b>ValidationException:</b> Returns HTTP 400 with validation error details
  *   <li><b>IllegalArgumentException:</b> Returns HTTP 400 with argument error details
@@ -57,6 +59,52 @@ import org.springframework.web.context.request.WebRequest;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  /**
+   * Handles AuthorizationDeniedException and returns HTTP 403.
+   *
+   * <p>This method catches AuthorizationDeniedException instances thrown by Spring Security's
+   * method-level security (@PreAuthorize) and converts them into standardized HTTP 403 Forbidden
+   * responses with access denied information.
+   *
+   * @param ex the AuthorizationDeniedException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 403 status
+   */
+  @ExceptionHandler(AuthorizationDeniedException.class)
+  public ResponseEntity<ErrorResponseDto> handleAuthorizationDeniedException(
+      AuthorizationDeniedException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "ACCESS_DENIED",
+            "Access denied: insufficient permissions",
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+  }
+
+  /**
+   * Handles RateLimitExceededException and returns HTTP 429.
+   *
+   * <p>This method catches RateLimitExceededException instances thrown by the RateLimitService
+   * when API keys exceed their rate limits and converts them into standardized HTTP 429 Too Many
+   * Requests responses with rate limit information.
+   *
+   * @param ex the RateLimitExceededException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 429 status
+   */
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<ErrorResponseDto> handleRateLimitExceededException(
+      RateLimitExceededException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "RATE_LIMIT_EXCEEDED",
+            ex.getMessage(),
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.TOO_MANY_REQUESTS);
+  }
 
   /**
    * Handles ResourceNotFoundException and returns HTTP 404.

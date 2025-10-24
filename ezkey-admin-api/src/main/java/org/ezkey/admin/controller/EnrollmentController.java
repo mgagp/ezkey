@@ -30,9 +30,9 @@ import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -90,7 +90,6 @@ public class EnrollmentController {
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
    */
-  @Autowired
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
@@ -116,6 +115,7 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<List<EnrollmentResponseDto>> getAll() {
     List<EnrollmentResponseDto> enrollments =
@@ -141,6 +141,7 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "404", description = "Enrollment not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}")
   public ResponseEntity<EnrollmentResponseDto> getById(
       @Parameter(description = "Unique enrollment ID", example = "1") @PathVariable("id")
@@ -173,6 +174,7 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "400", description = "Invalid data"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   public ResponseEntity<EnrollmentCreateResponseDto> create(
       @Parameter(description = "Enrollment creation data", required = true) @RequestBody
@@ -251,6 +253,7 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "404", description = "Enrollment not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")

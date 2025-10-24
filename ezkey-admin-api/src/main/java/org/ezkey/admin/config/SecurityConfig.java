@@ -13,9 +13,9 @@ package org.ezkey.admin.config;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
 import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -51,19 +51,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
-
-  @Autowired(required = false)
-  private AdminRateLimitFilter adminRateLimitFilter;
+  private final AdminRateLimitFilter adminRateLimitFilter;
 
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
-      ApiKeyAuthenticationFilter apiKeyAuthenticationFilter) {
+      ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
+      AdminRateLimitFilter adminRateLimitFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
+    this.adminRateLimitFilter = adminRateLimitFilter;
   }
 
   /**
@@ -109,10 +110,8 @@ public class SecurityConfig {
         .httpBasic(httpBasic -> httpBasic.disable()) // Disable default HTTP Basic
         .formLogin(formLogin -> formLogin.disable()); // Disable form login
 
-    // Add rate limiting filter before all authentication filters (if enabled)
-    if (adminRateLimitFilter != null) {
-      http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-    }
+    // Add rate limiting filter before all authentication filters
+    http.addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
     // Add bearer token authentication filter
     http.addFilterBefore(

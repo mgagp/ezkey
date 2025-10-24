@@ -30,7 +30,6 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -63,16 +62,17 @@ public class AdminAuthController {
 
   private final AuditLogService auditLogService;
 
-  @Autowired(required = false)
-  private AdminRateLimitFilter rateLimitFilter;
+  private final AdminRateLimitFilter rateLimitFilter;
 
   public AdminAuthController(
       AdminAuthService authService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AdminRateLimitFilter rateLimitFilter) {
     this.authService = authService;
     this.recoveryService = recoveryService;
     this.auditLogService = auditLogService;
+    this.rateLimitFilter = rateLimitFilter;
   }
 
   /**

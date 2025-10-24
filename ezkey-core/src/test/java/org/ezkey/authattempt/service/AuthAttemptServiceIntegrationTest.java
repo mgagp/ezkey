@@ -27,9 +27,12 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ezkey.PostgreSQLTestBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -43,9 +46,7 @@ import org.springframework.test.context.ActiveProfiles;
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class AuthAttemptServiceIntegrationTest {
+class AuthAttemptServiceIntegrationTest extends PostgreSQLTestBase {
 
   @Autowired private AuthAttemptService authAttemptService;
 
@@ -53,15 +54,25 @@ class AuthAttemptServiceIntegrationTest {
 
   @Autowired private EnrollmentRepository enrollmentRepository;
 
+  @Autowired private IntegrationRepository integrationRepository;
+
   @Autowired private SignatureService signatureService;
 
+  private Integration testIntegration;
   private Enrollment testEnrollment;
 
   @BeforeEach
   void setUp() {
+    // Create test integration first
+    testIntegration = new Integration();
+    testIntegration.setLogo("test-logo.png");
+    testIntegration.setActive(true);
+    testIntegration.setCreatedAt(OffsetDateTime.now());
+    testIntegration = integrationRepository.save(testIntegration);
+
     // Create test enrollment
     testEnrollment = new Enrollment();
-    testEnrollment.setIntegrationId(1);
+    testEnrollment.setIntegrationId(testIntegration.getId());
     testEnrollment.setEnrollmentName("test-user");
     testEnrollment.setStatus(org.ezkey.enrollment.domain.EnrollmentStatus.CREATED);
     testEnrollment.setActive(false);

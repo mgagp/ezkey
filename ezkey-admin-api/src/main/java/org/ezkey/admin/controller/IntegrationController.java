@@ -28,6 +28,7 @@ import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -111,6 +112,7 @@ public class IntegrationController {
                         @io.swagger.v3.oas.annotations.media.Schema(
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<List<IntegrationResponseDto>> getAll() {
     List<Integration> integrations = service.getAll();
@@ -159,6 +161,7 @@ public class IntegrationController {
                         @io.swagger.v3.oas.annotations.media.Schema(
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}")
   public ResponseEntity<IntegrationResponseDto> getById(
       @Parameter(description = "Unique integration ID", example = "1") @PathVariable("id")
@@ -210,6 +213,7 @@ public class IntegrationController {
                         @io.swagger.v3.oas.annotations.media.Schema(
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   public ResponseEntity<IntegrationCreateResponseDto> create(
       @Parameter(description = "Integration creation data", required = true) @RequestBody
@@ -254,6 +258,7 @@ public class IntegrationController {
                         @io.swagger.v3.oas.annotations.media.Schema(
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Integration ID to delete", example = "1") @PathVariable("id")

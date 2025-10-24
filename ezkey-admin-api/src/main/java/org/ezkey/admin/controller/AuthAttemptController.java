@@ -36,10 +36,19 @@ import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.admin.security.RateLimitService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,11 +97,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Auth Attempts", description = "Authentication attempt management API")
 public class AuthAttemptController {
 
+  private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
+
   private final AuthAttemptService authAttemptService;
 
   private final AuthAttemptMapper authAttemptMapper;
 
   private final AuditLogService auditLogService;
+
+  private final RateLimitService rateLimitService;
+
+  private final EnrollmentRepository enrollmentRepository;
 
   /**
    * Constructs the authorization attempt controller with required dependencies.
@@ -100,15 +115,20 @@ public class AuthAttemptController {
    * @param authAttemptService the JPA-based authorization attempt service
    * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param rateLimitService the rate limiting service for API key operations
+   * @param enrollmentRepository the enrollment repository for ownership checks
    */
-  @Autowired
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
       AuthAttemptMapper authAttemptMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      RateLimitService rateLimitService,
+      EnrollmentRepository enrollmentRepository) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
+    this.rateLimitService = rateLimitService;
+    this.enrollmentRepository = enrollmentRepository;
   }
 
   /**
@@ -127,6 +147,7 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<List<AuthAttemptDto>> getAll() {
     List<AuthAttemptDto> authAttempts = authAttemptMapper.toDtoList(authAttemptService.getAll());
@@ -152,6 +173,7 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
   @GetMapping("/{id}")
   public ResponseEntity<AuthAttemptDto> getById(
       @Parameter(description = "Unique auth attempt ID", example = "1") @PathVariable("id")
@@ -184,6 +206,7 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "400", description = "Invalid data"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasAnyRole('ADMIN', 'API_KEY')")
   @PostMapping
   public ResponseEntity<AuthAttemptCreateResponseDto> create(
       @Parameter(description = "Auth attempt creation data", required = true) @RequestBody
@@ -193,11 +216,28 @@ public class AuthAttemptController {
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
+    // Check rate limiting for API keys
+    String apiKeyId = extractApiKeyId(httpRequest);
+    if (apiKeyId != null && !rateLimitService.canCreateAuthAttempt(apiKeyId)) {
+      throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
+    }
+
+    // Check enrollment ownership for API keys
+    if (apiKeyId != null) {
+      validateEnrollmentOwnership(request.enrollmentId(), apiKeyId);
+    }
+
     try {
       AuthAttemptCreateResponse response =
           authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
 
+      // Record successful operation for rate limiting
+      if (apiKeyId != null) {
+        rateLimitService.recordCreateAuthAttempt(apiKeyId);
+      }
+
       // Audit successful auth attempt creation
+      String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_CREATED)
@@ -209,7 +249,7 @@ public class AuthAttemptController {
               .authAttemptId(response.getAuthAttemptId())
               .enrollmentId(request.enrollmentId())
               .eventDetails(
-                  "Challenge: "
+                  "Auth Type: " + authType + ", Challenge: "
                       + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
               .build());
 
@@ -266,6 +306,7 @@ public class AuthAttemptController {
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
+  @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Auth attempt ID to delete", example = "1") @PathVariable("id")
@@ -310,6 +351,7 @@ public class AuthAttemptController {
    * @return ResponseEntity containing authentication status with HTTP 200 for completion, 408 for
    *     timeout, 404 for not found, or 400 for invalid parameters
    */
+  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
   @GetMapping("/{id}/wait")
   @Operation(
       summary = "Wait for authentication response",
@@ -371,5 +413,90 @@ public class AuthAttemptController {
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+  }
+
+  /**
+   * Extracts API key ID from the authentication context for rate limiting.
+   *
+   * @param request the HTTP request
+   * @return the API key ID if present, null otherwise
+   */
+  private String extractApiKeyId(HttpServletRequest request) {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    
+    // Check if this is an API key authentication
+    if (authentication != null && 
+        authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_API_KEY"))) {
+      
+      // For rate limiting, we can use the integration ID as a unique identifier
+      // In a more sophisticated implementation, you'd extract the actual API key ID
+      Object principal = authentication.getPrincipal();
+      if (principal instanceof Integer) {
+        return "api_key_integration_" + principal;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Extracts the integration ID from the authentication context.
+   *
+   * @return the integration ID if this is an API key authentication, null otherwise
+   */
+  private Integer extractIntegrationId() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    
+    // Check if this is an API key authentication
+    if (authentication != null && 
+        authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_API_KEY"))) {
+      
+      Object principal = authentication.getPrincipal();
+      if (principal instanceof Integer) {
+        return (Integer) principal;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Validates that an enrollment belongs to the API key's integration.
+   *
+   * <p>This method ensures that API keys can only create auth attempts for enrollments
+   * that belong to their associated integration, preventing cross-integration access.
+   *
+   * @param enrollmentId the enrollment ID to validate
+   * @param apiKeyId the API key ID (for logging purposes)
+   * @throws AuthorizationDeniedException if the enrollment doesn't belong to the API key's integration
+   */
+  private void validateEnrollmentOwnership(Integer enrollmentId, String apiKeyId) {
+    // Extract the integration ID from the API key authentication context
+    Integer apiKeyIntegrationId = extractIntegrationId();
+    
+    if (apiKeyIntegrationId == null) {
+      // This should not happen for API key requests, but handle gracefully
+      logger.warn("API key authentication found but integration ID could not be extracted");
+      throw new AuthorizationDeniedException("Unable to verify API key integration ownership");
+    }
+    
+    // Fetch the enrollment and verify it belongs to the API key's integration
+    Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+        .orElseThrow(() -> new ResourceNotFoundException("Enrollment", enrollmentId));
+    
+    // Check ownership
+    if (!enrollment.getIntegrationId().equals(apiKeyIntegrationId)) {
+      logger.warn(
+          "API key from integration {} attempted to create auth attempt for enrollment {} belonging to integration {}",
+          apiKeyIntegrationId, enrollmentId, enrollment.getIntegrationId());
+      throw new AuthorizationDeniedException(
+          "API key cannot create auth attempts for enrollments belonging to other integrations");
+    }
+    
+    logger.debug(
+        "API key from integration {} validated for enrollment {} (integration {})",
+        apiKeyIntegrationId, enrollmentId, enrollment.getIntegrationId());
   }
 }

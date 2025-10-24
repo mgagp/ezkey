@@ -172,7 +172,7 @@ public interface AuthAttemptMapper {
    * @see AuthAttemptWaitResponseDto
    * @see AuthAttemptDto
    */
-  AuthAttemptWaitResponseDto toAuthAttemptWaitResponseDto(
+  AuthAttemptWaitResponseDto buildAuthAttemptWaitResponseDto(
       AuthAttemptDto authAttempt,
       String status,
       Boolean completed,

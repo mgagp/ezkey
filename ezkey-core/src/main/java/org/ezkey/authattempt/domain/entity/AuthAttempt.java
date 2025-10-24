@@ -105,6 +105,15 @@ public class AuthAttempt {
   }
 
   /**
+   * Gets the ID (alias for getAuthAttemptId for JPA compatibility).
+   *
+   * @return the authorization attempt ID
+   */
+  public Integer getId() {
+    return authAttemptId;
+  }
+
+  /**
    * Sets the authorization attempt ID.
    *
    * @param authAttemptId the authorization attempt ID to set
