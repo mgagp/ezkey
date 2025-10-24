@@ -39,6 +39,29 @@ class HttpClient:
         # Set timeout from config
         timeout = config.get('timeout', 30000)
         self.timeout = timeout / 1000.0  # Convert ms to seconds
+        
+        # Set up authentication if available
+        self._setup_auth()
+    
+    def _setup_auth(self):
+        """Set up authentication headers from config."""
+        # Bearer token authentication (for admin users)
+        bearer_token = self.config.get('bearerToken')
+        if bearer_token:
+            self.session.headers.update({
+                'Authorization': f'Bearer {bearer_token}'
+            })
+        # API key authentication (for machine-to-machine)
+        else:
+            integration_key = self.config.get('integrationKey')
+            secret_key = self.config.get('secretKey')
+            if integration_key and secret_key:
+                import base64
+                credentials = f'{integration_key}:{secret_key}'
+                encoded = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+                self.session.headers.update({
+                    'Authorization': f'Basic {encoded}'
+                })
     
     def _format_error(self, response: requests.Response) -> str:
         """Format error message from HTTP response."""

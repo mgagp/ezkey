@@ -107,3 +107,24 @@ class ConfigManager:
             "prettyPrint": True,
             "timeout": 30000
         }
+    
+    def set_bearer_token(self, token: str) -> None:
+        """Set bearer token for authentication."""
+        self._config['bearerToken'] = token
+    
+    def clear_bearer_token(self) -> None:
+        """Clear bearer token."""
+        if 'bearerToken' in self._config:
+            del self._config['bearerToken']
+    
+    def set_api_key(self, integration_key: str, secret_key: str) -> None:
+        """Set API key credentials for authentication."""
+        self._config['integrationKey'] = integration_key
+        self._config['secretKey'] = secret_key
+    
+    def clear_api_key(self) -> None:
+        """Clear API key credentials."""
+        if 'integrationKey' in self._config:
+            del self._config['integrationKey']
+        if 'secretKey' in self._config:
+            del self._config['secretKey']
