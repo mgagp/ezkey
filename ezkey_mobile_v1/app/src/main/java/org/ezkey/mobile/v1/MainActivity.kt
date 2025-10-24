@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         // Create main layout
         var layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(32, 32, 32, 32)
+            setPadding(16, 16, 16, 16)  // REDUCED from 32,32,32,32 to gain more space
         }
         
         // App title
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
             text = "Ezkey Mobile V1 - Cryptographic Validation"
             textSize = 20f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(0, 0, 0, 24)
+            setPadding(0, 0, 0, 8)  // REDUCED from 24 to gain more space
             gravity = android.view.Gravity.CENTER
         }
         
@@ -73,10 +73,11 @@ class MainActivity : AppCompatActivity() {
         var tempScrollView = ScrollView(this).apply {
             // Make scrollbar always visible
             isVerticalScrollBarEnabled = true
-            isHorizontalScrollBarEnabled = true
+            isHorizontalScrollBarEnabled = false  // DISABLED - not needed for log text
             scrollBarStyle = android.view.View.SCROLLBARS_INSIDE_OVERLAY
             // Add some padding for better visibility
             setPadding(8, 8, 8, 8)
+            isFillViewport = true  // CRITICAL: makes ScrollView expand to fill available space
         }
         
         var tempResultsTextView = TextView(this).apply {
@@ -88,14 +89,43 @@ class MainActivity : AppCompatActivity() {
             setTextColor(android.graphics.Color.GREEN)
             // Enable text selection for easier debugging
             //isTextSelectable = true
-            // Set minimum height to ensure scrollbar appears
-            setMinHeight(400)
+            // REMOVED setMinHeight(400) - was interfering with dynamic sizing
         }
         
         // Add the TextView to the ScrollView
         tempScrollView.addView(tempResultsTextView)
         
-        // Test button (temporary for debugging)
+        // Scroll buttons for easier navigation - SIMPLE APPROACH
+        var scrollUpButton = Button(this).apply {
+            text = "⬆️ Top"
+            textSize = 12f
+            setPadding(8, 8, 8, 8)
+            setBackgroundColor(android.graphics.Color.rgb(100, 100, 100))
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                // Force scroll to top using post() to ensure it works
+                tempScrollView.post {
+                    tempScrollView.scrollTo(0, 0)
+                }
+            }
+        }
+        
+        var scrollDownButton = Button(this).apply {
+            text = "⬇️ Bottom"
+            textSize = 12f
+            setPadding(8, 8, 8, 8)
+            setBackgroundColor(android.graphics.Color.rgb(100, 100, 100))
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                // Force scroll to bottom using post() to ensure it works
+                tempScrollView.post {
+                    tempScrollView.scrollTo(0, tempResultsTextView.height)
+                }
+            }
+        }
+        
+        // Test button (temporary for debugging) - COMMENTED OUT TO SAVE SPACE
+        /*
         var testButton = Button(this).apply {
             text = "🧪 TEST BUTTON"
             textSize = 14f
@@ -109,6 +139,7 @@ class MainActivity : AppCompatActivity() {
                 appendResult("⏰ Timestamp: ${java.util.Date()}")
             }
         }
+        */
         
         // Clear logs button
         var clearButton = Button(this).apply {
@@ -176,9 +207,11 @@ class MainActivity : AppCompatActivity() {
         
         // Add views to layout
         layout.addView(titleTextView)
+        layout.addView(scrollUpButton)  // Scroll Up button ABOVE text window
         layout.addView(scrollView, android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        layout.addView(testButton)
+        // layout.addView(testButton)  // COMMENTED OUT - test button removed to save space
+        layout.addView(scrollDownButton)  // Scroll Down button BELOW text window
         layout.addView(clearButton)
         layout.addView(checkPendingButton)
         layout.addView(acceptButton)
