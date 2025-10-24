@@ -10,29 +10,34 @@
 
 package org.ezkey.admin.security;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import java.time.Duration;
+import org.ezkey.admin.config.ApiKeyRateLimitProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Service for implementing rate limiting on API key operations.
  *
  * <p>This service provides rate limiting functionality to prevent abuse of API key operations,
- * specifically for authentication attempt creation and validation (wait) operations. It implements
- * a sliding window rate limiting algorithm to ensure fair usage across all API keys.
+ * specifically for authentication attempt creation and validation (wait) operations. It uses
+ * Bucket4j token bucket algorithm for efficient rate limiting with configurable limits.
  *
- * <p><b>Rate Limiting Strategy:</b> Uses a sliding window approach where each API key has a
- * limited number of operations per time window. The current implementation uses a simple in-memory
- * approach suitable for single-instance deployments.
+ * <p><b>Rate Limiting Strategy:</b> Uses Bucket4j token bucket algorithm where each API key has
+ * a bucket with configurable capacity and refill rate. This provides smooth rate limiting
+ * with burst capacity while maintaining overall rate limits.
  *
- * <p><b>Configuration:</b> Rate limits are configurable per operation type:
+ * <p><b>Configuration:</b> Rate limits are externally configurable per operation type:
  *
  * <ul>
- *   <li><b>CREATE_AUTH_ATTEMPT:</b> Maximum auth attempts that can be created per window
- *   <li><b>WAIT_AUTH_ATTEMPT:</b> Maximum wait operations per window
+ *   <li><b>CREATE_AUTH_ATTEMPT:</b> Configurable via ezkey.api-key.rate-limit.create-auth-attempt.*
+ *   <li><b>WAIT_AUTH_ATTEMPT:</b> Configurable via ezkey.api-key.rate-limit.wait-auth-attempt.*
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -47,58 +52,127 @@ public class RateLimitService {
 
   private static final Logger logger = LoggerFactory.getLogger(RateLimitService.class);
 
-  // Rate limiting configuration
-  private static final int CREATE_AUTH_ATTEMPT_LIMIT = 100; // per window
-  private static final int WAIT_AUTH_ATTEMPT_LIMIT = 200; // per window
-  private static final int WINDOW_SIZE_MINUTES = 15; // 15-minute windows
+  private final ApiKeyRateLimitProperties properties;
+  private final MeterRegistry meterRegistry;
+  
+  // Bucket4j-based rate limiting with Caffeine cache
+  private final Cache<String, Bucket> createAttemptBuckets;
+  private final Cache<String, Bucket> waitAttemptBuckets;
 
-  // In-memory storage for rate limiting (suitable for single-instance deployments)
-  private final Map<String, RateLimitWindow> rateLimitWindows = new ConcurrentHashMap<>();
+  /**
+   * Constructs the rate limiting service with configuration properties.
+   *
+   * @param properties the rate limiting configuration properties
+   * @param meterRegistry the metrics registry for monitoring
+   */
+  public RateLimitService(ApiKeyRateLimitProperties properties, MeterRegistry meterRegistry) {
+    this.properties = properties;
+    this.meterRegistry = meterRegistry;
+    
+    // Initialize Caffeine caches for bucket storage
+    this.createAttemptBuckets = Caffeine.newBuilder()
+        .maximumSize(10000)
+        .expireAfterAccess(Duration.ofHours(1))
+        .build();
+        
+    this.waitAttemptBuckets = Caffeine.newBuilder()
+        .maximumSize(10000)
+        .expireAfterAccess(Duration.ofHours(1))
+        .build();
+        
+    logger.info("RateLimitService initialized with Bucket4j implementation");
+    logger.info("Create auth attempt limit: {} requests per {} minutes", 
+        properties.getCreateAuthAttempt().getRequests(),
+        properties.getCreateAuthAttempt().getWindowMinutes());
+    logger.info("Wait auth attempt limit: {} requests per {} minutes",
+        properties.getWaitAuthAttempt().getRequests(),
+        properties.getWaitAuthAttempt().getWindowMinutes());
+  }
 
   /**
    * Checks if an API key can perform a create auth attempt operation.
    *
-   * <p>This method implements rate limiting for authentication attempt creation. It checks if the
-   * API key has exceeded the maximum number of create operations allowed within the current time
-   * window.
+   * <p>This method implements rate limiting for authentication attempt creation using Bucket4j
+   * token bucket algorithm. It checks if the API key has sufficient tokens in its bucket.
    *
    * @param apiKeyId the API key identifier
    * @return true if the operation is allowed, false if rate limit exceeded
    */
   public boolean canCreateAuthAttempt(String apiKeyId) {
-    return checkRateLimit(apiKeyId, "CREATE_AUTH_ATTEMPT", CREATE_AUTH_ATTEMPT_LIMIT);
+    String bucketKey = "create:" + apiKeyId;
+    Bucket bucket = createAttemptBuckets.get(bucketKey, key -> createCreateAttemptBucket());
+    
+    boolean allowed = bucket.tryConsume(1);
+    
+    // Record metrics
+    meterRegistry.counter("rate_limit.checks.total", 
+        "operation", "create_auth_attempt", 
+        "type", "api_key").increment();
+        
+    if (!allowed) {
+      meterRegistry.counter("rate_limit.exceeded.total", 
+          "operation", "create_auth_attempt", 
+          "type", "api_key").increment();
+    }
+    
+    return allowed;
   }
 
   /**
    * Checks if an API key can perform a wait auth attempt operation.
    *
-   * <p>This method implements rate limiting for authentication attempt waiting. It checks if the
-   * API key has exceeded the maximum number of wait operations allowed within the current time
-   * window.
+   * <p>This method implements rate limiting for authentication attempt waiting using Bucket4j
+   * token bucket algorithm. It checks if the API key has sufficient tokens in its bucket.
    *
    * @param apiKeyId the API key identifier
    * @return true if the operation is allowed, false if rate limit exceeded
    */
   public boolean canWaitAuthAttempt(String apiKeyId) {
-    return checkRateLimit(apiKeyId, "WAIT_AUTH_ATTEMPT", WAIT_AUTH_ATTEMPT_LIMIT);
+    String bucketKey = "wait:" + apiKeyId;
+    Bucket bucket = waitAttemptBuckets.get(bucketKey, key -> createWaitAttemptBucket());
+    
+    boolean allowed = bucket.tryConsume(1);
+    
+    // Record metrics
+    meterRegistry.counter("rate_limit.checks.total", 
+        "operation", "wait_auth_attempt", 
+        "type", "api_key").increment();
+        
+    if (!allowed) {
+      meterRegistry.counter("rate_limit.exceeded.total", 
+          "operation", "wait_auth_attempt", 
+          "type", "api_key").increment();
+    }
+    
+    return allowed;
   }
 
   /**
    * Records a successful create auth attempt operation for rate limiting tracking.
    *
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
+   * so this method is kept for API compatibility but doesn't need to do additional work.
+   *
    * @param apiKeyId the API key identifier
    */
   public void recordCreateAuthAttempt(String apiKeyId) {
-    recordOperation(apiKeyId, "CREATE_AUTH_ATTEMPT");
+    // With Bucket4j, tokens are consumed during canCreateAuthAttempt() check
+    // This method is kept for API compatibility
+    logger.debug("Recorded create auth attempt for API key: {}", apiKeyId);
   }
 
   /**
    * Records a successful wait auth attempt operation for rate limiting tracking.
    *
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
+   * so this method is kept for API compatibility but doesn't need to do additional work.
+   *
    * @param apiKeyId the API key identifier
    */
   public void recordWaitAuthAttempt(String apiKeyId) {
-    recordOperation(apiKeyId, "WAIT_AUTH_ATTEMPT");
+    // With Bucket4j, tokens are consumed during canWaitAuthAttempt() check
+    // This method is kept for API compatibility
+    logger.debug("Recorded wait auth attempt for API key: {}", apiKeyId);
   }
 
   /**
@@ -108,102 +182,60 @@ public class RateLimitService {
    * @return rate limit status information
    */
   public RateLimitStatus getRateLimitStatus(String apiKeyId) {
-    String key = apiKeyId + "_CREATE_AUTH_ATTEMPT";
-    RateLimitWindow window = rateLimitWindows.get(key);
+    String bucketKey = "create:" + apiKeyId;
+    Bucket bucket = createAttemptBuckets.getIfPresent(bucketKey);
     
-    if (window == null) {
-      return new RateLimitStatus(CREATE_AUTH_ATTEMPT_LIMIT, 0, WINDOW_SIZE_MINUTES);
+    if (bucket == null) {
+      return new RateLimitStatus(
+          properties.getCreateAuthAttempt().getRequests(), 
+          0, 
+          properties.getCreateAuthAttempt().getWindowMinutes());
     }
     
-    return new RateLimitStatus(CREATE_AUTH_ATTEMPT_LIMIT, window.getCount(), WINDOW_SIZE_MINUTES);
+    // Get available tokens (this is an approximation)
+    long availableTokens = bucket.getAvailableTokens();
+    int limit = properties.getCreateAuthAttempt().getRequests();
+    int current = (int) (limit - availableTokens);
+    
+    return new RateLimitStatus(limit, current, properties.getCreateAuthAttempt().getWindowMinutes());
   }
 
   /**
-   * Internal method to check rate limiting for a specific operation.
+   * Creates a new Bucket4j bucket for create auth attempt operations.
    *
-   * @param apiKeyId the API key identifier
-   * @param operation the operation type
-   * @param limit the maximum number of operations allowed
-   * @return true if the operation is allowed, false if rate limit exceeded
+   * @return configured rate limiting bucket for create operations
    */
-  private boolean checkRateLimit(String apiKeyId, String operation, int limit) {
-    String key = apiKeyId + "_" + operation;
-    RateLimitWindow window = rateLimitWindows.get(key);
+  private Bucket createCreateAttemptBucket() {
+    ApiKeyRateLimitProperties.CreateAuthAttemptConfig config = properties.getCreateAuthAttempt();
     
-    LocalDateTime now = LocalDateTime.now();
+    Bandwidth limit = Bandwidth.builder()
+        .capacity(config.getRequests())
+        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+        .build();
     
-    // If no window exists or window has expired, create a new one
-    if (window == null || window.isExpired(now)) {
-      window = new RateLimitWindow(now);
-      rateLimitWindows.put(key, window);
-    }
-    
-    // Check if limit is exceeded
-    if (window.getCount() >= limit) {
-      logger.warn(
-          "Rate limit exceeded for API key {} operation {}: {}/{} in window starting at {}",
-          apiKeyId, operation, window.getCount(), limit, window.getWindowStart());
-      return false;
-    }
-    
-    return true;
+    return Bucket.builder()
+        .addLimit(limit)
+        .build();
   }
 
   /**
-   * Internal method to record a successful operation for rate limiting tracking.
+   * Creates a new Bucket4j bucket for wait auth attempt operations.
    *
-   * @param apiKeyId the API key identifier
-   * @param operation the operation type
+   * @return configured rate limiting bucket for wait operations
    */
-  private void recordOperation(String apiKeyId, String operation) {
-    String key = apiKeyId + "_" + operation;
-    RateLimitWindow window = rateLimitWindows.get(key);
+  private Bucket createWaitAttemptBucket() {
+    ApiKeyRateLimitProperties.WaitAuthAttemptConfig config = properties.getWaitAuthAttempt();
     
-    LocalDateTime now = LocalDateTime.now();
+    Bandwidth limit = Bandwidth.builder()
+        .capacity(config.getRequests())
+        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+        .build();
     
-    // If no window exists or window has expired, create a new one
-    if (window == null || window.isExpired(now)) {
-      window = new RateLimitWindow(now);
-      rateLimitWindows.put(key, window);
-    }
-    
-    window.incrementCount();
-    
-    logger.debug(
-        "Recorded operation for API key {} operation {}: {}/{} in window starting at {}",
-        apiKeyId, operation, window.getCount(), 
-        operation.equals("CREATE_AUTH_ATTEMPT") ? CREATE_AUTH_ATTEMPT_LIMIT : WAIT_AUTH_ATTEMPT_LIMIT,
-        window.getWindowStart());
+    return Bucket.builder()
+        .addLimit(limit)
+        .build();
   }
 
-  /**
-   * Internal class representing a rate limiting window.
-   */
-  private static class RateLimitWindow {
-    private final LocalDateTime windowStart;
-    private int count;
-
-    public RateLimitWindow(LocalDateTime windowStart) {
-      this.windowStart = windowStart;
-      this.count = 0;
-    }
-
-    public boolean isExpired(LocalDateTime now) {
-      return windowStart.plusMinutes(WINDOW_SIZE_MINUTES).isBefore(now);
-    }
-
-    public void incrementCount() {
-      this.count++;
-    }
-
-    public int getCount() {
-      return count;
-    }
-
-    public LocalDateTime getWindowStart() {
-      return windowStart;
-    }
-  }
 
   /**
    * Data class representing rate limit status information.

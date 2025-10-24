@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import org.ezkey.admin.dto.request.EnrollmentResetRequestDto;
 import org.ezkey.admin.dto.response.EnrollmentResetResponseDto;
 import org.ezkey.admin.service.AdminRecoveryService;
+import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +54,11 @@ public class AdminEnrollmentController {
   private static final Logger logger = LoggerFactory.getLogger(AdminEnrollmentController.class);
 
   private final AdminRecoveryService recoveryService;
+  private final AdminOperationsRateLimitService adminOpsRateLimitService;
 
-  public AdminEnrollmentController(AdminRecoveryService recoveryService) {
+  public AdminEnrollmentController(AdminRecoveryService recoveryService, AdminOperationsRateLimitService adminOpsRateLimitService) {
     this.recoveryService = recoveryService;
+    this.adminOpsRateLimitService = adminOpsRateLimitService;
   }
 
   /**
@@ -100,6 +104,11 @@ public class AdminEnrollmentController {
       // 1. Extract recovery token
       String token = authorization.replace("Bearer ", "");
 
+      // Check rate limiting for enrollment reset (by recovery token)
+      if (!adminOpsRateLimitService.canResetEnrollment(token)) {
+        throw new RateLimitExceededException("ENROLLMENT_RESET", 3, 0, 30);
+      }
+
       logger.warn(
           "🔄 Enrollment reset request for enrollmentId: {} with recovery token",
           request.enrollmentId());
@@ -130,6 +139,9 @@ public class AdminEnrollmentController {
           "✅ Enrollment reset successful for admin: {} (enrollmentId: {})",
           admin.getUsername(),
           resetEnrollment.getEnrollmentId());
+
+      // Record successful operation for rate limiting
+      adminOpsRateLimitService.recordResetEnrollment(token);
 
       return ResponseEntity.ok(response);
 

@@ -11,7 +11,7 @@
 import axios from 'axios';
 
 // Configuration - update this to match your backend
-const AUTH_API_BASE_URL = 'http://10.0.2.2:8080/api/v1'; // Android emulator localhost
+const AUTH_API_BASE_URL = 'https://goateed-katalina-monsoonal.ngrok-free.dev/api/v1'; // Android emulator localhost
 
 export interface EnrollmentBindRequest {
   enrollmentId: number;

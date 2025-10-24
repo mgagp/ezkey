@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -14,11 +14,16 @@
     "expo": "~54.0.13",
     "expo-build-properties": "^1.0.9",
     "expo-crypto": "^15.0.7",
+    "expo-crypto-native": "file:./modules/expo-crypto-native",
     "expo-modules-core": "^3.0.21",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
     "react-native": "0.81.4",
     "react-native-paper": "^5.14.5"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
+  }
 }

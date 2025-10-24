@@ -201,9 +201,9 @@ public class EzkeyAdminAPI {
      */
     public AuthAttemptCreateResponseDto createAuthAttempt(Integer enrollmentId, Boolean challengeRequested) throws EzkeyException {
         try {
-            AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto();
-            request.setEnrollmentId(enrollmentId);
-            request.setChallengeRequested(challengeRequested);
+            AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto()
+                .enrollmentId(enrollmentId)
+                .challengeRequested(challengeRequested);
             
             return authAttemptsApi.create2(request);
         } catch (ApiException e) {

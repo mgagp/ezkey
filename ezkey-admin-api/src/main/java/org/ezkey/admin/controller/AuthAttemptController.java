@@ -387,7 +387,14 @@ public class AuthAttemptController {
               example = "2",
               schema = @Schema(defaultValue = "2", minimum = "1", maximum = "60"))
           @RequestParam(value = "polling", defaultValue = "2")
-          Integer pollingSeconds) {
+          Integer pollingSeconds,
+      HttpServletRequest httpRequest) {
+
+    // Check rate limiting for API keys
+    String apiKeyId = extractApiKeyId(httpRequest);
+    if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
+      throw new RateLimitExceededException("WAIT_AUTH_ATTEMPT", 200, 0, 15);
+    }
 
     try {
       // Build request DTO from parameters using record constructor
@@ -403,6 +410,11 @@ public class AuthAttemptController {
       // Convert to response DTO
       AuthAttemptWaitResponseDto responseDto =
           authAttemptMapper.toAuthAttemptWaitResponseDto(response);
+
+      // Record successful operation for rate limiting
+      if (apiKeyId != null) {
+        rateLimitService.recordWaitAuthAttempt(apiKeyId);
+      }
 
       return ResponseEntity.ok(responseDto);
 

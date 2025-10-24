@@ -42,6 +42,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -63,7 +64,9 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(controllers = ApiKeyController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, 
+         org.ezkey.admin.config.ApiKeyRateLimitConfig.class,
+         org.ezkey.admin.config.AdminOperationsRateLimitConfig.class})
 @DisplayName("ApiKeyController Tests")
 class ApiKeyControllerTest {
 
@@ -78,6 +81,9 @@ class ApiKeyControllerTest {
   // Mock security filters required by SecurityConfig
   @MockBean private org.ezkey.admin.security.AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   @MockBean private org.ezkey.admin.security.ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
+  
+  // Mock rate limiting services
+  @MockBean private org.ezkey.admin.security.AdminOperationsRateLimitService adminOperationsRateLimitService;
 
   private Integration testIntegration;
   private ApiKey testApiKey;
@@ -122,6 +128,9 @@ class ApiKeyControllerTest {
             null,
             java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
     SecurityContextHolder.getContext().setAuthentication(authentication);
+    
+    // Setup rate limiting mocks
+    when(adminOperationsRateLimitService.canCreateApiKey(any(String.class))).thenReturn(true);
   }
 
   @Nested

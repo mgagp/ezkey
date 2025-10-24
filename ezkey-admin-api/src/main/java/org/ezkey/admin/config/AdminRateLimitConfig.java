@@ -17,6 +17,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Spring configuration for admin API rate limiting functionality.
@@ -85,10 +86,11 @@ public class AdminRateLimitConfig {
    * based on configured limits.
    *
    * @param properties the rate limiting configuration properties
+   * @param meterRegistry the metrics registry for monitoring
    * @return configured AdminRateLimitFilter instance
    */
   @Bean
-  public AdminRateLimitFilter adminRateLimitFilter(AdminRateLimitProperties properties) {
+  public AdminRateLimitFilter adminRateLimitFilter(AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
     logger.info("Initializing Admin API Rate Limiting with configuration:");
     logger.info(
         "  - Login requests: {} per {} minutes",
@@ -98,6 +100,6 @@ public class AdminRateLimitConfig {
     logger.info("  - Block after failures: {}", properties.getLogin().getBlockAfterFailures());
     logger.info("  - Block duration: {} minutes", properties.getLogin().getBlockDurationMinutes());
 
-    return new AdminRateLimitFilter(properties);
+    return new AdminRateLimitFilter(properties, meterRegistry);
   }
 }

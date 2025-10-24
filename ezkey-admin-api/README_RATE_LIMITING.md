@@ -1,359 +1,341 @@
-# Admin API Rate Limiting
+# Rate Limiting Implementation - Ezkey Admin API
 
 ## Overview
 
-The Admin API implements rate limiting on the login endpoint to protect against brute force attacks. The implementation uses the Bucket4j token bucket algorithm with Caffeine caching for efficient rate limit enforcement.
-
-## Features
-
-- ✅ **Token Bucket Algorithm**: Efficient rate limiting using Bucket4j
-- ✅ **IP-based Tracking**: Identifies clients by IP address with proxy header support
-- ✅ **Automatic Blocking**: Blocks IPs after repeated failed login attempts
-- ✅ **Configurable Limits**: All settings configurable via application.properties
-- ✅ **Conditional Activation**: Can be enabled/disabled without code changes
-- ✅ **Security Logging**: Detailed logging of rate limit events and blocks
-
-## Configuration
-
-### Enable/Disable Rate Limiting
-
-Rate limiting is controlled by the `ezkey.admin.rate-limit.enabled` property:
-
-```properties
-# Enable rate limiting (default: true)
-ezkey.admin.rate-limit.enabled=true
-```
-
-### Login Endpoint Configuration
-
-Configure rate limits for the login endpoint in `application.properties`:
-
-```properties
-# Maximum login attempts allowed per time window
-ezkey.admin.rate-limit.login.requests=5
-
-# Time window in minutes
-ezkey.admin.rate-limit.login.window-minutes=5
-
-# Client identification strategy (currently only "client-ip" supported)
-ezkey.admin.rate-limit.login.key-strategy=client-ip
-
-# Number of consecutive failures before blocking the IP
-# Set to 0 to disable IP blocking
-ezkey.admin.rate-limit.login.block-after-failures=10
-
-# Duration in minutes to block an IP after too many failures
-ezkey.admin.rate-limit.login.block-duration-minutes=30
-```
-
-### Default Configuration
-
-The default configuration provides reasonable security:
-- **5 login attempts** per **5 minutes** (prevents rapid brute force)
-- **IP blocking** after **10 failed attempts** for **30 minutes**
-- Automatic unblocking after the blocking duration expires
-
-## How It Works
-
-### Rate Limiting Flow
-
-1. **Client makes login request** → POST /api/v1/admin/auth/login
-2. **IP extraction** → Filter extracts client IP from headers or connection
-3. **Block check** → Filter checks if IP is currently blocked
-4. **Rate limit check** → Filter checks if IP has exceeded rate limit
-5. **Request processing** → If checks pass, request proceeds to authentication
-6. **Failure tracking** → On authentication failure, increment failure count
-7. **Success tracking** → On authentication success, reset failure count
-
-### IP Blocking Logic
-
-```
-Login Attempt → Failed Authentication
-    ↓
-Increment Failure Count
-    ↓
-Failure Count >= Block Threshold?
-    ↓ YES
-Block IP for X minutes
-    ↓
-Subsequent requests → HTTP 429 Too Many Requests
-```
-
-### HTTP Response Codes
-
-| Status Code | Condition | Headers |
-|-------------|-----------|---------|
-| 200 OK | Successful login | - |
-| 400 Bad Request | Invalid credentials | - |
-| 429 Too Many Requests | Rate limit exceeded | `Retry-After`, `X-Rate-Limit-Limit`, `X-Rate-Limit-Window` |
-| 429 Too Many Requests | IP blocked | `Retry-After`, `X-Rate-Limit-Reason` |
-
-### Example Response Headers
-
-When rate limit is exceeded:
-```
-HTTP/1.1 429 Too Many Requests
-Retry-After: 300
-X-Rate-Limit-Limit: 5
-X-Rate-Limit-Window: 5
-```
-
-When IP is blocked:
-```
-HTTP/1.1 429 Too Many Requests
-Retry-After: 1800
-X-Rate-Limit-Reason: IP blocked due to too many failed attempts
-```
-
-## IP Detection
-
-The filter uses the following priority for IP detection:
-
-1. **X-Forwarded-For** header (standard proxy header)
-2. **X-Real-IP** header (nginx proxy header)
-3. **Direct connection IP** (fallback)
-
-### Security Warning
-
-⚠️ **Important**: HTTP headers like `X-Forwarded-For` can be spoofed. In production:
-
-- Deploy behind a trusted reverse proxy (nginx, Apache, CloudFlare)
-- Configure proxy to set X-Forwarded-For correctly
-- Use firewall rules to restrict proxy access
-- Monitor rate limiting effectiveness
-
-The application logs a security warning on startup when rate limiting is enabled.
+The Ezkey Admin API implements comprehensive rate limiting using the Bucket4j library to prevent abuse and ensure fair usage across different types of operations. This document describes the implementation, configuration, and monitoring of rate limiting features.
 
 ## Architecture
 
-### Components
+### Rate Limiting Systems
 
-1. **AdminRateLimitProperties** - Configuration properties
-   - Location: `org.ezkey.admin.config.AdminRateLimitProperties`
-   - Purpose: Externalized configuration via `@ConfigurationProperties`
+The admin API implements **three distinct rate limiting systems**:
 
-2. **AdminRateLimitFilter** - Servlet filter
-   - Location: `org.ezkey.admin.security.AdminRateLimitFilter`
-   - Purpose: Intercepts HTTP requests, enforces rate limits
+1. **Admin Login Rate Limiting** (IP-based) - `AdminRateLimitFilter`
+2. **API Key Operations Rate Limiting** (key-based) - `RateLimitService`  
+3. **Admin Operations Rate Limiting** (admin-based) - `AdminOperationsRateLimitService`
 
-3. **AdminRateLimitConfig** - Spring configuration
-   - Location: `org.ezkey.admin.config.AdminRateLimitConfig`
-   - Purpose: Conditionally activates rate limiting
+### Technology Stack
 
-4. **AdminAuthController** - Integration point
-   - Location: `org.ezkey.admin.controller.AdminAuthController`
-   - Purpose: Records authentication success/failure for tracking
+- **Bucket4j**: Token bucket algorithm for efficient rate limiting
+- **Caffeine**: High-performance in-memory cache for bucket storage
+- **Spring Boot Actuator**: Metrics exposure for monitoring
+- **Micrometer**: Metrics collection and aggregation
 
-### Dependencies
+## Configuration
 
-```xml
-<!-- Rate Limiting -->
-<dependency>
-    <groupId>com.bucket4j</groupId>
-    <artifactId>bucket4j-core</artifactId>
-</dependency>
-<dependency>
-    <groupId>com.github.ben-manes.caffeine</groupId>
-    <artifactId>caffeine</artifactId>
-</dependency>
+### 1. Admin Login Rate Limiting
+
+**Namespace**: `ezkey.admin.rate-limit.*`
+
+```properties
+# Admin login rate limiting (IP-based)
+ezkey.admin.rate-limit.enabled=true
+ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.window-minutes=5
+ezkey.admin.rate-limit.login.block-after-failures=10
+ezkey.admin.rate-limit.login.block-duration-minutes=30
 ```
 
-## Testing
+**Protected Endpoints**:
+- `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/auth/recover`
 
-### Manual Testing with curl
+**Features**:
+- IP-based rate limiting with proxy header support
+- Automatic IP blocking after repeated failures
+- Configurable block duration and failure thresholds
 
-#### Test Rate Limiting
+### 2. API Key Operations Rate Limiting
+
+**Namespace**: `ezkey.api-key.rate-limit.*`
+
+```properties
+# API key operations rate limiting (key-based)
+ezkey.api-key.rate-limit.enabled=true
+ezkey.api-key.rate-limit.create-auth-attempt.requests=100
+ezkey.api-key.rate-limit.create-auth-attempt.window-minutes=15
+ezkey.api-key.rate-limit.wait-auth-attempt.requests=200
+ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes=15
+```
+
+**Protected Endpoints**:
+- `POST /api/v1/auth-attempts` (create auth attempt)
+- `GET /api/v1/auth-attempts/{id}/wait` (wait for response)
+
+**Features**:
+- Per-API-key rate limiting
+- Separate limits for different operation types
+- Token bucket algorithm with burst capacity
+
+### 3. Admin Operations Rate Limiting
+
+**Namespace**: `ezkey.admin-operations.rate-limit.*`
+
+```properties
+# Admin operations rate limiting (admin-based)
+ezkey.admin-operations.rate-limit.enabled=true
+ezkey.admin-operations.rate-limit.api-key-create.requests=5
+ezkey.admin-operations.rate-limit.api-key-create.window-minutes=15
+ezkey.admin-operations.rate-limit.enrollment-reset.requests=3
+ezkey.admin-operations.rate-limit.enrollment-reset.window-minutes=30
+```
+
+**Protected Endpoints**:
+- `POST /api/v1/api-keys` (create API key)
+- `POST /api/v1/admin/enrollments/reset` (reset enrollment)
+
+**Features**:
+- Per-admin rate limiting for high-value operations
+- Strict limits for credential generation
+- Recovery token-based limiting for enrollment reset
+
+## Priority 1 Critical Endpoints
+
+The implementation focuses on **Priority 1 critical security gaps**:
+
+| Endpoint | Rate Limit | Rationale |
+|----------|-------------|------------|
+| `POST /api/v1/auth-attempts` | 100/15min per API key | High-value MFA operations |
+| `GET /api/v1/auth-attempts/{id}/wait` | 200/15min per API key | Long polling protection |
+| `POST /api/v1/api-keys` | 5/15min per admin | Credential generation protection |
+| `POST /api/v1/admin/enrollments/reset` | 3/30min per token | Device unbind protection |
+
+## Algorithm Details
+
+### Bucket4j Token Bucket Algorithm
+
+All rate limiting uses Bucket4j's token bucket algorithm:
+
+```java
+Bandwidth limit = Bandwidth.builder()
+    .capacity(requests)
+    .refillIntervally(requests, Duration.ofMinutes(windowMinutes))
+    .build();
+```
+
+**Benefits**:
+- Smooth rate limiting with burst capacity
+- Memory efficient with automatic cleanup
+- Thread-safe and high-performance
+- Configurable refill rates
+
+### Caffeine Cache Storage
+
+Buckets are stored in Caffeine caches with automatic expiration:
+
+```java
+Cache<String, Bucket> buckets = Caffeine.newBuilder()
+    .maximumSize(10000)
+    .expireAfterAccess(Duration.ofHours(1))
+    .build();
+```
+
+**Features**:
+- Automatic cleanup of unused buckets
+- Memory-bounded storage
+- High-performance concurrent access
+
+## Monitoring and Metrics
+
+### Spring Boot Actuator Integration
+
+Rate limiting metrics are exposed via Spring Boot Actuator:
+
+**Endpoint**: `/actuator/metrics`
+
+**Available Metrics**:
+- `rate_limit.checks.total` - Total rate limit checks
+- `rate_limit.exceeded.total` - Rate limit violations
+- `rate_limit.ip_blocked.total` - IP blocks (admin login)
+- `rate_limit.login_blocked.total` - Login blocks (admin login)
+
+**Metric Tags**:
+- `operation`: create_auth_attempt, wait_auth_attempt, api_key_create, enrollment_reset
+- `type`: api_key, admin
+
+### Example Metrics Query
 
 ```bash
-# Make 6 rapid login attempts (should hit rate limit on 6th)
-for i in {1..6}; do
-    echo "Attempt $i:"
-    curl -X POST http://localhost:9080/api/v1/admin/auth/login \
-         -H "Content-Type: application/json" \
-         -d '{"username":"admin","password":"wrong"}' \
-         -w "\nHTTP Status: %{http_code}\n\n"
-    sleep 1
-done
+# Get rate limit exceeded count
+curl "http://localhost:9080/actuator/metrics/rate_limit.exceeded.total"
+
+# Get rate limit checks by operation
+curl "http://localhost:9080/actuator/metrics/rate_limit.checks.total?tag=operation:create_auth_attempt"
 ```
 
-Expected output:
-- Attempts 1-5: HTTP 400 (invalid credentials)
-- Attempt 6: HTTP 429 (rate limit exceeded)
+## Error Responses
 
-#### Test IP Blocking
+### Rate Limit Exceeded (HTTP 429)
 
-```bash
-# Make 11 failed login attempts (should block IP on 11th)
-for i in {1..11}; do
-    echo "Attempt $i:"
-    curl -X POST http://localhost:9080/api/v1/admin/auth/login \
-         -H "Content-Type: application/json" \
-         -d '{"username":"admin","password":"wrong"}' \
-         -w "\nHTTP Status: %{http_code}\n\n"
-done
+When rate limits are exceeded, the API returns HTTP 429 with headers:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 900
+X-Rate-Limit-Limit: 100
+X-Rate-Limit-Window: 15
+X-Rate-Limit-Reason: Rate limit exceeded for operation 'CREATE_AUTH_ATTEMPT'
 ```
 
-Expected output:
-- Attempts 1-10: HTTP 400 (invalid credentials)
-- Attempt 11+: HTTP 429 (IP blocked)
-
-### Automated Testing
-
-Unit and integration tests are located in:
-```
-ezkey-admin-api/src/test/java/org/ezkey/admin/
-├── config/
-│   └── AdminRateLimitConfigTest.java
-├── security/
-│   └── AdminRateLimitFilterTest.java
-└── controller/
-    └── AdminAuthControllerTest.java
+**Response Body**:
+```json
+{
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Rate limit exceeded for operation 'CREATE_AUTH_ATTEMPT': 100/100 operations in 15-minute window",
+  "path": "/api/v1/auth-attempts"
+}
 ```
 
-Run tests with:
-```bash
-mvn test -pl ezkey-admin-api
+## Security Considerations
+
+### IP Address Detection
+
+Admin login rate limiting uses multiple headers for IP detection:
+
+1. `CF-Connecting-IP` (Cloudflare)
+2. `X-Forwarded-For` (standard proxy)
+3. `X-Real-IP` (nginx proxy)
+4. Direct connection IP (fallback)
+
+**Security Warning**: HTTP headers can be spoofed. Deploy behind trusted reverse proxies.
+
+### Single-Instance Design
+
+The current implementation is designed for single-instance deployments:
+
+- In-memory storage (Caffeine caches)
+- No distributed coordination
+- CloudFlare recommended for multi-instance deployments
+
+**Future Multi-Instance**: CloudFlare will handle rate limiting at the edge.
+
+## Performance Characteristics
+
+### Memory Usage
+
+- **Admin Login**: ~1KB per IP (1000 IPs = ~1MB)
+- **API Key Operations**: ~1KB per API key (10000 keys = ~10MB)
+- **Admin Operations**: ~1KB per admin (1000 admins = ~1MB)
+
+### CPU Impact
+
+- **Token Consumption**: O(1) per request
+- **Cache Operations**: O(1) average case
+- **Metrics Recording**: Minimal overhead
+
+## Configuration Tuning
+
+### Production Recommendations
+
+**Admin Login**:
+```properties
+ezkey.admin.rate-limit.login.requests=5
+ezkey.admin.rate-limit.login.window-minutes=5
+ezkey.admin.rate-limit.login.block-after-failures=5
+ezkey.admin.rate-limit.login.block-duration-minutes=60
 ```
 
-## Monitoring and Logging
-
-### Log Levels
-
-The rate limiting filter logs events at different levels:
-
-```
-INFO  - Rate limiting initialization
-DEBUG - Individual rate limit checks
-WARN  - Rate limit exceeded, IP blocked
-ERROR - Configuration or runtime errors
+**API Key Operations**:
+```properties
+ezkey.api-key.rate-limit.create-auth-attempt.requests=50
+ezkey.api-key.rate-limit.create-auth-attempt.window-minutes=15
+ezkey.api-key.rate-limit.wait-auth-attempt.requests=100
+ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes=15
 ```
 
-### Log Examples
-
-**Rate limit exceeded:**
-```
-WARN  AdminRateLimitFilter - Rate limit exceeded for IP: 192.168.1.100 - Retry after 300 seconds
-```
-
-**IP blocked:**
-```
-WARN  AdminRateLimitFilter - IP BLOCKED due to 10 failed attempts: 192.168.1.100 - Blocked for 30 minutes
+**Admin Operations**:
+```properties
+ezkey.admin-operations.rate-limit.api-key-create.requests=3
+ezkey.admin-operations.rate-limit.api-key-create.window-minutes=15
+ezkey.admin-operations.rate-limit.enrollment-reset.requests=2
+ezkey.admin-operations.rate-limit.enrollment-reset.window-minutes=60
 ```
 
-**Successful login (clears failure count):**
+### Development Settings
+
+For development, use more permissive limits:
+
+```properties
+# Development - more permissive
+ezkey.admin.rate-limit.login.requests=50
+ezkey.admin.rate-limit.login.window-minutes=1
+ezkey.api-key.rate-limit.create-auth-attempt.requests=1000
+ezkey.admin-operations.rate-limit.api-key-create.requests=100
 ```
-DEBUG AdminRateLimitFilter - Successful login for IP: 192.168.1.100 - Failure count reset
-```
-
-### Monitoring Recommendations
-
-1. **Monitor blocked IPs** - Alert on frequent IP blocks
-2. **Track rate limit hits** - Identify potential attack patterns
-3. **Analyze failure patterns** - Detect distributed attacks
-4. **Review proxy configuration** - Ensure correct IP detection
-
-## Performance Considerations
-
-### Cache Configuration
-
-The rate limiting filter uses Caffeine cache with:
-- **Maximum size**: 1000 buckets
-- **Expiration**: 1 hour after last access
-- **Cleanup**: Automatic
-
-This configuration handles:
-- Up to 1000 concurrent IP addresses
-- Automatic cleanup of inactive buckets
-- Minimal memory footprint
-
-### Performance Impact
-
-Rate limiting adds minimal overhead:
-- **Bucket lookup**: O(1) via Caffeine cache
-- **Token consumption**: O(1) via Bucket4j
-- **Memory**: ~1KB per tracked IP
-
-Expected impact:
-- **< 1ms** additional latency per request
-- **< 1MB** memory for 1000 tracked IPs
 
 ## Troubleshooting
 
-### Issue: Rate limit not working
+### Common Issues
 
-**Solution**: Check that rate limiting is enabled:
+**1. Rate Limits Too Strict**
+- Check configuration values
+- Monitor metrics for actual usage patterns
+- Adjust limits based on legitimate usage
+
+**2. IP Blocking Issues**
+- Verify proxy header configuration
+- Check for shared IP addresses (NAT, corporate networks)
+- Review `X-Forwarded-For` header handling
+
+**3. Memory Usage**
+- Monitor cache sizes via metrics
+- Adjust `maximumSize` if needed
+- Consider cache expiration policies
+
+### Debug Logging
+
+Enable debug logging for rate limiting:
+
 ```properties
-ezkey.admin.rate-limit.enabled=true
+logging.level.org.ezkey.admin.security=DEBUG
 ```
 
-**Solution**: Verify dependencies are present:
-```bash
-mvn dependency:tree | grep bucket4j
-mvn dependency:tree | grep caffeine
-```
+This will show:
+- Rate limit checks and results
+- Bucket creation and expiration
+- Metrics recording
 
-### Issue: Legitimate users getting blocked
+## Implementation Files
 
-**Solution**: Increase rate limit threshold:
-```properties
-ezkey.admin.rate-limit.login.requests=10
-ezkey.admin.rate-limit.login.window-minutes=10
-```
+### Core Components
 
-**Solution**: Increase block threshold:
-```properties
-ezkey.admin.rate-limit.login.block-after-failures=20
-```
+- `RateLimitService.java` - API key operations rate limiting
+- `AdminOperationsRateLimitService.java` - Admin operations rate limiting  
+- `AdminRateLimitFilter.java` - Admin login rate limiting
+- `ApiKeyRateLimitProperties.java` - API key configuration
+- `AdminOperationsRateLimitProperties.java` - Admin operations configuration
 
-### Issue: IP detection incorrect behind proxy
+### Configuration
 
-**Solution**: Configure proxy to set correct headers
+- `ApiKeyRateLimitConfig.java` - API key Spring configuration
+- `AdminOperationsRateLimitConfig.java` - Admin operations Spring configuration
+- `AdminRateLimitConfig.java` - Admin login Spring configuration
+- `application.properties` - External configuration
 
-For nginx:
-```nginx
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Real-IP $remote_addr;
-```
+### Controllers
 
-For Apache:
-```apache
-RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}e"
-RequestHeader set X-Real-IP "%{REMOTE_ADDR}e"
-```
-
-### Issue: Rate limit persists after restart
-
-**Note**: Rate limit state is stored in memory and **resets on application restart**. This is by design for simplicity and security.
+- `AuthAttemptController.java` - Rate limiting for auth attempts
+- `ApiKeyController.java` - Rate limiting for API key creation
+- `AdminEnrollmentController.java` - Rate limiting for enrollment reset
 
 ## Future Enhancements
 
-Planned improvements for future phases:
+### Priority 2 Endpoints
 
-1. **Distributed rate limiting** - Redis backend for multi-instance deployments
-2. **Advanced strategies** - Username-based, session-based rate limiting
-3. **Whitelist/Blacklist** - Permanent IP allow/block lists
-4. **Metrics API** - Expose rate limit metrics via Actuator
-5. **Dynamic configuration** - Update limits without restart
+Future rate limiting for additional endpoints:
+- `EnrollmentController` - Enrollment management
+- `IntegrationController` - Integration management
+- `AuditLogController` - Audit log queries
 
-## Security Best Practices
+### Advanced Features
 
-1. ✅ **Always enable in production**: `ezkey.admin.rate-limit.enabled=true`
-2. ✅ **Deploy behind trusted proxy**: Configure X-Forwarded-For correctly
-3. ✅ **Monitor blocked IPs**: Set up alerts for security incidents
-4. ✅ **Adjust limits per environment**: Stricter in production
-5. ✅ **Regular security audits**: Review rate limit effectiveness
+- **Distributed Rate Limiting**: Redis-backed buckets for multi-instance
+- **Dynamic Configuration**: Runtime configuration updates
+- **Advanced Metrics**: Custom dashboards and alerting
+- **Rate Limit Headers**: Standard rate limit headers in responses
 
-## References
+## Conclusion
 
-- [Bucket4j Documentation](https://bucket4j.com/)
-- [Caffeine Cache](https://github.com/ben-manes/caffeine)
-- [OWASP Brute Force Prevention](https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks)
-- [Token Bucket Algorithm](https://en.wikipedia.org/wiki/Token_bucket)
+The Ezkey Admin API rate limiting implementation provides comprehensive protection against abuse while maintaining high performance and configurability. The Bucket4j-based approach ensures smooth rate limiting with burst capacity, while the three-tier system provides appropriate protection for different types of operations.
 
----
-
-**Version**: 1.0  
-**Last Updated**: 2025-10-03  
-**Status**: Production Ready
-
-
+The implementation follows the 80/20 principle - providing 80% of the security benefits with 20% of the complexity, making it suitable for production use while remaining maintainable and understandable.

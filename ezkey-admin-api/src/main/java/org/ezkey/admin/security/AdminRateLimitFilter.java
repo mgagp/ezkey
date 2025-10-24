@@ -14,6 +14,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -73,6 +74,7 @@ public class AdminRateLimitFilter implements Filter {
   private static final String LOGIN_ENDPOINT_PATH = "/api/v1/admin/auth/login";
 
   private final AdminRateLimitProperties properties;
+  private final MeterRegistry meterRegistry;
   private final Cache<String, Bucket> bucketCache;
   private final ConcurrentHashMap<String, AtomicInteger> failureCountMap;
   private final ConcurrentHashMap<String, Long> blockedUntilMap;
@@ -81,9 +83,11 @@ public class AdminRateLimitFilter implements Filter {
    * Constructs the rate limiting filter with configuration properties.
    *
    * @param properties the rate limiting configuration properties
+   * @param meterRegistry the metrics registry for monitoring
    */
-  public AdminRateLimitFilter(AdminRateLimitProperties properties) {
+  public AdminRateLimitFilter(AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
     this.properties = properties;
+    this.meterRegistry = meterRegistry;
 
     // Cache buckets for 1 hour with maximum 1000 entries
     this.bucketCache =
@@ -121,6 +125,9 @@ public class AdminRateLimitFilter implements Filter {
         logger.warn(
             "Blocked IP attempting login: {} - Retry after {} seconds", clientId, retryAfter);
 
+        // Record metrics
+        meterRegistry.counter("rate_limit.ip_blocked.total").increment();
+
         res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         res.setHeader("Retry-After", String.valueOf(Math.max(1, retryAfter)));
         res.setHeader("X-Rate-Limit-Reason", "IP blocked due to too many failed attempts");
@@ -135,6 +142,9 @@ public class AdminRateLimitFilter implements Filter {
             "Rate limit exceeded for IP: {} - Retry after {} seconds",
             clientId,
             result.retryAfterSeconds);
+
+        // Record metrics
+        meterRegistry.counter("rate_limit.login_blocked.total").increment();
 
         res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));

@@ -23,12 +23,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native';
 import ExpoCryptoNative from './modules/expo-crypto-native';
+import * as Crypto from 'expo-crypto';
 import AuthApiService from './src/services/AuthApiService';
 import StorageService from './src/storage/StorageService';
 
 export default function App() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [moduleReady, setModuleReady] = useState(false);
   
   // Step 1 - Enrollment
   const [enrollmentId, setEnrollmentId] = useState('');
@@ -45,7 +47,19 @@ export default function App() {
   const [authChallengeResponse, setAuthChallengeResponse] = useState('');
 
   useEffect(() => {
-    checkExistingEnrollments();
+    // Check if native module is available
+    console.log('Checking ExpoCryptoNative module...');
+    if (ExpoCryptoNative && typeof ExpoCryptoNative.generateRsaKeyPair === 'function') {
+      console.log('✅ ExpoCryptoNative module is ready');
+      setModuleReady(true);
+      checkExistingEnrollments();
+    } else {
+      console.error('❌ ExpoCryptoNative module NOT available');
+      Alert.alert(
+        'Module Error',
+        'Crypto module not loaded. Please rebuild the app with: npx expo run:android'
+      );
+    }
   }, []);
 
   const checkExistingEnrollments = async () => {
@@ -82,8 +96,15 @@ export default function App() {
         language: 'en'
       });
 
+      // Debug: Verify module is loaded
+      console.log('ExpoCryptoNative:', ExpoCryptoNative);
+      console.log('Available methods:', Object.keys(ExpoCryptoNative || {}));
+
       // Generate device keys
+      console.log('Calling generateRsaKeyPair...');
       const keyPair = ExpoCryptoNative.generateRsaKeyPair(2048);
+      console.log('KeyPair generated:', keyPair ? 'SUCCESS' : 'NULL');
+      console.log('KeyPair keys:', keyPair ? Object.keys(keyPair) : 'N/A');
 
       // Store enrollment data
       const enrollment = {
@@ -123,6 +144,11 @@ export default function App() {
 
     setLoading(true);
     try {
+      // Debug: Check enrollmentData
+      console.log('enrollmentData:', enrollmentData ? 'EXISTS' : 'NULL');
+      console.log('enrollmentData keys:', enrollmentData ? Object.keys(enrollmentData) : 'N/A');
+      console.log('Has devicePrivateKey:', enrollmentData?.devicePrivateKey ? 'YES' : 'NO');
+
       // Sign the enrollment proof token
       const enrollmentProofTokenSigned = ExpoCryptoNative.generateSignature(
         enrollmentData.enrollmentProofToken,
@@ -294,6 +320,12 @@ export default function App() {
                   onChangeText={setEnrollmentProofToken}
                   editable={!loading}
                 />
+                
+                {/* Version indicator for debugging */}
+                <Text style={styles.debugText}>
+                  🔧 Debug Build - Oct 18, 2025 (Crypto Module Fixed)
+                </Text>
+                
                 <TouchableOpacity
                   style={[styles.button, loading && styles.buttonDisabled]}
                   onPress={handleEnrollmentBind}
@@ -636,5 +668,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginVertical: 3,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#FF9800',
+    textAlign: 'center',
+    marginVertical: 10,
+    fontWeight: '600',
   },
 });

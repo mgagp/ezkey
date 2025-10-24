@@ -26,6 +26,8 @@ import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.service.ApiKeyService;
+import org.ezkey.admin.security.AdminOperationsRateLimitService;
+import org.ezkey.exception.RateLimitExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -82,14 +84,17 @@ public class ApiKeyController {
   private static final Logger logger = LoggerFactory.getLogger(ApiKeyController.class);
 
   private final ApiKeyService apiKeyService;
+  private final AdminOperationsRateLimitService adminOpsRateLimitService;
 
   /**
    * Constructs a new ApiKeyController.
    *
    * @param apiKeyService the API key service
+   * @param adminOpsRateLimitService the admin operations rate limiting service
    */
-  public ApiKeyController(ApiKeyService apiKeyService) {
+  public ApiKeyController(ApiKeyService apiKeyService, AdminOperationsRateLimitService adminOpsRateLimitService) {
     this.apiKeyService = apiKeyService;
+    this.adminOpsRateLimitService = adminOpsRateLimitService;
   }
 
   /**
@@ -146,6 +151,12 @@ public class ApiKeyController {
 
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
+    
+    // Check rate limiting for admin operations
+    String adminId = currentAdmin.getUsername();
+    if (!adminOpsRateLimitService.canCreateApiKey(adminId)) {
+      throw new RateLimitExceededException("API_KEY_CREATE", 5, 0, 15);
+    }
 
     try {
       // Create API key via service
@@ -174,6 +185,9 @@ public class ApiKeyController {
           result.getApiKeyId(),
           request.integrationId(),
           currentAdmin.getUsername());
+
+      // Record successful operation for rate limiting
+      adminOpsRateLimitService.recordCreateApiKey(adminId);
 
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
