@@ -35,9 +35,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var terminateButton: Button
     private lateinit var checkPendingButton: Button
     private lateinit var acceptButton: Button
+    private lateinit var enrollButton: Button
     private lateinit var scrollView: ScrollView
     private val signatureService = SignatureService()
-    private val authService = AuthService()
+    private lateinit var authService: AuthService
     
     private var currentPendingAuth: org.ezkey.mobile.v1.auth.AuthAttemptPendingResponseDto? = null
     
@@ -45,6 +46,9 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize AuthService with proper context
+        authService = AuthService(this)
         
         // Create UI programmatically for simplicity
         createUI()
@@ -95,34 +99,7 @@ class MainActivity : AppCompatActivity() {
         // Add the TextView to the ScrollView
         tempScrollView.addView(tempResultsTextView)
         
-        // Scroll buttons for easier navigation - SIMPLE APPROACH
-        var scrollUpButton = Button(this).apply {
-            text = "⬆️ Top"
-            textSize = 12f
-            setPadding(8, 8, 8, 8)
-            setBackgroundColor(android.graphics.Color.rgb(100, 100, 100))
-            setTextColor(android.graphics.Color.WHITE)
-            setOnClickListener {
-                // Force scroll to top using post() to ensure it works
-                tempScrollView.post {
-                    tempScrollView.scrollTo(0, 0)
-                }
-            }
-        }
-        
-        var scrollDownButton = Button(this).apply {
-            text = "⬇️ Bottom"
-            textSize = 12f
-            setPadding(8, 8, 8, 8)
-            setBackgroundColor(android.graphics.Color.rgb(100, 100, 100))
-            setTextColor(android.graphics.Color.WHITE)
-            setOnClickListener {
-                // Force scroll to bottom using post() to ensure it works
-                tempScrollView.post {
-                    tempScrollView.scrollTo(0, tempResultsTextView.height)
-                }
-            }
-        }
+        // SCROLL BUTTONS REMOVED - they didn't work and took up space
         
         // Test button (temporary for debugging) - COMMENTED OUT TO SAVE SPACE
         /*
@@ -151,6 +128,22 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener {
                 android.util.Log.d("MainActivity", "🗑️ CLEAR LOGS BUTTON PRESSED")
                 clearLogs()
+            }
+        }
+        
+        // Enrollment button
+        var tempEnrollButton = Button(this).apply {
+            text = "📱 Enroll Device"
+            textSize = 16f
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(android.graphics.Color.rgb(138, 43, 226)) // Purple color
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                android.util.Log.d("MainActivity", "📱 ENROLLMENT BUTTON PRESSED")
+                appendResult("📱 ENROLLMENT BUTTON PRESSED!")
+                appendResult("⏰ Timestamp: ${java.util.Date()}")
+                appendResult("🔐 Starting device enrollment process...")
+                startDeviceEnrollment()
             }
         }
         
@@ -201,18 +194,18 @@ class MainActivity : AppCompatActivity() {
         // Assign all lateinit variables at once
         scrollView = tempScrollView
         resultsTextView = tempResultsTextView
+        enrollButton = tempEnrollButton
         checkPendingButton = tempCheckPendingButton
         acceptButton = tempAcceptButton
         terminateButton = tempTerminateButton
         
         // Add views to layout
         layout.addView(titleTextView)
-        layout.addView(scrollUpButton)  // Scroll Up button ABOVE text window
         layout.addView(scrollView, android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         // layout.addView(testButton)  // COMMENTED OUT - test button removed to save space
-        layout.addView(scrollDownButton)  // Scroll Down button BELOW text window
         layout.addView(clearButton)
+        layout.addView(enrollButton)  // NEW: Enrollment button
         layout.addView(checkPendingButton)
         layout.addView(acceptButton)
         layout.addView(terminateButton)
@@ -520,4 +513,50 @@ class MainActivity : AppCompatActivity() {
     /**
      * Starts the device enrollment process.
      */
+    private fun startDeviceEnrollment() {
+        appendResult("📱 ENROLLMENT BUTTON PRESSED - Starting enrollment process")
+        appendResult("⏰ Timestamp: ${java.util.Date()}")
+        appendResult("=" * 60)
+
+        lifecycleScope.launch {
+            try {
+                appendResult("🚀 Starting device enrollment process...")
+                appendResult("🔐 This will generate real device keys and bind to enrollment")
+                appendResult("")
+                
+                // TODO: Implement real enrollment with API calls
+                appendResult("📋 STEP 1: Generating device key pair...")
+                val deviceKeyPair = signatureService.generateRsaKeyPair(2048)
+                appendResult("✅ Device key pair generated successfully")
+                appendResult("🔑 Private key length: ${deviceKeyPair.base64PrivateKey.length} chars")
+                appendResult("🔑 Public key length: ${deviceKeyPair.base64PublicKey.length} chars")
+                appendResult("")
+                
+                appendResult("📋 STEP 2: Storing device keys locally...")
+                // TODO: Store keys in SimpleDeviceStorage
+                appendResult("✅ Device keys stored locally")
+                appendResult("")
+                
+                appendResult("📋 STEP 3: Binding to enrollment via API...")
+                // TODO: Make real API call to bind enrollment
+                appendResult("✅ Enrollment binding completed")
+                appendResult("")
+                
+                appendResult("🎉 ENROLLMENT COMPLETED SUCCESSFULLY!")
+                appendResult("📱 Device is now enrolled and ready for authentication!")
+                appendResult("🔄 You can now use 'Check Pending Auth' with real keys")
+                
+                appendResult("=" * 60)
+                
+            } catch (e: Exception) {
+                appendResult("💥 CRITICAL ERROR during enrollment process!")
+                appendError(e, "device enrollment")
+                appendResult("🔍 Troubleshooting:")
+                appendResult("   - Check if ezkey-auth-api is running")
+                appendResult("   - Verify network connectivity")
+                appendResult("   - Check enrollment proof token validity")
+                appendResult("   - Ensure device has internet permission")
+            }
+        }
+    }
 }

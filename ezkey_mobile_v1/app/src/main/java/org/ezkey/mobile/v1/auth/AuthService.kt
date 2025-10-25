@@ -10,6 +10,7 @@
 
 package org.ezkey.mobile.v1.auth
 
+import android.content.Context
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.ezkey.mobile.v1.crypto.SignatureService
+import org.ezkey.mobile.v1.storage.SimpleDeviceStorage
 import org.json.JSONObject
 import java.security.PrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
@@ -34,19 +36,19 @@ import java.nio.charset.StandardCharsets
  * 
  * @since 2025
  */
-class AuthService {
+class AuthService(private val context: Context) {
     
     companion object {
         private const val BASE_URL = "https://goateed-katalina-monsoonal.ngrok-free.dev"
-        private const val ENROLLMENT_ID = 3 // Hard-coded for POC
         private const val MEDIA_TYPE_JSON = "application/json; charset=utf-8"
     }
     
     private val httpClient = OkHttpClient()
     private val signatureService = SignatureService()
+    private val deviceStorage = SimpleDeviceStorage(context)
     
-    // Hard-coded values from 24.json for POC
-    private val devicePrivateKeyBase64 = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDxjNnamFBMhTNoTDZ6AU3KNcv8+TpBM14TzxaB1KOzf9WdbhALONm2uyuEMW5jehHLLnEOLJ2eMSBQ/AKjd3NpgvbfgrvRzslqCWJpp/HVGLQlmVaG+xjUW6vQNd3tSmGVXn60Y368VHybgzULWczD1rlgVQJJQwnrCEW72HiFimbQ6RpPKRA/GRZAJXyf7HZ/e42D5dOxUBgNWloMPy0uvmDAtep5GyEGmCUCY89ntfrrhuso06fArLwyWLdgton+TV5manpPU3haWWEasJFicXaqIBJbw9CordRGXjRDIUWDpxmxoa38G0VvQBQeatnf7jjN0lQ31Bavzk5CiM/NAgMBAAECggEADaQLpXmWh0u6ZHhxVyB9uR6in22fqZDyDiJSvhA5Emj0skhF5axXNyeIxJVaC4oYOSYtQkSovgc+MPSaXYrgXKQFtweV/bo0y6UuBpNyZ7tWaQ0owsSpWUy3/jEckEr0CdBlTWCVBqOqycl2FGcE1kZo/5StZV/AzqIP9hS6cagMH9oYqmA8jIzPCm2hb8+ctF+BV3/AH+Qhwt81rOK65lEwf0PVF5i5uyQAwPKM2Pdm3P1utlh9HZJSh80Gt+7FEG1SGUdncnEOEmMtLIT32U2qSS0bkdsviKjzNk6eG/9BkVS+arEekH3wpgq+7g2QuxBvk7uY8YHMk7s/q/JyLQKBgQDyQu8+UvxOGN1jAxrLcL+33BZiaUWCgcfb40avTFQMEnQjq9dDeATaOhHLSsQ6mPDZ7LjTbCNrGa2fCR/NOXPntzqvl67ph1CkBIfT7ObQCVvt2AVeyoH/uUex/PSR7uzaKHb29E26L/7qU4tkIaGAtU3utJx4Nca+M5YCzQd+lwKBgQD/P5cvt8WhYJaeVSLF1fEDz03O9/cm8oGMrbXVfY5RP/nOYJawukTf85/htbwX/QchG0hoIOcOplf9rg9yE4NO+5TTScCQlZ7F/ICVSvfd09OBSseTeYxslFZNgCNlsWva4zmPcgiJ7JYEXqK0f1idiFczd9LUZFx4iyw7ML3VOwKBgQC9eX5Wd18f0bCs9MurG7bGnRrgw0b7KHfg0aQCDKebfX9aOtc0zJS2/T3XitVoox+UweFYcjZNWJsDTIaT4wB01UjP9sl1mkCG14hIRvvK79b3ccHZfncoQ4gAfD/oNz8F7SoGQdLc8RblvIvDt83xtVuLe7T5C84yCnSkIilfZwKBgHws6JVLVzciMURH8MnEQiNzV8wnsDJfag0ReVOqaHE4qYPwU38Yr2cwM4jwC9izvSMrDbeywhXLcSU158e8nHXxSL7ds3PjhkGVjMyUky903QGaaqthR6KPK8k6XH4dqXXsc1VIycSnt3favlcHWQoSiTG9ynCPfrkaI+OL295/AoGBAM/SHCiMPexN8rtBQcAop//mRtwvA8wdPpwbVSiLctSXFoDyW2raiKYCGJ5J3V/TmjwBsFvhEhEBQqoq3nlnxbq3o+glsyM/zg/OE3d2uj8wIltDRKBT0v60hZSFM+0BiBg1rIFHX/fM4toQET3gEIcRhmnneNyIUCS0hLZ9PlB+"
+    // Fallback hard-coded values if no stored keys
+    private val fallbackDevicePrivateKeyBase64 = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDxjNnamFBMhTNoTDZ6AU3KNcv8+TpBM14TzxaB1KOzf9WdbhALONm2uyuEMW5jehHLLnEOLJ2eMSBQ/AKjd3NpgvbfgrvRzslqCWJpp/HVGLQlmVaG+xjUW6vQNd3tSmGVXn60Y368VHybgzULWczD1rlgVQJJQwnrCEW72HiFimbQ6RpPKRA/GRZAJXyf7HZ/e42D5dOxUBgNWloMPy0uvmDAtep5GyEGmCUCY89ntfrrhuso06fArLwyWLdgton+TV5manpPU3haWWEasJFicXaqIBJbw9CordRGXjRDIUWDpxmxoa38G0VvQBQeatnf7jjN0lQ31Bavzk5CiM/NAgMBAAECggEADaQLpXmWh0u6ZHhxVyB9uR6in22fqZDyDiJSvhA5Emj0skhF5axXNyeIxJVaC4oYOSYtQkSovgc+MPSaXYrgXKQFtweV/bo0y6UuBpNyZ7tWaQ0owsSpWUy3/jEckEr0CdBlTWCVBqOqycl2FGcE1kZo/5StZV/AzqIP9hS6cagMH9oYqmA8jIzPCm2hb8+ctF+BV3/AH+Qhwt81rOK65lEwf0PVF5i5uyQAwPKM2Pdm3P1utlh9HZJSh80Gt+7FEG1SGUdncnEOEmMtLIT32U2qSS0bkdsviKjzNk6eG/9BkVS+arEekH3wpgq+7g2QuxBvk7uY8YHMk7s/q/JyLQKBgQDyQu8+UvxOGN1jAxrLcL+33BZiaUWCgcfb40avTFQMEnQjq9dDeATaOhHLSsQ6mPDZ7LjTbCNrGa2fCR/NOXPntzqvl67ph1CkBIfT7ObQCVvt2AVeyoH/uUex/PSR7uzaKHb29E26L/7qU4tkIaGAtU3utJx4Nca+M5YCzQd+lwKBgQD/P5cvt8WhYJaeVSLF1fEDz03O9/cm8oGMrbXVfY5RP/nOYJawukTf85/htbwX/QchG0hoIOcOplf9rg9yE4NO+5TTScCQlZ7F/ICVSvfd09OBSseTeYxslFZNgCNlsWva4zmPcgiJ7JYEXqK0f1idiFczd9LUZFx4iyw7ML3VOwKBgQC9eX5Wd18f0bCs9MurG7bGnRrgw0b7KHfg0aQCDKebfX9aOtc0zJS2/T3XitVoox+UweFYcjZNWJsDTIaT4wB01UjP9sl1mkCG14hIRvvK79b3ccHZfncoQ4gAfD/oNz8F7SoGQdLc8RblvIvDt83xtVuLe7T5C84yCnSkIilfZwKBgHws6JVLVzciMURH8MnEQiNzV8wnsDJfag0ReVOqaHE4qYPwU38Yr2cwM4jwC9izvSMrDbeywhXLcSU158e8nHXxSL7ds3PjhkGVjMyUky903QGaaqthR6KPK8k6XH4dqXXsc1VIycSnt3favlcHWQoSiTG9ynCPfrkaI+OL295/AoGBAM/SHCiMPexN8rtBQcAop//mRtwvA8wdPpwbVSiLctSXFoDyW2raiKYCGJ5J3V/TmjwBsFvhEhEBQqoq3nlnxbq3o+glsyM/zg/OE3d2uj8wIltDRKBT0v60hZSFM+0BiBg1rIFHX/fM4toQET3gEIcRhmnneNyIUCS0hLZ9PlB+"
 
     /**
      * Checks for pending authentication requests for the hard-coded enrollment.
@@ -65,17 +67,32 @@ class AuthService {
             
             // Sign the proof token with device private key
             android.util.Log.d("AuthService", "📋 STEP 2: Signing proof token with device private key...")
-            val devicePrivateKey = decodePrivateKey(devicePrivateKeyBase64)
-            val deviceProofTokenSigned = signatureService.generateSignature(deviceProofToken, devicePrivateKeyBase64)
+            
+            // Get device private key from storage or use fallback
+            val devicePrivateKey = deviceStorage.getDevicePrivateKey() ?: fallbackDevicePrivateKeyBase64
+            android.util.Log.d("AuthService", "🔑 Using ${if (deviceStorage.getDevicePrivateKey() != null) "stored" else "fallback"} device key")
+            
+            val deviceProofTokenSigned = signatureService.generateSignature(deviceProofToken, devicePrivateKey)
             android.util.Log.d("AuthService", "✅ Proof token signed: ${deviceProofTokenSigned.take(50)}...")
             
             // Prepare request payload
             android.util.Log.d("AuthService", "📋 STEP 3: Preparing request payload...")
-            val enrollmentProofToken = "wiHKoa-qVqSdj83Kg8kTnfWHUJkjOC-eKMVqNMiPAHY.1761340112663.JEypt05tUml7wyyQBDp9XQ" // Hard-coded for POC
+            
+            // Get enrollment data from storage or use fallback
+            val enrollmentId = if (deviceStorage.isDeviceEnrolled()) {
+                deviceStorage.getEnrollmentId()
+            } else {
+                3 // Fallback enrollment ID
+            }
+            
+            val enrollmentProofToken = deviceStorage.getEnrollmentProofToken() 
+                ?: "wiHKoa-qVqSdj83Kg8kTnfWHUJkjOC-eKMVqNMiPAHY.1761340112663.JEypt05tUml7wyyQBDp9XQ" // Fallback
+            
+            android.util.Log.d("AuthService", "🎫 Enrollment ID: $enrollmentId")
             android.util.Log.d("AuthService", "🎫 Enrollment Proof Token: ${enrollmentProofToken.take(20)}...")
             
             val requestPayload = JSONObject().apply {
-                put("enrollmentId", ENROLLMENT_ID)
+                put("enrollmentId", enrollmentId)
                 put("enrollmentProofToken", enrollmentProofToken)
                 put("deviceProofToken", deviceProofToken)
                 put("deviceProofTokenSigned", deviceProofTokenSigned)
@@ -169,7 +186,12 @@ class AuthService {
             
             // Sign the auth attempt proof token with device private key
             android.util.Log.d("AuthService", "📋 STEP 1: Signing auth attempt proof token...")
-            val authAttemptProofTokenSigned = signatureService.generateSignature(authAttemptProofToken, devicePrivateKeyBase64)
+            
+            // Get device private key from storage or use fallback
+            val devicePrivateKey = deviceStorage.getDevicePrivateKey() ?: fallbackDevicePrivateKeyBase64
+            android.util.Log.d("AuthService", "🔑 Using ${if (deviceStorage.getDevicePrivateKey() != null) "stored" else "fallback"} device key")
+            
+            val authAttemptProofTokenSigned = signatureService.generateSignature(authAttemptProofToken, devicePrivateKey)
             android.util.Log.d("AuthService", "✅ Token signed: ${authAttemptProofTokenSigned.take(50)}...")
             
             // Prepare request payload
