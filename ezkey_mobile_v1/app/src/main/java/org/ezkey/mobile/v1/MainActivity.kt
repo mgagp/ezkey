@@ -12,6 +12,7 @@ package org.ezkey.mobile.v1
 
 import android.os.Bundle
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.ezkey.mobile.v1.crypto.SignatureService
 import org.ezkey.mobile.v1.auth.AuthService
+import org.ezkey.mobile.v1.storage.SimpleDeviceStorage
+import org.ezkey.mobile.v1.enrollment.EnrollmentService
 import kotlin.system.exitProcess
 
 /**
@@ -36,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var checkPendingButton: Button
     private lateinit var acceptButton: Button
     private lateinit var enrollButton: Button
+    private lateinit var challengeEditText: EditText
     private lateinit var scrollView: ScrollView
     private val signatureService = SignatureService()
     private lateinit var authService: AuthService
@@ -131,6 +135,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        // Challenge input field
+        var tempChallengeEditText = EditText(this).apply {
+            hint = "Enter challenge number (e.g., 123456)"
+            textSize = 14f
+            setPadding(16, 12, 16, 12)
+            setBackgroundColor(android.graphics.Color.rgb(50, 50, 50)) // Dark gray
+            setTextColor(android.graphics.Color.WHITE)
+            setHintTextColor(android.graphics.Color.rgb(150, 150, 150)) // Light gray hint
+        }
+        
         // Enrollment button
         var tempEnrollButton = Button(this).apply {
             text = "📱 Enroll Device"
@@ -194,6 +208,7 @@ class MainActivity : AppCompatActivity() {
         // Assign all lateinit variables at once
         scrollView = tempScrollView
         resultsTextView = tempResultsTextView
+        challengeEditText = tempChallengeEditText
         enrollButton = tempEnrollButton
         checkPendingButton = tempCheckPendingButton
         acceptButton = tempAcceptButton
@@ -205,6 +220,7 @@ class MainActivity : AppCompatActivity() {
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         // layout.addView(testButton)  // COMMENTED OUT - test button removed to save space
         layout.addView(clearButton)
+        layout.addView(challengeEditText)  // NEW: Challenge input field
         layout.addView(enrollButton)  // NEW: Enrollment button
         layout.addView(checkPendingButton)
         layout.addView(acceptButton)
@@ -413,9 +429,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 appendResult("🚀 Starting authentication check process...")
-                appendResult("📱 Enrollment ID: 24 (Sue - Garage du coin inc.)")
-                appendResult("🌐 API URL: http://192.168.1.92:8080")
-                appendResult("🔐 Using hard-coded private key from 24.json")
+                appendResult("🔐 Using hard-coded private key")
                 appendResult("")
                 
                 appendResult("📋 STEP 1: Calling authService.checkPendingAuth()...")
@@ -532,14 +546,89 @@ class MainActivity : AppCompatActivity() {
                 appendResult("🔑 Public key length: ${deviceKeyPair.base64PublicKey.length} chars")
                 appendResult("")
                 
-                appendResult("📋 STEP 2: Storing device keys locally...")
-                // TODO: Store keys in SimpleDeviceStorage
-                appendResult("✅ Device keys stored locally")
-                appendResult("")
+                    appendResult("📋 STEP 2: Storing device keys locally...")
+                    // Store keys in SimpleDeviceStorage
+                    val deviceStorage = SimpleDeviceStorage(this@MainActivity)
+                    deviceStorage.storeDevicePrivateKey(deviceKeyPair.base64PrivateKey)
+                    deviceStorage.storeDevicePublicKey(deviceKeyPair.base64PublicKey)
+                    appendResult("✅ Device keys stored locally in SharedPreferences")
+                    appendResult("🔑 Private key stored: ${deviceKeyPair.base64PrivateKey.take(20)}...")
+                    appendResult("🔑 Public key stored: ${deviceKeyPair.base64PublicKey.take(20)}...")
+                    appendResult("")
                 
                 appendResult("📋 STEP 3: Binding to enrollment via API...")
-                // TODO: Make real API call to bind enrollment
-                appendResult("✅ Enrollment binding completed")
+                // Make real API call to bind enrollment
+                try {
+                    val enrollmentService = EnrollmentService() // No Context needed
+                    val enrollmentId = 4 // Hardcoded for POC
+                    val enrollmentProofToken = "ndtQ55aTtZrDBZN0Q2jXD7-VnWdrqB1BeEpJSx-GgrM.1761350820455.Ksc8b-rmbQmAiIKdX7-2Zg" // Hardcoded for POC
+                    
+                    appendResult("🌐 Making API call to /api/v1/enrollments/bind...")
+                    appendResult("📋 Enrollment ID: $enrollmentId")
+                    appendResult("🎫 Proof Token: ${enrollmentProofToken.take(20)}...")
+                    
+                    val result = enrollmentService.bindEnrollment(enrollmentId, enrollmentProofToken)
+                    
+                    if (result != null) {
+                        appendResult("✅ API call successful!")
+                        appendResult("🏢 Integration: ${result.integrationName}")
+                        appendResult("📱 Enrollment: ${result.enrollmentName}")
+                        appendResult("🔑 Public Key: ${result.integrationPublicKey.take(20)}...")
+                        
+                        // Store enrollment data (only 2 parameters supported)
+                        deviceStorage.storeEnrollmentData(
+                            result.enrollmentId,
+                            result.enrollmentProofToken
+                        )
+                        appendResult("💾 Enrollment data stored locally")
+                        appendResult("📋 Note: Additional data (integration name, etc.) not stored in this version")
+                        
+                        // STEP 4: Verify enrollment with device keys
+                        appendResult("")
+                        appendResult("📋 STEP 4: Verifying enrollment with device keys...")
+                        try {
+                            // Get challenge response from user input
+                            val challengeText = challengeEditText.text.toString().trim()
+                            val challengeResponse = if (challengeText.isNotEmpty()) {
+                                challengeText.toIntOrNull() ?: 123456
+                            } else {
+                                123456 // Default fallback
+                            }
+                            
+                            // Sign the enrollment proof token with device private key
+                            val enrollmentProofTokenSigned = signatureService.generateSignature(
+                                result.enrollmentProofToken,
+                                deviceKeyPair.base64PrivateKey
+                            )
+                            
+                            appendResult("🔐 Challenge Response: $challengeResponse ${if (challengeText.isNotEmpty()) "(from input)" else "(default)"}")
+                            appendResult("🔑 Device Public Key: ${deviceKeyPair.base64PublicKey.take(20)}...")
+                            appendResult("✍️ Signed Token: ${enrollmentProofTokenSigned.take(20)}...")
+                            
+                            // Make verify API call
+                            val verifyResult = enrollmentService.verifyEnrollment(
+                                result.enrollmentId,
+                                challengeResponse,
+                                deviceKeyPair.base64PublicKey,
+                                enrollmentProofTokenSigned
+                            )
+                            
+                            if (verifyResult?.active == true) {
+                                appendResult("✅ Enrollment verification successful!")
+                                appendResult("🎉 Device is now fully enrolled and active!")
+                            } else {
+                                appendResult("❌ Enrollment verification failed")
+                            }
+                        } catch (e: Exception) {
+                            appendResult("💥 Verification failed: ${e.message}")
+                        }
+                    } else {
+                        appendResult("❌ API call failed - no response")
+                    }
+                } catch (e: Exception) {
+                    appendResult("💥 API call failed: ${e.message}")
+                    appendResult("🔍 Check if ezkey-auth-api is running on ngrok")
+                }
                 appendResult("")
                 
                 appendResult("🎉 ENROLLMENT COMPLETED SUCCESSFULLY!")
