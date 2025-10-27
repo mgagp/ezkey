@@ -4,11 +4,11 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Test: SimControllerTest
- * Description: Unit tests for SimController endpoints.
+ * Test: CryptoControllerTest
+ * Description: Unit tests for CryptoController endpoints.
  */
 
-package org.ezkey.sim.controller;
+package org.ezkey.crypto.controller;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
-import org.ezkey.sim.config.SecurityConfig;
+import org.ezkey.crypto.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -30,10 +30,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(SimController.class)
+@WebMvcTest(CryptoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(SecurityConfig.class)
-class SimControllerTest {
+class CryptoControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
@@ -44,7 +44,7 @@ class SimControllerTest {
     when(signatureService.generateProofToken()).thenReturn("test-proof-token");
 
     mockMvc
-        .perform(get("/api/v1/sim/prooftoken"))
+        .perform(get("/api/v1/crypto/prooftoken"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.proofToken").value("test-proof-token"));
@@ -56,7 +56,7 @@ class SimControllerTest {
     when(signatureService.generateRsaKeyPair(2048)).thenReturn(keyPair);
 
     mockMvc
-        .perform(get("/api/v1/sim/keypair"))
+        .perform(get("/api/v1/crypto/keypair"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.privateKey").value("test-private-key"))
@@ -70,7 +70,7 @@ class SimControllerTest {
     when(signatureService.generateRsaKeyPair(4096)).thenReturn(keyPair);
 
     mockMvc
-        .perform(get("/api/v1/sim/keypair?keySize=4096"))
+        .perform(get("/api/v1/crypto/keypair?keySize=4096"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.privateKey").value("test-private-key-4096"))
@@ -81,7 +81,7 @@ class SimControllerTest {
   @Test
   void testKeyPairGenerationWithInvalidSize() throws Exception {
     mockMvc
-        .perform(get("/api/v1/sim/keypair?keySize=512"))
+        .perform(get("/api/v1/crypto/keypair?keySize=512"))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));
@@ -101,7 +101,7 @@ class SimControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/sim/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+            post("/api/v1/crypto/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.signature").value("test-signature"))
@@ -121,7 +121,7 @@ class SimControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/sim/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+            post("/api/v1/crypto/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
@@ -143,7 +143,7 @@ class SimControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/sim/validate")
+            post("/api/v1/crypto/validate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isOk())
@@ -169,7 +169,7 @@ class SimControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/sim/validate")
+            post("/api/v1/crypto/validate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isOk())

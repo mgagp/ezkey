@@ -4,11 +4,11 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Handler: SimGlobalExceptionHandler
- * Description: Global exception handler for simulation API error responses.
+ * Handler: CryptoGlobalExceptionHandler
+ * Description: Global exception handler for crypto API error responses.
  */
 
-package org.ezkey.sim.controller;
+package org.ezkey.crypto.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.dto.ErrorResponseDto;
@@ -20,15 +20,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Global exception handler for simulation API error responses.
+ * Global exception handler for crypto API error responses.
  *
- * <p>Provides consistent error handling across all simulation endpoints, converting exceptions to
+ * <p>Provides consistent error handling across all crypto endpoints, converting exceptions to
  * standardized ErrorResponseDto objects.
  *
  * @since 2025
  */
 @RestControllerAdvice
-public class SimGlobalExceptionHandler {
+public class CryptoGlobalExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(

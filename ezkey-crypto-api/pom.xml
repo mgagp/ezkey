@@ -12,9 +12,9 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	
-	<artifactId>ezkey-sim-api</artifactId>
-	<name>Ezkey Simulation API</name>
-	<description>Simulation API for enrollment completion and authentication validation tests</description>
+	<artifactId>ezkey-crypto-api</artifactId>
+	<name>Ezkey Crypto API</name>
+	<description>Crypto API exposing cryptographic functions for testing and integration</description>
 	
 	<dependencies>
 		<!-- Core module dependency -->

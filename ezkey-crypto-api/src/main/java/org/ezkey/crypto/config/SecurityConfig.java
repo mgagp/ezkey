@@ -5,10 +5,10 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: SecurityConfig
- * Description: Spring Security configuration for simulation API.
+ * Description: Spring Security configuration for crypto API.
  */
 
-package org.ezkey.sim.config;
+package org.ezkey.crypto.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,12 +17,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Spring Security configuration for simulation API.
+ * Spring Security configuration for crypto API.
  *
- * <p>This configuration permits all requests to simulation endpoints without authentication since
+ * <p>This configuration permits all requests to crypto endpoints without authentication since
  * this API is intended for development and testing purposes only.
  *
- * <p><b>Warning:</b> This configuration disables all security. The simulation API should NEVER be
+ * <p><b>Warning:</b> This configuration disables all security. The crypto API should NEVER be
  * exposed in production environments.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -39,7 +39,7 @@ public class SecurityConfig {
   /**
    * Security filter chain that permits all requests.
    *
-   * <p>This configuration is appropriate for the simulation API since it's a development tool that
+   * <p>This configuration is appropriate for the crypto API since it's a development tool that
    * should not have authentication barriers.
    *
    * @param http the HttpSecurity configuration

@@ -4,11 +4,11 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Controller: SimController
- * Description: REST controller for simulation API v1 providing crypto services for postman tests.
+ * Controller: CryptoController
+ * Description: REST controller for crypto API v1 providing crypto services for testing.
  */
 
-package org.ezkey.sim.controller;
+package org.ezkey.crypto.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,12 +18,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
-import org.ezkey.sim.dto.ProofTokenResponseDto;
-import org.ezkey.sim.dto.RsaKeyPairResponseDto;
-import org.ezkey.sim.dto.SignDataRequestDto;
-import org.ezkey.sim.dto.SignDataResponseDto;
-import org.ezkey.sim.dto.ValidateSignatureRequestDto;
-import org.ezkey.sim.dto.ValidateSignatureResponseDto;
+import org.ezkey.crypto.dto.ProofTokenResponseDto;
+import org.ezkey.crypto.dto.RsaKeyPairResponseDto;
+import org.ezkey.crypto.dto.SignDataRequestDto;
+import org.ezkey.crypto.dto.SignDataResponseDto;
+import org.ezkey.crypto.dto.ValidateSignatureRequestDto;
+import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,15 +33,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Simulation API", description = "Crypto services for postman and testing tools")
+@Tag(name = "Crypto API", description = "Crypto services for testing and integration")
 @RestController
-@RequestMapping("/api/v1/sim")
-public class SimController {
+@RequestMapping("/api/v1/crypto")
+public class CryptoController {
 
   private final SignatureService signatureService;
 
   @Autowired
-  public SimController(SignatureService signatureService) {
+  public CryptoController(SignatureService signatureService) {
     this.signatureService = signatureService;
   }
 
