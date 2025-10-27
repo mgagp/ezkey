@@ -1,14 +1,29 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Record: IntegrationCreateResponseDto
+ * Description: Response DTO for integration creation in admin API.
+ */
+
+package org.ezkey.integration.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
- * Data Transfer Object (DTO) representing the response after successfully creating a new
- * Integration entity.
+ * Response DTO for integration creation in admin API.
  *
- * <p>This DTO is returned by the API when a new integration is created via the admin interface. It
- * contains the unique identifier of the newly created integration, allowing clients to reference or
- * further interact with the integration resource.
+ * <p>This DTO represents the response data returned when an integration is successfully created
+ * through the admin API. It contains the unique identifier of the newly created integration,
+ * allowing clients to reference or further interact with the integration resource.
  *
- * <p><b>Usage:</b> Used as the response body for POST operations on the integration resource.
+ * <p><b>Usage Context:</b> Returned by admin API when creating integrations. The integration ID can
+ * be used for subsequent operations such as creating API keys, enrollments, or managing integration
+ * settings.
  *
- * <p><b>Example:</b>
+ * <p><b>Example Response:</b>
  *
  * <pre>
  * {
@@ -16,52 +31,17 @@
  * }
  * </pre>
  *
- * @author Ezkey
- * @version 1.0
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * @param id Unique identifier of the newly created integration used to reference this integration in subsequent operations
+ * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateResponse
- * @see org.ezkey.integration.mapper.IntegrationControllerMapper
+ * @see IntegrationCreateRequestDto
  */
-package org.ezkey.integration.dto;
-
-import io.swagger.v3.oas.annotations.media.Schema;
-
-/**
- * Data Transfer Object (DTO) representing the response after successfully creating a new
- * Integration entity.
- *
- * <p>This DTO is returned by the API when a new integration is created via the admin interface. It
- * contains the unique identifier of the newly created integration, allowing clients to reference or
- * further interact with the integration resource.
- *
- * @author Ezkey
- * @version 1.0
- * @since 2025
- * @see org.ezkey.integration.domain.IntegrationCreateResponse
- * @see org.ezkey.integration.mapper.IntegrationControllerMapper
- */
-@Schema(description = "Response DTO for creating new Integration entities")
-public class IntegrationCreateResponseDto {
-
-  /** The unique identifier of the newly created integration. */
-  @Schema(description = "The unique identifier of the newly created integration", example = "42")
-  private Integer id;
-
-  /**
-   * Returns the unique identifier of the newly created integration.
-   *
-   * @return the unique identifier of the newly created integration
-   */
-  public Integer getId() {
-    return id;
-  }
-
-  /**
-   * Sets the unique identifier of the newly created integration.
-   *
-   * @param id the unique identifier of the newly created integration
-   */
-  public void setId(Integer id) {
-    this.id = id;
-  }
-}
+@Schema(description = "Response DTO containing created integration details")
+public record IntegrationCreateResponseDto(
+    @Schema(description = "Unique identifier of the newly created integration", example = "42")
+        Integer id) {}

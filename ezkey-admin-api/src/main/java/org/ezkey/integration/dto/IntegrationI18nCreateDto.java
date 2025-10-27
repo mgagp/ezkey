@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationI18nCreateDto
+ * Record: IntegrationI18nCreateDto
  * Description: Create DTO for integration internationalization data in admin API.
  */
 
@@ -30,85 +30,24 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
+ * @param language Language code for the localized content using standard ISO language codes (e.g., "en", "fr", "es")
+ * @param name Localized name of the integration displayed in the specified language
+ * @param description Localized description of the integration providing detailed information in the specified language
  * @author Ezkey contributors
  * @since 2025
  * @see IntegrationCreateRequestDto
  * @see IntegrationI18nResponseDto
  */
 @Schema(description = "Create DTO for integration internationalization data")
-public class IntegrationI18nCreateDto {
-
-  /**
-   * Language code for the localized content. Uses standard ISO language codes (e.g., "en", "fr",
-   * "es").
-   */
-  @Schema(description = "Language code for the localized content", example = "en", required = true)
-  private String language;
-
-  /** Localized name of the integration. Display name in the specified language. */
-  @Schema(
-      description = "Localized name of the integration",
-      example = "ACME Corporation",
-      required = true)
-  private String name;
-
-  /** Localized description of the integration. Detailed description in the specified language. */
-  @Schema(
-      description = "Localized description of the integration",
-      example = "Secure authentication system for ACME applications")
-  private String description;
-
-  /**
-   * Gets the language code for the localized content.
-   *
-   * @return the language code
-   */
-  public String getLanguage() {
-    return language;
-  }
-
-  /**
-   * Sets the language code for the localized content.
-   *
-   * @param language the language code to set
-   */
-  public void setLanguage(String language) {
-    this.language = language;
-  }
-
-  /**
-   * Gets the localized name of the integration.
-   *
-   * @return the localized name
-   */
-  public String getName() {
-    return name;
-  }
-
-  /**
-   * Sets the localized name of the integration.
-   *
-   * @param name the localized name to set
-   */
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  /**
-   * Gets the localized description of the integration.
-   *
-   * @return the localized description
-   */
-  public String getDescription() {
-    return description;
-  }
-
-  /**
-   * Sets the localized description of the integration.
-   *
-   * @param description the localized description to set
-   */
-  public void setDescription(String description) {
-    this.description = description;
-  }
-}
+public record IntegrationI18nCreateDto(
+    @Schema(description = "Language code for the localized content", example = "en", required = true)
+        String language,
+    @Schema(
+            description = "Localized name of the integration",
+            example = "ACME Corporation",
+            required = true)
+        String name,
+    @Schema(
+            description = "Localized description of the integration",
+            example = "Secure authentication system for ACME applications")
+        String description) {}

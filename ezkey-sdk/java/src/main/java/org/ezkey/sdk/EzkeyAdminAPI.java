@@ -62,16 +62,11 @@ public class EzkeyAdminAPI {
      */
     public IntegrationCreateResponseDto createIntegration(String logo, String name, String description) throws EzkeyException {
         try {
-            IntegrationCreateRequestDto request = new IntegrationCreateRequestDto();
-            request.setLogo(logo);
+            // Create i18n entry using record constructor
+            IntegrationI18nCreateDto i18n = new IntegrationI18nCreateDto("en", name, description);
             
-            // Create i18n entry
-            IntegrationI18nCreateDto i18n = new IntegrationI18nCreateDto();
-            i18n.setLanguage("en");
-            i18n.setName(name);
-            i18n.setDescription(description);
-            
-            request.setI18n(java.util.Arrays.asList(i18n));
+            // Create request using record constructor
+            IntegrationCreateRequestDto request = new IntegrationCreateRequestDto(logo, java.util.Arrays.asList(i18n));
             
             return integrationsApi.create(request);
         } catch (ApiException e) {

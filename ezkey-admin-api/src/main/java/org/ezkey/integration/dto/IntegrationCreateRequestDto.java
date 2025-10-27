@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: IntegrationCreateRequestDto
+ * Record: IntegrationCreateRequestDto
  * Description: Request DTO for creating new Integration entities in admin API.
  */
 
@@ -36,62 +36,18 @@ import java.util.List;
  *
  * <p><b>License:</b> MIT
  *
+ * @param logo URL or path to the integration's logo image displayed in mobile app and web interfaces
+ * @param i18n Optional list of internationalization entries containing localized name and description for different languages
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateRequest
  * @see IntegrationI18nCreateDto
  */
 @Schema(description = "Request DTO for creating new Integration entities")
-public class IntegrationCreateRequestDto {
-
-  /**
-   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
-   */
-  @Schema(
-      description = "URL or path to the integration's logo image",
-      example = "https://example.com/logo.png")
-  private String logo;
-
-  /**
-   * Optional list of internationalization entries. Contains localized name and description for
-   * different languages.
-   */
-  @Schema(description = "List of internationalization entries for multi-language support")
-  private List<IntegrationI18nCreateDto> i18n;
-
-  /**
-   * Gets the URL or path to the integration's logo.
-   *
-   * @return the logo URL/path
-   */
-  public String getLogo() {
-    return logo;
-  }
-
-  /**
-   * Sets the URL or path to the integration's logo.
-   *
-   * @param logo the logo URL/path to set
-   */
-  public void setLogo(String logo) {
-    this.logo = logo;
-  }
-
-  /**
-   * Gets the list of internationalization entries.
-   *
-   * @return the list of i18n entries
-   */
-  public List<IntegrationI18nCreateDto> getI18n() {
-    return i18n;
-  }
-
-  /**
-   * Sets the list of internationalization entries.
-   *
-   * @param i18n the list of i18n entries to set
-   */
-  public void setI18n(List<IntegrationI18nCreateDto> i18n) {
-    this.i18n = i18n;
-  }
-}
+public record IntegrationCreateRequestDto(
+    @Schema(
+            description = "URL or path to the integration's logo image",
+            example = "https://example.com/logo.png")
+        String logo,
+    @Schema(description = "List of internationalization entries for multi-language support")
+        List<IntegrationI18nCreateDto> i18n) {}
