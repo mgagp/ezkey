@@ -92,7 +92,7 @@ Exception                     → HTTP 500 (INTERNAL_SERVER_ERROR)
 - ✅ Handles `NoPendingAuthAttemptException` (domain-specific)
 - ✅ Handles `IllegalStateException` separately (409 CONFLICT)
 
-### Sim API (ezkey-sim-api/SimGlobalExceptionHandler.java)
+### Crypto API (ezkey-crypto-api/CryptoGlobalExceptionHandler.java)
 
 ```java
 @ExceptionHandler Mappings:
@@ -279,8 +279,8 @@ throw new IllegalStateException("Enrollment binding failed");
 
 ### Current Mapping (Across All APIs)
 
-| Exception Type | Admin API | Auth API | Sim API | Consistency |
-|----------------|-----------|----------|---------|-------------|
+| Exception Type | Admin API | Auth API | Crypto API | Consistency |
+|----------------|-----------|----------|------------|-------------|
 | ResourceNotFoundException | 404 | 404 | ❌ Missing | ⚠️ Inconsistent |
 | NoPendingAuthAttemptException | ❌ Not used | 204 | ❌ Not used | ✅ Consistent where used |
 | IllegalArgumentException | 400 | 400 | 400 | ✅ Consistent |
@@ -579,7 +579,7 @@ public ResponseEntity<ErrorResponseDto> handleAuthenticationException(
 
 **Impact:** Centralized authentication error handling, consistent 401 responses
 
-#### 3. Sim API - Add ResourceNotFoundException Handler
+#### 3. Crypto API - Add ResourceNotFoundException Handler
 
 **Add:**
 ```java

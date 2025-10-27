@@ -1,65 +1,21 @@
 {
 	"info": {
-		"_postman_id": "8ba6663c-3153-4378-b8f1-13ac06b3caa9",
-		"name": "EZ Key Enrollments auth",
+		"_postman_id": "08a84ba3-92f8-4909-8a62-c4aae770e1cd",
+		"name": "EZ Key crypto",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
 	"item": [
 		{
-			"name": "1 bind ID",
+			"name": "proof token",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
 							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
-							"pm.environment.set(\"integrationPublicKey\", jsonData.integrationPublicKey);\r",
-							"pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"enrollmentProofToken\": \"{{enrollmentProofToken}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url}}/api/v1/enrollments/bind",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments",
-						"bind"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "2 sim generate device keypair",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"device_privateKey\", jsonData.privateKey);\r",
-							"pm.environment.set(\"device_publicKey\", jsonData.publicKey);"
+							"pm.environment.set(\"proofToken\", jsonData.proofToken);\r",
+							""
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -70,14 +26,48 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/keypair",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/prooftoken",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
+						"prooftoken"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "key pair",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"privateKey\", jsonData.privateKey);\r",
+							"pm.environment.set(\"publicKey\", jsonData.publicKey);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/keypair",
+					"host": [
+						"{{base_url_crypto_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"crypto",
 						"keypair"
 					]
 				}
@@ -85,14 +75,14 @@
 			"response": []
 		},
 		{
-			"name": "3 sim generate enrollment proof token signature",
+			"name": "sign",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
 							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"
+							"pm.environment.set(\"signature\", jsonData.signature);"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -104,7 +94,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"data\": \"{{enrollmentProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+					"raw": "{\r\n    \"data\": \"{{data}}\",\r\n    \"privateKey\": \"{{privateKey}}\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -112,14 +102,14 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"sign"
 					]
 				}
@@ -127,13 +117,26 @@
 			"response": []
 		},
 		{
-			"name": "4 verify",
+			"name": "validate",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"valid\", jsonData.valid);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeResponse\": {{enrollmentChallenge}},\r\n    \"devicePublicKey\": \"{{device_publicKey}}\",\r\n    \"enrollmentProofTokenSigned\": \"{{enrollment_proofkey_signature}}\"\r\n}",
+					"raw": "{\r\n    \"data\": \"{{data}}\",\r\n    \"signature\": \"{{signature}}\",\r\n    \"publicKey\": \"{{publicKey}}\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -141,15 +144,15 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url}}/api/v1/enrollments/verify",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
 					"host": [
-						"{{base_url}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"enrollments",
-						"verify"
+						"crypto",
+						"validate"
 					]
 				}
 			},
@@ -176,6 +179,13 @@
 					""
 				]
 			}
+		}
+	],
+	"variable": [
+		{
+			"key": "data",
+			"value": "salut",
+			"type": "string"
 		}
 	]
 }

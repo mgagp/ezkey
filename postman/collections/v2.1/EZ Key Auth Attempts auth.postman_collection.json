@@ -26,7 +26,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/prooftoken",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/prooftoken",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -68,7 +68,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -156,7 +156,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/validate",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/validate",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -198,7 +198,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
 					"host": [
 						"{{base_url_sim_api}}"
 					],

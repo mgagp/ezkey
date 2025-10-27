@@ -1,0 +1,30 @@
+{
+  "name": "sign",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/sign",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"signature\", jsonData.signature);"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\r\n    \"data\": \"{{data}}\",\r\n    \"privateKey\": \"{{privateKey}}\"\r\n}",
+    "bodyContainer": {
+      "text": "{\r\n    \"data\": \"{{data}}\",\r\n    \"privateKey\": \"{{privateKey}}\"\r\n}"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

@@ -13,6 +13,6 @@ from .auth import auth
 from .configure import configure
 from .database import database, db
 from .openapi import openapi
-from .sim import sim
+from .crypto import crypto
 
-__all__ = ["admin", "auth", "configure", "database", "db", "openapi", "sim"]
+__all__ = ["admin", "auth", "configure", "database", "db", "openapi", "crypto"]

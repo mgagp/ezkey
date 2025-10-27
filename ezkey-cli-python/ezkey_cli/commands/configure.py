@@ -24,14 +24,14 @@ def configure_group(ctx):
 @configure_group.command('set')
 @click.option('--admin-url', help='Admin API URL')
 @click.option('--auth-url', help='Auth API URL')
-@click.option('--sim-url', help='Sim API URL')
+@click.option('--crypto-url', help='Crypto API URL')
 @click.option('--java-path', help='Path to Java executable')
 @click.option('--ezkey-core-path', help='Path to ezkey-core JAR file')
 @click.option('--timeout', type=int, help='Request timeout in milliseconds')
 @click.option('--pretty-print', type=bool, help='Enable pretty printing (true/false)')
 @click.option('--global', 'global_config', is_flag=True, help='Save to global configuration (home directory)')
 @click.pass_context
-def set_config(ctx, admin_url, auth_url, sim_url, java_path, ezkey_core_path, 
+def set_config(ctx, admin_url, auth_url, crypto_url, java_path, ezkey_core_path, 
                timeout, pretty_print, global_config):
     """Set configuration values."""
     config: ConfigManager = ctx.obj['config']
@@ -42,8 +42,8 @@ def set_config(ctx, admin_url, auth_url, sim_url, java_path, ezkey_core_path,
         updates['adminUrl'] = admin_url
     if auth_url is not None:
         updates['authUrl'] = auth_url
-    if sim_url is not None:
-        updates['simUrl'] = sim_url
+    if crypto_url is not None:
+        updates['cryptoUrl'] = crypto_url
     if java_path is not None:
         updates['javaPath'] = java_path
     if ezkey_core_path is not None:
@@ -129,14 +129,14 @@ def interactive_config(ctx):
     # Get current values
     current_admin_url = config.get('adminUrl', 'http://localhost:9080')
     current_auth_url = config.get('authUrl', 'http://localhost:8080')
-    current_sim_url = config.get('simUrl', 'http://localhost:8080')
+    current_crypto_url = config.get('cryptoUrl', 'http://localhost:8080')
     current_timeout = config.get('timeout', 30000)
     current_pretty_print = config.get('prettyPrint', True)
     
     # Prompt for values
     admin_url = OutputUtils.prompt(f"Admin API URL", default=current_admin_url)
     auth_url = OutputUtils.prompt(f"Auth API URL", default=current_auth_url)
-    sim_url = OutputUtils.prompt(f"Sim API URL", default=current_sim_url)
+    crypto_url = OutputUtils.prompt(f"Crypto API URL", default=current_crypto_url)
     timeout = click.prompt(f"Request timeout (ms)", default=current_timeout, type=int)
     pretty_print = click.confirm(f"Enable pretty printing", default=current_pretty_print)
     
@@ -145,7 +145,7 @@ def interactive_config(ctx):
     # Update configuration
     config.set('adminUrl', admin_url)
     config.set('authUrl', auth_url)
-    config.set('simUrl', sim_url)
+    config.set('cryptoUrl', crypto_url)
     config.set('timeout', timeout)
     config.set('prettyPrint', pretty_print)
     

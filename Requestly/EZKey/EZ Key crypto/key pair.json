@@ -1,0 +1,21 @@
+{
+  "name": "key pair",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/keypair",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"privateKey\", jsonData.privateKey);\r\nrq.environment.set(\"publicKey\", jsonData.publicKey);"
+    },
+    "method": "GET",
+    "queryParams": [],
+    "headers": [],
+    "body": null,
+    "bodyContainer": {},
+    "contentType": "text/plain",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

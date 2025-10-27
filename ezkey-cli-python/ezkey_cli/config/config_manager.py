@@ -36,7 +36,7 @@ class ConfigManager:
         self._config = {
             "adminUrl": "http://localhost:9080",
             "authUrl": "http://localhost:8080",
-            "simUrl": "http://localhost:8080",
+            "cryptoUrl": "http://localhost:8080",
             "prettyPrint": True,
             "timeout": 30000
         }
@@ -103,7 +103,7 @@ class ConfigManager:
         self._config = {
             "adminUrl": "http://localhost:9080",
             "authUrl": "http://localhost:8080",
-            "simUrl": "http://localhost:8080",
+            "cryptoUrl": "http://localhost:8080",
             "prettyPrint": True,
             "timeout": 30000
         }

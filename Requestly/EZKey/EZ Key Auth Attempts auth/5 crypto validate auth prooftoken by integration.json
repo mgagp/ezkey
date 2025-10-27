@@ -1,0 +1,30 @@
+{
+  "name": "5 crypto validate auth prooftoken by integration",
+  "request": {
+    "type": "http",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/validate",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"valid\", jsonData.valid);"
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [
+      {
+        "id": 0,
+        "key": "Content-Type",
+        "value": "application/json",
+        "isEnabled": true
+      }
+    ],
+    "body": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+    "bodyContainer": {
+      "text": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}"
+    },
+    "contentType": "application/json",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}
