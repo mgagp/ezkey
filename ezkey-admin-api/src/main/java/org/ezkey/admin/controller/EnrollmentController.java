@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -83,20 +84,25 @@ public class EnrollmentController {
 
   private final AuditLogService auditLogService;
 
+  private final QrCodeGeneratorService qrCodeGeneratorService;
+
   /**
    * Constructs the enrollment controller with required dependencies.
    *
    * @param enrollmentService the JPA-based enrollment service
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param qrCodeGeneratorService the QR code generator service
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      QrCodeGeneratorService qrCodeGeneratorService) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
+    this.qrCodeGeneratorService = qrCodeGeneratorService;
   }
 
   /**
@@ -299,6 +305,71 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.notFound().build();
+    }
+  }
+
+  /**
+   * Generates a QR code for enrollment binding.
+   * 
+   * <p>Returns a PNG image containing a QR code with the format:
+   * {@code enrollmentId|enrollmentProofToken}
+   * 
+   * <p>This QR code can be scanned by the Ezkey mobile application to automatically
+   * populate enrollment credentials, eliminating manual entry and reducing errors.
+   * 
+   * <p><b>Example QR Content:</b> {@code 4|abc123def456...}
+   * 
+   * <p><b>Usage in Postman:</b>
+   * <ol>
+   *   <li>Send GET request to {@code /api/v1/enrollments/{id}/qrcode}</li>
+   *   <li>Response will be PNG image that can be viewed directly in Postman</li>
+   *   <li>QR code can be scanned by mobile app or tested with online QR readers</li>
+   * </ol>
+   * 
+   * @param id the enrollment ID
+   * @return ResponseEntity containing PNG image bytes with HTTP 200 status, or 404 if not found
+   */
+  @Operation(
+      summary = "Generate QR code for enrollment",
+      description = "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken)")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
+        @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping("/{id}/qrcode")
+  public ResponseEntity<byte[]> getQrCode(
+      @Parameter(description = "Enrollment ID", example = "4") @PathVariable("id") Integer id) {
+    
+    try {
+      // Get enrollment details
+      var enrollment = enrollmentService.getById(id);
+      
+      // Validate enrollment has proof token
+      if (enrollment.getEnrollmentProofToken() == null || 
+          enrollment.getEnrollmentProofToken().isEmpty()) {
+        return ResponseEntity.badRequest().build();
+      }
+      
+      // Format: enrollmentId|enrollmentProofToken
+      String qrContent = enrollment.getEnrollmentId() + "|" + enrollment.getEnrollmentProofToken();
+      
+      // Generate QR code (300x300 pixels)
+      byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);
+      
+      // Return as PNG image
+      return ResponseEntity.ok()
+          .header("Content-Type", "image/png")
+          .header("Content-Disposition", "inline; filename=enrollment-" + id + "-qrcode.png")
+          .body(qrCodeImage);
+          
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.notFound().build();
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
 }
