@@ -122,7 +122,7 @@ ezkey/
 ├── ezkey-migration/         # Database migration application (Flyway)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080) 
-├── ezkey-sim-api/           # Simulation API for testing (port 8080)
+├── ezkey-crypto-api/        # Crypto API for testing and integration (port 8080)
 ├── ezkey-cli/               # Command Line Interface tool
 ├── ezkey_mobile/            # Mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
@@ -612,7 +612,7 @@ npm run build
 
 ### CLI Features
 
-- **Unified API Access**: Commands for all admin, auth, and simulation APIs
+- **Unified API Access**: Commands for all admin, auth, and crypto APIs
 - **Configuration Management**: Hierarchical config with CLI > current dir > home dir precedence
 - **JSON File Support**: Use `@filename` syntax for complex data input
 - **Database Migrations**: Integrated Flyway migration management

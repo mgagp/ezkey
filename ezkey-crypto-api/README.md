@@ -1,6 +1,6 @@
-# Ezkey Simulation API
+# Ezkey Crypto API
 
-The Ezkey Simulation API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities.
+The Ezkey Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities.
 
 ## Purpose
 
@@ -9,12 +9,12 @@ Postman and similar testing tools cannot easily:
 - Sign data with private keys  
 - Validate digital signatures
 
-This simulation API exposes these crypto primitives as REST endpoints, enabling complete end-to-end testing of the Ezkey authentication flows.
+This crypto API exposes these crypto primitives as REST endpoints, enabling complete end-to-end testing of the Ezkey authentication flows.
 
 ## Endpoints
 
 ### 1. Generate Proof Token
-**GET** `/api/v1/sim/prooftoken`
+**GET** `/api/v1/crypto/prooftoken`
 
 Generates a cryptographically secure proof token for use in authentication flows.
 
@@ -26,7 +26,7 @@ Generates a cryptographically secure proof token for use in authentication flows
 ```
 
 ### 2. Generate RSA Key Pair
-**GET** `/api/v1/sim/keypair?keySize=2048`
+**GET** `/api/v1/crypto/keypair?keySize=2048`
 
 Generates a new RSA key pair for device simulation.
 
@@ -43,7 +43,7 @@ Generates a new RSA key pair for device simulation.
 ```
 
 ### 3. Sign Data
-**POST** `/api/v1/sim/sign`
+**POST** `/api/v1/crypto/sign`
 
 Signs data using RSA-SHA256 with the provided private key.
 
@@ -65,7 +65,7 @@ Signs data using RSA-SHA256 with the provided private key.
 ```
 
 ### 4. Validate Signature
-**POST** `/api/v1/sim/validate`
+**POST** `/api/v1/crypto/validate`
 
 Validates a signature against original data using the provided public key.
 
@@ -91,17 +91,17 @@ Validates a signature against original data using the provided public key.
 
 1. **Generate keys for your simulated device:**
    ```bash
-   curl http://localhost:8080/api/v1/sim/keypair
+   curl http://localhost:8080/api/v1/crypto/keypair
    ```
 
 2. **Generate a proof token:**
    ```bash
-   curl http://localhost:8080/api/v1/sim/prooftoken
+   curl http://localhost:8080/api/v1/crypto/prooftoken
    ```
 
 3. **Sign the proof token with your private key:**
    ```bash
-   curl -X POST http://localhost:8080/api/v1/sim/sign \
+   curl -X POST http://localhost:8080/api/v1/crypto/sign \
      -H "Content-Type: application/json" \
      -d '{
        "data": "your-proof-token-here",
@@ -113,7 +113,7 @@ Validates a signature against original data using the provided public key.
 
 5. **Optionally validate signatures for testing:**
    ```bash
-   curl -X POST http://localhost:8080/api/v1/sim/validate \
+   curl -X POST http://localhost:8080/api/v1/crypto/validate \
      -H "Content-Type: application/json" \
      -d '{
        "data": "your-data-here",
@@ -129,7 +129,7 @@ Swagger UI is available at: `http://localhost:8080/swagger-ui.html`
 ## Running the Application
 
 ```bash
-cd ezkey-sim-api
+cd ezkey-crypto-api
 mvn spring-boot:run
 ```
 
@@ -144,7 +144,7 @@ All endpoints return standardized error responses:
   "code": "ERROR_CODE",
   "message": "Human readable error message",
   "timestamp": "2025-08-19T23:52:49.897042608",
-  "path": "/api/v1/sim/endpoint"
+  "path": "/api/v1/crypto/endpoint"
 }
 ```
 

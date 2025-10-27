@@ -62,7 +62,7 @@ The following dependencies were automatically updated via the Spring Boot BOM:
 - ezkey-migration
 - ezkey-admin-api
 - ezkey-auth-api
-- ezkey-sim-api
+- ezkey-crypto-api
 - ezkey-demo-app-acme
 - ezkey-demo-device
 
