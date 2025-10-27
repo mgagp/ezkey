@@ -149,9 +149,9 @@ public class EzkeyDemoApplication {
                 System.out.println("Waiting for authentication completion...");
                 AuthAttemptWaitResponseDto waitResponse = client.admin().waitForResponse(authAttempt.getAuthAttemptId());
                 System.out.println("✓ Authentication completed");
-                System.out.println("  Status: " + waitResponse.getStatus());
-                System.out.println("  Completed: " + waitResponse.getCompleted());
-                System.out.println("  Wait duration: " + waitResponse.getWaitDuration() + "s");
+                System.out.println("  Status: " + waitResponse.status());
+                System.out.println("  Completed: " + waitResponse.completed());
+                System.out.println("  Wait duration: " + waitResponse.waitDuration() + "s");
                 
             } else {
                 System.out.println("✗ No pending authentication requests found");
