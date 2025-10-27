@@ -4,8 +4,8 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-CLI Component: Sim Command
-Description: Simulation API commands for cryptographic operations and testing
+CLI Component: Crypto Command
+Description: Crypto API commands for cryptographic operations and testing
 """
 
 import click
@@ -14,10 +14,10 @@ from ..config import ConfigManager
 from ..utils import HttpClient, JsonUtils, OutputUtils
 
 
-@click.group(name='sim')
+@click.group(name='crypto')
 @click.pass_context
-def sim_group(ctx):
-    """Simulation API commands for cryptographic operations and testing."""
+def crypto_group(ctx):
+    """Crypto API commands for cryptographic operations and testing."""
     pass
 
 
@@ -30,12 +30,12 @@ def generate_proof_token(ctx):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('simUrl')
+    sim_url = config.get('cryptoUrl')
     if not sim_url:
-        OutputUtils.error("Sim URL not configured. Use 'ezkey configure set --sim-url <url>'")
+        OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
-    url = f"{sim_url}/api/v1/sim/prooftoken"
+    url = f"{sim_url}/api/v1/crypto/prooftoken"
     OutputUtils.verbose(f"POST {url}", verbose)
     
     response = http_client.post(url)
@@ -52,9 +52,9 @@ def generate_key_pair(ctx, key_size):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('simUrl')
+    sim_url = config.get('cryptoUrl')
     if not sim_url:
-        OutputUtils.error("Sim URL not configured. Use 'ezkey configure set --sim-url <url>'")
+        OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
     # Validate key size
@@ -62,7 +62,7 @@ def generate_key_pair(ctx, key_size):
         OutputUtils.error("Key size must be between 1024 and 4096 bits")
         return
     
-    url = f"{sim_url}/api/v1/sim/keypair"
+    url = f"{sim_url}/api/v1/crypto/keypair"
     params = {'keySize': key_size}
     
     OutputUtils.verbose(f"POST {url}", verbose)
@@ -84,9 +84,9 @@ def sign_data(ctx, data, private_key, json_data):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('simUrl')
+    sim_url = config.get('cryptoUrl')
     if not sim_url:
-        OutputUtils.error("Sim URL not configured. Use 'ezkey configure set --sim-url <url>'")
+        OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
     # Process inputs
@@ -125,7 +125,7 @@ def sign_data(ctx, data, private_key, json_data):
         OutputUtils.error(f"Failed to process input: {str(e)}")
         return
     
-    url = f"{sim_url}/api/v1/sim/sign"
+    url = f"{sim_url}/api/v1/crypto/sign"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         # Don't log private key in verbose mode
@@ -150,9 +150,9 @@ def validate_signature(ctx, data, signature, public_key, json_data):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('simUrl')
+    sim_url = config.get('cryptoUrl')
     if not sim_url:
-        OutputUtils.error("Sim URL not configured. Use 'ezkey configure set --sim-url <url>'")
+        OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
     # Process inputs
@@ -198,7 +198,7 @@ def validate_signature(ctx, data, signature, public_key, json_data):
         OutputUtils.error(f"Failed to process input: {str(e)}")
         return
     
-    url = f"{sim_url}/api/v1/sim/validate"
+    url = f"{sim_url}/api/v1/crypto/validate"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(request_data)}", verbose)

@@ -535,7 +535,7 @@ All commands support these global options:
 
 - `--admin-url <url>` - Override admin API URL
 - `--auth-url <url>` - Override auth API URL
-- `--sim-url <url>` - Override sim API URL
+- `--crypto-url <url>` - Override sim API URL
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output

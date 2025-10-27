@@ -11,19 +11,19 @@ Description: Main command line interface for ezkey
 import click
 
 from .config import ConfigManager
-from .commands import admin, auth, configure, database, db, openapi, sim
+from .commands import admin, auth, configure, database, db, openapi, crypto
 
 
 @click.group(invoke_without_command=True)
 @click.option('--admin-url', help='Admin API URL')
 @click.option('--auth-url', help='Auth API URL')
-@click.option('--sim-url', help='Sim API URL')
+@click.option('--crypto-url', help='Crypto API URL')
 @click.option('--no-pretty', is_flag=True, help='Disable pretty printing of JSON output')
 @click.option('--timeout', type=int, help='Request timeout in milliseconds')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
 @click.version_option(version='1.0.0', prog_name='ezkey')
 @click.pass_context
-def cli(ctx, admin_url, auth_url, sim_url, no_pretty, timeout, verbose):
+def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
     """
     Ezkey CLI - Command line interface for Ezkey MFA system.
     
@@ -40,8 +40,8 @@ def cli(ctx, admin_url, auth_url, sim_url, no_pretty, timeout, verbose):
         overrides['adminUrl'] = admin_url
     if auth_url is not None:
         overrides['authUrl'] = auth_url
-    if sim_url is not None:
-        overrides['simUrl'] = sim_url
+    if crypto_url is not None:
+        overrides['cryptoUrl'] = crypto_url
     if timeout is not None:
         overrides['timeout'] = timeout
     if no_pretty:
@@ -63,7 +63,7 @@ def cli(ctx, admin_url, auth_url, sim_url, no_pretty, timeout, verbose):
         click.echo("  $ ezkey admin integration create --name \"Test App\" --logo \"logo.png\"")
         click.echo("  $ ezkey admin integration list")
         click.echo("  $ ezkey auth enrollment bind --id 123")
-        click.echo("  $ ezkey sim keypair --key-size 2048")
+        click.echo("  $ ezkey crypto keypair --key-size 2048")
         click.echo("  $ ezkey database migrate")
         click.echo("  $ ezkey openapi refresh --all")
         click.echo()
@@ -74,7 +74,7 @@ def cli(ctx, admin_url, auth_url, sim_url, no_pretty, timeout, verbose):
 # Add command groups
 cli.add_command(admin)
 cli.add_command(auth)
-cli.add_command(sim)
+cli.add_command(crypto)
 cli.add_command(database)
 cli.add_command(db)  # Alias for database
 cli.add_command(openapi)
