@@ -1,8 +1,8 @@
 {
-  "name": "3 sim generate enrollment proof token signature",
+  "name": "3 crypto generate enrollment proof token signature",
   "request": {
     "type": "http",
-    "url": "{{base_url_sim_api}}/api/v1/sim/sign",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/sign",
     "scripts": {
       "preRequest": "",
       "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"

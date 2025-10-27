@@ -1,11 +1,11 @@
 {
-  "name": "key pair",
+  "name": "proof token",
   "request": {
     "type": "http",
-    "url": "{{base_url_sim_api}}/api/v1/sim/keypair",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/prooftoken",
     "scripts": {
       "preRequest": "",
-      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"privateKey\", jsonData.privateKey);\r\nrq.environment.set(\"publicKey\", jsonData.publicKey);"
+      "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"proofToken\", jsonData.proofToken);\r\n"
     },
     "method": "GET",
     "queryParams": [],

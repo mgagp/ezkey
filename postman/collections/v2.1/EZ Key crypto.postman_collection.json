@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "08a84ba3-92f8-4909-8a62-c4aae770e1cd",
-		"name": "EZ Key simulation",
+		"name": "EZ Key crypto",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -26,7 +26,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/prooftoken",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/prooftoken",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -60,7 +60,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/keypair",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/keypair",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -102,7 +102,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/sign",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
 					"host": [
 						"{{base_url_sim_api}}"
 					],
@@ -144,7 +144,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/sim/validate",
+					"raw": "{{base_url_sim_api}}/api/v1/crypto/validate",
 					"host": [
 						"{{base_url_sim_api}}"
 					],

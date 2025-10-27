@@ -1,8 +1,8 @@
 {
-  "name": "6 sim sign authAttempt prooftoken by device",
+  "name": "6 crypto sign authAttempt prooftoken by device",
   "request": {
     "type": "http",
-    "url": "{{base_url_sim_api}}/api/v1/sim/sign",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/sign",
     "scripts": {
       "preRequest": "",
       "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"authAttemptProofTokenSignedByDevice\", jsonData.signature);"

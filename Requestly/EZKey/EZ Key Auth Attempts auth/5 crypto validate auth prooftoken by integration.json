@@ -1,8 +1,8 @@
 {
-  "name": "5 sim validate auth prooftoken by integration",
+  "name": "5 crypto validate auth prooftoken by integration",
   "request": {
     "type": "http",
-    "url": "{{base_url_sim_api}}/api/v1/sim/validate",
+    "url": "{{base_url_sim_api}}/api/v1/crypto/validate",
     "scripts": {
       "preRequest": "",
       "postResponse": "var jsonData = JSON.parse(rq.response.text());\r\nrq.environment.set(\"valid\", jsonData.valid);"
