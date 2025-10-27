@@ -204,8 +204,8 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(response.getEnrollmentId())
-              .integrationId(request.getIntegrationId())
-              .eventDetails("Enrollment name: " + request.getName())
+              .integrationId(request.integrationId())
+              .eventDetails("Enrollment name: " + request.name())
               .build());
 
       return ResponseEntity.status(HttpStatus.CREATED)
@@ -220,7 +220,7 @@ public class EnrollmentController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .integrationId(request.getIntegrationId())
+              .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
 
@@ -235,7 +235,7 @@ public class EnrollmentController {
               .apiName(ApiName.ADMIN_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .integrationId(request.getIntegrationId())
+              .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
 

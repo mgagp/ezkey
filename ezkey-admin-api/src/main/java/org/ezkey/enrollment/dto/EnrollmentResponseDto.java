@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: EnrollmentResponseDto
+ * Record: EnrollmentResponseDto
  * Description: Response DTO for enrollment data in admin API.
  */
 
@@ -63,6 +63,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
+ * @param enrollmentId Unique identifier for the enrollment (auto-generated primary key)
+ * @param integrationId Integration identifier this enrollment belongs to (foreign key reference)
+ * @param enrollmentName Human-readable name for the enrollment (e.g., "John's iPhone")
+ * @param enrollmentStatus Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)
+ * @param enrollmentActive Flag indicating if the enrollment is currently active
+ * @param enrollmentChallenge Challenge value for enrollment verification
+ * @param enrollmentProofToken Unique code for enrollment verification (e.g., "EZK-ABC123-DEF456")
+ * @param authAttemptChallengeRequired Flag indicating if authentication attempts require challenge
+ * @param integrationPublicKey Public key for integration communication
+ * @param devicePublicKey Public key for the device
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -72,236 +82,31 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
     description =
         "Response DTO containing complete enrollment information for administrative purposes")
-public class EnrollmentResponseDto {
-
-  /** Unique identifier for the enrollment. Auto-generated primary key from the database. */
-  @Schema(description = "Unique identifier for the enrollment", example = "123")
-  private Integer enrollmentId;
-
-  /**
-   * Integration identifier this enrollment belongs to. Foreign key reference to the integration.
-   */
-  @Schema(description = "Integration identifier this enrollment belongs to", example = "1")
-  private Integer integrationId;
-
-  /** Human-readable name for the enrollment. Used for display purposes in user interfaces. */
-  @Schema(description = "Human-readable name for the enrollment", example = "John's iPhone")
-  private String enrollmentName;
-
-  /** Enrollment lifecycle status. Indicates the current state of the enrollment process. */
-  @Schema(
-      description = "Enrollment lifecycle status",
-      example = "VERIFIED",
-      allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID"})
-  private String enrollmentStatus;
-
-  /** Flag indicating if the enrollment is currently active. Used to enable/disable enrollment. */
-  @Schema(description = "Flag indicating if the enrollment is currently active", example = "true")
-  private Boolean enrollmentActive;
-
-  /**
-   * Challenge value for enrollment verification. Used in the enrollment challenge-response process.
-   */
-  @Schema(description = "Challenge value for enrollment verification", example = "123456")
-  private Integer enrollmentChallenge;
-
-  /** Unique code for enrollment verification. Used for enrollment verification step. */
-  @Schema(description = "Unique code for enrollment verification", example = "EZK-ABC123-DEF456")
-  private String enrollmentProofToken;
-
-  /**
-   * Flag indicating if authentication attempts require challenge. Used to configure authentication
-   * behavior.
-   */
-  @Schema(
-      description = "Flag indicating if authentication attempts require challenge",
-      example = "false")
-  private Boolean authAttemptChallengeRequired;
-
-  /** Public key for integration communication. Used for verifying messages from the integration. */
-  private String integrationPublicKey;
-
-  /** Public key for the device. Used for device authentication verification. */
-  private String devicePublicKey;
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the unique identifier for the enrollment
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the unique identifier for the enrollment to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the integration ID.
-   *
-   * @return the integration identifier this enrollment belongs to
-   */
-  public Integer getIntegrationId() {
-    return integrationId;
-  }
-
-  /**
-   * Sets the integration ID.
-   *
-   * @param integrationId the integration identifier this enrollment belongs to
-   */
-  public void setIntegrationId(Integer integrationId) {
-    this.integrationId = integrationId;
-  }
-
-  /**
-   * Gets the enrollment name.
-   *
-   * @return the human-readable name for the enrollment
-   */
-  public String getEnrollmentName() {
-    return enrollmentName;
-  }
-
-  /**
-   * Sets the enrollment name.
-   *
-   * @param enrollmentName the human-readable name for the enrollment to set
-   */
-  public void setEnrollmentName(String enrollmentName) {
-    this.enrollmentName = enrollmentName;
-  }
-
-  /**
-   * Gets the enrollment lifecycle status.
-   *
-   * @return the enrollment status (CREATED, BOUND, VERIFIED, INVALID)
-   */
-  public String getEnrollmentStatus() {
-    return enrollmentStatus;
-  }
-
-  /**
-   * Sets the enrollment lifecycle status.
-   *
-   * @param enrollmentStatus the enrollment status to set
-   */
-  public void setEnrollmentStatus(String enrollmentStatus) {
-    this.enrollmentStatus = enrollmentStatus;
-  }
-
-  /**
-   * Gets the enrollment active status.
-   *
-   * @return true if the enrollment is currently active, false otherwise
-   */
-  public Boolean getEnrollmentActive() {
-    return enrollmentActive;
-  }
-
-  /**
-   * Sets the enrollment active status.
-   *
-   * @param enrollmentActive true if the enrollment is currently active, false otherwise
-   */
-  public void setEnrollmentActive(Boolean enrollmentActive) {
-    this.enrollmentActive = enrollmentActive;
-  }
-
-  /**
-   * Gets the enrollment challenge.
-   *
-   * @return the challenge value for enrollment verification
-   */
-  public Integer getEnrollmentChallenge() {
-    return enrollmentChallenge;
-  }
-
-  /**
-   * Sets the enrollment challenge.
-   *
-   * @param enrollmentChallenge the challenge value for enrollment verification to set
-   */
-  public void setEnrollmentChallenge(Integer enrollmentChallenge) {
-    this.enrollmentChallenge = enrollmentChallenge;
-  }
-
-  /**
-   * Gets the enrollment proof token.
-   *
-   * @return the unique code for enrollment verification
-   */
-  public String getEnrollmentProofToken() {
-    return enrollmentProofToken;
-  }
-
-  /**
-   * Sets the enrollment proof token.
-   *
-   * @param enrollmentProofToken the unique code for enrollment verification to set
-   */
-  public void setEnrollmentProofToken(String enrollmentProofToken) {
-    this.enrollmentProofToken = enrollmentProofToken;
-  }
-
-  /**
-   * Gets the authentication attempt challenge requirement status.
-   *
-   * @return true if authentication attempts require challenge, false otherwise
-   */
-  public Boolean getAuthAttemptChallengeRequired() {
-    return authAttemptChallengeRequired;
-  }
-
-  /**
-   * Sets the authentication attempt challenge requirement status.
-   *
-   * @param authAttemptChallengeRequired true if authentication attempts require challenge, false
-   *     otherwise
-   */
-  public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
-    this.authAttemptChallengeRequired = authAttemptChallengeRequired;
-  }
-
-  /**
-   * Gets the integration public key.
-   *
-   * @return the public key for integration communication
-   */
-  public String getIntegrationPublicKey() {
-    return integrationPublicKey;
-  }
-
-  /**
-   * Sets the integration public key.
-   *
-   * @param integrationPublicKey the public key for integration communication to set
-   */
-  public void setIntegrationPublicKey(String integrationPublicKey) {
-    this.integrationPublicKey = integrationPublicKey;
-  }
-
-  /**
-   * Gets the device public key.
-   *
-   * @return the public key for the device
-   */
-  public String getDevicePublicKey() {
-    return devicePublicKey;
-  }
-
-  /**
-   * Sets the device public key.
-   *
-   * @param devicePublicKey the public key for the device to set
-   */
-  public void setDevicePublicKey(String devicePublicKey) {
-    this.devicePublicKey = devicePublicKey;
-  }
-}
+public record EnrollmentResponseDto(
+    @Schema(description = "Unique identifier for the enrollment", example = "123")
+        Integer enrollmentId,
+    @Schema(description = "Integration identifier this enrollment belongs to", example = "1")
+        Integer integrationId,
+    @Schema(description = "Human-readable name for the enrollment", example = "John's iPhone")
+        String enrollmentName,
+    @Schema(
+            description = "Enrollment lifecycle status",
+            example = "VERIFIED",
+            allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID"})
+        String enrollmentStatus,
+    @Schema(
+            description = "Flag indicating if the enrollment is currently active",
+            example = "true")
+        Boolean enrollmentActive,
+    @Schema(description = "Challenge value for enrollment verification", example = "123456")
+        Integer enrollmentChallenge,
+    @Schema(
+            description = "Unique code for enrollment verification",
+            example = "EZK-ABC123-DEF456")
+        String enrollmentProofToken,
+    @Schema(
+            description = "Flag indicating if authentication attempts require challenge",
+            example = "false")
+        Boolean authAttemptChallengeRequired,
+    @Schema(description = "Public key for integration communication") String integrationPublicKey,
+    @Schema(description = "Public key for the device") String devicePublicKey) {}

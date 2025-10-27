@@ -4,7 +4,7 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * DTO: EnrollmentCreateResponseDto
+ * Record: EnrollmentCreateResponseDto
  * Description: Response DTO for enrollment creation in admin API.
  */
 
@@ -34,61 +34,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
+ * @param enrollmentId Unique identifier of the created enrollment used to reference this enrollment in subsequent operations
+ * @param enrollmentChallenge Challenge number generated for enrollment verification used during the enrollment binding and verification process
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateResponse
  * @see EnrollmentCreateRequestDto
  */
 @Schema(description = "Response DTO containing created enrollment details")
-public class EnrollmentCreateResponseDto {
-
-  /**
-   * Unique identifier of the created enrollment. Used to reference this enrollment in subsequent
-   * operations.
-   */
-  @Schema(description = "Unique identifier of the created enrollment", example = "21")
-  private Integer enrollmentId;
-
-  /**
-   * Challenge number generated for enrollment verification. Used during the enrollment binding and
-   * verification process.
-   */
-  @Schema(description = "Challenge number for enrollment verification", example = "154982")
-  private Integer enrollmentChallenge;
-
-  /**
-   * Gets the enrollment ID.
-   *
-   * @return the enrollment ID
-   */
-  public Integer getEnrollmentId() {
-    return enrollmentId;
-  }
-
-  /**
-   * Sets the enrollment ID.
-   *
-   * @param enrollmentId the enrollment ID to set
-   */
-  public void setEnrollmentId(Integer enrollmentId) {
-    this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the enrollment challenge.
-   *
-   * @return the enrollment challenge
-   */
-  public Integer getEnrollmentChallenge() {
-    return enrollmentChallenge;
-  }
-
-  /**
-   * Sets the enrollment challenge.
-   *
-   * @param enrollmentChallenge the enrollment challenge to set
-   */
-  public void setEnrollmentChallenge(Integer enrollmentChallenge) {
-    this.enrollmentChallenge = enrollmentChallenge;
-  }
-}
+public record EnrollmentCreateResponseDto(
+    @Schema(description = "Unique identifier of the created enrollment", example = "21")
+        Integer enrollmentId,
+    @Schema(description = "Challenge number for enrollment verification", example = "154982")
+        Integer enrollmentChallenge) {}
