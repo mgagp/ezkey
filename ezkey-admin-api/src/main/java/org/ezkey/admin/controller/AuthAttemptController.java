@@ -21,6 +21,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -213,8 +214,7 @@ public class AuthAttemptController {
           AuthAttemptCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
-    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    ClientContext context = ClientContext.from(httpRequest);
 
     // Check rate limiting for API keys
     String apiKeyId = extractApiKeyId(httpRequest);
@@ -239,13 +239,8 @@ public class AuthAttemptController {
       // Audit successful auth attempt creation
       String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.AUTH_ATTEMPT_CREATED)
-              .eventAction("auth_attempt_created")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_created")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
               .enrollmentId(request.enrollmentId())
               .eventDetails(
@@ -260,13 +255,8 @@ public class AuthAttemptController {
     } catch (IllegalArgumentException e) {
       // Audit validation failure
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.AUTH_ATTEMPT_CREATED)
-              .eventAction("auth_attempt_creation_failed")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_creation_failed")
               .eventStatus(EventStatus.FAILURE)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
               .build());
@@ -275,13 +265,8 @@ public class AuthAttemptController {
     } catch (Exception e) {
       // Audit error
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.AUTH_ATTEMPT_CREATED)
-              .eventAction("auth_attempt_creation_error")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_creation_error")
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
               .build());

@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -187,8 +188,7 @@ public class EnrollmentController {
           EnrollmentCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
-    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    ClientContext context = ClientContext.from(httpRequest);
 
     try {
       EnrollmentCreateResponse response =
@@ -196,13 +196,8 @@ public class EnrollmentController {
 
       // Audit successful enrollment creation
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ENROLLMENT_CREATED)
-              .eventAction("enrollment_created")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_created")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .enrollmentId(response.getEnrollmentId())
               .integrationId(request.integrationId())
               .eventDetails("Enrollment name: " + request.name())
@@ -213,13 +208,8 @@ public class EnrollmentController {
     } catch (IllegalArgumentException e) {
       // Audit validation failure
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ENROLLMENT_CREATED)
-              .eventAction("enrollment_creation_failed")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_creation_failed")
               .eventStatus(EventStatus.FAILURE)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
@@ -228,13 +218,8 @@ public class EnrollmentController {
     } catch (Exception e) {
       // Audit error
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ENROLLMENT_CREATED)
-              .eventAction("enrollment_creation_error")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_creation_error")
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
@@ -266,8 +251,7 @@ public class EnrollmentController {
           Integer id,
       HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
-    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    ClientContext context = ClientContext.from(httpRequest);
 
     try {
       // Get enrollment details before deletion for audit
@@ -277,13 +261,8 @@ public class EnrollmentController {
 
       // Audit successful deletion
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ENROLLMENT_DELETED)
-              .eventAction("enrollment_deleted")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, "enrollment_deleted")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
               .eventDetails("Enrollment name: " + enrollment.getEnrollmentName())
@@ -293,13 +272,8 @@ public class EnrollmentController {
     } catch (ResourceNotFoundException e) {
       // Audit not found
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ENROLLMENT_DELETED)
-              .eventAction("enrollment_deletion_failed")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, "enrollment_deletion_failed")
               .eventStatus(EventStatus.FAILURE)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .enrollmentId(id)
               .errorMessage("Enrollment not found")
               .build());

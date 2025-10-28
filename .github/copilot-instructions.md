@@ -37,6 +37,7 @@ For build, setup, and project organization, refer to `README.md`.
 - JPA/Hibernate for persistence
 - REST controllers return `ResponseEntity<...>`
 - Tests use JUnit 5, Spring Boot Test, and Mockito where needed
+- Lombok not allowed, never use this library
 
 ### Dependency Management
 - Use MapStruct for object mapping

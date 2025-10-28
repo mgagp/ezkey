@@ -22,6 +22,7 @@ import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -91,29 +92,21 @@ public class AdminAuthController {
 
     logger.info("🌐 Login request received for username: {}", request.username());
 
-    // Extract client info for audit logging
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
-    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    // Extract client context for audit logging
+    ClientContext context = ClientContext.from(httpRequest);
 
     AdminLoginResponseDto response = authService.authenticate(request);
 
     if (response.success()) {
-      logger.info("✅ Login successful for username: {} from IP: {}", request.username(), clientIp);
+      logger.info("✅ Login successful for username: {} from IP: {}", request.username(), context.clientIp());
 
       // Record successful attempt for rate limiting (clears failure count)
-      if (rateLimitFilter != null) {
-        rateLimitFilter.recordSuccessfulAttempt(clientIp);
-      }
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       // Audit successful login
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_LOGIN)
-              .eventAction("login_success")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, "login_success")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .eventDetails("Username: " + request.username())
               .build());
 
@@ -122,23 +115,16 @@ public class AdminAuthController {
       logger.warn(
           "❌ Login failed for username: {} from IP: {} - Reason: {}",
           request.username(),
-          clientIp,
+          context.clientIp(),
           response.message());
 
       // Record failed attempt for rate limiting (may trigger IP blocking)
-      if (rateLimitFilter != null) {
-        rateLimitFilter.recordFailedAttempt(clientIp);
-      }
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
 
       // Audit failed login
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_LOGIN)
-              .eventAction("login_failure")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, "login_failure")
               .eventStatus(EventStatus.FAILURE)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .eventDetails("Username: " + request.username())
               .errorMessage(response.message())
               .build());
@@ -165,19 +151,13 @@ public class AdminAuthController {
       String bearerToken = authorization.replace("Bearer ", "");
       authService.logout(bearerToken);
 
-      // Extract client info for audit logging
-      String clientIp = AuditHelper.extractClientIp(httpRequest);
-      String userAgent = AuditHelper.extractUserAgent(httpRequest);
+      // Extract client context for audit logging
+      ClientContext context = ClientContext.from(httpRequest);
 
       // Audit logout
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_LOGOUT)
-              .eventAction("logout_success")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGOUT, "logout_success")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .build());
 
       return ResponseEntity.ok().build();
@@ -257,11 +237,10 @@ public class AdminAuthController {
   public ResponseEntity<AdminRecoveryResponseDto> recover(
       @Valid @RequestBody AdminRecoveryRequestDto request, HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
-    String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    ClientContext context = ClientContext.from(httpRequest);
 
     try {
-      logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.username(), clientIp);
+      logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
 
       String recoveryToken =
           recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
@@ -282,19 +261,12 @@ public class AdminAuthController {
           codesRemaining);
 
       // Record successful attempt for rate limiting
-      if (rateLimitFilter != null) {
-        rateLimitFilter.recordSuccessfulAttempt(clientIp);
-      }
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       // Audit successful recovery
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_RECOVERY_USE)
-              .eventAction("recovery_code_used")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_code_used")
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(
                   "Username: " + request.username() + ", Codes remaining: " + codesRemaining)
@@ -306,23 +278,16 @@ public class AdminAuthController {
       logger.warn(
           "❌ Recovery failed for admin: {} from IP: {} - Reason: {}",
           request.username(),
-          clientIp,
+          context.clientIp(),
           e.getMessage());
 
       // Record failed attempt for rate limiting
-      if (rateLimitFilter != null) {
-        rateLimitFilter.recordFailedAttempt(clientIp);
-      }
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
 
       // Audit failed recovery
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_RECOVERY_USE)
-              .eventAction("recovery_code_failed")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_code_failed")
               .eventStatus(EventStatus.FAILURE)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .eventDetails("Username: " + request.username())
               .errorMessage(e.getMessage())
               .build());
@@ -335,13 +300,8 @@ public class AdminAuthController {
 
       // Audit error in recovery
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.ADMIN_RECOVERY_USE)
-              .eventAction("recovery_error")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_error")
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
               .eventDetails("Username: " + request.username())
               .errorMessage(e.getMessage())
               .build());
