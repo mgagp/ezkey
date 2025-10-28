@@ -20,6 +20,12 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import org.ezkey.mobile.v1.crypto.SignatureService
 import org.ezkey.mobile.v1.auth.AuthService
 import org.ezkey.mobile.v1.storage.SimpleDeviceStorage
@@ -39,10 +45,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var checkPendingButton: Button
     private lateinit var acceptButton: Button
     private lateinit var enrollButton: Button
+    private lateinit var scanQrButton: Button
     private lateinit var challengeEditText: EditText
     private lateinit var scrollView: ScrollView
     private val signatureService = SignatureService()
     private lateinit var authService: AuthService
+    private lateinit var cameraPermissionLauncher: 
+        androidx.activity.result.ActivityResultLauncher<String>
+    private lateinit var qrScannerLauncher: 
+        androidx.activity.result.ActivityResultLauncher<ScanOptions>
     
     private var currentPendingAuth: org.ezkey.mobile.v1.auth.AuthAttemptPendingResponseDto? = null
     
@@ -53,6 +64,28 @@ class MainActivity : AppCompatActivity() {
         
         // Initialize AuthService with proper context
         authService = AuthService(this)
+        
+        // Initialize camera permission launcher
+        cameraPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                appendResult("✅ Camera permission granted")
+                launchQrScanner()
+            } else {
+                appendResult("❌ Camera permission denied")
+                appendResult("💡 Enable camera in Settings to scan QR codes")
+            }
+        }
+        
+        // Initialize QR scanner launcher
+        qrScannerLauncher = registerForActivityResult(ScanContract()) { result ->
+            if (result.contents != null) {
+                handleQrScanResult(result.contents)
+            } else {
+                appendResult("❌ QR scan cancelled or failed")
+            }
+        }
         
         // Create UI programmatically for simplicity
         createUI()
@@ -96,7 +129,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundResource(android.R.color.black)
             setTextColor(android.graphics.Color.GREEN)
             // Enable text selection for easier debugging
-            //isTextSelectable = true
+            // isTextSelectable = true  // TEMPORARILY DISABLED - compilation issue
             // REMOVED setMinHeight(400) - was interfering with dynamic sizing
         }
         
@@ -161,6 +194,20 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        // Scan QR Code button
+        var tempScanQrButton = Button(this).apply {
+            text = "📷 Scan QR Code"
+            textSize = 16f
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(android.graphics.Color.rgb(0, 150, 136)) // Teal
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener {
+                appendResult("📷 SCAN QR CODE BUTTON PRESSED!")
+                appendResult("⏰ Timestamp: ${java.util.Date()}")
+                requestCameraPermissionAndScan()
+            }
+        }
+        
         // Check Pending button
         var tempCheckPendingButton = Button(this).apply {
             text = "🔍 Check Pending Auth"
@@ -210,6 +257,7 @@ class MainActivity : AppCompatActivity() {
         resultsTextView = tempResultsTextView
         challengeEditText = tempChallengeEditText
         enrollButton = tempEnrollButton
+        scanQrButton = tempScanQrButton
         checkPendingButton = tempCheckPendingButton
         acceptButton = tempAcceptButton
         terminateButton = tempTerminateButton
@@ -222,6 +270,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(clearButton)
         layout.addView(challengeEditText)  // NEW: Challenge input field
         layout.addView(enrollButton)  // NEW: Enrollment button
+        layout.addView(scanQrButton)  // NEW: Scan QR Code button
         layout.addView(checkPendingButton)
         layout.addView(acceptButton)
         layout.addView(terminateButton)
@@ -636,16 +685,16 @@ class MainActivity : AppCompatActivity() {
                 // Make real API call to bind enrollment
                 try {
                     val enrollmentService = EnrollmentService() // No Context needed
-                    val enrollmentId = 4 // Hardcoded for POC
-                    val enrollmentProofToken = "ndtQ55aTtZrDBZN0Q2jXD7-VnWdrqB1BeEpJSx-GgrM.1761350820455.Ksc8b-rmbQmAiIKdX7-2Zg" // Hardcoded for POC
+                    val hardcodedEnrollmentId = 4 // Hardcoded for POC
+                    val hardcodedEnrollmentProofToken = "ndtQ55aTtZrDBZN0Q2jXD7-VnWdrqB1BeEpJSx-GgrM.1761350820455.Ksc8b-rmbQmAiIKdX7-2Zg" // Hardcoded for POC
                     
                     withContext(Dispatchers.Main) {
                         appendResult("🌐 Making API call to /api/v1/enrollments/bind...")
-                        appendResult("📋 Enrollment ID: $enrollmentId")
-                        appendResult("🎫 Proof Token: ${enrollmentProofToken.take(20)}...")
+                        appendResult("📋 Enrollment ID: $hardcodedEnrollmentId")
+                        appendResult("🎫 Proof Token: ${hardcodedEnrollmentProofToken.take(20)}...")
                     }
                     
-                    val result = enrollmentService.bindEnrollment(enrollmentId, enrollmentProofToken)
+                    val result = enrollmentService.bindEnrollment(hardcodedEnrollmentId, hardcodedEnrollmentProofToken)
                     
                     if (result != null) {
                         withContext(Dispatchers.Main) {
@@ -739,6 +788,210 @@ class MainActivity : AppCompatActivity() {
                     appendResult("   - Verify network connectivity")
                     appendResult("   - Check enrollment proof token validity")
                     appendResult("   - Ensure device has internet permission")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Checks if camera permission is granted.
+     */
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    /**
+     * Requests camera permission and launches scanner if granted.
+     */
+    private fun requestCameraPermissionAndScan() {
+        appendResult("📷 Checking camera permission...")
+        
+        when {
+            hasCameraPermission() -> {
+                appendResult("✅ Permission already granted")
+                launchQrScanner()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
+                appendResult("📷 Camera needed to scan QR codes")
+                appendResult("💡 Please grant permission in next dialog")
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            else -> {
+                appendResult("📷 Requesting camera permission...")
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+    
+    /**
+     * Launches QR code scanner.
+     */
+    private fun launchQrScanner() {
+        appendResult("📷 Launching QR scanner...")
+        
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            setPrompt("Scan Ezkey Enrollment QR Code")
+            setBeepEnabled(true)
+            setOrientationLocked(false)
+        }
+        
+        qrScannerLauncher.launch(options)
+    }
+    
+    /**
+     * Handles QR scan result and parses enrollment credentials.
+     */
+    private fun handleQrScanResult(qrContent: String) {
+        appendResult("📷 QR Code scanned successfully!")
+        appendResult("📋 Raw: ${qrContent.take(50)}...")
+        appendResult("=" * 60)
+        
+        try {
+            // Parse: enrollmentId|enrollmentProofToken
+            val parts = qrContent.split("|")
+            
+            if (parts.size != 2) {
+                appendResult("❌ Invalid QR format")
+                appendResult("💡 Expected: enrollmentId|proofToken")
+                appendResult("💡 Got ${parts.size} parts")
+                return
+            }
+            
+            val enrollmentId = parts[0].toIntOrNull()
+            val enrollmentProofToken = parts[1]
+            
+            if (enrollmentId == null) {
+                appendResult("❌ Invalid enrollment ID: ${parts[0]}")
+                return
+            }
+            
+            if (enrollmentProofToken.isEmpty()) {
+                appendResult("❌ Empty proof token")
+                return
+            }
+            
+            appendResult("✅ Parsed successfully!")
+            appendResult("📋 Enrollment ID: $enrollmentId")
+            appendResult("🎫 Proof Token: ${enrollmentProofToken.take(30)}...")
+            appendResult("")
+            appendResult("🚀 Starting auto-enrollment...")
+            appendResult("=" * 60)
+            
+            startDeviceEnrollmentWithCredentials(enrollmentId, enrollmentProofToken)
+            
+        } catch (e: Exception) {
+            appendResult("❌ Parse error: ${e.message}")
+            appendError(e, "QR parsing")
+        }
+    }
+    
+    /**
+     * Starts device enrollment with QR-scanned credentials.
+     */
+    private fun startDeviceEnrollmentWithCredentials(
+        enrollmentId: Int,
+        enrollmentProofToken: String
+    ) {
+        appendResult("📱 Auto-enrollment with QR credentials")
+        appendResult("📋 ID: $enrollmentId")
+        appendResult("=" * 60)
+
+        lifecycleScope.launch {
+            try {
+                // Step 1: Generate keys
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 1: Generating keys...")
+                }
+                val deviceKeyPair = signatureService.generateRsaKeyPair(2048)
+                withContext(Dispatchers.Main) {
+                    appendResult("✅ Keys generated")
+                    appendResult("")
+                }
+                
+                // Step 2: Store keys
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 2: Storing keys...")
+                }
+                val deviceStorage = SimpleDeviceStorage(this@MainActivity)
+                deviceStorage.storeDevicePrivateKey(deviceKeyPair.base64PrivateKey)
+                deviceStorage.storeDevicePublicKey(deviceKeyPair.base64PublicKey)
+                withContext(Dispatchers.Main) {
+                    appendResult("✅ Keys stored")
+                    appendResult("")
+                }
+                
+                // Step 3: Bind enrollment
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 3: Binding enrollment...")
+                    appendResult("🌐 API: /api/v1/enrollments/bind")
+                    appendResult("📋 ID: $enrollmentId")
+                }
+                val enrollmentService = EnrollmentService()
+                
+                val result = enrollmentService.bindEnrollment(
+                    enrollmentId, 
+                    enrollmentProofToken
+                )
+                
+                if (result != null) {
+                    withContext(Dispatchers.Main) {
+                        appendResult("✅ Bound successfully!")
+                        appendResult("🏢 Integration: ${result.integrationName}")
+                        appendResult("📱 Enrollment: ${result.enrollmentName}")
+                        
+                        deviceStorage.storeEnrollmentData(
+                            result.enrollmentId,
+                            result.enrollmentProofToken
+                        )
+                        appendResult("💾 Data stored")
+                        appendResult("")
+                    }
+                    
+                    // Step 4: Verify
+                    withContext(Dispatchers.Main) {
+                        appendResult("📋 STEP 4: Verifying...")
+                    }
+                    val challengeText = challengeEditText.text.toString().trim()
+                    val challengeResponse = if (challengeText.isNotEmpty()) {
+                        challengeText.toIntOrNull() ?: 123456
+                    } else {
+                        123456
+                    }
+                    
+                    val signed = signatureService.generateSignature(
+                        result.enrollmentProofToken,
+                        deviceKeyPair.base64PrivateKey
+                    )
+                    
+                    val verifyResult = enrollmentService.verifyEnrollment(
+                        result.enrollmentId,
+                        challengeResponse,
+                        deviceKeyPair.base64PublicKey,
+                        signed
+                    )
+                    
+                    withContext(Dispatchers.Main) {
+                        if (verifyResult?.active == true) {
+                            appendResult("✅ Verified and active!")
+                            appendResult("🎉 QR enrollment complete!")
+                        } else {
+                            appendResult("❌ Verification failed")
+                        }
+                    }
+                }
+                
+                withContext(Dispatchers.Main) {
+                    appendResult("=" * 60)
+                }
+                
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    appendResult("💥 Error: ${e.message}")
+                    appendError(e, "QR enrollment")
                 }
             }
         }
