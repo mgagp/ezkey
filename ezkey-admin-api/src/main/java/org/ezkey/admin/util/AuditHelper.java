@@ -11,8 +11,9 @@
 package org.ezkey.admin.util;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 
 /**
@@ -105,7 +106,7 @@ public final class AuditHelper {
    * <pre>
    * ClientContext context = ClientContext.from(httpRequest);
    * auditLogService.log(
-   *   AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, "login_success")
+   *   AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_SUCCESS)
    *     .eventStatus(EventStatus.SUCCESS)
    *     .eventDetails("Username: john.doe")
    *     .build()
@@ -137,5 +138,96 @@ public final class AuditHelper {
         .apiName(ApiName.ADMIN_API)
         .ipAddress(context.clientIp())
         .userAgent(context.userAgent());
+  }
+
+  /**
+   * Creates a SUCCESS audit log entry for admin API operations.
+   *
+   * <p>This is a convenience method for the most common audit pattern - logging successful
+   * operations with optional details. It pre-populates the event status as SUCCESS.
+   *
+   * <p><b>Usage Example:</b>
+   *
+   * <pre>
+   * auditLogService.log(
+   *   AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_SUCCESS, "Username: john.doe")
+   * );
+   * </pre>
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param details optional details about the operation (can be null)
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logSuccess(
+      ClientContext context, EventType eventType, String action, String details) {
+    
+    AuditLog.Builder builder = createAdminAudit(context, eventType, action)
+        .eventStatus(EventStatus.SUCCESS);
+    
+    if (details != null && !details.isEmpty()) {
+      builder.eventDetails(details);
+    }
+    
+    return builder.build();
+  }
+
+  /**
+   * Creates a FAILURE audit log entry for admin API operations.
+   *
+   * <p>This is a convenience method for logging failed operations (validation errors, business
+   * rule violations, etc.) with an error message. It pre-populates the event status as FAILURE.
+   *
+   * <p><b>Usage Example:</b>
+   *
+   * <pre>
+   * auditLogService.log(
+   *   AuditHelper.logFailure(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_FAILURE, "Invalid credentials")
+   * );
+   * </pre>
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param errorMessage the error message describing why the operation failed
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logFailure(
+      ClientContext context, EventType eventType, String action, String errorMessage) {
+    
+    return createAdminAudit(context, eventType, action)
+        .eventStatus(EventStatus.FAILURE)
+        .errorMessage(errorMessage)
+        .build();
+  }
+
+  /**
+   * Creates an ERROR audit log entry for admin API operations.
+   *
+   * <p>This is a convenience method for logging unexpected errors (exceptions, system errors) with
+   * an error message. It pre-populates the event status as ERROR.
+   *
+   * <p><b>Usage Example:</b>
+   *
+   * <pre>
+   * auditLogService.log(
+   *   AuditHelper.logError(context, EventType.ADMIN_LOGIN, "login_error", exception.getMessage())
+   * );
+   * </pre>
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param errorMessage the error message from the exception
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logError(
+      ClientContext context, EventType eventType, String action, String errorMessage) {
+    
+    return createAdminAudit(context, eventType, action)
+        .eventStatus(EventStatus.ERROR)
+        .errorMessage(errorMessage)
+        .build();
   }
 }

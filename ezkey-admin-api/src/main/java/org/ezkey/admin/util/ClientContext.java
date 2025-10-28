@@ -32,9 +32,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * ClientContext context = ClientContext.from(httpRequest);
  *
  * auditLogService.log(
- *   AuditHelper.createAdminAudit(context, EventType.LOGIN, "login_success")
+ *   AuditHelper.createAdminAudit(context, EventType.LOGIN, AdminAuditConstants.LOGIN_SUCCESS)
  *     .eventStatus(EventStatus.SUCCESS)
- *     .eventDetails("Username: john.doe")
+ *     .eventDetails("Username: " + username)
  *     .build()
  * );
  * </pre>

@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
@@ -196,7 +197,7 @@ public class EnrollmentController {
 
       // Audit successful enrollment creation
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_created")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
               .eventStatus(EventStatus.SUCCESS)
               .enrollmentId(response.getEnrollmentId())
               .integrationId(request.integrationId())
@@ -208,7 +209,7 @@ public class EnrollmentController {
     } catch (IllegalArgumentException e) {
       // Audit validation failure
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_creation_failed")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
@@ -218,7 +219,7 @@ public class EnrollmentController {
     } catch (Exception e) {
       // Audit error
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, "enrollment_creation_error")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
@@ -261,7 +262,7 @@ public class EnrollmentController {
 
       // Audit successful deletion
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, "enrollment_deleted")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETED)
               .eventStatus(EventStatus.SUCCESS)
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
@@ -272,7 +273,7 @@ public class EnrollmentController {
     } catch (ResourceNotFoundException e) {
       // Audit not found
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, "enrollment_deletion_failed")
+          AuditHelper.createAdminAudit(context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               .enrollmentId(id)
               .errorMessage("Enrollment not found")

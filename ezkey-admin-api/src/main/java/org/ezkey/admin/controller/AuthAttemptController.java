@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
@@ -239,7 +240,7 @@ public class AuthAttemptController {
       // Audit successful auth attempt creation
       String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_created")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, AdminAuditConstants.AUTH_ATTEMPT_CREATED)
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(response.getAuthAttemptId())
               .enrollmentId(request.enrollmentId())
@@ -255,7 +256,7 @@ public class AuthAttemptController {
     } catch (IllegalArgumentException e) {
       // Audit validation failure
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_creation_failed")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())
@@ -265,7 +266,7 @@ public class AuthAttemptController {
     } catch (Exception e) {
       // Audit error
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, "auth_attempt_creation_error")
+          AuditHelper.createAdminAudit(context, EventType.AUTH_ATTEMPT_CREATED, AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
               .enrollmentId(request.enrollmentId())
               .errorMessage(e.getMessage())

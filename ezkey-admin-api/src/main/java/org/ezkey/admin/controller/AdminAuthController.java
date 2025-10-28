@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
@@ -105,10 +106,8 @@ public class AdminAuthController {
 
       // Audit successful login
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, "login_success")
-              .eventStatus(EventStatus.SUCCESS)
-              .eventDetails("Username: " + request.username())
-              .build());
+          AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_SUCCESS, 
+              "Username: " + request.username()));
 
       return ResponseEntity.ok(response);
     } else {
@@ -123,11 +122,8 @@ public class AdminAuthController {
 
       // Audit failed login
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, "login_failure")
-              .eventStatus(EventStatus.FAILURE)
-              .eventDetails("Username: " + request.username())
-              .errorMessage(response.message())
-              .build());
+          AuditHelper.logFailure(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_FAILURE, 
+              response.message()));
 
       return ResponseEntity.badRequest().body(response);
     }
@@ -156,9 +152,7 @@ public class AdminAuthController {
 
       // Audit logout
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGOUT, "logout_success")
-              .eventStatus(EventStatus.SUCCESS)
-              .build());
+          AuditHelper.logSuccess(context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null));
 
       return ResponseEntity.ok().build();
     } catch (Exception e) {
@@ -265,7 +259,7 @@ public class AdminAuthController {
 
       // Audit successful recovery
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_code_used")
+          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(
@@ -286,11 +280,8 @@ public class AdminAuthController {
 
       // Audit failed recovery
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_code_failed")
-              .eventStatus(EventStatus.FAILURE)
-              .eventDetails("Username: " + request.username())
-              .errorMessage(e.getMessage())
-              .build());
+          AuditHelper.logFailure(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_FAILED, 
+              e.getMessage()));
 
       return ResponseEntity.status(403)
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
@@ -300,11 +291,8 @@ public class AdminAuthController {
 
       // Audit error in recovery
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, "recovery_error")
-              .eventStatus(EventStatus.ERROR)
-              .eventDetails("Username: " + request.username())
-              .errorMessage(e.getMessage())
-              .build());
+          AuditHelper.logError(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_ERROR, 
+              e.getMessage()));
 
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));
