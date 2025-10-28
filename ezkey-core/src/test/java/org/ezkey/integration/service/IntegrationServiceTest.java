@@ -64,7 +64,8 @@ class IntegrationServiceTest {
   class CreateIntegration {
     @Test
     @DisplayName(
-        "createIntegration with i18n should set audit + active + back references and return mapped response")
+        "createIntegration with i18n should set audit + active + back references and return mapped"
+            + " response")
     void create_withI18n() {
       IntegrationCreateRequest req = buildRequest(true);
       Integration mapped = buildMappedEntity(true);

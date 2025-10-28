@@ -54,7 +54,8 @@ public record EnrollmentResetResponseDto(
     @Schema(
             description = "Response message",
             example =
-                "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.")
+                "Enrollment reset successfully. Old device unbound. Use these credentials to bind"
+                    + " new device.")
         String message) {
 
   /**
@@ -80,7 +81,8 @@ public record EnrollmentResetResponseDto(
         enrollmentProofToken,
         enrollmentChallenge,
         integrationId,
-        "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
+        "Enrollment reset successfully. Old device unbound. Use these credentials to bind new"
+            + " device.");
   }
 
   /**

@@ -317,7 +317,8 @@ public class EnrollmentController {
   @Operation(
       summary = "Generate QR code for enrollment",
       description =
-          "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken)")
+          "Returns a PNG QR code image containing enrollment credentials"
+              + " (enrollmentId|enrollmentProofToken)")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "QR code generated successfully"),

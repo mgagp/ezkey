@@ -95,7 +95,8 @@ public class AuditLogController {
   @Operation(
       summary = "Query audit logs",
       description =
-          "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting")
+          "Retrieves audit logs with optional filters and pagination for security monitoring and"
+              + " compliance reporting")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Audit logs retrieved successfully"),

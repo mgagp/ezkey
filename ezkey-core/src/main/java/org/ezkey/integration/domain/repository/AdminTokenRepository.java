@@ -79,7 +79,8 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    * @return Optional containing the active token with admin loaded, empty otherwise
    */
   @Query(
-      "SELECT t FROM AdminToken t JOIN FETCH t.admin WHERE t.bearerToken = :bearerToken AND t.active = true")
+      "SELECT t FROM AdminToken t JOIN FETCH t.admin WHERE t.bearerToken = :bearerToken AND"
+          + " t.active = true")
   Optional<AdminToken> findByBearerTokenAndActiveTrueWithAdmin(
       @Param("bearerToken") String bearerToken);
 
@@ -215,7 +216,8 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    */
   @Modifying
   @Query(
-      "UPDATE AdminToken t SET t.active = false WHERE t.expiresAt < :currentTime AND t.active = true")
+      "UPDATE AdminToken t SET t.active = false WHERE t.expiresAt < :currentTime AND t.active ="
+          + " true")
   int deactivateExpiredTokens(@Param("currentTime") OffsetDateTime currentTime);
 
   /**
@@ -229,7 +231,8 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    */
   @Modifying
   @Query(
-      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active = true")
+      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active ="
+          + " true")
   int deactivateTokensByAdmin(@Param("adminId") Integer adminId);
 
   /**
@@ -300,6 +303,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
    */
   @Modifying
   @Query(
-      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active = true")
+      "UPDATE AdminToken t SET t.active = false WHERE t.admin.adminId = :adminId AND t.active ="
+          + " true")
   int deactivateAllTokensForAdmin(@Param("adminId") Integer adminId);
 }

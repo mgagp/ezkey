@@ -73,11 +73,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
   @Query(
       value =
           """
-            SELECT * FROM ezkey_enrollment
-            WHERE enrollment_id = :enrollmentId
-              AND enrollment_status = 'CREATED'
-            FOR NO KEY UPDATE
-            """,
+          SELECT * FROM ezkey_enrollment
+          WHERE enrollment_id = :enrollmentId
+            AND enrollment_status = 'CREATED'
+          FOR NO KEY UPDATE
+          """,
       nativeQuery = true)
   Optional<Enrollment> findAndLockUnreadById(@Param("enrollmentId") Integer enrollmentId);
 
@@ -94,11 +94,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
   @Query(
       value =
           """
-            SELECT * FROM ezkey_enrollment
-            WHERE enrollment_id = :enrollmentId
-              AND enrollment_status = 'BOUND'
-            FOR NO KEY UPDATE
-            """,
+          SELECT * FROM ezkey_enrollment
+          WHERE enrollment_id = :enrollmentId
+            AND enrollment_status = 'BOUND'
+          FOR NO KEY UPDATE
+          """,
       nativeQuery = true)
   Optional<Enrollment> findAndLockBoundById(@Param("enrollmentId") Integer enrollmentId);
 
@@ -144,7 +144,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * @since 2025
    */
   @Query(
-      "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND e.status = 'VERIFIED'")
+      "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND"
+          + " e.status = 'VERIFIED'")
   boolean existsByDevicePublicKeyAndVerified(@Param("devicePublicKey") String devicePublicKey);
 
   /**

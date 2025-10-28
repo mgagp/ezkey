@@ -63,7 +63,8 @@ public class CryptoController {
   @Operation(
       summary = "Generate RSA key pair",
       description =
-          "Generates a new RSA key pair for use in device simulation. Default key size is 2048 bits.")
+          "Generates a new RSA key pair for use in device simulation. Default key size is 2048"
+              + " bits.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "RSA key pair generated successfully"),

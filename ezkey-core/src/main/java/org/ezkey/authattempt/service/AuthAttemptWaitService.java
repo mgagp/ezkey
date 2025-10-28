@@ -123,7 +123,8 @@ public class AuthAttemptWaitService {
       if (newerAttempt.isPresent()) {
         int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
         logger.info(
-            "Auth attempt {} superseded by newer attempt {} for enrollment {} during wait operation",
+            "Auth attempt {} superseded by newer attempt {} for enrollment {} during wait"
+                + " operation",
             authAttemptId,
             newerAttempt.get().getAuthAttemptId(),
             authAttempt.getEnrollmentId());

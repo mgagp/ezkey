@@ -214,7 +214,8 @@ public class EnrollmentVerifyService {
 
     if (enrollmentRepository.existsByDevicePublicKeyAndVerified(request.getDevicePublicKey())) {
       logger.warn(
-          "Validation failed: Device public key already used for verified enrollment - ID: {}, DevicePublicKey: {}",
+          "Validation failed: Device public key already used for verified enrollment - ID: {},"
+              + " DevicePublicKey: {}",
           request.getEnrollmentId(),
           request.getDevicePublicKey());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
@@ -242,7 +243,8 @@ public class EnrollmentVerifyService {
 
     if (!request.getChallengeResponse().equals(enrollment.getEnrollmentChallenge())) {
       logger.warn(
-          "Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {}, Received: {}",
+          "Validation failed: Invalid challenge response for enrollment ID: {} - Expected: {},"
+              + " Received: {}",
           request.getEnrollmentId(),
           enrollment.getEnrollmentChallenge(),
           request.getChallengeResponse());
@@ -273,7 +275,8 @@ public class EnrollmentVerifyService {
 
     if (enrollment == null) {
       logger.warn(
-          "Validation failed: Enrollment not found or already verified after lock acquisition for ID: {}",
+          "Validation failed: Enrollment not found or already verified after lock acquisition for"
+              + " ID: {}",
           request.getEnrollmentId());
       throw new IllegalStateException("Enrollment already verified");
     }
@@ -282,7 +285,8 @@ public class EnrollmentVerifyService {
 
     if (enrollment.getStatus() != EnrollmentStatus.BOUND) {
       logger.warn(
-          "Validation failed: Enrollment must be bound before verification after lock - ID: {}, Status: {}",
+          "Validation failed: Enrollment must be bound before verification after lock - ID: {},"
+              + " Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());

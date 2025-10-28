@@ -40,7 +40,8 @@ public record AdminLoginRequestDto(
         String username,
     @Schema(
             description =
-                "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+                "Request challenge verification on device (6-digit code). When true, returns"
+                    + " authAttemptId and challengeCode for two-step flow",
             example = "false",
             required = false)
         Boolean challengeRequested) {}

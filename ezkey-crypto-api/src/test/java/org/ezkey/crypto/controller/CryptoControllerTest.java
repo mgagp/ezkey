@@ -93,11 +93,11 @@ class CryptoControllerTest {
 
     String requestBody =
         """
-                {
-                  "data": "Hello, World!",
-                  "privateKey": "test-private-key"
-                }
-                """;
+        {
+          "data": "Hello, World!",
+          "privateKey": "test-private-key"
+        }
+        """;
 
     mockMvc
         .perform(
@@ -115,11 +115,11 @@ class CryptoControllerTest {
   void testSignDataWithEmptyData() throws Exception {
     String requestBody =
         """
-                {
-                  "data": "",
-                  "privateKey": "test-private-key"
-                }
-                """;
+        {
+          "data": "",
+          "privateKey": "test-private-key"
+        }
+        """;
 
     mockMvc
         .perform(
@@ -138,12 +138,12 @@ class CryptoControllerTest {
 
     String requestBody =
         """
-                {
-                  "data": "Hello, World!",
-                  "signature": "test-signature",
-                  "publicKey": "test-public-key"
-                }
-                """;
+        {
+          "data": "Hello, World!",
+          "signature": "test-signature",
+          "publicKey": "test-public-key"
+        }
+        """;
 
     mockMvc
         .perform(
@@ -164,12 +164,12 @@ class CryptoControllerTest {
 
     String requestBody =
         """
-                {
-                  "data": "Hello, World!",
-                  "signature": "invalid-signature",
-                  "publicKey": "test-public-key"
-                }
-                """;
+        {
+          "data": "Hello, World!",
+          "signature": "invalid-signature",
+          "publicKey": "test-public-key"
+        }
+        """;
 
     mockMvc
         .perform(

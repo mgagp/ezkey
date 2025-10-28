@@ -639,12 +639,13 @@ This project follows strict formatting and quality standards:
 
 #### Formatting Rules
 - **Indentation**: 4 spaces (no tabs)
-- **Line Length**: Maximum 120 characters
+- **Line Length**: Maximum 100 characters (Google Style Guide standard)
 - **Encoding**: UTF-8 without BOM
 - **Line Endings**: LF (Unix style)
 
 #### Development Tools
-- **Checkstyle**: Google Java Style Guide (`google_checks.xml`)
+- **Spotless**: Google Java Format with strict 100-character line limit
+- **Checkstyle**: Google Java Style Guide (`docs/dev-tools/google_checks.xml`)
 - **EditorConfig**: Consistent formatting (`.editorconfig`)
 - **MapStruct**: Object mapping between DTOs and entities
 - **JaCoCo**: Code coverage reporting
@@ -689,6 +690,7 @@ src/
 mvn clean install
 
 # Run quality checks
+mvn spotless:apply
 mvn checkstyle:check
 mvn clean verify
 

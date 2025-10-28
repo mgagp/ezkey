@@ -80,7 +80,8 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  */
 @Schema(
     description =
-        "Response DTO containing complete authentication attempt information for administrative purposes")
+        "Response DTO containing complete authentication attempt information for administrative"
+            + " purposes")
 public record AuthAttemptDto(
     @Schema(description = "Unique identifier for the authentication attempt", example = "456")
         Integer authAttemptId,

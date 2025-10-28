@@ -78,19 +78,26 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
     name = "Authentication Attempts",
     description =
-        "Mobile authentication attempt operations for checking pending requests and submitting responses")
+        "Mobile authentication attempt operations for checking pending requests and submitting"
+            + " responses")
 public class AuthAttemptController {
 
-  private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
+  /** Logger for authentication attempt controller operations. */
+  private static final Logger LOG = LoggerFactory.getLogger(AuthAttemptController.class);
 
-  // Rate limiting endpoint constants
+  /** Rate limiting endpoint path for pending authentication requests. */
   public static final String ENDPOINT_PENDING = "/pending";
+
+  /** Full rate limiting path for pending authentication requests. */
   public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
 
+  /** Service for managing authentication attempt business logic. */
   private final AuthAttemptService authAttemptService;
 
+  /** Mapper for converting between domain entities and DTOs. */
   private final AuthAttemptMapper authAttemptMapper;
 
+  /** Service for audit logging of security-critical operations. */
   private final AuditLogService auditLogService;
 
   /**
@@ -101,9 +108,9 @@ public class AuthAttemptController {
    * @param auditLogService the audit log service for security monitoring
    */
   public AuthAttemptController(
-      AuthAttemptService authAttemptService,
-      AuthAttemptMapper authAttemptMapper,
-      AuditLogService auditLogService) {
+      final AuthAttemptService authAttemptService,
+      final AuthAttemptMapper authAttemptMapper,
+      final AuditLogService auditLogService) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -129,6 +136,7 @@ public class AuthAttemptController {
    * enrollmentProofToken provides cryptographic proof of enrollment ownership.
    *
    * @param request the pending request containing enrollment proof token and device authentication
+   * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
    * @return ResponseEntity containing pending authentication details with HTTP 200, or 204 No
    *     Content if no pending requests, or 400 for invalid requests
    * @throws IllegalArgumentException if enrollment proof token is invalid or enrollment not found
@@ -138,8 +146,9 @@ public class AuthAttemptController {
   @Operation(
       summary = "Get pending authentication attempt",
       description =
-          "Retrieve pending authentication attempts using secure enrollment proof token. "
-              + "This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.")
+          "Retrieve pending authentication attempts using secure enrollment proof token. This"
+              + " endpoint prevents enumeration attacks by requiring cryptographic proof of"
+              + " enrollment ownership.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -168,8 +177,9 @@ public class AuthAttemptController {
             content = @io.swagger.v3.oas.annotations.media.Content())
       })
   public ResponseEntity<AuthAttemptPendingResponseDto> pending(
-      @Valid @RequestBody AuthAttemptPendingRequestDto request, HttpServletRequest httpRequest) {
-    logger.info("Processing pending request for enrollment with proof token");
+      @Valid @RequestBody final AuthAttemptPendingRequestDto request,
+      final HttpServletRequest httpRequest) {
+    LOG.info("Processing pending request for enrollment with proof token");
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
@@ -192,7 +202,7 @@ public class AuthAttemptController {
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
     } catch (NoSuchElementException e) {
-      logger.debug("No pending authentication attempts found");
+      LOG.debug("No pending authentication attempts found");
       return ResponseEntity.noContent().build();
     }
   }
@@ -207,6 +217,7 @@ public class AuthAttemptController {
    *
    * @param request the response request DTO containing authentication attempt ID, user's decision
    *     and signatures
+   * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
    * @return ResponseEntity containing response confirmation with HTTP 200, or 400 for invalid
    *     requests, or 409 for conflicting states
    */
@@ -252,7 +263,8 @@ public class AuthAttemptController {
                             implementation = org.ezkey.dto.ErrorResponseDto.class)))
       })
   public ResponseEntity<AuthAttemptRespondResponseDto> respond(
-      @Valid @RequestBody AuthAttemptRespondRequestDto request, HttpServletRequest httpRequest) {
+      @Valid @RequestBody final AuthAttemptRespondRequestDto request,
+      final HttpServletRequest httpRequest) {
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);

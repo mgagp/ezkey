@@ -79,7 +79,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
     name = "Enrollments",
     description =
-        "Mobile device enrollment operations for binding devices to user accounts and completing verification")
+        "Mobile device enrollment operations for binding devices to user accounts and completing"
+            + " verification")
 public class EnrollmentController {
 
   // Rate limiting endpoint constants

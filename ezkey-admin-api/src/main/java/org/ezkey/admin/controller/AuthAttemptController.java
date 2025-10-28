@@ -497,7 +497,8 @@ public class AuthAttemptController {
     // Check ownership
     if (!enrollment.getIntegrationId().equals(apiKeyIntegrationId)) {
       logger.warn(
-          "API key from integration {} attempted to create auth attempt for enrollment {} belonging to integration {}",
+          "API key from integration {} attempted to create auth attempt for enrollment {} belonging"
+              + " to integration {}",
           apiKeyIntegrationId,
           enrollmentId,
           enrollment.getIntegrationId());

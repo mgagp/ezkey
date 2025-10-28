@@ -58,7 +58,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    * @return the most recent authorization attempt, or empty if none found
    */
   @Query(
-      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.authAttemptId DESC")
+      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId ORDER BY a.authAttemptId"
+          + " DESC")
   List<AuthAttempt> findByEnrollmentIdOrderByAuthAttemptIdDesc(
       @Param("enrollmentId") Integer enrollmentId);
 
@@ -72,7 +73,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    * @return the most recent pending authorization attempt, or empty if none found
    */
   @Query(
-      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus = :status ORDER BY a.authAttemptId DESC")
+      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus ="
+          + " :status ORDER BY a.authAttemptId DESC")
   Optional<AuthAttempt> findMostRecentByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId, @Param("status") AuthAttemptStatus status);
 
@@ -89,7 +91,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    * @return the most recent valid pending authorization attempt, or empty if none found
    */
   @Query(
-      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus = :status AND a.expiresAt > :now ORDER BY a.authAttemptId DESC")
+      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus ="
+          + " :status AND a.expiresAt > :now ORDER BY a.authAttemptId DESC")
   Optional<AuthAttempt> findMostRecentValidByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("status") AuthAttemptStatus status,
@@ -108,13 +111,13 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   @Query(
       value =
           """
-            SELECT * FROM ezkey_auth_attempt
-            WHERE enrollment_id = :enrollmentId
-              AND auth_attempt_status = :status
-            ORDER BY auth_attempt_id DESC
-            LIMIT 1
-            FOR NO KEY UPDATE
-            """,
+          SELECT * FROM ezkey_auth_attempt
+          WHERE enrollment_id = :enrollmentId
+            AND auth_attempt_status = :status
+          ORDER BY auth_attempt_id DESC
+          LIMIT 1
+          FOR NO KEY UPDATE
+          """,
       nativeQuery = true)
   Optional<AuthAttempt> findAndLockMostRecentByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId, @Param("status") String status);
@@ -136,14 +139,14 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   @Query(
       value =
           """
-            SELECT * FROM ezkey_auth_attempt
-            WHERE enrollment_id = :enrollmentId
-              AND auth_attempt_status = :status
-              AND expires_at > :now
-            ORDER BY auth_attempt_id DESC
-            LIMIT 1
-            FOR NO KEY UPDATE
-            """,
+          SELECT * FROM ezkey_auth_attempt
+          WHERE enrollment_id = :enrollmentId
+            AND auth_attempt_status = :status
+            AND expires_at > :now
+          ORDER BY auth_attempt_id DESC
+          LIMIT 1
+          FOR NO KEY UPDATE
+          """,
       nativeQuery = true)
   Optional<AuthAttempt> findAndLockMostRecentValidByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId,
@@ -162,7 +165,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    */
   @Modifying
   @Query(
-      "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId = :authAttemptId AND a.authAttemptStatus = :currentStatus")
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId ="
+          + " :authAttemptId AND a.authAttemptStatus = :currentStatus")
   int updateStatusIfCurrent(
       @Param("authAttemptId") Integer authAttemptId,
       @Param("currentStatus") AuthAttemptStatus currentStatus,
@@ -205,7 +209,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    * @return the newer authentication attempt if it exists, empty otherwise
    */
   @Query(
-      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt > :createdAt ORDER BY a.createdAt DESC")
+      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.createdAt >"
+          + " :createdAt ORDER BY a.createdAt DESC")
   Optional<AuthAttempt> findNewerAttemptByEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("createdAt") java.time.OffsetDateTime createdAt);
@@ -220,7 +225,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    * @return list of non-final authentication attempts
    */
   @Query(
-      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus IN (:statuses)")
+      "SELECT a FROM AuthAttempt a WHERE a.enrollmentId = :enrollmentId AND a.authAttemptStatus IN"
+          + " (:statuses)")
   List<AuthAttempt> findByEnrollmentIdAndStatusIn(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("statuses") List<AuthAttemptStatus> statuses);
@@ -236,7 +242,8 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
    */
   @Modifying
   @Query(
-      "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId IN (:authAttemptIds)")
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :newStatus WHERE a.authAttemptId IN"
+          + " (:authAttemptIds)")
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
       @Param("newStatus") AuthAttemptStatus newStatus);

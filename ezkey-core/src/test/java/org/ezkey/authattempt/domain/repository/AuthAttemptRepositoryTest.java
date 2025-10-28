@@ -137,7 +137,8 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
 
   @Test
   @DisplayName(
-      "findAndLockMostRecentByEnrollmentIdAndStatus() - Should find and lock most recent pending attempt")
+      "findAndLockMostRecentByEnrollmentIdAndStatus() - Should find and lock most recent pending"
+          + " attempt")
   void findAndLockMostRecentByEnrollmentIdAndStatus_WhenPendingExists_ShouldReturnMostRecent() {
     // Act
     Optional<AuthAttempt> result =
@@ -151,7 +152,8 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
 
   @Test
   @DisplayName(
-      "findAndLockMostRecentByEnrollmentIdAndStatus() - Should return empty when no pending attempts")
+      "findAndLockMostRecentByEnrollmentIdAndStatus() - Should return empty when no pending"
+          + " attempts")
   void findAndLockMostRecentByEnrollmentIdAndStatus_WhenNoPendingExists_ShouldReturnEmpty() {
     // Act
     Optional<AuthAttempt> result =

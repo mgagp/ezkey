@@ -62,16 +62,16 @@ import org.springframework.context.annotation.Configuration;
             version = "1.0.0",
             description =
                 """
-            Authentication API for Ezkey - Open Source MFA/Passkey Alternative
+                Authentication API for Ezkey - Open Source MFA/Passkey Alternative
 
-            This API enables mobile device authentication operations:
-            - **Enrollments**: Device binding and verification for user accounts
-            - **Auth Attempts**: Mobile authentication request handling and responses
+                This API enables mobile device authentication operations:
+                - **Enrollments**: Device binding and verification for user accounts
+                - **Auth Attempts**: Mobile authentication request handling and responses
 
-            The API follows a pull-based model where mobile devices poll for pending
-            authentication requests and submit cryptographic signatures for validation.
-            All operations use DTOs for requests and responses with comprehensive validation.
-            """,
+                The API follows a pull-based model where mobile devices poll for pending
+                authentication requests and submit cryptographic signatures for validation.
+                All operations use DTOs for requests and responses with comprehensive validation.
+                """,
             contact =
                 @Contact(
                     name = "Ezkey Team",

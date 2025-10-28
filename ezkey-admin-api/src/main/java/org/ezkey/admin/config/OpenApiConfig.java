@@ -62,16 +62,16 @@ import org.springframework.context.annotation.Configuration;
             version = "1.0.0",
             description =
                 """
-            Administration API for Ezkey - Open Source MFA/Passkey Alternative
+                Administration API for Ezkey - Open Source MFA/Passkey Alternative
 
-            This API enables administrative management of Ezkey's main entities:
-            - **Integrations**: Applications or systems protected by MFA
-            - **Enrollments**: Associations between users, devices and integrations
-            - **Auth Attempts**: MFA authentication attempts
-            - **Admin Management**: Administrator authentication, enrollment recovery, and admin operations
+                This API enables administrative management of Ezkey's main entities:
+                - **Integrations**: Applications or systems protected by MFA
+                - **Enrollments**: Associations between users, devices and integrations
+                - **Auth Attempts**: MFA authentication attempts
+                - **Admin Management**: Administrator authentication, enrollment recovery, and admin operations
 
-            The API follows REST conventions and uses DTOs for all requests and responses.
-            """,
+                The API follows REST conventions and uses DTOs for all requests and responses.
+                """,
             contact =
                 @Contact(
                     name = "Ezkey Team",

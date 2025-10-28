@@ -55,7 +55,8 @@ class EnrollmentResetResponseDtoTest {
     assertThat(dto.integrationId()).isEqualTo(TEST_INTEGRATION_ID);
     assertThat(dto.message())
         .isEqualTo(
-            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
+            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new"
+                + " device.");
   }
 
   @Test
@@ -185,7 +186,8 @@ class EnrollmentResetResponseDtoTest {
     assertThat(dto1.message()).isEqualTo(dto2.message());
     assertThat(dto1.message())
         .isEqualTo(
-            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
+            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new"
+                + " device.");
   }
 
   @Test

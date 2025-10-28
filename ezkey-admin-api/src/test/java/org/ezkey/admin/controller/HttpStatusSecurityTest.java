@@ -83,7 +83,8 @@ class HttpStatusSecurityTest {
    */
   @Test
   @DisplayName(
-      "SECURITY DOC: IllegalArgumentException for missing enrollment prevents enumeration (caught in controller)")
+      "SECURITY DOC: IllegalArgumentException for missing enrollment prevents enumeration (caught"
+          + " in controller)")
   void documentSecurityPattern_IllegalArgumentException_PreventEnumeration() {
     // Given: Request with non-existent enrollment
     AuthAttemptCreateRequest request = new AuthAttemptCreateRequest();

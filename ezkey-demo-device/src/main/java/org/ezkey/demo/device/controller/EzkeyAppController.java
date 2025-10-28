@@ -90,7 +90,8 @@ public class EzkeyAppController {
         String enrollmentName = bindResponse.getEnrollmentName();
 
         logger.info(
-            "Using integration info for enrollment {} with language {}: name={}, description={}, logo={}, enrollmentName={}",
+            "Using integration info for enrollment {} with language {}: name={}, description={},"
+                + " logo={}, enrollmentName={}",
             enrollmentId,
             language,
             integrationName,

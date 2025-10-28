@@ -189,7 +189,8 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * @return list of administrators matching all criteria
    */
   @Query(
-      "SELECT a FROM EzkeyAdmin a WHERE a.tenant.tenantId = :tenantId AND a.adminType = :adminType AND a.active = :active")
+      "SELECT a FROM EzkeyAdmin a WHERE a.tenant.tenantId = :tenantId AND a.adminType = :adminType"
+          + " AND a.active = :active")
   List<EzkeyAdmin> findByTenantAndAdminTypeAndActive(
       @Param("tenantId") Integer tenantId,
       @Param("adminType") AdminType adminType,

@@ -3,10 +3,7 @@
 ## Java Code Formatting Standards
 
 ### Indentation and Spacing
-- Use 4 spaces for indentation (not tabs)
-- Maximum line length: 120 characters
-- Use consistent spacing around operators and keywords
-- Add blank lines between methods and logical sections
+- Strictly apply google style formatting rules
 
 ### Naming Conventions
 - Classes: PascalCase (e.g., `IntegrationController`)

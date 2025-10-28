@@ -181,7 +181,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
     @Test
     @DisplayName(
-        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for invalid digits")
+        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for invalid"
+            + " digits")
     void
         testSignatureServiceGenerateSecureChallengeThrowsIllegalArgumentExceptionForInvalidDigits() {
       // Given: Invalid challenge digits
@@ -200,7 +201,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
     @Test
     @DisplayName(
-        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for zero digits")
+        "SignatureService.generateSecureChallenge() throws IllegalArgumentException for zero"
+            + " digits")
     void testSignatureServiceGenerateSecureChallengeThrowsIllegalArgumentExceptionForZeroDigits() {
       // Given: Invalid challenge digits
       int invalidDigits = 0; // Should be between 1 and 6
@@ -259,7 +261,8 @@ class ErrorHandlingBehaviorTest extends PostgreSQLTestBase {
 
     @Test
     @DisplayName(
-        "SignatureService.generateSecureChallenge() throws RuntimeException for cryptographic errors")
+        "SignatureService.generateSecureChallenge() throws RuntimeException for cryptographic"
+            + " errors")
     void testSignatureServiceGenerateSecureChallengeThrowsRuntimeExceptionForCryptoErrors() {
       // Given: Valid digits but potential crypto error scenario
       int validDigits = 3;

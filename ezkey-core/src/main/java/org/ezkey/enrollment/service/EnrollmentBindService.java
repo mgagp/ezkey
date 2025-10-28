@@ -273,7 +273,8 @@ public class EnrollmentBindService {
 
     if (enrollment == null) {
       logger.warn(
-          "Validation failed: Enrollment not found or already bound after lock acquisition for ID: {}",
+          "Validation failed: Enrollment not found or already bound after lock acquisition for ID:"
+              + " {}",
           request.getEnrollmentId());
       throw new IllegalArgumentException("Enrollment not found or already bound");
     }

@@ -131,7 +131,8 @@ public class AuthAttemptController {
 
         authAttempts = filteredAttempts;
         logger.debug(
-            "Client-side filtered auth attempts for enrollment {}: found {} attempts out of {} total",
+            "Client-side filtered auth attempts for enrollment {}: found {} attempts out of {}"
+                + " total",
             enrollmentId,
             authAttempts.size(),
             authAttemptService.getAllAuthAttemptsSync().size());

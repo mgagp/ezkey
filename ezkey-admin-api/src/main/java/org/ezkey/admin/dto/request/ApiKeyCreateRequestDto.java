@@ -74,8 +74,8 @@ public record ApiKeyCreateRequestDto(
         OffsetDateTime expiresAt,
     @Schema(
             description =
-                "Optional array of IP addresses or CIDR ranges allowed to use this key (recommended for"
-                    + " production)",
+                "Optional array of IP addresses or CIDR ranges allowed to use this key (recommended"
+                    + " for production)",
             example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
         String[] ipWhitelist) {
   /**

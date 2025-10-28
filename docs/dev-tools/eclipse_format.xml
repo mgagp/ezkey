@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <profiles version="13">
     <profile name="ezkey" version="13">
-        <setting id="org.eclipse.jdt.core.formatter.comment.line_length" value="120"/>
+        <setting id="org.eclipse.jdt.core.formatter.comment.line_length" value="100"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_javadoc_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_line_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_block_comments" value="true"/>
@@ -12,15 +12,11 @@
         <setting id="org.eclipse.jdt.core.formatter.comment.format_java_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_c_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
-        <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
-        <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
-        <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
-        <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
- 
+        
         <setting id="org.eclipse.jdt.core.formatter.tabulation.char" value="space"/>
-        <setting id="org.eclipse.jdt.core.formatter.tabulation.size" value="4"/>
-        <setting id="org.eclipse.jdt.core.formatter.indentation.size" value="4"/>
-        <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="120"/>
+        <setting id="org.eclipse.jdt.core.formatter.tabulation.size" value="2"/>
+        <setting id="org.eclipse.jdt.core.formatter.indentation.size" value="2"/>
+        <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="100"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_type_declaration" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_method_declaration" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_constructor_declaration" value="true"/>
