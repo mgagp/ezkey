@@ -232,153 +232,195 @@ class MainActivity : AppCompatActivity() {
     private fun runCryptographicTests() {
         lifecycleScope.launch {
             try {
-                appendResult("🚀 Starting Ezkey Cryptographic Validation Tests")
-                appendResult("📱 Platform: Android/Kotlin")
-                appendResult("🔐 Algorithm: RSA-2048 with SHA256withRSA")
-                appendResult("=" * 60)
+                withContext(Dispatchers.Main) {
+                    appendResult("🚀 Starting Ezkey Cryptographic Validation Tests")
+                    appendResult("📱 Platform: Android/Kotlin")
+                    appendResult("🔐 Algorithm: RSA-2048 with SHA256withRSA")
+                    appendResult("=" * 60)
+                }
                 
                 // Test 1: RSA Key Pair Generation
-                appendResult("\n📋 TEST 1: RSA Key Pair Generation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n📋 TEST 1: RSA Key Pair Generation")
+                }
                 val keyPair = testKeyPairGeneration()
                 
                 // Test 2: Proof Token Generation
-                appendResult("\n📋 TEST 2: Proof Token Generation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n📋 TEST 2: Proof Token Generation")
+                }
                 val proofToken = testProofTokenGeneration()
                 
                 // Test 3: Digital Signature Creation
-                appendResult("\n📋 TEST 3: Digital Signature Creation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n📋 TEST 3: Digital Signature Creation")
+                }
                 val signature = testSignatureGeneration(proofToken, keyPair.base64PrivateKey)
                 
                 // Test 4: Signature Validation
-                appendResult("\n📋 TEST 4: Signature Validation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n📋 TEST 4: Signature Validation")
+                }
                 testSignatureValidation(proofToken, signature, keyPair.base64PublicKey)
                 
                 // Test 5: Secure Challenge Generation
-                appendResult("\n📋 TEST 5: Secure Challenge Generation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n📋 TEST 5: Secure Challenge Generation")
+                }
                 testSecureChallengeGeneration()
                 
                 // Final summary
-                appendResult("\n" + "=" * 60)
-                appendResult("✅ ALL CRYPTOGRAPHIC VALIDATION TESTS COMPLETED SUCCESSFULLY!")
-                appendResult("🎯 Ezkey Mobile V1 is ready for production use")
-                appendResult("🔒 All cryptographic operations are compatible with Java implementation")
+                withContext(Dispatchers.Main) {
+                    appendResult("\n" + "=" * 60)
+                    appendResult("✅ ALL CRYPTOGRAPHIC VALIDATION TESTS COMPLETED SUCCESSFULLY!")
+                    appendResult("🎯 Ezkey Mobile V1 is ready for production use")
+                    appendResult("🔒 All cryptographic operations are compatible with Java implementation")
+                }
                 
             } catch (e: Exception) {
-                appendResult("❌ CRITICAL ERROR: ${e.message}")
-                appendResult("📊 Stack trace: ${e.stackTraceToString()}")
+                withContext(Dispatchers.Main) {
+                    appendResult("❌ CRITICAL ERROR: ${e.message}")
+                    appendResult("📊 Stack trace: ${e.stackTraceToString()}")
+                }
             }
         }
     }
     
     private suspend fun testKeyPairGeneration(): SignatureService.RsaKeyPair = withContext(Dispatchers.Default) {
-        appendResult("🔑 Generating RSA-2048 key pair...")
+        withContext(Dispatchers.Main) {
+            appendResult("🔑 Generating RSA-2048 key pair...")
+        }
         
         val startTime = System.currentTimeMillis()
         val keyPair = signatureService.generateRsaKeyPair(2048)
         val endTime = System.currentTimeMillis()
         
-        appendResult("✅ Key pair generated successfully in ${endTime - startTime}ms")
-        appendResult("📏 Private key length: ${keyPair.base64PrivateKey.length} chars")
-        appendResult("📏 Public key length: ${keyPair.base64PublicKey.length} chars")
-        appendResult("🔍 Private key preview: ${keyPair.base64PrivateKey.take(50)}...")
-        appendResult("🔍 Public key preview: ${keyPair.base64PublicKey.take(50)}...")
-        
-        // Validate key format
-        if (keyPair.base64PrivateKey.isNotEmpty() && keyPair.base64PublicKey.isNotEmpty()) {
-            appendResult("✅ Key format validation: PASSED")
-        } else {
-            throw RuntimeException("Key format validation failed")
+        withContext(Dispatchers.Main) {
+            appendResult("✅ Key pair generated successfully in ${endTime - startTime}ms")
+            appendResult("📏 Private key length: ${keyPair.base64PrivateKey.length} chars")
+            appendResult("📏 Public key length: ${keyPair.base64PublicKey.length} chars")
+            appendResult("🔍 Private key preview: ${keyPair.base64PrivateKey.take(50)}...")
+            appendResult("🔍 Public key preview: ${keyPair.base64PublicKey.take(50)}...")
+            
+            // Validate key format
+            if (keyPair.base64PrivateKey.isNotEmpty() && keyPair.base64PublicKey.isNotEmpty()) {
+                appendResult("✅ Key format validation: PASSED")
+            } else {
+                appendResult("❌ Key format validation: FAILED")
+            }
         }
         
         keyPair
     }
     
     private suspend fun testProofTokenGeneration(): String = withContext(Dispatchers.Default) {
-        appendResult("🎲 Generating cryptographically secure proof token...")
+        withContext(Dispatchers.Main) {
+            appendResult("🎲 Generating cryptographically secure proof token...")
+        }
         
         val startTime = System.currentTimeMillis()
         val proofToken = signatureService.generateProofToken()
         val endTime = System.currentTimeMillis()
         
-        appendResult("✅ Proof token generated successfully in ${endTime - startTime}ms")
-        appendResult("📏 Token length: ${proofToken.length} chars")
-        appendResult("🔍 Token: $proofToken")
-        
-        // Validate token format (should have 3 parts separated by dots)
-        val parts = proofToken.split(".")
-        if (parts.size == 3) {
-            appendResult("✅ Token format validation: PASSED (3 parts)")
-            appendResult("📊 Random part: ${parts[0]} (${parts[0].length} chars)")
-            appendResult("📊 Timestamp: ${parts[1]} (${java.util.Date(parts[1].toLong())})")
-            appendResult("📊 Salt part: ${parts[2]} (${parts[2].length} chars)")
-        } else {
-            throw RuntimeException("Proof token format validation failed")
+        withContext(Dispatchers.Main) {
+            appendResult("✅ Proof token generated successfully in ${endTime - startTime}ms")
+            appendResult("📏 Token length: ${proofToken.length} chars")
+            appendResult("🔍 Token: $proofToken")
+            
+            // Validate token format (should have 3 parts separated by dots)
+            val parts = proofToken.split(".")
+            if (parts.size == 3) {
+                appendResult("✅ Token format validation: PASSED (3 parts)")
+                appendResult("📊 Random part: ${parts[0]} (${parts[0].length} chars)")
+                appendResult("📊 Timestamp: ${parts[1]} (${java.util.Date(parts[1].toLong())})")
+                appendResult("📊 Salt part: ${parts[2]} (${parts[2].length} chars)")
+            } else {
+                appendResult("❌ Token format validation: FAILED")
+            }
         }
         
         proofToken
     }
     
     private suspend fun testSignatureGeneration(data: String, privateKey: String): String = withContext(Dispatchers.Default) {
-        appendResult("✍️ Generating digital signature...")
-        appendResult("📝 Data to sign: $data")
+        withContext(Dispatchers.Main) {
+            appendResult("✍️ Generating digital signature...")
+            appendResult("📝 Data to sign: $data")
+        }
         
         val startTime = System.currentTimeMillis()
         val signature = signatureService.generateSignature(data, privateKey)
         val endTime = System.currentTimeMillis()
         
-        appendResult("✅ Signature generated successfully in ${endTime - startTime}ms")
-        appendResult("📏 Signature length: ${signature.length} chars")
-        appendResult("🔍 Signature: ${signature.take(100)}...")
-        
-        if (signature.isNotEmpty()) {
-            appendResult("✅ Signature generation validation: PASSED")
-        } else {
-            throw RuntimeException("Signature generation failed")
+        withContext(Dispatchers.Main) {
+            appendResult("✅ Signature generated successfully in ${endTime - startTime}ms")
+            appendResult("📏 Signature length: ${signature.length} chars")
+            appendResult("🔍 Signature: ${signature.take(100)}...")
+            
+            if (signature.isNotEmpty()) {
+                appendResult("✅ Signature generation validation: PASSED")
+            } else {
+                appendResult("❌ Signature generation validation: FAILED")
+            }
         }
         
         signature
     }
     
     private suspend fun testSignatureValidation(data: String, signature: String, publicKey: String) = withContext(Dispatchers.Default) {
-        appendResult("🔍 Validating digital signature...")
+        withContext(Dispatchers.Main) {
+            appendResult("🔍 Validating digital signature...")
+        }
         
         val startTime = System.currentTimeMillis()
         val isValid = signatureService.validateSignature(data, signature, publicKey)
         val endTime = System.currentTimeMillis()
         
-        if (isValid) {
-            appendResult("✅ Signature validation: PASSED in ${endTime - startTime}ms")
-            appendResult("🎯 Cryptographic integrity confirmed")
-        } else {
-            throw RuntimeException("Signature validation failed")
+        withContext(Dispatchers.Main) {
+            if (isValid) {
+                appendResult("✅ Signature validation: PASSED in ${endTime - startTime}ms")
+                appendResult("🎯 Cryptographic integrity confirmed")
+            } else {
+                appendResult("❌ Signature validation: FAILED")
+            }
         }
         
         // Test with invalid data to ensure validation works correctly
-        appendResult("🧪 Testing signature validation with invalid data...")
+        withContext(Dispatchers.Main) {
+            appendResult("🧪 Testing signature validation with invalid data...")
+        }
         val invalidResult = signatureService.validateSignature("invalid-data", signature, publicKey)
-        if (!invalidResult) {
-            appendResult("✅ Invalid signature detection: PASSED")
-        } else {
-            throw RuntimeException("Failed to detect invalid signature")
+        withContext(Dispatchers.Main) {
+            if (!invalidResult) {
+                appendResult("✅ Invalid signature detection: PASSED")
+            } else {
+                appendResult("❌ Invalid signature detection: FAILED")
+            }
         }
     }
     
     private suspend fun testSecureChallengeGeneration() = withContext(Dispatchers.Default) {
-        appendResult("🎯 Testing secure challenge generation...")
+        withContext(Dispatchers.Main) {
+            appendResult("🎯 Testing secure challenge generation...")
+        }
         
         for (digits in 1..6) {
             val challenge = signatureService.generateSecureChallenge(digits)
             val expectedMin = Math.pow(10.0, (digits - 1).toDouble()).toInt()
             val expectedMax = Math.pow(10.0, digits.toDouble()).toInt() - 1
             
-            if (challenge in expectedMin..expectedMax) {
-                appendResult("✅ ${digits}-digit challenge: $challenge (valid range)")
-            } else {
-                throw RuntimeException("Challenge $challenge outside valid range [$expectedMin, $expectedMax]")
+            withContext(Dispatchers.Main) {
+                if (challenge in expectedMin..expectedMax) {
+                    appendResult("✅ ${digits}-digit challenge: $challenge (valid range)")
+                } else {
+                    appendResult("❌ Challenge $challenge outside valid range [$expectedMin, $expectedMax]")
+                }
             }
         }
         
-        appendResult("✅ All secure challenge tests: PASSED")
+        withContext(Dispatchers.Main) {
+            appendResult("✅ All secure challenge tests: PASSED")
+        }
     }
     
     private fun appendResult(message: String) {
@@ -428,11 +470,15 @@ class MainActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
-                appendResult("🚀 Starting authentication check process...")
-                appendResult("🔐 Using hard-coded private key")
-                appendResult("")
+                withContext(Dispatchers.Main) {
+                    appendResult("🚀 Starting authentication check process...")
+                    appendResult("🔐 Using hard-coded private key")
+                    appendResult("")
+                }
                 
-                appendResult("📋 STEP 1: Calling authService.checkPendingAuth()...")
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 1: Calling authService.checkPendingAuth()...")
+                }
                 val pendingAuth = authService.checkPendingAuth()
 
              //   val pendingAuth =  org.ezkey.mobile.v1.auth.AuthAttemptPendingResponseDto(
@@ -442,41 +488,53 @@ class MainActivity : AppCompatActivity() {
                //     authAttemptChallengeRequired = false
                // )
 
-                appendResult("✅ Service call completed")
+                withContext(Dispatchers.Main) {
+                    appendResult("✅ Service call completed")
+                }
                 
                 if (pendingAuth != null) {
                     currentPendingAuth = pendingAuth
-                    acceptButton.isEnabled = true
-                    
-                    appendResult("🎉 SUCCESS: PENDING AUTHENTICATION REQUEST FOUND!")
-                    appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
-                    appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
-                    appendResult("🎫 Proof Token: ${pendingAuth.authAttemptProofToken.take(50)}...")
-                    appendResult("🔏 Integration Signature: ${pendingAuth.authAttemptProofTokenSignedByIntegration.take(50)}...")
-                    appendResult("")
-                    appendResult("💡 Click 'Accept Auth' button to approve this request")
+                    withContext(Dispatchers.Main) {
+                        acceptButton.isEnabled = true
+                        
+                        appendResult("🎉 SUCCESS: PENDING AUTHENTICATION REQUEST FOUND!")
+                        appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
+                        appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
+                        appendResult("🎫 Proof Token: ${pendingAuth.authAttemptProofToken.take(50)}...")
+                        appendResult("🔏 Integration Signature: ${pendingAuth.authAttemptProofTokenSignedByIntegration.take(50)}...")
+                        appendResult("")
+                        appendResult("💡 Click 'Accept Auth' button to approve this request")
+                    }
                 } else {
                     currentPendingAuth = null
-                    acceptButton.isEnabled = false
-                    
-                    appendResult("ℹ️ RESULT: No pending authentication requests found")
-                    appendResult("💤 This is normal - no active auth attempts")
-                    appendResult("🔄 You can press the button again to check for new requests")
+                    withContext(Dispatchers.Main) {
+                        acceptButton.isEnabled = false
+                        
+                        appendResult("ℹ️ RESULT: No pending authentication requests found")
+                        appendResult("💤 This is normal - no active auth attempts")
+                        appendResult("🔄 You can press the button again to check for new requests")
+                    }
                 }
                 
-                appendResult("=" * 60)
+                withContext(Dispatchers.Main) {
+                    appendResult("=" * 60)
+                }
                 
             } catch (e: Exception) {
-                appendResult("💥 CRITICAL ERROR during authentication check!")
-                appendError(e, "authentication check")
-                appendResult("🔍 Troubleshooting:")
-                appendResult("   - Check if ezkey-auth-api is running on localhost:8080")
-                appendResult("   - Verify network connectivity")
-                appendResult("   - Check API endpoint /api/v1/auth-attempts/pending/24")
-                appendResult("   - Check if the device has internet permission")
+                withContext(Dispatchers.Main) {
+                    appendResult("💥 CRITICAL ERROR during authentication check!")
+                    appendError(e, "authentication check")
+                    appendResult("🔍 Troubleshooting:")
+                    appendResult("   - Check if ezkey-auth-api is running on localhost:8080")
+                    appendResult("   - Verify network connectivity")
+                    appendResult("   - Check API endpoint /api/v1/auth-attempts/pending/24")
+                    appendResult("   - Check if the device has internet permission")
+                }
                 
                 currentPendingAuth = null
-                acceptButton.isEnabled = false
+                withContext(Dispatchers.Main) {
+                    acceptButton.isEnabled = false
+                }
             }
         }
     }
@@ -493,10 +551,12 @@ class MainActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
-                appendResult("✅ Accepting authentication request...")
-                appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
-                appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
-                appendResult("=" * 60)
+                withContext(Dispatchers.Main) {
+                    appendResult("✅ Accepting authentication request...")
+                    appendResult("📋 Auth Attempt ID: ${pendingAuth.authAttemptId}")
+                    appendResult("🔐 Challenge Required: ${pendingAuth.authAttemptChallengeRequired}")
+                    appendResult("=" * 60)
+                }
                 
                 val response = authService.acceptAuthAttempt(
                     authAttemptId = pendingAuth.authAttemptId,
@@ -504,22 +564,26 @@ class MainActivity : AppCompatActivity() {
                     challengeRequired = pendingAuth.authAttemptChallengeRequired
                 )
                 
-                appendResult("🎉 AUTHENTICATION ACCEPTED SUCCESSFULLY!")
-                appendResult("📊 Result: ${response.result}")
-                appendResult("💬 Message: ${response.message}")
-                appendResult("")
-                appendResult("✅ The authentication request has been approved")
-                appendResult("🔒 The integration can now proceed with the authenticated operation")
-                
-                // Reset state
-                currentPendingAuth = null
-                acceptButton.isEnabled = false
-                
-                appendResult("=" * 60)
+                withContext(Dispatchers.Main) {
+                    appendResult("🎉 AUTHENTICATION ACCEPTED SUCCESSFULLY!")
+                    appendResult("📊 Result: ${response.result}")
+                    appendResult("💬 Message: ${response.message}")
+                    appendResult("")
+                    appendResult("✅ The authentication request has been approved")
+                    appendResult("🔒 The integration can now proceed with the authenticated operation")
+                    
+                    // Reset state
+                    currentPendingAuth = null
+                    acceptButton.isEnabled = false
+                    
+                    appendResult("=" * 60)
+                }
                 
             } catch (e: Exception) {
-                appendResult("❌ ERROR accepting auth: ${e.message}")
-                appendResult("📊 Stack trace: ${e.stackTraceToString()}")
+                withContext(Dispatchers.Main) {
+                    appendResult("❌ ERROR accepting auth: ${e.message}")
+                    appendResult("📊 Stack trace: ${e.stackTraceToString()}")
+                }
             }
         }
     }
@@ -534,58 +598,76 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                appendResult("🚀 Starting device enrollment process...")
-                appendResult("🔐 This will generate real device keys and bind to enrollment")
-                appendResult("")
+                withContext(Dispatchers.Main) {
+                    appendResult("🚀 Starting device enrollment process...")
+                    appendResult("🔐 This will generate real device keys and bind to enrollment")
+                    appendResult("")
+                }
                 
                 // TODO: Implement real enrollment with API calls
-                appendResult("📋 STEP 1: Generating device key pair...")
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 1: Generating device key pair...")
+                }
                 val deviceKeyPair = signatureService.generateRsaKeyPair(2048)
-                appendResult("✅ Device key pair generated successfully")
-                appendResult("🔑 Private key length: ${deviceKeyPair.base64PrivateKey.length} chars")
-                appendResult("🔑 Public key length: ${deviceKeyPair.base64PublicKey.length} chars")
-                appendResult("")
+                withContext(Dispatchers.Main) {
+                    appendResult("✅ Device key pair generated successfully")
+                    appendResult("🔑 Private key length: ${deviceKeyPair.base64PrivateKey.length} chars")
+                    appendResult("🔑 Public key length: ${deviceKeyPair.base64PublicKey.length} chars")
+                    appendResult("")
+                }
                 
+                withContext(Dispatchers.Main) {
                     appendResult("📋 STEP 2: Storing device keys locally...")
-                    // Store keys in SimpleDeviceStorage
-                    val deviceStorage = SimpleDeviceStorage(this@MainActivity)
-                    deviceStorage.storeDevicePrivateKey(deviceKeyPair.base64PrivateKey)
-                    deviceStorage.storeDevicePublicKey(deviceKeyPair.base64PublicKey)
+                }
+                // Store keys in SimpleDeviceStorage
+                val deviceStorage = SimpleDeviceStorage(this@MainActivity)
+                deviceStorage.storeDevicePrivateKey(deviceKeyPair.base64PrivateKey)
+                deviceStorage.storeDevicePublicKey(deviceKeyPair.base64PublicKey)
+                withContext(Dispatchers.Main) {
                     appendResult("✅ Device keys stored locally in SharedPreferences")
                     appendResult("🔑 Private key stored: ${deviceKeyPair.base64PrivateKey.take(20)}...")
                     appendResult("🔑 Public key stored: ${deviceKeyPair.base64PublicKey.take(20)}...")
                     appendResult("")
+                }
                 
-                appendResult("📋 STEP 3: Binding to enrollment via API...")
+                withContext(Dispatchers.Main) {
+                    appendResult("📋 STEP 3: Binding to enrollment via API...")
+                }
                 // Make real API call to bind enrollment
                 try {
                     val enrollmentService = EnrollmentService() // No Context needed
                     val enrollmentId = 4 // Hardcoded for POC
                     val enrollmentProofToken = "ndtQ55aTtZrDBZN0Q2jXD7-VnWdrqB1BeEpJSx-GgrM.1761350820455.Ksc8b-rmbQmAiIKdX7-2Zg" // Hardcoded for POC
                     
-                    appendResult("🌐 Making API call to /api/v1/enrollments/bind...")
-                    appendResult("📋 Enrollment ID: $enrollmentId")
-                    appendResult("🎫 Proof Token: ${enrollmentProofToken.take(20)}...")
+                    withContext(Dispatchers.Main) {
+                        appendResult("🌐 Making API call to /api/v1/enrollments/bind...")
+                        appendResult("📋 Enrollment ID: $enrollmentId")
+                        appendResult("🎫 Proof Token: ${enrollmentProofToken.take(20)}...")
+                    }
                     
                     val result = enrollmentService.bindEnrollment(enrollmentId, enrollmentProofToken)
                     
                     if (result != null) {
-                        appendResult("✅ API call successful!")
-                        appendResult("🏢 Integration: ${result.integrationName}")
-                        appendResult("📱 Enrollment: ${result.enrollmentName}")
-                        appendResult("🔑 Public Key: ${result.integrationPublicKey.take(20)}...")
+                        withContext(Dispatchers.Main) {
+                            appendResult("✅ API call successful!")
+                            appendResult("🏢 Integration: ${result.integrationName}")
+                            appendResult("📱 Enrollment: ${result.enrollmentName}")
+                            appendResult("🔑 Public Key: ${result.integrationPublicKey.take(20)}...")
+                        }
                         
                         // Store enrollment data (only 2 parameters supported)
                         deviceStorage.storeEnrollmentData(
                             result.enrollmentId,
                             result.enrollmentProofToken
                         )
-                        appendResult("💾 Enrollment data stored locally")
-                        appendResult("📋 Note: Additional data (integration name, etc.) not stored in this version")
-                        
-                        // STEP 4: Verify enrollment with device keys
-                        appendResult("")
-                        appendResult("📋 STEP 4: Verifying enrollment with device keys...")
+                        withContext(Dispatchers.Main) {
+                            appendResult("💾 Enrollment data stored locally")
+                            appendResult("📋 Note: Additional data (integration name, etc.) not stored in this version")
+                            
+                            // STEP 4: Verify enrollment with device keys
+                            appendResult("")
+                            appendResult("📋 STEP 4: Verifying enrollment with device keys...")
+                        }
                         try {
                             // Get challenge response from user input
                             val challengeText = challengeEditText.text.toString().trim()
@@ -601,9 +683,11 @@ class MainActivity : AppCompatActivity() {
                                 deviceKeyPair.base64PrivateKey
                             )
                             
-                            appendResult("🔐 Challenge Response: $challengeResponse ${if (challengeText.isNotEmpty()) "(from input)" else "(default)"}")
-                            appendResult("🔑 Device Public Key: ${deviceKeyPair.base64PublicKey.take(20)}...")
-                            appendResult("✍️ Signed Token: ${enrollmentProofTokenSigned.take(20)}...")
+                            withContext(Dispatchers.Main) {
+                                appendResult("🔐 Challenge Response: $challengeResponse ${if (challengeText.isNotEmpty()) "(from input)" else "(default)"}")
+                                appendResult("🔑 Device Public Key: ${deviceKeyPair.base64PublicKey.take(20)}...")
+                                appendResult("✍️ Signed Token: ${enrollmentProofTokenSigned.take(20)}...")
+                            }
                             
                             // Make verify API call
                             val verifyResult = enrollmentService.verifyEnrollment(
@@ -613,38 +697,49 @@ class MainActivity : AppCompatActivity() {
                                 enrollmentProofTokenSigned
                             )
                             
-                            if (verifyResult?.active == true) {
-                                appendResult("✅ Enrollment verification successful!")
-                                appendResult("🎉 Device is now fully enrolled and active!")
-                            } else {
-                                appendResult("❌ Enrollment verification failed")
+                            withContext(Dispatchers.Main) {
+                                if (verifyResult?.active == true) {
+                                    appendResult("✅ Enrollment verification successful!")
+                                    appendResult("🎉 Device is now fully enrolled and active!")
+                                } else {
+                                    appendResult("❌ Enrollment verification failed")
+                                }
                             }
                         } catch (e: Exception) {
-                            appendResult("💥 Verification failed: ${e.message}")
+                            withContext(Dispatchers.Main) {
+                                appendResult("💥 Verification failed: ${e.message}")
+                            }
                         }
                     } else {
-                        appendResult("❌ API call failed - no response")
+                        withContext(Dispatchers.Main) {
+                            appendResult("❌ API call failed - no response")
+                        }
                     }
                 } catch (e: Exception) {
-                    appendResult("💥 API call failed: ${e.message}")
-                    appendResult("🔍 Check if ezkey-auth-api is running on ngrok")
+                    withContext(Dispatchers.Main) {
+                        appendResult("💥 API call failed: ${e.message}")
+                        appendResult("🔍 Check if ezkey-auth-api is running on ngrok")
+                    }
                 }
-                appendResult("")
                 
-                appendResult("🎉 ENROLLMENT COMPLETED SUCCESSFULLY!")
-                appendResult("📱 Device is now enrolled and ready for authentication!")
-                appendResult("🔄 You can now use 'Check Pending Auth' with real keys")
-                
-                appendResult("=" * 60)
+                withContext(Dispatchers.Main) {
+                    appendResult("")
+                    appendResult("🎉 ENROLLMENT COMPLETED SUCCESSFULLY!")
+                    appendResult("📱 Device is now enrolled and ready for authentication!")
+                    appendResult("🔄 You can now use 'Check Pending Auth' with real keys")
+                    appendResult("=" * 60)
+                }
                 
             } catch (e: Exception) {
-                appendResult("💥 CRITICAL ERROR during enrollment process!")
-                appendError(e, "device enrollment")
-                appendResult("🔍 Troubleshooting:")
-                appendResult("   - Check if ezkey-auth-api is running")
-                appendResult("   - Verify network connectivity")
-                appendResult("   - Check enrollment proof token validity")
-                appendResult("   - Ensure device has internet permission")
+                withContext(Dispatchers.Main) {
+                    appendResult("💥 CRITICAL ERROR during enrollment process!")
+                    appendError(e, "device enrollment")
+                    appendResult("🔍 Troubleshooting:")
+                    appendResult("   - Check if ezkey-auth-api is running")
+                    appendResult("   - Verify network connectivity")
+                    appendResult("   - Check enrollment proof token validity")
+                    appendResult("   - Ensure device has internet permission")
+                }
             }
         }
     }
