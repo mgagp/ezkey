@@ -102,10 +102,7 @@ public record AuthAttemptWaitResponseDto(
      * Indicates whether the wait operation ended due to timeout. True when the maximum wait
      * duration was reached before completion.
      */
-    @Schema(
-            description = "Whether wait ended due to timeout",
-            example = "false",
-            required = true)
+    @Schema(description = "Whether wait ended due to timeout", example = "false", required = true)
         Boolean timeoutReached,
     /**
      * Actual duration waited in seconds before returning the response. Useful for monitoring and
@@ -113,9 +110,7 @@ public record AuthAttemptWaitResponseDto(
      */
     @Schema(description = "Actual duration waited in seconds", example = "15", required = true)
         Integer waitDuration,
-    /**
-     * Timestamp when the wait operation completed. Used for auditing and monitoring purposes.
-     */
+    /** Timestamp when the wait operation completed. Used for auditing and monitoring purposes. */
     @Schema(
             description = "Timestamp when wait operation completed (with timezone)",
             example = "2025-01-27T10:30:15+01:00",

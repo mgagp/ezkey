@@ -21,11 +21,12 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link ApiKeyResponseDto}.
  *
  * <p>Tests verify proper behavior of the record including:
+ *
  * <ul>
- *   <li>Record construction and accessor methods</li>
- *   <li>Handling of nullable fields (description, expiresAt, lastUsedAt, etc.)</li>
- *   <li>Equality and hashCode behavior</li>
- *   <li>Active vs revoked state representation</li>
+ *   <li>Record construction and accessor methods
+ *   <li>Handling of nullable fields (description, expiresAt, lastUsedAt, etc.)
+ *   <li>Equality and hashCode behavior
+ *   <li>Active vs revoked state representation
  * </ul>
  *
  * @author Ezkey contributors
@@ -39,9 +40,12 @@ class ApiKeyResponseDtoTest {
   private static final String TEST_INTEGRATION_KEY = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0";
   private static final String TEST_DESCRIPTION = "Production Server API Key";
   private static final Boolean TEST_ACTIVE = true;
-  private static final OffsetDateTime TEST_CREATED_AT = OffsetDateTime.of(2025, 10, 17, 10, 30, 0, 0, ZoneOffset.UTC);
-  private static final OffsetDateTime TEST_EXPIRES_AT = OffsetDateTime.of(2025, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC);
-  private static final OffsetDateTime TEST_LAST_USED_AT = OffsetDateTime.of(2025, 10, 17, 15, 45, 30, 0, ZoneOffset.UTC);
+  private static final OffsetDateTime TEST_CREATED_AT =
+      OffsetDateTime.of(2025, 10, 17, 10, 30, 0, 0, ZoneOffset.UTC);
+  private static final OffsetDateTime TEST_EXPIRES_AT =
+      OffsetDateTime.of(2025, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC);
+  private static final OffsetDateTime TEST_LAST_USED_AT =
+      OffsetDateTime.of(2025, 10, 17, 15, 45, 30, 0, ZoneOffset.UTC);
   private static final String[] TEST_IP_WHITELIST = {"192.168.1.0/24", "10.0.0.100"};
   private static final OffsetDateTime TEST_REVOKED_AT = null;
   private static final String TEST_REVOKED_BY = null;
@@ -50,19 +54,19 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should create record with all fields for active key")
   void shouldCreateRecordWithAllFieldsForActiveKey() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.apiKeyId()).isEqualTo(TEST_API_KEY_ID);
@@ -86,19 +90,19 @@ class ApiKeyResponseDtoTest {
     String revokedBy = "admin";
 
     // Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        false, // inactive
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        revokedAt,
-        revokedBy
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            false, // inactive
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            revokedAt,
+            revokedBy);
 
     // Assert
     assertThat(dto.active()).isFalse();
@@ -110,19 +114,20 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should create record with minimal fields (null optionals)")
   void shouldCreateRecordWithMinimalFields() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        null, // no description
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        null, // no expiration
-        null, // never used
-        null, // no IP whitelist
-        null, // not revoked
-        null  // no revoker
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            null, // no description
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            null, // no expiration
+            null, // never used
+            null, // no IP whitelist
+            null, // not revoked
+            null // no revoker
+            );
 
     // Assert
     assertThat(dto.apiKeyId()).isEqualTo(TEST_API_KEY_ID);
@@ -142,19 +147,19 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should represent never-used key correctly")
   void shouldRepresentNeverUsedKeyCorrectly() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        null, // never used
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            null, // never used
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.lastUsedAt()).isNull();
@@ -165,19 +170,19 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should represent key without expiration correctly")
   void shouldRepresentKeyWithoutExpirationCorrectly() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        null, // no expiration
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            null, // no expiration
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.expiresAt()).isNull();
@@ -188,19 +193,19 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should represent key without IP restrictions correctly")
   void shouldRepresentKeyWithoutIpRestrictionsCorrectly() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        null, // no IP restrictions
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            null, // no IP restrictions
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.ipWhitelist()).isNull();
@@ -210,47 +215,47 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should implement equals() correctly for records")
   void shouldImplementEqualsCorrectly() {
     // Arrange
-    ApiKeyResponseDto dto1 = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto1 =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
-    ApiKeyResponseDto dto2 = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto2 =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
-    ApiKeyResponseDto dto3 = new ApiKeyResponseDto(
-        999, // different ID
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto3 =
+        new ApiKeyResponseDto(
+            999, // different ID
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto1).isEqualTo(dto2);
@@ -262,33 +267,33 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should implement hashCode() correctly for records")
   void shouldImplementHashCodeCorrectly() {
     // Arrange
-    ApiKeyResponseDto dto1 = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto1 =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
-    ApiKeyResponseDto dto2 = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto2 =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto1.hashCode()).isEqualTo(dto2.hashCode());
@@ -301,19 +306,19 @@ class ApiKeyResponseDtoTest {
     String[] emptyWhitelist = new String[0];
 
     // Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        emptyWhitelist,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            emptyWhitelist,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.ipWhitelist()).isNotNull().isEmpty();
@@ -326,19 +331,19 @@ class ApiKeyResponseDtoTest {
     String[] orderedWhitelist = {"10.0.0.1", "192.168.1.0/24", "172.16.0.0/16"};
 
     // Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        orderedWhitelist,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            orderedWhitelist,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert
     assertThat(dto.ipWhitelist()).containsExactly("10.0.0.1", "192.168.1.0/24", "172.16.0.0/16");
@@ -352,19 +357,19 @@ class ApiKeyResponseDtoTest {
     String revokedBy = "security_admin";
 
     // Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        "Compromised key - emergency revocation",
-        false,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        revokedAt,
-        revokedBy
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            "Compromised key - emergency revocation",
+            false,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            revokedAt,
+            revokedBy);
 
     // Assert
     assertThat(dto.active()).isFalse();
@@ -377,19 +382,19 @@ class ApiKeyResponseDtoTest {
   @DisplayName("Should contain all integration context")
   void shouldContainAllIntegrationContext() {
     // Arrange & Act
-    ApiKeyResponseDto dto = new ApiKeyResponseDto(
-        TEST_API_KEY_ID,
-        TEST_INTEGRATION_ID,
-        TEST_INTEGRATION_KEY,
-        TEST_DESCRIPTION,
-        TEST_ACTIVE,
-        TEST_CREATED_AT,
-        TEST_EXPIRES_AT,
-        TEST_LAST_USED_AT,
-        TEST_IP_WHITELIST,
-        TEST_REVOKED_AT,
-        TEST_REVOKED_BY
-    );
+    ApiKeyResponseDto dto =
+        new ApiKeyResponseDto(
+            TEST_API_KEY_ID,
+            TEST_INTEGRATION_ID,
+            TEST_INTEGRATION_KEY,
+            TEST_DESCRIPTION,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_EXPIRES_AT,
+            TEST_LAST_USED_AT,
+            TEST_IP_WHITELIST,
+            TEST_REVOKED_AT,
+            TEST_REVOKED_BY);
 
     // Assert - verify integration context is complete
     assertThat(dto.integrationId()).isEqualTo(TEST_INTEGRATION_ID);

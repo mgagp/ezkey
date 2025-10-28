@@ -64,10 +64,10 @@ public record AuthAttemptPendingRequestDto(
      * enrollmentProofToken to prevent enumeration attacks and ensure enrollment ownership.
      */
     @Schema(
-        description = "Enrollment ID to check for pending authentication attempts",
-        example = "123",
-        required = true)
-    Integer enrollmentId,
+            description = "Enrollment ID to check for pending authentication attempts",
+            example = "123",
+            required = true)
+        Integer enrollmentId,
 
     /**
      * Cryptographic proof token that authenticates the enrollment.
@@ -77,10 +77,10 @@ public record AuthAttemptPendingRequestDto(
      * unauthorized access to pending authentication attempts.
      */
     @Schema(
-        description = "Cryptographic proof token that authenticates the enrollment",
-        example = "EZK-ABC123-DEF456",
-        required = true)
-    String enrollmentProofToken,
+            description = "Cryptographic proof token that authenticates the enrollment",
+            example = "EZK-ABC123-DEF456",
+            required = true)
+        String enrollmentProofToken,
 
     /**
      * The device's proof token for authentication.
@@ -89,10 +89,10 @@ public record AuthAttemptPendingRequestDto(
      * device during the authentication flow. Generated during enrollment and unique to each device.
      */
     @Schema(
-        description = "Device proof token for authentication",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String deviceProofToken,
+            description = "Device proof token for authentication",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String deviceProofToken,
 
     /**
      * Cryptographically signed device proof token.
@@ -102,9 +102,7 @@ public record AuthAttemptPendingRequestDto(
      * authentication attempts.
      */
     @Schema(
-        description = "Cryptographically signed device proof token",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String deviceProofTokenSigned
-) {
-}
+            description = "Cryptographically signed device proof token",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String deviceProofTokenSigned) {}

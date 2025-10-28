@@ -35,7 +35,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
- * @param id Unique identifier of the newly created integration used to reference this integration in subsequent operations
+ * @param id Unique identifier of the newly created integration used to reference this integration
+ *     in subsequent operations
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateResponse

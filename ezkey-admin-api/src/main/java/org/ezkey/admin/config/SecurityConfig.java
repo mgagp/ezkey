@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -119,8 +118,7 @@ public class SecurityConfig {
 
     // Add API key authentication filter BEFORE bearer token filter
     // This ensures API keys (HTTP Basic) are checked before bearer tokens
-    http.addFilterBefore(
-        apiKeyAuthenticationFilter, AdminTokenAuthenticationFilter.class);
+    http.addFilterBefore(apiKeyAuthenticationFilter, AdminTokenAuthenticationFilter.class);
 
     return http.build();
   }

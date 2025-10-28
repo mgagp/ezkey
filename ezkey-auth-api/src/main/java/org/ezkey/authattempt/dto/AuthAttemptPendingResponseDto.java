@@ -50,26 +50,28 @@ public record AuthAttemptPendingResponseDto(
     /**
      * Unique identifier of the authentication attempt.
      *
-     * <p>Used by the mobile device to reference this specific authentication attempt when submitting
-     * a response. This ID links the pending request to the user's approval or denial decision.
+     * <p>Used by the mobile device to reference this specific authentication attempt when
+     * submitting a response. This ID links the pending request to the user's approval or denial
+     * decision.
      */
     @Schema(
-        description = "Unique identifier of the authentication attempt",
-        example = "123",
-        required = true)
-    Integer authAttemptId,
+            description = "Unique identifier of the authentication attempt",
+            example = "123",
+            required = true)
+        Integer authAttemptId,
 
     /**
      * Authentication proof token containing challenge data.
      *
      * <p>Contains the challenge data and integration information that needs to be cryptographically
-     * signed by the mobile device to prove possession of the private key and complete authentication.
+     * signed by the mobile device to prove possession of the private key and complete
+     * authentication.
      */
     @Schema(
-        description = "Authentication proof token containing challenge data",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String authAttemptProofToken,
+            description = "Authentication proof token containing challenge data",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String authAttemptProofToken,
 
     /**
      * Integration-signed authentication proof token.
@@ -79,22 +81,20 @@ public record AuthAttemptPendingResponseDto(
      * authentication challenge data.
      */
     @Schema(
-        description = "Integration-signed authentication proof token for integrity",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String authAttemptProofTokenSignedByIntegration,
+            description = "Integration-signed authentication proof token for integrity",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String authAttemptProofTokenSignedByIntegration,
 
     /**
      * Indicates whether additional challenge validation is required.
      *
      * <p>When true, the mobile device must collect and provide additional challenge responses from
-     * the user (e.g., numeric code verification). When false, only cryptographic signature validation
-     * is needed.
+     * the user (e.g., numeric code verification). When false, only cryptographic signature
+     * validation is needed.
      */
     @Schema(
-        description = "Whether additional challenge validation is required",
-        example = "true",
-        required = true)
-    Boolean authAttemptChallengeRequired
-) {
-}
+            description = "Whether additional challenge validation is required",
+            example = "true",
+            required = true)
+        Boolean authAttemptChallengeRequired) {}

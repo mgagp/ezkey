@@ -49,19 +49,28 @@ import java.time.OffsetDateTime;
 public record AdminLoginResponseDto(
     @Schema(description = "Indicates if the authentication was successful", example = "true")
         Boolean success,
-    @Schema(description = "Response message describing authentication result", example = "Authentication successful")
+    @Schema(
+            description = "Response message describing authentication result",
+            example = "Authentication successful")
         String message,
-    @Schema(description = "Authentication attempt status", example = "pending",
-        allowableValues = {"pending", "accepted", "rejected"})
+    @Schema(
+            description = "Authentication attempt status",
+            example = "pending",
+            allowableValues = {"pending", "accepted", "rejected"})
         String status,
-    @Schema(description = "Bearer token for authenticated API requests", example = "ezkey_abc123def456...")
+    @Schema(
+            description = "Bearer token for authenticated API requests",
+            example = "ezkey_abc123def456...")
         String token,
-    @Schema(description = "Type of administrator", example = "GLOBAL_ADMIN",
-        allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN", "INTEGRATION_ADMIN"})
+    @Schema(
+            description = "Type of administrator",
+            example = "GLOBAL_ADMIN",
+            allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN", "INTEGRATION_ADMIN"})
         String adminType,
-    @Schema(description = "Administrator username", example = "admin")
-        String username,
-    @Schema(description = "Token expiration timestamp (with timezone)", example = "2025-10-15T14:30:00+01:00")
+    @Schema(description = "Administrator username", example = "admin") String username,
+    @Schema(
+            description = "Token expiration timestamp (with timezone)",
+            example = "2025-10-15T14:30:00+01:00")
         OffsetDateTime expiresAt,
     @Schema(description = "Authentication attempt ID for two-step flow", example = "123")
         Integer authAttemptId,
@@ -87,7 +96,16 @@ public record AdminLoginResponseDto(
    */
   public AdminLoginResponseDto(
       String token, String adminType, String username, OffsetDateTime expiresAt) {
-    this(true, "Authentication successful", "approved", token, adminType, username, expiresAt, null, null);
+    this(
+        true,
+        "Authentication successful",
+        "approved",
+        token,
+        adminType,
+        username,
+        expiresAt,
+        null,
+        null);
   }
 
   /**
@@ -108,7 +126,15 @@ public record AdminLoginResponseDto(
       String message,
       OffsetDateTime expiresAt) {
     return new AdminLoginResponseDto(
-        false, message, "pending", null, adminType, username, expiresAt, authAttemptId, challengeCode);
+        false,
+        message,
+        "pending",
+        null,
+        adminType,
+        username,
+        expiresAt,
+        authAttemptId,
+        challengeCode);
   }
 
   /**
@@ -123,7 +149,15 @@ public record AdminLoginResponseDto(
   public static AdminLoginResponseDto success(
       String token, String adminType, String username, OffsetDateTime expiresAt) {
     return new AdminLoginResponseDto(
-        true, "Authentication successful", "approved", token, adminType, username, expiresAt, null, null);
+        true,
+        "Authentication successful",
+        "approved",
+        token,
+        adminType,
+        username,
+        expiresAt,
+        null,
+        null);
   }
 
   /**

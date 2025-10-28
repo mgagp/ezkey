@@ -34,8 +34,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
- * @param enrollmentId Unique identifier of the created enrollment used to reference this enrollment in subsequent operations
- * @param enrollmentChallenge Challenge number generated for enrollment verification used during the enrollment binding and verification process
+ * @param enrollmentId Unique identifier of the created enrollment used to reference this enrollment
+ *     in subsequent operations
+ * @param enrollmentChallenge Challenge number generated for enrollment verification used during the
+ *     enrollment binding and verification process
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateResponse

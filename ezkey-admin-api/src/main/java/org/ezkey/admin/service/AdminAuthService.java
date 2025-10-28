@@ -184,9 +184,10 @@ public class AdminAuthService {
           "📋 Passwordless with challenge: returning auth attempt info (challenge: {})",
           challengeCode);
 
-      String message = "Challenge verification required. Enter code "
-          + challengeCode
-          + " on your device, then call /passwordless-wait.";
+      String message =
+          "Challenge verification required. Enter code "
+              + challengeCode
+              + " on your device, then call /passwordless-wait.";
 
       return AdminLoginResponseDto.pendingPasswordless(
           attemptResponse.getAuthAttemptId(),

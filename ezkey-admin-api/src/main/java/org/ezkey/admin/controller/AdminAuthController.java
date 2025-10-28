@@ -98,8 +98,7 @@ public class AdminAuthController {
     AdminLoginResponseDto response = authService.authenticate(request);
 
     if (response.success()) {
-      logger.info(
-          "✅ Login successful for username: {} from IP: {}", request.username(), clientIp);
+      logger.info("✅ Login successful for username: {} from IP: {}", request.username(), clientIp);
 
       // Record successful attempt for rate limiting (clears failure count)
       if (rateLimitFilter != null) {
@@ -211,8 +210,7 @@ public class AdminAuthController {
       logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
       AdminLoginResponseDto response =
-          authService.waitForPasswordlessAuth(
-              request.authAttemptId(), request.challengeCode());
+          authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
 
       logger.info("✅ Passwordless authentication successful");
       return ResponseEntity.ok(response);

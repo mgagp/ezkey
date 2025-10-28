@@ -50,9 +50,7 @@ public class ApiKeyRateLimitConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(ApiKeyRateLimitConfig.class);
 
-  /**
-   * Constructor that logs configuration information.
-   */
+  /** Constructor that logs configuration information. */
   public ApiKeyRateLimitConfig() {
     logger.info("API Key Rate Limiting configuration loaded");
     logger.info("Rate limiting is enabled for API key operations");

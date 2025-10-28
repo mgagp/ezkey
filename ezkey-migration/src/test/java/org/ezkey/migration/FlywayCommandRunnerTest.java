@@ -10,12 +10,12 @@
 
 package org.ezkey.migration;
 
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
@@ -66,8 +66,8 @@ class FlywayCommandRunnerTest {
   private TestableFlywayCommandRunner runner;
 
   /**
-   * Testable version of FlywayCommandRunner that overrides System.exit() to prevent JVM
-   * termination during tests.
+   * Testable version of FlywayCommandRunner that overrides System.exit() to prevent JVM termination
+   * during tests.
    */
   private static class TestableFlywayCommandRunner extends FlywayCommandRunner {
     private Integer lastExitCode = null;

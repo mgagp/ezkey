@@ -46,44 +46,37 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO containing enrollment binding information")
 public record EnrollmentBindResponseDto(
     @Schema(
-        description = "Enrollment ID that was bound to the mobile device",
-        example = "123",
-        required = true)
-    Integer enrollmentId,
-
+            description = "Enrollment ID that was bound to the mobile device",
+            example = "123",
+            required = true)
+        Integer enrollmentId,
     @Schema(
-        description = "Integration's public key for cryptographic verification",
-        example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-        required = true)
-    String integrationPublicKey,
-
+            description = "Integration's public key for cryptographic verification",
+            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+            required = true)
+        String integrationPublicKey,
     @Schema(
-        description = "Enrollment proof token to be signed by the device",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String enrollmentProofToken,
-
+            description = "Enrollment proof token to be signed by the device",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String enrollmentProofToken,
     @Schema(
-        description = "Logo URL or base64-encoded image for the integration",
-        example = "https://acme.com/logo.png",
-        required = false)
-    String integrationLogo,
-
+            description = "Logo URL or base64-encoded image for the integration",
+            example = "https://acme.com/logo.png",
+            required = false)
+        String integrationLogo,
     @Schema(
-        description = "Display name of the integration",
-        example = "Acme Bank",
-        required = false)
-    String integrationName,
-
+            description = "Display name of the integration",
+            example = "Acme Bank",
+            required = false)
+        String integrationName,
     @Schema(
-        description = "Description of the integration",
-        example = "Acme Bank provides secure online banking services.",
-        required = false)
-    String integrationDescription,
-
+            description = "Description of the integration",
+            example = "Acme Bank provides secure online banking services.",
+            required = false)
+        String integrationDescription,
     @Schema(
-        description = "Human-readable name for the enrollment",
-        example = "John's iPhone",
-        required = false)
-    String enrollmentName
-) {}
+            description = "Human-readable name for the enrollment",
+            example = "John's iPhone",
+            required = false)
+        String enrollmentName) {}

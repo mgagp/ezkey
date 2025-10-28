@@ -18,9 +18,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.ezkey.crypto.config.SecurityConfig;
 import org.ezkey.signature.RsaKeyPair;
 import org.ezkey.signature.SignatureService;
-import org.ezkey.crypto.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -101,7 +101,9 @@ class CryptoControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/crypto/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+            post("/api/v1/crypto/sign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.signature").value("test-signature"))
@@ -121,7 +123,9 @@ class CryptoControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/crypto/sign").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+            post("/api/v1/crypto/sign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));

@@ -446,9 +446,10 @@ public class AuthAttemptController {
       }
 
       // Create the authentication attempt request
-      AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto()
-          .enrollmentId(enrollmentId)
-          .challengeRequested(challengeRequested);
+      AuthAttemptCreateRequestDto request =
+          new AuthAttemptCreateRequestDto()
+              .enrollmentId(enrollmentId)
+              .challengeRequested(challengeRequested);
 
       // Call the API to create the authentication attempt
       Mono<AuthAttemptCreateResponseDto> responseMono =

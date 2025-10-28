@@ -14,13 +14,12 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.ezkey.admin.config.ApiKeyRateLimitProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Service for implementing rate limiting on API key operations.
@@ -29,9 +28,9 @@ import io.micrometer.core.instrument.MeterRegistry;
  * specifically for authentication attempt creation and validation (wait) operations. It uses
  * Bucket4j token bucket algorithm for efficient rate limiting with configurable limits.
  *
- * <p><b>Rate Limiting Strategy:</b> Uses Bucket4j token bucket algorithm where each API key has
- * a bucket with configurable capacity and refill rate. This provides smooth rate limiting
- * with burst capacity while maintaining overall rate limits.
+ * <p><b>Rate Limiting Strategy:</b> Uses Bucket4j token bucket algorithm where each API key has a
+ * bucket with configurable capacity and refill rate. This provides smooth rate limiting with burst
+ * capacity while maintaining overall rate limits.
  *
  * <p><b>Configuration:</b> Rate limits are externally configurable per operation type:
  *
@@ -54,7 +53,7 @@ public class RateLimitService {
 
   private final ApiKeyRateLimitProperties properties;
   private final MeterRegistry meterRegistry;
-  
+
   // Bucket4j-based rate limiting with Caffeine cache
   private final Cache<String, Bucket> createAttemptBuckets;
   private final Cache<String, Bucket> waitAttemptBuckets;
@@ -68,23 +67,21 @@ public class RateLimitService {
   public RateLimitService(ApiKeyRateLimitProperties properties, MeterRegistry meterRegistry) {
     this.properties = properties;
     this.meterRegistry = meterRegistry;
-    
+
     // Initialize Caffeine caches for bucket storage
-    this.createAttemptBuckets = Caffeine.newBuilder()
-        .maximumSize(10000)
-        .expireAfterAccess(Duration.ofHours(1))
-        .build();
-        
-    this.waitAttemptBuckets = Caffeine.newBuilder()
-        .maximumSize(10000)
-        .expireAfterAccess(Duration.ofHours(1))
-        .build();
-        
+    this.createAttemptBuckets =
+        Caffeine.newBuilder().maximumSize(10000).expireAfterAccess(Duration.ofHours(1)).build();
+
+    this.waitAttemptBuckets =
+        Caffeine.newBuilder().maximumSize(10000).expireAfterAccess(Duration.ofHours(1)).build();
+
     logger.info("RateLimitService initialized with Bucket4j implementation");
-    logger.info("Create auth attempt limit: {} requests per {} minutes", 
+    logger.info(
+        "Create auth attempt limit: {} requests per {} minutes",
         properties.getCreateAuthAttempt().getRequests(),
         properties.getCreateAuthAttempt().getWindowMinutes());
-    logger.info("Wait auth attempt limit: {} requests per {} minutes",
+    logger.info(
+        "Wait auth attempt limit: {} requests per {} minutes",
         properties.getWaitAuthAttempt().getRequests(),
         properties.getWaitAuthAttempt().getWindowMinutes());
   }
@@ -101,28 +98,29 @@ public class RateLimitService {
   public boolean canCreateAuthAttempt(String apiKeyId) {
     String bucketKey = "create:" + apiKeyId;
     Bucket bucket = createAttemptBuckets.get(bucketKey, key -> createCreateAttemptBucket());
-    
+
     boolean allowed = bucket.tryConsume(1);
-    
+
     // Record metrics
-    meterRegistry.counter("rate_limit.checks.total", 
-        "operation", "create_auth_attempt", 
-        "type", "api_key").increment();
-        
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "create_auth_attempt", "type", "api_key")
+        .increment();
+
     if (!allowed) {
-      meterRegistry.counter("rate_limit.exceeded.total", 
-          "operation", "create_auth_attempt", 
-          "type", "api_key").increment();
+      meterRegistry
+          .counter(
+              "rate_limit.exceeded.total", "operation", "create_auth_attempt", "type", "api_key")
+          .increment();
     }
-    
+
     return allowed;
   }
 
   /**
    * Checks if an API key can perform a wait auth attempt operation.
    *
-   * <p>This method implements rate limiting for authentication attempt waiting using Bucket4j
-   * token bucket algorithm. It checks if the API key has sufficient tokens in its bucket.
+   * <p>This method implements rate limiting for authentication attempt waiting using Bucket4j token
+   * bucket algorithm. It checks if the API key has sufficient tokens in its bucket.
    *
    * @param apiKeyId the API key identifier
    * @return true if the operation is allowed, false if rate limit exceeded
@@ -130,28 +128,28 @@ public class RateLimitService {
   public boolean canWaitAuthAttempt(String apiKeyId) {
     String bucketKey = "wait:" + apiKeyId;
     Bucket bucket = waitAttemptBuckets.get(bucketKey, key -> createWaitAttemptBucket());
-    
+
     boolean allowed = bucket.tryConsume(1);
-    
+
     // Record metrics
-    meterRegistry.counter("rate_limit.checks.total", 
-        "operation", "wait_auth_attempt", 
-        "type", "api_key").increment();
-        
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "wait_auth_attempt", "type", "api_key")
+        .increment();
+
     if (!allowed) {
-      meterRegistry.counter("rate_limit.exceeded.total", 
-          "operation", "wait_auth_attempt", 
-          "type", "api_key").increment();
+      meterRegistry
+          .counter("rate_limit.exceeded.total", "operation", "wait_auth_attempt", "type", "api_key")
+          .increment();
     }
-    
+
     return allowed;
   }
 
   /**
    * Records a successful create auth attempt operation for rate limiting tracking.
    *
-   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
-   * so this method is kept for API compatibility but doesn't need to do additional work.
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
    *
    * @param apiKeyId the API key identifier
    */
@@ -164,8 +162,8 @@ public class RateLimitService {
   /**
    * Records a successful wait auth attempt operation for rate limiting tracking.
    *
-   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
-   * so this method is kept for API compatibility but doesn't need to do additional work.
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
    *
    * @param apiKeyId the API key identifier
    */
@@ -184,20 +182,21 @@ public class RateLimitService {
   public RateLimitStatus getRateLimitStatus(String apiKeyId) {
     String bucketKey = "create:" + apiKeyId;
     Bucket bucket = createAttemptBuckets.getIfPresent(bucketKey);
-    
+
     if (bucket == null) {
       return new RateLimitStatus(
-          properties.getCreateAuthAttempt().getRequests(), 
-          0, 
+          properties.getCreateAuthAttempt().getRequests(),
+          0,
           properties.getCreateAuthAttempt().getWindowMinutes());
     }
-    
+
     // Get available tokens (this is an approximation)
     long availableTokens = bucket.getAvailableTokens();
     int limit = properties.getCreateAuthAttempt().getRequests();
     int current = (int) (limit - availableTokens);
-    
-    return new RateLimitStatus(limit, current, properties.getCreateAuthAttempt().getWindowMinutes());
+
+    return new RateLimitStatus(
+        limit, current, properties.getCreateAuthAttempt().getWindowMinutes());
   }
 
   /**
@@ -207,15 +206,14 @@ public class RateLimitService {
    */
   private Bucket createCreateAttemptBucket() {
     ApiKeyRateLimitProperties.CreateAuthAttemptConfig config = properties.getCreateAuthAttempt();
-    
-    Bandwidth limit = Bandwidth.builder()
-        .capacity(config.getRequests())
-        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
-        .build();
-    
-    return Bucket.builder()
-        .addLimit(limit)
-        .build();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
   }
 
   /**
@@ -225,21 +223,17 @@ public class RateLimitService {
    */
   private Bucket createWaitAttemptBucket() {
     ApiKeyRateLimitProperties.WaitAuthAttemptConfig config = properties.getWaitAuthAttempt();
-    
-    Bandwidth limit = Bandwidth.builder()
-        .capacity(config.getRequests())
-        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
-        .build();
-    
-    return Bucket.builder()
-        .addLimit(limit)
-        .build();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
   }
 
-
-  /**
-   * Data class representing rate limit status information.
-   */
+  /** Data class representing rate limit status information. */
   public static class RateLimitStatus {
     private final int limit;
     private final int current;

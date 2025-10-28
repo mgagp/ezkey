@@ -52,14 +52,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Request DTO for submitting authentication attempt responses")
 public record AuthAttemptRespondRequestDto(
     /**
-     * The authentication attempt ID being responded to. Must reference a valid pending authentication
-     * attempt.
+     * The authentication attempt ID being responded to. Must reference a valid pending
+     * authentication attempt.
      */
     @Schema(
-        description = "Authentication attempt ID being responded to",
-        example = "123",
-        required = true)
-    Integer authAttemptId,
+            description = "Authentication attempt ID being responded to",
+            example = "123",
+            required = true)
+        Integer authAttemptId,
 
     /**
      * Device-signed proof token for cryptographic validation.
@@ -68,10 +68,10 @@ public record AuthAttemptRespondRequestDto(
      * proves possession of the private key associated with this enrollment.
      */
     @Schema(
-        description = "Device-signed proof token for authentication validation",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String authAttemptProofTokenSignedByDevice,
+            description = "Device-signed proof token for authentication validation",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String authAttemptProofTokenSignedByDevice,
 
     /**
      * Response to the authentication challenge.
@@ -80,10 +80,10 @@ public record AuthAttemptRespondRequestDto(
      * Only needed when the authentication attempt has challengeRequired flag set to true.
      */
     @Schema(
-        description = "User's response to authentication challenge (if required)",
-        example = "123456",
-        nullable = true)
-    Integer authAttemptChallengeResponse,
+            description = "User's response to authentication challenge (if required)",
+            example = "123456",
+            nullable = true)
+        Integer authAttemptChallengeResponse,
 
     /**
      * User's decision to accept or deny the authentication attempt.
@@ -92,9 +92,7 @@ public record AuthAttemptRespondRequestDto(
      * authentication request through the mobile app.
      */
     @Schema(
-        description = "User's decision: true to approve, false to deny",
-        example = "true",
-        required = true)
-    Boolean authAttemptAccepted
-) {
-}
+            description = "User's decision: true to approve, false to deny",
+            example = "true",
+            required = true)
+        Boolean authAttemptAccepted) {}

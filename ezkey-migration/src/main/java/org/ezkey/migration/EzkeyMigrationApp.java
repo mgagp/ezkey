@@ -73,9 +73,8 @@ public class EzkeyMigrationApp {
   /**
    * Main entry point for the Ezkey migration application.
    *
-   * <p>This method starts the Spring Boot application context and executes Flyway operations
-   * based on command-line arguments. By default, runs database migrations if no arguments
-   * are provided.
+   * <p>This method starts the Spring Boot application context and executes Flyway operations based
+   * on command-line arguments. By default, runs database migrations if no arguments are provided.
    *
    * @param args command line arguments
    *     <ul>

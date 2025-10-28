@@ -94,15 +94,11 @@ public record EnrollmentResponseDto(
             example = "VERIFIED",
             allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID"})
         String enrollmentStatus,
-    @Schema(
-            description = "Flag indicating if the enrollment is currently active",
-            example = "true")
+    @Schema(description = "Flag indicating if the enrollment is currently active", example = "true")
         Boolean enrollmentActive,
     @Schema(description = "Challenge value for enrollment verification", example = "123456")
         Integer enrollmentChallenge,
-    @Schema(
-            description = "Unique code for enrollment verification",
-            example = "EZK-ABC123-DEF456")
+    @Schema(description = "Unique code for enrollment verification", example = "EZK-ABC123-DEF456")
         String enrollmentProofToken,
     @Schema(
             description = "Flag indicating if authentication attempts require challenge",

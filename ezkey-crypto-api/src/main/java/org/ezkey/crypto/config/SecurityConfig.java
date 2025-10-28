@@ -19,8 +19,8 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Spring Security configuration for crypto API.
  *
- * <p>This configuration permits all requests to crypto endpoints without authentication since
- * this API is intended for development and testing purposes only.
+ * <p>This configuration permits all requests to crypto endpoints without authentication since this
+ * API is intended for development and testing purposes only.
  *
  * <p><b>Warning:</b> This configuration disables all security. The crypto API should NEVER be
  * exposed in production environments.
@@ -53,4 +53,3 @@ public class SecurityConfig {
     return http.build();
   }
 }
-

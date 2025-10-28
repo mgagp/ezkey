@@ -36,8 +36,10 @@ import java.util.List;
  *
  * <p><b>License:</b> MIT
  *
- * @param logo URL or path to the integration's logo image displayed in mobile app and web interfaces
- * @param i18n Optional list of internationalization entries containing localized name and description for different languages
+ * @param logo URL or path to the integration's logo image displayed in mobile app and web
+ *     interfaces
+ * @param i18n Optional list of internationalization entries containing localized name and
+ *     description for different languages
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateRequest

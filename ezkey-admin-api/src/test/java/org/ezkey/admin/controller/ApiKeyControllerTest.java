@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
@@ -51,8 +50,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 /**
  * Unit tests for ApiKeyController.
  *
- * <p>This test class provides minimal unit test coverage for the API key management
- * operations to prevent regressions during future development.
+ * <p>This test class provides minimal unit test coverage for the API key management operations to
+ * prevent regressions during future development.
  *
  * <p><b>Test Coverage:</b>
  *
@@ -63,8 +62,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
  *   <li><b>revokeApiKey:</b> Successful revocation, not found case
  * </ul>
  *
- * <p><b>Note:</b> Rate limiting is not tested due to complexity and is covered
- * by integration tests.
+ * <p><b>Note:</b> Rate limiting is not tested due to complexity and is covered by integration
+ * tests.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -85,10 +84,10 @@ class ApiKeyControllerTest {
   @BeforeEach
   void setUp() {
     controller = new ApiKeyController(apiKeyService, adminOpsRateLimitService);
-    
+
     // Setup authentication context with admin user
     setupAdminAuthentication();
-    
+
     // Mock rate limiting to always allow operations (bypass complexity)
     lenient().when(adminOpsRateLimitService.canCreateApiKey(anyString())).thenReturn(true);
   }
@@ -101,9 +100,8 @@ class ApiKeyControllerTest {
     @DisplayName("Should create API key successfully and return 201 CREATED")
     void shouldCreateApiKeySuccessfully() {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(
-          123, "Test API Key", null, null);
-      
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
+
       ApiKeyService.ApiKeyCreationResult mockResult = createMockCreationResult();
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
           .thenReturn(mockResult);
@@ -119,10 +117,12 @@ class ApiKeyControllerTest {
       assertEquals(mockResult.getApiKeyId(), responseBody.apiKeyId());
       assertEquals(mockResult.getIntegrationKey(), responseBody.integrationKey());
       assertEquals(mockResult.getSecretKey(), responseBody.secretKey());
-      assertEquals("IMPORTANT: Save the secret key now. It will not be shown again.", 
-                   responseBody.warning());
-      
-      verify(apiKeyService).createApiKey(eq(123), any(EzkeyAdmin.class), eq("Test API Key"), any(), any());
+      assertEquals(
+          "IMPORTANT: Save the secret key now. It will not be shown again.",
+          responseBody.warning());
+
+      verify(apiKeyService)
+          .createApiKey(eq(123), any(EzkeyAdmin.class), eq("Test API Key"), any(), any());
       verify(adminOpsRateLimitService).recordCreateApiKey("admin");
     }
 
@@ -130,9 +130,8 @@ class ApiKeyControllerTest {
     @DisplayName("Should return 400 BAD_REQUEST for IllegalArgumentException")
     void shouldReturnBadRequestForIllegalArgumentException() {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(
-          123, "Test API Key", null, null);
-      
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
+
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
           .thenThrow(new IllegalArgumentException("Invalid integration ID"));
 
@@ -147,9 +146,8 @@ class ApiKeyControllerTest {
     @DisplayName("Should return 409 CONFLICT for IllegalStateException")
     void shouldReturnConflictForIllegalStateException() {
       // Arrange
-      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(
-          123, "Test API Key", null, null);
-      
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
+
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
           .thenThrow(new IllegalStateException("Maximum keys limit reached"));
 
@@ -182,7 +180,7 @@ class ApiKeyControllerTest {
       List<ApiKeyResponseDto> responseBody = response.getBody();
       assertNotNull(responseBody);
       assertEquals(2, responseBody.size());
-      
+
       // Verify first API key details
       ApiKeyResponseDto firstKey = responseBody.get(0);
       assertEquals(1, firstKey.apiKeyId());
@@ -283,16 +281,14 @@ class ApiKeyControllerTest {
     }
   }
 
-  /**
-   * Sets up admin authentication context.
-   */
+  /** Sets up admin authentication context. */
   private void setupAdminAuthentication() {
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
             "admin", // Principal: Admin username
             null, // Credentials
             Arrays.asList(new SimpleGrantedAuthority("ROLE_ADMIN")));
-    
+
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 
@@ -310,7 +306,7 @@ class ApiKeyControllerTest {
         OffsetDateTime.now(), // createdAt
         null, // expiresAt
         null // ipWhitelist
-    );
+        );
   }
 
   /**
@@ -331,12 +327,12 @@ class ApiKeyControllerTest {
     apiKey.setIpWhitelist(null);
     apiKey.setRevokedAt(null);
     apiKey.setRevokedByAdmin(null);
-    
+
     // Setup integration
     Integration integration = new Integration();
     integration.setId(123);
     apiKey.setIntegration(integration);
-    
+
     return apiKey;
   }
 }

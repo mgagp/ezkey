@@ -19,10 +19,11 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link AuthAttemptCreateResponseDto}.
  *
  * <p>Tests verify proper behavior of the record including:
+ *
  * <ul>
- *   <li>Record construction and accessor methods</li>
- *   <li>Null handling</li>
- *   <li>Edge case values</li>
+ *   <li>Record construction and accessor methods
+ *   <li>Null handling
+ *   <li>Edge case values
  * </ul>
  *
  * <p><b>Note:</b> Records automatically provide correct implementations of equals(), hashCode(),

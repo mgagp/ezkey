@@ -32,17 +32,15 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Request DTO for passwordless administrator login")
 public record AdminLoginRequestDto(
     @Schema(
-        description = "Administrator username for passwordless authentication",
-        example = "admin",
-        required = true)
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
-    String username,
-
+            description = "Administrator username for passwordless authentication",
+            example = "admin",
+            required = true)
+        @NotBlank(message = "Username is required")
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        String username,
     @Schema(
-        description =
-            "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
-        example = "false",
-        required = false)
-    Boolean challengeRequested
-) {}
+            description =
+                "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+            example = "false",
+            required = false)
+        Boolean challengeRequested) {}

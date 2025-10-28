@@ -30,9 +30,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
- * @param language Language code for the localized content using standard ISO language codes (e.g., "en", "fr", "es")
+ * @param language Language code for the localized content using standard ISO language codes (e.g.,
+ *     "en", "fr", "es")
  * @param name Localized name of the integration displayed in the specified language
- * @param description Localized description of the integration providing detailed information in the specified language
+ * @param description Localized description of the integration providing detailed information in the
+ *     specified language
  * @author Ezkey contributors
  * @since 2025
  * @see IntegrationCreateRequestDto
@@ -40,7 +42,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(description = "Create DTO for integration internationalization data")
 public record IntegrationI18nCreateDto(
-    @Schema(description = "Language code for the localized content", example = "en", required = true)
+    @Schema(
+            description = "Language code for the localized content",
+            example = "en",
+            required = true)
         String language,
     @Schema(
             description = "Localized name of the integration",

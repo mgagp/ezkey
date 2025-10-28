@@ -15,7 +15,6 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.integration.domain.entity.Integration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -25,10 +24,10 @@ import org.springframework.stereotype.Service;
 /**
  * Service for checking access control permissions based on authentication context.
  *
- * <p>This service provides methods to verify whether the current authentication context
- * (API key or admin) has permission to access specific resources. It implements the
- * principle of least privilege by restricting API keys to their associated integration
- * scope while allowing admins full access.
+ * <p>This service provides methods to verify whether the current authentication context (API key or
+ * admin) has permission to access specific resources. It implements the principle of least
+ * privilege by restricting API keys to their associated integration scope while allowing admins
+ * full access.
  *
  * <p><b>Access Control Rules:</b>
  *
@@ -38,8 +37,8 @@ import org.springframework.stereotype.Service;
  *   <li><b>Enrollments:</b> Always admin-only (API keys cannot access)
  * </ul>
  *
- * <p><b>Integration Scope:</b> API keys are associated with a specific integration and
- * can only access auth attempts that belong to enrollments of that integration.
+ * <p><b>Integration Scope:</b> API keys are associated with a specific integration and can only
+ * access auth attempts that belong to enrollments of that integration.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -50,7 +49,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class AccessControlService {
-	
+
   private static final Logger logger = LoggerFactory.getLogger(AccessControlService.class);
 
   private final AuthAttemptRepository authAttemptRepository;
@@ -63,8 +62,7 @@ public class AccessControlService {
    * @param enrollmentRepository repository for enrollment data access
    */
   public AccessControlService(
-      AuthAttemptRepository authAttemptRepository,
-      EnrollmentRepository enrollmentRepository) {
+      AuthAttemptRepository authAttemptRepository, EnrollmentRepository enrollmentRepository) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
   }
@@ -159,8 +157,8 @@ public class AccessControlService {
   /**
    * Checks if an API key can access an auth attempt for its integration.
    *
-   * <p>This method verifies that the auth attempt belongs to an enrollment of the
-   * API key's integration.
+   * <p>This method verifies that the auth attempt belongs to an enrollment of the API key's
+   * integration.
    *
    * @param auth the authentication context (must be API key)
    * @param authAttemptId the auth attempt ID
@@ -188,14 +186,16 @@ public class AccessControlService {
 
       Enrollment enrollment = enrollmentOpt.get();
       Integer enrollmentIntegrationId = enrollment.getIntegrationId();
-      logger.debug("Enrollment {} belongs to integration {}", enrollmentId, enrollmentIntegrationId);
+      logger.debug(
+          "Enrollment {} belongs to integration {}", enrollmentId, enrollmentIntegrationId);
 
       // Check if this matches the API key's integration
       boolean canAccess = canAccessOwnIntegration(auth, enrollmentIntegrationId);
       logger.debug("API key access to auth attempt {}: {}", authAttemptId, canAccess);
       return canAccess;
     } catch (Exception e) {
-      logger.error("Error checking access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
+      logger.error(
+          "Error checking access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
       return false;
     }
   }
@@ -211,16 +211,21 @@ public class AccessControlService {
     try {
       // Extract integration ID from authentication principal
       Object principal = auth.getPrincipal();
-      logger.debug("Authentication principal type: {}, value: {}", 
-          principal != null ? principal.getClass().getSimpleName() : "null", principal);
-      
+      logger.debug(
+          "Authentication principal type: {}, value: {}",
+          principal != null ? principal.getClass().getSimpleName() : "null",
+          principal);
+
       if (principal instanceof Integer authenticatedIntegrationId) {
         boolean matches = authenticatedIntegrationId.equals(integrationId);
-        logger.debug("API key integration {} matches requested integration {}: {}", 
-            authenticatedIntegrationId, integrationId, matches);
+        logger.debug(
+            "API key integration {} matches requested integration {}: {}",
+            authenticatedIntegrationId,
+            integrationId,
+            matches);
         return matches;
       }
-      
+
       logger.warn("Authentication principal is not an Integer: {}", principal);
       return false;
     } catch (Exception e) {

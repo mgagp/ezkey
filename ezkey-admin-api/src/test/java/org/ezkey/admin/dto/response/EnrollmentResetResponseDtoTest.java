@@ -19,11 +19,12 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link EnrollmentResetResponseDto}.
  *
  * <p>Tests verify proper behavior of the record including:
+ *
  * <ul>
- *   <li>Factory methods for success and error responses</li>
- *   <li>Field validation and accessor methods</li>
- *   <li>Security masking in toString()</li>
- *   <li>Equality and hashCode behavior</li>
+ *   <li>Factory methods for success and error responses
+ *   <li>Field validation and accessor methods
+ *   <li>Security masking in toString()
+ *   <li>Equality and hashCode behavior
  * </ul>
  *
  * @author Ezkey contributors
@@ -42,12 +43,9 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Factory method success() should create successful response with all fields")
   void factoryMethodSuccessShouldCreateSuccessfulResponse() {
     // Act
-    EnrollmentResetResponseDto dto = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     // Assert
     assertThat(dto.success()).isTrue();
@@ -56,7 +54,8 @@ class EnrollmentResetResponseDtoTest {
     assertThat(dto.enrollmentChallenge()).isEqualTo(TEST_CHALLENGE);
     assertThat(dto.integrationId()).isEqualTo(TEST_INTEGRATION_ID);
     assertThat(dto.message())
-        .isEqualTo("Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
+        .isEqualTo(
+            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
   }
 
   @Test
@@ -78,14 +77,14 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Should create record with all fields using constructor")
   void shouldCreateRecordWithAllFields() {
     // Act
-    EnrollmentResetResponseDto dto = new EnrollmentResetResponseDto(
-        true,
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID,
-        "Custom message"
-    );
+    EnrollmentResetResponseDto dto =
+        new EnrollmentResetResponseDto(
+            true,
+            TEST_ENROLLMENT_ID,
+            TEST_PROOF_TOKEN,
+            TEST_CHALLENGE,
+            TEST_INTEGRATION_ID,
+            "Custom message");
 
     // Assert
     assertThat(dto.success()).isTrue();
@@ -100,12 +99,9 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Should mask proof token in toString()")
   void shouldMaskProofTokenInToString() {
     // Arrange
-    EnrollmentResetResponseDto dto = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     // Act
     String toString = dto.toString();
@@ -142,19 +138,13 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Should implement equals() correctly for records")
   void shouldImplementEqualsCorrectly() {
     // Arrange
-    EnrollmentResetResponseDto dto1 = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto1 =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
-    EnrollmentResetResponseDto dto2 = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto2 =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     EnrollmentResetResponseDto dto3 = EnrollmentResetResponseDto.error("Different message");
 
@@ -168,19 +158,13 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Should implement hashCode() correctly for records")
   void shouldImplementHashCodeCorrectly() {
     // Arrange
-    EnrollmentResetResponseDto dto1 = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto1 =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
-    EnrollmentResetResponseDto dto2 = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto2 =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     // Assert
     assertThat(dto1.hashCode()).isEqualTo(dto2.hashCode());
@@ -190,24 +174,18 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Success response should have consistent message")
   void successResponseShouldHaveConsistentMessage() {
     // Act
-    EnrollmentResetResponseDto dto1 = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto1 =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
-    EnrollmentResetResponseDto dto2 = EnrollmentResetResponseDto.success(
-        999,
-        "different_token",
-        999999,
-        789
-    );
+    EnrollmentResetResponseDto dto2 =
+        EnrollmentResetResponseDto.success(999, "different_token", 999999, 789);
 
     // Assert
     assertThat(dto1.message()).isEqualTo(dto2.message());
     assertThat(dto1.message())
-        .isEqualTo("Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
+        .isEqualTo(
+            "Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.");
   }
 
   @Test
@@ -231,12 +209,9 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Success and error responses should be distinguishable by success flag")
   void successAndErrorResponsesShouldBeDistinguishableBySuccessFlag() {
     // Arrange
-    EnrollmentResetResponseDto successDto = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto successDto =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     EnrollmentResetResponseDto errorDto = EnrollmentResetResponseDto.error(TEST_ERROR_MESSAGE);
 
@@ -262,12 +237,9 @@ class EnrollmentResetResponseDtoTest {
   @DisplayName("Success response should have all credential fields populated")
   void successResponseShouldHaveAllCredentialFieldsPopulated() {
     // Act
-    EnrollmentResetResponseDto dto = EnrollmentResetResponseDto.success(
-        TEST_ENROLLMENT_ID,
-        TEST_PROOF_TOKEN,
-        TEST_CHALLENGE,
-        TEST_INTEGRATION_ID
-    );
+    EnrollmentResetResponseDto dto =
+        EnrollmentResetResponseDto.success(
+            TEST_ENROLLMENT_ID, TEST_PROOF_TOKEN, TEST_CHALLENGE, TEST_INTEGRATION_ID);
 
     // Assert
     assertThat(dto.enrollmentId()).isNotNull();

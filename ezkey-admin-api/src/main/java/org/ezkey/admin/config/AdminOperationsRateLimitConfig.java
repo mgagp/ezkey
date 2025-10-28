@@ -19,17 +19,17 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Spring configuration for admin operations rate limiting functionality.
  *
- * <p>This configuration class sets up the rate limiting for admin-authenticated operations when 
- * rate limiting is enabled via configuration properties. Uses Bucket4j library for efficient 
- * token bucket rate limiting implementation.
+ * <p>This configuration class sets up the rate limiting for admin-authenticated operations when
+ * rate limiting is enabled via configuration properties. Uses Bucket4j library for efficient token
+ * bucket rate limiting implementation.
  *
  * <p><b>Conditional Activation:</b> Rate limiting is only activated when
  * ezkey.admin-operations.rate-limit.enabled=true in configuration.
  *
- * <p><b>Security Note:</b> Rate limiting for admin operations is based on admin identification
- * and provides protection for high-value operations like API key creation and enrollment reset.
+ * <p><b>Security Note:</b> Rate limiting for admin operations is based on admin identification and
+ * provides protection for high-value operations like API key creation and enrollment reset.
  *
- * <p><b>Dependencies:</b> Requires AdminOperationsRateLimitProperties for configuration and 
+ * <p><b>Dependencies:</b> Requires AdminOperationsRateLimitProperties for configuration and
  * Bucket4j libraries for rate limiting implementation.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -48,11 +48,10 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(AdminOperationsRateLimitProperties.class)
 public class AdminOperationsRateLimitConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(AdminOperationsRateLimitConfig.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(AdminOperationsRateLimitConfig.class);
 
-  /**
-   * Constructor that logs configuration information.
-   */
+  /** Constructor that logs configuration information. */
   public AdminOperationsRateLimitConfig() {
     logger.info("Admin Operations Rate Limiting configuration loaded");
     logger.info("Rate limiting is enabled for admin operations");

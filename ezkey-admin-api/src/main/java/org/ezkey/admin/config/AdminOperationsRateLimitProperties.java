@@ -15,9 +15,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Configuration properties for admin operations rate limiting functionality.
  *
- * <p>This class provides externalized configuration for rate limiting settings for admin-authenticated
- * operations, allowing administrators to adjust rate limits without code changes. Rate limiting is 
- * applied to sensitive admin operations to prevent abuse and ensure security.
+ * <p>This class provides externalized configuration for rate limiting settings for
+ * admin-authenticated operations, allowing administrators to adjust rate limits without code
+ * changes. Rate limiting is applied to sensitive admin operations to prevent abuse and ensure
+ * security.
  *
  * <p><b>Configuration Prefix:</b> ezkey.admin-operations.rate-limit
  *
@@ -42,8 +43,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AdminOperationsRateLimitProperties {
 
   /**
-   * Global rate limiting enablement flag. When disabled, no rate limiting is applied to any
-   * admin operations.
+   * Global rate limiting enablement flag. When disabled, no rate limiting is applied to any admin
+   * operations.
    */
   private boolean enabled = true;
 
@@ -56,8 +57,8 @@ public class AdminOperationsRateLimitProperties {
   /** Configuration for API key creation rate limiting behavior. */
   public static class ApiKeyCreateConfig {
     /**
-     * Maximum number of API key creation requests allowed within the time window. 
-     * Default: 5 requests per 15 minutes.
+     * Maximum number of API key creation requests allowed within the time window. Default: 5
+     * requests per 15 minutes.
      */
     private int requests = 5;
 
@@ -85,8 +86,8 @@ public class AdminOperationsRateLimitProperties {
   /** Configuration for enrollment reset rate limiting behavior. */
   public static class EnrollmentResetConfig {
     /**
-     * Maximum number of enrollment reset requests allowed within the time window. 
-     * Default: 3 requests per 30 minutes.
+     * Maximum number of enrollment reset requests allowed within the time window. Default: 3
+     * requests per 30 minutes.
      */
     private int requests = 3;
 

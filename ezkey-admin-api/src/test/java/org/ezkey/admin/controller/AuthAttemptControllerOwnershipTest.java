@@ -12,20 +12,20 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
+import org.ezkey.admin.security.RateLimitService;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.admin.security.RateLimitService;
-import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
@@ -38,18 +38,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authorization.AuthorizationDeniedException;
-
-import java.util.List;
 
 /**
  * Unit tests for ownership validation in AuthAttemptController.
  *
- * <p>This test class focuses specifically on testing the ownership validation logic
- * that ensures API keys can only create auth attempts for enrollments belonging to
- * their associated integration.
+ * <p>This test class focuses specifically on testing the ownership validation logic that ensures
+ * API keys can only create auth attempts for enrollments belonging to their associated integration.
  *
  * <p><b>Test Coverage:</b>
  *
@@ -81,12 +78,13 @@ class AuthAttemptControllerOwnershipTest {
 
   @BeforeEach
   void setUp() {
-    controller = new AuthAttemptController(
-        authAttemptService,
-        authAttemptMapper,
-        auditLogService,
-        rateLimitService,
-        enrollmentRepository);
+    controller =
+        new AuthAttemptController(
+            authAttemptService,
+            authAttemptMapper,
+            auditLogService,
+            rateLimitService,
+            enrollmentRepository);
   }
 
   @Test
@@ -95,24 +93,26 @@ class AuthAttemptControllerOwnershipTest {
     // Arrange
     Integer apiKeyIntegrationId = 2;
     Integer enrollmentId = 100;
-    
+
     // Setup motivation context with API key authentication
     setupApiKeyAuthentication(apiKeyIntegrationId);
-    
+
     // Mock enrollment belonging to the same integration
     Enrollment enrollment = new Enrollment();
     enrollment.setIntegrationId(apiKeyIntegrationId);
     when(enrollmentRepository.findById(enrollmentId)).thenReturn(Optional.of(enrollment));
-    
+
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
-    
+
     // Mock successful auth attempt creation
     AuthAttemptCreateResponse mockResponse = createMockResponse();
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
-    when(authAttemptMapper.toAuthAttemptCreateRequest(any())).thenReturn(new AuthAttemptCreateRequest());
-    when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse)).thenReturn(new AuthAttemptCreateResponseDto(1));
-    
+    when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
+        .thenReturn(new AuthAttemptCreateRequest());
+    when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
+        .thenReturn(new AuthAttemptCreateResponseDto(1));
+
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act
@@ -130,25 +130,27 @@ class AuthAttemptControllerOwnershipTest {
     Integer apiKeyIntegrationId = 2;
     Integer otherIntegrationId = 3;
     Integer enrollmentId = 100;
-    
+
     // Setup motivation context with API key authentication
     setupApiKeyAuthentication(apiKeyIntegrationId);
-    
+
     // Mock enrollment belonging to different integration
     Enrollment enrollment = new Enrollment();
     enrollment.setIntegrationId(otherIntegrationId);
     when(enrollmentRepository.findById(enrollmentId)).thenReturn(Optional.of(enrollment));
-    
+
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
-    
+
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act & Assert
-    assertThrows(AuthorizationDeniedException.class, () -> {
-      controller.create(request, null);
-    });
-    
+    assertThrows(
+        AuthorizationDeniedException.class,
+        () -> {
+          controller.create(request, null);
+        });
+
     verify(enrollmentRepository).findById(enrollmentId);
   }
 
@@ -158,23 +160,25 @@ class AuthAttemptControllerOwnershipTest {
     // Arrange
     Integer apiKeyIntegrationId = 2;
     Integer enrollmentId = 999;
-    
+
     // Setup motivation context with API key authentication
     setupApiKeyAuthentication(apiKeyIntegrationId);
-    
+
     // Mock enrollment not found
     when(enrollmentRepository.findById(enrollmentId)).thenReturn(Optional.empty());
-    
+
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
-    
+
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act & Assert
-    assertThrows(ResourceNotFoundException.class, () -> {
-      controller.create(request, null);
-    });
-    
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> {
+          controller.create(request, null);
+        });
+
     verify(enrollmentRepository).findById(enrollmentId);
   }
 
@@ -183,19 +187,21 @@ class AuthAttemptControllerOwnershipTest {
   void adminCanCreateAuthAttemptForAnyEnrollment() {
     // Arrange
     Integer enrollmentId = 100;
-    
+
     // Setup motivation context with admin authentication
     setupAdminAuthentication();
-    
+
     // Mock rate limiting (admin bypass) - lenient since admin might not trigger this
     lenient().when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
-    
+
     // Mock successful auth attempt creation
     AuthAttemptCreateResponse mockResponse = createMockResponse();
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
-    when(authAttemptMapper.toAuthAttemptCreateRequest(any())).thenReturn(new AuthAttemptCreateRequest());
-    when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse)).thenReturn(new AuthAttemptCreateResponseDto(1));
-    
+    when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
+        .thenReturn(new AuthAttemptCreateRequest());
+    when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
+        .thenReturn(new AuthAttemptCreateResponseDto(1));
+
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act
@@ -218,20 +224,18 @@ class AuthAttemptControllerOwnershipTest {
             integrationId, // Principal: Integration ID
             null, // Credentials
             List.of(new SimpleGrantedAuthority("ROLE_API_KEY")));
-    
+
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 
-  /**
-   * Sets up admin authentication context.
-   */
+  /** Sets up admin authentication context. */
   private void setupAdminAuthentication() {
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
             "admin", // Principal: Admin username
             null, // Credentials
             List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
-    
+
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 

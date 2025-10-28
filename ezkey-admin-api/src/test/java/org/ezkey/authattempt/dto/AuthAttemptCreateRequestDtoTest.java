@@ -25,11 +25,12 @@ import org.junit.jupiter.api.Test;
  * Unit tests for {@link AuthAttemptCreateRequestDto}.
  *
  * <p>Tests verify proper behavior of the record including:
+ *
  * <ul>
- *   <li>Record construction and accessor methods</li>
- *   <li>Bean validation constraints</li>
- *   <li>Equality and hashCode behavior</li>
- *   <li>JSON property mapping</li>
+ *   <li>Record construction and accessor methods
+ *   <li>Bean validation constraints
+ *   <li>Equality and hashCode behavior
+ *   <li>JSON property mapping
  * </ul>
  *
  * @author Ezkey contributors
@@ -101,7 +102,8 @@ class AuthAttemptCreateRequestDtoTest {
   @DisplayName("Should fail validation when enrollmentId is null")
   void shouldFailValidationWhenEnrollmentIdIsNull() {
     // Arrange
-    AuthAttemptCreateRequestDto dto = new AuthAttemptCreateRequestDto(null, TEST_CHALLENGE_REQUESTED);
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(null, TEST_CHALLENGE_REQUESTED);
 
     // Act
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
@@ -150,7 +152,8 @@ class AuthAttemptCreateRequestDtoTest {
         new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, TEST_CHALLENGE_REQUESTED);
     AuthAttemptCreateRequestDto dto2 =
         new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, TEST_CHALLENGE_REQUESTED);
-    AuthAttemptCreateRequestDto dto3 = new AuthAttemptCreateRequestDto(999, TEST_CHALLENGE_REQUESTED);
+    AuthAttemptCreateRequestDto dto3 =
+        new AuthAttemptCreateRequestDto(999, TEST_CHALLENGE_REQUESTED);
     AuthAttemptCreateRequestDto dto4 = new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, true);
 
     // Assert
@@ -203,7 +206,7 @@ class AuthAttemptCreateRequestDtoTest {
 
       // Assert
       assertThat(dto.enrollmentId()).isEqualTo(enrollmentId);
-      
+
       Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
       assertThat(violations).isEmpty();
     }
@@ -218,7 +221,8 @@ class AuthAttemptCreateRequestDtoTest {
     assertThat(validator.validate(dtoTrue)).isEmpty();
 
     // Test with false
-    AuthAttemptCreateRequestDto dtoFalse = new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, false);
+    AuthAttemptCreateRequestDto dtoFalse =
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, false);
     assertThat(dtoFalse.challengeRequested()).isFalse();
     assertThat(validator.validate(dtoFalse)).isEmpty();
   }

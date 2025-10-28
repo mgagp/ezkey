@@ -30,7 +30,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
- * @param authAttemptId Unique identifier of the created authentication attempt used to reference this attempt in subsequent operations
+ * @param authAttemptId Unique identifier of the created authentication attempt used to reference
+ *     this attempt in subsequent operations
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.authattempt.domain.AuthAttemptCreateResponse
@@ -39,5 +40,4 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO containing created authentication attempt details")
 public record AuthAttemptCreateResponseDto(
     @Schema(description = "Unique identifier of the created authentication attempt", example = "11")
-        Integer authAttemptId) {
-}
+        Integer authAttemptId) {}

@@ -34,10 +34,14 @@ import java.util.List;
  * <p><b>License:</b> MIT
  *
  * @param id Unique identifier for the integration (auto-generated primary key from the database)
- * @param logo URL or path to the integration logo image (used for displaying the integration brand in user interfaces)
- * @param active Integration status flag (indicates whether the integration is currently active and available for use)
- * @param createdAt Timestamp when the integration was created (used for audit trails and sorting purposes, with timezone)
- * @param i18n List of internationalized content for the integration (contains localized names and descriptions in multiple languages)
+ * @param logo URL or path to the integration logo image (used for displaying the integration brand
+ *     in user interfaces)
+ * @param active Integration status flag (indicates whether the integration is currently active and
+ *     available for use)
+ * @param createdAt Timestamp when the integration was created (used for audit trails and sorting
+ *     purposes, with timezone)
+ * @param i18n List of internationalized content for the integration (contains localized names and
+ *     descriptions in multiple languages)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.Integration

@@ -56,7 +56,8 @@ import java.time.OffsetDateTime;
  * @since 2025
  * @param apiKeyId Database ID of the created API key
  * @param integrationKey Public integration key (safe to display, used as HTTP Basic Auth username)
- * @param secretKey Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)
+ * @param secretKey Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth
+ *     password)
  * @param description Human-readable description of the API key
  * @param createdAt Timestamp when the API key was created
  * @param expiresAt Optional expiration timestamp
@@ -68,23 +69,33 @@ import java.time.OffsetDateTime;
 public record ApiKeyCreateResponseDto(
     @Schema(description = "Unique identifier for the API key record", example = "42")
         Integer apiKeyId,
-    @Schema(description = "Public integration key (safe to display, used as HTTP Basic Auth username)",
-        example = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0")
+    @Schema(
+            description =
+                "Public integration key (safe to display, used as HTTP Basic Auth username)",
+            example = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0")
         String integrationKey,
-    @Schema(description = "Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)",
-        example = "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
+    @Schema(
+            description =
+                "Secret key (SHOWN ONCE ONLY - save immediately! Used as HTTP Basic Auth password)",
+            example = "ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
         String secretKey,
-    @Schema(description = "Optional description to identify this API key", example = "Production Server API Key")
+    @Schema(
+            description = "Optional description to identify this API key",
+            example = "Production Server API Key")
         String description,
     @Schema(description = "Creation timestamp in UTC", example = "2025-10-17T10:30:00Z")
         OffsetDateTime createdAt,
-    @Schema(description = "Optional expiration date (null = no expiration)", example = "2025-12-31T23:59:59Z")
+    @Schema(
+            description = "Optional expiration date (null = no expiration)",
+            example = "2025-12-31T23:59:59Z")
         OffsetDateTime expiresAt,
-    @Schema(description = "Optional IP whitelist (null = no restrictions)",
-        example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
+    @Schema(
+            description = "Optional IP whitelist (null = no restrictions)",
+            example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
         String[] ipWhitelist,
-    @Schema(description = "Security warning about saving the secret key",
-        example = "IMPORTANT: Save the secret key now. It will not be shown again.")
+    @Schema(
+            description = "Security warning about saving the secret key",
+            example = "IMPORTANT: Save the secret key now. It will not be shown again.")
         String warning) {
 
   /**

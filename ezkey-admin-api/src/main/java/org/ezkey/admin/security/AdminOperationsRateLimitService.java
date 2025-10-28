@@ -14,30 +14,30 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Service for implementing rate limiting on admin operations.
  *
  * <p>This service provides rate limiting functionality to prevent abuse of admin operations,
- * specifically for API key creation and enrollment reset operations. It uses Bucket4j token 
- * bucket algorithm for efficient rate limiting with configurable limits.
+ * specifically for API key creation and enrollment reset operations. It uses Bucket4j token bucket
+ * algorithm for efficient rate limiting with configurable limits.
  *
- * <p><b>Rate Limiting Strategy:</b> Uses Bucket4j token bucket algorithm where each admin has
- * a bucket with configurable capacity and refill rate. This provides smooth rate limiting
- * with burst capacity while maintaining overall rate limits.
+ * <p><b>Rate Limiting Strategy:</b> Uses Bucket4j token bucket algorithm where each admin has a
+ * bucket with configurable capacity and refill rate. This provides smooth rate limiting with burst
+ * capacity while maintaining overall rate limits.
  *
  * <p><b>Configuration:</b> Rate limits are externally configurable per operation type:
  *
  * <ul>
  *   <li><b>API_KEY_CREATE:</b> Configurable via ezkey.admin-operations.rate-limit.api-key-create.*
- *   <li><b>ENROLLMENT_RESET:</b> Configurable via ezkey.admin-operations.rate-limit.enrollment-reset.*
+ *   <li><b>ENROLLMENT_RESET:</b> Configurable via
+ *       ezkey.admin-operations.rate-limit.enrollment-reset.*
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -50,11 +50,12 @@ import io.micrometer.core.instrument.MeterRegistry;
 @Service
 public class AdminOperationsRateLimitService {
 
-  private static final Logger logger = LoggerFactory.getLogger(AdminOperationsRateLimitService.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(AdminOperationsRateLimitService.class);
 
   private final AdminOperationsRateLimitProperties properties;
   private final MeterRegistry meterRegistry;
-  
+
   // Bucket4j-based rate limiting with Caffeine cache
   private final Cache<String, Bucket> apiKeyCreateBuckets;
   private final Cache<String, Bucket> enrollmentResetBuckets;
@@ -65,26 +66,25 @@ public class AdminOperationsRateLimitService {
    * @param properties the rate limiting configuration properties
    * @param meterRegistry the metrics registry for monitoring
    */
-  public AdminOperationsRateLimitService(AdminOperationsRateLimitProperties properties, MeterRegistry meterRegistry) {
+  public AdminOperationsRateLimitService(
+      AdminOperationsRateLimitProperties properties, MeterRegistry meterRegistry) {
     this.properties = properties;
     this.meterRegistry = meterRegistry;
-    
+
     // Initialize Caffeine caches for bucket storage
-    this.apiKeyCreateBuckets = Caffeine.newBuilder()
-        .maximumSize(1000)
-        .expireAfterAccess(Duration.ofHours(1))
-        .build();
-        
-    this.enrollmentResetBuckets = Caffeine.newBuilder()
-        .maximumSize(1000)
-        .expireAfterAccess(Duration.ofHours(1))
-        .build();
-        
+    this.apiKeyCreateBuckets =
+        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+
+    this.enrollmentResetBuckets =
+        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+
     logger.info("AdminOperationsRateLimitService initialized with Bucket4j implementation");
-    logger.info("API key create limit: {} requests per {} minutes", 
+    logger.info(
+        "API key create limit: {} requests per {} minutes",
         properties.getApiKeyCreate().getRequests(),
         properties.getApiKeyCreate().getWindowMinutes());
-    logger.info("Enrollment reset limit: {} requests per {} minutes",
+    logger.info(
+        "Enrollment reset limit: {} requests per {} minutes",
         properties.getEnrollmentReset().getRequests(),
         properties.getEnrollmentReset().getWindowMinutes());
   }
@@ -92,8 +92,8 @@ public class AdminOperationsRateLimitService {
   /**
    * Checks if an admin can perform an API key creation operation.
    *
-   * <p>This method implements rate limiting for API key creation using Bucket4j
-   * token bucket algorithm. It checks if the admin has sufficient tokens in its bucket.
+   * <p>This method implements rate limiting for API key creation using Bucket4j token bucket
+   * algorithm. It checks if the admin has sufficient tokens in its bucket.
    *
    * @param adminId the admin identifier
    * @return true if the operation is allowed, false if rate limit exceeded
@@ -101,28 +101,28 @@ public class AdminOperationsRateLimitService {
   public boolean canCreateApiKey(String adminId) {
     String bucketKey = "api_key_create:" + adminId;
     Bucket bucket = apiKeyCreateBuckets.get(bucketKey, key -> createApiKeyCreateBucket());
-    
+
     boolean allowed = bucket.tryConsume(1);
-    
+
     // Record metrics
-    meterRegistry.counter("rate_limit.checks.total", 
-        "operation", "api_key_create", 
-        "type", "admin").increment();
-        
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "api_key_create", "type", "admin")
+        .increment();
+
     if (!allowed) {
-      meterRegistry.counter("rate_limit.exceeded.total", 
-          "operation", "api_key_create", 
-          "type", "admin").increment();
+      meterRegistry
+          .counter("rate_limit.exceeded.total", "operation", "api_key_create", "type", "admin")
+          .increment();
     }
-    
+
     return allowed;
   }
 
   /**
    * Checks if an admin can perform an enrollment reset operation.
    *
-   * <p>This method implements rate limiting for enrollment reset using Bucket4j
-   * token bucket algorithm. It checks if the admin has sufficient tokens in its bucket.
+   * <p>This method implements rate limiting for enrollment reset using Bucket4j token bucket
+   * algorithm. It checks if the admin has sufficient tokens in its bucket.
    *
    * @param tokenOrAdminId the admin identifier or recovery token
    * @return true if the operation is allowed, false if rate limit exceeded
@@ -130,28 +130,28 @@ public class AdminOperationsRateLimitService {
   public boolean canResetEnrollment(String tokenOrAdminId) {
     String bucketKey = "enrollment_reset:" + tokenOrAdminId;
     Bucket bucket = enrollmentResetBuckets.get(bucketKey, key -> createEnrollmentResetBucket());
-    
+
     boolean allowed = bucket.tryConsume(1);
-    
+
     // Record metrics
-    meterRegistry.counter("rate_limit.checks.total", 
-        "operation", "enrollment_reset", 
-        "type", "admin").increment();
-        
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "enrollment_reset", "type", "admin")
+        .increment();
+
     if (!allowed) {
-      meterRegistry.counter("rate_limit.exceeded.total", 
-          "operation", "enrollment_reset", 
-          "type", "admin").increment();
+      meterRegistry
+          .counter("rate_limit.exceeded.total", "operation", "enrollment_reset", "type", "admin")
+          .increment();
     }
-    
+
     return allowed;
   }
 
   /**
    * Records a successful API key creation operation for rate limiting tracking.
    *
-   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
-   * so this method is kept for API compatibility but doesn't need to do additional work.
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
    *
    * @param adminId the admin identifier
    */
@@ -164,8 +164,8 @@ public class AdminOperationsRateLimitService {
   /**
    * Records a successful enrollment reset operation for rate limiting tracking.
    *
-   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check,
-   * so this method is kept for API compatibility but doesn't need to do additional work.
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
    *
    * @param tokenOrAdminId the admin identifier or recovery token
    */
@@ -182,15 +182,14 @@ public class AdminOperationsRateLimitService {
    */
   private Bucket createApiKeyCreateBucket() {
     AdminOperationsRateLimitProperties.ApiKeyCreateConfig config = properties.getApiKeyCreate();
-    
-    Bandwidth limit = Bandwidth.builder()
-        .capacity(config.getRequests())
-        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
-        .build();
-    
-    return Bucket.builder()
-        .addLimit(limit)
-        .build();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
   }
 
   /**
@@ -199,15 +198,15 @@ public class AdminOperationsRateLimitService {
    * @return configured rate limiting bucket for enrollment reset operations
    */
   private Bucket createEnrollmentResetBucket() {
-    AdminOperationsRateLimitProperties.EnrollmentResetConfig config = properties.getEnrollmentReset();
-    
-    Bandwidth limit = Bandwidth.builder()
-        .capacity(config.getRequests())
-        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
-        .build();
-    
-    return Bucket.builder()
-        .addLimit(limit)
-        .build();
+    AdminOperationsRateLimitProperties.EnrollmentResetConfig config =
+        properties.getEnrollmentReset();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
   }
 }

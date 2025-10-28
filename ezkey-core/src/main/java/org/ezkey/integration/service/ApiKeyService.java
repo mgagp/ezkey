@@ -151,8 +151,7 @@ public class ApiKeyService {
     }
 
     // Check active key limit
-    long activeKeyCount =
-        apiKeyRepository.countByIntegration_IdAndActiveTrue(integrationId);
+    long activeKeyCount = apiKeyRepository.countByIntegration_IdAndActiveTrue(integrationId);
     if (activeKeyCount >= MAX_ACTIVE_KEYS_PER_INTEGRATION) {
       throw new IllegalStateException(
           String.format(

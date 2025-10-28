@@ -98,15 +98,21 @@ class ApiKeyServiceTest {
 
     // Configure BCrypt mock (lenient because not all tests use these)
     // Mock encode() to return a BCrypt-formatted hash
-    lenient().when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "$2a$10$mockedHash" + invocation.getArgument(0).hashCode());
-    
+    lenient()
+        .when(passwordEncoder.encode(anyString()))
+        .thenAnswer(invocation -> "$2a$10$mockedHash" + invocation.getArgument(0).hashCode());
+
     // Mock matches() to return true when secret is "testSecret", false otherwise
-    lenient().when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
-      String rawPassword = invocation.getArgument(0);
-      String encodedPassword = invocation.getArgument(1);
-      // For our test, "testSecret" matches the hash in testApiKey
-      return "testSecret".equals(rawPassword) && encodedPassword.equals(testApiKey.getSecretKeyHash());
-    });
+    lenient()
+        .when(passwordEncoder.matches(anyString(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              String rawPassword = invocation.getArgument(0);
+              String encodedPassword = invocation.getArgument(1);
+              // For our test, "testSecret" matches the hash in testApiKey
+              return "testSecret".equals(rawPassword)
+                  && encodedPassword.equals(testApiKey.getSecretKeyHash());
+            });
   }
 
   @Nested
@@ -367,7 +373,7 @@ class ApiKeyServiceTest {
       // Act
       Optional<Integration> result =
           apiKeyService.validateApiKey("ezkey_ikey_test123", "testSecret", "10.0.0.100"); // Outside
-                                                                                           // whitelist
+      // whitelist
 
       // Assert
       assertTrue(result.isEmpty());
@@ -597,8 +603,7 @@ class ApiKeyServiceTest {
       when(apiKeyRepository.save(apiKeyCaptor.capture())).thenReturn(testApiKey);
 
       // Act
-      ApiKeyCreationResult result =
-          apiKeyService.createApiKey(123, testAdmin, "Test", null, null);
+      ApiKeyCreationResult result = apiKeyService.createApiKey(123, testAdmin, "Test", null, null);
 
       // Assert
       ApiKey savedKey = apiKeyCaptor.getValue();
@@ -642,10 +647,8 @@ class ApiKeyServiceTest {
       when(apiKeyRepository.save(any(ApiKey.class))).thenReturn(testApiKey);
 
       // Act
-      ApiKeyCreationResult result1 =
-          apiKeyService.createApiKey(123, testAdmin, "Key1", null, null);
-      ApiKeyCreationResult result2 =
-          apiKeyService.createApiKey(123, testAdmin, "Key2", null, null);
+      ApiKeyCreationResult result1 = apiKeyService.createApiKey(123, testAdmin, "Key1", null, null);
+      ApiKeyCreationResult result2 = apiKeyService.createApiKey(123, testAdmin, "Key2", null, null);
 
       // Assert
       // Keys should be different (random generation)
@@ -691,8 +694,9 @@ class ApiKeyServiceTest {
 
       // Act
       Optional<Integration> result =
-          apiKeyService.validateApiKey("ezkey_ikey_test123", "testSecret", "192.168.2.1"); // Outside
-                                                                                            // range
+          apiKeyService.validateApiKey(
+              "ezkey_ikey_test123", "testSecret", "192.168.2.1"); // Outside
+      // range
 
       // Assert
       assertTrue(result.isEmpty());
@@ -738,4 +742,3 @@ class ApiKeyServiceTest {
     }
   }
 }
-

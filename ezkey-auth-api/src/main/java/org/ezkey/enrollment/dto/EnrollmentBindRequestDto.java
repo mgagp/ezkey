@@ -59,10 +59,10 @@ public record EnrollmentBindRequestDto(
      * integration website.
      */
     @Schema(
-        description = "Enrollment ID to bind to the mobile device",
-        example = "123",
-        required = true)
-    Integer enrollmentId,
+            description = "Enrollment ID to bind to the mobile device",
+            example = "123",
+            required = true)
+        Integer enrollmentId,
 
     /**
      * The enrollment proof token for authentication.
@@ -72,10 +72,10 @@ public record EnrollmentBindRequestDto(
      * data.
      */
     @Schema(
-        description = "Enrollment proof token for authentication",
-        example = "abc123-def456-ghi789",
-        required = true)
-    String enrollmentProofToken,
+            description = "Enrollment proof token for authentication",
+            example = "abc123-def456-ghi789",
+            required = true)
+        String enrollmentProofToken,
 
     /**
      * Preferred language for internationalization.
@@ -84,7 +84,4 @@ public record EnrollmentBindRequestDto(
      * names and descriptions. Used to provide a localized user experience during enrollment binding
      * and device configuration.
      */
-    @Schema(description = "Preferred language for i18n fields", example = "en")
-    String language
-) {
-}
+    @Schema(description = "Preferred language for i18n fields", example = "en") String language) {}

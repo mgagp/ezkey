@@ -71,24 +71,23 @@ public record AuthAttemptWaitRequestDto(
         @Max(value = 60, message = "Polling interval cannot exceed 60 seconds")
         Integer polling) {
 
-    /**
-     * Default constructor for AuthAttemptWaitRequestDto. Initializes with default values:
-     * timeout=30, polling=2.
-     */
-    public AuthAttemptWaitRequestDto() {
-        this(30, 2);
-    }
+  /**
+   * Default constructor for AuthAttemptWaitRequestDto. Initializes with default values: timeout=30,
+   * polling=2.
+   */
+  public AuthAttemptWaitRequestDto() {
+    this(30, 2);
+  }
 
-    /**
-     * Compact constructor with validation. Ensures polling interval is less than timeout to prevent
-     * invalid configurations.
-     *
-     * @throws IllegalArgumentException if polling interval is greater than or equal to timeout
-     */
-    public AuthAttemptWaitRequestDto {
-        if (timeout != null && polling != null && polling >= timeout) {
-            throw new IllegalArgumentException(
-                    "Polling interval must be less than timeout duration");
-        }
+  /**
+   * Compact constructor with validation. Ensures polling interval is less than timeout to prevent
+   * invalid configurations.
+   *
+   * @throws IllegalArgumentException if polling interval is greater than or equal to timeout
+   */
+  public AuthAttemptWaitRequestDto {
+    if (timeout != null && polling != null && polling >= timeout) {
+      throw new IllegalArgumentException("Polling interval must be less than timeout duration");
     }
+  }
 }

@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
@@ -31,7 +32,6 @@ import org.ezkey.enrollment.service.EnrollmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.ezkey.auth.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -102,11 +102,12 @@ class EnrollmentControllerTest {
   @BeforeEach
   void setUp() {
     // Setup bind request test data - Using record constructor
-    bindRequestDto = new EnrollmentBindRequestDto(
-        123,                      // enrollmentId
-        "test-proof-token",       // enrollmentProofToken
-        "en"                      // language
-    );
+    bindRequestDto =
+        new EnrollmentBindRequestDto(
+            123, // enrollmentId
+            "test-proof-token", // enrollmentProofToken
+            "en" // language
+            );
 
     bindRequest = new EnrollmentBindRequest();
     bindRequest.setEnrollmentId(123);
@@ -118,23 +119,13 @@ class EnrollmentControllerTest {
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
 
-    bindResponseDto = new EnrollmentBindResponseDto(
-        123,
-        "test-public-key",
-        "test-proof-token",
-        null,
-        null,
-        null,
-        null
-    );
+    bindResponseDto =
+        new EnrollmentBindResponseDto(
+            123, "test-public-key", "test-proof-token", null, null, null, null);
 
     // Setup verify request test data
-    verifyRequestDto = new EnrollmentVerifyRequestDto(
-        123,
-        null,
-        "device-public-key",
-        "proof-token-signature"
-    );
+    verifyRequestDto =
+        new EnrollmentVerifyRequestDto(123, null, "device-public-key", "proof-token-signature");
 
     verifyRequest = new EnrollmentVerifyRequest();
     verifyRequest.setEnrollmentId(123);
@@ -175,11 +166,12 @@ class EnrollmentControllerTest {
   @DisplayName("POST /api/v1/enrollments/bind - Should return 400 on invalid enrollment ID")
   void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
     // Arrange - Using record constructor
-    EnrollmentBindRequestDto invalidRequestDto = new EnrollmentBindRequestDto(
-        999,                      // enrollmentId
-        "invalid-proof-token",    // enrollmentProofToken
-        "en"                      // language
-    );
+    EnrollmentBindRequestDto invalidRequestDto =
+        new EnrollmentBindRequestDto(
+            999, // enrollmentId
+            "invalid-proof-token", // enrollmentProofToken
+            "en" // language
+            );
 
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);

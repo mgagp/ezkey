@@ -45,23 +45,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Request DTO for enrollment verification completion")
 public record EnrollmentVerifyRequestDto(
     @Schema(description = "Enrollment ID being verified", example = "123", required = true)
-    Integer enrollmentId,
-
+        Integer enrollmentId,
     @Schema(
-        description = "User's response to the enrollment challenge",
-        example = "123456",
-        required = true)
-    Integer challengeResponse,
-
+            description = "User's response to the enrollment challenge",
+            example = "123456",
+            required = true)
+        Integer challengeResponse,
     @Schema(
-        description = "Mobile device's generated public key",
-        example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-        required = true)
-    String devicePublicKey,
-
+            description = "Mobile device's generated public key",
+            example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+            required = true)
+        String devicePublicKey,
     @Schema(
-        description = "Device-signed enrollment proof token",
-        example = "eyJhbGciOiJSUzI1NiJ9...",
-        required = true)
-    String enrollmentProofTokenSigned
-) {}
+            description = "Device-signed enrollment proof token",
+            example = "eyJhbGciOiJSUzI1NiJ9...",
+            required = true)
+        String enrollmentProofTokenSigned) {}

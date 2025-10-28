@@ -50,11 +50,11 @@ public record AuthAttemptRespondResponseDto(
      * User denied the authentication - FAILED: Technical error occurred
      */
     @Schema(
-        description = "The authentication result",
-        example = "APPROVED",
-        allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
-        required = true)
-    String result,
+            description = "The authentication result",
+            example = "APPROVED",
+            allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
+            required = true)
+        String result,
 
     /**
      * Additional message providing context about the authentication result.
@@ -63,9 +63,7 @@ public record AuthAttemptRespondResponseDto(
      * can display this message to inform users about the authentication attempt status.
      */
     @Schema(
-        description = "Success confirmation or error details for user feedback",
-        example = "Authentication approved",
-        required = true)
-    String message
-) {
-}
+            description = "Success confirmation or error details for user feedback",
+            example = "Authentication approved",
+            required = true)
+        String message) {}

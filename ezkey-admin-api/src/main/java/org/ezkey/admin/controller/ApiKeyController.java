@@ -23,18 +23,18 @@ import java.util.stream.Collectors;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
+import org.ezkey.admin.security.AdminOperationsRateLimitService;
+import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.service.ApiKeyService;
-import org.ezkey.admin.security.AdminOperationsRateLimitService;
-import org.ezkey.exception.RateLimitExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -92,7 +92,8 @@ public class ApiKeyController {
    * @param apiKeyService the API key service
    * @param adminOpsRateLimitService the admin operations rate limiting service
    */
-  public ApiKeyController(ApiKeyService apiKeyService, AdminOperationsRateLimitService adminOpsRateLimitService) {
+  public ApiKeyController(
+      ApiKeyService apiKeyService, AdminOperationsRateLimitService adminOpsRateLimitService) {
     this.apiKeyService = apiKeyService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
   }
@@ -151,7 +152,7 @@ public class ApiKeyController {
 
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
-    
+
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
     if (!adminOpsRateLimitService.canCreateApiKey(adminId)) {
@@ -228,8 +229,8 @@ public class ApiKeyController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required")
       })
   public ResponseEntity<List<ApiKeyResponseDto>> listApiKeys(
-      @Parameter(description = "Integration ID", example = "123")
-      @PathVariable("integrationId") Integer integrationId) {
+      @Parameter(description = "Integration ID", example = "123") @PathVariable("integrationId")
+          Integer integrationId) {
 
     logger.debug("Listing API keys for integration: {}", integrationId);
 
@@ -270,8 +271,7 @@ public class ApiKeyController {
         @ApiResponse(responseCode = "404", description = "API key not found")
       })
   public ResponseEntity<ApiKeyResponseDto> getApiKey(
-      @Parameter(description = "API key ID", example = "42")
-      @PathVariable("keyId") Integer keyId) {
+      @Parameter(description = "API key ID", example = "42") @PathVariable("keyId") Integer keyId) {
 
     logger.debug("Retrieving API key: {}", keyId);
 
@@ -317,8 +317,8 @@ public class ApiKeyController {
         @ApiResponse(responseCode = "404", description = "API key not found")
       })
   public ResponseEntity<Void> revokeApiKey(
-      @Parameter(description = "API key ID to revoke", example = "42")
-      @PathVariable("keyId") Integer keyId) {
+      @Parameter(description = "API key ID to revoke", example = "42") @PathVariable("keyId")
+          Integer keyId) {
 
     logger.info("Revoking API key: {}", keyId);
 

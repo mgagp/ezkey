@@ -61,10 +61,14 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  *
  * <p><b>License:</b> MIT
  *
- * @param authAttemptId Unique identifier for the authentication attempt (auto-generated primary key)
- * @param enrollmentId Enrollment identifier this authentication attempt belongs to (foreign key reference)
- * @param authAttemptStatus Current lifecycle status of the authentication attempt (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
- * @param authAttemptChallenge Challenge value for the authentication attempt used in challenge-response process
+ * @param authAttemptId Unique identifier for the authentication attempt (auto-generated primary
+ *     key)
+ * @param enrollmentId Enrollment identifier this authentication attempt belongs to (foreign key
+ *     reference)
+ * @param authAttemptStatus Current lifecycle status of the authentication attempt (PENDING, READ,
+ *     INVALID, REJECTED, ACCEPTED, EXPIRED)
+ * @param authAttemptChallenge Challenge value for the authentication attempt used in
+ *     challenge-response process
  * @param authAttemptProofToken Proof token for the authentication attempt used for verification
  * @param createdAt Timestamp when the authentication attempt was created (with timezone)
  * @param expiresAt Timestamp when the authentication attempt expires (with timezone)

@@ -53,35 +53,31 @@ import java.time.OffsetDateTime;
 @Schema(description = "Request to create a new API key for an integration")
 public record ApiKeyCreateRequestDto(
     @NotNull(message = "Integration ID is required")
-    @Schema(
-        description = "Integration ID to create the API key for",
-        example = "123",
-        required = true)
-    Integer integrationId,
-
+        @Schema(
+            description = "Integration ID to create the API key for",
+            example = "123",
+            required = true)
+        Integer integrationId,
     @Size(max = 255, message = "Description must not exceed 255 characters")
+        @Schema(
+            description =
+                "Optional human-readable description to identify this API key (e.g., 'Production"
+                    + " Server')",
+            example = "Production Server API Key",
+            maxLength = 255)
+        String description,
     @Schema(
-        description =
-            "Optional human-readable description to identify this API key (e.g., 'Production"
-                + " Server')",
-        example = "Production Server API Key",
-        maxLength = 255)
-    String description,
-
+            description =
+                "Optional expiration date for automatic key rotation enforcement (null = no"
+                    + " expiration)",
+            example = "2025-12-31T23:59:59Z")
+        OffsetDateTime expiresAt,
     @Schema(
-        description =
-            "Optional expiration date for automatic key rotation enforcement (null = no"
-                + " expiration)",
-        example = "2025-12-31T23:59:59Z")
-    OffsetDateTime expiresAt,
-
-    @Schema(
-        description =
-            "Optional array of IP addresses or CIDR ranges allowed to use this key (recommended for"
-                + " production)",
-        example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
-    String[] ipWhitelist
-) {
+            description =
+                "Optional array of IP addresses or CIDR ranges allowed to use this key (recommended for"
+                    + " production)",
+            example = "[\"192.168.1.0/24\", \"10.0.0.100\"]")
+        String[] ipWhitelist) {
   /**
    * Returns a string representation of the request.
    *

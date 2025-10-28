@@ -98,8 +98,6 @@ public record AdminRecoveryResponseDto(
   public String toString() {
     return String.format(
         "AdminRecoveryResponseDto[success=%s, recoveryToken=%s, codesRemaining=%s]",
-        success,
-        recoveryToken != null ? "[PROTECTED]" : "null",
-        codesRemaining);
+        success, recoveryToken != null ? "[PROTECTED]" : "null", codesRemaining);
   }
 }

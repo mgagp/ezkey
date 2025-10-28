@@ -15,9 +15,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Configuration properties for API key rate limiting functionality.
  *
- * <p>This class provides externalized configuration for rate limiting settings for API key operations,
- * allowing administrators to adjust rate limits without code changes. Rate limiting is applied to
- * API key operations to prevent abuse and ensure fair usage.
+ * <p>This class provides externalized configuration for rate limiting settings for API key
+ * operations, allowing administrators to adjust rate limits without code changes. Rate limiting is
+ * applied to API key operations to prevent abuse and ensure fair usage.
  *
  * <p><b>Configuration Prefix:</b> ezkey.api-key.rate-limit
  *
@@ -42,8 +42,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ApiKeyRateLimitProperties {
 
   /**
-   * Global rate limiting enablement flag. When disabled, no rate limiting is applied to any
-   * API key operations.
+   * Global rate limiting enablement flag. When disabled, no rate limiting is applied to any API key
+   * operations.
    */
   private boolean enabled = true;
 
@@ -56,8 +56,8 @@ public class ApiKeyRateLimitProperties {
   /** Configuration for create auth attempt rate limiting behavior. */
   public static class CreateAuthAttemptConfig {
     /**
-     * Maximum number of create auth attempt requests allowed within the time window. 
-     * Default: 100 requests per 15 minutes.
+     * Maximum number of create auth attempt requests allowed within the time window. Default: 100
+     * requests per 15 minutes.
      */
     private int requests = 100;
 
@@ -85,8 +85,8 @@ public class ApiKeyRateLimitProperties {
   /** Configuration for wait auth attempt rate limiting behavior. */
   public static class WaitAuthAttemptConfig {
     /**
-     * Maximum number of wait auth attempt requests allowed within the time window. 
-     * Default: 200 requests per 15 minutes.
+     * Maximum number of wait auth attempt requests allowed within the time window. Default: 200
+     * requests per 15 minutes.
      */
     private int requests = 200;
 

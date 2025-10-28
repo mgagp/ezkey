@@ -198,11 +198,12 @@ public class AdminRateLimitFilter implements Filter {
    * Extracts client identifier for rate limiting.
    *
    * <p>Priority order:
+   *
    * <ol>
-   *   <li>CF-Connecting-IP (Cloudflare header)</li>
-   *   <li>X-Forwarded-For (standard proxy header)</li>
-   *   <li>X-Real-IP (nginx proxy header)</li>
-   *   <li>Fallback: Direct connection IP</li>
+   *   <li>CF-Connecting-IP (Cloudflare header)
+   *   <li>X-Forwarded-For (standard proxy header)
+   *   <li>X-Real-IP (nginx proxy header)
+   *   <li>Fallback: Direct connection IP
    * </ol>
    *
    * @param request the HTTP request

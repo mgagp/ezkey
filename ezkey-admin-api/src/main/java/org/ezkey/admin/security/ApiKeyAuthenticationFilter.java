@@ -203,8 +203,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
   /**
    * Sets up Spring Security authentication context for API key.
    *
-   * <p>Creates an authentication token with ROLE_API_KEY and stores the integration object as
-   * the principal for ownership checks in AccessControlService.
+   * <p>Creates an authentication token with ROLE_API_KEY and stores the integration object as the
+   * principal for ownership checks in AccessControlService.
    *
    * @param integration the authenticated integration
    * @param request the HTTP request for additional details
@@ -216,7 +216,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     // Authorities: ROLE_API_KEY (to distinguish from admin tokens)
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
-            integration.getId(), // Principal: Integration ID for ownership checks (avoid lazy loading issues)
+            integration
+                .getId(), // Principal: Integration ID for ownership checks (avoid lazy loading
+            // issues)
             null, // Credentials (not stored after validation)
             Collections.singletonList(new SimpleGrantedAuthority(ROLE_API_KEY)));
 

@@ -86,8 +86,8 @@ public class GlobalExceptionHandler {
   /**
    * Handles RateLimitExceededException and returns HTTP 429.
    *
-   * <p>This method catches RateLimitExceededException instances thrown by the RateLimitService
-   * when API keys exceed their rate limits and converts them into standardized HTTP 429 Too Many
+   * <p>This method catches RateLimitExceededException instances thrown by the RateLimitService when
+   * API keys exceed their rate limits and converts them into standardized HTTP 429 Too Many
    * Requests responses with rate limit information.
    *
    * @param ex the RateLimitExceededException that was thrown

@@ -52,8 +52,8 @@ import org.springframework.stereotype.Component;
  * java -jar ezkey-migration.jar --validate
  * </pre>
  *
- * <p><b>Security Note:</b> The clean operation is disabled by default in application.properties
- * to prevent accidental data loss.
+ * <p><b>Security Note:</b> The clean operation is disabled by default in application.properties to
+ * prevent accidental data loss.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -281,9 +281,11 @@ public class FlywayCommandRunner implements CommandLineRunner {
     MigrationInfo[] all = infoService.all();
 
     log.info("=== Migration Status ===");
-    log.info("Schema version: {}", infoService.current() != null 
-        ? infoService.current().getVersion() 
-        : "No migrations applied");
+    log.info(
+        "Schema version: {}",
+        infoService.current() != null
+            ? infoService.current().getVersion()
+            : "No migrations applied");
 
     if (all.length == 0) {
       log.info("No migrations found");
@@ -302,9 +304,7 @@ public class FlywayCommandRunner implements CommandLineRunner {
     log.info("========================");
   }
 
-  /**
-   * Prints usage information to the log.
-   */
+  /** Prints usage information to the log. */
   private void printUsage() {
     log.info("Usage: java -jar ezkey-migration.jar [OPTION]");
     log.info("Options:");

@@ -35,15 +35,14 @@ import jakarta.validation.constraints.Size;
  */
 public record AdminRecoveryRequestDto(
     @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
-    String username,
-
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        String username,
     @NotBlank(message = "Recovery code is required")
-    @Pattern(
-        regexp = "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$",
-        message = "Recovery code must be 32 digits in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
-    String recoveryCode
-) {
+        @Pattern(
+            regexp = "^\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}-\\d{4}$",
+            message =
+                "Recovery code must be 32 digits in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
+        String recoveryCode) {
   /**
    * Returns a string representation of the recovery request.
    *

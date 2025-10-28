@@ -39,8 +39,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Response DTO for enrollment verification completion")
 public record EnrollmentVerifyResponseDto(
     @Schema(
-        description = "Whether the enrollment is now active and ready for authentication",
-        example = "true",
-        required = true)
-    boolean active
-) {}
+            description = "Whether the enrollment is now active and ready for authentication",
+            example = "true",
+            required = true)
+        boolean active) {}

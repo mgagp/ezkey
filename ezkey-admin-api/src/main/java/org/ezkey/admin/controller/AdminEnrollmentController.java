@@ -14,8 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.ezkey.admin.dto.request.EnrollmentResetRequestDto;
 import org.ezkey.admin.dto.response.EnrollmentResetResponseDto;
-import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
+import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -56,7 +56,9 @@ public class AdminEnrollmentController {
   private final AdminRecoveryService recoveryService;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
 
-  public AdminEnrollmentController(AdminRecoveryService recoveryService, AdminOperationsRateLimitService adminOpsRateLimitService) {
+  public AdminEnrollmentController(
+      AdminRecoveryService recoveryService,
+      AdminOperationsRateLimitService adminOpsRateLimitService) {
     this.recoveryService = recoveryService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
   }
@@ -117,23 +119,24 @@ public class AdminEnrollmentController {
       if (!token.startsWith("ezkey_recovery_")) {
         logger.warn("❌ Invalid token type - expected recovery token, got bearer token");
         return ResponseEntity.status(403)
-            .body(EnrollmentResetResponseDto.error(
-                "Invalid token type. Use recovery token from /auth/recover endpoint."));
+            .body(
+                EnrollmentResetResponseDto.error(
+                    "Invalid token type. Use recovery token from /auth/recover endpoint."));
       }
 
       // 3. Validate recovery token and get admin
       EzkeyAdmin admin = recoveryService.validateRecoveryToken(token);
 
       // 4. Reset enrollment (unbind old device, generate new credentials)
-      Enrollment resetEnrollment =
-          recoveryService.resetEnrollment(request.enrollmentId(), admin);
+      Enrollment resetEnrollment = recoveryService.resetEnrollment(request.enrollmentId(), admin);
 
       // 5. Build response with new credentials
-      EnrollmentResetResponseDto response = EnrollmentResetResponseDto.success(
-          resetEnrollment.getEnrollmentId(),
-          resetEnrollment.getEnrollmentProofToken(),
-          resetEnrollment.getEnrollmentChallenge(),
-          resetEnrollment.getIntegrationId());
+      EnrollmentResetResponseDto response =
+          EnrollmentResetResponseDto.success(
+              resetEnrollment.getEnrollmentId(),
+              resetEnrollment.getEnrollmentProofToken(),
+              resetEnrollment.getEnrollmentChallenge(),
+              resetEnrollment.getIntegrationId());
 
       logger.warn(
           "✅ Enrollment reset successful for admin: {} (enrollmentId: {})",
@@ -158,8 +161,9 @@ public class AdminEnrollmentController {
     } catch (Exception e) {
       logger.error("❌ Enrollment reset failed (unexpected): {}", e.getMessage(), e);
       return ResponseEntity.status(500)
-          .body(EnrollmentResetResponseDto.error(
-              "An unexpected error occurred during enrollment reset"));
+          .body(
+              EnrollmentResetResponseDto.error(
+                  "An unexpected error occurred during enrollment reset"));
     }
   }
 }

@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.config;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Spring configuration for admin API rate limiting functionality.
@@ -90,7 +90,8 @@ public class AdminRateLimitConfig {
    * @return configured AdminRateLimitFilter instance
    */
   @Bean
-  public AdminRateLimitFilter adminRateLimitFilter(AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
+  public AdminRateLimitFilter adminRateLimitFilter(
+      AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
     logger.info("Initializing Admin API Rate Limiting with configuration:");
     logger.info(
         "  - Login requests: {} per {} minutes",

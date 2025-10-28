@@ -32,10 +32,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p><b>License:</b> MIT
  *
- * @param id Unique identifier for the internationalization record (auto-generated primary key from the database)
- * @param language Language code for the localized content using standard ISO language codes (e.g., "en", "fr", "es")
+ * @param id Unique identifier for the internationalization record (auto-generated primary key from
+ *     the database)
+ * @param language Language code for the localized content using standard ISO language codes (e.g.,
+ *     "en", "fr", "es")
  * @param name Localized name of the integration (display name in the specified language)
- * @param description Localized description of the integration (detailed description in the specified language)
+ * @param description Localized description of the integration (detailed description in the
+ *     specified language)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.IntegrationI18n

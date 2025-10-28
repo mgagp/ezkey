@@ -44,9 +44,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.exception",
       "org.ezkey.audit", //
       "org.ezkey.signature",
-      "org.ezkey.config", // Configuration properties
-      "org.ezkey.tenant", // NOUVEAU
-      "org.ezkey.adminauth", // NOUVEAU
+      "org.ezkey.config",
+      "org.ezkey.tenant",
+      "org.ezkey.adminauth",
     })
 @EnableScheduling
 public class AdminApplication {

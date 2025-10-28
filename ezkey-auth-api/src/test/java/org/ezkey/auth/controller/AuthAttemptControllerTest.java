@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -33,7 +34,6 @@ import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.ezkey.auth.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -105,12 +105,13 @@ class AuthAttemptControllerTest {
   @BeforeEach
   void setUp() {
     // Setup pending request test data - Using record constructor
-    pendingRequestDto = new AuthAttemptPendingRequestDto(
-        123,                      // enrollmentId
-        "EZK-ABC123-DEF456",      // enrollmentProofToken
-        "test-proof-token",       // deviceProofToken
-        "test-signature"          // deviceProofTokenSigned
-    );
+    pendingRequestDto =
+        new AuthAttemptPendingRequestDto(
+            123, // enrollmentId
+            "EZK-ABC123-DEF456", // enrollmentProofToken
+            "test-proof-token", // deviceProofToken
+            "test-signature" // deviceProofTokenSigned
+            );
 
     pendingRequest = new AuthAttemptPendingRequest();
     pendingRequest.setEnrollmentId(123);
@@ -121,20 +122,22 @@ class AuthAttemptControllerTest {
     pendingResponse.setAuthAttemptId(456);
 
     // Using record constructor for AuthAttemptPendingResponseDto
-    pendingResponseDto = new AuthAttemptPendingResponseDto(
-        456,                                      // authAttemptId
-        "eyJhbGciOiJSUzI1NiJ9...",               // authAttemptProofToken
-        "eyJhbGciOiJSUzI1NiJ9...",               // authAttemptProofTokenSignedByIntegration
-        true                                      // authAttemptChallengeRequired
-    );
+    pendingResponseDto =
+        new AuthAttemptPendingResponseDto(
+            456, // authAttemptId
+            "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofToken
+            "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofTokenSignedByIntegration
+            true // authAttemptChallengeRequired
+            );
 
     // Setup respond request test data - Using record constructor
-    respondRequestDto = new AuthAttemptRespondRequestDto(
-        456,                                  // authAttemptId
-        "test-proof-token",                   // authAttemptProofTokenSignedByDevice
-        123456,                               // authAttemptChallengeResponse
-        true                                  // authAttemptAccepted
-    );
+    respondRequestDto =
+        new AuthAttemptRespondRequestDto(
+            456, // authAttemptId
+            "test-proof-token", // authAttemptProofTokenSignedByDevice
+            123456, // authAttemptChallengeResponse
+            true // authAttemptAccepted
+            );
 
     respondRequest = new AuthAttemptRespondRequest();
     respondRequest.setAuthAttemptId(456);
@@ -146,10 +149,11 @@ class AuthAttemptControllerTest {
     respondResponse.setMessage("Authentication approved");
 
     // Using record constructor for AuthAttemptRespondResponseDto
-    respondResponseDto = new AuthAttemptRespondResponseDto(
-        "APPROVED",                    // result
-        "Authentication approved"      // message
-    );
+    respondResponseDto =
+        new AuthAttemptRespondResponseDto(
+            "APPROVED", // result
+            "Authentication approved" // message
+            );
   }
 
   // ===== PENDING ENDPOINT TESTS =====

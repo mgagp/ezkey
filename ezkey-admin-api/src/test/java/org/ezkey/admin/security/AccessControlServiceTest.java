@@ -12,8 +12,6 @@ package org.ezkey.admin.security;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -31,7 +29,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
@@ -141,7 +138,7 @@ class AccessControlServiceTest {
     void apiKeyCannotAccessOtherIntegrationAuthAttempt() {
       // Arrange
       Authentication apiKeyAuth = createApiKeyAuthentication(testIntegration);
-      
+
       // Create auth attempt for other integration
       AuthAttempt otherAuthAttempt = new AuthAttempt();
       otherAuthAttempt.setAuthAttemptId(102);
@@ -241,8 +238,9 @@ class AccessControlServiceTest {
     @DisplayName("Unknown role is denied")
     void unknownRoleIsDenied() {
       // Arrange
-      Authentication unknownRole = new UsernamePasswordAuthenticationToken(
-          "user", "pass", java.util.List.of(new SimpleGrantedAuthority("ROLE_UNKNOWN")));
+      Authentication unknownRole =
+          new UsernamePasswordAuthenticationToken(
+              "user", "pass", java.util.List.of(new SimpleGrantedAuthority("ROLE_UNKNOWN")));
 
       // Act & Assert
       assertFalse(accessControlService.canAccessAuthAttempt(unknownRole, 101));
