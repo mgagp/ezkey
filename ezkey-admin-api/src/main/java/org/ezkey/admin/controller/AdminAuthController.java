@@ -24,10 +24,8 @@ import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
-import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
-import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.slf4j.Logger;
@@ -99,14 +97,20 @@ public class AdminAuthController {
     AdminLoginResponseDto response = authService.authenticate(request);
 
     if (response.success()) {
-      logger.info("✅ Login successful for username: {} from IP: {}", request.username(), context.clientIp());
+      logger.info(
+          "✅ Login successful for username: {} from IP: {}",
+          request.username(),
+          context.clientIp());
 
       // Record successful attempt for rate limiting (clears failure count)
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       // Audit successful login
       auditLogService.log(
-          AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_SUCCESS, 
+          AuditHelper.logSuccess(
+              context,
+              EventType.ADMIN_LOGIN,
+              AdminAuditConstants.LOGIN_SUCCESS,
               "Username: " + request.username()));
 
       return ResponseEntity.ok(response);
@@ -122,7 +126,10 @@ public class AdminAuthController {
 
       // Audit failed login
       auditLogService.log(
-          AuditHelper.logFailure(context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_FAILURE, 
+          AuditHelper.logFailure(
+              context,
+              EventType.ADMIN_LOGIN,
+              AdminAuditConstants.LOGIN_FAILURE,
               response.message()));
 
       return ResponseEntity.badRequest().body(response);
@@ -152,7 +159,8 @@ public class AdminAuthController {
 
       // Audit logout
       auditLogService.log(
-          AuditHelper.logSuccess(context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null));
+          AuditHelper.logSuccess(
+              context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null));
 
       return ResponseEntity.ok().build();
     } catch (Exception e) {
@@ -234,7 +242,8 @@ public class AdminAuthController {
     ClientContext context = ClientContext.from(httpRequest);
 
     try {
-      logger.warn("🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
+      logger.warn(
+          "🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
 
       String recoveryToken =
           recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
@@ -259,7 +268,8 @@ public class AdminAuthController {
 
       // Audit successful recovery
       auditLogService.log(
-          AuditHelper.createAdminAudit(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(
@@ -280,7 +290,10 @@ public class AdminAuthController {
 
       // Audit failed recovery
       auditLogService.log(
-          AuditHelper.logFailure(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_FAILED, 
+          AuditHelper.logFailure(
+              context,
+              EventType.ADMIN_RECOVERY_USE,
+              AdminAuditConstants.RECOVERY_CODE_FAILED,
               e.getMessage()));
 
       return ResponseEntity.status(403)
@@ -291,7 +304,10 @@ public class AdminAuthController {
 
       // Audit error in recovery
       auditLogService.log(
-          AuditHelper.logError(context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_ERROR, 
+          AuditHelper.logError(
+              context,
+              EventType.ADMIN_RECOVERY_USE,
+              AdminAuditConstants.RECOVERY_ERROR,
               e.getMessage()));
 
       return ResponseEntity.status(500)

@@ -162,22 +162,22 @@ public final class AuditHelper {
    */
   public static AuditLog logSuccess(
       ClientContext context, EventType eventType, String action, String details) {
-    
-    AuditLog.Builder builder = createAdminAudit(context, eventType, action)
-        .eventStatus(EventStatus.SUCCESS);
-    
+
+    AuditLog.Builder builder =
+        createAdminAudit(context, eventType, action).eventStatus(EventStatus.SUCCESS);
+
     if (details != null && !details.isEmpty()) {
       builder.eventDetails(details);
     }
-    
+
     return builder.build();
   }
 
   /**
    * Creates a FAILURE audit log entry for admin API operations.
    *
-   * <p>This is a convenience method for logging failed operations (validation errors, business
-   * rule violations, etc.) with an error message. It pre-populates the event status as FAILURE.
+   * <p>This is a convenience method for logging failed operations (validation errors, business rule
+   * violations, etc.) with an error message. It pre-populates the event status as FAILURE.
    *
    * <p><b>Usage Example:</b>
    *
@@ -195,7 +195,7 @@ public final class AuditHelper {
    */
   public static AuditLog logFailure(
       ClientContext context, EventType eventType, String action, String errorMessage) {
-    
+
     return createAdminAudit(context, eventType, action)
         .eventStatus(EventStatus.FAILURE)
         .errorMessage(errorMessage)
@@ -224,7 +224,7 @@ public final class AuditHelper {
    */
   public static AuditLog logError(
       ClientContext context, EventType eventType, String action, String errorMessage) {
-    
+
     return createAdminAudit(context, eventType, action)
         .eventStatus(EventStatus.ERROR)
         .errorMessage(errorMessage)

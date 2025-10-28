@@ -107,8 +107,8 @@ public class NoOpAdminRateLimitFilter extends AdminRateLimitFilter {
   /**
    * No-op filter implementation - always passes through.
    *
-   * <p>This method does nothing and immediately passes the request to the next filter in the
-   * chain. No rate limiting or IP blocking is performed.
+   * <p>This method does nothing and immediately passes the request to the next filter in the chain.
+   * No rate limiting or IP blocking is performed.
    *
    * @param request the servlet request
    * @param response the servlet response
@@ -134,20 +134,22 @@ public class NoOpAdminRateLimitFilter extends AdminRateLimitFilter {
   @Override
   public void recordFailedAttempt(String clientId) {
     // No-op: rate limiting is disabled
-    logger.trace("recordFailedAttempt called but rate limiting is disabled - clientId: {}", clientId);
+    logger.trace(
+        "recordFailedAttempt called but rate limiting is disabled - clientId: {}", clientId);
   }
 
   /**
    * No-op implementation - does nothing.
    *
-   * <p>This method is called when a login attempt succeeds, but since rate limiting is disabled,
-   * no action is taken. No failure count needs to be cleared.
+   * <p>This method is called when a login attempt succeeds, but since rate limiting is disabled, no
+   * action is taken. No failure count needs to be cleared.
    *
    * @param clientId the client identifier (ignored)
    */
   @Override
   public void recordSuccessfulAttempt(String clientId) {
     // No-op: rate limiting is disabled
-    logger.trace("recordSuccessfulAttempt called but rate limiting is disabled - clientId: {}", clientId);
+    logger.trace(
+        "recordSuccessfulAttempt called but rate limiting is disabled - clientId: {}", clientId);
   }
 }

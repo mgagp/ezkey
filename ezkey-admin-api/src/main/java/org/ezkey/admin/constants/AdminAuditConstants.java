@@ -31,7 +31,7 @@ package org.ezkey.admin.constants;
  *
  * <pre>
  * auditLogService.log(
- *   AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN, 
+ *   AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN,
  *     AdminAuditConstants.LOGIN_SUCCESS, "Username: john.doe")
  * );
  * </pre>
