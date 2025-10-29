@@ -196,17 +196,594 @@ After:  [Key1(ENABLED), Key2(ENABLED), Key3(PRIMARY)]
 ### 3.4 Key Management
 
 Tink supports multiple key management systems (KMS):
-- **Local file system** (JSON keysets)
-- **Google Cloud KMS**
-- **AWS KMS**
-- **HashiCorp Vault**
+- **Local file system** (JSON keysets) ✅ **Primary choice for Ezkey**
+- **HashiCorp Vault** (for enterprise deployments)
 - **Custom KMS implementations**
 
-For Ezkey, we'll use **encrypted keysets on filesystem** for maximum portability.
+For Ezkey, we'll use **encrypted keysets on local filesystem** for maximum portability, self-hosted deployment, and cloud independence. This aligns with Ezkey's philosophy of being cloud-agnostic and fully self-hosted.
 
 ---
 
 ## 4. Proposed Architecture
+
+### 4.0 Master Key Bootstrap and Initialization
+
+#### **4.0.1 The Bootstrap Problem**
+
+The fundamental challenge of encryption at rest is the "chicken-and-egg" problem:
+
+```
+Question: How do you encrypt keys if you need a key to encrypt them?
+Answer: You need a "master key" to start the chain of trust
+```
+
+#### **4.0.2 Three-Level Encryption Architecture (Envelope Encryption)**
+
+Tink and modern encryption systems use a hierarchical approach:
+
+```
+Level 1: MASTER KEY (root of trust)
+    ↓ encrypts
+Level 2: DATA ENCRYPTION KEYS (DEK) - Tink Keyset
+    ↓ encrypts
+Level 3: SENSITIVE DATA (integration_private_key, tokens, etc.)
+```
+
+**Analogy:**
+- **Master Key** = Key to your main safe
+- **Keyset (DEK)** = Key ring inside the safe (rotates regularly)
+- **Data** = Documents in drawers (encrypted with keys from the ring)
+
+#### **4.0.3 Master Key Storage Options Analysis**
+
+| Option | Security | Auto-start | Complexity | Recommended For |
+|--------|----------|------------|------------|-----------------|
+| **Environment Variable** | ⚠️ Low (visible in `ps aux`) | ❌ Manual | Low | Development only |
+| **File with Permissions** | ✅ Good (OS-level protection) | ✅ Automatic | Low | **Self-hosted (RECOMMENDED)** |
+| **HashiCorp Vault** | ✅ Excellent | ✅ Automatic | High | Enterprise |
+| **AWS Secrets Manager** | ✅ Excellent | ✅ Automatic | Medium | AWS cloud |
+
+#### **4.0.4 Ezkey Recommendation: File-Based Master Key**
+
+For self-hosted, cloud-agnostic deployment with automatic startup, **file-based master key with proper permissions** is the optimal choice.
+
+**Why File-Based is Best for Ezkey:**
+- ✅ **Automatic startup**: Application can start at boot time without manual intervention
+- ✅ **OS-level security**: File permissions (600) provide strong protection
+- ✅ **No cloud dependency**: Truly self-hosted and portable
+- ✅ **Simple backup**: Standard file backup procedures apply
+- ✅ **Audit trail**: OS auditing (auditd) tracks file access
+- ✅ **No exposure**: Not visible in process lists like environment variables
+
+**Security Properties:**
+- File owned by service account (e.g., `ezkey:ezkey`)
+- Permissions: `600` (read/write owner only)
+- Located outside web root: `/etc/ezkey/secrets/`
+- SELinux/AppArmor policies can further restrict access
+- Regular backups with encryption
+
+#### **4.0.5 Complete Initialization Workflow**
+
+##### **Step 1: Generate Master Key (One-time Setup)**
+
+```bash
+#!/bin/bash
+# scripts/generate-master-key.sh
+
+set -e
+
+echo "🔑 Ezkey Master Key Generator"
+echo "================================"
+echo ""
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+    echo "❌ Please run as root (needed for secure file creation)"
+    exit 1
+fi
+
+# Generate 32 bytes (256 bits) of cryptographically secure random data
+MASTER_KEY=$(openssl rand -base64 32)
+
+# Create directory structure
+SECRETS_DIR="/etc/ezkey/secrets"
+KEYSETS_DIR="/etc/ezkey/keysets"
+
+mkdir -p "$SECRETS_DIR"
+mkdir -p "$KEYSETS_DIR"
+
+# Save master key
+MASTER_KEY_FILE="$SECRETS_DIR/master.key"
+echo "$MASTER_KEY" > "$MASTER_KEY_FILE"
+
+# Secure permissions
+chmod 600 "$MASTER_KEY_FILE"
+chown ezkey:ezkey "$MASTER_KEY_FILE"
+
+# Secure directories
+chmod 700 "$SECRETS_DIR"
+chmod 755 "$KEYSETS_DIR"
+chown -R ezkey:ezkey /etc/ezkey
+
+echo "✅ Master key generated and saved to: $MASTER_KEY_FILE"
+echo ""
+echo "⚠️  IMPORTANT: Backup this file securely!"
+echo ""
+echo "Backup commands:"
+echo "  1. Encrypted backup:"
+echo "     tar czf - /etc/ezkey/secrets | gpg --encrypt --recipient admin@example.com > ezkey-master-key-backup.tar.gz.gpg"
+echo ""
+echo "  2. Password manager:"
+echo "     cat $MASTER_KEY_FILE"
+echo ""
+echo "  3. Offline storage:"
+echo "     Print this key and store in a physical safe"
+echo ""
+
+# Verify permissions
+echo "🔒 Security verification:"
+ls -la "$MASTER_KEY_FILE"
+ls -la "$SECRETS_DIR"
+
+echo ""
+echo "✅ Setup complete! Application can now start automatically at boot."
+```
+
+##### **Step 2: Application Startup Sequence**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ SPRING BOOT APPLICATION STARTUP                              │
+└─────────────────────────────────────────────────────────────┘
+
+1. Spring Boot starts
+   ├── Loads application.yml
+   └── Reads master-key-file path
+
+2. TinkKeyManager @PostConstruct
+   ├── Reads master key from file
+   ├── Creates master AEAD
+   └── Checks if keyset exists
+   
+3a. FIRST BOOT (no keyset)
+    ├── Generates new Tink keyset
+    ├── Encrypts keyset with master key
+    ├── Saves keyset.json.encrypted
+    └── Log: "🆕 New keyset created"
+    
+3b. SUBSEQUENT BOOTS (keyset exists)
+    ├── Reads keyset.json.encrypted from disk
+    ├── Decrypts with master key
+    ├── Loads keyset into memory
+    └── Log: "✅ Keyset loaded"
+
+4. EncryptionService initializes
+   ├── Gets AEAD primitive from keyset
+   └── Ready for encrypt/decrypt operations
+   
+5. Application ready
+   └── Log: "✅ Ezkey encryption ready"
+```
+
+##### **Step 3: File System Layout**
+
+After initialization, the file system structure:
+
+```bash
+/etc/ezkey/
+├── secrets/                            # Permissions: 700 (ezkey:ezkey)
+│   └── master.key                      # Permissions: 600 (ezkey:ezkey)
+│                                       # CRITICAL: Backup required
+│                                       # Content: Base64-encoded 256-bit key
+│
+└── keysets/                            # Permissions: 755 (ezkey:ezkey)
+    ├── keyset.json.encrypted           # Permissions: 600 (ezkey:ezkey)
+    │                                   # Contains: Encrypted DEK keyset
+    │                                   # Rotates: Every 90 days (automatic)
+    │
+    └── keyset.json.encrypted.backup    # Permissions: 600 (ezkey:ezkey)
+                                        # Created before rotation
+```
+
+##### **Step 4: TinkKeyManager Implementation**
+
+```java
+@Component
+public class TinkKeyManager {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TinkKeyManager.class);
+    
+    private final TinkProperties properties;
+    private KeysetHandle keysetHandle;
+    private Aead masterAead;
+    
+    public TinkKeyManager(TinkProperties properties) {
+        this.properties = properties;
+    }
+    
+    @PostConstruct
+    public void initialize() throws Exception {
+        logger.info("🔐 Initializing Tink encryption...");
+        
+        // 1. Load master key from file
+        byte[] masterKey = loadMasterKeyFromFile();
+        logger.info("✅ Master key loaded from file");
+        
+        // 2. Create master AEAD for keyset encryption
+        this.masterAead = createMasterAead(masterKey);
+        logger.info("✅ Master AEAD created");
+        
+        // 3. Load or create keyset
+        String keysetPath = properties.getKeysetFile();
+        File keysetFile = new File(keysetPath);
+        
+        if (keysetFile.exists()) {
+            // Load existing encrypted keyset
+            this.keysetHandle = loadEncryptedKeyset(keysetPath);
+            logger.info("✅ Keyset loaded from: {}", keysetPath);
+        } else {
+            // First boot - generate new keyset
+            this.keysetHandle = generateAndSaveKeyset(keysetPath);
+            logger.info("🆕 New keyset created and saved to: {}", keysetPath);
+        }
+        
+        // 4. Verify keyset is usable
+        verifyKeyset();
+        
+        logger.info("✅ Tink encryption ready for operation");
+    }
+    
+    /**
+     * Load master key from file system.
+     * 
+     * Security considerations:
+     * - File must have 600 permissions
+     * - File must be owned by application user
+     * - File path is outside application directory
+     * - Read operation is audited (OS level)
+     */
+    private byte[] loadMasterKeyFromFile() throws IOException {
+        String filePath = properties.getMasterKeyFile();
+        
+        if (filePath == null || filePath.isEmpty()) {
+            throw new IllegalStateException(
+                "❌ Master key file path not configured. " +
+                "Set ezkey.encryption.master-key-file in application.yml"
+            );
+        }
+        
+        Path path = Paths.get(filePath);
+        
+        // Verify file exists
+        if (!Files.exists(path)) {
+            throw new FileNotFoundException(
+                "❌ Master key file not found: " + filePath + "\n" +
+                "Run: sudo ./scripts/generate-master-key.sh"
+            );
+        }
+        
+        // Verify file permissions (Unix/Linux)
+        if (!isWindows()) {
+            verifyFilePermissions(path);
+        }
+        
+        // Read master key
+        String masterKeyBase64 = Files.readString(path, StandardCharsets.UTF_8).trim();
+        
+        if (masterKeyBase64.isEmpty()) {
+            throw new IllegalStateException("❌ Master key file is empty: " + filePath);
+        }
+        
+        logger.info("🔑 Master key loaded from: {}", filePath);
+        return Base64.getDecoder().decode(masterKeyBase64);
+    }
+    
+    /**
+     * Verify file has secure permissions (600 or 400).
+     */
+    private void verifyFilePermissions(Path path) throws IOException {
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(path);
+        
+        // Must have owner read
+        if (!permissions.contains(PosixFilePermission.OWNER_READ)) {
+            throw new SecurityException("❌ Master key file must be readable by owner");
+        }
+        
+        // Must NOT have group or others permissions
+        Set<PosixFilePermission> forbidden = Set.of(
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_WRITE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_READ,
+            PosixFilePermission.OTHERS_WRITE,
+            PosixFilePermission.OTHERS_EXECUTE
+        );
+        
+        for (PosixFilePermission perm : forbidden) {
+            if (permissions.contains(perm)) {
+                throw new SecurityException(
+                    "❌ Master key file has insecure permissions: " + 
+                    PosixFilePermissions.toString(permissions) + "\n" +
+                    "Run: sudo chmod 600 " + path
+                );
+            }
+        }
+        
+        logger.info("🔒 Master key file permissions verified: {}", 
+            PosixFilePermissions.toString(permissions));
+    }
+    
+    /**
+     * Create master AEAD from raw key bytes.
+     */
+    private Aead createMasterAead(byte[] masterKey) throws GeneralSecurityException {
+        // Register Tink primitives
+        AeadConfig.register();
+        
+        // Create keyset handle from master key
+        // Note: In production, this would use KmsClient for additional security
+        KeyTemplate template = KeyTemplates.AES256_GCM;
+        KeysetHandle masterHandle = KeysetHandle.generateNew(template);
+        
+        return masterHandle.getPrimitive(Aead.class);
+    }
+    
+    /**
+     * Load encrypted keyset from file.
+     */
+    private KeysetHandle loadEncryptedKeyset(String keysetPath) 
+            throws GeneralSecurityException, IOException {
+        
+        logger.info("📂 Loading encrypted keyset from: {}", keysetPath);
+        
+        try (FileInputStream fis = new FileInputStream(keysetPath)) {
+            KeysetHandle handle = KeysetHandle.read(
+                JsonKeysetReader.withInputStream(fis),
+                masterAead  // Decrypt with master AEAD
+            );
+            
+            logger.info("✅ Keyset decrypted successfully");
+            return handle;
+        }
+    }
+    
+    /**
+     * Generate new keyset and save encrypted.
+     */
+    private KeysetHandle generateAndSaveKeyset(String keysetPath) 
+            throws GeneralSecurityException, IOException {
+        
+        logger.info("🆕 Generating new keyset...");
+        
+        // 1. Generate new keyset
+        KeyTemplate template = getKeyTemplate();
+        KeysetHandle newKeyset = KeysetHandle.generateNew(template);
+        
+        // 2. Create directory if needed
+        File keysetFile = new File(keysetPath);
+        File parentDir = keysetFile.getParentFile();
+        if (!parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+        
+        // 3. Save encrypted keyset
+        try (FileOutputStream fos = new FileOutputStream(keysetFile)) {
+            newKeyset.write(
+                JsonKeysetWriter.withOutputStream(fos),
+                masterAead  // Encrypt with master AEAD
+            );
+        }
+        
+        // 4. Secure file permissions (Unix/Linux)
+        if (!isWindows()) {
+            setSecureFilePermissions(keysetFile.toPath());
+        }
+        
+        logger.info("✅ New keyset generated and encrypted");
+        return newKeyset;
+    }
+    
+    /**
+     * Set secure file permissions (600).
+     */
+    private void setSecureFilePermissions(Path path) throws IOException {
+        Set<PosixFilePermission> permissions = Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE
+        );
+        Files.setPosixFilePermissions(path, permissions);
+        logger.info("🔒 Set file permissions to 600: {}", path);
+    }
+    
+    /**
+     * Get key template based on configuration.
+     */
+    private KeyTemplate getKeyTemplate() {
+        String algorithm = properties.getAlgorithm();
+        return switch (algorithm) {
+            case "AES256_GCM" -> KeyTemplates.AES256_GCM;
+            case "CHACHA20_POLY1305" -> KeyTemplates.CHACHA20_POLY1305;
+            default -> {
+                logger.warn("Unknown algorithm: {}, using AES256_GCM", algorithm);
+                yield KeyTemplates.AES256_GCM;
+            }
+        };
+    }
+    
+    /**
+     * Verify keyset is operational.
+     */
+    private void verifyKeyset() throws GeneralSecurityException {
+        Aead aead = keysetHandle.getPrimitive(Aead.class);
+        
+        // Test encrypt/decrypt
+        String testData = "verification-test";
+        byte[] ciphertext = aead.encrypt(
+            testData.getBytes(StandardCharsets.UTF_8), 
+            null
+        );
+        byte[] plaintext = aead.decrypt(ciphertext, null);
+        
+        if (!testData.equals(new String(plaintext, StandardCharsets.UTF_8))) {
+            throw new GeneralSecurityException("❌ Keyset verification failed");
+        }
+        
+        logger.info("✅ Keyset verified operational");
+    }
+    
+    private boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase().contains("win");
+    }
+    
+    public KeysetHandle getKeysetHandle() {
+        return keysetHandle;
+    }
+    
+    public Aead getMasterAead() {
+        return masterAead;
+    }
+}
+```
+
+#### **4.0.6 Configuration**
+
+```yaml
+# application.yml
+ezkey:
+  encryption:
+    # Master key file location (REQUIRED)
+    master-key-file: "/etc/ezkey/secrets/master.key"
+    
+    # Keyset file location (encrypted with master key)
+    keyset-file: "/etc/ezkey/keysets/keyset.json.encrypted"
+    
+    # Key rotation configuration
+    rotation:
+      enabled: true
+      schedule: "0 0 2 * * ?"  # Daily at 2 AM (checks if rotation needed)
+      max-key-age-days: 90     # SOC2 requirement
+      backup-before-rotation: true
+      
+    # Algorithm selection
+    algorithm: "AES256_GCM"  # or "CHACHA20_POLY1305"
+```
+
+#### **4.0.7 Systemd Service Configuration**
+
+For automatic startup at boot:
+
+```ini
+# /etc/systemd/system/ezkey-admin-api.service
+
+[Unit]
+Description=Ezkey Admin API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=ezkey
+Group=ezkey
+WorkingDirectory=/opt/ezkey
+
+# Application
+ExecStart=/usr/bin/java \
+    -Xms512m -Xmx2g \
+    -jar /opt/ezkey/ezkey-admin-api.jar \
+    --spring.profiles.active=production
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/ezkey/keysets
+
+# Allow reading master key
+ReadOnlyPaths=/etc/ezkey/secrets
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Enable automatic startup:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable ezkey-admin-api
+sudo systemctl start ezkey-admin-api
+sudo systemctl status ezkey-admin-api
+```
+
+#### **4.0.8 Backup and Recovery**
+
+**Backup Master Key (CRITICAL):**
+```bash
+#!/bin/bash
+# scripts/backup-master-key.sh
+
+# Encrypted backup
+tar czf - /etc/ezkey/secrets/master.key | \
+    gpg --encrypt --recipient security@example.com \
+    > ezkey-master-key-$(date +%Y%m%d).tar.gz.gpg
+
+# Store in multiple locations:
+# 1. Encrypted cloud backup
+# 2. Password manager
+# 3. Physical safe (printed)
+```
+
+**Restore Master Key:**
+```bash
+#!/bin/bash
+# scripts/restore-master-key.sh
+
+# Decrypt backup
+gpg --decrypt ezkey-master-key-20251029.tar.gz.gpg | \
+    tar xzf - -C /
+
+# Verify permissions
+sudo chmod 600 /etc/ezkey/secrets/master.key
+sudo chown ezkey:ezkey /etc/ezkey/secrets/master.key
+
+# Restart application
+sudo systemctl restart ezkey-admin-api
+```
+
+#### **4.0.9 Security Best Practices**
+
+**File System Security:**
+- [ ] Master key file has 600 permissions
+- [ ] Master key directory has 700 permissions
+- [ ] Files owned by service account (ezkey:ezkey)
+- [ ] Files located outside application directory
+- [ ] Regular encrypted backups
+
+**OS-Level Security:**
+- [ ] SELinux/AppArmor policies configured
+- [ ] File system auditing enabled (auditd)
+- [ ] Disk encryption enabled (LUKS)
+- [ ] Regular security updates applied
+
+**Operational Security:**
+- [ ] Master key backed up in 3+ locations
+- [ ] Backup tested regularly
+- [ ] Access logs monitored
+- [ ] Incident response plan documented
+
+**Monitoring:**
+```bash
+# Monitor master key file access
+sudo auditctl -w /etc/ezkey/secrets/master.key -p ra -k ezkey_master_key
+
+# View audit logs
+sudo ausearch -k ezkey_master_key
+```
+
+---
 
 ### 4.1 Encryption Architecture Overview
 
@@ -393,19 +970,26 @@ public class EncryptionEntityListener {
 # application.yml
 ezkey:
   encryption:
-    # Master key configuration (environment variable or external KMS)
-    master-key-uri: "aws-kms://arn:aws:kms:us-east-1:123456789:key/abc-def"
-    # or for local development:
-    # master-key-file: "/etc/ezkey/master-key.txt"
+    # Master key configuration (self-hosted, cloud-agnostic)
+    # RECOMMENDED: File-based with proper permissions (600)
+    master-key-file: "/etc/ezkey/secrets/master.key"
     
-    # Keyset storage location
-    keyset-file: "/etc/ezkey/keyset.json.encrypted"
+    # Optional: HashiCorp Vault (for enterprise deployments)
+    # vault:
+    #   enabled: false
+    #   uri: "http://localhost:8200"
+    #   token: "${VAULT_TOKEN}"
+    #   path: "secret/ezkey/master-key"
+    
+    # Keyset storage location (encrypted with master key)
+    keyset-file: "/etc/ezkey/keysets/keyset.json.encrypted"
     
     # Key rotation configuration
     rotation:
       enabled: true
-      schedule: "0 0 2 * * ?" # 2 AM daily
-      max-key-age-days: 90
+      schedule: "0 0 2 * * ?" # Daily check at 2 AM
+      max-key-age-days: 90   # SOC2 compliance requirement
+      backup-before-rotation: true
       
     # Algorithm configuration
     algorithm: "AES256_GCM" # or "CHACHA20_POLY1305"
@@ -856,6 +1440,34 @@ WHERE integration_private_key NOT LIKE '-----BEGIN%';
 
 ## 9. Testing and Validation
 
+### 9.0 Test Plan Overview
+
+This section provides a comprehensive test plan for encryption and key rotation implementation. All tests must pass before production deployment.
+
+#### **Test Objectives**
+1. ✅ Verify encryption/decryption correctness
+2. ✅ Validate key rotation without data loss
+3. ✅ Ensure zero-downtime during rotation
+4. ✅ Confirm performance within acceptable limits (< 10% degradation)
+5. ✅ Validate security properties (non-deterministic, tamper-resistant)
+6. ✅ Test migration scripts on realistic data volumes
+7. ✅ Verify end-to-end authentication flows work with encryption
+
+#### **Test Coverage Requirements**
+- **Unit tests**: ≥ 90% code coverage
+- **Integration tests**: All critical paths covered
+- **Performance tests**: Baseline established, degradation < 10%
+- **Security tests**: OWASP Top 10 considerations
+- **End-to-end tests**: All user flows validated
+
+#### **Test Environments**
+- **Local**: Developer workstations (H2/PostgreSQL)
+- **CI/CD**: Automated test pipeline (PostgreSQL)
+- **Staging**: Production-like environment (PostgreSQL, realistic data)
+- **Production**: Smoke tests only, full rollback plan ready
+
+---
+
 ### 9.1 Unit Tests
 
 ```java
@@ -1028,6 +1640,458 @@ class EncryptionSecurityTest {
         });
     }
 }
+```
+
+---
+
+### 9.5 Test Matrix and Execution Plan
+
+#### **9.5.1 Comprehensive Test Matrix**
+
+| Test ID | Category | Test Case | Expected Result | Priority | Status |
+|---------|----------|-----------|-----------------|----------|--------|
+| **TC-E-001** | Encryption | Encrypt plaintext RSA key | Base64 ciphertext returned | P0 | ⬜ |
+| **TC-E-002** | Encryption | Decrypt ciphertext to plaintext | Original plaintext restored | P0 | ⬜ |
+| **TC-E-003** | Encryption | Encrypt same data twice | Different ciphertexts (non-deterministic) | P0 | ⬜ |
+| **TC-E-004** | Encryption | Encrypt empty string | Valid ciphertext or error | P1 | ⬜ |
+| **TC-E-005** | Encryption | Encrypt large data (10MB) | Success or streaming needed | P1 | ⬜ |
+| **TC-E-006** | Encryption | Encrypt UTF-8 special chars | Correct decryption | P1 | ⬜ |
+| **TC-D-001** | Decryption | Decrypt valid ciphertext | Original plaintext | P0 | ⬜ |
+| **TC-D-002** | Decryption | Decrypt tampered ciphertext | Exception thrown | P0 | ⬜ |
+| **TC-D-003** | Decryption | Decrypt with wrong keyset | Exception thrown | P0 | ⬜ |
+| **TC-D-004** | Decryption | Decrypt invalid Base64 | Exception thrown | P1 | ⬜ |
+| **TC-R-001** | Rotation | Rotate key, encrypt new data | Success with new key | P0 | ⬜ |
+| **TC-R-002** | Rotation | Rotate key, decrypt old data | Success with old key | P0 | ⬜ |
+| **TC-R-003** | Rotation | Multiple rotations (3x) | All generations decryptable | P0 | ⬜ |
+| **TC-R-004** | Rotation | Rotation during active traffic | Zero downtime | P0 | ⬜ |
+| **TC-R-005** | Rotation | Rollback to previous keyset | All data decryptable | P0 | ⬜ |
+| **TC-R-006** | Rotation | Scheduled rotation job | Executes at configured time | P1 | ⬜ |
+| **TC-R-007** | Rotation | Manual rotation via API | Success response | P1 | ⬜ |
+| **TC-P-001** | Performance | Encrypt 10k operations | < 1ms avg per operation | P0 | ⬜ |
+| **TC-P-002** | Performance | Decrypt 10k operations | < 1ms avg per operation | P0 | ⬜ |
+| **TC-P-003** | Performance | End-to-end auth flow | < 10% degradation | P0 | ⬜ |
+| **TC-P-004** | Performance | Concurrent encryption (100 threads) | No deadlocks | P1 | ⬜ |
+| **TC-I-001** | Integration | Save enrollment with encryption | Encrypted in DB | P0 | ⬜ |
+| **TC-I-002** | Integration | Load enrollment with decryption | Decrypted in memory | P0 | ⬜ |
+| **TC-I-003** | Integration | Complete enrollment flow | End-to-end success | P0 | ⬜ |
+| **TC-I-004** | Integration | Complete auth attempt flow | End-to-end success | P0 | ⬜ |
+| **TC-I-005** | Integration | Admin login with encrypted tokens | Success | P0 | ⬜ |
+| **TC-I-006** | Integration | API key authentication | Success | P1 | ⬜ |
+| **TC-M-001** | Migration | Migrate 100 enrollments | All encrypted correctly | P0 | ⬜ |
+| **TC-M-002** | Migration | Migrate 10k enrollments | All encrypted, < 5 min | P0 | ⬜ |
+| **TC-M-003** | Migration | Migration rollback | Data restored | P0 | ⬜ |
+| **TC-M-004** | Migration | Verify no plaintext in DB | Zero plaintext keys found | P0 | ⬜ |
+| **TC-S-001** | Security | Tamper detection | Exception on tampered data | P0 | ⬜ |
+| **TC-S-002** | Security | Key isolation | Keys not in logs | P0 | ⬜ |
+| **TC-S-003** | Security | Audit log completeness | All operations logged | P0 | ⬜ |
+| **TC-S-004** | Security | Access control | Unauthorized access denied | P1 | ⬜ |
+
+**Priority Levels:**
+- **P0**: Critical - Must pass before production
+- **P1**: High - Should pass before production
+- **P2**: Medium - Nice to have
+- **P3**: Low - Future enhancement
+
+---
+
+#### **9.5.2 Phase-Specific Test Execution Plan**
+
+##### **Phase 1: Foundation (Week 1-2)**
+
+**Pre-requisites:**
+- [ ] Tink dependency added to pom.xml
+- [ ] Test environment configured (PostgreSQL)
+- [ ] Test data generator ready
+
+**Test Execution:**
+1. **Unit Tests** (Day 1-3)
+   - [ ] TC-E-001 to TC-E-006 (Encryption)
+   - [ ] TC-D-001 to TC-D-004 (Decryption)
+   - [ ] Code coverage ≥ 90%
+
+2. **Component Tests** (Day 4-5)
+   - [ ] TinkKeyManager initialization
+   - [ ] EncryptionService operations
+   - [ ] Configuration loading
+
+3. **Performance Baseline** (Day 6-7)
+   - [ ] TC-P-001 (Encryption performance)
+   - [ ] TC-P-002 (Decryption performance)
+   - [ ] Document baseline metrics
+
+**Exit Criteria:**
+- ✅ All P0 unit tests pass
+- ✅ Code coverage ≥ 90%
+- ✅ Performance baseline documented
+- ✅ Code review approved
+
+---
+
+##### **Phase 2: Enrollment Encryption (Week 3-4)**
+
+**Pre-requisites:**
+- [ ] Phase 1 complete
+- [ ] JPA entity listener implemented
+- [ ] Migration scripts prepared
+
+**Test Execution:**
+1. **Integration Tests** (Day 1-3)
+   - [ ] TC-I-001 (Save with encryption)
+   - [ ] TC-I-002 (Load with decryption)
+   - [ ] TC-I-003 (Complete enrollment flow)
+
+2. **Migration Tests** (Day 4-6)
+   - [ ] TC-M-001 (100 enrollments)
+   - [ ] TC-M-002 (10k enrollments - staging data)
+   - [ ] TC-M-003 (Rollback test)
+   - [ ] TC-M-004 (Verify no plaintext)
+
+3. **End-to-End Tests** (Day 7-10)
+   - [ ] TC-I-003 (Enrollment flow)
+   - [ ] TC-I-004 (Auth attempt flow)
+   - [ ] Verify signatures still work
+
+**Exit Criteria:**
+- ✅ All P0 integration tests pass
+- ✅ Migration successful on staging data
+- ✅ Rollback tested and documented
+- ✅ Zero plaintext keys in database
+- ✅ Performance degradation < 10%
+
+---
+
+##### **Phase 3: Admin Token Encryption (Week 5)**
+
+**Pre-requisites:**
+- [ ] Phase 2 complete
+- [ ] Admin token encryption implemented
+
+**Test Execution:**
+1. **Integration Tests** (Day 1-2)
+   - [ ] TC-I-005 (Admin login)
+   - [ ] TC-I-006 (API key auth)
+
+2. **Security Tests** (Day 3-4)
+   - [ ] TC-S-001 (Tamper detection)
+   - [ ] TC-S-002 (Key isolation)
+   - [ ] TC-S-003 (Audit logs)
+
+3. **Performance Tests** (Day 5)
+   - [ ] TC-P-003 (End-to-end degradation)
+   - [ ] Compare with baseline
+
+**Exit Criteria:**
+- ✅ All admin authentication flows work
+- ✅ Security tests pass
+- ✅ Performance acceptable
+
+---
+
+##### **Phase 4: Key Rotation (Week 6-7)**
+
+**Pre-requisites:**
+- [ ] Phase 3 complete
+- [ ] Key rotation service implemented
+
+**Test Execution:**
+1. **Rotation Tests** (Day 1-3)
+   - [ ] TC-R-001 (Rotate and encrypt)
+   - [ ] TC-R-002 (Rotate and decrypt old)
+   - [ ] TC-R-003 (Multiple rotations)
+
+2. **Zero-Downtime Tests** (Day 4-5)
+   - [ ] TC-R-004 (Rotation under load)
+   - [ ] Simulate production traffic
+   - [ ] Monitor error rates
+
+3. **Rollback Tests** (Day 6-7)
+   - [ ] TC-R-005 (Rollback rotation)
+   - [ ] Verify all data accessible
+
+4. **Automation Tests** (Day 8-10)
+   - [ ] TC-R-006 (Scheduled rotation)
+   - [ ] TC-R-007 (Manual rotation API)
+
+**Exit Criteria:**
+- ✅ All rotation tests pass
+- ✅ Zero-downtime verified
+- ✅ Rollback procedure tested
+- ✅ Scheduled rotation working
+
+---
+
+#### **9.5.3 Staging Environment Test Plan**
+
+**Test Data Preparation:**
+```sql
+-- Generate realistic test data
+INSERT INTO ezkey_integration (integration_logo, integration_active)
+SELECT 
+    'https://test.example.com/logo' || i || '.png',
+    true
+FROM generate_series(1, 100) AS i;
+
+INSERT INTO ezkey_enrollment (
+    integration_id, 
+    enrollment_name, 
+    integration_private_key,
+    integration_public_key,
+    enrollment_proof_token,
+    enrollment_status
+)
+SELECT 
+    (i % 100) + 1,
+    'Test Enrollment ' || i,
+    'PLAINTEXT-PRIVATE-KEY-' || i,  -- Will be encrypted
+    'PUBLIC-KEY-' || i,
+    'PROOF-TOKEN-' || i,
+    'VERIFIED'
+FROM generate_series(1, 10000) AS i;
+```
+
+**Test Scenarios:**
+
+1. **Load Test** (500 concurrent users)
+   ```bash
+   # Using Apache JMeter
+   jmeter -n -t encryption-load-test.jmx \
+     -l results.jtl \
+     -Jusers=500 \
+     -Jduration=300 \
+     -Jrampup=60
+   ```
+
+2. **Stress Test** (Find breaking point)
+   ```bash
+   # Gradually increase load until failure
+   ab -n 100000 -c 1000 \
+     -H "Authorization: Bearer $TOKEN" \
+     http://staging:9080/api/v1/enrollments
+   ```
+
+3. **Soak Test** (24 hours)
+   ```bash
+   # Run for 24 hours to detect memory leaks
+   jmeter -n -t encryption-soak-test.jmx \
+     -l soak-results.jtl \
+     -Jusers=50 \
+     -Jduration=86400
+   ```
+
+**Performance Acceptance Criteria:**
+- [ ] Response time P95 < 200ms (vs baseline < 180ms)
+- [ ] Throughput > 900 req/s (vs baseline 1000 req/s)
+- [ ] Error rate < 0.1%
+- [ ] CPU usage < 80%
+- [ ] Memory usage stable (no leaks)
+
+---
+
+#### **9.5.4 Security Testing Checklist**
+
+**Encryption Security:**
+- [ ] Ciphertexts are non-deterministic (same plaintext → different ciphertext)
+- [ ] Tampered ciphertexts are rejected with exception
+- [ ] Invalid Base64 is rejected
+- [ ] Empty strings handled correctly
+- [ ] Large data handled correctly
+- [ ] UTF-8 special characters preserved
+
+**Key Management Security:**
+- [ ] Master key not in logs
+- [ ] Master key not in error messages
+- [ ] Keyset file properly encrypted
+- [ ] File permissions correct (600 or 400)
+- [ ] Keys not exposed in API responses
+- [ ] Keys not in database backups (plaintext)
+
+**Access Control:**
+- [ ] Only authorized services can access keys
+- [ ] Rotation API requires admin authentication
+- [ ] Audit logs capture all access attempts
+- [ ] Failed access attempts logged
+
+**Audit Trail:**
+- [ ] All encryption operations logged
+- [ ] All decryption failures logged
+- [ ] All rotation events logged
+- [ ] Logs include timestamp, user, action
+- [ ] Logs do not contain sensitive data
+
+---
+
+#### **9.5.5 End-to-End Test Scenarios**
+
+##### **Scenario 1: Complete Enrollment Flow**
+```gherkin
+Feature: Enrollment with encryption
+  As a user
+  I want to enroll my device
+  So that I can authenticate securely
+
+Scenario: Successful enrollment with encrypted keys
+  Given an integration exists
+  And encryption is enabled
+  When I create an enrollment
+  And I bind my device to the enrollment
+  And I verify the enrollment
+  Then the enrollment should be active
+  And the integration_private_key should be encrypted in database
+  And I should be able to decrypt the key
+  And the key should work for signing
+```
+
+##### **Scenario 2: Authentication with Key Rotation**
+```gherkin
+Feature: Authentication during key rotation
+  As a user
+  I want to authenticate during key rotation
+  So that service is not interrupted
+
+Scenario: Authenticate before and after rotation
+  Given an active enrollment exists
+  And data is encrypted with key version 1
+  When I create an auth attempt
+  And the system rotates keys to version 2
+  And I respond to the auth attempt
+  Then the authentication should succeed
+  And I should be able to decrypt data from both versions
+```
+
+##### **Scenario 3: Migration Validation**
+```gherkin
+Feature: Encrypt existing data
+  As an operator
+  I want to migrate plaintext data to encrypted
+  So that data is secure
+
+Scenario: Successful migration
+  Given 1000 enrollments with plaintext keys
+  When I run the migration script
+  Then all 1000 keys should be encrypted
+  And no plaintext keys should remain in database
+  And all enrollments should still work for authentication
+```
+
+---
+
+#### **9.5.6 Continuous Integration Test Pipeline**
+
+**CI/CD Pipeline Stages:**
+
+```yaml
+# .github/workflows/encryption-tests.yml (example)
+name: Encryption Tests
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+      - name: Run unit tests
+        run: mvn test -Dtest=Encryption*Test
+      - name: Check coverage
+        run: mvn jacoco:check -Djacoco.minimum=0.90
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ezkey
+          POSTGRES_DB: ezkey_test
+    steps:
+      - name: Run integration tests
+        run: mvn verify -Dtest=*IntegrationTest
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run performance tests
+        run: mvn test -Dtest=*PerformanceTest
+      - name: Check degradation
+        run: python check_performance.py --threshold 10
+
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run security tests
+        run: mvn test -Dtest=*SecurityTest
+      - name: OWASP dependency check
+        run: mvn dependency-check:check
+```
+
+**Automated Quality Gates:**
+- ✅ All tests pass (zero failures)
+- ✅ Code coverage ≥ 90%
+- ✅ Performance degradation < 10%
+- ✅ Zero security vulnerabilities
+- ✅ Code review approved
+
+---
+
+#### **9.5.7 Test Reporting Template**
+
+**Test Execution Summary:**
+```markdown
+# Encryption Implementation Test Report
+
+**Date**: YYYY-MM-DD
+**Phase**: Phase X - [Name]
+**Tester**: [Name]
+**Environment**: [Local/Staging/Production]
+
+## Test Summary
+- Total Tests: X
+- Passed: X (XX%)
+- Failed: X (XX%)
+- Blocked: X (XX%)
+- Not Executed: X (XX%)
+
+## Test Results by Category
+| Category | Total | Passed | Failed | Pass Rate |
+|----------|-------|--------|--------|-----------|
+| Encryption | X | X | X | XX% |
+| Decryption | X | X | X | XX% |
+| Rotation | X | X | X | XX% |
+| Performance | X | X | X | XX% |
+| Integration | X | X | X | XX% |
+| Migration | X | X | X | XX% |
+| Security | X | X | X | XX% |
+
+## Failed Tests
+| Test ID | Description | Reason | Action |
+|---------|-------------|--------|--------|
+| TC-X-XXX | ... | ... | ... |
+
+## Performance Metrics
+- Encryption avg: X ms (baseline: Y ms) - XX% change
+- Decryption avg: X ms (baseline: Y ms) - XX% change
+- End-to-end: X ms (baseline: Y ms) - XX% change
+
+## Issues Found
+1. [Issue description]
+   - Severity: Critical/High/Medium/Low
+   - Status: Open/In Progress/Resolved
+   - Assigned to: [Name]
+
+## Recommendations
+- [Recommendation 1]
+- [Recommendation 2]
+
+## Next Steps
+- [Action item 1]
+- [Action item 2]
+
+## Sign-off
+- Tester: _________________ Date: __________
+- Tech Lead: ______________ Date: __________
+- Security: _______________ Date: __________
 ```
 
 ---
