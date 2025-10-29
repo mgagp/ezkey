@@ -15,6 +15,8 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.ezkey.admin.config.AdminRecoveryProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -60,18 +62,17 @@ public class AdminRecoveryService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminRecoveryService.class);
 
-  private static final int RECOVERY_CODES_COUNT = 10;
   private static final String RECOVERY_CODE_CHARS =
       "0123456789"; // Digits only (106-bit entropy with 32 digits)
   private static final int RECOVERY_CODE_LENGTH =
       32; // 8 groups of 4 digits (paranoia-level: 106 bits)
-  private static final int RECOVERY_TOKEN_VALIDITY_MINUTES = 30;
 
   private final EzkeyAdminRepository adminRepository;
   private final AdminTokenRepository tokenRepository;
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
   private final BCryptPasswordEncoder passwordEncoder;
+  private final AdminRecoveryProperties recoveryProperties;
   private final SecureRandom secureRandom;
 
   public AdminRecoveryService(
@@ -79,12 +80,14 @@ public class AdminRecoveryService {
       AdminTokenRepository tokenRepository,
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
-      BCryptPasswordEncoder passwordEncoder) {
+      BCryptPasswordEncoder passwordEncoder,
+      AdminRecoveryProperties recoveryProperties) {
     this.adminRepository = adminRepository;
     this.tokenRepository = tokenRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
     this.passwordEncoder = passwordEncoder;
+    this.recoveryProperties = recoveryProperties;
     this.secureRandom = new SecureRandom();
   }
 
@@ -101,7 +104,8 @@ public class AdminRecoveryService {
     List<String> plainCodes = new ArrayList<>();
     List<String> hashedCodes = new ArrayList<>();
 
-    for (int i = 0; i < RECOVERY_CODES_COUNT; i++) {
+    int codesCount = recoveryProperties.getCodesCount();
+    for (int i = 0; i < codesCount; i++) {
       String plainCode = generateSingleRecoveryCode();
       String hashedCode = passwordEncoder.encode(plainCode);
 
@@ -109,7 +113,7 @@ public class AdminRecoveryService {
       hashedCodes.add(hashedCode);
     }
 
-    logger.info("✅ Generated {} recovery codes", RECOVERY_CODES_COUNT);
+    logger.info("✅ Generated {} recovery codes", codesCount);
 
     return new RecoveryCodesResult(plainCodes, hashedCodes);
   }
@@ -202,9 +206,11 @@ public class AdminRecoveryService {
         username,
         remainingCodes.size());
 
-    // 5. Generate temporary recovery bearer token (30 minutes, limited permissions)
-    String recoveryToken = "ezkey_recovery_" + UUID.randomUUID().toString().replace("-", "");
-    OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(RECOVERY_TOKEN_VALIDITY_MINUTES);
+    // 5. Generate temporary recovery bearer token (limited permissions, configurable duration)
+    String recoveryToken =
+        AdminAuditConstants.RECOVERY_TOKEN_PREFIX + UUID.randomUUID().toString().replace("-", "");
+    OffsetDateTime expiresAt =
+        OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes());
 
     AdminToken token = new AdminToken();
     token.setBearerToken(recoveryToken);
@@ -242,7 +248,7 @@ public class AdminRecoveryService {
         recoveryToken.substring(0, Math.min(15, recoveryToken.length())));
 
     // 1. Verify it's a recovery token
-    if (!recoveryToken.startsWith("ezkey_recovery_")) {
+    if (!recoveryToken.startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
       logger.warn("❌ Invalid token format (not a recovery token)");
       throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
     }
@@ -262,8 +268,8 @@ public class AdminRecoveryService {
       throw new org.ezkey.admin.exception.AuthenticationException("Recovery token expired");
     }
 
-    // 4. Verify it's a recovery token (starts with ezkey_recovery_)
-    if (!recoveryToken.startsWith("ezkey_recovery_")) {
+    // 4. Verify it's a recovery token
+    if (!recoveryToken.startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
       logger.warn("❌ Token is not a recovery token");
       throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
     }

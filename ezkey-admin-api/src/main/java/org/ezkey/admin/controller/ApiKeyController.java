@@ -27,6 +27,7 @@ import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.service.ApiKeyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,17 +86,22 @@ public class ApiKeyController {
 
   private final ApiKeyService apiKeyService;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
+  private final EzkeyAdminRepository adminRepository;
 
   /**
    * Constructs a new ApiKeyController.
    *
    * @param apiKeyService the API key service
    * @param adminOpsRateLimitService the admin operations rate limiting service
+   * @param adminRepository the admin repository for loading admin entities
    */
   public ApiKeyController(
-      ApiKeyService apiKeyService, AdminOperationsRateLimitService adminOpsRateLimitService) {
+      ApiKeyService apiKeyService,
+      AdminOperationsRateLimitService adminOpsRateLimitService,
+      EzkeyAdminRepository adminRepository) {
     this.apiKeyService = apiKeyService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
+    this.adminRepository = adminRepository;
   }
 
   /**
@@ -368,11 +374,12 @@ public class ApiKeyController {
   /**
    * Gets the currently authenticated admin from security context.
    *
-   * <p>This method extracts the EzkeyAdmin from the Spring Security context. In a real
-   * implementation, this would load the full admin entity from the database.
+   * <p>This method extracts the EzkeyAdmin from the Spring Security context. For admin
+   * authentication, the full admin entity is already loaded by AdminTokenAuthenticationFilter. For
+   * API key authentication, this method is not applicable as API keys don't have admin context.
    *
    * @return the authenticated admin
-   * @throws IllegalStateException if no authentication found
+   * @throws IllegalStateException if no authentication found or not an admin authentication
    */
   private EzkeyAdmin getCurrentAdmin() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -381,12 +388,48 @@ public class ApiKeyController {
       throw new IllegalStateException("No authenticated admin found");
     }
 
-    // TODO: Load full EzkeyAdmin entity from database using authentication principal
-    // For now, create a minimal admin object for testing
-    EzkeyAdmin admin = new EzkeyAdmin();
-    admin.setUsername(authentication.getName());
-    admin.setAdminId(1); // TODO: Get real admin ID from database
+    // Check if this is admin authentication (not API key)
+    if (!hasRole(authentication, "ROLE_ADMIN")) {
+      throw new IllegalStateException(
+          "Current authentication is not an admin - API keys cannot access this operation");
+    }
 
-    return admin;
+    // For admin authentication, the principal is the username
+    // We need to load the full admin entity from the database
+    String username = authentication.getName();
+
+    // Since we have a single global admin, we can safely assume username is "admin"
+    // and load the admin entity from the database
+    return loadAdminByUsername(username);
+  }
+
+  /**
+   * Loads admin entity from database by username.
+   *
+   * <p>In the current architecture with a single global admin, this method loads the admin entity
+   * from the database using the EzkeyAdminRepository.
+   *
+   * @param username the admin username
+   * @return the admin entity
+   * @throws IllegalStateException if admin not found
+   */
+  private EzkeyAdmin loadAdminByUsername(String username) {
+    // Use the repository to load the admin entity
+    // This ensures consistency with the rest of the authentication system
+    return adminRepository
+        .findByUsername(username)
+        .orElseThrow(() -> new IllegalStateException("Admin not found: " + username));
+  }
+
+  /**
+   * Checks if the authentication has the specified role.
+   *
+   * @param authentication the authentication context
+   * @param role the role to check
+   * @return true if the role is present
+   */
+  private boolean hasRole(Authentication authentication, String role) {
+    return authentication.getAuthorities().stream()
+        .anyMatch(authority -> authority.getAuthority().equals(role));
   }
 }

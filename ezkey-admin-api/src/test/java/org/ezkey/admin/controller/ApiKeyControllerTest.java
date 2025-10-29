@@ -33,6 +33,7 @@ import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.service.ApiKeyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -78,18 +79,23 @@ class ApiKeyControllerTest {
 
   @Mock private ApiKeyService apiKeyService;
   @Mock private AdminOperationsRateLimitService adminOpsRateLimitService;
+  @Mock private EzkeyAdminRepository adminRepository;
 
   private ApiKeyController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new ApiKeyController(apiKeyService, adminOpsRateLimitService);
+    controller = new ApiKeyController(apiKeyService, adminOpsRateLimitService, adminRepository);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();
 
     // Mock rate limiting to always allow operations (bypass complexity)
     lenient().when(adminOpsRateLimitService.canCreateApiKey(anyString())).thenReturn(true);
+    
+    // Mock admin repository to return a mock admin for getCurrentAdmin() calls
+    EzkeyAdmin mockAdmin = createMockAdmin();
+    lenient().when(adminRepository.findByUsername("admin")).thenReturn(Optional.of(mockAdmin));
   }
 
   @Nested
@@ -334,5 +340,18 @@ class ApiKeyControllerTest {
     apiKey.setIntegration(integration);
 
     return apiKey;
+  }
+
+  /**
+   * Creates a mock EzkeyAdmin entity for testing.
+   *
+   * @return mock admin entity
+   */
+  private EzkeyAdmin createMockAdmin() {
+    EzkeyAdmin admin = new EzkeyAdmin();
+    admin.setAdminId(1);
+    admin.setUsername("admin");
+    admin.setActive(true);
+    return admin;
   }
 }

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
@@ -64,15 +65,19 @@ public class AdminAuthController {
 
   private final AdminRateLimitFilter rateLimitFilter;
 
+  private final AdminRecoveryProperties recoveryProperties;
+
   public AdminAuthController(
       AdminAuthService authService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
       AuditLogService auditLogService,
-      AdminRateLimitFilter rateLimitFilter) {
+      AdminRateLimitFilter rateLimitFilter,
+      AdminRecoveryProperties recoveryProperties) {
     this.authService = authService;
     this.recoveryService = recoveryService;
     this.auditLogService = auditLogService;
     this.rateLimitFilter = rateLimitFilter;
+    this.recoveryProperties = recoveryProperties;
   }
 
   /**
@@ -151,7 +156,7 @@ public class AdminAuthController {
       @RequestHeader("Authorization") String authorization, HttpServletRequest httpRequest) {
     try {
       // Extract bearer token from authorization header
-      String bearerToken = authorization.replace("Bearer ", "");
+      String bearerToken = authorization.replace(AdminAuditConstants.BEARER_PREFIX, "");
       authService.logout(bearerToken);
 
       // Extract client context for audit logging
@@ -256,7 +261,9 @@ public class AdminAuthController {
 
       AdminRecoveryResponseDto response =
           new AdminRecoveryResponseDto(
-              recoveryToken, OffsetDateTime.now().plusMinutes(30), codesRemaining);
+              recoveryToken,
+              OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes()),
+              codesRemaining);
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",
