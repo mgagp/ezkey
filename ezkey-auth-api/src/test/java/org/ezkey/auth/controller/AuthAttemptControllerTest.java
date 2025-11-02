@@ -1,11 +1,11 @@
 /*
  * Ezkey - Open Source MFA/Passkey Alternative
  *
- * Copyright (c) 2025 Ezkey contributors
- * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ * Copyright (c) 2025 Ezkey contributors Licensed under the MIT License. See LICENSE file in the
+ * project root for full license information.
  *
- * Test: AuthAttemptControllerTest
- * Description: Critical unit tests for AuthAttemptController REST endpoints in auth-api.
+ * Test: AuthAttemptControllerTest Description: Critical unit tests for AuthAttemptController REST
+ * endpoints in auth-api.
  */
 
 package org.ezkey.auth.controller;
@@ -45,28 +45,33 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Critical unit tests for {@link AuthAttemptController} in auth-api.
  *
- * <p>This test class provides comprehensive coverage of the AuthAttemptController REST endpoints
+ * <p>
+ * This test class provides comprehensive coverage of the AuthAttemptController REST endpoints
  * focusing on security-critical authentication operations. Tests cover cryptographic signature
  * validation, state management, and proper HTTP status code handling for mobile device
  * authentication.
  *
- * <p><b>Critical Test Coverage:</b>
+ * <p>
+ * <b>Critical Test Coverage:</b>
  *
  * <ul>
- *   <li>POST /api/v1/auth-attempts/pending - Mobile polling for pending requests
- *   <li>POST /api/v1/auth-attempts/respond - Mobile response submission
- *   <li>Security validation - Cryptographic signature handling
- *   <li>State management - Proper status transitions
- *   <li>Error handling - Appropriate HTTP status codes
+ * <li>POST /api/v1/auth-attempts/pending - Mobile polling for pending requests
+ * <li>POST /api/v1/auth-attempts/respond - Mobile response submission
+ * <li>Security validation - Cryptographic signature handling
+ * <li>State management - Proper status transitions
+ * <li>Error handling - Appropriate HTTP status codes
  * </ul>
  *
- * <p><b>Security Focus:</b> These tests validate the critical security aspects of mobile
+ * <p>
+ * <b>Security Focus:</b> These tests validate the critical security aspects of mobile
  * authentication including signature validation, state consistency, and proper error handling to
  * prevent security vulnerabilities.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -74,44 +79,50 @@ import org.springframework.test.web.servlet.MockMvc;
  * @see AuthAttemptService
  * @see AuthAttemptMapper
  */
-@WebMvcTest(controllers = AuthAttemptController.class)
-@AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
-@DisplayName("AuthAttempt Controller Critical Tests")
-class AuthAttemptControllerTest {
+@WebMvcTest(controllers = AuthAttemptController.class) @AutoConfigureMockMvc(addFilters = false) @Import(SecurityConfig.class) @DisplayName("AuthAttempt Controller Critical Tests")
+class AuthAttemptControllerTest{
 
   private static final String BASE_URL = "/api/v1/auth-attempts";
 
-  @Autowired private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
-  @Autowired private ObjectMapper objectMapper;
+  @Autowired
+  private ObjectMapper objectMapper;
 
-  @MockBean private AuthAttemptService authAttemptService;
+  @MockBean
+  private AuthAttemptService authAttemptService;
 
-  @MockBean private AuthAttemptMapper authAttemptMapper;
+  @MockBean
+  private AuthAttemptMapper authAttemptMapper;
 
-  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+  @MockBean
+  private org.ezkey.audit.service.AuditLogService auditLogService;
 
   private AuthAttemptPendingRequestDto pendingRequestDto;
+
   private AuthAttemptPendingRequest pendingRequest;
+
   private AuthAttemptPendingResponse pendingResponse;
+
   private AuthAttemptPendingResponseDto pendingResponseDto;
 
   private AuthAttemptRespondRequestDto respondRequestDto;
+
   private AuthAttemptRespondRequest respondRequest;
+
   private AuthAttemptRespondResponse respondResponse;
+
   private AuthAttemptRespondResponseDto respondResponseDto;
 
   @BeforeEach
-  void setUp() {
+  void setUp(){
     // Setup pending request test data - Using record constructor
-    pendingRequestDto =
-        new AuthAttemptPendingRequestDto(
-            123, // enrollmentId
-            "EZK-ABC123-DEF456", // enrollmentProofToken
-            "test-proof-token", // deviceProofToken
-            "test-signature" // deviceProofTokenSigned
-            );
+    pendingRequestDto = new AuthAttemptPendingRequestDto(123, // enrollmentId
+        "EZK-ABC123-DEF456", // enrollmentProofToken
+        "test-proof-token", // deviceProofToken
+        "test-signature" // deviceProofTokenSigned
+    );
 
     pendingRequest = new AuthAttemptPendingRequest();
     pendingRequest.setEnrollmentId(123);
@@ -122,22 +133,18 @@ class AuthAttemptControllerTest {
     pendingResponse.setAuthAttemptId(456);
 
     // Using record constructor for AuthAttemptPendingResponseDto
-    pendingResponseDto =
-        new AuthAttemptPendingResponseDto(
-            456, // authAttemptId
-            "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofToken
-            "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofTokenSignedByIntegration
-            true // authAttemptChallengeRequired
-            );
+    pendingResponseDto = new AuthAttemptPendingResponseDto(456, // authAttemptId
+        "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofToken
+        "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofTokenSignedByIntegration
+        true // authAttemptChallengeRequired
+    );
 
     // Setup respond request test data - Using record constructor
-    respondRequestDto =
-        new AuthAttemptRespondRequestDto(
-            456, // authAttemptId
-            "test-proof-token", // authAttemptProofTokenSignedByDevice
-            123456, // authAttemptChallengeResponse
-            true // authAttemptAccepted
-            );
+    respondRequestDto = new AuthAttemptRespondRequestDto(456, // authAttemptId
+        "test-proof-token", // authAttemptProofTokenSignedByDevice
+        123456, // authAttemptChallengeResponse
+        true // authAttemptAccepted
+    );
 
     respondRequest = new AuthAttemptRespondRequest();
     respondRequest.setAuthAttemptId(456);
@@ -149,18 +156,15 @@ class AuthAttemptControllerTest {
     respondResponse.setMessage("Authentication approved");
 
     // Using record constructor for AuthAttemptRespondResponseDto
-    respondResponseDto =
-        new AuthAttemptRespondResponseDto(
-            "APPROVED", // result
-            "Authentication approved" // message
-            );
+    respondResponseDto = new AuthAttemptRespondResponseDto("APPROVED", // result
+        "Authentication approved" // message
+    );
   }
 
   // ===== PENDING ENDPOINT TESTS =====
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/pending - Should return 200 when pending request found")
-  void pending_WhenPendingRequestFound_ShouldReturn200() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/pending - Should return 200 when pending request found")
+  void pending_WhenPendingRequestFound_ShouldReturn200() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
@@ -177,15 +181,14 @@ class AuthAttemptControllerTest {
         .andExpect(status().isOk());
 
     // Verify service interactions
-    verify(authAttemptMapper, times(1))
+    verify(authAttemptMapper,times(1))
         .toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class));
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
-    verify(authAttemptMapper, times(1)).toAuthAttemptPendingResponseDto(pendingResponse);
+    verify(authAttemptService,times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptMapper,times(1)).toAuthAttemptPendingResponseDto(pendingResponse);
   }
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/pending - Should return 204 when no pending requests")
-  void pending_WhenNoPendingRequests_ShouldReturn204() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/pending - Should return 204 when no pending requests")
+  void pending_WhenNoPendingRequests_ShouldReturn204() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
@@ -200,12 +203,11 @@ class AuthAttemptControllerTest {
         .andExpect(status().isNoContent());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService,times(1)).pending(any(AuthAttemptPendingRequest.class));
   }
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/pending - Should return 400 on invalid request")
-  void pending_WhenInvalidRequest_ShouldReturn400() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/pending - Should return 400 on invalid request")
+  void pending_WhenInvalidRequest_ShouldReturn400() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
@@ -220,12 +222,11 @@ class AuthAttemptControllerTest {
         .andExpect(status().isBadRequest());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService,times(1)).pending(any(AuthAttemptPendingRequest.class));
   }
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/pending - Should return 409 on state conflict")
-  void pending_WhenStateConflict_ShouldReturn409() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/pending - Should return 409 on state conflict")
+  void pending_WhenStateConflict_ShouldReturn409() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
@@ -240,15 +241,13 @@ class AuthAttemptControllerTest {
         .andExpect(status().isConflict());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
+    verify(authAttemptService,times(1)).pending(any(AuthAttemptPendingRequest.class));
   }
 
   // ===== RESPOND ENDPOINT TESTS =====
 
-  @Test
-  @DisplayName(
-      "POST /api/v1/auth-attempts/respond - Should return 200 when response submitted successfully")
-  void respond_WhenResponseSubmitted_ShouldReturn200() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/respond - Should return 200 when response submitted successfully")
+  void respond_WhenResponseSubmitted_ShouldReturn200() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
@@ -265,15 +264,14 @@ class AuthAttemptControllerTest {
         .andExpect(status().isOk());
 
     // Verify service interactions
-    verify(authAttemptMapper, times(1))
+    verify(authAttemptMapper,times(1))
         .toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class));
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
-    verify(authAttemptMapper, times(1)).toAuthAttemptRespondResponseDto(respondResponse);
+    verify(authAttemptService,times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptMapper,times(1)).toAuthAttemptRespondResponseDto(respondResponse);
   }
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/respond - Should return 400 on invalid response")
-  void respond_WhenInvalidResponse_ShouldReturn400() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/respond - Should return 400 on invalid response")
+  void respond_WhenInvalidResponse_ShouldReturn400() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
@@ -288,12 +286,11 @@ class AuthAttemptControllerTest {
         .andExpect(status().isBadRequest());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService,times(1)).respond(any(AuthAttemptRespondRequest.class));
   }
 
-  @Test
-  @DisplayName("POST /api/v1/auth-attempts/respond - Should return 409 on state conflict")
-  void respond_WhenStateConflict_ShouldReturn409() throws Exception {
+  @Test @DisplayName("POST /api/v1/auth-attempts/respond - Should return 409 on state conflict")
+  void respond_WhenStateConflict_ShouldReturn409() throws Exception{
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
@@ -308,6 +305,6 @@ class AuthAttemptControllerTest {
         .andExpect(status().isConflict());
 
     // Verify service interactions
-    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+    verify(authAttemptService,times(1)).respond(any(AuthAttemptRespondRequest.class));
   }
 }
