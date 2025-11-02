@@ -12,13 +12,13 @@ package org.ezkey.enrollment.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -95,7 +95,7 @@ public class Enrollment {
 
   /**
    * Encrypted private key for integration communication (persisted in database).
-   * 
+   *
    * <p>This field stores the encrypted private key in the database. The value is automatically
    * encrypted before persistence and decrypted when needed via the transient field.
    */
@@ -104,13 +104,12 @@ public class Enrollment {
 
   /**
    * Decrypted private key for integration communication (transient, not persisted).
-   * 
+   *
    * <p>This transient field holds the decrypted private key in memory. It is populated
-   * automatically when {@link #getIntegrationPrivateKey()} is called. This separation
-   * prevents Hibernate dirty checking from triggering re-encryption cycles.
+   * automatically when {@link #getIntegrationPrivateKey()} is called. This separation prevents
+   * Hibernate dirty checking from triggering re-encryption cycles.
    */
-  @Transient
-  private String integrationPrivateKey;
+  @Transient private String integrationPrivateKey;
 
   /** Public key for integration communication. Used for verifying messages from the integration. */
   @Column(name = "integration_public_key", columnDefinition = "TEXT")
@@ -122,13 +121,13 @@ public class Enrollment {
 
   /**
    * SHA-256 hash of device public key for uniqueness validation.
-   * 
-   * <p>This hash is used to validate device public key uniqueness independently of
-   * encryption format. The hash is computed from the plaintext device public key
-   * and stored as a hexadecimal string (64 characters).
-   * 
-   * <p>This field has a unique constraint (excluding NULL values) to ensure each
-   * device public key can only be used once for a verified enrollment.
+   *
+   * <p>This hash is used to validate device public key uniqueness independently of encryption
+   * format. The hash is computed from the plaintext device public key and stored as a hexadecimal
+   * string (64 characters).
+   *
+   * <p>This field has a unique constraint (excluding NULL values) to ensure each device public key
+   * can only be used once for a verified enrollment.
    */
   @Column(name = "device_public_key_hash", length = 64)
   private String devicePublicKeyHash;
@@ -218,14 +217,13 @@ public class Enrollment {
 
   /**
    * Gets the integration private key, decrypting it if necessary.
-   * 
-   * <p>This method automatically decrypts the encrypted value from the database
-   * on first access and caches the decrypted value in the transient field to avoid
-   * repeated decryption operations.
-   * 
-   * <p>If encryption is not available or the value is not encrypted, returns
-   * the value as-is (backward compatibility with plaintext data).
-   * 
+   *
+   * <p>This method automatically decrypts the encrypted value from the database on first access and
+   * caches the decrypted value in the transient field to avoid repeated decryption operations.
+   *
+   * <p>If encryption is not available or the value is not encrypted, returns the value as-is
+   * (backward compatibility with plaintext data).
+   *
    * @return the decrypted integration private key, or plaintext if encryption unavailable
    */
   public String getIntegrationPrivateKey() {
@@ -233,12 +231,12 @@ public class Enrollment {
     if (integrationPrivateKey != null) {
       return integrationPrivateKey;
     }
-    
+
     // If encrypted field is null, return null
     if (encryptedIntegrationPrivateKey == null) {
       return null;
     }
-    
+
     // Decrypt on first access
     EncryptionService service = getEncryptionService();
     if (service != null && service.isEncryptionAvailable()) {
@@ -249,17 +247,17 @@ public class Enrollment {
           integrationPrivateKey = decrypted;
           return decrypted;
         } catch (Exception e) {
-          LoggerFactory.getLogger(Enrollment.class).warn(
-              "Failed to decrypt integration private key for enrollment {}. Returning as-is.",
-              enrollmentId,
-              e
-          );
+          LoggerFactory.getLogger(Enrollment.class)
+              .warn(
+                  "Failed to decrypt integration private key for enrollment {}. Returning as-is.",
+                  enrollmentId,
+                  e);
           // Return encrypted value if decryption fails (backward compatibility)
           return encryptedIntegrationPrivateKey;
         }
       }
     }
-    
+
     // Not encrypted or encryption unavailable - return as-is (backward compatibility)
     integrationPrivateKey = encryptedIntegrationPrivateKey;
     return integrationPrivateKey;
@@ -267,29 +265,29 @@ public class Enrollment {
 
   /**
    * Sets the integration private key in plaintext.
-   * 
-   * <p>This method stores the plaintext value in the transient field. The value
-   * will be automatically encrypted before persistence by {@link EncryptionEntityListener}.
-   * 
+   *
+   * <p>This method stores the plaintext value in the transient field. The value will be
+   * automatically encrypted before persistence by {@link EncryptionEntityListener}.
+   *
    * @param integrationPrivateKey the plaintext integration private key to set
    */
   public void setIntegrationPrivateKey(String integrationPrivateKey) {
     this.integrationPrivateKey = integrationPrivateKey;
   }
-  
+
   /**
    * Gets the encryption service for decrypting private keys.
-   * 
-   * <p>Uses a static access pattern similar to {@link EncryptionEntityListener}
-   * since JPA entities cannot use dependency injection directly.
-   * 
+   *
+   * <p>Uses a static access pattern similar to {@link EncryptionEntityListener} since JPA entities
+   * cannot use dependency injection directly.
+   *
    * @return the encryption service, or null if not available
    */
   private static EncryptionService getEncryptionService() {
     // Access via EncryptionEntityListener's static field
     // This is a simple pattern to avoid complex injection in entities
     try {
-      java.lang.reflect.Field field = 
+      java.lang.reflect.Field field =
           Class.forName("org.ezkey.security.EncryptionEntityListener")
               .getDeclaredField("encryptionService");
       field.setAccessible(true);
@@ -318,7 +316,7 @@ public class Enrollment {
 
   /**
    * Gets the SHA-256 hash of the device public key.
-   * 
+   *
    * @return the device public key hash (64 hex characters), or null if not set
    */
   public String getDevicePublicKeyHash() {
@@ -327,10 +325,10 @@ public class Enrollment {
 
   /**
    * Sets the SHA-256 hash of the device public key.
-   * 
-   * <p>This method is typically called automatically when setting the device public key.
-   * The hash should be computed from the plaintext device public key before encryption.
-   * 
+   *
+   * <p>This method is typically called automatically when setting the device public key. The hash
+   * should be computed from the plaintext device public key before encryption.
+   *
    * @param devicePublicKeyHash the SHA-256 hash as hexadecimal string (64 characters)
    */
   public void setDevicePublicKeyHash(String devicePublicKeyHash) {

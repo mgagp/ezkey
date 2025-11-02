@@ -218,7 +218,7 @@ public class EnrollmentVerifyService {
 
     // Calculate hash of device public key for uniqueness validation
     String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
-    
+
     if (enrollmentRepository.existsByDevicePublicKeyHash(devicePublicKeyHash)) {
       logger.warn(
           "Validation failed: Device public key already used for verified enrollment - ID: {},"
@@ -336,24 +336,25 @@ public class EnrollmentVerifyService {
     enrollment.setStatus(EnrollmentStatus.VERIFIED);
     enrollment.setActive(true);
     enrollment.setDevicePublicKey(request.getDevicePublicKey());
-    
+
     // Calculate and store SHA-256 hash of device public key for uniqueness validation
     String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
     enrollment.setDevicePublicKeyHash(devicePublicKeyHash);
-    
+
     enrollmentRepository.save(enrollment);
 
     logger.info(
-        "Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true, DevicePublicKeyHash: {}",
+        "Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true,"
+            + " DevicePublicKeyHash: {}",
         enrollment.getEnrollmentId(),
         devicePublicKeyHash);
   }
-  
+
   /**
    * Calculates SHA-256 hash of the given string and returns hexadecimal representation.
    *
-   * <p>This method computes a SHA-256 hash of the input string and returns it as a
-   * hexadecimal string (64 characters). Used for device public key uniqueness validation.
+   * <p>This method computes a SHA-256 hash of the input string and returns it as a hexadecimal
+   * string (64 characters). Used for device public key uniqueness validation.
    *
    * @param input the input string to hash
    * @return SHA-256 hash as hexadecimal string (64 characters), or null if input is null
@@ -366,7 +367,7 @@ public class EnrollmentVerifyService {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-      
+
       // Convert to hexadecimal string
       StringBuilder hexString = new StringBuilder();
       for (byte b : hashBytes) {

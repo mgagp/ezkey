@@ -120,9 +120,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * Checks if a device public key hash is already used by a verified enrollment.
    *
    * <p>This method provides security validation to prevent replay attacks and ensure that each
-   * device public key can only be associated with one verified enrollment. It uses the SHA-256
-   * hash of the device public key for validation, allowing uniqueness checking independent of
-   * encryption format.
+   * device public key can only be associated with one verified enrollment. It uses the SHA-256 hash
+   * of the device public key for validation, allowing uniqueness checking independent of encryption
+   * format.
    *
    * <p><b>Security Purpose:</b>
    *
@@ -139,7 +139,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * enrollment hijacking and ensures cryptographic identity uniqueness.
    *
    * @param devicePublicKeyHash the SHA-256 hash of the device public key (hexadecimal, 64 chars)
-   * @return true if the device public key hash is already used by a verified enrollment, false otherwise
+   * @return true if the device public key hash is already used by a verified enrollment, false
+   *     otherwise
    * @see
    *     org.ezkey.authattempt.service.AuthAttemptService#pending(org.ezkey.authattempt.domain.AuthAttemptPendingRequest)
    * @since 2025
@@ -148,7 +149,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
       "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKeyHash = :devicePublicKeyHash AND"
           + " e.status = 'VERIFIED'")
   boolean existsByDevicePublicKeyHash(@Param("devicePublicKeyHash") String devicePublicKeyHash);
-  
+
   /**
    * Checks if a device public key is already used by a verified enrollment (legacy method).
    *
@@ -157,7 +158,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    *
    * @param devicePublicKey the Base64-encoded device public key to check for uniqueness
    * @return true if the device public key is already used by a verified enrollment, false otherwise
-   * @deprecated Use {@link #existsByDevicePublicKeyHash(String)} instead for encryption-independent validation
+   * @deprecated Use {@link #existsByDevicePublicKeyHash(String)} instead for encryption-independent
+   *     validation
    * @since 2025
    */
   @Deprecated
