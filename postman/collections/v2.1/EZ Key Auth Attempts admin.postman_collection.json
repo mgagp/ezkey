@@ -49,6 +49,64 @@
 			"response": []
 		},
 		{
+			"name": "create with api key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "{{integrationKey}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{secretKey}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "list all",
 			"event": [
 				{
@@ -80,6 +138,53 @@
 			"response": []
 		},
 		{
+			"name": "list all with api key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "{{integrationKey}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{secretKey}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "wait",
 			"event": [
 				{
@@ -94,6 +199,73 @@
 				}
 			],
 			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id/wait",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						":id",
+						"wait"
+					],
+					"query": [
+						{
+							"key": "timeout",
+							"value": "30",
+							"disabled": true
+						},
+						{
+							"key": "polling",
+							"value": "2",
+							"disabled": true
+						}
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{authAttemptId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "wait with api key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "{{integrationKey}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{secretKey}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {

@@ -95,7 +95,7 @@ public class AuthAttemptPendingService {
    * @throws IllegalStateException if the authentication attempt is already processed
    * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
    */
-  public AuthAttemptPendingResponse pending(AuthAttemptPendingRequest request) {
+  public AuthAttemptPendingResponse pending(final AuthAttemptPendingRequest request) {
     // Step 1: Validate enrollment
     Enrollment enrollment = validateEnrollment(request);
 

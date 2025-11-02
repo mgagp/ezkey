@@ -52,6 +52,15 @@
 			<scope>provided</scope>
 		</dependency>
 		
+		<!-- Cryptography: Google Tink for encryption-at-rest and key rotation -->
+		<!-- Repository: https://github.com/tink-crypto/tink-java -->
+		<!-- Latest Release: v1.19.0 (October 2025) -->
+		<dependency>
+			<groupId>com.google.crypto.tink</groupId>
+			<artifactId>tink</artifactId>
+			<version>1.19.0</version>
+		</dependency>
+		
 	<!-- QR Code Generation -->
 	<dependency>
 		<groupId>com.google.zxing</groupId>

@@ -47,6 +47,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.config",
       "org.ezkey.tenant",
       "org.ezkey.adminauth",
+      "org.ezkey.security", // Tink encryption services
     })
 @EnableScheduling
 public class AdminApplication {

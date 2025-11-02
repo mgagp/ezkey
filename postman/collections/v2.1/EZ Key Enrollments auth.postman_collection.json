@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "1 bind ID",
+			"name": "1 bind",
 			"event": [
 				{
 					"listen": "test",
@@ -51,7 +51,7 @@
 			"response": []
 		},
 		{
-			"name": "2 sim generate device keypair",
+			"name": "2 crypto generate device keypair",
 			"event": [
 				{
 					"listen": "test",
@@ -62,7 +62,8 @@
 							"pm.environment.set(\"device_publicKey\", jsonData.publicKey);"
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -70,14 +71,14 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/keypair",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/keypair",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"keypair"
 					]
 				}
@@ -85,7 +86,7 @@
 			"response": []
 		},
 		{
-			"name": "3 sim generate enrollment proof token signature",
+			"name": "3 crypto generate enrollment proof token signature",
 			"event": [
 				{
 					"listen": "test",
@@ -95,7 +96,8 @@
 							"pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -112,14 +114,14 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"sign"
 					]
 				}

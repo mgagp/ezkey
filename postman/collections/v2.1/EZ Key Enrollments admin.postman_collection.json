@@ -19,7 +19,8 @@
 							""
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -28,7 +29,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"Amanda Blow\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
+					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"Anna White\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -79,6 +80,49 @@
 						"v1",
 						"enrollments",
 						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{enrollmentId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get qrcode",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
+							"pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);\r",
+							"pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/qrcode",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"enrollments",
+						":id",
+						"qrcode"
 					],
 					"variable": [
 						{

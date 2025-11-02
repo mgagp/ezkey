@@ -18,8 +18,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.security.EncryptionService;
+import org.slf4j.LoggerFactory;
 
 /**
  * JPA entity representing enrollment data in the Ezkey system.
@@ -38,6 +42,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
  * @since 2025
  */
 @Entity
+@EntityListeners(org.ezkey.security.EncryptionEntityListener.class)
 @Table(name = "ezkey_enrollment")
 public class Enrollment {
 
@@ -88,8 +93,23 @@ public class Enrollment {
   @Column(name = "auth_attempt_challenge_required")
   private Boolean authAttemptChallengeRequired;
 
-  /** Private key for integration communication. Used for signing messages to the integration. */
+  /**
+   * Encrypted private key for integration communication (persisted in database).
+   * 
+   * <p>This field stores the encrypted private key in the database. The value is automatically
+   * encrypted before persistence and decrypted when needed via the transient field.
+   */
   @Column(name = "integration_private_key", columnDefinition = "TEXT")
+  private String encryptedIntegrationPrivateKey;
+
+  /**
+   * Decrypted private key for integration communication (transient, not persisted).
+   * 
+   * <p>This transient field holds the decrypted private key in memory. It is populated
+   * automatically when {@link #getIntegrationPrivateKey()} is called. This separation
+   * prevents Hibernate dirty checking from triggering re-encryption cycles.
+   */
+  @Transient
   private String integrationPrivateKey;
 
   /** Public key for integration communication. Used for verifying messages from the integration. */
@@ -183,12 +203,88 @@ public class Enrollment {
     this.authAttemptChallengeRequired = authAttemptChallengeRequired;
   }
 
+  /**
+   * Gets the integration private key, decrypting it if necessary.
+   * 
+   * <p>This method automatically decrypts the encrypted value from the database
+   * on first access and caches the decrypted value in the transient field to avoid
+   * repeated decryption operations.
+   * 
+   * <p>If encryption is not available or the value is not encrypted, returns
+   * the value as-is (backward compatibility with plaintext data).
+   * 
+   * @return the decrypted integration private key, or plaintext if encryption unavailable
+   */
   public String getIntegrationPrivateKey() {
+    // If transient field is already populated, return it
+    if (integrationPrivateKey != null) {
+      return integrationPrivateKey;
+    }
+    
+    // If encrypted field is null, return null
+    if (encryptedIntegrationPrivateKey == null) {
+      return null;
+    }
+    
+    // Decrypt on first access
+    EncryptionService service = getEncryptionService();
+    if (service != null && service.isEncryptionAvailable()) {
+      if (service.isEncrypted(encryptedIntegrationPrivateKey)) {
+        try {
+          String decrypted = service.decrypt(encryptedIntegrationPrivateKey);
+          // Cache in transient field to avoid repeated decryption
+          integrationPrivateKey = decrypted;
+          return decrypted;
+        } catch (Exception e) {
+          LoggerFactory.getLogger(Enrollment.class).warn(
+              "Failed to decrypt integration private key for enrollment {}. Returning as-is.",
+              enrollmentId,
+              e
+          );
+          // Return encrypted value if decryption fails (backward compatibility)
+          return encryptedIntegrationPrivateKey;
+        }
+      }
+    }
+    
+    // Not encrypted or encryption unavailable - return as-is (backward compatibility)
+    integrationPrivateKey = encryptedIntegrationPrivateKey;
     return integrationPrivateKey;
   }
 
+  /**
+   * Sets the integration private key in plaintext.
+   * 
+   * <p>This method stores the plaintext value in the transient field. The value
+   * will be automatically encrypted before persistence by {@link EncryptionEntityListener}.
+   * 
+   * @param integrationPrivateKey the plaintext integration private key to set
+   */
   public void setIntegrationPrivateKey(String integrationPrivateKey) {
     this.integrationPrivateKey = integrationPrivateKey;
+  }
+  
+  /**
+   * Gets the encryption service for decrypting private keys.
+   * 
+   * <p>Uses a static access pattern similar to {@link EncryptionEntityListener}
+   * since JPA entities cannot use dependency injection directly.
+   * 
+   * @return the encryption service, or null if not available
+   */
+  private static EncryptionService getEncryptionService() {
+    // Access via EncryptionEntityListener's static field
+    // This is a simple pattern to avoid complex injection in entities
+    try {
+      java.lang.reflect.Field field = 
+          Class.forName("org.ezkey.security.EncryptionEntityListener")
+              .getDeclaredField("encryptionService");
+      field.setAccessible(true);
+      return (EncryptionService) field.get(null);
+    } catch (Exception e) {
+      // If reflection fails, return null (encryption unavailable)
+      return null;
+    }
   }
 
   public String getIntegrationPublicKey() {

@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "1 sim generate device proof token",
+			"name": "1 crypto generate device proof token",
 			"event": [
 				{
 					"listen": "test",
@@ -18,7 +18,8 @@
 							""
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -26,14 +27,14 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/prooftoken",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/prooftoken",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"prooftoken"
 					]
 				}
@@ -41,7 +42,7 @@
 			"response": []
 		},
 		{
-			"name": "2 sim device prooftoken signature",
+			"name": "2 crypto device prooftoken signature",
 			"event": [
 				{
 					"listen": "test",
@@ -51,7 +52,8 @@
 							"pm.environment.set(\"device_prooftoken_signature\", jsonData.signature);"
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -68,14 +70,14 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"sign"
 					]
 				}
@@ -129,7 +131,7 @@
 			"response": []
 		},
 		{
-			"name": "5 sim validate auth prooftoken by integration",
+			"name": "5 crypto validate auth prooftoken by integration",
 			"event": [
 				{
 					"listen": "test",
@@ -139,7 +141,8 @@
 							"pm.environment.set(\"valid\", jsonData.valid);"
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -156,14 +159,14 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/validate",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"validate"
 					]
 				}
@@ -171,7 +174,7 @@
 			"response": []
 		},
 		{
-			"name": "6 sim sign authAttempt prooftoken by device",
+			"name": "6 crypto sign authAttempt prooftoken by device",
 			"event": [
 				{
 					"listen": "test",
@@ -181,7 +184,8 @@
 							"pm.environment.set(\"authAttemptProofTokenSignedByDevice\", jsonData.signature);"
 						],
 						"type": "text/javascript",
-						"packages": {}
+						"packages": {},
+						"requests": {}
 					}
 				}
 			],
@@ -198,14 +202,14 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url_sim_api}}/api/v1/crypto/sign",
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
 					"host": [
-						"{{base_url_sim_api}}"
+						"{{base_url_crypto_api}}"
 					],
 					"path": [
 						"api",
 						"v1",
-						"sim",
+						"crypto",
 						"sign"
 					]
 				}
