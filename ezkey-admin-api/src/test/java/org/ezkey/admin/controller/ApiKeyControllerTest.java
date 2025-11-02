@@ -92,7 +92,7 @@ class ApiKeyControllerTest {
 
     // Mock rate limiting to always allow operations (bypass complexity)
     lenient().when(adminOpsRateLimitService.canCreateApiKey(anyString())).thenReturn(true);
-    
+
     // Mock admin repository to return a mock admin for getCurrentAdmin() calls
     EzkeyAdmin mockAdmin = createMockAdmin();
     lenient().when(adminRepository.findByUsername("admin")).thenReturn(Optional.of(mockAdmin));
