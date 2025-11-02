@@ -117,12 +117,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
       @Param("enrollmentId") Integer enrollmentId, @Param("status") EnrollmentStatus status);
 
   /**
-   * Checks if a device public key is already used by a verified enrollment.
+   * Checks if a device public key hash is already used by a verified enrollment.
    *
    * <p>This method provides security validation to prevent replay attacks and ensure that each
-   * device public key can only be associated with one verified enrollment. It implements the same
-   * security principle as AuthAttemptService for device proof token uniqueness, but for enrollment
-   * device public keys.
+   * device public key can only be associated with one verified enrollment. It uses the SHA-256
+   * hash of the device public key for validation, allowing uniqueness checking independent of
+   * encryption format.
    *
    * <p><b>Security Purpose:</b>
    *
@@ -130,6 +130,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    *   <li>Prevents replay attacks using the same device public key
    *   <li>Ensures enrollment integrity by preventing key reuse
    *   <li>Maintains one-to-one relationship between device public keys and enrollments
+   *   <li>Works independently of encryption format (hash computed from plaintext)
    *   <li>Aligns with AuthAttemptService security model for consistency
    * </ul>
    *
@@ -137,12 +138,29 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * public key has not been previously used to complete another enrollment. This prevents
    * enrollment hijacking and ensures cryptographic identity uniqueness.
    *
-   * @param devicePublicKey the Base64-encoded device public key to check for uniqueness
-   * @return true if the device public key is already used by a verified enrollment, false otherwise
+   * @param devicePublicKeyHash the SHA-256 hash of the device public key (hexadecimal, 64 chars)
+   * @return true if the device public key hash is already used by a verified enrollment, false otherwise
    * @see
    *     org.ezkey.authattempt.service.AuthAttemptService#pending(org.ezkey.authattempt.domain.AuthAttemptPendingRequest)
    * @since 2025
    */
+  @Query(
+      "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKeyHash = :devicePublicKeyHash AND"
+          + " e.status = 'VERIFIED'")
+  boolean existsByDevicePublicKeyHash(@Param("devicePublicKeyHash") String devicePublicKeyHash);
+  
+  /**
+   * Checks if a device public key is already used by a verified enrollment (legacy method).
+   *
+   * <p>This method is deprecated in favor of {@link #existsByDevicePublicKeyHash(String)} which
+   * uses hash-based validation independent of encryption format.
+   *
+   * @param devicePublicKey the Base64-encoded device public key to check for uniqueness
+   * @return true if the device public key is already used by a verified enrollment, false otherwise
+   * @deprecated Use {@link #existsByDevicePublicKeyHash(String)} instead for encryption-independent validation
+   * @since 2025
+   */
+  @Deprecated
   @Query(
       "SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.devicePublicKey = :devicePublicKey AND"
           + " e.status = 'VERIFIED'")

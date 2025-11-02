@@ -120,6 +120,19 @@ public class Enrollment {
   @Column(name = "device_public_key", columnDefinition = "TEXT")
   private String devicePublicKey;
 
+  /**
+   * SHA-256 hash of device public key for uniqueness validation.
+   * 
+   * <p>This hash is used to validate device public key uniqueness independently of
+   * encryption format. The hash is computed from the plaintext device public key
+   * and stored as a hexadecimal string (64 characters).
+   * 
+   * <p>This field has a unique constraint (excluding NULL values) to ensure each
+   * device public key can only be used once for a verified enrollment.
+   */
+  @Column(name = "device_public_key_hash", length = 64)
+  private String devicePublicKeyHash;
+
   /** Timestamp when the enrollment was created. Used for audit trails and sorting purposes. */
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
@@ -301,6 +314,27 @@ public class Enrollment {
 
   public void setDevicePublicKey(String devicePublicKey) {
     this.devicePublicKey = devicePublicKey;
+  }
+
+  /**
+   * Gets the SHA-256 hash of the device public key.
+   * 
+   * @return the device public key hash (64 hex characters), or null if not set
+   */
+  public String getDevicePublicKeyHash() {
+    return devicePublicKeyHash;
+  }
+
+  /**
+   * Sets the SHA-256 hash of the device public key.
+   * 
+   * <p>This method is typically called automatically when setting the device public key.
+   * The hash should be computed from the plaintext device public key before encryption.
+   * 
+   * @param devicePublicKeyHash the SHA-256 hash as hexadecimal string (64 characters)
+   */
+  public void setDevicePublicKeyHash(String devicePublicKeyHash) {
+    this.devicePublicKeyHash = devicePublicKeyHash;
   }
 
   public OffsetDateTime getCreatedAt() {

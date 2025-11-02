@@ -10,6 +10,9 @@
 
 package org.ezkey.enrollment.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -202,7 +205,8 @@ public class EnrollmentVerifyService {
    * Validates the device public key uniqueness to prevent replay attacks.
    *
    * <p>This method ensures that the device public key has not been used for any other verified
-   * enrollment to prevent enrollment hijacking.
+   * enrollment to prevent enrollment hijacking. Uses SHA-256 hash for validation to ensure
+   * uniqueness independent of encryption format.
    *
    * @param request the verify request containing device public key
    * @throws IllegalArgumentException if device public key is already used
@@ -212,12 +216,15 @@ public class EnrollmentVerifyService {
         "Step 3: Validating device public key uniqueness for enrollment ID: {}",
         request.getEnrollmentId());
 
-    if (enrollmentRepository.existsByDevicePublicKeyAndVerified(request.getDevicePublicKey())) {
+    // Calculate hash of device public key for uniqueness validation
+    String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
+    
+    if (enrollmentRepository.existsByDevicePublicKeyHash(devicePublicKeyHash)) {
       logger.warn(
           "Validation failed: Device public key already used for verified enrollment - ID: {},"
-              + " DevicePublicKey: {}",
+              + " DevicePublicKeyHash: {}",
           request.getEnrollmentId(),
-          request.getDevicePublicKey());
+          devicePublicKeyHash);
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
       throw new IllegalArgumentException("Enrollment verification failed");
     }
@@ -317,7 +324,8 @@ public class EnrollmentVerifyService {
    * Marks the enrollment as verified and activates it.
    *
    * <p>This method updates the enrollment status to VERIFIED and sets it as active, completing the
-   * enrollment process.
+   * enrollment process. Also calculates and stores the SHA-256 hash of the device public key for
+   * uniqueness validation.
    *
    * @param enrollment the enrollment to mark as verified
    * @param request the verify request containing device public key
@@ -328,11 +336,51 @@ public class EnrollmentVerifyService {
     enrollment.setStatus(EnrollmentStatus.VERIFIED);
     enrollment.setActive(true);
     enrollment.setDevicePublicKey(request.getDevicePublicKey());
+    
+    // Calculate and store SHA-256 hash of device public key for uniqueness validation
+    String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
+    enrollment.setDevicePublicKeyHash(devicePublicKeyHash);
+    
     enrollmentRepository.save(enrollment);
 
     logger.info(
-        "Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true",
-        enrollment.getEnrollmentId());
+        "Enrollment successfully verified - ID: {}, Status: VERIFIED, Active: true, DevicePublicKeyHash: {}",
+        enrollment.getEnrollmentId(),
+        devicePublicKeyHash);
+  }
+  
+  /**
+   * Calculates SHA-256 hash of the given string and returns hexadecimal representation.
+   *
+   * <p>This method computes a SHA-256 hash of the input string and returns it as a
+   * hexadecimal string (64 characters). Used for device public key uniqueness validation.
+   *
+   * @param input the input string to hash
+   * @return SHA-256 hash as hexadecimal string (64 characters), or null if input is null
+   * @throws IllegalStateException if SHA-256 algorithm is not available
+   */
+  private String calculateSha256Hash(String input) {
+    if (input == null || input.isBlank()) {
+      return null;
+    }
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+      
+      // Convert to hexadecimal string
+      StringBuilder hexString = new StringBuilder();
+      for (byte b : hashBytes) {
+        String hex = Integer.toHexString(0xff & b);
+        if (hex.length() == 1) {
+          hexString.append('0');
+        }
+        hexString.append(hex);
+      }
+      return hexString.toString();
+    } catch (NoSuchAlgorithmException e) {
+      logger.error("SHA-256 algorithm not available", e);
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
   }
 
   /**
