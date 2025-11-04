@@ -89,3 +89,12 @@ ezkey-demo-device/data/enrollments/*.json
 plan_doc.md
 ezkey-core/classpath.txt
 EZKEY_EVALUATION.md
+
+# ==========================
+# Node.js / JavaScript
+# ==========================
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
