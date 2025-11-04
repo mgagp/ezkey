@@ -12,6 +12,8 @@ package org.ezkey.tests;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import org.ezkey.tests.config.TestSecurityConfig;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,21 +188,26 @@ public class EmbeddedServerManager {
   private void startAdminApi() throws Exception {
     log.info("Starting Admin API...");
 
+    SpringApplication app = new SpringApplication();
+    app.setWebApplicationType(WebApplicationType.SERVLET);
+    app.setSources(Set.of(
+        Class.forName("org.ezkey.admin.AdminApplication"),
+        TestSecurityConfig.class));
+
+    // Override database and security properties
     Map<String, Object> properties = new HashMap<>();
-    properties.put("server.port", 9080);
     properties.put("spring.datasource.url", postgresContainer.getJdbcUrl());
     properties.put("spring.datasource.username", postgresContainer.getUsername());
     properties.put("spring.datasource.password", postgresContainer.getPassword());
-    properties.put("spring.flyway.enabled", false); // Already migrated
+    properties.put("spring.flyway.enabled", false);
     properties.put("spring.jpa.hibernate.ddl-auto", "validate");
+    properties.put("ezkey.test.security.disabled", true);
+    properties.put("ezkey.admin.ratelimit.enabled", false);
+    properties.put("spring.task.scheduling.enabled", false);
 
-    SpringApplication app = new SpringApplication();
-    app.setWebApplicationType(WebApplicationType.SERVLET);
     app.setDefaultProperties(properties);
 
     try {
-      app.setMainApplicationClass(
-          Class.forName("org.ezkey.admin.AdminApplication"));
       adminContext = app.run();
       adminUrl = "http://localhost:9080";
       log.info("Admin API started on port 9080");
@@ -213,21 +220,22 @@ public class EmbeddedServerManager {
   private void startAuthApi() throws Exception {
     log.info("Starting Auth API...");
 
+    SpringApplication app = new SpringApplication();
+    app.setWebApplicationType(WebApplicationType.SERVLET);
+
+    // Override database properties
     Map<String, Object> properties = new HashMap<>();
-    properties.put("server.port", 8080);
     properties.put("spring.datasource.url", postgresContainer.getJdbcUrl());
     properties.put("spring.datasource.username", postgresContainer.getUsername());
     properties.put("spring.datasource.password", postgresContainer.getPassword());
-    properties.put("spring.flyway.enabled", false); // Already migrated
+    properties.put("spring.flyway.enabled", false);
     properties.put("spring.jpa.hibernate.ddl-auto", "validate");
+    properties.put("ezkey.auth.ratelimit.enabled", false);
 
-    SpringApplication app = new SpringApplication();
-    app.setWebApplicationType(WebApplicationType.SERVLET);
     app.setDefaultProperties(properties);
 
     try {
-      app.setMainApplicationClass(
-          Class.forName("org.ezkey.auth.AuthApplication"));
+      app.setMainApplicationClass(Class.forName("org.ezkey.auth.AuthApplication"));
       authContext = app.run();
       authUrl = "http://localhost:8080";
       log.info("Auth API started on port 8080");
