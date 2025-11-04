@@ -12,7 +12,6 @@ package org.ezkey.tests;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import org.ezkey.tests.config.TestSecurityConfig;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
@@ -163,9 +162,7 @@ public class EmbeddedServerManager {
 
     postgresContainer.start();
 
-    log.info(
-        "PostgreSQL container started: {}",
-        postgresContainer.getJdbcUrl());
+    log.info("PostgreSQL container started: {}", postgresContainer.getJdbcUrl());
   }
 
   private void runMigrations() {
@@ -188,11 +185,10 @@ public class EmbeddedServerManager {
   private void startAdminApi() throws Exception {
     log.info("Starting Admin API...");
 
-    SpringApplication app = new SpringApplication();
+    SpringApplication app =
+        new SpringApplication(
+            Class.forName("org.ezkey.admin.AdminApplication"), TestSecurityConfig.class);
     app.setWebApplicationType(WebApplicationType.SERVLET);
-    app.setSources(Set.of(
-        Class.forName("org.ezkey.admin.AdminApplication"),
-        TestSecurityConfig.class));
 
     // Override database and security properties
     Map<String, Object> properties = new HashMap<>();
