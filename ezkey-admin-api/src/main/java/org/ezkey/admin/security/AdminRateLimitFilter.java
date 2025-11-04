@@ -351,8 +351,8 @@ public class AdminRateLimitFilter implements Filter {
 
   /** Result of a rate limit check operation. */
   private static class RateLimitResult {
-    final boolean allowed;
-    final long retryAfterSeconds;
+    private final boolean allowed;
+    private final long retryAfterSeconds;
 
     RateLimitResult(boolean allowed, long retryAfterSeconds) {
       this.allowed = allowed;

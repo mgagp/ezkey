@@ -130,7 +130,8 @@ public class AuthAttemptService {
   private final AuthAttemptRespondService respondService;
   private final AuthAttemptWaitService waitService;
 
-  @PersistenceContext private EntityManager entityManager;
+  @PersistenceContext
+  private EntityManager entityManager; // TODO Mandatory for unit tests, remove when possible
 
   /**
    * Constructs the authentication attempt service with required dependencies.

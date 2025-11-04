@@ -68,7 +68,8 @@ import org.springframework.context.annotation.Configuration;
                 - **Integrations**: Applications or systems protected by MFA
                 - **Enrollments**: Associations between users, devices and integrations
                 - **Auth Attempts**: MFA authentication attempts
-                - **Admin Management**: Administrator authentication, enrollment recovery, and admin operations
+                - **Admin Management**: Administrator authentication, 
+                                        enrollment recovery, and admin operations
 
                 The API follows REST conventions and uses DTOs for all requests and responses.
                 """,

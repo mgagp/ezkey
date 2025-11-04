@@ -2,10 +2,11 @@
  * Ezkey - Open Source MFA/Passkey Alternative
  *
  * Copyright (c) 2025 Ezkey contributors
+ *
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Component: FlywayCommandRunner
- * Description: Command-line runner for executing Flyway operations with parameter support.
+ * Component: FlywayCommandRunner Description: Command-line runner for executing Flyway operations with
+ * parameter support.
  */
 
 package org.ezkey.migration;
@@ -68,7 +69,7 @@ import org.springframework.stereotype.Component;
 @Profile("!test")
 public class FlywayCommandRunner implements CommandLineRunner {
 
-  private static final Logger log = LoggerFactory.getLogger(FlywayCommandRunner.class);
+  private static final Logger logger = LoggerFactory.getLogger(FlywayCommandRunner.class);
 
   private final Flyway flyway;
 
@@ -100,12 +101,12 @@ public class FlywayCommandRunner implements CommandLineRunner {
    */
   @Override
   public void run(String... args) throws Exception {
-    log.info("Ezkey Migration Application starting...");
+    logger.info("Ezkey Migration Application starting...");
 
     // Determine operation from command-line arguments
     String operation = determineOperation(args);
 
-    log.info("Executing Flyway operation: {}", operation);
+    logger.info("Executing Flyway operation: {}", operation);
 
     try {
       switch (operation) {
@@ -115,17 +116,17 @@ public class FlywayCommandRunner implements CommandLineRunner {
         case "validate" -> executeValidate();
         case "clean" -> executeClean();
         default -> {
-          log.error("Unknown operation: {}", operation);
+          logger.error("Unknown operation: {}", operation);
           printUsage();
           exitWithCode(1);
         }
       }
 
-      log.info("Flyway operation '{}' completed successfully", operation);
+      logger.info("Flyway operation '{}' completed successfully", operation);
       exitWithCode(0);
 
     } catch (Exception e) {
-      log.error("Flyway operation '{}' failed: {}", operation, e.getMessage(), e);
+      logger.error("Flyway operation '{}' failed: {}", operation, e.getMessage(), e);
       exitWithCode(1);
     }
   }
@@ -182,22 +183,22 @@ public class FlywayCommandRunner implements CommandLineRunner {
    * <p>Migrates the database to the latest version. Pending migrations are applied in order.
    */
   private void executeMigrate() {
-    log.info("Starting database migration...");
+    logger.info("Starting database migration...");
     MigrationInfoService infoService = flyway.info();
     MigrationInfo[] pending = infoService.pending();
 
     if (pending.length == 0) {
-      log.info("Database is up to date. No pending migrations.");
+      logger.info("Database is up to date. No pending migrations.");
     } else {
-      log.info("Found {} pending migration(s)", pending.length);
+      logger.info("Found {} pending migration(s)", pending.length);
       for (MigrationInfo info : pending) {
-        log.info("  - {} : {}", info.getVersion(), info.getDescription());
+        logger.info("  - {} : {}", info.getVersion(), info.getDescription());
       }
     }
 
     var result = flyway.migrate();
     int migrationsApplied = result != null ? result.migrationsExecuted : 0;
-    log.info("Successfully applied {} migration(s)", migrationsApplied);
+    logger.info("Successfully applied {} migration(s)", migrationsApplied);
 
     printMigrationInfo();
   }
@@ -213,12 +214,12 @@ public class FlywayCommandRunner implements CommandLineRunner {
    * </ul>
    */
   private void executeRepair() {
-    log.info("Starting Flyway repair operation...");
-    log.info(
+    logger.info("Starting Flyway repair operation...");
+    logger.info(
         "This will remove failed migration entries and realign checksums in the schema history");
 
     flyway.repair();
-    log.info("Flyway repair completed successfully");
+    logger.info("Flyway repair completed successfully");
 
     printMigrationInfo();
   }
@@ -229,7 +230,7 @@ public class FlywayCommandRunner implements CommandLineRunner {
    * <p>Displays detailed information about all migrations without executing any changes.
    */
   private void executeInfo() {
-    log.info("Displaying migration information...");
+    logger.info("Displaying migration information...");
     printMigrationInfo();
   }
 
@@ -244,9 +245,9 @@ public class FlywayCommandRunner implements CommandLineRunner {
    * </ul>
    */
   private void executeValidate() {
-    log.info("Validating migrations...");
+    logger.info("Validating migrations...");
     flyway.validate();
-    log.info("Migration validation successful");
+    logger.info("Migration validation successful");
     printMigrationInfo();
   }
 
@@ -257,14 +258,14 @@ public class FlywayCommandRunner implements CommandLineRunner {
    * by default in application.properties for safety.
    */
   private void executeClean() {
-    log.warn("Clean operation requested - this will DROP ALL database objects!");
-    log.warn("This operation is typically disabled in production environments");
+    logger.warn("Clean operation requested - this will DROP ALL database objects!");
+    logger.warn("This operation is typically disabled in production environments");
 
     try {
       flyway.clean();
-      log.info("Database clean completed successfully");
+      logger.info("Database clean completed successfully");
     } catch (Exception e) {
-      log.error(
+      logger.error(
           "Clean operation failed. It may be disabled in configuration for safety: {}",
           e.getMessage());
       throw e;
@@ -280,44 +281,44 @@ public class FlywayCommandRunner implements CommandLineRunner {
     MigrationInfoService infoService = flyway.info();
     MigrationInfo[] all = infoService.all();
 
-    log.info("=== Migration Status ===");
-    log.info(
+    logger.info("=== Migration Status ===");
+    logger.info(
         "Schema version: {}",
         infoService.current() != null
             ? infoService.current().getVersion()
             : "No migrations applied");
 
     if (all.length == 0) {
-      log.info("No migrations found");
+      logger.info("No migrations found");
       return;
     }
 
-    log.info("Total migrations: {}", all.length);
+    logger.info("Total migrations: {}", all.length);
     for (MigrationInfo info : all) {
-      log.info(
+      logger.info(
           "  {} | {} | {} | {}",
           info.getState(),
           info.getVersion() != null ? info.getVersion() : "N/A",
           info.getDescription(),
           info.getInstalledOn() != null ? info.getInstalledOn() : "Not installed");
     }
-    log.info("========================");
+    logger.info("========================");
   }
 
   /** Prints usage information to the log. */
   private void printUsage() {
-    log.info("Usage: java -jar ezkey-migration.jar [OPTION]");
-    log.info("Options:");
-    log.info("  (no option)     Run database migrations (default)");
-    log.info("  --migrate       Explicitly run database migrations");
-    log.info("  --repair        Repair Flyway schema history table");
-    log.info("  --info          Display migration information");
-    log.info("  --validate      Validate applied migrations");
-    log.info("  --clean         Clean database (disabled by default)");
-    log.info("");
-    log.info("Spring Boot properties can be overridden:");
-    log.info("  --spring.datasource.url=jdbc:postgresql://host:port/db");
-    log.info("  --spring.datasource.username=user");
-    log.info("  --spring.datasource.password=pass");
+    logger.info("Usage: java -jar ezkey-migration.jar [OPTION]");
+    logger.info("Options:");
+    logger.info("  (no option)     Run database migrations (default)");
+    logger.info("  --migrate       Explicitly run database migrations");
+    logger.info("  --repair        Repair Flyway schema history table");
+    logger.info("  --info          Display migration information");
+    logger.info("  --validate      Validate applied migrations");
+    logger.info("  --clean         Clean database (disabled by default)");
+    logger.info("");
+    logger.info("Spring Boot properties can be overridden:");
+    logger.info("  --spring.datasource.url=jdbc:postgresql://host:port/db");
+    logger.info("  --spring.datasource.username=user");
+    logger.info("  --spring.datasource.password=pass");
   }
 }

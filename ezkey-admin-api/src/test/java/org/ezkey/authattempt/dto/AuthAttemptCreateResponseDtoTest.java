@@ -18,17 +18,15 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link AuthAttemptCreateResponseDto}.
  *
- * <p>
- * Tests verify proper behavior of the record including:
+ * <p>Tests verify proper behavior of the record including:
  *
  * <ul>
- * <li>Record construction and accessor methods
- * <li>Null handling
- * <li>Edge case values
+ *   <li>Record construction and accessor methods
+ *   <li>Null handling
+ *   <li>Edge case values
  * </ul>
  *
- * <p>
- * <b>Note:</b> Records automatically provide correct implementations of equals(), hashCode(),
+ * <p><b>Note:</b> Records automatically provide correct implementations of equals(), hashCode(),
  * toString(), and immutability guarantees. These behaviors are tested minimally as they are
  * guaranteed by the Java language specification.
  *
@@ -36,12 +34,13 @@ import org.junit.jupiter.api.Test;
  * @since 2025
  */
 @DisplayName("AuthAttemptCreateResponseDto Tests")
-class AuthAttemptCreateResponseDtoTest{
+class AuthAttemptCreateResponseDtoTest {
 
   private static final Integer TEST_AUTH_ATTEMPT_ID = 11;
 
-  @Test @DisplayName("Should create record with auth attempt ID")
-  void shouldCreateRecordWithAuthAttemptId(){
+  @Test
+  @DisplayName("Should create record with auth attempt ID")
+  void shouldCreateRecordWithAuthAttemptId() {
     // Act
     AuthAttemptCreateResponseDto dto = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID);
 
@@ -49,8 +48,9 @@ class AuthAttemptCreateResponseDtoTest{
     assertThat(dto.authAttemptId()).isEqualTo(TEST_AUTH_ATTEMPT_ID);
   }
 
-  @Test @DisplayName("Should handle null auth attempt ID")
-  void shouldHandleNullAuthAttemptId(){
+  @Test
+  @DisplayName("Should handle null auth attempt ID")
+  void shouldHandleNullAuthAttemptId() {
     // Act
     AuthAttemptCreateResponseDto dto = new AuthAttemptCreateResponseDto(null);
 
@@ -58,8 +58,9 @@ class AuthAttemptCreateResponseDtoTest{
     assertThat(dto.authAttemptId()).isNull();
   }
 
-  @Test @DisplayName("Should handle edge case values")
-  void shouldHandleEdgeCaseValues(){
+  @Test
+  @DisplayName("Should handle edge case values")
+  void shouldHandleEdgeCaseValues() {
     // Test with minimum value
     AuthAttemptCreateResponseDto dtoMin = new AuthAttemptCreateResponseDto(Integer.MIN_VALUE);
     assertThat(dtoMin.authAttemptId()).isEqualTo(Integer.MIN_VALUE);
@@ -77,8 +78,9 @@ class AuthAttemptCreateResponseDtoTest{
     assertThat(dtoNeg.authAttemptId()).isEqualTo(-1);
   }
 
-  @Test @DisplayName("Should verify basic record equality (guaranteed by Java)")
-  void shouldVerifyBasicRecordEquality(){
+  @Test
+  @DisplayName("Should verify basic record equality (guaranteed by Java)")
+  void shouldVerifyBasicRecordEquality() {
     // Arrange
     AuthAttemptCreateResponseDto dto1 = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID);
     AuthAttemptCreateResponseDto dto2 = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID);

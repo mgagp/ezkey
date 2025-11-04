@@ -33,9 +33,9 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   /**
    * Static field for EncryptionService, accessible via reflection from Enrollment entity.
    *
-   * <p>Made package-private (not private) to allow access via reflection from Enrollment.
+   * <p>Made static with package-private accessor to allow access from Enrollment.
    */
-  static EncryptionService encryptionService;
+  private static EncryptionService encryptionService;
 
   private static ApplicationContext applicationContext;
 

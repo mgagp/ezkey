@@ -1,0 +1,96 @@
+# Development Tools Configuration
+
+This directory contains configuration files for code formatting and style checking tools used in the Ezkey project.
+
+## Files
+
+### `eclipse_format.xml`
+Eclipse code formatter profile aligned with Google Java Format style (2 spaces indentation, 100 character line length).
+
+**How to import in Eclipse:**
+1. Open Eclipse
+2. Go to **Window → Preferences** (or **Eclipse → Preferences** on Mac)
+3. Navigate to **Java → Code Style → Formatter**
+4. Click **Import...**
+5. Select `docs/dev-tools/eclipse_format.xml`
+6. Click **Apply and Close**
+
+**How to import in IntelliJ IDEA:**
+1. Open IntelliJ IDEA
+2. Go to **File → Settings** (or **IntelliJ IDEA → Preferences** on Mac)
+3. Navigate to **Editor → Code Style**
+4. Click the gear icon next to **Scheme** dropdown
+5. Select **Import Scheme → Eclipse XML Profile**
+6. Select `docs/dev-tools/eclipse_format.xml`
+7. Click **Apply** and **OK**
+
+### `google_checks.xml`
+Checkstyle configuration file based on Google Java Style Guide. This file is automatically used by Maven Checkstyle Plugin in all modules.
+
+**Configuration:**
+- Validates code style rules (indentation, spacing, naming conventions)
+- Enforces Google Java Style Guide standards
+- Line length limit: 100 characters
+- Validates both main and test source directories
+
+### `checkstyle-header.txt`
+Checkstyle header template for source files (if used).
+
+## Formatting Standards
+
+All code formatting follows the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html):
+
+- **Indentation**: 2 spaces (not tabs)
+- **Line Length**: 100 characters maximum
+- **Encoding**: UTF-8 without BOM
+- **Line Endings**: LF (Unix style)
+
+## Tools
+
+### Spotless (Maven Plugin)
+Automatically formats code using Google Java Format 1.32.0:
+- Formats `src/main/java/**/*.java`
+- Formats `src/test/java/**/*.java`
+- Runs automatically on build via `spotless:apply` goal
+
+**Usage:**
+```bash
+# Format all code
+mvn spotless:apply
+
+# Check formatting (without applying)
+mvn spotless:check
+```
+
+### Checkstyle (Maven Plugin)
+Validates code style compliance:
+- Uses `docs/dev-tools/google_checks.xml`
+- Validates both main and test sources
+- Fails build on violations
+
+**Usage:**
+```bash
+# Run checkstyle
+mvn checkstyle:check
+```
+
+## Aligning IDE with Build Tools
+
+To ensure your IDE formatter matches Spotless:
+
+1. **Import the Eclipse formatter** (see instructions above)
+2. **Configure your IDE to format on save** (recommended)
+3. **Run `mvn spotless:apply`** before committing to ensure consistency
+
+## Troubleshooting
+
+### Spotless and IDE formatter produce different results
+- Make sure you've imported the correct `eclipse_format.xml` file
+- Verify IDE formatter uses 2 spaces indentation, not 4
+- Run `mvn spotless:apply` to align code with build configuration
+
+### Checkstyle violations after Spotless
+- Ensure `google_checks.xml` matches Google Java Format rules
+- Run `mvn spotless:apply` first, then `mvn checkstyle:check`
+- Most violations should be resolved by Spotless formatting
+

@@ -45,57 +45,55 @@ import org.springframework.security.core.context.SecurityContextHolder;
 /**
  * Unit tests for ownership validation in AuthAttemptController.
  *
- * <p>
- * This test class focuses specifically on testing the ownership validation logic that ensures API
- * keys can only create auth attempts for enrollments belonging to their associated integration.
+ * <p>This test class focuses specifically on testing the ownership validation logic that ensures
+ * API keys can only create auth attempts for enrollments belonging to their associated integration.
  *
- * <p>
- * <b>Test Coverage:</b>
+ * <p><b>Test Coverage:</b>
  *
  * <ul>
- * <li><b>Valid Ownership:</b> API key can create auth attempts for own integration
- * <li><b>Invalid Ownership:</b> API key cannot create auth attempts for other integrations
- * <li><b>Enrollment Not Found:</b> Proper error handling for non-existent enrollments
- * <li><b>Admin Bypass:</b> Admin users can create auth attempts for any enrollment
+ *   <li><b>Valid Ownership:</b> API key can create auth attempts for own integration
+ *   <li><b>Invalid Ownership:</b> API key cannot create auth attempts for other integrations
+ *   <li><b>Enrollment Not Found:</b> Proper error handling for non-existent enrollments
+ *   <li><b>Admin Bypass:</b> Admin users can create auth attempts for any enrollment
  * </ul>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
  */
-@ExtendWith(MockitoExtension.class) @DisplayName("AuthAttemptController Ownership Tests")
-class AuthAttemptControllerOwnershipTest{
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AuthAttemptController Ownership Tests")
+class AuthAttemptControllerOwnershipTest {
 
-  @Mock
-  private AuthAttemptService authAttemptService;
+  @Mock private AuthAttemptService authAttemptService;
 
-  @Mock
-  private AuthAttemptMapper authAttemptMapper;
+  @Mock private AuthAttemptMapper authAttemptMapper;
 
-  @Mock
-  private AuditLogService auditLogService;
+  @Mock private AuditLogService auditLogService;
 
-  @Mock
-  private RateLimitService rateLimitService;
+  @Mock private RateLimitService rateLimitService;
 
-  @Mock
-  private EnrollmentRepository enrollmentRepository;
+  @Mock private EnrollmentRepository enrollmentRepository;
 
   private AuthAttemptController controller;
 
   @BeforeEach
-  void setUp(){
-    controller = new AuthAttemptController(authAttemptService,authAttemptMapper,auditLogService,
-        rateLimitService,enrollmentRepository);
+  void setUp() {
+    controller =
+        new AuthAttemptController(
+            authAttemptService,
+            authAttemptMapper,
+            auditLogService,
+            rateLimitService,
+            enrollmentRepository);
   }
 
-  @Test @DisplayName("API key can create auth attempt for enrollment belonging to own integration")
-  void apiKeyCanCreateAuthAttemptForOwnIntegration(){
+  @Test
+  @DisplayName("API key can create auth attempt for enrollment belonging to own integration")
+  void apiKeyCanCreateAuthAttemptForOwnIntegration() {
     // Arrange
     Integer apiKeyIntegrationId = 2;
     Integer enrollmentId = 100;
@@ -119,18 +117,19 @@ class AuthAttemptControllerOwnershipTest{
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(new AuthAttemptCreateResponseDto(1));
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId,false);
+    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act
-    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request,null);
+    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request, null);
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;
     verify(enrollmentRepository).findById(enrollmentId);
   }
 
-  @Test @DisplayName("API key cannot create auth attempt for enrollment belonging to other integration")
-  void apiKeyCannotCreateAuthAttemptForOtherIntegration(){
+  @Test
+  @DisplayName("API key cannot create auth attempt for enrollment belonging to other integration")
+  void apiKeyCannotCreateAuthAttemptForOtherIntegration() {
     // Arrange
     Integer apiKeyIntegrationId = 2;
     Integer otherIntegrationId = 3;
@@ -147,18 +146,21 @@ class AuthAttemptControllerOwnershipTest{
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId,false);
+    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act & Assert
-    assertThrows(AuthorizationDeniedException.class,() -> {
-      controller.create(request,null);
-    });
+    assertThrows(
+        AuthorizationDeniedException.class,
+        () -> {
+          controller.create(request, null);
+        });
 
     verify(enrollmentRepository).findById(enrollmentId);
   }
 
-  @Test @DisplayName("API key gets ResourceNotFoundException for non-existent enrollment")
-  void apiKeyGetsResourceNotFoundExceptionForNonExistentEnrollment(){
+  @Test
+  @DisplayName("API key gets ResourceNotFoundException for non-existent enrollment")
+  void apiKeyGetsResourceNotFoundExceptionForNonExistentEnrollment() {
     // Arrange
     Integer apiKeyIntegrationId = 2;
     Integer enrollmentId = 999;
@@ -172,18 +174,21 @@ class AuthAttemptControllerOwnershipTest{
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId,false);
+    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act & Assert
-    assertThrows(ResourceNotFoundException.class,() -> {
-      controller.create(request,null);
-    });
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> {
+          controller.create(request, null);
+        });
 
     verify(enrollmentRepository).findById(enrollmentId);
   }
 
-  @Test @DisplayName("Admin can create auth attempt for any enrollment (no ownership check)")
-  void adminCanCreateAuthAttemptForAnyEnrollment(){
+  @Test
+  @DisplayName("Admin can create auth attempt for any enrollment (no ownership check)")
+  void adminCanCreateAuthAttemptForAnyEnrollment() {
     // Arrange
     Integer enrollmentId = 100;
 
@@ -201,10 +206,10 @@ class AuthAttemptControllerOwnershipTest{
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(new AuthAttemptCreateResponseDto(1));
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId,false);
+    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
     // Act
-    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request,null);
+    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request, null);
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;
@@ -217,21 +222,23 @@ class AuthAttemptControllerOwnershipTest{
    *
    * @param integrationId the integration ID for the API key
    */
-  private void setupApiKeyAuthentication(Integer integrationId){
-    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-        integrationId, // Principal: Integration ID
-        null, // Credentials
-        List.of(new SimpleGrantedAuthority("ROLE_API_KEY")));
+  private void setupApiKeyAuthentication(Integer integrationId) {
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            integrationId, // Principal: Integration ID
+            null, // Credentials
+            List.of(new SimpleGrantedAuthority("ROLE_API_KEY")));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 
   /** Sets up admin authentication context. */
-  private void setupAdminAuthentication(){
-    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-        "admin", // Principal: Admin username
-        null, // Credentials
-        List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+  private void setupAdminAuthentication() {
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            "admin", // Principal: Admin username
+            null, // Credentials
+            List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
@@ -241,7 +248,7 @@ class AuthAttemptControllerOwnershipTest{
    *
    * @return mock response object
    */
-  private AuthAttemptCreateResponse createMockResponse(){
+  private AuthAttemptCreateResponse createMockResponse() {
     AuthAttemptCreateResponse response = new AuthAttemptCreateResponse();
     response.setAuthAttemptId(1);
     response.setAuthAttemptChallenge(null);

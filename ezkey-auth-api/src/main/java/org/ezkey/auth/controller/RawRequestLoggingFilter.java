@@ -23,13 +23,21 @@ public class RawRequestLoggingFilter implements Filter {
 
   private static final Logger logger = LoggerFactory.getLogger(RawRequestLoggingFilter.class);
 
-  public static boolean enabled = false; // Enable/disable this filter as needed
+  private static boolean enabled = false; // Enable/disable this filter as needed
+
+  public static boolean isEnabled() {
+    return enabled;
+  }
+
+  public static void setEnabled(boolean enabled) {
+    RawRequestLoggingFilter.enabled = enabled;
+  }
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     // Only log if the filter is enabled
-    if (!enabled) {
+    if (!isEnabled()) {
       chain.doFilter(request, response);
       return;
     }

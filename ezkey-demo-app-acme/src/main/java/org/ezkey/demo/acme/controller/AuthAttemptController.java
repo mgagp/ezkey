@@ -82,7 +82,9 @@ public class AuthAttemptController {
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
 
   private final EnrollmentService enrollmentService;
+
   private final IntegrationService integrationService;
+
   private final AuthAttemptService authAttemptService;
 
   /**
@@ -436,9 +438,8 @@ public class AuthAttemptController {
         // If enrollment requires challenge, force challengeRequested to true
         if (Boolean.TRUE.equals(selectedEnrollment.getAuthAttemptChallengeRequired())) {
           challengeRequested = true;
-        }
-        // If challengeRequested is null (not checked), set to false
-        else if (challengeRequested == null) {
+        } else if (challengeRequested == null) {
+          // If challengeRequested is null (not checked), set to false
           challengeRequested = false;
         }
       } else {

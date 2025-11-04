@@ -82,7 +82,6 @@
 	<dependency>
 		<groupId>commons-codec</groupId>
 		<artifactId>commons-codec</artifactId>
-		<version>1.16.0</version>
 	</dependency>
 	
 	<!-- IPAddress library for IP whitelist validation with CIDR support -->
@@ -135,8 +134,7 @@
         </dependency>
 	</dependencies>
 
-	<!-- No build plugins needed for a pure library -->
-	<!-- Spring Boot plugin removed - migrations now handled by ezkey-migration module -->
+	<!-- No build plugins needed - inherits from parent -->
 	
 	<profiles>
 		<profile>

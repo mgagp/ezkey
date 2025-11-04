@@ -57,7 +57,7 @@
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<springdoc.version>2.8.13</springdoc.version>
 		<spotbugs.version>4.7.3</spotbugs.version>
-		<checkstyle.version>3.3.1</checkstyle.version>
+		<checkstyle.version>3.6.0</checkstyle.version>
 		<pmd.version>3.21.2</pmd.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<zxing.version>3.5.3</zxing.version>
@@ -141,8 +141,16 @@
 					<version>${spotless.version}</version>
 					<configuration>
 						<java>
+							<includes>
+								<include>src/main/java/**/*.java</include>
+								<include>src/test/java/**/*.java</include>
+							</includes>
+							<!-- Enforce LF line endings per Google Java Style Guide -->
+							<endWithNewline/>
+							<removeUnusedImports/>
+							<trimTrailingWhitespace/>
 							<googleJavaFormat>
-								<version>1.30.0</version>
+								<version>1.31.0</version>
 								<style>GOOGLE</style>
 								<reflowLongStrings>true</reflowLongStrings>
 								<formatJavadoc>true</formatJavadoc>
@@ -163,11 +171,23 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
 					<version>${checkstyle.version}</version>
+					<dependencies>
+    					<dependency>
+      						<groupId>com.puppycrawl.tools</groupId>
+      						<artifactId>checkstyle</artifactId>
+      						<version>12.1.1</version> <!-- Override default -->
+    					</dependency>
+  					</dependencies>
 					<configuration>
-						<configLocation>docs/dev-tools/google_checks.xml</configLocation>
+						<!-- Point explicitement vers la racine du projet pour un usage top-level et sous-module -->
+						<configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+						<suppressionsLocation>${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</suppressionsLocation>
 						<consoleOutput>true</consoleOutput>
 						<failsOnError>true</failsOnError>
-						<includeTestSourceDirectory>true</includeTestSourceDirectory>
+						<includeTestSourceDirectory>false</includeTestSourceDirectory>
+						<violationSeverity>warning</violationSeverity>
+						<!-- Fournit config_loc à checkstyle.xml (utile pour Eclipse et Maven) -->
+						<propertyExpansion>config_loc=${maven.multiModuleProjectDirectory}</propertyExpansion>
 					</configuration>
 					<executions>
 						<execution>

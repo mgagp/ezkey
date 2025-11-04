@@ -2,9 +2,11 @@
  * Ezkey - Open Source MFA/Passkey Alternative
  *
  * Copyright (c) 2025 Ezkey contributors
+ *
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Filter: RateLimitFilter
+ *
  * Description: HTTP filter for applying rate limiting to specific auth-api endpoints.
  */
 
@@ -69,6 +71,7 @@ import org.springframework.http.HttpStatus;
 public class RateLimitFilter implements Filter {
 
   private final RateLimitProperties properties;
+
   private final Cache<String, Bucket> bucketCache;
 
   /**
@@ -98,9 +101,9 @@ public class RateLimitFilter implements Filter {
     if (shouldApplyRateLimit(requestUri, requestMethod)) {
       RateLimitResult result = checkRateLimit(requestUri, requestMethod, req);
 
-      if (!result.allowed) {
+      if (!result.isAllowed()) {
         res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-        res.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
+        res.setHeader("Retry-After", String.valueOf(result.getRetryAfterSeconds()));
         return;
       }
     }
@@ -306,12 +309,21 @@ public class RateLimitFilter implements Filter {
 
   /** Result of a rate limit check operation. */
   private static class RateLimitResult {
-    final boolean allowed;
-    final long retryAfterSeconds;
+    private final boolean allowed;
+
+    private final long retryAfterSeconds;
 
     RateLimitResult(boolean allowed, long retryAfterSeconds) {
       this.allowed = allowed;
       this.retryAfterSeconds = retryAfterSeconds;
+    }
+
+    public boolean isAllowed() {
+      return allowed;
+    }
+
+    public long getRetryAfterSeconds() {
+      return retryAfterSeconds;
     }
   }
 }

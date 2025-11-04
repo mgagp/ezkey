@@ -19,8 +19,8 @@ For build, setup, and project organization, refer to `README.md`.
 - For logging, always use SLF4J with `private static final Logger log = LoggerFactory.getLogger(...)`
 
 ### Formatting Rules
-- **Indentation**: 4 spaces (no tabs)
-- **Line Length**: Maximum 120 characters  
+- **Indentation**: 2 spaces (no tabs) - Google Java Format standard
+- **Line Length**: Maximum 100 characters - Google Java Format standard
 - **Encoding**: UTF-8 without BOM
 - **Line Endings**: LF (Unix style)
 

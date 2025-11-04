@@ -49,7 +49,7 @@ import org.springframework.stereotype.Component;
     matchIfMissing = true)
 public class AuditLogCleanupScheduler {
 
-  private static final Logger log = LoggerFactory.getLogger(AuditLogCleanupScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuditLogCleanupScheduler.class);
 
   private final AuditLogService auditLogService;
 
@@ -69,11 +69,11 @@ public class AuditLogCleanupScheduler {
   @Scheduled(cron = "${ezkey.audit.cleanup.cron:0 0 2 * * ?}")
   public void cleanupOldAuditLogs() {
     try {
-      log.info("Starting audit log cleanup (retention: {} days)", retentionDays);
+      logger.info("Starting audit log cleanup (retention: {} days)", retentionDays);
       int deleted = auditLogService.deleteOldLogs(retentionDays);
-      log.info("Audit log cleanup completed. Deleted {} records", deleted);
+      logger.info("Audit log cleanup completed. Deleted {} records", deleted);
     } catch (Exception e) {
-      log.error("Audit log cleanup failed: {}", e.getMessage(), e);
+      logger.error("Audit log cleanup failed: {}", e.getMessage(), e);
     }
   }
 }

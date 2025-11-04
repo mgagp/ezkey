@@ -71,7 +71,9 @@ public class EnrollmentStoreService {
   public Optional<Record> load(Integer enrollmentId) {
     try {
       Path file = rootDir.resolve(enrollmentId + ".json");
-      if (!Files.exists(file)) return Optional.empty();
+      if (!Files.exists(file)) {
+        return Optional.empty();
+      }
       byte[] json = Files.readAllBytes(file);
       return Optional.of(objectMapper.readValue(json, Record.class));
     } catch (Exception e) {
@@ -83,7 +85,9 @@ public class EnrollmentStoreService {
   public List<Record> list() {
     List<Record> items = new ArrayList<>();
     try {
-      if (!Files.exists(rootDir)) return items;
+      if (!Files.exists(rootDir)) {
+        return items;
+      }
       Files.list(rootDir)
           .filter(p -> p.getFileName().toString().endsWith(".json"))
           .forEach(
@@ -110,8 +114,25 @@ public class EnrollmentStoreService {
     }
   }
 
-  /** Enrollment record for local storage (DEMO ONLY; contains private key). */
-  public static record Record(
+  /**
+   * Enrollment record for local storage (DEMO ONLY; contains private key).
+   *
+   * @param enrollmentId enrollment ID
+   * @param integrationId integration ID
+   * @param enrollmentName enrollment name
+   * @param enrollmentUrl enrollment URL
+   * @param integrationPublicKey integration public key
+   * @param enrollmentProofToken enrollment proof token
+   * @param devicePublicKey device public key
+   * @param devicePrivateKey device private key
+   * @param authAttemptChallengeRequired whether challenge is required
+   * @param deviceLabel device label
+   * @param createdAt creation timestamp
+   * @param integrationName integration name
+   * @param integrationDescription integration description
+   * @param integrationLogo integration logo
+   */
+  public record Record(
       Integer enrollmentId,
       Integer integrationId,
       String enrollmentName,
@@ -123,7 +144,6 @@ public class EnrollmentStoreService {
       Boolean authAttemptChallengeRequired,
       String deviceLabel,
       String createdAt,
-      // New integration information fields
       String integrationName,
       String integrationDescription,
       String integrationLogo) {}

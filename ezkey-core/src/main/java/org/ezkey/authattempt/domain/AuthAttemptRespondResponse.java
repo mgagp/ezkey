@@ -150,11 +150,11 @@ public class AuthAttemptRespondResponse {
    * are suitable for display to end users and provide clear feedback about the authentication
    * outcome.
    *
-   * @param result the authentication result
+   * @param authResult the authentication result
    * @return the appropriate default message for the result
    */
-  private String getDefaultMessage(AuthenticationResult result) {
-    switch (result) {
+  private String getDefaultMessage(AuthenticationResult authResult) {
+    switch (authResult) {
       case APPROVED:
         return "Authentication approved";
       case DENIED:

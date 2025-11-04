@@ -2,9 +2,11 @@
  * Ezkey - Open Source MFA/Passkey Alternative
  *
  * Copyright (c) 2025 Ezkey contributors
+ *
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: RateLimitProperties
+ *
  * Description: Externalized configuration properties for rate limiting functionality.
  */
 

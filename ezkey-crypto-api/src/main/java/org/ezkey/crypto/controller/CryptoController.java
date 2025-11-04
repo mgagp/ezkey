@@ -33,6 +33,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for the Crypto API.
+ *
+ * <p>This controller exposes endpoints for various cryptographic operations, including:
+ *
+ * <ul>
+ *   <li>Generating cryptographically secure proof tokens.
+ *   <li>Creating RSA key pairs for device simulation.
+ *   <li>Signing data with a private key.
+ *   <li>Validating signatures with a public key.
+ * </ul>
+ *
+ * <p>It is designed primarily for testing, development, and integration scenarios where direct
+ * access to cryptographic functions is required.
+ *
+ * @since 2025
+ */
 @Tag(name = "Crypto API", description = "Crypto services for testing and integration")
 @RestController
 @RequestMapping("/api/v1/crypto")

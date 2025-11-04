@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditLogService {
 
-  private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
 
   private final AuditLogRepository auditLogRepository;
 
@@ -68,7 +68,7 @@ public class AuditLogService {
       auditLogRepository.save(auditLog);
     } catch (Exception e) {
       // Log error but don't throw to avoid disrupting main operation
-      log.error("Failed to save audit log: {}", e.getMessage(), e);
+      logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }
   }
 
@@ -105,7 +105,7 @@ public class AuditLogService {
   public int deleteOldLogs(int retentionDays) {
     OffsetDateTime cutoffDate = OffsetDateTime.now().minusDays(retentionDays);
     int deleted = auditLogRepository.deleteOlderThan(cutoffDate);
-    log.info("Deleted {} audit logs older than {} days", deleted, retentionDays);
+    logger.info("Deleted {} audit logs older than {} days", deleted, retentionDays);
     return deleted;
   }
 }

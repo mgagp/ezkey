@@ -43,32 +43,27 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Critical unit tests for {@link EnrollmentController} in auth-api.
  *
- * <p>
- * This test class provides comprehensive coverage of the EnrollmentController REST endpoints
+ * <p>This test class provides comprehensive coverage of the EnrollmentController REST endpoints
  * focusing on security-critical enrollment operations. Tests cover device binding, cryptographic
  * verification, and proper HTTP status code handling for mobile device enrollment.
  *
- * <p>
- * <b>Critical Test Coverage:</b>
+ * <p><b>Critical Test Coverage:</b>
  *
  * <ul>
- * <li>GET /api/v1/enrollments/bind/{enrollmentId} - Device binding initiation
- * <li>POST /api/v1/enrollments/verify - Enrollment verification completion
- * <li>Security validation - Cryptographic key exchange
- * <li>State management - Proper enrollment state transitions
- * <li>Error handling - Appropriate HTTP status codes
+ *   <li>GET /api/v1/enrollments/bind/{enrollmentId} - Device binding initiation
+ *   <li>POST /api/v1/enrollments/verify - Enrollment verification completion
+ *   <li>Security validation - Cryptographic key exchange
+ *   <li>State management - Proper enrollment state transitions
+ *   <li>Error handling - Appropriate HTTP status codes
  * </ul>
  *
- * <p>
- * <b>Security Focus:</b> These tests validate the critical security aspects of mobile enrollment
+ * <p><b>Security Focus:</b> These tests validate the critical security aspects of mobile enrollment
  * including cryptographic key validation, state consistency, and proper error handling to prevent
  * enrollment vulnerabilities.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -76,25 +71,23 @@ import org.springframework.test.web.servlet.MockMvc;
  * @see EnrollmentService
  * @see EnrollmentAuthMapper
  */
-@WebMvcTest(controllers = EnrollmentController.class) @AutoConfigureMockMvc(addFilters = false) @Import(SecurityConfig.class) @DisplayName("Enrollment Controller Critical Tests")
-class EnrollmentControllerTest{
+@WebMvcTest(controllers = EnrollmentController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(SecurityConfig.class)
+@DisplayName("Enrollment Controller Critical Tests")
+class EnrollmentControllerTest {
 
   private static final String BASE_URL = "/api/v1/enrollments";
 
-  @Autowired
-  private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
-  @MockBean
-  private EnrollmentService enrollmentService;
+  @MockBean private EnrollmentService enrollmentService;
 
-  @MockBean
-  private EnrollmentAuthMapper enrollmentMapper;
+  @MockBean private EnrollmentAuthMapper enrollmentMapper;
 
-  @MockBean
-  private org.ezkey.audit.service.AuditLogService auditLogService;
+  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
 
   private EnrollmentBindRequestDto bindRequestDto;
 
@@ -113,12 +106,14 @@ class EnrollmentControllerTest{
   private EnrollmentVerifyResponseDto verifyResponseDto;
 
   @BeforeEach
-  void setUp(){
+  void setUp() {
     // Setup bind request test data - Using record constructor
-    bindRequestDto = new EnrollmentBindRequestDto(123, // enrollmentId
-        "test-proof-token", // enrollmentProofToken
-        "en" // language
-    );
+    bindRequestDto =
+        new EnrollmentBindRequestDto(
+            123, // enrollmentId
+            "test-proof-token", // enrollmentProofToken
+            "en" // language
+            );
 
     bindRequest = new EnrollmentBindRequest();
     bindRequest.setEnrollmentId(123);
@@ -130,12 +125,13 @@ class EnrollmentControllerTest{
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
 
-    bindResponseDto = new EnrollmentBindResponseDto(123,"test-public-key","test-proof-token",null,
-        null,null,null);
+    bindResponseDto =
+        new EnrollmentBindResponseDto(
+            123, "test-public-key", "test-proof-token", null, null, null, null);
 
     // Setup verify request test data
-    verifyRequestDto = new EnrollmentVerifyRequestDto(123,null,"device-public-key",
-        "proof-token-signature");
+    verifyRequestDto =
+        new EnrollmentVerifyRequestDto(123, null, "device-public-key", "proof-token-signature");
 
     verifyRequest = new EnrollmentVerifyRequest();
     verifyRequest.setEnrollmentId(123);
@@ -150,8 +146,9 @@ class EnrollmentControllerTest{
 
   // ===== BIND ENDPOINT TESTS =====
 
-  @Test @DisplayName("POST /api/v1/enrollments/bind - Should return 200 when binding successful")
-  void bind_WhenBindingSuccessful_ShouldReturn200() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/bind - Should return 200 when binding successful")
+  void bind_WhenBindingSuccessful_ShouldReturn200() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
@@ -161,22 +158,26 @@ class EnrollmentControllerTest{
     String json = objectMapper.writeValueAsString(bindRequestDto);
 
     // Act & Assert
-    mockMvc.perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
+    mockMvc
+        .perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
         .andExpect(status().isOk());
 
     // Verify service interactions
-    verify(enrollmentMapper,times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
-    verify(enrollmentService,times(1)).bind(any(EnrollmentBindRequest.class));
-    verify(enrollmentMapper,times(1)).toEnrollmentBindResponseDto(bindResponse);
+    verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
+    verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
+    verify(enrollmentMapper, times(1)).toEnrollmentBindResponseDto(bindResponse);
   }
 
-  @Test @DisplayName("POST /api/v1/enrollments/bind - Should return 400 on invalid enrollment ID")
-  void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/bind - Should return 400 on invalid enrollment ID")
+  void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
     // Arrange - Using record constructor
-    EnrollmentBindRequestDto invalidRequestDto = new EnrollmentBindRequestDto(999, // enrollmentId
-        "invalid-proof-token", // enrollmentProofToken
-        "en" // language
-    );
+    EnrollmentBindRequestDto invalidRequestDto =
+        new EnrollmentBindRequestDto(
+            999, // enrollmentId
+            "invalid-proof-token", // enrollmentProofToken
+            "en" // language
+            );
 
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
@@ -186,16 +187,18 @@ class EnrollmentControllerTest{
     String json = objectMapper.writeValueAsString(invalidRequestDto);
 
     // Act & Assert
-    mockMvc.perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
+    mockMvc
+        .perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
         .andExpect(status().isBadRequest());
 
     // Verify service interactions
-    verify(enrollmentMapper,times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
-    verify(enrollmentService,times(1)).bind(any(EnrollmentBindRequest.class));
+    verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
+    verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
   }
 
-  @Test @DisplayName("POST /api/v1/enrollments/bind - Should return 409 when enrollment already bound")
-  void bind_WhenEnrollmentAlreadyBound_ShouldReturn409() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/bind - Should return 409 when enrollment already bound")
+  void bind_WhenEnrollmentAlreadyBound_ShouldReturn409() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
@@ -205,16 +208,18 @@ class EnrollmentControllerTest{
     String json = objectMapper.writeValueAsString(bindRequestDto);
 
     // Act & Assert
-    mockMvc.perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
+    mockMvc
+        .perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
         .andExpect(status().isConflict());
 
     // Verify service interactions
-    verify(enrollmentMapper,times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
-    verify(enrollmentService,times(1)).bind(any(EnrollmentBindRequest.class));
+    verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
+    verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
   }
 
-  @Test @DisplayName("POST /api/v1/enrollments/bind - Should handle default language when not specified")
-  void bind_WhenMissingAcceptLanguage_ShouldUseDefaultLanguage() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/bind - Should handle default language when not specified")
+  void bind_WhenMissingAcceptLanguage_ShouldUseDefaultLanguage() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
@@ -224,19 +229,21 @@ class EnrollmentControllerTest{
     String json = objectMapper.writeValueAsString(bindRequestDto);
 
     // Act & Assert
-    mockMvc.perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
+    mockMvc
+        .perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
         .andExpect(status().isOk());
 
     // Verify service interactions
-    verify(enrollmentMapper,times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
-    verify(enrollmentService,times(1)).bind(any(EnrollmentBindRequest.class));
-    verify(enrollmentMapper,times(1)).toEnrollmentBindResponseDto(bindResponse);
+    verify(enrollmentMapper, times(1)).toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class));
+    verify(enrollmentService, times(1)).bind(any(EnrollmentBindRequest.class));
+    verify(enrollmentMapper, times(1)).toEnrollmentBindResponseDto(bindResponse);
   }
 
   // ===== VERIFY ENDPOINT TESTS =====
 
-  @Test @DisplayName("POST /api/v1/enrollments/verify - Should return 200 when verification successful")
-  void verify_WhenVerificationSuccessful_ShouldReturn200() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/verify - Should return 200 when verification successful")
+  void verify_WhenVerificationSuccessful_ShouldReturn200() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
         .thenReturn(verifyRequest);
@@ -252,14 +259,15 @@ class EnrollmentControllerTest{
         .andExpect(status().isOk());
 
     // Verify service interactions
-    verify(enrollmentMapper,times(1))
+    verify(enrollmentMapper, times(1))
         .toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class));
-    verify(enrollmentService,times(1)).verify(any(EnrollmentVerifyRequest.class));
-    verify(enrollmentMapper,times(1)).toEnrollmentVerifyResponseDto(verifyResponse);
+    verify(enrollmentService, times(1)).verify(any(EnrollmentVerifyRequest.class));
+    verify(enrollmentMapper, times(1)).toEnrollmentVerifyResponseDto(verifyResponse);
   }
 
-  @Test @DisplayName("POST /api/v1/enrollments/verify - Should return 400 on invalid verification data")
-  void verify_WhenInvalidVerificationData_ShouldReturn400() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/verify - Should return 400 on invalid verification data")
+  void verify_WhenInvalidVerificationData_ShouldReturn400() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
         .thenReturn(verifyRequest);
@@ -274,11 +282,12 @@ class EnrollmentControllerTest{
         .andExpect(status().isBadRequest());
 
     // Verify service interactions
-    verify(enrollmentService,times(1)).verify(any(EnrollmentVerifyRequest.class));
+    verify(enrollmentService, times(1)).verify(any(EnrollmentVerifyRequest.class));
   }
 
-  @Test @DisplayName("POST /api/v1/enrollments/verify - Should return 409 on enrollment state conflict")
-  void verify_WhenEnrollmentStateConflict_ShouldReturn409() throws Exception{
+  @Test
+  @DisplayName("POST /api/v1/enrollments/verify - Should return 409 on enrollment state conflict")
+  void verify_WhenEnrollmentStateConflict_ShouldReturn409() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
         .thenReturn(verifyRequest);
@@ -293,6 +302,6 @@ class EnrollmentControllerTest{
         .andExpect(status().isConflict());
 
     // Verify service interactions
-    verify(enrollmentService,times(1)).verify(any(EnrollmentVerifyRequest.class));
+    verify(enrollmentService, times(1)).verify(any(EnrollmentVerifyRequest.class));
   }
 }

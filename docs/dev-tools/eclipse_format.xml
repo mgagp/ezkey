@@ -1,22 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <profiles version="13">
     <profile name="ezkey" version="13">
+        <!-- Comment line length: 100 to align with Google Java Style Guide -->
         <setting id="org.eclipse.jdt.core.formatter.comment.line_length" value="100"/>
+        
+        <!-- Javadoc formatting aligned with Spotless/Google: keep structure, never merge lines -->
         <setting id="org.eclipse.jdt.core.formatter.comment.format_javadoc_comments" value="true"/>
+        <setting id="org.eclipse.jdt.core.formatter.comment.never_join_lines" value="true"/>
+        <setting id="org.eclipse.jdt.core.formatter.comment.new_lines_at_javadoc_boundaries" value="true"/>
+        <setting id="org.eclipse.jdt.core.formatter.comment.clear_blank_lines_in_javadoc_comment" value="false"/>
+        
+        <!-- Do not format the header comment (legal text must remain untouched) -->
+        <setting id="org.eclipse.jdt.core.formatter.comment.format_header" value="false"/>
+        
+        <!-- Keep other comment formatting consistent -->
         <setting id="org.eclipse.jdt.core.formatter.comment.format_line_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_block_comments" value="true"/>
-        <setting id="org.eclipse.jdt.core.formatter.comment.format_header" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_html" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_source_code" value="true"/>
+        <!-- Backward compatibility alias (ignored by newer Eclipse versions) -->
         <setting id="org.eclipse.jdt.core.formatter.comment.format_java_doc_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_java_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_c_comments" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_cpp_comments" value="true"/>
         
+        <!-- Code line length: 100 chars per Google Java Style Guide -->
         <setting id="org.eclipse.jdt.core.formatter.tabulation.char" value="space"/>
         <setting id="org.eclipse.jdt.core.formatter.tabulation.size" value="2"/>
         <setting id="org.eclipse.jdt.core.formatter.indentation.size" value="2"/>
         <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="100"/>
+        
+        <!-- Line endings: LF (Unix) per Google Java Style Guide -->
+        <setting id="org.eclipse.jdt.core.formatter.lineSeparator" value="&#10;"/>
+        
+        <!-- Annotation formatting: One annotation per line (Google Java Style Guide) -->
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_type" value="insert"/>
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_field" value="insert"/>
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_method" value="insert"/>
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_parameter" value="do not insert"/>
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_local_variable" value="insert"/>
+        
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_type_declaration" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_method_declaration" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_brace_in_constructor_declaration" value="true"/>

@@ -526,7 +526,7 @@ cd ezkey_mobile
 
 ### 🔧 Development Tools
 - **[Documentation Templates](docs/dev-tools/README_TEMPLATE.md)** - Standardized README template
-- **[Code Style Configuration](docs/dev-tools/)** - Eclipse and Google code style files
+- **[Code Style Configuration](docs/dev-tools/README.md)** - Eclipse formatter and Checkstyle configuration files with import instructions
 
 ### 📱 Module Documentation
 - **[Core Module](ezkey-core/README.md)** - Business logic and shared library
@@ -638,14 +638,15 @@ See `ezkey-cli/README.md` for complete documentation and examples.
 This project follows strict formatting and quality standards:
 
 #### Formatting Rules
-- **Indentation**: 4 spaces (no tabs)
+- **Indentation**: 2 spaces (no tabs) - Google Java Style Guide standard
 - **Line Length**: Maximum 100 characters (Google Style Guide standard)
 - **Encoding**: UTF-8 without BOM
 - **Line Endings**: LF (Unix style)
 
 #### Development Tools
-- **Spotless**: Google Java Format with strict 100-character line limit
-- **Checkstyle**: Google Java Style Guide (`docs/dev-tools/google_checks.xml`)
+- **Spotless**: Google Java Format 1.32.0 with strict 100-character line limit (covers `src/main/java` and `src/test/java`)
+- **Checkstyle**: Google Java Style Guide (`docs/dev-tools/google_checks.xml`) - validates formatting rules
+- **Eclipse Formatter**: Import `docs/dev-tools/eclipse_format.xml` in Eclipse/IDE for consistent formatting
 - **EditorConfig**: Consistent formatting (`.editorconfig`)
 - **MapStruct**: Object mapping between DTOs and entities
 - **JaCoCo**: Code coverage reporting
