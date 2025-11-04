@@ -6,6 +6,9 @@ Feature: End-to-End Passwordless Login Flow
 
   @e2e
   Scenario: Complete passwordless authentication flow
+    # Load test data
+    * def testData = call read('classpath:test-data.js')
+    
     # Step 1: Create Integration (Admin API)
     Given url adminUrl
     And path '/integrations'
@@ -55,7 +58,7 @@ Feature: End-to-End Passwordless Login Flow
 
     # Step 4: Verify Enrollment (Auth API)
     # Note: In real scenario, device would generate keys and sign proof token
-    # For testing, we'll simulate this with mock data
+    # For testing, we use mock data from test-data.js
     Given url authUrl
     And path '/enrollments/verify'
     And request
@@ -63,7 +66,7 @@ Feature: End-to-End Passwordless Login Flow
       {
         "enrollmentId": #(enrollmentId),
         "enrollmentProofToken": #(enrollmentProofToken),
-        "devicePublicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z6Qzp3X9r8h5K9YnW1x\nTest Mock Key Data For Testing Purposes Only\n-----END PUBLIC KEY-----"
+        "devicePublicKey": #(testData.mockDevicePublicKey)
       }
       """
     When method POST

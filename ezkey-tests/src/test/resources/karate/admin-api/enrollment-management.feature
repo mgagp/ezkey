@@ -2,7 +2,6 @@ Feature: Admin API - Enrollment Management
 
   Background:
     * url adminBaseUrl
-    * def TestUtils = Java.type('org.ezkey.tests.TestUtils')
 
   Scenario: Create an enrollment
     # First create an integration

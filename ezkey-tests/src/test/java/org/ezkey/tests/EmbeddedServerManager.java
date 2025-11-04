@@ -12,6 +12,8 @@ package org.ezkey.tests;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.ezkey.admin.AdminApplication;
+import org.ezkey.auth.AuthApplication;
 import org.ezkey.tests.config.TestSecurityConfig;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
@@ -185,9 +187,7 @@ public class EmbeddedServerManager {
   private void startAdminApi() throws Exception {
     log.info("Starting Admin API...");
 
-    SpringApplication app =
-        new SpringApplication(
-            Class.forName("org.ezkey.admin.AdminApplication"), TestSecurityConfig.class);
+    SpringApplication app = new SpringApplication(AdminApplication.class, TestSecurityConfig.class);
     app.setWebApplicationType(WebApplicationType.SERVLET);
 
     // Override database and security properties
@@ -216,7 +216,7 @@ public class EmbeddedServerManager {
   private void startAuthApi() throws Exception {
     log.info("Starting Auth API...");
 
-    SpringApplication app = new SpringApplication();
+    SpringApplication app = new SpringApplication(AuthApplication.class);
     app.setWebApplicationType(WebApplicationType.SERVLET);
 
     // Override database properties
@@ -231,7 +231,6 @@ public class EmbeddedServerManager {
     app.setDefaultProperties(properties);
 
     try {
-      app.setMainApplicationClass(Class.forName("org.ezkey.auth.AuthApplication"));
       authContext = app.run();
       authUrl = "http://localhost:8080";
       log.info("Auth API started on port 8080");
