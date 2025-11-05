@@ -46,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>Auth API Endpoints (Mobile):</b>
  *
  * <ul>
- *   <li><b>GET /api/v1/enrollments/bind/{enrollmentId}</b> - Initiate device binding to enrollment
+ *   <li><b>POST /api/v1/enrollments/bind</b> - Initiate device binding using proof token payload
  *   <li><b>POST /api/v1/enrollments/verify</b> - Complete enrollment verification process
  * </ul>
  *

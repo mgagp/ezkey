@@ -50,7 +50,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p><b>Critical Test Coverage:</b>
  *
  * <ul>
- *   <li>GET /api/v1/enrollments/bind/{enrollmentId} - Device binding initiation
+ *   <li>POST /api/v1/enrollments/bind - Device binding initiation
  *   <li>POST /api/v1/enrollments/verify - Enrollment verification completion
  *   <li>Security validation - Cryptographic key exchange
  *   <li>State management - Proper enrollment state transitions

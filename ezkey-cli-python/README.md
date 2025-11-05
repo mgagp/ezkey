@@ -315,7 +315,7 @@ ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhos
 
 ### Auth Commands
 
-- `ezkey auth enrollment bind --id <id>` - Bind enrollment to device
+- `ezkey auth enrollment bind --enrollment-id <id> --enrollment-proof-token <token>` - Bind enrollment to device
 - `ezkey auth enrollment verify --id <id>` - Verify enrollment
 - `ezkey auth pending` - Check for pending auth attempts
 - `ezkey auth respond --id <id>` - Respond to auth attempt

@@ -472,9 +472,9 @@ public class AdaptiveSecurityService {
 echo "Testing enrollment enumeration protection..."
 for i in {1..100}; do
     response=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST "http://localhost:8080/api/v1/auth-attempts/pending/$i" \
+        -X POST "http://localhost:8080/api/v1/auth-attempts/pending" \
         -H "Content-Type: application/json" \
-        -d '{"enrollmentId":'$i',"deviceProofToken":"test","deviceProofTokenSigned":"test"}')
+        -d '{"enrollmentId":'$i',"enrollmentProofToken":"test","deviceProofToken":"test","deviceProofTokenSigned":"test"}')
     
     if [ "$response" = "200" ]; then
         echo "VULNERABILITY: Enrollment $i exists and responded"
@@ -489,9 +489,9 @@ done
 echo "Testing rate limiting..."
 for i in {1..20}; do
     response=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST "http://localhost:8080/api/v1/auth-attempts/pending/test-uuid" \
+        -X POST "http://localhost:8080/api/v1/auth-attempts/pending" \
         -H "Content-Type: application/json" \
-        -d '{"enrollmentId":"test-uuid","deviceProofToken":"test","deviceProofTokenSigned":"test"}')
+        -d '{"enrollmentId":"test-uuid","enrollmentProofToken":"test","deviceProofToken":"test","deviceProofTokenSigned":"test"}')
     
     echo "Request $i: HTTP $response"
     if [ "$response" = "429" ]; then
@@ -515,14 +515,22 @@ def timing_attack_test():
     for _ in range(100):
         # Test with valid-looking signature
         start = time.perf_counter()
-        requests.post('/api/v1/auth-attempts/pending/test-uuid', 
-                     json={'deviceProofTokenSigned': 'valid-looking-signature'})
+        requests.post('/api/v1/auth-attempts/pending', 
+                     json={
+                         'enrollmentId': 'test-uuid',
+                         'enrollmentProofToken': 'test',
+                         'deviceProofTokenSigned': 'valid-looking-signature'
+                     })
         valid_times.append(time.perf_counter() - start)
         
         # Test with obviously invalid signature
         start = time.perf_counter()
-        requests.post('/api/v1/auth-attempts/pending/test-uuid',
-                     json={'deviceProofTokenSigned': 'invalid'})
+        requests.post('/api/v1/auth-attempts/pending',
+                     json={
+                         'enrollmentId': 'test-uuid',
+                         'enrollmentProofToken': 'test',
+                         'deviceProofTokenSigned': 'invalid'
+                     })
         invalid_times.append(time.perf_counter() - start)
     
     valid_avg = statistics.mean(valid_times)

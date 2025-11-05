@@ -205,7 +205,7 @@ ezkey admin api-key revoke --id 42
 
 ```bash
 # Bind enrollment to device
-ezkey auth enrollment bind --id 456
+ezkey auth enrollment bind --enrollment-id 456 --enrollment-proof-token EZK-ABC123
 
 # Verify enrollment
 ezkey auth enrollment verify --id 456
