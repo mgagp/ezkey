@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document describes the implementation of protection against enumeration attacks on the enrollment bind endpoint in the auth-api. The current `GET /api/v1/enrollments/bind/{enrollmentId}` endpoint is vulnerable to enumeration attacks where attackers can systematically test enrollment IDs to discover valid enrollments and obtain sensitive enrollment proof tokens.
+This document describes the implementation of protection against enumeration attacks on the enrollment bind endpoint in the auth-api. The legacy `GET /api/v1/enrollments/bind/{enrollmentId}` endpoint allowed attackers to systematically test enrollment IDs to discover valid enrollments and obtain sensitive enrollment proof tokens. This document captures that risk and the now-adopted mitigation.
 
 ## Problem Statement
 
-### Current Vulnerability
+### Legacy Vulnerability
 
-The enrollment bind endpoint currently uses a simple path parameter approach:
+The original enrollment bind endpoint used a simple path parameter approach:
 
 ```java
 @GetMapping("/bind/{enrollmentId}")
@@ -28,7 +28,7 @@ public ResponseEntity<EnrollmentBindResponseDto> bind(@PathVariable("enrollmentI
 - **Data Exposure**: Sensitive enrollment metadata and cryptographic tokens
 - **Compliance**: Potential violation of security best practices
 
-## Current Enrollment Flow
+## Enrollment Flow (Before Mitigation)
 
 ### 1. Enrollment Creation (Admin-API)
 ```java
@@ -50,7 +50,7 @@ response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
 request.setEnrollmentProofTokenSigned(signature);
 ```
 
-## Proposed Solution
+## Mitigation Summary
 
 ### Security Principle: Proof Token Authentication
 
@@ -63,7 +63,7 @@ Transform the enrollment ID from a public identifier to a hidden parameter, requ
 GET /api/v1/enrollments/bind/123
 ```
 
-**After (Secure):**
+**After (Secure – current behavior):**
 ```http
 POST /api/v1/enrollments/bind
 Content-Type: application/json
