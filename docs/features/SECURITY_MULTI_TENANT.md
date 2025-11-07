@@ -692,7 +692,7 @@ curl -X POST http://localhost:9080/api/v1/admin/mfa/enrollment-zero \
 {
   "enrollmentId": 1,
   "qrCodeData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
-  "enrollmentUrl": "http://localhost:8080/api/v1/enrollments/bind/1",
+  "enrollmentUrl": "http://localhost:8080/api/v1/enrollments/bind",
   "challenge": 123456
 }
 ```
