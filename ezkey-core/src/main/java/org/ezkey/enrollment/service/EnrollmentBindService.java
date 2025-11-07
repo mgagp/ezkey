@@ -18,6 +18,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -125,10 +126,19 @@ public class EnrollmentBindService {
         "Step 1: Performing read-only pre-checks with proof token validation for enrollment ID: {}",
         request.getEnrollmentId());
 
+    String proofTokenHash = SensitiveDataHasher.sha256Hex(request.getEnrollmentProofToken());
+
+    if (proofTokenHash == null) {
+      logger.warn(
+          "Validation failed: Missing or blank enrollment proof token for ID: {}",
+          request.getEnrollmentId());
+      throw new IllegalArgumentException("Enrollment binding failed");
+    }
+
     Enrollment enrollment =
         enrollmentRepository
-            .findByEnrollmentIdAndEnrollmentProofToken(
-                request.getEnrollmentId(), request.getEnrollmentProofToken())
+            .findByEnrollmentIdAndEnrollmentProofTokenHash(
+                request.getEnrollmentId(), proofTokenHash)
             .orElse(null);
 
     if (enrollment == null) {

@@ -19,6 +19,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.NoPendingAuthAttemptException;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,9 +122,16 @@ public class AuthAttemptPendingService {
    */
   private Enrollment validateEnrollment(AuthAttemptPendingRequest request) {
     // Find enrollment by proof token instead of ID
+    String proofTokenHash = SensitiveDataHasher.sha256Hex(request.getEnrollmentProofToken());
+
+    if (proofTokenHash == null) {
+      logger.warn("Missing enrollment proof token");
+      throw new IllegalArgumentException("Authentication request failed");
+    }
+
     Enrollment enrollment =
         enrollmentRepository
-            .findByEnrollmentProofTokenAndActive(request.getEnrollmentProofToken(), true)
+            .findByEnrollmentProofTokenHashAndActive(proofTokenHash, true)
             .orElseThrow(
                 () -> {
                   logger.warn("Invalid enrollment proof token provided");
@@ -170,7 +178,10 @@ public class AuthAttemptPendingService {
     }
 
     // Check device proof token uniqueness
-    if (authAttemptRepository.existsByDeviceProofToken(request.getDeviceProofToken())) {
+    String deviceProofTokenHash = SensitiveDataHasher.sha256Hex(request.getDeviceProofToken());
+
+    if (deviceProofTokenHash != null
+        && authAttemptRepository.existsByDeviceProofTokenHash(deviceProofTokenHash)) {
       logger.warn("Device proof token already used for enrollment: {}", request.getEnrollmentId());
       throw new IllegalArgumentException("Authentication request failed");
     }

@@ -92,11 +92,13 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     integration2 = integrationRepository.save(integration2);
     integrationId2 = integration2.getId();
 
-    // Create test enrollments
+    // Create test enrollments with unique tokens to avoid hash collisions
+    String uniqueSuffix = System.nanoTime() + "-" + Thread.currentThread().getId();
+
     enrollment1 = new Enrollment();
     enrollment1.setIntegrationId(integrationId);
     enrollment1.setEnrollmentName("Test Enrollment 1");
-    enrollment1.setEnrollmentProofToken("proof-token-1");
+    enrollment1.setEnrollmentProofToken("proof-token-1-" + uniqueSuffix);
     enrollment1.setEnrollmentChallenge(123456);
     enrollment1.setStatus(EnrollmentStatus.CREATED);
     enrollment1.setActive(false);
@@ -108,7 +110,7 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     enrollment2 = new Enrollment();
     enrollment2.setIntegrationId(integrationId);
     enrollment2.setEnrollmentName("Test Enrollment 2");
-    enrollment2.setEnrollmentProofToken("proof-token-2");
+    enrollment2.setEnrollmentProofToken("proof-token-2-" + uniqueSuffix);
     enrollment2.setEnrollmentChallenge(654321);
     enrollment2.setStatus(EnrollmentStatus.BOUND);
     enrollment2.setActive(false);
@@ -120,14 +122,14 @@ class EnrollmentRepositoryTest extends PostgreSQLTestBase {
     enrollment3 = new Enrollment();
     enrollment3.setIntegrationId(integrationId2); // Different integration
     enrollment3.setEnrollmentName("Test Enrollment 3");
-    enrollment3.setEnrollmentProofToken("proof-token-3");
+    enrollment3.setEnrollmentProofToken("proof-token-3-" + uniqueSuffix);
     enrollment3.setEnrollmentChallenge(789012);
     enrollment3.setStatus(EnrollmentStatus.VERIFIED);
     enrollment3.setActive(true);
     enrollment3.setAuthAttemptChallengeRequired(false);
     enrollment3.setIntegrationPublicKey("integration-public-key-3");
     enrollment3.setIntegrationPrivateKey("integration-private-key-3");
-    enrollment3.setDevicePublicKey("device-public-key-3");
+    enrollment3.setDevicePublicKey("device-public-key-3-" + uniqueSuffix);
     enrollment3.setCreatedAt(OffsetDateTime.now());
 
     // Save to database

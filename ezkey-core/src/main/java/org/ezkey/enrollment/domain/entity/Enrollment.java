@@ -23,6 +23,7 @@ import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.security.EncryptionService;
+import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -81,10 +82,21 @@ public class Enrollment {
   private Integer enrollmentChallenge;
 
   /**
-   * Unique enrollment proof token for identification. Used for enrollment lookup and verification.
+   * Encrypted enrollment proof token persisted in the database.
+   *
+   * <p>The plaintext value is maintained in the transient field {@link #enrollmentProofToken} and
+   * encrypted just before persistence by {@code EncryptionEntityListener}. The encrypted value uses
+   * the "ENC:" prefix provided by {@link org.ezkey.security.EncryptionService}.
    */
-  @Column(name = "enrollment_proof_token", unique = true)
-  private String enrollmentProofToken;
+  @Column(name = "enrollment_proof_token", columnDefinition = "TEXT")
+  private String encryptedEnrollmentProofToken;
+
+  /** SHA-256 hash of the enrollment proof token for secure lookup and uniqueness validation. */
+  @Column(name = "enrollment_proof_token_hash", length = 128, unique = true)
+  private String enrollmentProofTokenHash;
+
+  /** Transient plaintext representation of the enrollment proof token. */
+  @Transient private String enrollmentProofToken;
 
   /**
    * Flag indicating if authentication attempts require challenge. Used to configure authentication
@@ -200,11 +212,39 @@ public class Enrollment {
   }
 
   public String getEnrollmentProofToken() {
+    if (enrollmentProofToken != null) {
+      return enrollmentProofToken;
+    }
+
+    if (encryptedEnrollmentProofToken == null) {
+      return null;
+    }
+
+    EncryptionService service = getEncryptionService();
+    if (service != null && service.isEncryptionAvailable()) {
+      if (service.isEncrypted(encryptedEnrollmentProofToken)) {
+        try {
+          enrollmentProofToken = service.decrypt(encryptedEnrollmentProofToken);
+          return enrollmentProofToken;
+        } catch (Exception exception) {
+          LoggerFactory.getLogger(Enrollment.class)
+              .warn(
+                  "Failed to decrypt enrollment proof token for enrollment {}. Returning as-is.",
+                  enrollmentId,
+                  exception);
+          return encryptedEnrollmentProofToken;
+        }
+      }
+    }
+
+    enrollmentProofToken = encryptedEnrollmentProofToken;
     return enrollmentProofToken;
   }
 
   public void setEnrollmentProofToken(String enrollmentProofToken) {
     this.enrollmentProofToken = enrollmentProofToken;
+    this.enrollmentProofTokenHash = SensitiveDataHasher.sha256Hex(enrollmentProofToken);
+    this.encryptedEnrollmentProofToken = enrollmentProofToken;
   }
 
   public Boolean getAuthAttemptChallengeRequired() {
@@ -333,6 +373,14 @@ public class Enrollment {
    */
   public void setDevicePublicKeyHash(String devicePublicKeyHash) {
     this.devicePublicKeyHash = devicePublicKeyHash;
+  }
+
+  public String getEnrollmentProofTokenHash() {
+    return enrollmentProofTokenHash;
+  }
+
+  public void setEnrollmentProofTokenHash(String enrollmentProofTokenHash) {
+    this.enrollmentProofTokenHash = enrollmentProofTokenHash;
   }
 
   public OffsetDateTime getCreatedAt() {

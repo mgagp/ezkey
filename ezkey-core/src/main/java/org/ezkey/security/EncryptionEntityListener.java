@@ -3,6 +3,8 @@ package org.ezkey.security;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import java.util.function.Supplier;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,88 +127,129 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   @PrePersist
   @PreUpdate
   public void encrypt(Object entity) {
+    EncryptionService service = getEncryptionService();
+
     if (entity instanceof Enrollment enrollment) {
-      Integer enrollmentId = enrollment.getEnrollmentId();
-
-      // Get plaintext from transient field (setIntegrationPrivateKey stores plaintext here)
-      // Use reflection to access the transient field directly
-      String plaintext = getTransientPrivateKey(enrollment);
-
-      if (plaintext == null || plaintext.isBlank()) {
-        logger.debug("Integration private key is null or blank for enrollment {}", enrollmentId);
-        return;
-      }
-
-      EncryptionService service = getEncryptionService();
-      if (service == null || !service.isEncryptionAvailable()) {
-        // Encryption not available - copy plaintext to persistent field for backward compatibility
-        // This ensures the value persists in tests and when encryption is disabled
-        logger.debug(
-            "Encryption not available for enrollment {}, storing plaintext in persistent field",
-            enrollmentId);
-        setEncryptedPrivateKey(enrollment, plaintext);
-        return;
-      }
-
-      // Only encrypt if NOT already encrypted (strict check: must start with "ENC:")
-      // Do NOT use looksEncrypted() here - it has legacy heuristics that may match plaintext
-      if (!service.isEncrypted(plaintext)) {
-        try {
-          String encrypted = service.encrypt(plaintext);
-          // Store encrypted value in the persistent field
-          setEncryptedPrivateKey(enrollment, encrypted);
-          logger.debug("Encrypted integration private key for enrollment {}", enrollmentId);
-        } catch (Exception e) {
-          logger.error("Failed to encrypt integration private key", e);
-          // Fallback: store plaintext if encryption fails
-          setEncryptedPrivateKey(enrollment, plaintext);
-        }
-      } else {
-        logger.debug(
-            "Integration private key for enrollment {} already encrypted, skipping", enrollmentId);
-      }
+      encryptField(
+          enrollment,
+          "integrationPrivateKey",
+          "encryptedIntegrationPrivateKey",
+          service,
+          () -> "integration private key for enrollment " + enrollment.getEnrollmentId());
+      encryptField(
+          enrollment,
+          "enrollmentProofToken",
+          "encryptedEnrollmentProofToken",
+          service,
+          () -> "enrollment proof token for enrollment " + enrollment.getEnrollmentId());
+    } else if (entity instanceof AuthAttempt authAttempt) {
+      encryptField(
+          authAttempt,
+          "authAttemptProofToken",
+          "encryptedAuthAttemptProofToken",
+          service,
+          () -> "auth attempt proof token for authAttempt " + authAttempt.getAuthAttemptId());
+      encryptField(
+          authAttempt,
+          "deviceProofToken",
+          "encryptedDeviceProofToken",
+          service,
+          () -> "device proof token for authAttempt " + authAttempt.getAuthAttemptId());
     }
   }
 
-  /**
-   * Gets the plaintext private key from the transient field via reflection.
-   *
-   * @param enrollment the enrollment entity
-   * @return the plaintext private key from transient field, or null if not set
-   */
-  private String getTransientPrivateKey(Enrollment enrollment) {
+  private void encryptField(
+      Object entity,
+      String transientFieldName,
+      String persistentFieldName,
+      EncryptionService service,
+      Supplier<String> contextSupplier) {
+
+    String context = contextSupplier.get();
+    String plaintext = getFieldValue(entity, transientFieldName);
+
+    if (plaintext == null || plaintext.isBlank()) {
+      logger.trace("Field {} is null or blank for {}", transientFieldName, context);
+      return;
+    }
+
+    if (service == null || !service.isEncryptionAvailable()) {
+      logger.debug("Encryption unavailable, storing plaintext for {}", context);
+      setFieldValue(entity, persistentFieldName, plaintext);
+      return;
+    }
+
+    if (service.isEncrypted(plaintext)) {
+      logger.trace("Field {} already encrypted for {}", transientFieldName, context);
+      setFieldValue(entity, persistentFieldName, plaintext);
+      return;
+    }
+
     try {
-      java.lang.reflect.Field field = Enrollment.class.getDeclaredField("integrationPrivateKey");
+      String encrypted = service.encrypt(plaintext);
+      setFieldValue(entity, persistentFieldName, encrypted);
+      logger.debug("Encrypted {}", context);
+    } catch (Exception exception) {
+      logger.error("Failed to encrypt {}", context, exception);
+      setFieldValue(entity, persistentFieldName, plaintext);
+    }
+  }
+
+  private String getFieldValue(Object entity, String fieldName) {
+    try {
+      java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
       field.setAccessible(true);
-      return (String) field.get(enrollment);
-    } catch (Exception e) {
-      logger.debug("Failed to access transient private key field", e);
+      return (String) field.get(entity);
+    } catch (NoSuchFieldException e) {
+      Class<?> superClass = entity.getClass().getSuperclass();
+      if (superClass != null) {
+        try {
+          java.lang.reflect.Field field = superClass.getDeclaredField(fieldName);
+          field.setAccessible(true);
+          return (String) field.get(entity);
+        } catch (Exception exception) {
+          logger.debug(
+              "Failed to read field {} on {}",
+              fieldName,
+              entity.getClass().getSimpleName(),
+              exception);
+        }
+      }
+      return null;
+    } catch (Exception exception) {
+      logger.debug(
+          "Failed to read field {} on {}", fieldName, entity.getClass().getSimpleName(), exception);
       return null;
     }
   }
 
-  /**
-   * Sets the encrypted private key in the persistent field via reflection.
-   *
-   * @param enrollment the enrollment entity
-   * @param encrypted the encrypted value to store
-   */
-  private void setEncryptedPrivateKey(Enrollment enrollment, String encrypted) {
+  private void setFieldValue(Object entity, String fieldName, String value) {
     try {
-      java.lang.reflect.Field field =
-          Enrollment.class.getDeclaredField("encryptedIntegrationPrivateKey");
+      java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
       field.setAccessible(true);
-      field.set(enrollment, encrypted);
-    } catch (Exception e) {
-      logger.error("Failed to set encrypted private key field", e);
+      field.set(entity, value);
+    } catch (NoSuchFieldException e) {
+      Class<?> superClass = entity.getClass().getSuperclass();
+      if (superClass != null) {
+        try {
+          java.lang.reflect.Field field = superClass.getDeclaredField(fieldName);
+          field.setAccessible(true);
+          field.set(entity, value);
+          return;
+        } catch (Exception exception) {
+          logger.error(
+              "Failed to write field {} on {}",
+              fieldName,
+              entity.getClass().getSimpleName(),
+              exception);
+        }
+      }
+    } catch (Exception exception) {
+      logger.error(
+          "Failed to write field {} on {}",
+          fieldName,
+          entity.getClass().getSimpleName(),
+          exception);
     }
   }
-
-  /**
-   * PostLoad callback removed - decryption now happens on-demand in getIntegrationPrivateKey().
-   *
-   * <p>With the @Transient field approach, we no longer need to decrypt in @PostLoad. The
-   * decryption happens lazily when getIntegrationPrivateKey() is called, avoiding the dirty
-   * checking issue that triggered re-encryption cycles.
-   */
 }

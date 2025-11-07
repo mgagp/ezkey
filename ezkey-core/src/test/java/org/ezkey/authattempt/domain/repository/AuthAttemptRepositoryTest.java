@@ -21,6 +21,7 @@ import java.util.Optional;
 import org.ezkey.PostgreSQLTestBase;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.security.SensitiveDataHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  *   <li>updateStatusIfCurrent() - Conditional status updates
  *   <li>findByEnrollmentIdAndStatusIn() - Supersession logic queries
  *   <li>updateStatusForMultipleAttempts() - Batch status updates
- *   <li>existsByDeviceProofToken() - Replay attack prevention
+ *   <li>existsByDeviceProofTokenHash() - Replay attack prevention
  *   <li>findNewerAttemptByEnrollmentId() - Supersession detection
  * </ul>
  *
@@ -102,28 +103,30 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
     enrollment = enrollmentRepository.save(enrollment);
     enrollmentId = enrollment.getEnrollmentId();
 
-    // Create test auth attempts
+    // Create test auth attempts with unique tokens to avoid hash collisions
+    String uniqueSuffix = System.nanoTime() + "-" + Thread.currentThread().getId();
+
     authAttempt1 = new AuthAttempt();
     authAttempt1.setEnrollmentId(enrollmentId);
     authAttempt1.setAuthAttemptStatus(AuthAttemptStatus.PENDING);
-    authAttempt1.setAuthAttemptProofToken("proof-1");
-    authAttempt1.setDeviceProofToken("token-1");
+    authAttempt1.setAuthAttemptProofToken("proof-1-" + uniqueSuffix);
+    authAttempt1.setDeviceProofToken("token-1-" + uniqueSuffix);
     authAttempt1.setCreatedAt(now.minusMinutes(10));
     authAttempt1.setExpiresAt(now.plusMinutes(5));
 
     authAttempt2 = new AuthAttempt();
     authAttempt2.setEnrollmentId(enrollmentId);
     authAttempt2.setAuthAttemptStatus(AuthAttemptStatus.READ);
-    authAttempt2.setAuthAttemptProofToken("proof-2");
-    authAttempt2.setDeviceProofToken("token-2");
+    authAttempt2.setAuthAttemptProofToken("proof-2-" + uniqueSuffix);
+    authAttempt2.setDeviceProofToken("token-2-" + uniqueSuffix);
     authAttempt2.setCreatedAt(now.minusMinutes(5));
     authAttempt2.setExpiresAt(now.plusMinutes(10));
 
     authAttempt3 = new AuthAttempt();
     authAttempt3.setEnrollmentId(enrollmentId);
     authAttempt3.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
-    authAttempt3.setAuthAttemptProofToken("proof-3");
-    authAttempt3.setDeviceProofToken("token-3");
+    authAttempt3.setAuthAttemptProofToken("proof-3-" + uniqueSuffix);
+    authAttempt3.setDeviceProofToken("token-3-" + uniqueSuffix);
     authAttempt3.setCreatedAt(now);
     authAttempt3.setExpiresAt(now.plusMinutes(15));
 
@@ -312,20 +315,24 @@ class AuthAttemptRepositoryTest extends PostgreSQLTestBase {
   // ===== REPLAY ATTACK PREVENTION TESTS =====
 
   @Test
-  @DisplayName("existsByDeviceProofToken() - Should return true when token exists")
-  void existsByDeviceProofToken_WhenTokenExists_ShouldReturnTrue() {
+  @DisplayName("existsByDeviceProofTokenHash() - Should return true when token exists")
+  void existsByDeviceProofTokenHash_WhenTokenExists_ShouldReturnTrue() {
     // Act
-    boolean exists = authAttemptRepository.existsByDeviceProofToken("token-1");
+    boolean exists =
+        authAttemptRepository.existsByDeviceProofTokenHash(
+            SensitiveDataHasher.sha256Hex(authAttempt1.getDeviceProofToken()));
 
     // Assert
     assertTrue(exists);
   }
 
   @Test
-  @DisplayName("existsByDeviceProofToken() - Should return false when token doesn't exist")
-  void existsByDeviceProofToken_WhenTokenDoesNotExist_ShouldReturnFalse() {
+  @DisplayName("existsByDeviceProofTokenHash() - Should return false when token doesn't exist")
+  void existsByDeviceProofTokenHash_WhenTokenDoesNotExist_ShouldReturnFalse() {
     // Act
-    boolean exists = authAttemptRepository.existsByDeviceProofToken("non-existent-token");
+    boolean exists =
+        authAttemptRepository.existsByDeviceProofTokenHash(
+            SensitiveDataHasher.sha256Hex("non-existent-token"));
 
     // Assert
     assertFalse(exists);

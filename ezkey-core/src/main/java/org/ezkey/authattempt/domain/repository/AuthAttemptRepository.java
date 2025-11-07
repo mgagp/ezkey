@@ -186,16 +186,17 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   List<AuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
   /**
-   * Checks if a device proof token already exists in any authorization attempt.
+   * Checks if a device proof token already exists in any authorization attempt using its hash.
    *
    * <p>This method is used to ensure device proof token uniqueness across all authorization
    * attempts to prevent replay attacks.
    *
-   * @param deviceProofToken the device proof token to check
-   * @return true if the device proof token already exists, false otherwise
+   * @param deviceProofTokenHash the SHA-256 hash of the device proof token to check
+   * @return true if the device proof token hash already exists, false otherwise
    */
-  @Query("SELECT COUNT(a) > 0 FROM AuthAttempt a WHERE a.deviceProofToken = :deviceProofToken")
-  boolean existsByDeviceProofToken(@Param("deviceProofToken") String deviceProofToken);
+  @Query(
+      "SELECT COUNT(a) > 0 FROM AuthAttempt a WHERE a.deviceProofTokenHash = :deviceProofTokenHash")
+  boolean existsByDeviceProofTokenHash(@Param("deviceProofTokenHash") String deviceProofTokenHash);
 
   /**
    * Finds a newer authentication attempt for the same enrollment.
