@@ -1,0 +1,1 @@
+export {EnrollmentDetailScreen} from './EnrollmentDetailScreen';
