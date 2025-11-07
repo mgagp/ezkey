@@ -8,18 +8,7 @@ import {RootStackParamList} from './types';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-export const AppNavigator: React.FC = () => {
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log('Navigator screens', {
-      HomeScreen,
-      EnrollmentDetailScreen,
-      PendingAuthScreen,
-      EnrollmentWizardScreen,
-    });
-  }
-
-  return (
+export const AppNavigator: React.FC = () => (
     <Stack.Navigator>
       <Stack.Screen
         name="Home"
@@ -42,5 +31,4 @@ export const AppNavigator: React.FC = () => {
         options={{title: 'Add Enrollment'}}
       />
     </Stack.Navigator>
-  );
-};
+);

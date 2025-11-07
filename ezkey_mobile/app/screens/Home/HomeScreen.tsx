@@ -30,10 +30,6 @@ const sortEnrollments = (items: MockEnrollment[]) =>
 type HomeNavigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen: React.FC = () => {
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log('Rendering HomeScreen component');
-  }
   const navigation = useNavigation<HomeNavigation>();
   const {data, isLoading} = useMockEnrollments();
   const setSelected = useEnrollmentStore(store => store.setSelected);

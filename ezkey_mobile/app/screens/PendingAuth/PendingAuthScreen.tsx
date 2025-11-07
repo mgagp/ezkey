@@ -6,10 +6,6 @@ import {RootStackParamList} from '../../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log('Rendering PendingAuthScreen');
-  }
   const {enrollmentId} = route.params;
 
   return (

@@ -6,10 +6,6 @@ import {RootStackParamList} from '../../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log('Rendering EnrollmentWizardScreen');
-  }
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Add enrollment</Text>

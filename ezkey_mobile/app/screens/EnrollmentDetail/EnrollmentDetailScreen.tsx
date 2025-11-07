@@ -8,10 +8,6 @@ import {useEnrollmentStore} from '../../state/enrollmentStore';
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log('Rendering EnrollmentDetailScreen');
-  }
   const {enrollmentId} = route.params;
   const {data} = useMockEnrollments();
   const selected = useEnrollmentStore(store => store.selected);
