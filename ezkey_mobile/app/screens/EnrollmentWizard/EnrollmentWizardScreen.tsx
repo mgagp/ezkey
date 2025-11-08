@@ -1,7 +1,11 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
+import {cryptoService} from '../../services/crypto';
+import {EnrollmentStatus} from '../../services/api/types';
+import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
@@ -13,10 +17,22 @@ type WizardStep = {
   secondaryLabel?: string;
 };
 
+type EnrollmentDraft = {
+  id: string;
+  integrationId: string;
+  integrationName: string;
+  tenantName: string;
+  enrollmentProofToken: string;
+  status: EnrollmentStatus;
+};
+
 const MOCK_DEVICE_NAME = 'Pixel 7 Pro';
 
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const [stepIndex, setStepIndex] = useState(0);
+  const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const saveEnrollment = useSaveEnrollment();
 
   const steps = useMemo<WizardStep[]>(
     () => [
@@ -45,25 +61,72 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       {
         id: 'confirm',
         title: 'Review and finish',
-        description: `You are about to bind ${MOCK_DEVICE_NAME} to your Ezkey enrollment. On the real flow, we generate an RSA key pair, store the private key in secure storage, and verify the proof token before activating.`,
+        description: draft
+          ? `You are about to bind ${MOCK_DEVICE_NAME} to ${draft.integrationName}. We will generate an RSA key pair, store the private key securely, and verify the proof token before activating.`
+          : `You are about to bind ${MOCK_DEVICE_NAME} to your Ezkey enrollment. On the real flow, we generate an RSA key pair, store the private key in secure storage, and verify the proof token before activating.`,
         actionLabel: 'Finish',
         secondaryLabel: 'Back to Home',
       },
     ],
-    [],
+    [draft],
   );
 
   const currentStep = steps[stepIndex];
   const progress = (stepIndex + 1) / steps.length;
 
-  const handlePrimary = useCallback(() => {
-    if (stepIndex === steps.length - 1) {
-      Alert.alert('Enrollment simulated', 'Returning to the home screen.');
-      navigation.popToTop();
+  const createDraft = useCallback((): EnrollmentDraft => {
+    const timestamp = Date.now();
+    const id = `enr_${timestamp}`;
+    return {
+      id,
+      integrationId: `int-sandbox-${timestamp}`,
+      integrationName: 'Sandbox Integration',
+      tenantName: 'Internal Tools',
+      enrollmentProofToken: `EZK-${timestamp.toString(36).toUpperCase()}`,
+      status: 'active',
+    };
+  }, []);
+
+  const finalizeEnrollment = useCallback(async () => {
+    if (!draft) {
+      Alert.alert('Missing scan', 'Scan the enrollment QR before finishing.');
       return;
     }
+    const alias = `device-${draft.id}`;
+    const now = new Date().toISOString();
+    setIsSubmitting(true);
+    try {
+      await cryptoService.ensureKeyPair(alias);
+      const record: StoredEnrollment = {
+        ...draft,
+        createdAt: now,
+        lastActivityAt: now,
+        favorited: false,
+        logoUri: `https://placehold.co/128x128?text=${draft.integrationName.charAt(0).toUpperCase()}`,
+        deviceAlias: alias,
+      };
+      await saveEnrollment.mutateAsync(record);
+      Alert.alert('Enrollment completed', `${draft.integrationName} is now available.`);
+      navigation.popToTop();
+    } catch (error) {
+      console.error('[EnrollmentWizard] Failed to finalize enrollment', error);
+      Alert.alert('Enrollment failed', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [draft, navigation, saveEnrollment]);
+
+  const handlePrimary = useCallback(() => {
+    const step = steps[stepIndex];
+    if (step.id === 'confirm') {
+      finalizeEnrollment();
+      return;
+    }
+    if (step.id === 'scan') {
+      setDraft(createDraft());
+    }
     setStepIndex(index => Math.min(index + 1, steps.length - 1));
-  }, [navigation, stepIndex, steps.length]);
+  }, [createDraft, finalizeEnrollment, stepIndex, steps]);
 
   const handleSecondary = useCallback(() => {
     if (!currentStep.secondaryLabel) {
@@ -76,16 +139,20 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       );
       return;
     }
-    navigation.popToTop();
-  }, [currentStep, navigation]);
+    if (!isSubmitting) {
+      navigation.popToTop();
+    }
+  }, [currentStep, isSubmitting, navigation]);
 
   const handleBack = useCallback(() => {
     if (stepIndex === 0) {
       navigation.goBack();
       return;
     }
-    setStepIndex(index => Math.max(index - 1, 0));
-  }, [navigation, stepIndex]);
+    if (!isSubmitting) {
+      setStepIndex(index => Math.max(index - 1, 0));
+    }
+  }, [isSubmitting, navigation, stepIndex]);
 
   return (
     <View style={styles.container}>
@@ -104,11 +171,25 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         <Text style={styles.stepTitle}>{currentStep.title}</Text>
         <Text style={styles.stepDescription}>{currentStep.description}</Text>
       </View>
-      <TouchableOpacity onPress={handlePrimary} style={styles.primaryButton}>
-        <Text style={styles.primaryLabel}>{currentStep.actionLabel}</Text>
+      <TouchableOpacity
+        onPress={handlePrimary}
+        style={[
+          styles.primaryButton,
+          isSubmitting && currentStep.id === 'confirm' ? styles.disabledButton : undefined,
+        ]}
+        disabled={isSubmitting && currentStep.id === 'confirm'}>
+        <Text style={styles.primaryLabel}>
+          {currentStep.id === 'confirm' && isSubmitting ? 'Finishing…' : currentStep.actionLabel}
+        </Text>
       </TouchableOpacity>
       {currentStep.secondaryLabel ? (
-        <TouchableOpacity onPress={handleSecondary} style={styles.secondaryButton}>
+        <TouchableOpacity
+          onPress={handleSecondary}
+          style={[
+            styles.secondaryButton,
+            isSubmitting && currentStep.id === 'confirm' ? styles.disabledButton : undefined,
+          ]}
+          disabled={isSubmitting && currentStep.id === 'confirm'}>
           <Text style={styles.secondaryLabel}>{currentStep.secondaryLabel}</Text>
         </TouchableOpacity>
       ) : null}
@@ -189,6 +270,9 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: 12,
     alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   secondaryLabel: {
     fontSize: 14,

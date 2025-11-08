@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo} from 'react';
 import {ActivityIndicator, Button, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useMockEnrollments} from '../../hooks/useMockEnrollments';
+import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 
@@ -9,7 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId} = route.params;
-  const {data, isLoading} = useMockEnrollments();
+  const {data, isLoading} = useEnrollments();
   const selectedId = useEnrollmentStore(store => store.selectedId);
   const targetId = enrollmentId ?? selectedId;
 

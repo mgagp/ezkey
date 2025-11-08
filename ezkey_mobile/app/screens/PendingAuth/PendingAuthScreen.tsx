@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
@@ -39,6 +40,7 @@ type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired';
 
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {enrollmentId} = route.params;
+  const {data: enrollments} = useEnrollments();
   const [isLoading, setIsLoading] = useState(true);
   const [attempt, setAttempt] = useState<MockPendingAttempt | undefined>();
   const [state, setState] = useState<AttemptState>('pending');
@@ -46,15 +48,27 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const enrollmentMeta = useMemo(
+    () => enrollments?.find(item => item.id === enrollmentId),
+    [enrollmentId, enrollments],
+  );
+
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setAttempt(MOCK_PENDING_ATTEMPT);
+      setAttempt(prev => {
+        const base = {
+          ...MOCK_PENDING_ATTEMPT,
+          integrationName: enrollmentMeta?.integrationName ?? prev?.integrationName ?? 'Integration',
+          tenantName: enrollmentMeta?.tenantName ?? prev?.tenantName ?? 'Tenant',
+        };
+        return base;
+      });
       setState('pending');
       setChallengeInput('');
       setIsLoading(false);
     }, 450);
     return () => clearTimeout(timeout);
-  }, [enrollmentId]);
+  }, [enrollmentId, enrollmentMeta]);
 
   const formattedWindow = useMemo(() => {
     if (!attempt) {
@@ -111,12 +125,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     setIsLoading(true);
     setAttempt(undefined);
     setTimeout(() => {
-      setAttempt(MOCK_PENDING_ATTEMPT);
+      setAttempt({
+        ...MOCK_PENDING_ATTEMPT,
+        integrationName: enrollmentMeta?.integrationName ?? MOCK_PENDING_ATTEMPT.integrationName,
+        tenantName: enrollmentMeta?.tenantName ?? MOCK_PENDING_ATTEMPT.tenantName,
+      });
       setState('pending');
       setChallengeInput('');
       setIsLoading(false);
     }, 450);
-  }, []);
+  }, [enrollmentMeta]);
 
   const showEmptyState = !isLoading && !attempt;
 

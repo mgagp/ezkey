@@ -5,7 +5,7 @@ import {secureStorage} from './secureStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 
-type EnrollmentRecord = EnrollmentSummary & {
+export type StoredEnrollment = EnrollmentSummary & {
   enrollmentProofToken: string;
   deviceAlias: string;
 };
@@ -30,18 +30,18 @@ class EnrollmentStorage {
     this.metadata = options.metadata;
   }
 
-  static create(useMock = false) {
-    const secure = useMock ? mockSecureStorage : secureStorage;
+  static create({useMockSecure}: {useMockSecure?: boolean} = {}) {
+    const secure = useMockSecure ? mockSecureStorage : secureStorage;
     return new EnrollmentStorage({secure, metadata: AsyncStorage});
   }
 
-  async listEnrollments(): Promise<EnrollmentRecord[]> {
+  async listEnrollments(): Promise<StoredEnrollment[]> {
     const payload = await this.metadata.getItem(ENROLLMENT_COLLECTION_KEY);
     if (!payload) {
       return [];
     }
     try {
-      const parsed = JSON.parse(payload) as EnrollmentRecord[];
+      const parsed = JSON.parse(payload) as StoredEnrollment[];
       return parsed;
     } catch (error) {
       console.warn('[enrollmentStorage] Failed to parse enrollment cache:', error);
@@ -49,14 +49,14 @@ class EnrollmentStorage {
     }
   }
 
-  async saveEnrollment(record: EnrollmentRecord) {
+  async saveEnrollment(record: StoredEnrollment) {
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== record.id).concat(record);
     await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
     await this.secure.setItem(this.aliasKey(record.id), record.deviceAlias);
   }
 
-  async getEnrollmentById(id: string): Promise<EnrollmentRecord | undefined> {
+  async getEnrollmentById(id: string): Promise<StoredEnrollment | undefined> {
     const items = await this.listEnrollments();
     return items.find(item => item.id === id);
   }
@@ -77,7 +77,9 @@ class EnrollmentStorage {
   }
 }
 
-export const enrollmentStorage = EnrollmentStorage.create();
+const DEFAULT_USE_MOCK = __DEV__;
+
+export const enrollmentStorage = EnrollmentStorage.create({useMockSecure: DEFAULT_USE_MOCK});
 
 export type EnrollmentStorageInstance = EnrollmentStorage;
 

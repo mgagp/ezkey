@@ -11,12 +11,12 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useMockEnrollments} from '../../hooks/useMockEnrollments';
+import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
-import {EnrollmentSummary} from '../../services/api/types';
+import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 
-const sortEnrollments = (items: EnrollmentSummary[]) =>
+const sortEnrollments = (items: StoredEnrollment[]) =>
   [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) {
       return -1;
@@ -31,7 +31,7 @@ type HomeNavigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
-  const {data, isLoading} = useMockEnrollments();
+  const {data, isLoading} = useEnrollments();
   const setSelected = useEnrollmentStore(store => store.setSelected);
 
   const enrollments = useMemo(() => (data ? sortEnrollments(data) : []), [data]);
@@ -39,19 +39,19 @@ export const HomeScreen: React.FC = () => {
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
 
   const handleSelect = useCallback(
-    (enrollment: EnrollmentSummary) => {
+    (enrollment: StoredEnrollment) => {
       setSelected(enrollment.id);
       navigation.navigate('EnrollmentDetail', {enrollmentId: enrollment.id});
     },
     [navigation, setSelected],
   );
 
-  const renderEnrollment = useCallback<ListRenderItem<EnrollmentSummary>>(
+  const renderEnrollment = useCallback<ListRenderItem<StoredEnrollment>>(
     ({item}) => <EnrollmentListItem enrollment={item} onPress={handleSelect} />,
     [handleSelect],
   );
 
-  const keyExtractor = useCallback((item: EnrollmentSummary) => item.id, []);
+  const keyExtractor = useCallback((item: StoredEnrollment) => item.id, []);
 
   return (
     <View style={styles.container}>
@@ -83,8 +83,8 @@ const EmptyState: React.FC = () => (
 );
 
 type EnrollmentListItemProps = {
-  enrollment: EnrollmentSummary;
-  onPress: (enrollment: EnrollmentSummary) => void;
+  enrollment: StoredEnrollment;
+  onPress: (enrollment: StoredEnrollment) => void;
 };
 
 const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => (
