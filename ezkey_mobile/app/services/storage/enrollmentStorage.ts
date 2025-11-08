@@ -8,6 +8,8 @@ const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 export type StoredEnrollment = EnrollmentSummary & {
   enrollmentProofToken: string;
   deviceAlias: string;
+  integrationPublicKey?: string;
+  enrollmentName?: string;
 };
 
 type StorageDelegate = {
