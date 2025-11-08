@@ -29,6 +29,15 @@ export const useEnrollments = () =>
     queryFn: fetchEnrollments,
   });
 
+export const useEnrollmentById = (id: string) =>
+  useQuery({
+    queryKey: ['enrollments', id],
+    queryFn: async () => {
+      const items = await fetchEnrollments();
+      return items.find(item => item.id === id);
+    },
+  });
+
 export const useSaveEnrollment = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -9,66 +9,116 @@ import {
   View,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useEnrollments} from '../../hooks/useEnrollments';
+import axios from 'axios';
+import {Buffer} from 'buffer';
 import {RootStackParamList} from '../../navigation/types';
+import {useEnrollmentById} from '../../hooks/useEnrollments';
+import {authAttemptsApi} from '../../services/api/authAttempts';
+import {cryptoService} from '../../services/crypto';
+import {useSecureEnrollmentInfo} from '../../hooks/useSecureEnrollmentInfo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
-type MockPendingAttempt = {
+type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired';
+
+type PendingAttempt = {
   authAttemptId: string;
+  authAttemptProofToken: string;
+  authAttemptProofTokenSignedByIntegration: string;
   integrationName: string;
   tenantName: string;
   createdAt: string;
-  expiresAt: string;
   challengeRequired: boolean;
-  challengeHint?: string;
-  challengeValue?: string;
 };
-
-const MOCK_PENDING_ATTEMPT: MockPendingAttempt = {
-  authAttemptId: 'auth_987',
-  integrationName: 'Acme Bank',
-  tenantName: 'Retail Banking',
-  createdAt: '2025-10-21T13:57:00.000Z',
-  expiresAt: '2025-10-21T14:02:00.000Z',
-  challengeRequired: true,
-  challengeHint: 'Enter the 6-digit code shown in your admin portal.',
-  challengeValue: '482913',
-};
-
-type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired';
 
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {enrollmentId} = route.params;
-  const {data: enrollments} = useEnrollments();
-  const [isLoading, setIsLoading] = useState(true);
-  const [attempt, setAttempt] = useState<MockPendingAttempt | undefined>();
+  const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
+  const {
+    data: secureInfo,
+    isLoading: isSecureInfoLoading,
+  } = useSecureEnrollmentInfo(enrollmentId);
+  const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
   const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
+  const [globalError, setGlobalError] = useState<string | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const enrollmentMeta = useMemo(
-    () => enrollments?.find(item => item.id === enrollmentId),
-    [enrollmentId, enrollments],
-  );
+  const extractErrorMessage = useCallback((error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      const message =
+        error.response?.data?.message ??
+        error.response?.data?.error ??
+        error.message ??
+        'Request failed.';
+      return message;
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'Unexpected error.';
+  }, []);
+
+  const loadPendingAttempt = useCallback(async () => {
+    if (!enrollment) {
+      return;
+    }
+    if (!secureInfo) {
+      setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
+      return;
+    }
+    setLoading(true);
+    setGlobalError(undefined);
+    try {
+      const deviceProofToken = Buffer.from(Date.now().toString(), 'utf-8').toString('base64');
+      const deviceAlias = secureInfo.deviceAlias;
+      const deviceProofTokenSigned = await cryptoService.sign(deviceAlias, deviceProofToken);
+      const response = await authAttemptsApi.pending({
+        enrollmentId: enrollment.id,
+        enrollmentProofToken: enrollment.enrollmentProofToken,
+        deviceProofToken,
+        deviceProofTokenSigned,
+      });
+
+      if (!response) {
+        setAttempt(undefined);
+        setState('pending');
+        return;
+      }
+
+      setAttempt({
+        authAttemptId: response.authAttemptId,
+        authAttemptProofToken: response.authAttemptProofToken,
+        authAttemptProofTokenSignedByIntegration: response.authAttemptProofTokenSignedByIntegration,
+        challengeRequired: response.authAttemptChallengeRequired,
+        integrationName: enrollment.integrationName,
+        tenantName: enrollment.tenantName,
+        createdAt: new Date().toISOString(),
+      });
+      setChallengeInput('');
+      setFormError(undefined);
+      setState('pending');
+    } catch (error) {
+      setGlobalError(extractErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [enrollment, extractErrorMessage, secureInfo]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setAttempt(prev => {
-        const base = {
-          ...MOCK_PENDING_ATTEMPT,
-          integrationName: enrollmentMeta?.integrationName ?? prev?.integrationName ?? 'Integration',
-          tenantName: enrollmentMeta?.tenantName ?? prev?.tenantName ?? 'Tenant',
-        };
-        return base;
-      });
+    if (!isSecureInfoLoading && secureInfo === null) {
+      setAttempt(undefined);
       setState('pending');
-      setChallengeInput('');
-      setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timeout);
-  }, [enrollmentId, enrollmentMeta]);
+      setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
+      return;
+    }
+    if (isEnrollmentLoading || isSecureInfoLoading || !enrollment || !secureInfo) {
+      return;
+    }
+    loadPendingAttempt();
+  }, [enrollment, isEnrollmentLoading, isSecureInfoLoading, loadPendingAttempt, secureInfo]);
 
   const formattedWindow = useMemo(() => {
     if (!attempt) {
@@ -78,65 +128,59 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const expires = new Date(attempt.expiresAt).toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return `${created} → ${expires}`;
+    return `${created} → ongoing`;
   }, [attempt]);
 
-  const handleApprove = useCallback(() => {
-    if (!attempt || state !== 'pending') {
-      return;
-    }
-    if (attempt.challengeRequired) {
-      if (!challengeInput.trim()) {
-        setErrorMessage('Challenge code is required.');
+  const handleRespond = useCallback(
+    async (accepted: boolean) => {
+      if (!enrollment || !attempt || state !== 'pending') {
         return;
       }
-      if (attempt.challengeValue && challengeInput.trim() !== attempt.challengeValue) {
-        setErrorMessage('The code does not match. Please verify the challenge.');
+      if (!secureInfo) {
+        setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
         return;
       }
-    }
-    setErrorMessage(undefined);
-    setIsProcessing(true);
-    setTimeout(() => {
-      setState('accepted');
-      setIsProcessing(false);
-      Alert.alert('Authentication approved', 'Response submitted successfully (mocked).');
-    }, 600);
-  }, [attempt, challengeInput, state]);
+      if (attempt.challengeRequired && !challengeInput.trim()) {
+        setFormError('Challenge code is required.');
+        return;
+      }
+      setIsProcessing(true);
+      setGlobalError(undefined);
+      setFormError(undefined);
+      try {
+        const deviceAlias = secureInfo.deviceAlias;
+        const proofTokenSigned = await cryptoService.sign(
+          deviceAlias,
+          attempt.authAttemptProofToken,
+        );
+        await authAttemptsApi.respond({
+          authAttemptId: attempt.authAttemptId,
+          authAttemptAccepted: accepted,
+          authAttemptProofTokenSignedByDevice: proofTokenSigned,
+          authAttemptChallengeResponse: challengeInput.trim() || undefined,
+        });
+        setState(accepted ? 'accepted' : 'rejected');
+        Alert.alert(
+          accepted ? 'Authentication approved' : 'Authentication rejected',
+          accepted ? 'Response submitted successfully.' : 'The request was denied.',
+        );
+      } catch (error) {
+        setGlobalError(extractErrorMessage(error));
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [attempt, challengeInput, enrollment, extractErrorMessage, secureInfo, state],
+  );
 
-  const handleReject = useCallback(() => {
-    if (!attempt || state !== 'pending') {
-      return;
-    }
-    setErrorMessage(undefined);
-    setIsProcessing(true);
-    setTimeout(() => {
-      setState('rejected');
-      setIsProcessing(false);
-      Alert.alert('Authentication rejected', 'The request was denied (mocked).');
-    }, 600);
-  }, [attempt, state]);
-
-  const handleRefresh = useCallback(() => {
-    setIsLoading(true);
-    setAttempt(undefined);
-    setTimeout(() => {
-      setAttempt({
-        ...MOCK_PENDING_ATTEMPT,
-        integrationName: enrollmentMeta?.integrationName ?? MOCK_PENDING_ATTEMPT.integrationName,
-        tenantName: enrollmentMeta?.tenantName ?? MOCK_PENDING_ATTEMPT.tenantName,
-      });
-      setState('pending');
-      setChallengeInput('');
-      setIsLoading(false);
-    }, 450);
-  }, [enrollmentMeta]);
-
-  const showEmptyState = !isLoading && !attempt;
+  const hasSecureInfo = Boolean(secureInfo);
+  const showEmptyState =
+    !loading &&
+    !attempt &&
+    !globalError &&
+    !isEnrollmentLoading &&
+    !isSecureInfoLoading &&
+    hasSecureInfo;
 
   return (
     <View style={styles.container}>
@@ -144,10 +188,18 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       <Text style={styles.subtitle}>
         Enrollment ID <Text style={styles.emphasis}>{enrollmentId}</Text>
       </Text>
-      {isLoading ? (
+      {isEnrollmentLoading || loading ? (
         <View style={styles.loading}>
           <ActivityIndicator />
           <Text style={styles.loadingText}>Contacting Ezkey Auth API…</Text>
+        </View>
+      ) : globalError ? (
+        <View style={styles.errorState}>
+          <Text style={styles.errorTitle}>Unable to load request</Text>
+          <Text style={styles.errorBody}>{globalError}</Text>
+          <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
+            <Text style={styles.secondaryLabel}>Try again</Text>
+          </TouchableOpacity>
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
@@ -155,7 +207,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           <Text style={styles.emptyBody}>
             Pull to refresh or wait for a new authentication attempt to arrive.
           </Text>
-          <TouchableOpacity onPress={handleRefresh} style={styles.secondaryButton}>
+          <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
             <Text style={styles.secondaryLabel}>Check again</Text>
           </TouchableOpacity>
         </View>
@@ -180,35 +232,33 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
             {attempt.challengeRequired ? (
               <View style={styles.challengeSection}>
                 <Text style={styles.challengeLabel}>Challenge code</Text>
-                {attempt.challengeHint ? (
-                  <Text style={styles.challengeHint}>{attempt.challengeHint}</Text>
-                ) : null}
+                <Text style={styles.challengeHint}>Enter the two-digit code displayed in Console.</Text>
                 <TextInput
                   value={challengeInput}
                   onChangeText={text => {
-                    setChallengeInput(text.replace(/[^0-9]/g, ''));
-                    setErrorMessage(undefined);
+                    setChallengeInput(text.replace(/[^0-9]/g, '').slice(0, 2));
+                    setFormError(undefined);
                   }}
-                  placeholder="Enter code"
+                  placeholder="00"
                   keyboardType="number-pad"
-                  maxLength={6}
+                  maxLength={2}
                   style={styles.challengeInput}
                   placeholderTextColor="#5f6780"
                   editable={state === 'pending' && !isProcessing}
                 />
+                {formError ? <Text style={styles.formError}>{formError}</Text> : null}
               </View>
             ) : null}
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             {state === 'pending' ? (
               <View style={styles.actions}>
                 <TouchableOpacity
-                  onPress={handleReject}
+                  onPress={() => handleRespond(false)}
                   style={[styles.actionButton, styles.rejectButton]}
                   disabled={isProcessing}>
                   <Text style={styles.rejectLabel}>Deny</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={handleApprove}
+                  onPress={() => handleRespond(true)}
                   style={[styles.actionButton, styles.approveButton]}
                   disabled={isProcessing}>
                   <Text style={styles.approveLabel}>
@@ -223,7 +273,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
                     ? 'This authentication was approved.'
                     : 'This authentication was rejected.'}
                 </Text>
-                <TouchableOpacity onPress={handleRefresh} style={styles.secondaryButton}>
+                <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
                   <Text style={styles.secondaryLabel}>Await new request</Text>
                 </TouchableOpacity>
               </View>
@@ -340,8 +390,8 @@ const styles = StyleSheet.create({
     color: '#f4f7ff',
     fontSize: 16,
   },
-  errorText: {
-    fontSize: 13,
+  formError: {
+    fontSize: 12,
     color: '#ff6666',
   },
   actions: {
@@ -384,5 +434,21 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 14,
     color: '#9aa3b6',
+  },
+  errorState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  errorBody: {
+    fontSize: 14,
+    color: '#ff6666',
+    textAlign: 'center',
   },
 });
