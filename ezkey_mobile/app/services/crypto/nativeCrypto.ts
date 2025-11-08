@@ -9,11 +9,24 @@ type NativeModuleShape = {
 
 const {EzkeyCryptoModule} = NativeModules;
 
-if (!EzkeyCryptoModule) {
-  throw new Error('EzkeyCryptoModule is not linked. Ensure native modules are properly installed.');
-}
+const fallback = {
+  async generateRsaKeyPair(): Promise<boolean> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to generate key pair.');
+  },
+  async getPublicKey(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to retrieve public key.');
+  },
+  async sign(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to sign payload.');
+  },
+  async deleteKey(): Promise<boolean> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to delete key.');
+  },
+} satisfies NativeModuleShape;
 
-const cryptoModule = EzkeyCryptoModule as NativeModuleShape;
+const cryptoModule = (EzkeyCryptoModule as NativeModuleShape | undefined) ?? fallback;
+
+export const isNativeCryptoLinked = Boolean(EzkeyCryptoModule);
 
 export const nativeCrypto = {
   generateKeyPair: (alias: string) => cryptoModule.generateRsaKeyPair(alias),
