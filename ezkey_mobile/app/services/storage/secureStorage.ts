@@ -8,6 +8,7 @@ export const secureStorage = {
   async setItem(key: string, value: string) {
     await Keychain.setGenericPassword(key, value, {
       service: serviceFor(key),
+      accessible: Keychain.ACCESSIBLE.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
     });
   },
 
