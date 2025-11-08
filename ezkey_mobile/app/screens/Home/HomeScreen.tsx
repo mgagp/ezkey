@@ -13,10 +13,10 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useMockEnrollments} from '../../hooks/useMockEnrollments';
 import {RootStackParamList} from '../../navigation/types';
-import {MockEnrollment} from '../../services/api/mock/enrollments';
+import {EnrollmentSummary} from '../../services/api/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 
-const sortEnrollments = (items: MockEnrollment[]) =>
+const sortEnrollments = (items: EnrollmentSummary[]) =>
   [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) {
       return -1;
@@ -39,19 +39,19 @@ export const HomeScreen: React.FC = () => {
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
 
   const handleSelect = useCallback(
-    (enrollment: MockEnrollment) => {
-      setSelected(enrollment);
+    (enrollment: EnrollmentSummary) => {
+      setSelected(enrollment.id);
       navigation.navigate('EnrollmentDetail', {enrollmentId: enrollment.id});
     },
     [navigation, setSelected],
   );
 
-  const renderEnrollment = useCallback<ListRenderItem<MockEnrollment>>(
+  const renderEnrollment = useCallback<ListRenderItem<EnrollmentSummary>>(
     ({item}) => <EnrollmentListItem enrollment={item} onPress={handleSelect} />,
     [handleSelect],
   );
 
-  const keyExtractor = useCallback((item: MockEnrollment) => item.id, []);
+  const keyExtractor = useCallback((item: EnrollmentSummary) => item.id, []);
 
   return (
     <View style={styles.container}>
@@ -83,8 +83,8 @@ const EmptyState: React.FC = () => (
 );
 
 type EnrollmentListItemProps = {
-  enrollment: MockEnrollment;
-  onPress: (enrollment: MockEnrollment) => void;
+  enrollment: EnrollmentSummary;
+  onPress: (enrollment: EnrollmentSummary) => void;
 };
 
 const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => (

@@ -1,3 +1,17 @@
+export type EnrollmentStatus = 'active' | 'pending';
+
+export type EnrollmentSummary = {
+  id: string;
+  integrationId: string;
+  integrationName: string;
+  tenantName: string;
+  createdAt: string;
+  lastActivityAt: string;
+  status: EnrollmentStatus;
+  logoUri?: string;
+  favorited?: boolean;
+};
+
 export type BindEnrollmentRequest = {
   enrollmentId: string;
   enrollmentProofToken: string;

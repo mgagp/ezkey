@@ -1,18 +1,6 @@
-export type MockEnrollmentStatus = 'active' | 'pending';
+import {EnrollmentSummary} from '../types';
 
-export type MockEnrollment = {
-  id: string;
-  integrationId: string;
-  integrationName: string;
-  tenantName: string;
-  createdAt: string;
-  lastActivityAt: string;
-  status: MockEnrollmentStatus;
-  logoUri?: string;
-  favorited?: boolean;
-};
-
-export const MOCK_ENROLLMENTS: MockEnrollment[] = [
+export const MOCK_ENROLLMENTS: EnrollmentSummary[] = [
   {
     id: 'enr_001',
     integrationId: 'int-banking',

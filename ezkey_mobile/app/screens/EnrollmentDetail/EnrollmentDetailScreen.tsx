@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo} from 'react';
-import {Button, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Button, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useMockEnrollments} from '../../hooks/useMockEnrollments';
 import {RootStackParamList} from '../../navigation/types';
@@ -9,15 +9,16 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId} = route.params;
-  const {data} = useMockEnrollments();
-  const selected = useEnrollmentStore(store => store.selected);
+  const {data, isLoading} = useMockEnrollments();
+  const selectedId = useEnrollmentStore(store => store.selectedId);
+  const targetId = enrollmentId ?? selectedId;
 
   const enrollment = useMemo(() => {
-    if (data) {
-      return data.find(item => item.id === enrollmentId) ?? selected;
+    if (!targetId || !data) {
+      return undefined;
     }
-    return selected;
-  }, [data, enrollmentId, selected]);
+    return data.find(item => item.id === targetId);
+  }, [data, targetId]);
 
   useEffect(() => {
     if (enrollment) {
@@ -28,6 +29,14 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const navigateToPending = () => {
     navigation.navigate('PendingAuth', {enrollmentId});
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   if (!enrollment) {
     return (
@@ -110,5 +119,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#f4f7ff',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0b0d11',
   },
 });
