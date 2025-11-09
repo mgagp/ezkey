@@ -10,6 +10,7 @@ export type StoredEnrollment = EnrollmentSummary & {
   deviceAlias: string;
   integrationPublicKey?: string;
   enrollmentName?: string;
+  deviceLabel?: string;
 };
 
 type StorageDelegate = {

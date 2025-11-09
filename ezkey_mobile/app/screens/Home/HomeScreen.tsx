@@ -93,6 +93,9 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
       <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
       <Text style={styles.status}>{enrollment.status.toUpperCase()}</Text>
     </View>
+    {enrollment.enrollmentName ? (
+      <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
+    ) : null}
     <Text style={styles.cardSubtitle}>{enrollment.tenantName}</Text>
     <Text style={styles.cardMeta}>
       Created {new Date(enrollment.createdAt).toLocaleDateString()}

@@ -37,6 +37,7 @@ type EnrollmentDraft = {
   logoUri?: string;
   integrationDescription?: string;
   enrollmentName?: string;
+  deviceLabel?: string;
   status: EnrollmentStatus;
 };
 
@@ -137,6 +138,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         logoUri: response.integrationLogo,
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
+        deviceLabel: response.enrollmentName,
         status: 'pending',
       };
     },
@@ -229,6 +231,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         deviceAlias: alias,
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
+        deviceLabel: draft.deviceLabel,
       };
       await saveEnrollment.mutateAsync(record);
       const successMessage = verifyResponse.active
@@ -421,8 +424,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                 <Text style={styles.summarySubtitle}>{draft.integrationDescription}</Text>
               ) : null}
               <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
-              {draft.enrollmentName ? (
-                <Text style={styles.summaryMeta}>Device label: {draft.enrollmentName}</Text>
+            {draft.enrollmentName ? (
+              <Text style={styles.summaryMeta}>Device label: {draft.enrollmentName}</Text>
               ) : null}
             </View>
             <View style={styles.form}>

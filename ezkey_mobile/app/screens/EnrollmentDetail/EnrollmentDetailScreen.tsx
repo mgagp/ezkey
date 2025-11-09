@@ -58,6 +58,13 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         <Text style={styles.label}>Tenant</Text>
         <Text style={styles.value}>{enrollment.tenantName}</Text>
 
+        {enrollment.enrollmentName ? (
+          <>
+            <Text style={styles.label}>Device label</Text>
+            <Text style={styles.value}>{enrollment.enrollmentName}</Text>
+          </>
+        ) : null}
+
         <Text style={styles.label}>Enrollment state</Text>
         <Text style={styles.value}>{enrollment.status.toUpperCase()}</Text>
 
