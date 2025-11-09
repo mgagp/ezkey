@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useLayoutEffect, useMemo} from 'react';
 import {
   ActivityIndicator,
   Button,
@@ -33,6 +33,12 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
   const {data, isLoading} = useEnrollments();
   const setSelected = useEnrollmentStore(store => store.setSelected);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <Button title="Diagnostics" onPress={() => navigation.navigate('Diagnostics')} />,
+    });
+  }, [navigation]);
 
   const enrollments = useMemo(() => (data ? sortEnrollments(data) : []), [data]);
 

@@ -5,6 +5,7 @@ import {HomeScreen} from '../screens/Home';
 import {PendingAuthScreen} from '../screens/PendingAuth';
 import {EnrollmentWizardScreen} from '../screens/EnrollmentWizard';
 import {RootStackParamList} from './types';
+import {DiagnosticsScreen} from '../screens/Diagnostics';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -29,6 +30,11 @@ export const AppNavigator: React.FC = () => (
         name="EnrollmentWizard"
         component={EnrollmentWizardScreen}
         options={{title: 'Add Enrollment'}}
+      />
+      <Stack.Screen
+        name="Diagnostics"
+        component={DiagnosticsScreen}
+        options={{title: 'Diagnostics'}}
       />
     </Stack.Navigator>
 );

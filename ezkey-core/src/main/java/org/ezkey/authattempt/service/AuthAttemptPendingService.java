@@ -168,9 +168,6 @@ public class AuthAttemptPendingService {
       throw new IllegalStateException("Authentication request failed");
     }
 
-    logger.info("deviceProofToken: {}", request.getDeviceProofToken());
-    logger.info("deviceProofTokenSigned: {}", request.getDeviceProofTokenSigned());
-    
     // Validate signature
     boolean isValid =
         signatureService.validateSignature(
