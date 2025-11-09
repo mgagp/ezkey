@@ -53,6 +53,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     enrollmentProofToken: '',
     language: 'en',
   });
+  const [enrollmentChallenge, setEnrollmentChallenge] = useState('');
+  const [challengeError, setChallengeError] = useState<string | undefined>();
   const saveEnrollment = useSaveEnrollment();
 
   const extractErrorMessage = useCallback((error: unknown) => {
@@ -93,6 +95,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         description:
           'Align the QR code within the frame. For now you can paste the enrollment ID and proof token manually to simulate the scan result.',
         actionLabel: 'Bind enrollment',
+      },
+      {
+        id: 'challenge',
+        title: 'Enter enrollment challenge',
+        description: draft
+          ? `Review ${draft.integrationName} and enter the 6-digit enrollment challenge displayed in the admin console.`
+          : 'Review the enrollment details and enter the 6-digit challenge shown in the admin console.',
+        actionLabel: 'Continue',
+        secondaryLabel: 'Cancel',
       },
       {
         id: 'confirm',
@@ -146,6 +157,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     setBindError(undefined);
     setIsBinding(true);
     setDraft(undefined);
+    setEnrollmentChallenge('');
+    setChallengeError(undefined);
     try {
       setBindForm(previous => ({
         ...previous,
@@ -177,6 +190,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       Alert.alert('Missing scan', 'Scan the enrollment QR before finishing.');
       return;
     }
+    const challengeResponse = enrollmentChallenge.trim();
+    if (challengeResponse.length !== 6) {
+      setChallengeError('Enrollment challenge must be 6 characters.');
+      const challengeIndex = steps.findIndex(step => step.id === 'challenge');
+      if (challengeIndex >= 0) {
+        setStepIndex(challengeIndex);
+      }
+      return;
+    }
     const alias = `device-${draft.id}`;
     const now = new Date().toISOString();
     setIsSubmitting(true);
@@ -188,6 +210,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         enrollmentId: draft.id,
         devicePublicKey: publicKey,
         enrollmentProofTokenSigned: proofTokenSigned,
+        challengeResponse,
       });
       const status: EnrollmentStatus = verifyResponse.active ? 'active' : 'pending';
       const record: StoredEnrollment = {
@@ -213,6 +236,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         : `${draft.integrationName} was saved in pending state.`;
       Alert.alert('Enrollment completed', successMessage);
       setDraft(undefined);
+      setEnrollmentChallenge('');
       navigation.popToTop();
     } catch (error) {
       console.error('[EnrollmentWizard] Failed to finalize enrollment', error);
@@ -220,7 +244,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [draft, extractErrorMessage, navigation, saveEnrollment]);
+  }, [
+    draft,
+    enrollmentChallenge,
+    extractErrorMessage,
+    navigation,
+    saveEnrollment,
+    steps,
+  ]);
 
   const handlePrimary = useCallback(() => {
     const step = steps[stepIndex];
@@ -232,8 +263,21 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       performBinding();
       return;
     }
+    if (step.id === 'challenge') {
+      if (enrollmentChallenge.trim().length !== 6) {
+        setChallengeError('Enrollment challenge must be 6 characters.');
+        return;
+      }
+      setChallengeError(undefined);
+    }
     setStepIndex(index => Math.min(index + 1, steps.length - 1));
-  }, [finalizeEnrollment, performBinding, stepIndex, steps]);
+  }, [
+    enrollmentChallenge,
+    finalizeEnrollment,
+    performBinding,
+    stepIndex,
+    steps,
+  ]);
 
   const handleSecondary = useCallback(() => {
     if (!currentStep.secondaryLabel) {
@@ -244,6 +288,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         'Why we need camera access',
         'The QR holds temporary enrollment credentials. The app never stores raw images; it only processes the encoded payload locally.',
       );
+      return;
+    }
+    if (currentStep.id === 'challenge') {
+      if (!isBinding) {
+        setDraft(undefined);
+        setEnrollmentChallenge('');
+        setChallengeError(undefined);
+        navigation.popToTop();
+      }
       return;
     }
     if (currentStep.id === 'scan' && isBinding) {
@@ -262,15 +315,23 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     if (isSubmitting || isBinding) {
       return;
     }
-    if (steps[stepIndex].id === 'confirm') {
+    const step = steps[stepIndex];
+    if (step.id === 'confirm') {
+      setDraft(undefined);
+    }
+    if (step.id === 'challenge') {
+      setChallengeError(undefined);
+      setEnrollmentChallenge('');
       setDraft(undefined);
     }
     setStepIndex(index => Math.max(index - 1, 0));
   }, [isBinding, isSubmitting, navigation, stepIndex, steps]);
 
+  const challengeMissing = currentStep.id === 'challenge' && enrollmentChallenge.trim().length !== 6;
   const primaryDisabled =
     (currentStep.id === 'confirm' && isSubmitting) ||
-    (currentStep.id === 'scan' && isBinding);
+    (currentStep.id === 'scan' && isBinding) ||
+    challengeMissing;
   const secondaryDisabled =
     (currentStep.id === 'confirm' && isSubmitting) ||
     (currentStep.id === 'scan' && isBinding);
@@ -352,6 +413,37 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             {bindError ? <Text style={styles.formError}>{bindError}</Text> : null}
           </View>
         ) : null}
+        {currentStep.id === 'challenge' && draft ? (
+          <>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>{draft.integrationName}</Text>
+              {draft.integrationDescription ? (
+                <Text style={styles.summarySubtitle}>{draft.integrationDescription}</Text>
+              ) : null}
+              <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
+              {draft.enrollmentName ? (
+                <Text style={styles.summaryMeta}>Device label: {draft.enrollmentName}</Text>
+              ) : null}
+            </View>
+            <View style={styles.form}>
+              <Text style={styles.inputLabel}>Enrollment challenge</Text>
+              <TextInput
+                value={enrollmentChallenge}
+                onChangeText={value => {
+                  setEnrollmentChallenge(value.replace(/[^0-9A-Za-z]/g, '').slice(0, 6).toUpperCase());
+                  setChallengeError(undefined);
+                }}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                style={styles.input}
+                placeholder="e.g. A1B2C3"
+                placeholderTextColor="#5f6780"
+                editable={!isSubmitting}
+              />
+              {challengeError ? <Text style={styles.formError}>{challengeError}</Text> : null}
+            </View>
+          </>
+        ) : null}
         {currentStep.id === 'confirm' && draft ? (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>{draft.integrationName}</Text>
@@ -360,6 +452,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             ) : null}
             <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
             <Text style={styles.summaryMeta}>Alias: {`device-${draft.id}`}</Text>
+            {enrollmentChallenge ? (
+              <Text style={styles.summaryMeta}>Enrollment challenge: {enrollmentChallenge}</Text>
+            ) : null}
           </View>
         ) : null}
       </View>

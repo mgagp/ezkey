@@ -17,20 +17,47 @@ class EzkeyCryptoModule: NSObject, RCTBridgeModule {
                           resolver resolve: @escaping RCTPromiseResolveBlock,
                           rejecter reject: @escaping RCTPromiseRejectBlock) {
     do {
-      try deleteKeyPair(alias: alias)
+      if try fetchKey(alias: alias, keyClass: kSecAttrKeyClassPrivate) != nil {
+        resolve(true)
+        return
+      }
 
       var error: Unmanaged<CFError>?
+      var privateAttributes: [String: Any] = [
+        kSecAttrIsPermanent as String: true,
+        kSecAttrApplicationTag as String: keyTag(alias: alias, suffix: ".private"),
+        kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+      ]
+
+      #if targetEnvironment(simulator)
+      privateAttributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+      #else
+      if #available(iOS 11.3, *) {
+        if let access =
+          SecAccessControlCreateWithFlags(nil,
+                                          kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                                          [.privateKeyUsage],
+                                          nil) {
+          privateAttributes[kSecAttrAccessControl as String] = access
+        }
+        privateAttributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        privateAttributes[kSecAttrTokenID as String] = kSecAttrTokenIDSecureEnclave
+      } else {
+        privateAttributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+      }
+      #endif
+
+      var publicAttributes: [String: Any] = [
+        kSecAttrIsPermanent as String: true,
+        kSecAttrApplicationTag as String: keyTag(alias: alias, suffix: ".public"),
+        kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+      ]
+
       let attributes: [String: Any] = [
         kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
         kSecAttrKeySizeInBits as String: keySize,
-        kSecPrivateKeyAttrs as String: [
-          kSecAttrIsPermanent as String: true,
-          kSecAttrApplicationTag as String: keyTag(alias: alias, suffix: ".private")
-        ],
-        kSecPublicKeyAttrs as String: [
-          kSecAttrIsPermanent as String: true,
-          kSecAttrApplicationTag as String: keyTag(alias: alias, suffix: ".public")
-        ]
+        kSecPrivateKeyAttrs as String: privateAttributes,
+        kSecPublicKeyAttrs as String: publicAttributes
       ]
 
       guard SecKeyCreateRandomKey(attributes as CFDictionary, &error) != nil else {

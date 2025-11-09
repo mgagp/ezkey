@@ -1,7 +1,9 @@
 package com.ezkeymobile.crypto
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -21,17 +23,35 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun generateRsaKeyPair(alias: String, promise: Promise) {
     try {
+      val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      if (keyStore.containsAlias(alias)) {
+        promise.resolve(true)
+        return
+      }
+
       val keyPairGenerator =
           KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEY_STORE)
-      val parameterSpec =
+      val builder =
           KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
               .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
               .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
               .setKeySize(KEY_SIZE)
+              .setRandomizedEncryptionRequired(true)
               .setUserAuthenticationRequired(false)
-              .build()
 
-      keyPairGenerator.initialize(parameterSpec)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        builder.setUnlockedDeviceRequired(true)
+      }
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        try {
+          builder.setIsStrongBoxBacked(true)
+        } catch (error: StrongBoxUnavailableException) {
+          // Device does not provide StrongBox; continue without it.
+        }
+      }
+
+      keyPairGenerator.initialize(builder.build())
       keyPairGenerator.generateKeyPair()
 
       promise.resolve(true)
@@ -61,7 +81,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun sign(alias: String, dataBase64: String, promise: Promise) {
     try {
-      val payload = Base64.decode(dataBase64, Base64.DEFAULT)
+      val payload = Base64.decode(dataBase64, Base64.NO_WRAP)
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
       val privateKey = keyStore.getKey(alias, null) as? PrivateKey
       if (privateKey == null) {
