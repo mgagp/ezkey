@@ -74,7 +74,10 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     try {
       const deviceProofToken = Buffer.from(Date.now().toString(), 'utf-8').toString('base64');
       const deviceAlias = secureInfo.deviceAlias;
-      const deviceProofTokenSigned = await cryptoService.sign(deviceAlias, deviceProofToken);
+      const deviceProofTokenSigned = await cryptoService.sign(
+        deviceAlias,
+        Buffer.from(deviceProofToken, 'utf-8').toString('base64'),
+      );
       const response = await authAttemptsApi.pending({
         enrollmentId: enrollment.id,
         enrollmentProofToken: enrollment.enrollmentProofToken,
@@ -151,7 +154,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         const deviceAlias = secureInfo.deviceAlias;
         const proofTokenSigned = await cryptoService.sign(
           deviceAlias,
-          attempt.authAttemptProofToken,
+          Buffer.from(attempt.authAttemptProofToken, 'utf-8').toString('base64'),
         );
         await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
