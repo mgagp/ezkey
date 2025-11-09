@@ -4,6 +4,7 @@ import {EnrollmentDetailScreen} from '../screens/EnrollmentDetail';
 import {HomeScreen} from '../screens/Home';
 import {PendingAuthScreen} from '../screens/PendingAuth';
 import {EnrollmentWizardScreen} from '../screens/EnrollmentWizard';
+import {EnrollmentScannerScreen} from '../screens/EnrollmentScanner';
 import {RootStackParamList} from './types';
 import {DiagnosticsScreen} from '../screens/Diagnostics';
 
@@ -35,6 +36,11 @@ export const AppNavigator: React.FC = () => (
         name="Diagnostics"
         component={DiagnosticsScreen}
         options={{title: 'Diagnostics'}}
+      />
+      <Stack.Screen
+        name="EnrollmentScanner"
+        component={EnrollmentScannerScreen}
+        options={{title: 'Scan Enrollment QR'}}
       />
     </Stack.Navigator>
 );

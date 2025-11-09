@@ -24,6 +24,7 @@ target 'EzkeyMobile' do
   )
 
   pod 'react-native-config', :path => '../node_modules/react-native-config'
+  pod 'GoogleMLKit/BarcodeScanning'
 
   target 'EzkeyMobileTests' do
     inherit! :complete

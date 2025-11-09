@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   Alert,
   StyleSheet,
@@ -16,6 +16,7 @@ import {enrollmentsApi} from '../../services/api/enrollments';
 import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {RouteProp, useRoute} from '@react-navigation/native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
@@ -44,6 +45,7 @@ type EnrollmentDraft = {
 const MOCK_DEVICE_NAME = 'Pixel 7 Pro';
 
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
+  const route = useRoute<RouteProp<RootStackParamList, 'EnrollmentWizard'>>();
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,13 +147,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     [],
   );
 
-  const performBinding = useCallback(async () => {
+  const performBinding = useCallback(
+    async (override?: {enrollmentId: string; enrollmentProofToken: string; language?: string}) => {
     if (isBinding) {
       return;
     }
-    const enrollmentId = bindForm.enrollmentId.trim();
-    const enrollmentProofToken = bindForm.enrollmentProofToken.trim();
-    const language = bindForm.language.trim() || undefined;
+      const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
+      const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
+      const language = (override?.language ?? bindForm.language).trim() || undefined;
     if (!enrollmentId || !enrollmentProofToken) {
       setBindError('Enrollment ID and proof token are required.');
       return;
@@ -185,7 +188,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     } finally {
       setIsBinding(false);
     }
-  }, [bindForm, buildDraft, extractErrorMessage, isBinding, steps.length]);
+    },
+    [bindForm, buildDraft, extractErrorMessage, isBinding, steps.length],
+  );
 
   const finalizeEnrollment = useCallback(async () => {
     if (!draft) {
@@ -311,6 +316,21 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   }, [currentStep, isBinding, isSubmitting, navigation]);
 
   const handleBack = useCallback(() => {
+  useEffect(() => {
+    const scanned = route.params?.scanned;
+    if (!scanned) {
+      return;
+    }
+    setBindForm(prev => ({
+      enrollmentId: scanned.enrollmentId,
+      enrollmentProofToken: scanned.enrollmentProofToken,
+      language: scanned.language ?? prev.language ?? 'en',
+    }));
+    setBindError(undefined);
+    performBinding(scanned).finally(() => {
+      navigation.setParams({scanned: undefined});
+    });
+  }, [navigation, performBinding, route.params?.scanned]);
     if (stepIndex === 0) {
       navigation.goBack();
       return;
@@ -414,6 +434,11 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
               editable={!isBinding}
             />
             {bindError ? <Text style={styles.formError}>{bindError}</Text> : null}
+            <TouchableOpacity
+              style={styles.scanButton}
+              onPress={() => navigation.navigate('EnrollmentScanner')}>
+              <Text style={styles.scanButtonLabel}>Scan QR code with camera</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
         {currentStep.id === 'challenge' && draft ? (
@@ -582,6 +607,19 @@ const styles = StyleSheet.create({
   formError: {
     fontSize: 13,
     color: '#ff7878',
+  },
+  scanButton: {
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#61d095',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  scanButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#61d095',
   },
   summaryCard: {
     marginTop: 24,

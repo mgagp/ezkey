@@ -2,6 +2,7 @@ package com.ezkeymobile
 
 import android.app.Application
 import com.ezkeymobile.crypto.EzkeyCryptoPackage
+import com.ezkeymobile.qr.EzkeyQrFrameProcessorPlugin
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -12,6 +13,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.mrousavy.camera.frameprocessors.FrameProcessorPluginRegistry
 
 class MainApplication : Application(), ReactApplication {
 
@@ -36,6 +38,9 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     SoLoader.init(this, OpenSourceMergedSoMapping)
+    FrameProcessorPluginRegistry.addFrameProcessorPlugin(EzkeyQrFrameProcessorPlugin.NAME) { _, _ ->
+      EzkeyQrFrameProcessorPlugin()
+    }
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       load()
     }
