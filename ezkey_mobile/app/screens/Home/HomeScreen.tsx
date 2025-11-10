@@ -36,7 +36,14 @@ export const HomeScreen: React.FC = () => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <Button title="Diagnostics" onPress={() => navigation.navigate('Diagnostics')} />,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Diagnostics')}
+          style={styles.diagnosticsButton}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Text style={styles.diagnosticsLabel}>Diagnostics</Text>
+        </TouchableOpacity>
+      ),
     });
   }, [navigation]);
 
@@ -126,6 +133,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#f4f7ff',
+  },
+  diagnosticsButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  diagnosticsLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1b2130',
+    opacity: 0.25,
   },
   loadingContainer: {
     flex: 1,

@@ -1,15 +1,17 @@
-import React, {useEffect, useMemo} from 'react';
-import {ActivityIndicator, Button, StyleSheet, Text, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo} from 'react';
+import {ActivityIndicator, Alert, Button, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useEnrollments} from '../../hooks/useEnrollments';
+import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import {cryptoService} from '../../services/crypto';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
+  const deleteEnrollment = useDeleteEnrollment();
   const selectedId = useEnrollmentStore(store => store.selectedId);
   const targetId = enrollmentId ?? selectedId;
 
@@ -29,6 +31,33 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const navigateToPending = () => {
     navigation.navigate('PendingAuth', {enrollmentId});
   };
+
+  const confirmDelete = useCallback(() => {
+    if (!enrollment || deleteEnrollment.isPending) {
+      return;
+    }
+    Alert.alert(
+      'Delete enrollment',
+      `Are you sure you want to delete the enrollment for ${enrollment.integrationName}? This will remove the stored keys on this device.`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEnrollment.mutateAsync(enrollment.id);
+              await cryptoService.deleteKey(enrollment.deviceAlias);
+              navigation.popToTop();
+            } catch (error) {
+              console.error('[EnrollmentDetail] Failed to delete enrollment', error);
+              Alert.alert('Deletion failed', 'Unable to delete the enrollment. Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  }, [deleteEnrollment, enrollment, navigation]);
 
   if (isLoading) {
     return (
@@ -86,6 +115,12 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       </View>
 
       <Button title="Check pending" onPress={navigateToPending} />
+      <Button
+        title={deleteEnrollment.isPending ? 'Deleting…' : 'Delete enrollment'}
+        onPress={confirmDelete}
+        color="#ff6666"
+        disabled={deleteEnrollment.isPending}
+      />
     </View>
   );
 };

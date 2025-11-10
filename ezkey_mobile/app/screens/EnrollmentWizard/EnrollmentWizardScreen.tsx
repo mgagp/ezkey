@@ -90,17 +90,16 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         id: 'permissions',
         title: 'Enable camera access',
         description: hasCameraPermission
-          ? 'Camera permission is already granted. Continue when you are ready to scan the enrollment QR code.'
+          ? 'Camera permission is already granted. Continue to scan the enrollment QR code.'
           : 'The camera is required to scan the enrollment QR code. Grant permission when prompted. You can also open the system settings later if you deny it by mistake.',
-        actionLabel: hasCameraPermission ? 'Continue' : 'Grant permission',
+        actionLabel: hasCameraPermission ? 'Start scanning' : 'Grant permission',
         secondaryLabel: 'Learn more',
       },
       {
         id: 'scan',
         title: 'Scan the QR code',
-        description:
-          'Align the QR code within the frame. You can also enter the enrollment information manually below.',
-        actionLabel: 'Bind enrollment',
+        description: 'Align the enrollment QR code within the frame to populate the enrollment details.',
+        actionLabel: 'Open scanner',
       },
       {
         id: 'challenge',
@@ -271,19 +270,23 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       return;
     }
     if (step.id === 'permissions') {
-      if (hasCameraPermission) {
+      const proceed = () => {
         setStepIndex(index => Math.min(index + 1, steps.length - 1));
+        setScannerVisible(true);
+      };
+      if (hasCameraPermission) {
+        proceed();
       } else {
         requestPermission().then(granted => {
           if (granted) {
-            setStepIndex(index => Math.min(index + 1, steps.length - 1));
+            proceed();
           }
         });
       }
       return;
     }
     if (step.id === 'scan') {
-      performBinding();
+      setScannerVisible(true);
       return;
     }
     if (step.id === 'challenge') {
@@ -386,72 +389,21 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         <Text style={styles.stepTitle}>{currentStep.title}</Text>
         <Text style={styles.stepDescription}>{currentStep.description}</Text>
         {currentStep.id === 'scan' ? (
-          <View style={styles.form}>
-            <Text style={styles.inputLabel}>Enrollment ID</Text>
-            <TextInput
-              value={bindForm.enrollmentId}
-              onChangeText={value =>
-                setBindForm(previous => {
-                  setBindError(undefined);
-                  return {...previous, enrollmentId: value};
-                })
-              }
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-              placeholder="e.g. 123"
-              placeholderTextColor="#5f6780"
-              editable={!isBinding}
-            />
-            <Text style={styles.inputLabel}>Enrollment proof token</Text>
-            <TextInput
-              value={bindForm.enrollmentProofToken}
-              onChangeText={value =>
-                setBindForm(previous => {
-                  setBindError(undefined);
-                  return {...previous, enrollmentProofToken: value};
-                })
-              }
-              autoCapitalize="characters"
-              autoCorrect={false}
-              style={styles.input}
-              placeholder="EZK-XXXX-XXXX"
-              placeholderTextColor="#5f6780"
-              editable={!isBinding}
-            />
-            <Text style={styles.inputLabel}>Language (optional)</Text>
-            <TextInput
-              value={bindForm.language}
-              onChangeText={value =>
-                setBindForm(previous => {
-                  setBindError(undefined);
-                  return {...previous, language: value};
-                })
-              }
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-              placeholder="en"
-              placeholderTextColor="#5f6780"
-              editable={!isBinding}
-            />
+          <View style={styles.scanInstructions}>
+            <Text style={styles.scanHint}>
+              Tap below to open the camera and scan the enrollment QR code. We will automatically fill in the details
+              once the scan succeeds.
+            </Text>
             {bindError ? <Text style={styles.formError}>{bindError}</Text> : null}
             <TouchableOpacity
-              style={[
-                styles.scanButton,
-                !hasCameraPermission ? styles.scanButtonDisabled : undefined,
-              ]}
+              style={styles.scanButton}
               onPress={() => {
-                if (!hasCameraPermission) {
-                  requestPermission();
+                if (isBinding) {
                   return;
                 }
                 setScannerVisible(true);
-              }}
-              disabled={!hasCameraPermission}>
-              <Text style={styles.scanButtonLabel}>
-                {hasCameraPermission ? 'Open camera scanner' : 'Grant camera permission first'}
-              </Text>
+              }}>
+              <Text style={styles.scanButtonLabel}>Open scanner</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -609,6 +561,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#ff7878',
   },
+  scanInstructions: {
+    gap: 12,
+  },
+  scanHint: {
+    fontSize: 14,
+    color: '#c2c8d5',
+  },
   summaryCard: {
     marginTop: 24,
     backgroundColor: '#151923',
@@ -636,9 +595,6 @@ const styles = StyleSheet.create({
     borderColor: '#61d095',
     paddingVertical: 12,
     alignItems: 'center',
-  },
-  scanButtonDisabled: {
-    borderColor: '#5f6780',
   },
   scanButtonLabel: {
     fontSize: 14,
