@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
   Alert,
   StyleSheet,
@@ -10,13 +10,14 @@ import {
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import axios from 'axios';
 import {Buffer} from 'buffer';
+import {useCameraPermission} from 'react-native-vision-camera';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {enrollmentsApi} from '../../services/api/enrollments';
 import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
-import {RouteProp, useRoute} from '@react-navigation/native';
+import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
@@ -45,7 +46,7 @@ type EnrollmentDraft = {
 const MOCK_DEVICE_NAME = 'Pixel 7 Pro';
 
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
-  const route = useRoute<RouteProp<RootStackParamList, 'EnrollmentWizard'>>();
+  const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +59,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   });
   const [enrollmentChallenge, setEnrollmentChallenge] = useState('');
   const [challengeError, setChallengeError] = useState<string | undefined>();
+  const [scannerVisible, setScannerVisible] = useState(false);
   const saveEnrollment = useSaveEnrollment();
 
   const extractErrorMessage = useCallback((error: unknown) => {
@@ -87,16 +89,17 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       {
         id: 'permissions',
         title: 'Enable camera access',
-        description:
-          'The camera is required to scan the enrollment QR code. Grant permission when prompted. You can also open the system settings later if you deny it by mistake.',
-        actionLabel: 'Simulate Request',
+        description: hasCameraPermission
+          ? 'Camera permission is already granted. Continue when you are ready to scan the enrollment QR code.'
+          : 'The camera is required to scan the enrollment QR code. Grant permission when prompted. You can also open the system settings later if you deny it by mistake.',
+        actionLabel: hasCameraPermission ? 'Continue' : 'Grant permission',
         secondaryLabel: 'Learn more',
       },
       {
         id: 'scan',
         title: 'Scan the QR code',
         description:
-          'Align the QR code within the frame. For now you can paste the enrollment ID and proof token manually to simulate the scan result.',
+          'Align the QR code within the frame. You can also enter the enrollment information manually below.',
         actionLabel: 'Bind enrollment',
       },
       {
@@ -118,7 +121,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         secondaryLabel: 'Back to Home',
       },
     ],
-    [draft],
+    [draft, hasCameraPermission],
   );
 
   const currentStep = steps[stepIndex];
@@ -149,47 +152,47 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 
   const performBinding = useCallback(
     async (override?: {enrollmentId: string; enrollmentProofToken: string; language?: string}) => {
-    if (isBinding) {
-      return;
-    }
+      if (isBinding) {
+        return;
+      }
       const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
       const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
       const language = (override?.language ?? bindForm.language).trim() || undefined;
-    if (!enrollmentId || !enrollmentProofToken) {
-      setBindError('Enrollment ID and proof token are required.');
-      return;
-    }
-    setBindError(undefined);
-    setIsBinding(true);
-    setDraft(undefined);
-    setEnrollmentChallenge('');
-    setChallengeError(undefined);
-    try {
-      setBindForm(previous => ({
-        ...previous,
-        enrollmentId,
-        enrollmentProofToken,
-        language: language ?? previous.language,
-      }));
-      const response = await enrollmentsApi.bind({
-        enrollmentId,
-        enrollmentProofToken,
-        language,
-      });
-      const nextDraft = buildDraft(response, {
-        enrollmentId,
-        enrollmentProofToken,
-        language,
-      });
-      setDraft(nextDraft);
-      setStepIndex(index => Math.min(index + 1, steps.length - 1));
-    } catch (error) {
-      setBindError(extractErrorMessage(error));
-    } finally {
-      setIsBinding(false);
-    }
+      if (!enrollmentId || !enrollmentProofToken) {
+        setBindError('Enrollment ID and proof token are required.');
+        return;
+      }
+      setBindError(undefined);
+      setIsBinding(true);
+      setDraft(undefined);
+      setEnrollmentChallenge('');
+      setChallengeError(undefined);
+      try {
+        setBindForm(previous => ({
+          ...previous,
+          enrollmentId,
+          enrollmentProofToken,
+          language: language ?? previous.language,
+        }));
+        const response = await enrollmentsApi.bind({
+          enrollmentId,
+          enrollmentProofToken,
+          language,
+        });
+        const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken, language});
+        setDraft(nextDraft);
+        setStepIndex(() => {
+          const challengeIndex = steps.findIndex(step => step.id === 'challenge');
+          return challengeIndex >= 0 ? challengeIndex : 0;
+        });
+        setScannerVisible(false);
+      } catch (error) {
+        setBindError(extractErrorMessage(error));
+      } finally {
+        setIsBinding(false);
+      }
     },
-    [bindForm, buildDraft, extractErrorMessage, isBinding, steps.length],
+    [bindForm, buildDraft, extractErrorMessage, isBinding, steps],
   );
 
   const finalizeEnrollment = useCallback(async () => {
@@ -267,6 +270,18 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       finalizeEnrollment();
       return;
     }
+    if (step.id === 'permissions') {
+      if (hasCameraPermission) {
+        setStepIndex(index => Math.min(index + 1, steps.length - 1));
+      } else {
+        requestPermission().then(granted => {
+          if (granted) {
+            setStepIndex(index => Math.min(index + 1, steps.length - 1));
+          }
+        });
+      }
+      return;
+    }
     if (step.id === 'scan') {
       performBinding();
       return;
@@ -282,7 +297,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   }, [
     enrollmentChallenge,
     finalizeEnrollment,
+    hasCameraPermission,
     performBinding,
+    requestPermission,
     stepIndex,
     steps,
   ]);
@@ -316,21 +333,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   }, [currentStep, isBinding, isSubmitting, navigation]);
 
   const handleBack = useCallback(() => {
-  useEffect(() => {
-    const scanned = route.params?.scanned;
-    if (!scanned) {
-      return;
-    }
-    setBindForm(prev => ({
-      enrollmentId: scanned.enrollmentId,
-      enrollmentProofToken: scanned.enrollmentProofToken,
-      language: scanned.language ?? prev.language ?? 'en',
-    }));
-    setBindError(undefined);
-    performBinding(scanned).finally(() => {
-      navigation.setParams({scanned: undefined});
-    });
-  }, [navigation, performBinding, route.params?.scanned]);
     if (stepIndex === 0) {
       navigation.goBack();
       return;
@@ -364,8 +366,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         ? 'Finishing…'
         : currentStep.actionLabel
       : currentStep.id === 'scan' && isBinding
-      ? 'Binding…'
-      : currentStep.actionLabel;
+        ? 'Binding…'
+        : currentStep.actionLabel;
 
   return (
     <View style={styles.container}>
@@ -435,9 +437,21 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             />
             {bindError ? <Text style={styles.formError}>{bindError}</Text> : null}
             <TouchableOpacity
-              style={styles.scanButton}
-              onPress={() => navigation.navigate('EnrollmentScanner')}>
-              <Text style={styles.scanButtonLabel}>Scan QR code with camera</Text>
+              style={[
+                styles.scanButton,
+                !hasCameraPermission ? styles.scanButtonDisabled : undefined,
+              ]}
+              onPress={() => {
+                if (!hasCameraPermission) {
+                  requestPermission();
+                  return;
+                }
+                setScannerVisible(true);
+              }}
+              disabled={!hasCameraPermission}>
+              <Text style={styles.scanButtonLabel}>
+                {hasCameraPermission ? 'Open camera scanner' : 'Grant camera permission first'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -449,62 +463,72 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                 <Text style={styles.summarySubtitle}>{draft.integrationDescription}</Text>
               ) : null}
               <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
-            {draft.enrollmentName ? (
-              <Text style={styles.summaryMeta}>Device label: {draft.enrollmentName}</Text>
-              ) : null}
             </View>
-            <View style={styles.form}>
-              <Text style={styles.inputLabel}>Enrollment challenge</Text>
-              <TextInput
-                value={enrollmentChallenge}
-                onChangeText={value => {
-                  setEnrollmentChallenge(value.replace(/[^0-9A-Za-z]/g, '').slice(0, 6).toUpperCase());
-                  setChallengeError(undefined);
-                }}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                style={styles.input}
-                placeholder="e.g. A1B2C3"
-                placeholderTextColor="#5f6780"
-                editable={!isSubmitting}
-              />
-              {challengeError ? <Text style={styles.formError}>{challengeError}</Text> : null}
-            </View>
+            <Text style={styles.inputLabel}>Challenge code</Text>
+            <TextInput
+              value={enrollmentChallenge}
+              onChangeText={value => {
+                setChallengeError(undefined);
+                setEnrollmentChallenge(value.replace(/[^0-9]/g, '').slice(0, 6));
+              }}
+              keyboardType="number-pad"
+              style={styles.input}
+              placeholder="000000"
+              placeholderTextColor="#5f6780"
+              editable={!isSubmitting}
+            />
+            {challengeError ? <Text style={styles.formError}>{challengeError}</Text> : null}
           </>
         ) : null}
         {currentStep.id === 'confirm' && draft ? (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>{draft.integrationName}</Text>
-            {draft.integrationDescription ? (
-              <Text style={styles.summarySubtitle}>{draft.integrationDescription}</Text>
-            ) : null}
-            <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
-            <Text style={styles.summaryMeta}>Alias: {`device-${draft.id}`}</Text>
-            {enrollmentChallenge ? (
-              <Text style={styles.summaryMeta}>Enrollment challenge: {enrollmentChallenge}</Text>
-            ) : null}
+            <Text style={styles.summarySubtitle}>{draft.tenantName}</Text>
+            <Text style={styles.summaryMeta}>Status: {draft.status.toUpperCase()}</Text>
+            <Text style={styles.summaryMeta}>
+              Created {new Date().toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})}
+            </Text>
           </View>
         ) : null}
       </View>
-      <TouchableOpacity
-        onPress={handlePrimary}
-        style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
-        disabled={primaryDisabled}>
-        <Text style={styles.primaryLabel}>{primaryLabel}</Text>
-      </TouchableOpacity>
-      {currentStep.secondaryLabel ? (
+      <View style={styles.actions}>
+        {currentStep.secondaryLabel ? (
+          <TouchableOpacity
+            style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
+            onPress={handleSecondary}
+            disabled={secondaryDisabled}>
+            <Text style={styles.secondaryLabel}>{currentStep.secondaryLabel}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.secondaryButtonPlaceholder} />
+        )}
         <TouchableOpacity
-          onPress={handleSecondary}
-          style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
-          disabled={secondaryDisabled}>
-          <Text style={styles.secondaryLabel}>{currentStep.secondaryLabel}</Text>
+          style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
+          onPress={handlePrimary}
+          disabled={primaryDisabled}>
+          <Text style={styles.primaryLabel}>{primaryLabel}</Text>
         </TouchableOpacity>
-      ) : null}
-      <View style={styles.stepIndicator}>
-        <Text style={styles.stepIndicatorText}>
-          Step {stepIndex + 1} of {steps.length}
-        </Text>
       </View>
+
+      <EnrollmentScannerModal
+        visible={scannerVisible}
+        onDismiss={() => setScannerVisible(false)}
+        onScanned={value => {
+          try {
+            const parsed = parseQrPayload(value);
+            setBindForm(prev => ({
+              enrollmentId: parsed.enrollmentId,
+              enrollmentProofToken: parsed.enrollmentProofToken,
+              language: parsed.language ?? prev.language ?? 'en',
+            }));
+            setBindError(undefined);
+            performBinding(parsed);
+          } catch (error) {
+            console.warn('[EnrollmentWizard] Invalid QR payload', error);
+            Alert.alert('Invalid QR', 'The scanned code is not a valid Ezkey enrollment.');
+          }
+        }}
+      />
     </View>
   );
 };
@@ -512,35 +536,36 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
     backgroundColor: '#0b0d11',
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#f4f7ff',
   },
   backButton: {
-    width: 72,
-    height: 32,
-    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   backLabel: {
+    color: '#61d095',
     fontSize: 14,
-    color: '#9aa3b6',
+    fontWeight: '500',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
   },
   progressTrack: {
     flexDirection: 'row',
     height: 6,
     borderRadius: 3,
+    backgroundColor: '#1c2230',
     overflow: 'hidden',
-    backgroundColor: '#151923',
+    marginTop: 16,
   },
   progressBar: {
     backgroundColor: '#61d095',
@@ -550,51 +575,27 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     flex: 1,
-    paddingVertical: 32,
-    gap: 16,
+    marginTop: 24,
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#f4f7ff',
   },
   stepDescription: {
-    fontSize: 16,
-    color: '#c2c8d5',
-    lineHeight: 24,
-  },
-  primaryButton: {
-    backgroundColor: '#61d095',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  primaryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0b0d11',
-  },
-  secondaryButton: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  secondaryLabel: {
     fontSize: 14,
-    color: '#9aa3b6',
+    color: '#c2c8d5',
+    marginTop: 8,
+    marginBottom: 24,
   },
   form: {
     width: '100%',
-    marginTop: 24,
     gap: 12,
   },
   inputLabel: {
     fontSize: 13,
-    color: '#9aa3b6',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: '500',
+    color: '#c2c8d5',
   },
   input: {
     backgroundColor: '#151923',
@@ -607,19 +608,6 @@ const styles = StyleSheet.create({
   formError: {
     fontSize: 13,
     color: '#ff7878',
-  },
-  scanButton: {
-    marginTop: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#61d095',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  scanButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#61d095',
   },
   summaryCard: {
     marginTop: 24,
@@ -641,13 +629,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9aa3b6',
   },
-  stepIndicator: {
-    marginTop: 24,
+  scanButton: {
+    marginTop: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#61d095',
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  stepIndicatorText: {
-    fontSize: 12,
-    color: '#9aa3b6',
-    letterSpacing: 0.6,
+  scanButtonDisabled: {
+    borderColor: '#5f6780',
+  },
+  scanButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#61d095',
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#61d095',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#5f6780',
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  secondaryButtonPlaceholder: {
+    flex: 1,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  secondaryLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  primaryLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0b0d11',
   },
 });
+
+const parseQrPayload = (value: string): {
+  enrollmentId: string;
+  enrollmentProofToken: string;
+  language?: string;
+} => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error('Empty payload');
+  }
+  try {
+    const json = JSON.parse(trimmed);
+    if (json.enrollmentId && json.enrollmentProofToken) {
+      return {
+        enrollmentId: String(json.enrollmentId),
+        enrollmentProofToken: String(json.enrollmentProofToken),
+        language: json.language ? String(json.language) : undefined,
+      };
+    }
+  } catch {
+    // ignore and try pipe format
+  }
+  const pipeParts = trimmed.split('|');
+  if (pipeParts.length >= 2) {
+    return {
+      enrollmentId: pipeParts[0],
+      enrollmentProofToken: pipeParts.slice(1).join('|'),
+    };
+  }
+  throw new Error('Unsupported QR format');
+};
+

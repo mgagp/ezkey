@@ -1,10 +1,9 @@
 package com.ezkeymobile.qr
 
 import android.util.Log
-import com.facebook.react.bridge.WritableNativeArray
 import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.mrousavy.camera.frameprocessors.Frame
@@ -32,15 +31,12 @@ class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
       val rotationDegrees = frame.orientation.toRotationDegrees()
       val inputImage = InputImage.fromMediaImage(mediaImage, rotationDegrees)
       val barcodes = Tasks.await(scanner.process(inputImage))
-      if (barcodes.isEmpty()) {
-        null
-      } else {
-        val array = WritableNativeArray()
-        for (barcode in barcodes) {
-          barcode.rawValue?.let { array.pushString(it) }
-        }
-        if (array.size() > 0) array else null
+      if (barcodes.isEmpty()) return null
+      val values = ArrayList<String>(barcodes.size)
+      for (barcode in barcodes) {
+        barcode.rawValue?.let { values.add(it) }
       }
+      if (values.isEmpty()) null else values
     } catch (error: Throwable) {
       Log.e(TAG, "Failed to process frame", error)
       null
