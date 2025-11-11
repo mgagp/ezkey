@@ -48,7 +48,7 @@
     <suppress checks="UnusedImports"/>
     
     <!-- Suppress star imports temporarily -->
-    <suppress checks="AvoidStarImport"/>
+<!--     <suppress checks="AvoidStarImport"/> -->
     
     <!-- ===================================================================== -->
     <!-- JAVADOC SUPPRESSIONS (TO BE ADDED GRADUALLY)                         -->

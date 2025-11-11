@@ -8,7 +8,6 @@ CLI Component: Admin Command
 Description: Admin API commands for integrations, enrollments, and auth attempts
 """
 
-import time
 from typing import Any, Dict
 
 import click
@@ -441,31 +440,83 @@ def wait_for_auth_attempt(ctx, id, timeout, polling):
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
     
-    url = f"{admin_url}/api/v1/auth-attempts/{id}"
-    start_time = time.time()
+    url = f"{admin_url}/api/v1/auth-attempts/{id}/wait"
+    params = {'timeout': timeout, 'polling': polling}
     
-    OutputUtils.info(f"Waiting for auth attempt {id} to complete (timeout: {timeout}s)...")
+    OutputUtils.info(
+        f"Waiting for auth attempt {id} to complete "
+        f"(timeout: {timeout}s, polling: {polling}s)..."
+    )
+    OutputUtils.verbose(f"GET {url}", verbose)
+    OutputUtils.verbose(f"Params: {params}", verbose)
     
-    while True:
-        elapsed = time.time() - start_time
-        if elapsed > timeout:
-            OutputUtils.error(f"Timeout after {timeout} seconds")
-            return
-        
-        OutputUtils.verbose(f"Polling {url} (elapsed: {elapsed:.1f}s)", verbose)
-        response = http_client.get(url)
-        
-        if not response.success:
-            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
-            return
-        
-        # Check if auth attempt is completed
-        if response.data and response.data.get('status') in ['APPROVED', 'REJECTED', 'EXPIRED']:
-            OutputUtils.success(f"Auth attempt completed with status: {response.data.get('status')}")
-            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
-            return
-        
-        time.sleep(polling)
+    response = http_client.get(url, params=params)
+    
+    if response.success:
+        data = response.data or {}
+        status_text = data.get('status')
+        if status_text:
+            OutputUtils.success(f"Auth attempt completed with status: {status_text}")
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+# Audit log commands
+@admin_group.group('audit-log')
+@click.pass_context
+def audit_log_group(ctx):
+    """Audit log query commands."""
+    pass
+
+
+@audit_log_group.command('list')
+@click.option('--event-type', help='Filter by event type (e.g., ADMIN_LOGIN)')
+@click.option('--event-status', help='Filter by event status (e.g., SUCCESS)')
+@click.option('--api-name', help='Filter by API name (e.g., ADMIN_API)')
+@click.option('--enrollment-id', type=int, help='Filter by enrollment ID')
+@click.option('--admin-id', type=int, help='Filter by admin ID')
+@click.option('--page', default=0, type=int, show_default=True, help='Page number (zero-based)')
+@click.option('--size', default=20, type=int, show_default=True, help='Page size (max 100)')
+@click.pass_context
+def list_audit_logs(ctx, event_type, event_status, api_name, enrollment_id, admin_id, page, size):
+    """
+    Query audit logs with optional filters.
+    
+    Results are returned with pagination (page/size) mirroring the Admin API contract.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    params = {
+        'page': page,
+        'size': size,
+    }
+    if event_type:
+        params['eventType'] = event_type
+    if event_status:
+        params['eventStatus'] = event_status
+    if api_name:
+        params['apiName'] = api_name
+    if enrollment_id is not None:
+        params['enrollmentId'] = enrollment_id
+    if admin_id is not None:
+        params['adminId'] = admin_id
+    
+    url = f"{admin_url}/api/v1/audit-logs"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    if verbose:
+        OutputUtils.verbose(f"Params: {params}", verbose)
+    
+    response = http_client.get(url, params=params)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
 # Admin authentication commands

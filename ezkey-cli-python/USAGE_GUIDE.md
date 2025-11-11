@@ -161,7 +161,19 @@ ezkey admin auth-attempt create --enrollment-id 1
 ezkey admin auth-attempt create --enrollment-id 1 --challenge-requested
 
 # Wait for completion
-ezkey admin auth-attempt wait --id 1 --timeout 30
+ezkey admin auth-attempt wait --id 1 --timeout 30 --polling 2
+```
+
+#### Audit Logs
+```bash
+# Query audit logs with default pagination
+ezkey admin audit-log list
+
+# Filter by event metadata
+ezkey admin audit-log list --event-type ADMIN_LOGIN --event-status SUCCESS
+
+# Fetch a specific page of results
+ezkey admin audit-log list --api-name AUTH_API --page 1 --size 50
 ```
 
 #### Authentication
@@ -204,17 +216,31 @@ ezkey admin api-key revoke --id 42
 ### Auth Commands (Device/Mobile)
 
 ```bash
-# Bind enrollment to device
-ezkey auth enrollment bind --enrollment-id 456 --enrollment-proof-token EZK-ABC123
+# Bind enrollment to device with proof token
+ezkey auth enrollment bind \
+  --enrollment-id 456 \
+  --enrollment-proof-token EZK-ABC123 \
+  --language en
 
-# Verify enrollment
-ezkey auth enrollment verify --id 456
+# Verify enrollment (device completes cryptographic challenge)
+ezkey auth enrollment verify \
+  --enrollment-id 456 \
+  --challenge-response 987654 \
+  --device-public-key @device_public.pem \
+  --enrollment-proof-token-signed @enrollment_signature.txt
 
 # Check for pending auth attempts
-ezkey auth pending
+ezkey auth auth-attempt pending \
+  --enrollment-id 456 \
+  --enrollment-proof-token EZK-ABC123 \
+  --device-proof-token @device_token.jwt \
+  --device-proof-token-signed @device_token.sig
 
 # Respond to auth attempt
-ezkey auth respond --id 123
+ezkey auth auth-attempt respond \
+  --auth-attempt-id 123 \
+  --accepted true \
+  --auth-attempt-proof-token-signed @auth_attempt.sig
 ```
 
 ### Configuration Commands
@@ -341,7 +367,7 @@ ezkey admin auth-attempt create --enrollment-id 456
 # Output: { "authAttemptId": 789 }
 
 # 3. Wait for device response
-ezkey admin auth-attempt wait --id 789 --timeout 60
+ezkey admin auth-attempt wait --id 789 --timeout 60 --polling 2
 
 # Device approves/rejects
 # Output: status will be "APPROVED", "REJECTED", or timeout

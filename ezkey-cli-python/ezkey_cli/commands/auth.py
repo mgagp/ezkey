@@ -30,11 +30,13 @@ def enrollment_group(ctx):
 
 
 @enrollment_group.command('bind')
-@click.option('--id', required=True, type=int, help='Enrollment ID')
-@click.option('--language', default='en', help='Accept-Language header')
+@click.option('--enrollment-id', required=True, type=int, help='Enrollment ID')
+@click.option('--enrollment-proof-token', required=True, help='Enrollment proof token')
+@click.option('--language', default='en', show_default=True, help='Preferred language for i18n fields')
+@click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def bind_enrollment(ctx, id, language):
-    """Bind device to enrollment."""
+def bind_enrollment(ctx, enrollment_id, enrollment_proof_token, language, data):
+    """Bind device to enrollment using proof token authentication."""
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
@@ -45,26 +47,57 @@ def bind_enrollment(ctx, id, language):
         OutputUtils.error("Auth URL not configured. Use 'ezkey configure set --auth-url <url>'")
         return
     
-    url = f"{auth_url}/api/v1/enrollments/{id}/bind"
+    url = f"{auth_url}/api/v1/enrollments/bind"
     
-    # Add language header
-    http_client.session.headers.update({'Accept-Language': language})
+    # Process data input
+    if data:
+        try:
+            json_data = JsonUtils.process_input(data)
+        except Exception as e:
+            OutputUtils.error(f"Invalid JSON data: {str(e)}")
+            return
+    else:
+        json_data = {}
+    
+    json_data.setdefault('enrollmentId', enrollment_id)
+    json_data.setdefault('enrollmentProofToken', enrollment_proof_token)
+    json_data.setdefault('language', language)
+    
+    # Add Accept-Language header for backward compatibility
+    previous_language = http_client.session.headers.get('Accept-Language')
+    http_client.session.headers['Accept-Language'] = language
     
     OutputUtils.verbose(f"POST {url}", verbose)
-    OutputUtils.verbose(f"Accept-Language: {language}", verbose)
+    if verbose:
+        safe_data = json_data.copy()
+        safe_data['enrollmentProofToken'] = '[REDACTED]'
+        OutputUtils.verbose(f"Data: {JsonUtils.format_output(safe_data)}", verbose)
     
-    response = http_client.post(url)
+    response = http_client.post(url, json_data=json_data)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+    
+    # Restore previous header
+    if previous_language is None:
+        http_client.session.headers.pop('Accept-Language', None)
+    else:
+        http_client.session.headers['Accept-Language'] = previous_language
 
 
 @enrollment_group.command('verify')
 @click.option('--enrollment-id', required=True, type=int, help='Enrollment ID')
-@click.option('--challenge-response', required=True, help='Challenge response')
-@click.option('--public-key', required=True, help='Device public key')
-@click.option('--token-signed', required=True, help='Signed enrollment proof token')
+@click.option('--challenge-response', required=True, type=int, help='Challenge response code')
+@click.option('--device-public-key', required=True, help='Device public key')
+@click.option('--enrollment-proof-token-signed', required=True, help='Signed enrollment proof token')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def verify_enrollment(ctx, enrollment_id, challenge_response, public_key, token_signed, data):
+def verify_enrollment(
+    ctx,
+    enrollment_id,
+    challenge_response,
+    device_public_key,
+    enrollment_proof_token_signed,
+    data,
+):
     """Verify enrollment completion."""
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -87,18 +120,19 @@ def verify_enrollment(ctx, enrollment_id, challenge_response, public_key, token_
         json_data = {}
     
     # Add required fields
-    json_data.update({
-        'enrollmentId': enrollment_id,
-        'challengeResponse': challenge_response,
-        'publicKey': public_key,
-        'tokenSigned': token_signed
-    })
+    json_data.setdefault('enrollmentId', enrollment_id)
+    json_data.setdefault('challengeResponse', challenge_response)
+    json_data.setdefault('devicePublicKey', device_public_key)
+    json_data.setdefault('enrollmentProofTokenSigned', enrollment_proof_token_signed)
     
     url = f"{auth_url}/api/v1/enrollments/verify"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         # Don't log sensitive data like keys/tokens in verbose mode
-        safe_data = {k: v if k not in ['publicKey', 'tokenSigned'] else '[REDACTED]' 
+        safe_data = {
+            k: v
+            if k not in ['devicePublicKey', 'enrollmentProofTokenSigned']
+            else '[REDACTED]'
                     for k, v in json_data.items()}
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(safe_data)}", verbose)
     
@@ -116,11 +150,19 @@ def auth_attempt_group(ctx):
 
 @auth_attempt_group.command('pending')
 @click.option('--enrollment-id', required=True, type=int, help='Enrollment ID')
-@click.option('--device-token', required=True, help='Device proof token')
-@click.option('--device-token-signed', required=True, help='Signed device proof token')
+@click.option('--enrollment-proof-token', required=True, help='Enrollment proof token')
+@click.option('--device-proof-token', required=True, help='Device proof token')
+@click.option('--device-proof-token-signed', required=True, help='Signed device proof token')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def check_pending(ctx, enrollment_id, device_token, device_token_signed, data):
+def check_pending(
+    ctx,
+    enrollment_id,
+    enrollment_proof_token,
+    device_proof_token,
+    device_proof_token_signed,
+    data,
+):
     """Check for pending authentication requests."""
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -143,17 +185,20 @@ def check_pending(ctx, enrollment_id, device_token, device_token_signed, data):
         json_data = {}
     
     # Add required fields
-    json_data.update({
-        'enrollmentId': enrollment_id,
-        'deviceToken': device_token,
-        'deviceTokenSigned': device_token_signed
-    })
+    json_data.setdefault('enrollmentId', enrollment_id)
+    json_data.setdefault('enrollmentProofToken', enrollment_proof_token)
+    json_data.setdefault('deviceProofToken', device_proof_token)
+    json_data.setdefault('deviceProofTokenSigned', device_proof_token_signed)
     
     url = f"{auth_url}/api/v1/auth-attempts/pending"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         # Don't log sensitive data like tokens in verbose mode
-        safe_data = {k: v if k not in ['deviceToken', 'deviceTokenSigned'] else '[REDACTED]' 
+        safe_data = {
+            k: v
+            if k
+            not in ['enrollmentProofToken', 'deviceProofToken', 'deviceProofTokenSigned']
+            else '[REDACTED]'
                     for k, v in json_data.items()}
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(safe_data)}", verbose)
     
@@ -162,13 +207,29 @@ def check_pending(ctx, enrollment_id, device_token, device_token_signed, data):
 
 
 @auth_attempt_group.command('respond')
-@click.option('--id', required=True, type=int, help='Auth attempt ID')
-@click.option('--accepted', required=True, type=bool, help='Accept or deny (true/false)')
-@click.option('--token-signed', required=True, help='Signed auth attempt proof token')
-@click.option('--challenge-response', help='Challenge response (if required)')
+@click.option('--auth-attempt-id', required=True, type=int, help='Auth attempt ID')
+@click.option(
+    '--accepted',
+    required=True,
+    type=click.Choice(['true', 'false'], case_sensitive=False),
+    help='Accept or deny the authentication request',
+)
+@click.option(
+    '--auth-attempt-proof-token-signed',
+    required=True,
+    help='Signed auth attempt proof token',
+)
+@click.option('--challenge-response', type=int, help='Challenge response (if required)')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def respond_to_auth_attempt(ctx, id, accepted, token_signed, challenge_response, data):
+def respond_to_auth_attempt(
+    ctx,
+    auth_attempt_id,
+    accepted,
+    auth_attempt_proof_token_signed,
+    challenge_response,
+    data,
+):
     """Respond to authentication attempt."""
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -191,21 +252,25 @@ def respond_to_auth_attempt(ctx, id, accepted, token_signed, challenge_response,
         json_data = {}
     
     # Add required fields
-    json_data.update({
-        'accepted': accepted,
-        'tokenSigned': token_signed
-    })
+    json_data.setdefault('authAttemptId', auth_attempt_id)
+    if 'authAttemptAccepted' not in json_data:
+        json_data['authAttemptAccepted'] = accepted.lower() == 'true'
+    if 'authAttemptProofTokenSignedByDevice' not in json_data:
+        json_data['authAttemptProofTokenSignedByDevice'] = auth_attempt_proof_token_signed
     
     # Add optional challenge response
-    if challenge_response:
-        json_data['challengeResponse'] = challenge_response
+    if challenge_response is not None:
+        json_data.setdefault('authAttemptChallengeResponse', challenge_response)
     
-    url = f"{auth_url}/api/v1/auth-attempts/{id}/respond"
+    url = f"{auth_url}/api/v1/auth-attempts/respond"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         # Don't log sensitive data like tokens in verbose mode
-        safe_data = {k: v if k not in ['tokenSigned'] else '[REDACTED]' 
-                    for k, v in json_data.items()}
+        safe_data = {
+            k: v
+            if k not in ['authAttemptProofTokenSignedByDevice']
+            else '[REDACTED]'
+            for k, v in json_data.items()}
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(safe_data)}", verbose)
     
     response = http_client.post(url, json_data=json_data)
