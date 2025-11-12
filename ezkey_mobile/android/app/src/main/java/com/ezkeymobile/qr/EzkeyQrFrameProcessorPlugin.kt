@@ -1,3 +1,17 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * File: EzkeyQrFrameProcessorPlugin.kt
+ * Description: Frame processor plugin that decodes Ezkey enrollment QR payloads for the Vision
+ * Camera bridge.
+ * Security Context: Ensures QR decoding follows the enrollment handshake outlined in
+ * docs/ENDPOINT.md by returning only raw values without persisting images or metadata.
+ * @since 2025
+ */
+
 package com.ezkeymobile.qr
 
 import android.util.Log
@@ -10,6 +24,11 @@ import com.mrousavy.camera.frameprocessors.Frame
 import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin
 import com.mrousavy.camera.core.types.Orientation
 
+/**
+ * ML Kit powered frame processor that extracts enrollment QR payloads for the React Native layer.
+ *
+ * @since 2025
+ */
 class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
 
   private val options =
@@ -25,6 +44,11 @@ class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
 
   private val scanner = BarcodeScanning.getClient(options)
 
+  /**
+   * Processes camera frames to return decoded QR payloads.
+   *
+   * @since 2025
+   */
   override fun callback(frame: Frame, params: Map<String, Any>?): Any? {
     return try {
       val mediaImage = frame.image
@@ -49,6 +73,11 @@ class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
   }
 }
 
+/**
+ * Converts orientation metadata into rotation degrees accepted by ML Kit.
+ *
+ * @since 2025
+ */
 private fun Orientation.toRotationDegrees(): Int =
     when (this) {
       Orientation.PORTRAIT -> 0

@@ -1,3 +1,15 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: EnrollmentWizardScreen
+ * Description: Guided enrollment experience that walks the user through QR scanning, challenge verification, and secure key generation.
+ * Security Context: Implements the enrollment safeguards described in docs/features/AUTH_SECURITY.md by ensuring proof tokens are captured via QR, challenges are enforced, and RSA keys follow docs/CRYPTO.md.
+ * @since 2025
+ */
+
 import React, {useCallback, useMemo, useState} from 'react';
 import {
   Alert,
@@ -45,6 +57,12 @@ type EnrollmentDraft = {
 
 const MOCK_DEVICE_NAME = 'Pixel 7 Pro';
 
+/**
+ * Walks the user through the Ezkey device enrollment workflow.
+ *
+ * @param navigation Stack navigation helper.
+ * @since 2025
+ */
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
   const [stepIndex, setStepIndex] = useState(0);
@@ -641,6 +659,17 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * Parses the enrollment QR payload which may be JSON or a pipe-delimited fallback.
+ *
+ * The function enforces the payload constraints described in `docs/ENDPOINT.md` ensuring we extract proof tokens
+ * without introducing alternate parsing paths that could weaken enrollment verification.
+ *
+ * @param value Raw QR code payload.
+ * @return Structured enrollment payload.
+ * @throws Error when the payload does not contain the expected fields.
+ * @since 2025
+ */
 const parseQrPayload = (value: string): {
   enrollmentId: string;
   enrollmentProofToken: string;

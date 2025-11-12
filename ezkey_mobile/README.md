@@ -1,219 +1,123 @@
-# Ezkey Mobile App (React Native)
+# Ezkey Mobile (React Native)
 
-> Cross-platform companion app for enrolling devices and handling authentication challenges in the Ezkey MFA ecosystem.
+> Cross-platform companion app that manages Ezkey enrollments and handles MFA approvals through native cryptography.
 
-## Project Snapshot
+## Overview
 
-- **Platforms**: iOS 15+/Android 8+ via React Native 0.76+
-- **Distribution**: Bare React Native project (no Expo) with custom native modules for cryptography and secure storage
-- **Core Flows**: Enrollment via QR, stored enrollment management, pending authentication approvals, denial handling, and challenge responses
-- **APIs**: Ezkey Auth API (`auth-api/openapi-spec.json`) via a conservative REST client
-- **Initial Environment**: `https://goateed-katalina-monsoonal.ngrok-free.dev` (configurable)
-- **Instance Scope**: Targets one Ezkey environment at a time; multi-instance switching is out of scope for MVP.
+- **Stack**: React Native 0.76 + TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
+- **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
+- **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
+- **Security Alignment**: Mirrors the guarantees detailed in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
 
-```mermaid
-flowchart LR
-    subgraph Mobile App
-        A[Home<br/>Enrollment List]
-        B[Enrollment Detail]
-        C[QR Scan Flow]
-        D[Pending Auth Screen]
-    end
+## Core Capabilities
 
-    subgraph Ezkey Platform
-        E[Auth API]
-    end
+- Guided enrollment wizard with QR scanning, challenge validation, and RSA key provisioning
+- Local enrollment catalogue with secure alias storage, detail views, and pending-auth shortcuts
+- Manual, user-driven polling for authentication attempts followed by approve/deny flows
+- Shared Axios client with deterministic timeouts and error handling suitable for mobile networks
+- Native crypto bridge (Kotlin/Swift) that delegates RSA-2048 key management to Android Keystore and iOS Secure Enclave/Keychain
 
-    A -->|select| B
-    A -->|add| C
-    B -->|check pending| D
-    C -->|bind/verify| E
-    D -->|respond| E
-```
+## Security Posture
 
-## Features (MVP)
+- Proof tokens and signatures are always handled in memory; sensitive values are stored via secure storage abstractions only
+- Enrollment and authentication requests follow the pull-based model that avoids background polling to prevent enumeration or replay
+- Device credentials honour the RSA constraints listed in [`docs/CRYPTO.md`](../docs/CRYPTO.md) (`SHA256withRSA`, PKCS#8/X.509)
+- Client-side documentation references the backend security analysis in [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) to keep UI logic aligned with server-side guarantees
 
-- Manage multiple enrollments with cached metadata captured at enrollment time (no post-enrollment refresh)
-- Guided “Add enrollment” wizard with camera permission handling and QR scanning
-- End-to-end enrollment activation using Ezkey cryptographic flow (RSA-2048, SHA-256 signatures)
-- Manual, user-triggered polling of pending authentication attempts plus approval/denial UI with challenge input
-- Toast feedback when the Auth API cannot be reached
-- Secure storage of private keys (Keychain/Keystore) and local metadata persistence (AsyncStorage/SQLite)
-- Debug tools: base URL override, clear local data, verbose logging in development builds
-
-## Tech Stack & Key Dependencies
-
-- React Native 0.76+, TypeScript, React Navigation 7 (stack/tab), React Query 5 for API access
-- `react-native-vision-camera` or equivalent QR module, `react-native-permissions`, `@react-native-async-storage/async-storage`
-- Secure storage abstraction (e.g., `react-native-keychain` + native modules for RSA keypair generation)
-- `EzkeyCryptoModule` native bridge (Swift/Kotlin) exposes RSA keypair generation, signing, and key deletion APIs backed by Keychain/Keystore
-- Jest + React Native Testing Library + Detox (optional) for automated coverage
-
-## Repository Layout (proposed)
+## Project Structure
 
 ```
-ezkey-mobile/
+ezkey_mobile/
 ├── app/
-│   ├── components/
-│   ├── hooks/
-│   ├── navigation/
-│   ├── screens/
-│   │   ├── Home/
-│   │   ├── EnrollmentDetail/
-│   │   ├── EnrollmentWizard/
-│   │   └── PendingAuth/
+│   ├── components/              # Reusable UI (e.g., QR modal)
+│   ├── hooks/                   # React Query + storage orchestration
+│   ├── navigation/              # Stack navigator + types
+│   ├── providers/               # App-wide context providers
+│   ├── screens/                 # Feature screens (Home, Enrollment Wizard, Pending Auth, Diagnostics)
 │   ├── services/
-│   │   ├── api/
-│   │   ├── crypto/
-│   │   └── storage/
-│   └── state/
-├── ios/
-├── android/
-├── docs/
-│   ├── PRD.md
-│   ├── plan.md
-│   └── design/
-├── scripts/
+│   │   ├── api/                 # REST clients and DTOs
+│   │   ├── crypto/              # Native crypto integration layer
+│   │   └── storage/             # Secure + metadata storage abstractions
+│   └── state/                   # Zustand stores
+├── android/                     # Native Android project (Kotlin)
+├── ios/                         # Native iOS project (Swift/Objective-C++)
+├── docs/                        # Mobile-specific documentation (architecture, native modules, PRD)
 └── package.json
 ```
 
-## Getting Started
+## Prerequisites
 
-### 1. Prerequisites
-- Node.js 20 LTS, Yarn 4 (Berry)
-- Xcode 15.x (macOS) and Android Studio Giraffe+ with Android SDK 34
-- Watchman (macOS), JDK 17+, CocoaPods 1.15+
-- Access to the Ezkey Auth API; default base URL uses the provided ngrok endpoint
+- Node.js 20 LTS and Yarn 4 (Berry)
+- Java 17+ and Android Studio Giraffe (SDK 34)
+- Xcode 15.x with CocoaPods 1.15+ (macOS)
+- Watchman (macOS), Git Bash or another POSIX shell on Windows
+- Access to a running Ezkey backend (see [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) for endpoint details)
 
-### 2. Installation
+## Setup
+
+### Install dependencies
+
 ```bash
 yarn install
 ```
 
-### 3. Environment Configuration
-Create a `.env` file (run commands from Git Bash or another POSIX-compatible shell) and add the following defaults:
+### Configure environment
+
+Create `.env` inside `ezkey_mobile/`:
+
 ```
 EZKEY_API_BASE_URL=https://goateed-katalina-monsoonal.ngrok-free.dev
 EZKEY_REQUEST_TIMEOUT=10000
 ```
 
-### 4. Running the App
+> Run setup commands from Git Bash (or another POSIX-compatible shell) when working on Windows to avoid path issues.
+
+### Run the app
+
 ```bash
-# iOS
+# iOS simulator
 yarn ios
 
-# Android (emulator or device)
+# Android emulator/device
 yarn android
 
-# Metro server only
+# Start Metro bundler only
 yarn start
 ```
 
-### 5. Android CLI Builds
-```bash
-# Clean Gradle outputs before rebuilding
-yarn android:clean
+### Useful scripts
 
-# Assemble or install the debug build on the selected device/emulator
+```bash
+yarn android:clean         # Clear Gradle outputs
 yarn android:assemble:debug
 yarn android:install:debug
-
-# Produce signed artifacts (configure release keystore before shipping)
 yarn android:assemble:release
 yarn android:bundle:release
 ```
 
-Run these commands from Git Bash (or another POSIX shell) to ensure the `./gradlew` invocations resolve correctly on Windows.
+### Quality gates
 
-### 6. Android Studio Workflow (Pixel 7 Pro over Wi-Fi)
-1. Open Android Studio, choose **Open**, and select the `android/` directory from this repository.
-2. Allow Gradle sync to finish; Android Studio will detect the custom `EzkeyCryptoModule` Kotlin sources and `react-native-config` plugin.
-3. Connect your Pixel 7 Pro via USB once, enable **Developer options** → **Wireless debugging**, and trust the computer.
-4. In Android Studio, open **Device Manager** → **Pair using Wi-Fi** → **Pair device with pairing code**, then approve the pairing code on your device.
-5. Ensure the device appears as "Wi-Fi" in Device Manager. You can now unplug USB, mirror the device, and deploy builds over Wi-Fi.
-6. Use **Build > Make Project** for incremental compiles or the **Run** button (select the Wi-Fi device) to install the debug variant. The CLI scripts above remain available for automated builds.
-
-### 7. Testing & Linting
 ```bash
-yarn test              # unit + component tests
-yarn lint              # eslint + typescript
-yarn typecheck         # tsc --noEmit
-yarn detox:test        # optional e2e in CI
+yarn lint                  # ESLint + TypeScript checks
+yarn typecheck             # tsc --noEmit
+yarn test                  # Jest unit/component tests
+# yarn detox:test          # Optional end-to-end suite (requires Detox setup)
 ```
 
-## Core Flows
+## Native Modules Summary
 
-### Enrollment
-1. User taps `Add enrollment`
-2. App requests camera permission and opens QR scanner
-3. QR provides `enrollmentId` + `proofToken`
-4. App posts to `POST /api/v1/enrollments/bind` (body includes the QR payload) to retrieve integration metadata + enrollment proof token
-5. Generates RSA key pair, stores private key securely, and POSTs `verify`
-6. On success, app saves enrollment locally and surfaces confirmation screen
+- `EzkeyCryptoModule` (Kotlin/Swift) exposes RSA key generation, retrieval, signing, and deletion
+- `EzkeyQrFrameProcessorPlugin` (Kotlin) feeds `react-native-vision-camera` with decoded QR payloads
+- iOS bridges live under `ios/EzkeyMobile/` and should adopt Xcode Quick Help (`///`) comments referencing the same security docs noted above
+- Detailed design notes live in [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) *(created in this revision)*
 
-### Pending Authentication
-1. User opens enrollment detail and taps `Check pending`
-2. App posts to `POST /api/v1/auth-attempts/pending` (payload carries enrollment + device proofs)
-3. If a pending attempt exists, show request card with challenge input when required
-4. User approves or denies; app sends `POST /api/v1/auth-attempts/respond`
-5. App displays success or error feedback (toast on failure/offline) and navigates back
+## Documentation
 
-## API Contract (minimum surface)
-
-- `POST /api/v1/enrollments/bind` *(body: `enrollmentId`, `proofToken`; hides identifiers from URL to prevent enumeration)*
-- `POST /api/v1/enrollments/verify`
-- `POST /api/v1/auth-attempts/pending` *(body: enrollmentId, enrollmentProofToken, deviceProofToken, deviceProofTokenSigned)*
-    - `POST /api/v1/auth-attempts/respond`
-
-All payload shapes mirror the Kotlin reference implementation in `v1/enrollment/EnrollmentService.kt` and `v1/auth/AuthService.kt`.
-
-## Security & Privacy Checklist
-
-- Private keys never leave device; store reference only
-- AsyncStorage used for non-sensitive metadata; secure storage for secrets
-- Clear data option in debug builds; production adds factory reset via settings screen later
-- TLS enforcement, request timeouts (10s), exponential backoff (1s → 8s)
-- No analytics SDKs in MVP; instrumentation hooks for later
-- Local enrollment activity snapshots are cached for 30 days and auto-purged without impacting server-side auditing
-
-## Development Guidelines
-
-- TypeScript everywhere; enable strict compiler options
-- Folder-by-feature organization for screens and services
-    - React Query mutations handle API interactions; all mutations map directly to live API calls (no mocks)
-- Follow Ezkey design tokens (to be defined) for colors, typography, spacing
-- Unit tests for hooks/services, component tests for major screens, optional Detox happy path scenario
-
-```mermaid
-sequenceDiagram
-    participant Home
-    participant Storage
-    participant API
-
-    Home->>Storage: Load cached enrollments
-    Storage-->>Home: Enrollment list
-    Home->>API: User-triggered pending check
-    API-->>Home: Pending data or 204
-    Home->>API: Respond with decision
-    API-->>Home: Success or error
-    Home-->>Home: Show toast + update list
-```
-
-## Next Steps
-
-1. Finalize wireframes and component inventory
-2. Scaffold React Native project with tooling (EAS/Expo or bare RN decision pending)
-3. Implement secure storage native bridge and cryptography helpers
-4. Integrate enrollment flow end-to-end using sandbox environment
-5. Build pending auth flow and finalize error copy
-6. Prepare release checklist (app icons, splash screens, store assets)
-
-## Reference Materials
-
-- `PRD.md` – full product requirements
-- `plan.md` – roadmap, milestones, open issues
-- `auth-api/openapi-spec.json` – API contract
-- `v1/` Kotlin demo – canonical example for crypto & payload structure
+- [`docs/MOBILE_ARCHITECTURE.md`](docs/MOBILE_ARCHITECTURE.md) – high-level architecture and directory conventions *(created in this revision)*
+- [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) – native module responsibilities and communication flow *(created in this revision)*
+- [`docs/PRD.md`](docs/PRD.md) – product requirements for the mobile experience
+- [`docs/CRYPTO.md`](../docs/CRYPTO.md) – shared cryptographic reference
+- [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) – security analysis for pending/respond endpoints
 
 ---
 

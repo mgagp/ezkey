@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: mockCrypto
+ * Description: Deterministic mock crypto adapter used exclusively for development and automated testing scenarios.
+ * Security Context: Explicitly deviates from the hardened RSA implementation in docs/CRYPTO.md and must never ship in
+ *                   production builds. Documentation clarifies limitations to avoid misconstrued guarantees.
+ * @since 2025
+ */
+
 const BASE64_ALPHABET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
@@ -24,6 +37,11 @@ const generatePlaceholderKeyPair = () => {
   return {publicKey, privateKey};
 };
 
+/**
+ * Mock crypto delegate mirroring the native module surface while generating placeholder material.
+ *
+ * @since 2025
+ */
 export const mockCrypto = {
   async generateKeyPair(alias: string): Promise<boolean> {
     const pair = generatePlaceholderKeyPair();

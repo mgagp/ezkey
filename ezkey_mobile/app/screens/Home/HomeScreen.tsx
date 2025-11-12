@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: HomeScreen
+ * Description: Landing screen that lists device enrollments and routes users into detail and authentication flows.
+ * Security Context: Follows UX guidelines from docs/features/AUTH_SECURITY.md by requiring explicit navigation before
+ *                   polling for pending auth attempts, preventing accidental proof token reuse.
+ * @since 2025
+ */
+
 import React, {useCallback, useLayoutEffect, useMemo} from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +29,13 @@ import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 
+/**
+ * Orders enrollments prioritizing favorites while preserving newest-first semantics.
+ *
+ * @param items Enrollment array to sort.
+ * @return Sorted enrollment array.
+ * @since 2025
+ */
 const sortEnrollments = (items: StoredEnrollment[]) =>
   [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) {
@@ -29,6 +49,11 @@ const sortEnrollments = (items: StoredEnrollment[]) =>
 
 type HomeNavigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
+/**
+ * Lists stored enrollments and routes users to detail or wizard screens.
+ *
+ * @since 2025
+ */
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
   const {data, isLoading} = useEnrollments();
@@ -89,6 +114,11 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
+/**
+ * Fallback component rendered when no enrollments exist locally.
+ *
+ * @since 2025
+ */
 const EmptyState: React.FC = () => (
   <View style={styles.emptyState}>
     <Text style={styles.emptyText}>No enrollments yet. Tap Add to begin.</Text>
@@ -100,6 +130,13 @@ type EnrollmentListItemProps = {
   onPress: (enrollment: StoredEnrollment) => void;
 };
 
+/**
+ * Renders enrollment metadata within the home list.
+ *
+ * @param enrollment Enrollment to display.
+ * @param onPress Callback invoked when the item is selected.
+ * @since 2025
+ */
 const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => (
   <TouchableOpacity style={styles.card} onPress={() => onPress(enrollment)}>
     <View style={styles.cardHeader}>

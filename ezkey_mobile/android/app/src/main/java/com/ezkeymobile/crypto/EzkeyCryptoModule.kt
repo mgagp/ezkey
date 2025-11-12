@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * File: EzkeyCryptoModule.kt
+ * Description: Android native module exposing RSA key management and signing operations to React Native.
+ * Security Context: Implements the RSA-2048, SHA256withRSA workflow described in docs/CRYPTO.md with StrongBox support
+ * where available.
+ * @since 2025
+ */
+
 package com.ezkeymobile.crypto
 
 import android.os.Build
@@ -15,11 +28,28 @@ import java.security.PrivateKey
 import java.security.Signature
 import java.security.interfaces.RSAPublicKey
 
+/**
+ * React Native module providing RSA key generation, retrieval, signing, and deletion.
+ *
+ * @since 2025
+ */
 class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
+  /**
+   * Returns the module name exposed to React Native.
+   *
+   * @since 2025
+   */
   override fun getName(): String = NAME
 
+  /**
+   * Generates an RSA key pair with StrongBox preference when available.
+   *
+   * @param alias Android keystore alias.
+   * @param promise Promise resolved with true when the key already exists or after generation.
+   * @since 2025
+   */
   @ReactMethod
   fun generateRsaKeyPair(alias: String, promise: Promise) {
     try {
@@ -60,6 +90,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * Retrieves the X.509 encoded RSA public key for a given alias.
+   *
+   * @param alias Android keystore alias.
+   * @param promise Promise resolved with the Base64 public key or rejected when missing.
+   * @since 2025
+   */
   @ReactMethod
   fun getPublicKey(alias: String, promise: Promise) {
     try {
@@ -78,6 +115,14 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * Signs the provided payload using SHA256withRSA.
+   *
+   * @param alias Android keystore alias.
+   * @param dataBase64 Base64 encoded payload to sign.
+   * @param promise Promise resolved with the Base64 signature.
+   * @since 2025
+   */
   @ReactMethod
   fun sign(alias: String, dataBase64: String, promise: Promise) {
     try {
@@ -101,6 +146,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * Deletes the stored key pair associated with the alias.
+   *
+   * @param alias Android keystore alias.
+   * @param promise Promise resolved when deletion completes.
+   * @since 2025
+   */
   @ReactMethod
   fun deleteKey(alias: String, promise: Promise) {
     try {

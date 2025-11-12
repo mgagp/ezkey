@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: PendingAuthScreen
+ * Description: React Native screen orchestrating the device-side pending and respond flows.
+ * Security Context: Embeds the polling model, proof token usage, and read-once semantics described in
+ *                   docs/features/AUTH_SECURITY.md to keep user actions intentional and replay resistant.
+ * @since 2025
+ */
+
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
@@ -31,6 +44,16 @@ type PendingAttempt = {
   challengeRequired: boolean;
 };
 
+/**
+ * Presents pending authentication attempts for a selected enrollment and enables the user to accept or deny them.
+ *
+ * - Generates device proof tokens per poll, mirroring the guidance in `docs/CRYPTO.md`.
+ * - Submits RSA signatures through `cryptoService` to guarantee parity with the backend `SignatureService`.
+ * - Surfaces meaningful errors to maintain the human-in-the-loop posture emphasised in `docs/features/AUTH_SECURITY.md`.
+ *
+ * @param route React Navigation route containing the target enrollment identifier.
+ * @since 2025
+ */
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {enrollmentId} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);

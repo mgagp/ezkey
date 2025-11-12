@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: EnrollmentScannerModal
+ * Description: React Native modal that interfaces with the QR frame processor to bootstrap secure enrollment.
+ * Security Context: Aligns with docs/CRYPTO.md and docs/features/AUTH_SECURITY.md to preserve anti-enumeration guarantees
+ *                   by limiting QR payload reuse and adhering to read-once token semantics.
+ * @since 2025
+ */
+
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {
@@ -9,15 +22,43 @@ import {
 import type {FrameProcessorPlugin} from 'react-native-vision-camera';
 import {useRunOnJS, useSharedValue} from 'react-native-worklets-core';
 
+/**
+ * Modal properties for the enrollment QR scanner.
+ *
+ * @since 2025
+ */
 type Props = {
   visible: boolean;
   onDismiss: () => void;
   onScanned: (value: string) => void;
 };
 
+/**
+ * Native Vision Camera plugin hook used to bridge the Kotlin frame processor (`EzkeyQrFrameProcessorPlugin`)
+ * with the JavaScript runtime. The plugin decodes QR payloads that encode enrollment proof tokens and other
+ * bootstrap material documented in `docs/ENDPOINT.md`.
+ *
+ * The plugin name mirrors the Android implementation to keep the bridge deterministic across platforms.
+ *
+ * @since 2025
+ */
 const scanEzkeyPlugin: FrameProcessorPlugin | undefined =
   VisionCameraProxy.initFrameProcessorPlugin('scanEzkey', {}) ?? undefined;
 
+/**
+ * Displays the secure enrollment scanner overlay responsible for capturing QR codes emitted by the Admin API.
+ *
+ * The component throttles frame processing to minimize device workload while preserving the guarantees described in
+ * `docs/features/AUTH_SECURITY.md`:
+ * - Frames are sampled deterministically to avoid duplicate reads that could leak proof tokens.
+ * - The last scanned payload is memoized to uphold the read-once semantics of `authAttemptProofToken`.
+ * - The scan result is surfaced synchronously so the caller can persist the enrollment context before any reuse.
+ *
+ * @param visible Whether the modal should be displayed.
+ * @param onDismiss Callback invoked when the user cancels the modal.
+ * @param onScanned Callback invoked with the decoded QR payload when a new value is detected.
+ * @since 2025
+ */
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
   const device = useCameraDevice('back');
   const [isActive, setIsActive] = useState(false);

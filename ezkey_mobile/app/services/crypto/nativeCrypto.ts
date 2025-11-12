@@ -1,3 +1,15 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: nativeCrypto
+ * Description: Bridge to the Android/iOS native crypto module implementing RSA key management.
+ * Security Context: Ensures the React Native layer invokes the hardened implementations derived from docs/CRYPTO.md.
+ * @since 2025
+ */
+
 import {NativeModules} from 'react-native';
 
 type NativeModuleShape = {
@@ -28,6 +40,11 @@ const cryptoModule = (EzkeyCryptoModule as NativeModuleShape | undefined) ?? fal
 
 export const isNativeCryptoLinked = Boolean(EzkeyCryptoModule);
 
+/**
+ * Delegate exposing the native crypto module through a stable interface.
+ *
+ * @since 2025
+ */
 export const nativeCrypto = {
   generateKeyPair: (alias: string) => cryptoModule.generateRsaKeyPair(alias),
   getPublicKey: (alias: string) => cryptoModule.getPublicKey(alias),

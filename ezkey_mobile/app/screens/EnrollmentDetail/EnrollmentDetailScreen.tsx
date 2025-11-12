@@ -1,3 +1,16 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: EnrollmentDetailScreen
+ * Description: Displays enrollment metadata and supports secure deletion flows.
+ * Security Context: Reinforces lifecycle expectations from docs/features/AUTH_SECURITY.md by revoking device keys when
+ *                   enrollments are removed and highlighting the binding between device alias and proof tokens.
+ * @since 2025
+ */
+
 import React, {useCallback, useEffect, useMemo} from 'react';
 import {ActivityIndicator, Alert, Button, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -8,6 +21,13 @@ import {cryptoService} from '../../services/crypto';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
+/**
+ * Screen that surfaces enrollment metadata and allows users to manage their device bindings.
+ *
+ * @param route Navigation route containing the requested enrollment identifier.
+ * @param navigation Navigation helpers for stack transitions.
+ * @since 2025
+ */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
