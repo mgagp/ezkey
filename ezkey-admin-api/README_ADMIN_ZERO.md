@@ -72,6 +72,15 @@ For production deployments:
 3. **Enable MFA**: Configure MFA for the admin user as soon as possible
 4. **Monitor admin creation**: Set up alerts for admin zero creation events
 
+## MFA Enrollment Bootstrap (ASCII QR)
+
+If `ezkey.admin.mfa.bootstrap.enabled=true`, the Admin API also bootstraps Integration Zero and Enrollment Zero for the Ezkey mobile application.
+
+- Startup logs now include an **ASCII QR code** containing `enrollmentId|enrollmentProofToken`.
+- Scan the QR with the Ezkey Mobile wizard (step “Scan the QR code”) to bind the first device without typing the credentials.
+- The textual values (enrollment ID, proof token, challenge) remain in the logs as a fallback; store them securely if you rely on copy/paste.
+- Once the enrollment is bound, disable or rotate bootstrap credentials as part of your hardening checklist.
+
 ## Password Requirements
 
 Admin zero is created with a secure password:

@@ -93,6 +93,8 @@ public class AdminBootstrapService {
 
   private final AdminRecoveryService recoveryService;
 
+  private final QrCodeAsciiRenderer qrCodeAsciiRenderer;
+
   public AdminBootstrapService(
       IntegrationRepository integrationRepository,
       EnrollmentRepository enrollmentRepository,
@@ -101,7 +103,8 @@ public class AdminBootstrapService {
       SignatureService signatureService,
       AdminMfaProperties mfaProperties,
       OrganizationProperties organizationProperties,
-      AdminRecoveryService recoveryService) {
+      AdminRecoveryService recoveryService,
+      QrCodeAsciiRenderer qrCodeAsciiRenderer) {
     this.integrationRepository = integrationRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.adminRepository = adminRepository;
@@ -110,6 +113,7 @@ public class AdminBootstrapService {
     this.mfaProperties = mfaProperties;
     this.organizationProperties = organizationProperties;
     this.recoveryService = recoveryService;
+    this.qrCodeAsciiRenderer = qrCodeAsciiRenderer;
   }
 
   /**
@@ -325,6 +329,15 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment ID: {}", enrollment.getEnrollmentId());
     logger.warn("   Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
+    logger.warn("");
+
+    String enrollmentPayload =
+        enrollment.getEnrollmentId() + "|" + enrollment.getEnrollmentProofToken();
+    logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
+    logger.warn("");
+    for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {
+      logger.warn("   {}", line);
+    }
     logger.warn("");
     logger.warn("🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):");
     for (int i = 0; i < recoveryCodes.size(); i++) {

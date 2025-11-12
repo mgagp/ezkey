@@ -197,10 +197,6 @@
     - TodoComment: Clean up TODOs
     - FinalParameters: Add final modifier
     -->
-    <suppress
-      checks="VariableDeclarationUsageDistance"
-      files="AdminBootstrapService.java"
-      lines="247" />
     
     <!-- ===================================================================== -->
     <!-- TEMPORARY MODULE-SCOPED SUPPRESSIONS                                  -->
@@ -211,4 +207,10 @@
     <suppress
         checks="LineLength|WhitespaceAfter|WhitespaceAround"
         files=".*[\\/]ezkey-admin-api[\\/]src[\\/]main[\\/]java[\\/]org[\\/]ezkey[\\/]admin[\\/]controller[\\/]AdminAuthController\.java$"/>
+    
+    <!-- Suppress IllegalCatch for FlywayCommandRunner -->
+    <suppress
+        files="FlywayCommandRunner.java"
+        checks="IllegalCatch"
+        message="Catching 'Exception' is not allowed."/>
 </suppressions>

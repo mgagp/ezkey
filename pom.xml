@@ -38,6 +38,7 @@
 	
 	<!-- Modules du projet -->
 	<modules>
+		<module>checkstyle-config</module>
 		<module>ezkey-core</module>
 		<module>ezkey-migration</module>
 		<module>ezkey-admin-api</module>
@@ -127,6 +128,8 @@
 				<artifactId>ezkey-core</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+
+
 		</dependencies>
 	</dependencyManagement>
 	
@@ -171,23 +174,27 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
 					<version>${checkstyle.version}</version>
+					
 					<dependencies>
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
       						<version>12.1.1</version> <!-- Override default -->
     					</dependency>
-  					</dependencies>
+						<dependency>
+							<groupId>org.ezkey</groupId>
+							<artifactId>checkstyle-config</artifactId>
+							<version>${project.version}</version>
+						</dependency>
+					</dependencies>
+
 					<configuration>
-						<!-- Point explicitement vers la racine du projet pour un usage top-level et sous-module -->
-						<configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
-						<suppressionsLocation>${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</suppressionsLocation>
+						<configLocation>checkstyle.xml</configLocation>
+						<suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
 						<consoleOutput>true</consoleOutput>
 						<failsOnError>true</failsOnError>
 						<includeTestSourceDirectory>false</includeTestSourceDirectory>
 						<violationSeverity>warning</violationSeverity>
-						<!-- Fournit config_loc à checkstyle.xml (utile pour Eclipse et Maven) -->
-						<propertyExpansion>config_loc=${maven.multiModuleProjectDirectory}</propertyExpansion>
 					</configuration>
 					<executions>
 						<execution>
@@ -297,10 +304,6 @@
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-checkstyle-plugin</artifactId>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

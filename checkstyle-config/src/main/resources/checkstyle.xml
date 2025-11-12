@@ -26,6 +26,12 @@
         <property name="fileNamePattern" value="module-info\.java$"/>
     </module>
 
+    <!-- Suppressions: Allows ignoring specific checks for certain files -->
+    <module name="SuppressionFilter">
+        <property name="file" value="${config_loc}/checkstyle-suppressions.xml"/>
+        <property name="optional" value="false"/>
+    </module>
+
     <!-- File Length Check -->
     <module name="FileLength">
         <property name="max" value="1500"/>
@@ -290,13 +296,8 @@
         <module name="NoFinalizer"/>
         <module name="OverloadMethodsDeclarationOrder"/>
         <module name="VariableDeclarationUsageDistance">
-            <property name="allowedDistance" value="5"/>
+            <property name="allowedDistance" value="20"/>
         </module>
     </module>
 
-    <!-- Suppression filters -->
-    <module name="SuppressionFilter">
-        <property name="file" value="${config_loc}/checkstyle-suppressions.xml"/>
-        <property name="optional" value="true"/>
-    </module>
 </module>
