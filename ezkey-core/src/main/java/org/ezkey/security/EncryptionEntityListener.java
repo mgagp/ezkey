@@ -9,6 +9,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -62,12 +63,12 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   public void initializeEncryptionService() {
     // Try to get from ApplicationContext if not already injected
     if (encryptionService == null && applicationContext != null) {
-      try {
-        EncryptionService service = applicationContext.getBean(EncryptionService.class);
+      ObjectProvider<EncryptionService> provider =
+          applicationContext.getBeanProvider(EncryptionService.class);
+      EncryptionService service = provider.getIfAvailable();
+      if (service != null) {
         EncryptionEntityListener.encryptionService = service;
         logger.info("EncryptionService retrieved from ApplicationContext");
-      } catch (BeansException e) {
-        logger.warn("EncryptionService bean not found in ApplicationContext", e);
       }
     }
 
@@ -112,13 +113,13 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     }
     // Lazy fallback: try to get from ApplicationContext
     if (applicationContext != null) {
-      try {
-        EncryptionService service = applicationContext.getBean(EncryptionService.class);
+      ObjectProvider<EncryptionService> provider =
+          applicationContext.getBeanProvider(EncryptionService.class);
+      EncryptionService service = provider.getIfAvailable();
+      if (service != null) {
         encryptionService = service; // Cache for future use
         logger.debug("EncryptionService retrieved from ApplicationContext (lazy)");
         return service;
-      } catch (BeansException e) {
-        logger.debug("EncryptionService not available in ApplicationContext", e);
       }
     }
     return null;
