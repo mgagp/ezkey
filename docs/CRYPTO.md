@@ -300,6 +300,31 @@ def sign_data(data, private_key_base64):
 
 ## 🔍 **Validation and Debugging**
 
+### **Mobile Diagnostics (React Native)**
+
+1. **Open the Diagnostics screen**  
+   - Since November 2025 build, the home header has a `Diagnostics` button.  
+   - The screen lists every stored enrollment with its secure alias.
+
+2. **Run a self-test**  
+   - Tap `Run self-test`; the app generates a payload `ezkey-mobile-diagnostic:<timestamp>` and signs it with the device key.  
+   - The UI shows:
+     - Alias used for signing  
+     - Current public key (Base64 DER)  
+     - Signature (Base64 DER)  
+     - Any error (e.g., “No secure alias stored”)
+   - You can copy these values to reproduce the verification with `SignatureService`.
+
+3. **Interpreting results**
+   - **Success** → Keys exist and signatures match the backend expectations.  
+   - **Error: No secure alias stored** → The enrollment was wiped (clear app data, new device, recovery). Re-enroll the device.  
+   - **Other errors** → The native bridge failed (e.g., Secure Enclave unavailable). Re-run on a device that supports key generation or fall back to mock provider.
+
+4. **Resetting the environment**
+   - **Android**: Settings → Apps → Ezkey Mobile → Storage → “Clear storage”.  
+   - **iOS**: Delete the app.  
+   - Reinstall/rebind the device afterwards to restore keys.
+
 ### **Required Debug Logs**
 ```java
 logger.debug("Data to sign: {}", data);

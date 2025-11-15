@@ -104,10 +104,41 @@ public class EzkeyAdmin {
    * Unique username for the administrator.
    *
    * <p>This field is required and must be unique across all administrators. Used for authentication
-   * and identification purposes.
+   * and identification purposes. For SOC 2 compliance, must identify a specific individual (not
+   * generic like "admin").
    */
   @Column(name = "username", nullable = false, length = 50)
   private String username;
+
+  /**
+   * Email address for the administrator.
+   *
+   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper audit
+   * trail and accountability. Must be unique and valid email format. Optional for other admin types
+   * but recommended.
+   */
+  @Column(name = "email", length = 255)
+  private String email;
+
+  /**
+   * First name of the administrator.
+   *
+   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
+   * identification and accountability. Used for audit trail and display purposes. Optional for
+   * other admin types but recommended.
+   */
+  @Column(name = "first_name", length = 100)
+  private String firstName;
+
+  /**
+   * Last name of the administrator.
+   *
+   * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
+   * identification and accountability. Used for audit trail and display purposes. Optional for
+   * other admin types but recommended.
+   */
+  @Column(name = "last_name", length = 100)
+  private String lastName;
 
   /**
    * Type of administrator determining their permissions.
@@ -278,6 +309,60 @@ public class EzkeyAdmin {
    */
   public void setUsername(String username) {
     this.username = username;
+  }
+
+  /**
+   * Gets the email address.
+   *
+   * @return the email address
+   */
+  public String getEmail() {
+    return email;
+  }
+
+  /**
+   * Sets the email address.
+   *
+   * @param email the email address (required for GLOBAL_ADMIN for SOC 2 compliance)
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
+
+  /**
+   * Gets the first name.
+   *
+   * @return the first name
+   */
+  public String getFirstName() {
+    return firstName;
+  }
+
+  /**
+   * Sets the first name.
+   *
+   * @param firstName the first name (required for GLOBAL_ADMIN for SOC 2 compliance)
+   */
+  public void setFirstName(String firstName) {
+    this.firstName = firstName;
+  }
+
+  /**
+   * Gets the last name.
+   *
+   * @return the last name
+   */
+  public String getLastName() {
+    return lastName;
+  }
+
+  /**
+   * Sets the last name.
+   *
+   * @param lastName the last name (required for GLOBAL_ADMIN for SOC 2 compliance)
+   */
+  public void setLastName(String lastName) {
+    this.lastName = lastName;
   }
 
   /**
@@ -490,6 +575,15 @@ public class EzkeyAdmin {
         + adminId
         + ", username='"
         + username
+        + '\''
+        + ", email='"
+        + email
+        + '\''
+        + ", firstName='"
+        + firstName
+        + '\''
+        + ", lastName='"
+        + lastName
         + '\''
         + ", adminType="
         + adminType

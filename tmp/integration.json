@@ -1,0 +1,15 @@
+{
+  "logo": "https://example.com/logo.png",
+  "i18n": [
+    {
+      "language": "en",
+      "name": "Test Integration CLI",
+      "description": "Test integration created via CLI for validation"
+    },
+    {
+      "language": "fr",
+      "name": "Intégration Test CLI",
+      "description": "Intégration de test créée via CLI pour validation"
+    }
+  ]
+}

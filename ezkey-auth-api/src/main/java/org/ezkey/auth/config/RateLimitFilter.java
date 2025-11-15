@@ -40,7 +40,7 @@ import org.springframework.http.HttpStatus;
  * <p><b>Targeted Endpoints:</b>
  *
  * <ul>
- *   <li>POST /api/v1/auth-attempts/pending/{enrollmentId}
+ *   <li>POST /api/v1/auth-attempts/pending
  *   <li>POST /api/v1/enrollments/verify
  * </ul>
  *
@@ -302,7 +302,7 @@ public class RateLimitFilter implements Filter {
    * @return enrollment ID string
    */
   private String extractEnrollmentIdFromPath(String requestUri) {
-    // Extract from /api/v1/auth-attempts/pending/{enrollmentId}
+    // Extract from /api/v1/auth-attempts/pending
     String[] parts = requestUri.split("/");
     return parts[parts.length - 1];
   }

@@ -28,24 +28,24 @@ This section covers the complete OpenAPI (Swagger) documentation strategy for Ez
 - `DELETE /api/v1/integrations/{id}` - Delete integration
 - `GET /api/v1/integrations/{id}/enrollments` - Get integration enrollments
 
-#### EnrollmentController (`/api/v1/enrollments`) - 8 endpoints
-- `GET /api/v1/enrollments` - List all enrollments
-- `POST /api/v1/enrollments` - Create new enrollment
-- `GET /api/v1/enrollments/{id}` - Get enrollment by ID
-- `PUT /api/v1/enrollments/{id}` - Update enrollment
-- `DELETE /api/v1/enrollments/{id}` - Delete enrollment
-- `GET /api/v1/enrollments/bind/{id}` - Bind enrollment to device
-- `POST /api/v1/enrollments/confirm` - Confirm enrollment
-- `GET /api/v1/enrollments/{id}/auth-attempts` - Get enrollment auth attempts
+#### EnrollmentController (`/api/v1/enrollments`) - key operations
+- `GET /api/v1/enrollments` - List all enrollments (admin scope)
+- `POST /api/v1/enrollments` - Create new enrollment (admin scope)
+- `GET /api/v1/enrollments/{id}` - Get enrollment by ID (admin scope)
+- `PUT /api/v1/enrollments/{id}` - Update enrollment (admin scope)
+- `DELETE /api/v1/enrollments/{id}` - Delete enrollment (admin scope)
+- `POST /api/v1/enrollments/bind` - Bind enrollment to device using proof token payload (auth scope)
+- `POST /api/v1/enrollments/verify` - Complete enrollment verification (auth scope)
+- `GET /api/v1/enrollments/{id}/auth-attempts` - Get enrollment auth attempts (admin scope)
 
-#### AuthAttemptController (`/api/v1/authattempts`) - 7 endpoints
-- `GET /api/v1/authattempts` - List all auth attempts
-- `POST /api/v1/authattempts/initiate/{id}` - Initiate auth attempt
-- `POST /api/v1/authattempts/complete/{id}` - Complete auth attempt
-- `GET /api/v1/authattempts/{id}` - Get auth attempt by ID
-- `PUT /api/v1/authattempts/{id}` - Update auth attempt
-- `DELETE /api/v1/authattempts/{id}` - Delete auth attempt
-- `GET /api/v1/authattempts/pending/{enrollmentId}` - Get pending attempts
+#### AuthAttemptController (`/api/v1/auth-attempts`) - key operations
+- `GET /api/v1/auth-attempts` - List all auth attempts (admin scope)
+- `POST /api/v1/auth-attempts` - Create auth attempt (admin scope)
+- `GET /api/v1/auth-attempts/{id}` - Get auth attempt by ID (admin scope)
+- `GET /api/v1/auth-attempts/{id}/wait` - Wait for authentication completion (admin scope)
+- `DELETE /api/v1/auth-attempts/{id}` - Delete auth attempt (admin scope)
+- `POST /api/v1/auth-attempts/pending` - Retrieve pending request using proof payload (auth scope)
+- `POST /api/v1/auth-attempts/respond` - Submit decision for pending request (auth scope)
 
 ### OpenAPI Configuration
 

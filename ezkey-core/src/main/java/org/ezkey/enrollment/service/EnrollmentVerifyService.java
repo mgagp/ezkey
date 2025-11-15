@@ -10,14 +10,12 @@
 
 package org.ezkey.enrollment.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,7 +215,7 @@ public class EnrollmentVerifyService {
         request.getEnrollmentId());
 
     // Calculate hash of device public key for uniqueness validation
-    String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
+    String devicePublicKeyHash = SensitiveDataHasher.sha256Hex(request.getDevicePublicKey());
 
     if (enrollmentRepository.existsByDevicePublicKeyHash(devicePublicKeyHash)) {
       logger.warn(
@@ -338,7 +336,7 @@ public class EnrollmentVerifyService {
     enrollment.setDevicePublicKey(request.getDevicePublicKey());
 
     // Calculate and store SHA-256 hash of device public key for uniqueness validation
-    String devicePublicKeyHash = calculateSha256Hash(request.getDevicePublicKey());
+    String devicePublicKeyHash = SensitiveDataHasher.sha256Hex(request.getDevicePublicKey());
     enrollment.setDevicePublicKeyHash(devicePublicKeyHash);
 
     enrollmentRepository.save(enrollment);
@@ -348,40 +346,6 @@ public class EnrollmentVerifyService {
             + " DevicePublicKeyHash: {}",
         enrollment.getEnrollmentId(),
         devicePublicKeyHash);
-  }
-
-  /**
-   * Calculates SHA-256 hash of the given string and returns hexadecimal representation.
-   *
-   * <p>This method computes a SHA-256 hash of the input string and returns it as a hexadecimal
-   * string (64 characters). Used for device public key uniqueness validation.
-   *
-   * @param input the input string to hash
-   * @return SHA-256 hash as hexadecimal string (64 characters), or null if input is null
-   * @throws IllegalStateException if SHA-256 algorithm is not available
-   */
-  private String calculateSha256Hash(String input) {
-    if (input == null || input.isBlank()) {
-      return null;
-    }
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-
-      // Convert to hexadecimal string
-      StringBuilder hexString = new StringBuilder();
-      for (byte b : hashBytes) {
-        String hex = Integer.toHexString(0xff & b);
-        if (hex.length() == 1) {
-          hexString.append('0');
-        }
-        hexString.append(hex);
-      }
-      return hexString.toString();
-    } catch (NoSuchAlgorithmException e) {
-      logger.error("SHA-256 algorithm not available", e);
-      throw new IllegalStateException("SHA-256 algorithm not available", e);
-    }
   }
 
   /**

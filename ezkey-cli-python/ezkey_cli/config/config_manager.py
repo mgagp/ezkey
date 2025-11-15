@@ -117,6 +117,26 @@ class ConfigManager:
         if 'bearerToken' in self._config:
             del self._config['bearerToken']
     
+    def set_recovery_token(self, token: str) -> None:
+        """Set recovery token for emergency authentication."""
+        self._config['recoveryToken'] = token
+        # Clear bearer token when setting recovery token (they're mutually exclusive)
+        if 'bearerToken' in self._config:
+            del self._config['bearerToken']
+    
+    def clear_recovery_token(self) -> None:
+        """Clear recovery token."""
+        if 'recoveryToken' in self._config:
+            del self._config['recoveryToken']
+    
+    def get_recovery_token(self) -> Optional[str]:
+        """Get recovery token if available."""
+        return self._config.get('recoveryToken')
+    
+    def has_recovery_token(self) -> bool:
+        """Check if a recovery token is set."""
+        return 'recoveryToken' in self._config and self._config['recoveryToken'] is not None
+    
     def set_api_key(self, integration_key: str, secret_key: str) -> None:
         """Set API key credentials for authentication."""
         self._config['integrationKey'] = integration_key

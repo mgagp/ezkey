@@ -43,7 +43,7 @@ ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhos
 ezkey admin integration list
 
 # Generate a test keypair
-ezkey sim keypair --key-size 2048
+ezkey crypto keypair --key-size 2048
 ```
 
 ## Command Structure
@@ -168,7 +168,7 @@ The CLI uses hierarchical configuration with the following precedence:
 {
   "adminUrl": "http://localhost:9080",
   "authUrl": "http://localhost:8080",
-  "simUrl": "http://localhost:8080",
+  "cryptoUrl": "http://localhost:8080",
   "javaPath": "java",
   "ezkeyCorePath": "/path/to/ezkey-core.jar",
   "prettyPrint": true,
@@ -184,7 +184,7 @@ The CLI supports JSON input in two ways:
 ```bash
 # Use @filename to load JSON from file
 ezkey admin integration create --data @integration.json
-ezkey sim sign --data "text" --private-key @private.pem
+ezkey crypto sign --data "text" --private-key @private.pem
 ```
 
 ### 2. Inline JSON
@@ -199,7 +199,7 @@ All commands support these global options:
 
 - `--admin-url <url>` - Override admin API URL
 - `--auth-url <url>` - Override auth API URL  
-- `--crypto-url <url>` - Override sim API URL
+- `--crypto-url <url>` - Override crypto API URL
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output
@@ -298,7 +298,12 @@ ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhos
 - `ezkey admin auth-attempt list` - List auth attempts
 - `ezkey admin auth-attempt get --id <id>` - Get auth attempt details
 - `ezkey admin auth-attempt create --enrollment-id <id>` - Create auth attempt
-- `ezkey admin auth-attempt wait --id <id> --timeout 30` - Wait for completion
+- `ezkey admin auth-attempt wait --id <id> --timeout 30 --polling 2` - Wait for completion via wait endpoint
+
+#### Audit Logs
+- `ezkey admin audit-log list` - Query audit logs (supports pagination)
+- `ezkey admin audit-log list --event-type <type> --event-status <status>` - Filter audit logs by event metadata
+- `ezkey admin audit-log list --api-name <api> --page 1 --size 50` - Fetch specific page of audit results
 
 #### Authentication
 - `ezkey admin auth login --username <user>` - Passwordless login
@@ -315,10 +320,17 @@ ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhos
 
 ### Auth Commands
 
-- `ezkey auth enrollment bind --id <id>` - Bind enrollment to device
-- `ezkey auth enrollment verify --id <id>` - Verify enrollment
-- `ezkey auth pending` - Check for pending auth attempts
-- `ezkey auth respond --id <id>` - Respond to auth attempt
+- `ezkey auth enrollment bind --enrollment-id <id> --enrollment-proof-token <token> [--language en]` - Bind enrollment to device using proof token authentication
+- `ezkey auth enrollment verify --enrollment-id <id> --challenge-response <code> --device-public-key <pem> --enrollment-proof-token-signed <signature>` - Verify enrollment completion
+- `ezkey auth auth-attempt pending --enrollment-id <id> --enrollment-proof-token <token> --device-proof-token <jwt> --device-proof-token-signed <signature>` - Check for pending authentication attempts
+- `ezkey auth auth-attempt respond --auth-attempt-id <id> --accepted true --auth-attempt-proof-token-signed <signature> [--challenge-response <code>]` - Respond to authentication attempt
+
+### Crypto Commands
+
+- `ezkey crypto prooftoken` - Generate a cryptographically secure proof token
+- `ezkey crypto keypair --key-size <size>` - Generate RSA key pair (key size: 1024-4096 bits)
+- `ezkey crypto sign --data <data> --private-key <key>` - Sign data with RSA private key
+- `ezkey crypto validate --data <data> --signature <sig> --public-key <key>` - Validate RSA signature
 
 ### Configuration Commands
 

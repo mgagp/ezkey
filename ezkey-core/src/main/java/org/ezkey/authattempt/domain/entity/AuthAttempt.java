@@ -12,14 +12,20 @@ package org.ezkey.authattempt.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
+import org.ezkey.security.EncryptionEntityListener;
+import org.ezkey.security.EncryptionService;
+import org.ezkey.security.SensitiveDataHasher;
+import org.slf4j.LoggerFactory;
 
 /**
  * JPA entity representing an authorization attempt within the Ezkey system.
@@ -45,6 +51,7 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
 @Entity
+@EntityListeners(EncryptionEntityListener.class)
 @Table(name = "ezkey_auth_attempt")
 public class AuthAttempt {
 
@@ -63,11 +70,21 @@ public class AuthAttempt {
   @Column(name = "auth_attempt_challenge")
   private Integer authAttemptChallenge;
 
-  @Column(name = "auth_attempt_proof_token", nullable = false)
-  private String authAttemptProofToken;
+  @Column(name = "auth_attempt_proof_token", columnDefinition = "TEXT", nullable = false)
+  private String encryptedAuthAttemptProofToken;
 
-  @Column(name = "device_proof_token")
-  private String deviceProofToken;
+  @Column(name = "auth_attempt_proof_token_hash", length = 128, unique = true)
+  private String authAttemptProofTokenHash;
+
+  @Transient private String authAttemptProofToken;
+
+  @Column(name = "device_proof_token", columnDefinition = "TEXT")
+  private String encryptedDeviceProofToken;
+
+  @Column(name = "device_proof_token_hash", length = 128, unique = true)
+  private String deviceProofTokenHash;
+
+  @Transient private String deviceProofToken;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
@@ -182,6 +199,33 @@ public class AuthAttempt {
    * @return the proof token
    */
   public String getAuthAttemptProofToken() {
+    if (authAttemptProofToken != null) {
+      return authAttemptProofToken;
+    }
+
+    if (encryptedAuthAttemptProofToken == null) {
+      return null;
+    }
+
+    EncryptionService service = getEncryptionService();
+    if (service != null && service.isEncryptionAvailable()) {
+      if (service.isEncrypted(encryptedAuthAttemptProofToken)) {
+        try {
+          authAttemptProofToken = service.decrypt(encryptedAuthAttemptProofToken);
+          return authAttemptProofToken;
+        } catch (Exception exception) {
+          LoggerFactory.getLogger(AuthAttempt.class)
+              .warn(
+                  "Failed to decrypt auth attempt proof token for authAttemptId {}. Returning"
+                      + " as-is.",
+                  authAttemptId,
+                  exception);
+          return encryptedAuthAttemptProofToken;
+        }
+      }
+    }
+
+    authAttemptProofToken = encryptedAuthAttemptProofToken;
     return authAttemptProofToken;
   }
 
@@ -192,6 +236,8 @@ public class AuthAttempt {
    */
   public void setAuthAttemptProofToken(String authAttemptProofToken) {
     this.authAttemptProofToken = authAttemptProofToken;
+    this.authAttemptProofTokenHash = SensitiveDataHasher.sha256Hex(authAttemptProofToken);
+    this.encryptedAuthAttemptProofToken = authAttemptProofToken;
   }
 
   /**
@@ -200,6 +246,32 @@ public class AuthAttempt {
    * @return the device proof token
    */
   public String getDeviceProofToken() {
+    if (deviceProofToken != null) {
+      return deviceProofToken;
+    }
+
+    if (encryptedDeviceProofToken == null) {
+      return null;
+    }
+
+    EncryptionService service = getEncryptionService();
+    if (service != null && service.isEncryptionAvailable()) {
+      if (service.isEncrypted(encryptedDeviceProofToken)) {
+        try {
+          deviceProofToken = service.decrypt(encryptedDeviceProofToken);
+          return deviceProofToken;
+        } catch (Exception exception) {
+          LoggerFactory.getLogger(AuthAttempt.class)
+              .warn(
+                  "Failed to decrypt device proof token for authAttemptId {}. Returning as-is.",
+                  authAttemptId,
+                  exception);
+          return encryptedDeviceProofToken;
+        }
+      }
+    }
+
+    deviceProofToken = encryptedDeviceProofToken;
     return deviceProofToken;
   }
 
@@ -210,6 +282,8 @@ public class AuthAttempt {
    */
   public void setDeviceProofToken(String deviceProofToken) {
     this.deviceProofToken = deviceProofToken;
+    this.deviceProofTokenHash = SensitiveDataHasher.sha256Hex(deviceProofToken);
+    this.encryptedDeviceProofToken = deviceProofToken;
   }
 
   /**
@@ -264,6 +338,34 @@ public class AuthAttempt {
    */
   public boolean isValid() {
     return !isExpired();
+  }
+
+  public String getAuthAttemptProofTokenHash() {
+    return authAttemptProofTokenHash;
+  }
+
+  public void setAuthAttemptProofTokenHash(String authAttemptProofTokenHash) {
+    this.authAttemptProofTokenHash = authAttemptProofTokenHash;
+  }
+
+  public String getDeviceProofTokenHash() {
+    return deviceProofTokenHash;
+  }
+
+  public void setDeviceProofTokenHash(String deviceProofTokenHash) {
+    this.deviceProofTokenHash = deviceProofTokenHash;
+  }
+
+  private EncryptionService getEncryptionService() {
+    try {
+      java.lang.reflect.Field field =
+          Class.forName("org.ezkey.security.EncryptionEntityListener")
+              .getDeclaredField("encryptionService");
+      field.setAccessible(true);
+      return (EncryptionService) field.get(null);
+    } catch (Exception exception) {
+      return null;
+    }
   }
 
   @Override

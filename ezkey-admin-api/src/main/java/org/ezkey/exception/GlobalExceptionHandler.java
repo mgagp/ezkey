@@ -10,10 +10,13 @@
 
 package org.ezkey.exception;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -31,8 +34,9 @@ import org.springframework.web.context.request.WebRequest;
  * <ul>
  *   <li><b>AuthorizationDeniedException:</b> Returns HTTP 403 with access denied information
  *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with detailed error information
- *   <li><b>ValidationException:</b> Returns HTTP 400 with validation error details
+ *   <li><b>MethodArgumentNotValidException:</b> Returns HTTP 400 with Bean Validation error details
  *   <li><b>IllegalArgumentException:</b> Returns HTTP 400 with argument error details
+ *   <li><b>IllegalStateException:</b> Returns HTTP 409 with state conflict information
  *   <li><b>RuntimeException:</b> Returns HTTP 500 with generic error information
  *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500
  * </ul>
@@ -167,6 +171,43 @@ public class GlobalExceptionHandler {
             "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  /**
+   * Handles MethodArgumentNotValidException and returns HTTP 400.
+   *
+   * <p>This method catches MethodArgumentNotValidException instances thrown by Spring when Bean
+   * Validation (@Valid) fails and converts them into standardized HTTP 400 Bad Request responses
+   * with validation error details.
+   *
+   * <p><b>Security Note:</b> Validation error messages are safe to expose - they are client-side
+   * validation errors that don't reveal server internals. These messages are already defined in
+   * validation annotations (@Pattern, @NotNull, etc.) and are part of the API contract.
+   *
+   * @param ex the MethodArgumentNotValidException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing validation error details and HTTP 400 status
+   */
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValidException(
+      MethodArgumentNotValidException ex, WebRequest request) {
+
+    // Extract validation error messages
+    // These are safe to expose - they're client validation errors, not server errors
+    List<String> errors =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .collect(Collectors.toList());
+
+    String message = String.join("; ", errors);
+
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "VALIDATION_ERROR",
+            message,
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
 
   /**

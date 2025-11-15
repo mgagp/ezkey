@@ -124,16 +124,30 @@ mvn spring-boot:run
 **Migrations:**
 - V1: Initial schema (core tables for enrollments, auth attempts, integrations)
 - V2: Multi-tenant security (tenant isolation, admin types)
-- V3: System tenant and admin zero (passwordless infrastructure)
+- V3: System tenant and initial global admin (passwordless infrastructure)
+- V13: Add email column for SOC 2 compliance
 
 **Result:**
 - `ezkey_admin` table with passwordless-only schema (no password columns)
 - System tenant "Ezkey System" created
-- Admin zero created (bootstrap will complete with enrollment + recovery codes)
+- Initial global admin created (bootstrap will complete with enrollment + recovery codes)
 - `challenge_required` per-admin flag
 - `recovery_codes` array column (BCrypt hashed, populated by bootstrap)
+- `email` column for SOC 2 compliance (required for GLOBAL_ADMIN)
 
-### Step 2: Bootstrap Admin Zero
+### Step 2: Configure Initial Global Admin (SOC 2 Compliance)
+
+Before starting the Admin API, configure the initial global admin:
+
+```properties
+# REQUIRED: Username must identify a specific individual (not generic)
+ezkey.admin.initial.username=john.doe
+
+# REQUIRED: Email for audit trail (SOC 2 CC6.1, CC7.2)
+ezkey.admin.initial.email=john.doe@example.com
+```
+
+### Step 3: Bootstrap Initial Global Admin
 
 Start the Admin API for the first time:
 
@@ -144,15 +158,16 @@ mvn spring-boot:run
 
 **Bootstrap Process (Automatic):**
 
-The system automatically creates "Admin Zero" on first startup if no admin exists:
+The system automatically initializes the initial global admin on first startup:
 
 ```
 ================================================================================
-📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
+📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
 ================================================================================
 
-✅ Admin Zero: admin (GLOBAL_ADMIN)
-✅ Enrollment Zero: Admin MFA (ID: 1)
+✅ Global Admin Created: john.doe (john.doe@example.com)
+✅ System Integration created: Ezkey System Admin
+✅ Global Admin Enrollment created: Global Admin MFA (ID: 1)
 
 🔐 ENROLLMENT CREDENTIALS:
    Enrollment ID: 1

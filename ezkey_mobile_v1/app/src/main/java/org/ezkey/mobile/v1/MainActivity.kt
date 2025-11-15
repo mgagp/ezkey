@@ -962,6 +962,11 @@ class MainActivity : AppCompatActivity() {
                         123456
                     }
                     
+                    withContext(Dispatchers.Main) {
+                        appendResult("🔐 Challenge text used: $challengeText")
+                        appendResult("🔢 Challenge response: $challengeResponse")
+                    }
+                    
                     val signed = signatureService.generateSignature(
                         result.enrollmentProofToken,
                         deviceKeyPair.base64PrivateKey

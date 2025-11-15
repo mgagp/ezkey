@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ezkey Admin API",
-    "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication, enrollment recovery, and admin operations\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
+    "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication,\n                        enrollment recovery, and admin operations\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
     "contact": {
       "name": "Ezkey Team",
       "url": "https://ezkey.org",
@@ -438,6 +438,8 @@
         "tags": [
           "Admin Authentication"
         ],
+        "summary": "Recover admin access with recovery code",
+        "description": "Emergency access using single-use recovery code. Returns temporary token (30 min) with limited permissions (enrollment reset only).",
         "operationId": "recover",
         "requestBody": {
           "content": {
@@ -451,7 +453,37 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Recovery successful, temporary token issued",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRecoveryResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (invalid recovery code format) or invalid request data",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRecoveryResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Recovery failed (invalid or expired recovery code)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRecoveryResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -521,6 +553,8 @@
         "tags": [
           "Admin Authentication"
         ],
+        "summary": "Authenticate administrator",
+        "description": "Passwordless authentication for administrators. Returns bearer token on success, or challenge info for two-step flow. Rate limiting applied.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -534,7 +568,27 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Authentication successful or pending. If status='approved', token is present. If status='pending', authAttemptId and challengeCode are present.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authentication failed (invalid credentials, no device enrolled) or validation error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -730,6 +784,75 @@
           },
           "500": {
             "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/{id}/qrcode": {
+      "get": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Generate QR code for enrollment",
+        "description": "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken)",
+        "operationId": "getQrCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enrollment ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 4
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code generated successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Enrollment missing proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enrollment not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
           }
         }
       }
@@ -930,7 +1053,7 @@
         "operationId": "getAuditLogs",
         "parameters": [
           {
-            "name": "arg0",
+            "name": "eventType",
             "in": "query",
             "description": "Filter by event type",
             "required": false,
@@ -959,7 +1082,7 @@
             }
           },
           {
-            "name": "arg1",
+            "name": "eventStatus",
             "in": "query",
             "description": "Filter by event status",
             "required": false,
@@ -973,7 +1096,7 @@
             }
           },
           {
-            "name": "arg2",
+            "name": "apiName",
             "in": "query",
             "description": "Filter by API name",
             "required": false,
@@ -986,7 +1109,7 @@
             }
           },
           {
-            "name": "arg3",
+            "name": "enrollmentId",
             "in": "query",
             "description": "Filter by enrollment ID",
             "required": false,
@@ -996,7 +1119,7 @@
             }
           },
           {
-            "name": "arg4",
+            "name": "adminId",
             "in": "query",
             "description": "Filter by admin ID",
             "required": false,
@@ -1006,7 +1129,7 @@
             }
           },
           {
-            "name": "arg5",
+            "name": "page",
             "in": "query",
             "description": "Page number (zero-based)",
             "required": false,
@@ -1017,7 +1140,7 @@
             }
           },
           {
-            "name": "arg6",
+            "name": "size",
             "in": "query",
             "description": "Page size (max 100)",
             "required": false,
@@ -1245,12 +1368,12 @@
       },
       "IntegrationCreateResponseDto": {
         "type": "object",
-        "description": "Response DTO for creating new Integration entities",
+        "description": "Response DTO containing created integration details",
         "properties": {
           "id": {
             "type": "integer",
             "format": "int32",
-            "description": "The unique identifier of the newly created integration",
+            "description": "Unique identifier of the newly created integration",
             "example": 42
           }
         }
@@ -1768,10 +1891,12 @@
             "example": false
           },
           "integrationPublicKey": {
-            "type": "string"
+            "type": "string",
+            "description": "Public key for integration communication"
           },
           "devicePublicKey": {
-            "type": "string"
+            "type": "string",
+            "description": "Public key for the device"
           }
         }
       },
@@ -1871,7 +1996,15 @@
             "description": "Timestamp when wait operation completed (with timezone)",
             "example": "2025-01-27T10:30:15+01:00"
           }
-        }
+        },
+        "required": [
+          "authAttempt",
+          "completed",
+          "completedAt",
+          "status",
+          "timeoutReached",
+          "waitDuration"
+        ]
       },
       "AuditLogResponseDto": {
         "type": "object",
@@ -1962,13 +2095,13 @@
       "PageAuditLogResponseDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "first": {
             "type": "boolean"
@@ -2015,19 +2148,19 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "unpaged": {
-            "type": "boolean"
-          },
-          "paged": {
-            "type": "boolean"
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageSize": {
             "type": "integer",
             "format": "int32"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "unpaged": {
+            "type": "boolean"
+          },
+          "paged": {
+            "type": "boolean"
           }
         }
       },
@@ -2037,10 +2170,10 @@
           "empty": {
             "type": "boolean"
           },
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           },
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           }
         }

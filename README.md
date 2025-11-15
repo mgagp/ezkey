@@ -214,17 +214,17 @@ sequenceDiagram
     Note over App,Mobile: 1. Enrollment Process
     App->>Admin: Create Integration
     App->>Admin: Create Enrollment
-    Mobile->>Auth: Bind Device (GET /bind/{id})
+    Mobile->>Auth: Bind Device (POST /api/v1/enrollments/bind)
     Auth->>Mobile: Return Integration Info + Proof Token
-    Mobile->>Auth: Verify Enrollment (POST /verify)
+    Mobile->>Auth: Verify Enrollment (POST /api/v1/enrollments/verify)
     Auth->>DB: Store Enrollment
     Auth->>Mobile: Enrollment Complete
     
     Note over App,Mobile: 2. Authentication Process
     App->>Admin: Create Auth Attempt
-    Mobile->>Auth: Check Pending (POST /pending)
+    Mobile->>Auth: Check Pending (POST /api/v1/auth-attempts/pending)
     Auth->>Mobile: Return Auth Attempt Details
-    Mobile->>Auth: Respond (POST /respond)
+    Mobile->>Auth: Respond (POST /api/v1/auth-attempts/respond)
     Auth->>DB: Update Auth Attempt
     Auth->>Mobile: Authentication Result
     
@@ -289,11 +289,11 @@ sequenceDiagram
     
     Note over Client,Mobile: User Enrollment
     Client->>Admin: POST /enrollments
-    Admin-->>Client: Enrollment ID + Challenge
+    Admin-->>Client: Enrollment ID + Proof Token
     Client->>Mobile: Share Enrollment Link/QR
-    Mobile->>Auth: GET /enrollments/bind/{id}
+    Mobile->>Auth: POST /api/v1/enrollments/bind
     Auth-->>Mobile: Integration Info + Proof Token
-    Mobile->>Auth: POST /enrollments/verify
+    Mobile->>Auth: POST /api/v1/enrollments/verify
     Auth-->>Mobile: Enrollment Complete
     
     Note over Client,Mobile: Authentication Request
@@ -566,11 +566,11 @@ cd ezkey_mobile
 ### Auth API Endpoints (`localhost:8080`)
 
 #### Enrollments (Mobile)
-- `GET /api/v1/enrollments/bind/{id}` - Bind device to enrollment
+- `POST /api/v1/enrollments/bind` - Bind device to enrollment using proof token payload
 - `POST /api/v1/enrollments/verify` - Verify and complete enrollment
 
 #### Auth Attempts (Mobile)
-- `POST /api/v1/auth-attempts/pending/{enrollmentId}` - Get pending authentication
+- `POST /api/v1/auth-attempts/pending` - Get pending authentication for enrollment using proof payload
 - `POST /api/v1/auth-attempts/respond` - Respond to auth attempt
 
 ### Wait API Usage
@@ -605,7 +605,7 @@ npm run build
 
 # Example usage
 ./bin/ezkey admin integration list
-./bin/ezkey auth enrollment bind --id 123
+./bin/ezkey auth enrollment bind --enrollment-id 123 --proof-token EZK-ABC123-DEF456
 ./bin/ezkey sim keypair --key-size 2048
 ./bin/ezkey database migrate
 ```

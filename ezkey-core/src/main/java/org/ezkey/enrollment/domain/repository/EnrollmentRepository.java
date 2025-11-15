@@ -189,8 +189,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * @param enrollmentProofToken the enrollment proof token
    * @return Optional enrollment if found and token matches
    */
-  Optional<Enrollment> findByEnrollmentIdAndEnrollmentProofToken(
-      Integer enrollmentId, String enrollmentProofToken);
+  Optional<Enrollment> findByEnrollmentIdAndEnrollmentProofTokenHash(
+      Integer enrollmentId, String enrollmentProofTokenHash);
 
   /**
    * Find active enrollment by proof token. Used for secure enrollment identification in PENDING
@@ -214,6 +214,6 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    * @return enrollment if found and active
    * @since 2025
    */
-  Optional<Enrollment> findByEnrollmentProofTokenAndActive(
-      String enrollmentProofToken, Boolean active);
+  Optional<Enrollment> findByEnrollmentProofTokenHashAndActive(
+      String enrollmentProofTokenHash, Boolean active);
 }

@@ -56,6 +56,9 @@ public final class AdminAuditConstants {
   /** Audit action for successful admin login. */
   public static final String LOGIN_SUCCESS = "login_success";
 
+  /** Audit action for pending admin login (challenge required, waiting for device). */
+  public static final String LOGIN_PENDING = "login_pending";
+
   /** Audit action for failed admin login (invalid credentials, etc.). */
   public static final String LOGIN_FAILURE = "login_failure";
 

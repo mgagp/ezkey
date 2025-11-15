@@ -10,6 +10,9 @@
 
 package org.ezkey.admin.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -88,10 +91,37 @@ public class AdminAuthController{
    * This endpoint allows administrators to authenticate using their credentials and receive a
    * bearer token for subsequent API calls. Rate limiting is applied to prevent brute force attacks.
    *
-   * @param request the login request containing username and password
+   * <p>
+   * Supports two authentication flows:
+   *
+   * <ul>
+   * <li><b>Single-call mode:</b> Returns bearer token immediately after device approval (HTTP 200)
+   * <li><b>Two-call mode (with challenge):</b> Returns authAttemptId and challengeCode with status
+   * "pending" (HTTP 200), requires separate /passwordless-wait call
+   * </ul>
+   *
+   * @param request the login request containing username and optional challenge flag
    * @param httpRequest the HTTP servlet request for IP extraction
-   * @return ResponseEntity containing authentication response with bearer token
+   * @return ResponseEntity containing authentication response with bearer token or challenge info
    */
+  @Operation(
+      summary = "Authenticate administrator",
+      description =
+          "Passwordless authentication for administrators. Returns bearer token on success, or "
+              + "challenge info for two-step flow. Rate limiting applied.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description =
+                "Authentication successful or pending. If status='approved', token is present. "
+                    + "If status='pending', authAttemptId and challengeCode are present."),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Authentication failed (invalid credentials, no device enrolled) or validation error"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
   @PostMapping("/login")
   public ResponseEntity<AdminLoginResponseDto> login(
       @Valid @RequestBody AdminLoginRequestDto request,HttpServletRequest httpRequest){
@@ -103,6 +133,7 @@ public class AdminAuthController{
 
     AdminLoginResponseDto response = authService.authenticate(request);
 
+    // Check for successful login (token issued)
     if (response.success()){
       logger.info("✅ Login successful for username: {} from IP: {}",request.username(),
           context.clientIp());
@@ -115,7 +146,26 @@ public class AdminAuthController{
           AdminAuditConstants.LOGIN_SUCCESS,"Username: " + request.username()));
 
       return ResponseEntity.ok(response);
+    } else if ("pending".equals(response.status())){
+      // Check for pending state (challenge required, normal workflow state)
+
+      logger.info("⏳ Login pending (challenge required) for username: {} from IP: {}",
+          request.username(),context.clientIp());
+
+      // Record as successful attempt for rate limiting (pending is not a failure)
+      // This prevents legitimate users from being blocked when using challenge mode
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
+
+      // Audit pending login (normal workflow state, not a failure)
+      auditLogService.log(
+          AuditHelper.logSuccess(context,EventType.ADMIN_LOGIN,AdminAuditConstants.LOGIN_PENDING,
+              "Username: " + request.username() + ", Challenge required"));
+
+      // Return HTTP 200 for pending state (correct semantics - request was processed successfully)
+      return ResponseEntity.ok(response);
     } else{
+      // Actual failure (invalid credentials, no device, etc.)
+
       logger.warn("❌ Login failed for username: {} from IP: {} - Reason: {}",request.username(),
           context.clientIp(),response.message());
 
@@ -234,6 +284,25 @@ public class AdminAuthController{
    * @param httpRequest the HTTP servlet request for IP extraction
    * @return ResponseEntity containing recovery token or error
    */
+  @Operation(
+      summary = "Recover admin access with recovery code",
+      description =
+          "Emergency access using single-use recovery code. Returns temporary token (30 min) with "
+              + "limited permissions (enrollment reset only).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Recovery successful, temporary token issued"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Validation error (invalid recovery code format) or invalid request data"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Recovery failed (invalid or expired recovery code)"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
   @PostMapping("/recover")
   public ResponseEntity<AdminRecoveryResponseDto> recover(
       @Valid @RequestBody AdminRecoveryRequestDto request,HttpServletRequest httpRequest){

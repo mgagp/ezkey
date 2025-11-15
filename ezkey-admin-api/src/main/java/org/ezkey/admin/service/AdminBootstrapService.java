@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
+import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.config.OrganizationProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -41,9 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Bootstrap Process:</b>
  *
  * <ol>
- *   <li>Check if Integration Zero (system integration) already exists
- *   <li>If not exists, create Integration Zero with RSA-2048 key pair
- *   <li>Optionally create Enrollment Zero for admin global
+ *   <li>Check if System Integration (for global admin authentication) already exists
+ *   <li>If not exists, create System Integration with RSA-2048 key pair
+ *   <li>Optionally create Global Admin Enrollment
  *   <li>Log enrollment credentials with highly visible formatting
  * </ol>
  *
@@ -51,7 +52,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li>Idempotent operation (can be run multiple times safely)
- *   <li>RSA-2048 cryptographic keys for Integration Zero
+ *   <li>RSA-2048 cryptographic keys for System Integration
  *   <li>Unique enrollment proof tokens for security
  *   <li>Highly visible credential logging for easy admin access
  * </ul>
@@ -91,7 +92,11 @@ public class AdminBootstrapService {
 
   private final OrganizationProperties organizationProperties;
 
+  private final InitialGlobalAdminProperties initialGlobalAdminProperties;
+
   private final AdminRecoveryService recoveryService;
+
+  private final QrCodeAsciiRenderer qrCodeAsciiRenderer;
 
   public AdminBootstrapService(
       IntegrationRepository integrationRepository,
@@ -101,7 +106,9 @@ public class AdminBootstrapService {
       SignatureService signatureService,
       AdminMfaProperties mfaProperties,
       OrganizationProperties organizationProperties,
-      AdminRecoveryService recoveryService) {
+      InitialGlobalAdminProperties initialGlobalAdminProperties,
+      AdminRecoveryService recoveryService,
+      QrCodeAsciiRenderer qrCodeAsciiRenderer) {
     this.integrationRepository = integrationRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.adminRepository = adminRepository;
@@ -109,14 +116,16 @@ public class AdminBootstrapService {
     this.signatureService = signatureService;
     this.mfaProperties = mfaProperties;
     this.organizationProperties = organizationProperties;
+    this.initialGlobalAdminProperties = initialGlobalAdminProperties;
     this.recoveryService = recoveryService;
+    this.qrCodeAsciiRenderer = qrCodeAsciiRenderer;
   }
 
   /**
    * Bootstrap admin MFA infrastructure on application startup.
    *
-   * <p>This method is automatically triggered when the application is ready. It creates Integration
-   * Zero and optionally Enrollment Zero if they don't already exist.
+   * <p>This method is automatically triggered when the application is ready. It creates System
+   * Integration and optionally Global Admin Enrollment if they don't already exist.
    */
   @EventListener(ApplicationReadyEvent.class)
   @Transactional
@@ -129,28 +138,28 @@ public class AdminBootstrapService {
     logger.info("🚀 Starting admin MFA bootstrap...");
 
     try {
-      // 1. Check if Integration Zero already exists
+      // 1. Check if System Integration already exists
       Optional<Integration> existingIntegration =
           integrationRepository.findByIsSystemIntegrationAndActiveTrue(true);
 
       if (existingIntegration.isPresent()) {
         logger.info(
-            "✅ Integration Zero already exists (ID: {})", existingIntegration.get().getId());
+            "✅ System Integration already exists (ID: {})", existingIntegration.get().getId());
 
         // Check enrollment if auto-enrollment enabled
         if (mfaProperties.getBootstrap().isAutoEnrollment()) {
-          checkAndCreateEnrollmentZero(existingIntegration.get());
+          checkAndCreateGlobalAdminEnrollment(existingIntegration.get());
         }
         return;
       }
 
-      // 2. Create Integration Zero
-      Integration integrationZero = createIntegrationZero();
-      logger.info("✅ Integration Zero created (ID: {})", integrationZero.getId());
+      // 2. Create System Integration
+      Integration systemIntegration = createSystemIntegration();
+      logger.info("✅ System Integration created (ID: {})", systemIntegration.getId());
 
-      // 3. Optionally create Enrollment Zero
+      // 3. Optionally create Global Admin Enrollment
       if (mfaProperties.getBootstrap().isAutoEnrollment()) {
-        createEnrollmentZero(integrationZero);
+        createGlobalAdminEnrollment(systemIntegration);
       }
 
     } catch (Exception e) {
@@ -160,15 +169,15 @@ public class AdminBootstrapService {
   }
 
   /**
-   * Create Integration Zero for admin authentication.
+   * Create System Integration for global admin authentication.
    *
-   * <p>Integration Zero is a special system integration marked with isSystemIntegration=true. It
-   * uses the system tenant and is created by admin zero.
+   * <p>System Integration is a special integration marked with isSystemIntegration=true. It uses
+   * the system tenant and is created by the initial global admin.
    *
-   * @return the created Integration Zero
+   * @return the created System Integration
    */
-  private Integration createIntegrationZero() {
-    logger.info("🔧 Creating Integration Zero...");
+  private Integration createSystemIntegration() {
+    logger.info("🔧 Creating System Integration...");
 
     // Get System Tenant
     Tenant systemTenant =
@@ -179,78 +188,92 @@ public class AdminBootstrapService {
                     new RuntimeException(
                         "System tenant not found: " + organizationProperties.getName()));
 
-    // Get Admin Zero
-    EzkeyAdmin adminZero =
+    // Get Initial Global Admin (using configured username)
+    EzkeyAdmin globalAdmin =
         adminRepository
-            .findByUsername("admin")
-            .orElseThrow(() -> new RuntimeException("Admin zero not found"));
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
-    // Create Integration Zero
-    Integration integrationZero = new Integration();
-    integrationZero.setLogo(null); // No logo for system integration
-    integrationZero.setActive(true);
-    integrationZero.setCreatedAt(OffsetDateTime.now());
-    integrationZero.setTenant(systemTenant);
-    integrationZero.setIsSystemIntegration(true);
-    integrationZero.setCreatedByAdmin(adminZero);
+    // Create System Integration
+    Integration systemIntegration = new Integration();
+    systemIntegration.setLogo(null); // No logo for system integration
+    systemIntegration.setActive(true);
+    systemIntegration.setCreatedAt(OffsetDateTime.now());
+    systemIntegration.setTenant(systemTenant);
+    systemIntegration.setIsSystemIntegration(true);
+    systemIntegration.setCreatedByAdmin(globalAdmin);
 
-    integrationRepository.save(integrationZero);
+    integrationRepository.save(systemIntegration);
 
-    logger.info("✅ Integration Zero created successfully (ID: {})", integrationZero.getId());
+    logger.info(
+        "✅ System Integration created successfully (ID: {})", systemIntegration.getId());
 
-    return integrationZero;
+    return systemIntegration;
   }
 
   /**
-   * Check and create Enrollment Zero if it doesn't exist.
+   * Check and create Global Admin Enrollment if it doesn't exist.
    *
-   * <p>This method checks if admin zero already has an MFA enrollment. If not, it creates one.
+   * <p>This method checks if the initial global admin already has an MFA enrollment. If not, it
+   * creates one.
    *
-   * @param integrationZero the Integration Zero to enroll with
+   * @param systemIntegration the System Integration to enroll with
    */
-  private void checkAndCreateEnrollmentZero(Integration integrationZero) {
-    EzkeyAdmin adminZero =
+  private void checkAndCreateGlobalAdminEnrollment(Integration systemIntegration) {
+    EzkeyAdmin globalAdmin =
         adminRepository
-            .findByUsername("admin")
-            .orElseThrow(() -> new RuntimeException("Admin zero not found"));
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
     // Check if admin already has enrollment
-    if (adminZero.getMfaEnrollment() != null) {
+    if (globalAdmin.getMfaEnrollment() != null) {
       logger.info(
-          "✅ Admin already has enrollment (ID: {})",
-          adminZero.getMfaEnrollment().getEnrollmentId());
+          "✅ Global admin already has enrollment (ID: {})",
+          globalAdmin.getMfaEnrollment().getEnrollmentId());
 
       // Set default challenge requirement if needed
-      if (adminZero.getChallengeRequired() == null) {
-        adminZero.setChallengeRequired(false);
-        adminRepository.save(adminZero);
-        logger.info("✅ Passwordless defaults configured for admin zero");
+      if (globalAdmin.getChallengeRequired() == null) {
+        globalAdmin.setChallengeRequired(false);
+        adminRepository.save(globalAdmin);
+        logger.info("✅ Passwordless defaults configured for global admin");
       }
       return;
     }
 
-    createEnrollmentZero(integrationZero);
+    createGlobalAdminEnrollment(systemIntegration);
   }
 
   /**
-   * Create Enrollment Zero for admin global.
+   * Create Global Admin Enrollment.
    *
-   * <p>This method creates an enrollment for the admin user with RSA-2048 key pair for
+   * <p>This method creates an enrollment for the initial global admin with RSA-2048 key pair for
    * cryptographic operations. The enrollment credentials are logged with highly visible formatting.
    *
-   * @param integrationZero the Integration Zero to enroll with
+   * @param systemIntegration the System Integration to enroll with
    */
-  private void createEnrollmentZero(Integration integrationZero) {
-    logger.info("🔧 Creating Enrollment Zero...");
+  private void createGlobalAdminEnrollment(Integration systemIntegration) {
+    logger.info("🔧 Creating Global Admin Enrollment...");
 
-    // Get Admin Zero
-    EzkeyAdmin adminZero =
+    // Get Initial Global Admin (using configured username)
+    EzkeyAdmin globalAdmin =
         adminRepository
-            .findByUsername("admin")
-            .orElseThrow(() -> new RuntimeException("Admin zero not found"));
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
     // Generate RSA-2048 key pair for enrollment
-    logger.info("🔐 Generating RSA-2048 key pair for Enrollment Zero...");
+    logger.info("🔐 Generating RSA-2048 key pair for Global Admin Enrollment...");
     RsaKeyPair keyPair = signatureService.generateRsaKeyPair(RSA_KEY_SIZE);
 
     // Generate enrollment proof token
@@ -259,47 +282,54 @@ public class AdminBootstrapService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create Enrollment Zero
-    Enrollment enrollmentZero = new Enrollment();
-    enrollmentZero.setIntegrationId(integrationZero.getId());
-    enrollmentZero.setEnrollmentName("Admin MFA");
-    enrollmentZero.setStatus(EnrollmentStatus.CREATED);
-    enrollmentZero.setActive(true);
-    enrollmentZero.setEnrollmentProofToken(enrollmentProofToken);
-    enrollmentZero.setEnrollmentChallenge(enrollmentChallenge);
-    enrollmentZero.setAuthAttemptChallengeRequired(false);
-    enrollmentZero.setIntegrationPublicKey(keyPair.base64PublicKey());
-    enrollmentZero.setIntegrationPrivateKey(keyPair.base64PrivateKey());
-    enrollmentZero.setCreatedAt(OffsetDateTime.now());
+    // Create Global Admin Enrollment with personalized name
+    String enrollmentName =
+        "Global Admin MFA - "
+            + globalAdmin.getFirstName()
+            + " "
+            + globalAdmin.getLastName();
+    Enrollment globalAdminEnrollment = new Enrollment();
+    globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
+    globalAdminEnrollment.setEnrollmentName(enrollmentName);
+    globalAdminEnrollment.setStatus(EnrollmentStatus.CREATED);
+    globalAdminEnrollment.setActive(true);
+    globalAdminEnrollment.setEnrollmentProofToken(enrollmentProofToken);
+    globalAdminEnrollment.setEnrollmentChallenge(enrollmentChallenge);
+    globalAdminEnrollment.setAuthAttemptChallengeRequired(false);
+    globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64PublicKey());
+    globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
+    globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
 
-    enrollmentRepository.save(enrollmentZero);
+    enrollmentRepository.save(globalAdminEnrollment);
 
     // Link admin to enrollment
-    adminZero.setMfaEnrollment(enrollmentZero);
+    globalAdmin.setMfaEnrollment(globalAdminEnrollment);
 
     // Configure passwordless authentication defaults
     // Passwordless is the ONLY mode - no flag needed (implicit)
     // Challenge is optional - default to false for convenience
-    adminZero.setChallengeRequired(false);
+    globalAdmin.setChallengeRequired(false);
 
     // Generate recovery codes for emergency access
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.generateRecoveryCodes();
-    adminZero.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    globalAdmin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
-    adminRepository.save(adminZero);
+    adminRepository.save(globalAdmin);
 
-    logger.info("✅ Enrollment Zero created (ID: {})", enrollmentZero.getEnrollmentId());
-    logger.info("✅ Passwordless authentication enabled for admin zero");
     logger.info(
-        "✅ {} recovery codes generated for admin zero", recoveryCodes.getPlainCodes().size());
+        "✅ Global Admin Enrollment created (ID: {})",
+        globalAdminEnrollment.getEnrollmentId());
+    logger.info("✅ Passwordless authentication enabled for global admin");
+    logger.info(
+        "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
 
     // Log credentials with highly visible formatting
-    logAdminZeroEnrollmentCredentials(enrollmentZero, recoveryCodes.getPlainCodes());
+    logGlobalAdminEnrollmentCredentials(globalAdminEnrollment, recoveryCodes.getPlainCodes());
   }
 
   /**
-   * Log admin zero enrollment credentials with highly visible formatting.
+   * Log global admin enrollment credentials with highly visible formatting.
    *
    * <p>This method logs enrollment credentials and recovery codes using WARN level with
    * 80-character separator lines to ensure visibility in logs. Credentials are logged ONCE at
@@ -308,23 +338,37 @@ public class AdminBootstrapService {
    * @param enrollment the enrollment with credentials to log
    * @param recoveryCodes the plain recovery codes to log
    */
-  private void logAdminZeroEnrollmentCredentials(
+  private void logGlobalAdminEnrollmentCredentials(
       Enrollment enrollment, java.util.List<String> recoveryCodes) {
     String separator = "=".repeat(80);
+    String username = initialGlobalAdminProperties.getUsername();
+    String email = initialGlobalAdminProperties.getEmail();
+    String firstName = initialGlobalAdminProperties.getFirstName();
+    String lastName = initialGlobalAdminProperties.getLastName();
+    String fullName = firstName + " " + lastName;
 
     logger.warn(""); // Blank line for visibility
     logger.warn(separator);
-    logger.warn("📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
+    logger.warn("📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE THESE CREDENTIALS NOW!");
     logger.warn(separator);
     logger.warn("");
-    logger.warn("✅ Admin Zero Created: admin (passwordless enabled)");
-    logger.warn("✅ Integration Zero created: Ezkey System Admin");
-    logger.warn("✅ Enrollment Zero created: {}", enrollment.getEnrollmentName());
+    logger.warn("✅ Global Admin Created: {} ({}) - {}", username, email, fullName);
+    logger.warn("✅ System Integration created: Ezkey System Admin");
+    logger.warn("✅ Global Admin Enrollment created: {}", enrollment.getEnrollmentName());
     logger.warn("");
     logger.warn("🔐 ENROLLMENT CREDENTIALS:");
     logger.warn("   Enrollment ID: {}", enrollment.getEnrollmentId());
     logger.warn("   Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
+    logger.warn("");
+
+    String enrollmentPayload =
+        enrollment.getEnrollmentId() + "|" + enrollment.getEnrollmentProofToken();
+    logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
+    logger.warn("");
+    for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {
+      logger.warn("   {}", line);
+    }
     logger.warn("");
     logger.warn("🔑 RECOVERY CODES (SAVE SECURELY - SINGLE USE ONLY):");
     for (int i = 0; i < recoveryCodes.size(); i++) {
@@ -351,7 +395,7 @@ public class AdminBootstrapService {
     logger.warn("🔓 PASSWORDLESS LOGIN:");
     logger.warn("   After binding enrollment, login with:");
     logger.warn("   POST /api/v1/admin/auth/login");
-    logger.warn("   {{ \"username\": \"admin\", \"authMode\": \"ezkey\" }}");
+    logger.warn("   {{ \"username\": \"{}\", \"authMode\": \"ezkey\" }}", username);
     logger.warn("");
     logger.warn("⚠️  SECURITY NOTICE:");
     logger.warn("   - NO PASSWORD - Ezkey is passwordless!");

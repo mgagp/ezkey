@@ -74,6 +74,14 @@ Validates code style compliance:
 mvn checkstyle:check
 ```
 
+### Checkstyle (Eclipse Plugin Integration)
+Eclipse reads the `.checkstyle` files stored in each module and points them to the shared configuration in the repository root.
+
+- Each module references the parent file with a relative path (`file:../checkstyle.xml`). Refresh the projects if Eclipse reports that the file cannot be found.
+- Ensure the repository is imported as a set of existing projects so that each module keeps its `.checkstyle` metadata.
+- After importing, open **Window → Preferences → Checkstyle** to confirm that the configuration named **Ezkey Root Checkstyle** is listed without errors.
+- The cache is stored per-module in `target/checkstyle-cachefile`, so no additional setup is required once the projects are refreshed.
+
 ## Aligning IDE with Build Tools
 
 To ensure your IDE formatter matches Spotless:

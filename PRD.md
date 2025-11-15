@@ -116,8 +116,13 @@ User with elevated privileges to manage the Ezkey instance.
 **Bootstrap Process:**
 On first startup, Ezkey automatically creates:
 1. **System Tenant** - Representing the hosting organization (configurable name)
-2. **Admin Zero** - First global administrator with passwordless authentication
+2. **Initial Global Administrator** - First global administrator with passwordless authentication (SOC 2 compliant)
 3. **Secure Initialization** - Enrollment credentials and 10 recovery codes logged once (must be saved immediately)
+
+**SOC 2 Compliance:**
+- Initial global admin must be configured with identifiable username (not generic "admin")
+- Email address required for audit trail and accountability (CC6.1, CC7.2)
+- Configuration via `ezkey.admin.initial.username` and `ezkey.admin.initial.email`
 
 ---
 

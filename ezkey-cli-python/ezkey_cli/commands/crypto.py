@@ -21,7 +21,7 @@ def crypto_group(ctx):
     pass
 
 
-@sim_group.command('prooftoken')
+@crypto_group.command('prooftoken')
 @click.pass_context
 def generate_proof_token(ctx):
     """Generate a cryptographically secure proof token."""
@@ -30,19 +30,19 @@ def generate_proof_token(ctx):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('cryptoUrl')
-    if not sim_url:
+    crypto_url = config.get('cryptoUrl')
+    if not crypto_url:
         OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
-    url = f"{sim_url}/api/v1/crypto/prooftoken"
+    url = f"{crypto_url}/api/v1/crypto/prooftoken"
     OutputUtils.verbose(f"POST {url}", verbose)
     
     response = http_client.post(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
-@sim_group.command('keypair')
+@crypto_group.command('keypair')
 @click.option('--key-size', default=2048, type=int, help='Key size in bits (1024-4096)')
 @click.pass_context
 def generate_key_pair(ctx, key_size):
@@ -52,8 +52,8 @@ def generate_key_pair(ctx, key_size):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('cryptoUrl')
-    if not sim_url:
+    crypto_url = config.get('cryptoUrl')
+    if not crypto_url:
         OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
@@ -62,7 +62,7 @@ def generate_key_pair(ctx, key_size):
         OutputUtils.error("Key size must be between 1024 and 4096 bits")
         return
     
-    url = f"{sim_url}/api/v1/crypto/keypair"
+    url = f"{crypto_url}/api/v1/crypto/keypair"
     params = {'keySize': key_size}
     
     OutputUtils.verbose(f"POST {url}", verbose)
@@ -72,7 +72,7 @@ def generate_key_pair(ctx, key_size):
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
-@sim_group.command('sign')
+@crypto_group.command('sign')
 @click.option('--data', required=True, help='Data to sign (or @filename for file input)')
 @click.option('--private-key', required=True, help='RSA private key (or @filename for file input)')
 @click.option('--json', 'json_data', help='JSON data (or @filename for file input)')
@@ -84,8 +84,8 @@ def sign_data(ctx, data, private_key, json_data):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('cryptoUrl')
-    if not sim_url:
+    crypto_url = config.get('cryptoUrl')
+    if not crypto_url:
         OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
@@ -125,7 +125,7 @@ def sign_data(ctx, data, private_key, json_data):
         OutputUtils.error(f"Failed to process input: {str(e)}")
         return
     
-    url = f"{sim_url}/api/v1/crypto/sign"
+    url = f"{crypto_url}/api/v1/crypto/sign"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         # Don't log private key in verbose mode
@@ -137,7 +137,7 @@ def sign_data(ctx, data, private_key, json_data):
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
-@sim_group.command('validate')
+@crypto_group.command('validate')
 @click.option('--data', required=True, help='Original data (or @filename for file input)')
 @click.option('--signature', required=True, help='Signature to validate (or @filename for file input)')
 @click.option('--public-key', required=True, help='RSA public key (or @filename for file input)')
@@ -150,8 +150,8 @@ def validate_signature(ctx, data, signature, public_key, json_data):
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
-    sim_url = config.get('cryptoUrl')
-    if not sim_url:
+    crypto_url = config.get('cryptoUrl')
+    if not crypto_url:
         OutputUtils.error("Crypto URL not configured. Use 'ezkey configure set --crypto-url <url>'")
         return
     
@@ -198,7 +198,7 @@ def validate_signature(ctx, data, signature, public_key, json_data):
         OutputUtils.error(f"Failed to process input: {str(e)}")
         return
     
-    url = f"{sim_url}/api/v1/crypto/validate"
+    url = f"{crypto_url}/api/v1/crypto/validate"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(request_data)}", verbose)
@@ -208,4 +208,4 @@ def validate_signature(ctx, data, signature, public_key, json_data):
 
 
 # Make the group available for import
-sim = sim_group
+crypto = crypto_group
