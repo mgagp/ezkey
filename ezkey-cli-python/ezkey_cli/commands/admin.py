@@ -516,6 +516,44 @@ def list_audit_logs(ctx, event_type, event_status, api_name, enrollment_id, admi
         OutputUtils.verbose(f"Params: {params}", verbose)
     
     response = http_client.get(url, params=params)
+    
+    # Handle specific error cases with helpful messages
+    if not response.success and response.status == 400:
+        error_msg = response.error or ""
+        error_data = response.data if isinstance(response.data, dict) else {}
+        
+        # Check for server-side parameter binding issues
+        if "parameter name information not available" in error_msg or "not specified" in error_msg:
+            OutputUtils.error("Server configuration issue detected")
+            OutputUtils.info("")
+            OutputUtils.info("💡 This appears to be a server-side issue with parameter binding.")
+            OutputUtils.info("   The server may need to be recompiled with the '-parameters' flag.")
+            OutputUtils.info("")
+            OutputUtils.info("💡 As a workaround, try specifying filter parameters:")
+            OutputUtils.info("   ezkey admin audit-log list --page 0 --size 20")
+            OutputUtils.info("")
+            if verbose:
+                OutputUtils.verbose(f"Technical details: {error_msg}", verbose=True)
+                if error_data:
+                    OutputUtils.verbose(f"Response data: {JsonUtils.format_output(error_data)}", verbose=True)
+            return
+        
+        # Check for validation errors
+        if "Invalid" in error_msg or "validation" in error_msg.lower():
+            OutputUtils.error("Invalid parameters provided")
+            OutputUtils.info("")
+            OutputUtils.info("💡 Check your filter parameters:")
+            OutputUtils.info("   - event-type: Must be a valid EventType (e.g., ADMIN_LOGIN)")
+            OutputUtils.info("   - event-status: Must be a valid EventStatus (e.g., SUCCESS)")
+            OutputUtils.info("   - api-name: Must be a valid ApiName (e.g., ADMIN_API)")
+            OutputUtils.info("   - page: Must be >= 0")
+            OutputUtils.info("   - size: Must be between 1 and 100")
+            OutputUtils.info("")
+            if error_data:
+                OutputUtils.info("Server response:")
+                OutputUtils.output_json(error_data, pretty_print=pretty_print)
+            return
+    
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
@@ -544,7 +582,6 @@ def admin_login(ctx, username, challenge, save_token):
     - Two-call (--challenge): Returns challenge code, requires separate wait
     """
     config: ConfigManager = ctx.obj['config']
-    http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
@@ -552,6 +589,11 @@ def admin_login(ctx, username, challenge, save_token):
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
+    
+    # For login operations, use extended timeout (6 minutes) to allow device response
+    # The server waits up to 5 minutes for device approval, so we need at least 6 minutes
+    login_timeout_seconds = HttpClient.LOGIN_TIMEOUT_MS / 1000.0
+    http_client = HttpClient(config, custom_timeout=login_timeout_seconds)
     
     # Prepare request data
     json_data = {
@@ -561,20 +603,61 @@ def admin_login(ctx, username, challenge, save_token):
     
     url = f"{admin_url}/api/v1/admin/auth/login"
     OutputUtils.verbose(f"POST {url}", verbose)
+    OutputUtils.verbose(f"Timeout: {login_timeout_seconds}s (extended for login)", verbose)
     OutputUtils.info(f"Authenticating admin user: {username}")
     
     if challenge:
         OutputUtils.info("Two-step mode: Challenge code will be displayed")
     else:
         OutputUtils.info("Single-call mode: Waiting for device approval...")
+        OutputUtils.info("⏳ This may take up to 5 minutes. Please approve on your device.")
     
     response = http_client.post(url, json_data=json_data)
     
-    if response.success and response.data:
-        data = response.data
+    # Handle timeout errors specifically
+    if not response.success and response.error and 'timeout' in response.error.lower():
+        OutputUtils.error("⏱️ Request timeout - the device may not have responded in time")
+        OutputUtils.info("Possible reasons:")
+        OutputUtils.info("  - Device is not connected or enrolled")
+        OutputUtils.info("  - Device did not approve/reject the authentication")
+        OutputUtils.info("  - Network connectivity issues")
+        OutputUtils.info("")
+        OutputUtils.info("Try again or use --challenge mode for two-step authentication")
+        return
+    
+    # Check if we have response data (even if status code is 400, it might contain challenge info)
+    if response.data:
+        data = response.data if isinstance(response.data, dict) else {}
+        
+        # Challenge mode - pending with challenge code (can come as 400 from server)
+        if data.get('status') == 'pending' and data.get('challengeCode') and data.get('authAttemptId'):
+            auth_attempt_id = data['authAttemptId']
+            challenge_code = data['challengeCode']
+            
+            OutputUtils.info("")
+            OutputUtils.warning("⏳ Authentication pending - Challenge verification required")
+            OutputUtils.info("")
+            OutputUtils.info("📱 On your device:")
+            OutputUtils.info(f"   1. Enter challenge code: {challenge_code}")
+            OutputUtils.info("   2. Approve the authentication request")
+            OutputUtils.info("")
+            OutputUtils.info("💻 Then run this command:")
+            OutputUtils.info("")
+            OutputUtils.info(f"   ezkey admin auth passwordless-wait \\")
+            OutputUtils.info(f"     --auth-attempt-id {auth_attempt_id} \\")
+            OutputUtils.info(f"     --challenge-code {challenge_code}")
+            OutputUtils.info("")
+            OutputUtils.info("   Or copy-paste this:")
+            OutputUtils.info(f"   ezkey admin auth passwordless-wait --auth-attempt-id {auth_attempt_id} --challenge-code {challenge_code}")
+            OutputUtils.info("")
+            
+            if pretty_print:
+                OutputUtils.output_json(data)
+            return
         
         # Check if we got a token (single-call success)
-        if data.get('success') and data.get('token'):
+        # The server returns success=true AND status="approved" AND token when successful
+        if data.get('success') and data.get('token') and data.get('status') == 'approved':
             token = data['token']
             OutputUtils.success(f"✅ Authentication successful!")
             OutputUtils.info(f"Admin type: {data.get('adminType')}")
@@ -588,30 +671,39 @@ def admin_login(ctx, username, challenge, save_token):
             
             if pretty_print:
                 OutputUtils.output_json(data)
+            return
         
-        # Challenge mode - need to wait
-        elif data.get('status') == 'pending' and data.get('challengeCode'):
-            OutputUtils.warning(f"⏳ Authentication pending")
-            OutputUtils.info(f"Challenge code: {data['challengeCode']}")
-            OutputUtils.info(f"Auth attempt ID: {data['authAttemptId']}")
-            OutputUtils.info(f"Enter this code on your device, then run:")
-            OutputUtils.info(f"  ezkey admin auth passwordless-wait --auth-attempt-id {data['authAttemptId']} --challenge-code {data['challengeCode']}")
+        # Failed authentication
+        if not response.success:
+            error_msg = data.get('message', 'Unknown error')
+            OutputUtils.error(f"❌ Authentication failed: {error_msg}")
+            
+            # Provide helpful guidance for common errors
+            if 'no device enrolled' in error_msg.lower() or 'no bound enrollment' in error_msg.lower():
+                OutputUtils.info("")
+                OutputUtils.info("💡 To fix this:")
+                OutputUtils.info("  1. Ensure your device is enrolled and bound")
+                OutputUtils.info("  2. Check enrollment status: ezkey admin enrollment list")
+                OutputUtils.info("  3. If needed, reset enrollment: ezkey admin enrollment reset --id <id>")
             
             if pretty_print:
                 OutputUtils.output_json(data)
-        
-        # Failed authentication
-        else:
-            OutputUtils.error(f"Authentication failed: {data.get('message', 'Unknown error')}")
-            if pretty_print:
-                OutputUtils.output_json(data)
+            return
+    
+    # Handle HTTP errors (401, 403, etc.)
+    if response.status == 401 or response.status == 403:
+        OutputUtils.error("❌ Authentication failed")
+        if response.error:
+            OutputUtils.error(f"   {response.error}")
+        OutputUtils.info("")
+        OutputUtils.info("💡 Try logging in again: ezkey admin auth login --username admin")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
 @auth_group.command('passwordless-wait')
 @click.option('--auth-attempt-id', required=True, type=int, help='Auth attempt ID from login')
-@click.option('--challenge-code', required=True, type=int, help='Challenge code from login')
+@click.option('--challenge-code', type=int, help='Challenge code from login (optional, shown in login output)')
 @click.option('--save-token', is_flag=True, default=True, help='Save bearer token to config')
 @click.pass_context
 def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
@@ -620,9 +712,11 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
     
     Use this after 'ezkey admin auth login --challenge' to complete authentication.
     The device must enter the matching challenge code before approval.
+    
+    The challenge-code is optional if you remember it from the login output.
+    It's required by the server for security (prevents enumeration attacks).
     """
     config: ConfigManager = ctx.obj['config']
-    http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
     
@@ -631,6 +725,19 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
     
+    # Challenge code is required by the server for security
+    if not challenge_code:
+        OutputUtils.error("❌ Challenge code is required")
+        OutputUtils.info("")
+        OutputUtils.info("💡 The challenge code was shown in the login output.")
+        OutputUtils.info("   If you don't have it, run the login command again:")
+        OutputUtils.info("   ezkey admin auth login --username admin --challenge")
+        return
+    
+    # For passwordless-wait, use extended timeout (6 minutes) to allow device response
+    wait_timeout_seconds = HttpClient.LOGIN_TIMEOUT_MS / 1000.0
+    http_client = HttpClient(config, custom_timeout=wait_timeout_seconds)
+    
     json_data = {
         'authAttemptId': auth_attempt_id,
         'challengeCode': challenge_code
@@ -638,14 +745,29 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
     
     url = f"{admin_url}/api/v1/admin/auth/passwordless-wait"
     OutputUtils.verbose(f"POST {url}", verbose)
+    OutputUtils.verbose(f"Timeout: {wait_timeout_seconds}s (extended for wait)", verbose)
     OutputUtils.info(f"Waiting for device approval (auth attempt {auth_attempt_id})...")
+    OutputUtils.info("⏳ This may take up to 5 minutes. Please approve on your device.")
     
     response = http_client.post(url, json_data=json_data)
+    
+    # Handle timeout errors specifically
+    if not response.success and response.error and 'timeout' in response.error.lower():
+        OutputUtils.error("⏱️ Request timeout - the device may not have responded in time")
+        OutputUtils.info("Possible reasons:")
+        OutputUtils.info("  - Challenge code was not entered correctly on device")
+        OutputUtils.info("  - Device did not approve/reject the authentication")
+        OutputUtils.info("  - Network connectivity issues")
+        OutputUtils.info("")
+        OutputUtils.info("Try again with the correct challenge code")
+        return
     
     if response.success and response.data:
         data = response.data
         
-        if data.get('success') and data.get('token'):
+        # Check if we got a token (successful authentication)
+        # The server returns success=true AND status="approved" AND token when successful
+        if data.get('success') and data.get('token') and data.get('status') == 'approved':
             token = data['token']
             OutputUtils.success(f"✅ Authentication successful!")
             OutputUtils.info(f"Admin type: {data.get('adminType')}")
@@ -660,11 +782,29 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
             if pretty_print:
                 OutputUtils.output_json(data)
         else:
-            OutputUtils.error(f"Authentication failed: {data.get('message', 'Unknown error')}")
+            error_msg = data.get('message', 'Unknown error')
+            OutputUtils.error(f"❌ Authentication failed: {error_msg}")
+            
+            # Provide helpful guidance for common errors
+            if 'challenge' in error_msg.lower() or 'invalid' in error_msg.lower():
+                OutputUtils.info("")
+                OutputUtils.info("💡 Make sure:")
+                OutputUtils.info("  - The challenge code matches what was displayed")
+                OutputUtils.info("  - The challenge code was entered on the device")
+                OutputUtils.info("  - The device approved the authentication")
+            
             if pretty_print:
                 OutputUtils.output_json(data)
     else:
-        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+        # Handle HTTP errors (401, 403, etc.)
+        if response.status == 401 or response.status == 403:
+            OutputUtils.error("❌ Authentication failed")
+            if response.error:
+                OutputUtils.error(f"   {response.error}")
+            OutputUtils.info("")
+            OutputUtils.info("💡 Try logging in again: ezkey admin auth login --username admin")
+        else:
+            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
 @auth_group.command('recover')
@@ -700,7 +840,38 @@ def admin_recover(ctx, username, recovery_code, save_token):
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info(f"Attempting recovery for user: {username}")
     
+    # Validate recovery code format before sending (client-side validation)
+    # This provides immediate feedback without waiting for server response
+    if recovery_code:
+        cleaned_code = recovery_code.replace('-', '')
+        if len(cleaned_code) != 32 or not cleaned_code.isdigit():
+            OutputUtils.error("Invalid recovery code format")
+            OutputUtils.info("")
+            OutputUtils.info("💡 Recovery code must be 32 digits in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
+            OutputUtils.info("   Example: 1234-5678-9012-3456-7890-1234-5678-9012")
+            OutputUtils.info("")
+            OutputUtils.info(f"   Your code: {recovery_code} (length: {len(cleaned_code)} digits)")
+            return
+    
     response = http_client.post(url, json_data=json_data)
+    
+    # Handle HTTP 500 errors that are actually validation errors (backend issue)
+    if not response.success and response.status == 500:
+        error_msg = response.error or ""
+        error_data = response.data if isinstance(response.data, dict) else {}
+        
+        # Check if this is actually a validation error (common backend issue)
+        # Backend sometimes returns 500 for validation errors instead of 400
+        if "unexpected error" in error_msg.lower() or "internal" in error_msg.lower():
+            # Even though server returned 500, this is likely a validation error
+            OutputUtils.error("Invalid recovery code")
+            OutputUtils.info("")
+            OutputUtils.info("💡 The recovery code format is invalid.")
+            OutputUtils.info("   Recovery code must be 32 digits in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
+            OutputUtils.info("")
+            if verbose:
+                OutputUtils.verbose(f"Server response: {error_data.get('message', 'No details')}", verbose=True)
+            return
     
     if response.success and response.data:
         data = response.data
@@ -708,19 +879,22 @@ def admin_recover(ctx, username, recovery_code, save_token):
         if data.get('success') and data.get('recoveryToken'):
             token = data['recoveryToken']
             OutputUtils.success(f"✅ Recovery successful!")
-            OutputUtils.warning(f"Recovery token valid for 30 minutes")
+            OutputUtils.warning(f"⚠️  Recovery token valid for 30 minutes only")
+            OutputUtils.warning(f"⚠️  Limited permissions: enrollment reset only")
             OutputUtils.warning(f"Codes remaining: {data.get('codesRemaining')}")
             OutputUtils.info(f"Token expires: {data.get('expiresAt')}")
             OutputUtils.info("")
             OutputUtils.info("Next steps:")
             OutputUtils.info("1. Use 'ezkey admin enrollment reset --id <enrollment-id>' to unbind lost device")
             OutputUtils.info("2. Bind new device with the new credentials")
+            OutputUtils.info("3. After binding, use 'ezkey admin auth login' for full access")
             
-            # Save token to config if requested
+            # Save recovery token to config if requested (separate from bearer token)
             if save_token:
-                config.set_bearer_token(token)
+                config.set_recovery_token(token)
                 config.save(global_config=True)
                 OutputUtils.success("Recovery token saved to config")
+                OutputUtils.warning("⚠️  Note: Recovery token has limited permissions")
             
             if pretty_print:
                 OutputUtils.output_json(data)
@@ -751,31 +925,44 @@ def admin_logout(ctx):
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
     
-    # Check if we have a token
-    if not config.get('bearerToken'):
-        OutputUtils.warning("No bearer token found in config")
+    # Check if we have a token (bearer or recovery)
+    has_bearer = config.get('bearerToken') is not None
+    has_recovery = config.has_recovery_token()
+    
+    if not has_bearer and not has_recovery:
+        OutputUtils.warning("No authentication token found in config")
         return
     
     url = f"{admin_url}/api/v1/admin/auth/logout"
     OutputUtils.verbose(f"POST {url}", verbose)
-    OutputUtils.info("Logging out...")
+    
+    if has_recovery:
+        OutputUtils.info("Logging out (recovery token)...")
+    else:
+        OutputUtils.info("Logging out...")
     
     response = http_client.post(url)
     
     if response.success:
         OutputUtils.success("✅ Logout successful")
         
-        # Clear token from config
-        config.clear_bearer_token()
+        # Clear tokens from config
+        if has_bearer:
+            config.clear_bearer_token()
+        if has_recovery:
+            config.clear_recovery_token()
         config.save(global_config=True)
-        OutputUtils.success("Bearer token removed from config")
+        OutputUtils.success("Authentication token removed from config")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
         
-        # Still clear token from config even if logout failed
-        config.clear_bearer_token()
+        # Still clear tokens from config even if logout failed
+        if has_bearer:
+            config.clear_bearer_token()
+        if has_recovery:
+            config.clear_recovery_token()
         config.save(global_config=True)
-        OutputUtils.info("Bearer token removed from config")
+        OutputUtils.info("Authentication token removed from config")
 
 
 # API Keys management commands
@@ -973,9 +1160,12 @@ def reset_enrollment(ctx, id):
         return
     
     # Check if we have a recovery token
-    token = config.get('bearerToken')
-    if not token or not token.startswith('ezkey_recovery_'):
-        OutputUtils.error("Recovery token required. Use 'ezkey admin auth recover' first.")
+    if not config.has_recovery_token():
+        OutputUtils.error("❌ Recovery token required for enrollment reset")
+        OutputUtils.info("")
+        OutputUtils.info("💡 To fix this:")
+        OutputUtils.info("  1. Use recovery code: ezkey admin auth recover --username admin --recovery-code <code>")
+        OutputUtils.info("  2. Then retry: ezkey admin enrollment reset --id <id>")
         return
     
     json_data = {

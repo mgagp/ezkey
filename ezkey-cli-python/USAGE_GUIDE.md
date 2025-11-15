@@ -243,6 +243,38 @@ ezkey auth auth-attempt respond \
   --auth-attempt-proof-token-signed @auth_attempt.sig
 ```
 
+### Crypto Commands
+
+```bash
+# Generate a cryptographically secure proof token
+ezkey crypto prooftoken
+
+# Generate RSA key pair
+ezkey crypto keypair --key-size 2048
+
+# Sign data with RSA private key
+ezkey crypto sign \
+  --data "Hello, World!" \
+  --private-key @private_key.pem
+
+# Sign data from file
+ezkey crypto sign \
+  --data @message.txt \
+  --private-key @private_key.pem
+
+# Validate RSA signature
+ezkey crypto validate \
+  --data "Hello, World!" \
+  --signature @signature.txt \
+  --public-key @public_key.pem
+
+# Validate signature from files
+ezkey crypto validate \
+  --data @message.txt \
+  --signature @signature.txt \
+  --public-key @public_key.pem
+```
+
 ### Configuration Commands
 
 ```bash
@@ -561,7 +593,7 @@ All commands support these global options:
 
 - `--admin-url <url>` - Override admin API URL
 - `--auth-url <url>` - Override auth API URL
-- `--crypto-url <url>` - Override sim API URL
+- `--crypto-url <url>` - Override crypto API URL
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output

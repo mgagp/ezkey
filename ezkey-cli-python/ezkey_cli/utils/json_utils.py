@@ -59,15 +59,28 @@ class JsonUtils:
     def process_input(input_value: str) -> Any:
         """
         Process input value - if it starts with @, treat as file path.
-        Otherwise, try to parse as JSON string.
+        Otherwise, try to parse as JSON string. If JSON parsing fails and
+        the value looks like a file path, try loading from file.
         """
         if input_value.startswith('@'):
-            # File input
+            # File input (explicit @ prefix)
             file_path = input_value[1:]
             return JsonUtils.load_from_file(file_path)
         else:
-            # Direct JSON input
-            return JsonUtils.parse(input_value)
+            # Try to parse as JSON first
+            try:
+                return JsonUtils.parse(input_value)
+            except ValueError:
+                # If JSON parsing fails, check if it looks like a file path
+                # (contains path separators or ends with .json)
+                if ('/' in input_value or '\\' in input_value or 
+                    input_value.endswith('.json') or 
+                    Path(input_value).exists()):
+                    # Looks like a file path, try loading from file
+                    return JsonUtils.load_from_file(input_value)
+                else:
+                    # Re-raise the original JSON parsing error
+                    raise
     
     @staticmethod
     def format_output(data: Any, pretty_print: bool = True) -> str:

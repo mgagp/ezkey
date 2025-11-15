@@ -27,8 +27,17 @@ class ApiResponse:
 class HttpClient:
     """HTTP client with consistent error handling and response formatting."""
     
-    def __init__(self, config: ConfigManager):
-        """Initialize HTTP client with configuration."""
+    # Default timeout for login operations (6 minutes in milliseconds)
+    LOGIN_TIMEOUT_MS = 360000
+    
+    def __init__(self, config: ConfigManager, custom_timeout: Optional[float] = None):
+        """
+        Initialize HTTP client with configuration.
+        
+        Args:
+            config: Configuration manager instance
+            custom_timeout: Optional custom timeout in seconds (overrides config)
+        """
         self.config = config
         self.session = requests.Session()
         self.session.headers.update({
@@ -36,32 +45,45 @@ class HttpClient:
             'Accept': 'application/json'
         })
         
-        # Set timeout from config
-        timeout = config.get('timeout', 30000)
-        self.timeout = timeout / 1000.0  # Convert ms to seconds
+        # Set timeout from config or custom timeout
+        if custom_timeout is not None:
+            self.timeout = custom_timeout
+        else:
+            timeout = config.get('timeout', 30000)
+            self.timeout = timeout / 1000.0  # Convert ms to seconds
         
         # Set up authentication if available
         self._setup_auth()
     
     def _setup_auth(self):
         """Set up authentication headers from config."""
-        # Bearer token authentication (for admin users)
+        # Priority order: bearer token > recovery token > API key
+        # Bearer token authentication (for admin users - normal login)
         bearer_token = self.config.get('bearerToken')
         if bearer_token:
             self.session.headers.update({
                 'Authorization': f'Bearer {bearer_token}'
             })
+            return
+        
+        # Recovery token authentication (for emergency access - limited permissions)
+        recovery_token = self.config.get('recoveryToken')
+        if recovery_token:
+            self.session.headers.update({
+                'Authorization': f'Bearer {recovery_token}'
+            })
+            return
+        
         # API key authentication (for machine-to-machine)
-        else:
-            integration_key = self.config.get('integrationKey')
-            secret_key = self.config.get('secretKey')
-            if integration_key and secret_key:
-                import base64
-                credentials = f'{integration_key}:{secret_key}'
-                encoded = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-                self.session.headers.update({
-                    'Authorization': f'Basic {encoded}'
-                })
+        integration_key = self.config.get('integrationKey')
+        secret_key = self.config.get('secretKey')
+        if integration_key and secret_key:
+            import base64
+            credentials = f'{integration_key}:{secret_key}'
+            encoded = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+            self.session.headers.update({
+                'Authorization': f'Basic {encoded}'
+            })
     
     def _format_error(self, response: requests.Response) -> str:
         """Format error message from HTTP response."""
@@ -81,23 +103,34 @@ class HttpClient:
         try:
             response = self.session.get(url, params=params, timeout=self.timeout)
             
+            # Try to parse response body regardless of status code
+            # (some endpoints return 400 with useful data)
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = response.text
+            
             if response.ok:
-                try:
-                    data = response.json()
-                except ValueError:
-                    data = response.text
-                
                 return ApiResponse(
                     success=True,
-                    data=data,
+                    data=response_data,
                     status=response.status_code
                 )
             else:
-                return ApiResponse(
+                error_response = ApiResponse(
                     success=False,
                     error=self._format_error(response),
-                    status=response.status_code
+                    status=response.status_code,
+                    data=response_data  # Include data even for errors
                 )
+                # Add helpful message for authentication errors
+                if response.status_code == 401 or response.status_code == 403:
+                    error_response.error = (
+                        f"{error_response.error}\n"
+                        f"💡 Your authentication token may have expired. "
+                        f"Try: ezkey admin auth login --username admin"
+                    )
+                return error_response
                 
         except requests.exceptions.RequestException as e:
             return ApiResponse(
@@ -122,24 +155,54 @@ class HttpClient:
             
             response = self.session.post(url, **kwargs)
             
+            # Try to parse response body regardless of status code
+            # (some endpoints return 400 with useful data, like pending challenge)
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = response.text
+            
             if response.ok:
-                try:
-                    data = response.json()
-                except ValueError:
-                    data = response.text
-                
                 return ApiResponse(
                     success=True,
-                    data=data,
+                    data=response_data,
                     status=response.status_code
                 )
             else:
-                return ApiResponse(
+                # For 400 errors, check if it contains challenge info (pending passwordless)
+                # This is a special case where 400 is actually a valid response
+                if response.status_code == 400 and isinstance(response_data, dict):
+                    # Check if this looks like a pending passwordless response
+                    if (response_data.get('status') == 'pending' and 
+                        response_data.get('authAttemptId') is not None and
+                        response_data.get('challengeCode') is not None):
+                        # This is actually a valid pending response, not an error
+                        return ApiResponse(
+                            success=True,
+                            data=response_data,
+                            status=response.status_code
+                        )
+                
+                error_response = ApiResponse(
                     success=False,
                     error=self._format_error(response),
-                    status=response.status_code
+                    status=response.status_code,
+                    data=response_data  # Include data even for errors
                 )
+                # Add helpful message for authentication errors
+                if response.status_code == 401 or response.status_code == 403:
+                    error_response.error = (
+                        f"{error_response.error}\n"
+                        f"💡 Your authentication token may have expired. "
+                        f"Try: ezkey admin auth login --username admin"
+                    )
+                return error_response
                 
+        except requests.exceptions.Timeout as e:
+            return ApiResponse(
+                success=False,
+                error=f"Request timeout: {str(e)}"
+            )
         except requests.exceptions.RequestException as e:
             return ApiResponse(
                 success=False,
@@ -175,12 +238,25 @@ class HttpClient:
                     status=response.status_code
                 )
             else:
-                return ApiResponse(
+                error_response = ApiResponse(
                     success=False,
                     error=self._format_error(response),
                     status=response.status_code
                 )
+                # Add helpful message for authentication errors
+                if response.status_code == 401 or response.status_code == 403:
+                    error_response.error = (
+                        f"{error_response.error}\n"
+                        f"💡 Your authentication token may have expired. "
+                        f"Try: ezkey admin auth login --username admin"
+                    )
+                return error_response
                 
+        except requests.exceptions.Timeout as e:
+            return ApiResponse(
+                success=False,
+                error=f"Request timeout: {str(e)}"
+            )
         except requests.exceptions.RequestException as e:
             return ApiResponse(
                 success=False,
@@ -204,12 +280,25 @@ class HttpClient:
                     status=response.status_code
                 )
             else:
-                return ApiResponse(
+                error_response = ApiResponse(
                     success=False,
                     error=self._format_error(response),
                     status=response.status_code
                 )
+                # Add helpful message for authentication errors
+                if response.status_code == 401 or response.status_code == 403:
+                    error_response.error = (
+                        f"{error_response.error}\n"
+                        f"💡 Your authentication token may have expired. "
+                        f"Try: ezkey admin auth login --username admin"
+                    )
+                return error_response
                 
+        except requests.exceptions.Timeout as e:
+            return ApiResponse(
+                success=False,
+                error=f"Request timeout: {str(e)}"
+            )
         except requests.exceptions.RequestException as e:
             return ApiResponse(
                 success=False,

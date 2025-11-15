@@ -71,9 +71,31 @@ class OutputUtils:
                 if verbose and response.status:
                     OutputUtils.verbose(f"HTTP Status: {response.status}", verbose=True)
             else:
-                OutputUtils.error(response.error or "Unknown error")
+                # Extract error message
+                error_msg = response.error or "Unknown error"
+                
+                # Try to extract a cleaner message from the error
+                # Remove technical details that aren't helpful to users
+                if "HTTP 400:" in error_msg:
+                    # Extract the actual message after "HTTP 400:"
+                    actual_msg = error_msg.split("HTTP 400:", 1)[-1].strip()
+                    if actual_msg:
+                        error_msg = actual_msg
+                
+                OutputUtils.error(error_msg)
+                
+                # Show response data if available (might contain useful info)
                 if response.data:
-                    click.echo(JsonUtils.format_output(response.data, pretty_print), err=True)
+                    if isinstance(response.data, dict):
+                        # Check if there's a more specific error message in the data
+                        if 'message' in response.data:
+                            OutputUtils.info(f"Details: {response.data['message']}")
+                        elif 'error' in response.data:
+                            OutputUtils.info(f"Details: {response.data['error']}")
+                    
+                    if verbose:
+                        OutputUtils.verbose("Full response:", verbose=True)
+                        click.echo(JsonUtils.format_output(response.data, pretty_print), err=True)
                 
                 if verbose and response.status:
                     OutputUtils.verbose(f"HTTP Status: {response.status}", verbose=True)
