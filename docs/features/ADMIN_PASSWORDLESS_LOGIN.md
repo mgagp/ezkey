@@ -496,10 +496,10 @@ ALTER TABLE ezkey_admin
 ADD COLUMN passwordless_enabled BOOLEAN DEFAULT FALSE,
 ADD COLUMN challenge_required BOOLEAN DEFAULT FALSE;
 
--- Enable passwordless for admin zero (bootstrap)
+-- Enable passwordless for initial global admin (bootstrap)
 UPDATE ezkey_admin 
 SET passwordless_enabled = true 
-WHERE username = 'admin' AND admin_type = 'GLOBAL_ADMIN';
+WHERE admin_type = 'GLOBAL_ADMIN';
 ```
 
 ### Step 2: Extend AdminLoginRequestDto

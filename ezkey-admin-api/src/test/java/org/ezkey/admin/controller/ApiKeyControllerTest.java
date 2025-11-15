@@ -97,7 +97,9 @@ class ApiKeyControllerTest {
 
     // Mock admin repository to return a mock admin for getCurrentAdmin() calls
     EzkeyAdmin mockAdmin = createMockAdmin();
-    lenient().when(adminRepository.findByUsername("admin")).thenReturn(Optional.of(mockAdmin));
+    lenient()
+        .when(adminRepository.findByUsername("john.doe"))
+        .thenReturn(Optional.of(mockAdmin));
   }
 
   @Nested
@@ -131,7 +133,7 @@ class ApiKeyControllerTest {
 
       verify(apiKeyService)
           .createApiKey(eq(123), any(EzkeyAdmin.class), eq("Test API Key"), any(), any());
-      verify(adminOpsRateLimitService).recordCreateApiKey("admin");
+      verify(adminOpsRateLimitService).recordCreateApiKey("john.doe");
     }
 
     @Test
@@ -293,7 +295,7 @@ class ApiKeyControllerTest {
   private void setupAdminAuthentication() {
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
-            "admin", // Principal: Admin username
+            "john.doe", // Principal: Admin username (SOC 2 compliant: identifiable)
             null, // Credentials
             Arrays.asList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
@@ -352,7 +354,8 @@ class ApiKeyControllerTest {
   private EzkeyAdmin createMockAdmin() {
     EzkeyAdmin admin = new EzkeyAdmin();
     admin.setAdminId(1);
-    admin.setUsername("admin");
+    admin.setUsername("john.doe"); // SOC 2 compliant: identifiable username
+    admin.setEmail("john.doe@example.com"); // SOC 2 compliant: email required
     admin.setActive(true);
     return admin;
   }

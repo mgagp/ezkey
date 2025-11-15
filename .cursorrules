@@ -114,6 +114,23 @@ Avant de générer un fichier, confirmer mentalement : "Ce fichier sera en UTF-8
 ## Impact
 Les fichiers UTF-16 ou avec BOM causent des erreurs de compilation Maven et des problèmes d'encodage.
 
+# Line Endings - Unix Style (LF only)
+
+## File Generation
+- ALWAYS use Unix-style line endings (LF, `\n`) when generating or writing files
+- NEVER use Windows-style line endings (CRLF, `\r\n`)
+- This applies to ALL file types: Java, SQL, Markdown, properties, JSON, XML, etc.
+
+## Validation
+Before generating a file, confirm: "This file will use LF line endings only"
+
+## Impact
+Consistent LF line endings ensure:
+- Cross-platform compatibility (Linux, macOS, Windows)
+- Git diff clarity (no false positives from line ending changes)
+- Consistent behavior across development environments
+- Avoids issues with scripts and tools that expect LF
+
 # Terminal Command Optimization Rules
 
 ## Command Execution Best Practices

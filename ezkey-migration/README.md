@@ -20,7 +20,8 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 |---------|------|---------|-------|--------|
 | **V1** | `initial_schema` | Core tables (enrollments, auth attempts, integrations) | 108 | ✅ Stable |
 | **V2** | `add_multi_tenant_security` | Multi-tenant tables (tenants, admins with password schema, tokens) | 79 | ✅ Stable |
-| **V3** | `create_system_tenant_and_admin_zero` | Transform to passwordless schema + system tenant + admin zero | 150 | ✅ Stable |
+| **V3** | `create_system_tenant_and_admin_zero` | Transform to passwordless schema + system tenant + initial global admin | 150 | ✅ Stable |
+| **V13** | `add_admin_email_for_soc2` | Add email column to ezkey_admin for SOC 2 compliance | 70 | ✅ Stable |
 
 **Total:** 3 migrations, ~337 lines
 
@@ -29,7 +30,13 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 - Adds passwordless infrastructure (`challenge_required`, `recovery_codes`)
 - Drops `ezkey_admin_temp_tokens` table
 - Creates system tenant "Ezkey System"
-- Creates admin zero (bootstrap will complete enrollment + recovery codes)
+- Creates initial global admin with placeholder username (bootstrap service updates with configured credentials)
+
+**V13:** Adds email column for SOC 2 compliance:
+- Adds `email` column to `ezkey_admin` table
+- Required for GLOBAL_ADMIN type (SOC 2 CC6.1, CC7.2)
+- Unique constraint on email
+- Email format validation
 
 ---
 
@@ -75,9 +82,9 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 - **TENANT_ADMIN:** Tenant-scoped access
 - **INTEGRATION_ADMIN:** Integration-scoped access
 
-### V3: Passwordless Schema Transformation + Admin Zero
+### V3: Passwordless Schema Transformation + Initial Global Admin
 
-**Purpose:** Transform to passwordless-only authentication and create admin zero
+**Purpose:** Transform to passwordless-only authentication and create initial global admin
 
 **Schema Transformations:**
 - **REMOVED:** `password_hash`, `mfa_enabled`, `mfa_required`, `password_change_required`, `last_password_change`
@@ -86,15 +93,30 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 
 **Data Created:**
 - System tenant "Ezkey System" (for global administrators)
-- Admin zero account (username: `admin`, passwordless-ready)
+- Initial global admin account (username: `admin` placeholder, passwordless-ready)
 - Updated admin hierarchy constraint (allows GLOBAL_ADMIN to have tenant_id)
 
 **Bootstrap Completion:**
-Bootstrap service will complete admin zero setup on first startup:
-- Create integration zero (system integration)
-- Create enrollment zero (device binding)
+Bootstrap services will complete initial global admin setup on first startup:
+- InitialGlobalAdminService: Update admin with configured username and email (SOC 2 compliance)
+- AdminBootstrapService: Create system integration (for global admin authentication)
+- AdminBootstrapService: Create global admin enrollment (device binding)
 - Generate 10 recovery codes (32-digit, 106-bit entropy)
 - Display credentials in logs (one-time opportunity)
+
+### V13: Add Email Column for SOC 2 Compliance
+
+**Purpose:** Add email column to ezkey_admin table for SOC 2 compliance requirements
+
+**Schema Changes:**
+- **ADDED:** `email` column (VARCHAR(255), nullable, unique)
+- **ADDED:** Email format validation constraint
+- **ADDED:** Unique constraint on email
+
+**SOC 2 Requirements:**
+- Email required for GLOBAL_ADMIN type (CC6.1, CC7.2)
+- Enables proper audit trail and accountability
+- Individual identification (not generic accounts)
 
 ---
 
@@ -119,28 +141,32 @@ Bootstrap service will complete admin zero setup on first startup:
 - Table schemas (CREATE TABLE)
 - Column definitions (data types, constraints)
 - Foreign keys and indexes
-- Structural data (system tenant, admin zero)
+- Structural data (system tenant, initial global admin placeholder)
 - Schema evolution (ALTER TABLE, DROP TABLE)
 - Data transformation (password → passwordless)
 
 **What does NOT belong:**
 - Dynamic secrets (recovery codes, crypto keys)
-- Environment-specific data (configurable names)
+- Environment-specific data (configurable names, usernames, emails)
 - Runtime-generated data (enrollments)
 
-#### Bootstrap Service (Dynamic)
+#### Bootstrap Services (Dynamic)
 
-**What belongs in bootstrap:**
+**InitialGlobalAdminService (Order 1):**
+- Update placeholder admin with configured username and email (SOC 2 compliance)
+- Validate configuration meets SOC 2 requirements
+
+**AdminBootstrapService (Order 2):**
 - Generate recovery codes (10 × 32-digit, 106-bit entropy)
-- Create integration zero (system integration)
-- Create enrollment zero (device binding)
+- Create system integration (for global admin authentication)
+- Create global admin enrollment (device binding)
 - Generate cryptographic key pairs
-- Link admin zero to enrollment
+- Link global admin to enrollment
 - Display initial credentials in logs
 
 **Bootstrap Execution:**
 - Runs automatically on first application startup
-- Detects missing admin zero enrollment
+- Detects missing global admin enrollment
 - Creates complete passwordless infrastructure
 - Logs credentials for one-time capture
 
@@ -187,7 +213,7 @@ Bootstrap service will complete admin zero setup on first startup:
 1. **Clean database** - Start with empty PostgreSQL instance
 2. **Run all migrations** - Execute V1 → V2 → V3 in sequence
 3. **Validate schema** - Verify all tables, columns, constraints created
-4. **Test data insertion** - Confirm admin zero and system tenant created
+4. **Test data insertion** - Confirm initial global admin and system tenant created
 5. **Bootstrap validation** - Verify bootstrap service can complete setup
 
 **Result:** ✅ All migrations pass validation and create consistent passwordless schema
@@ -255,22 +281,23 @@ version | description                              | success
 3       | create system tenant and admin zero      | true
 ```
 
-**Verify admin zero:**
+**Verify initial global admin:**
 ```sql
-SELECT admin_id, username, admin_type, 
+SELECT admin_id, username, email, admin_type, 
        tenant_id IS NOT NULL as has_tenant,
        challenge_required,
        mfa_enrollment_id IS NULL as needs_bootstrap
 FROM ezkey_admin
-WHERE username = 'admin';
+WHERE admin_type = 'GLOBAL_ADMIN';
 ```
 
-**Expected:**
-- username: 'admin'
+**Expected (after InitialGlobalAdminService):**
+- username: configured username (e.g., 'john.doe', not 'admin')
+- email: configured email (e.g., 'john.doe@example.com')
 - admin_type: 'GLOBAL_ADMIN'
 - has_tenant: true (linked to system tenant)
 - challenge_required: false
-- needs_bootstrap: true (before bootstrap runs)
+- needs_bootstrap: true (before MFA bootstrap runs)
 
 ---
 
@@ -278,28 +305,41 @@ WHERE username = 'admin';
 
 ### Bootstrap Service Behavior
 
-After V3 migration completes, `AdminBootstrapService` runs on first Admin API startup:
+After V3 migration completes, bootstrap services run on first Admin API startup:
 
-**Detection Logic:**
+**InitialGlobalAdminService (Order 1) - SOC 2 Compliance:**
 ```java
-// Check if admin zero exists (created by V3)
-Optional<EzkeyAdmin> adminZero = adminRepository.findByUsername("admin");
+// Validate configuration
+validateConfiguration(); // Ensures username and email are configured
 
-if (adminZero.isEmpty()) {
-    // Should not happen if V3 ran successfully
-    logger.error("Admin zero not found - V3 migration may have failed");
-    return;
+// Find or update placeholder admin
+Optional<EzkeyAdmin> placeholderAdmin = adminRepository.findByUsername("admin");
+if (placeholderAdmin.isPresent()) {
+    // Update placeholder with configured credentials
+    admin.setUsername(configuredUsername);
+    admin.setEmail(configuredEmail);
+    adminRepository.save(admin);
+}
+```
+
+**AdminBootstrapService (Order 2) - MFA Infrastructure:**
+```java
+// Check if global admin exists (using configured username)
+Optional<EzkeyAdmin> globalAdmin = adminRepository.findByUsername(configuredUsername);
+
+if (globalAdmin.isEmpty()) {
+    throw new RuntimeException("Initial global admin not found");
 }
 
 // Check if admin already has enrollment
-if (adminZero.get().getMfaEnrollment() != null) {
-    logger.info("Admin zero already bootstrapped");
+if (globalAdmin.get().getMfaEnrollment() != null) {
+    logger.info("Global admin already bootstrapped");
     return;
 }
 
-// Complete bootstrap: enrollment + recovery codes
-createIntegrationZero();
-createEnrollmentZero();
+// Complete bootstrap: system integration + enrollment + recovery codes
+createSystemIntegration();
+createGlobalAdminEnrollment();
 generateRecoveryCodes();
 linkAdminToEnrollment();
 logCredentials();
@@ -308,11 +348,12 @@ logCredentials();
 **Bootstrap Output (First Run):**
 ```
 ================================================================================
-📱 ADMIN ZERO PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
+📱 GLOBAL ADMIN PASSWORDLESS ENROLLMENT - SAVE CREDENTIALS NOW!
 ================================================================================
 
-✅ Admin Zero: admin (GLOBAL_ADMIN)
-✅ Enrollment Zero: Admin MFA (ID: 1)
+✅ Global Admin Created: john.doe (john.doe@example.com)
+✅ System Integration created: Ezkey System Admin
+✅ Global Admin Enrollment created: Global Admin MFA (ID: 1)
 
 🔐 ENROLLMENT CREDENTIALS:
    Enrollment ID: 1
@@ -327,8 +368,8 @@ logCredentials();
 
 **Bootstrap Output (Subsequent Runs):**
 ```
-✅ Admin zero already has enrollment (ID: 1)
-✅ Passwordless defaults configured for admin zero
+✅ Global admin already has enrollment (ID: 1)
+✅ Passwordless defaults configured for global admin
 ```
 
 ---

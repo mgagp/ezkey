@@ -1,18 +1,23 @@
 -- ============================================================================
--- Ezkey Migration V3: Transform to Passwordless Schema + Create Admin Zero
+-- Ezkey Migration V3: Transform to Passwordless Schema + Create Initial Global Admin
 -- ============================================================================
 -- Description: Transforms ezkey_admin table to passwordless-only schema,
---              then creates the system tenant and admin zero account.
+--              then creates the system tenant and initial global administrator.
 -- 
 -- Context: This migration consolidates V3-V9 from the original plan:
 --          - Removes password infrastructure (password_hash, mfa_enabled, etc.)
 --          - Adds passwordless infrastructure (challenge_required, recovery_codes)
 --          - Drops ezkey_admin_temp_tokens table (no longer needed)
---          - Creates system tenant and admin zero
+--          - Creates system tenant and initial global admin
 --
 -- Responsibility Split:
 --   - Flyway (this migration): Transform schema, create structural data
 --   - Bootstrap service: Create enrollment + recovery codes + crypto keys
+-- 
+-- IMPORTANT: The username 'admin' is a placeholder. For SOC 2 compliance,
+--            the initial global admin must be configured with an identifiable
+--            username via application properties (ezkey.admin.initial.username).
+--            The bootstrap service will update the admin with the configured username.
 -- 
 -- Author: Ezkey contributors
 -- Date: 2025-10-13
@@ -56,11 +61,14 @@ COMMENT ON TABLE ezkey_tenant IS
 'Multi-tenant isolation. System tenant (Ezkey System) hosts global administrators.';
 
 -- ============================================================================
--- STEP 3: Create Admin Zero (Passwordless-Only Schema)
+-- STEP 3: Create Initial Global Administrator (Passwordless-Only Schema)
 -- ============================================================================
 
--- Admin zero is the first global administrator with passwordless authentication
+-- Initial global admin is the first global administrator with passwordless authentication
 -- Bootstrap service will complete setup by creating enrollment and recovery codes
+-- NOTE: Username 'admin' is a placeholder. For SOC 2 compliance, the initial global
+--       admin must be configured with an identifiable username via application properties.
+--       The bootstrap service will update the admin with the configured username and email.
 INSERT INTO ezkey_admin (
     username, 
     admin_type, 
@@ -72,13 +80,13 @@ INSERT INTO ezkey_admin (
     created_at, 
     active
 ) VALUES (
-    'admin', 
+    'admin',  -- Placeholder - will be updated by bootstrap service with configured username
     'GLOBAL_ADMIN', 
     (SELECT tenant_id FROM ezkey_tenant WHERE tenant_name = 'Ezkey System'),
     NULL,
     false,  -- No challenge by default (convenience over paranoia)
     NULL,   -- Bootstrap will generate 10 recovery codes (32-digit, 106-bit entropy)
-    NULL,   -- Bootstrap will create enrollment zero
+    NULL,   -- Bootstrap will create global admin enrollment
     CURRENT_TIMESTAMP, 
     true
 );
@@ -87,8 +95,9 @@ INSERT INTO ezkey_admin (
 -- STEP 4: Link Tenant to Admin Creator (Circular Reference Resolution)
 -- ============================================================================
 
--- Update tenant to reference the admin who "created" it (admin zero)
+-- Update tenant to reference the admin who "created" it (initial global admin)
 -- This satisfies the foreign key relationship for audit purposes
+-- NOTE: Uses placeholder username 'admin' - will be updated after bootstrap
 UPDATE ezkey_tenant 
 SET created_by_admin_id = (SELECT admin_id FROM ezkey_admin WHERE username = 'admin')
 WHERE tenant_name = 'Ezkey System';
@@ -139,9 +148,10 @@ COMMENT ON COLUMN ezkey_admin.admin_type IS
 -- ============================================================================
 -- Migration Complete
 -- ============================================================================
--- Admin zero created with passwordless infrastructure ready.
+-- Initial global admin created with passwordless infrastructure ready.
 -- Bootstrap service will complete setup on first application startup:
---   - Create integration zero + enrollment zero
+--   - Update admin with configured username and email (SOC 2 compliance)
+--   - Create system integration + global admin enrollment
 --   - Generate 10 recovery codes (32-digit each)
 --   - Display credentials in logs (one-time opportunity to save)
 -- ============================================================================

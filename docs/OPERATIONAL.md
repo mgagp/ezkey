@@ -110,7 +110,7 @@ ezkey.rate-limit.verify.key-strategy=client-ip
 
 ## Admin API Authentication & Security
 
-### Admin Zero Bootstrap
+### Initial Global Admin Bootstrap (SOC 2 Compliant)
 
 On first startup, Ezkey automatically initializes the admin authentication system:
 
@@ -119,15 +119,22 @@ On first startup, Ezkey automatically initializes the admin authentication syste
    - Represents the organization hosting this instance
    - Customizable via: `ezkey.organization.name` property
 
-2. **Admin Zero Creation**
-   - Username: `admin`
-   - Password: Randomly generated (UUID-based, 32 characters)
+2. **Initial Global Admin Configuration (REQUIRED)**
+   - Username: Must identify a specific individual (configured via `ezkey.admin.initial.username`)
+   - Email: Required for SOC 2 compliance (configured via `ezkey.admin.initial.email`)
    - Type: `GLOBAL_ADMIN` (full instance access)
-   - Password logged once at startup, must be changed on first login
+   - Passwordless authentication: Enabled via System Integration and Global Admin Enrollment
 
-3. **Security Features**
-   - MFA enabled but not enforced initially (for bootstrap)
-   - Password change required flag set
+3. **SOC 2 Compliance**
+   - Username must not be generic (not "admin", "administrator", "root")
+   - Email required for audit trail and accountability (CC6.1, CC7.2)
+   - System fails to start if requirements not met
+
+4. **Security Features**
+   - Passwordless authentication (no passwords)
+   - System Integration created for global admin authentication
+   - Global Admin Enrollment created with RSA-2048 keys
+   - Recovery codes generated (10 single-use codes)
    - Admin linked to system tenant
 
 ### Organization Configuration
@@ -227,7 +234,7 @@ HTTP/1.1 200 OK
 
 ### Admin API Security Best Practices
 
-1. **Change Admin Zero Password Immediately**
+1. **Configure Initial Global Admin Credentials**
    - Use strong, unique password
    - Enable MFA when available (roadmap)
    
@@ -252,14 +259,17 @@ HTTP/1.1 200 OK
 
 ### Troubleshooting
 
-#### Admin Zero Not Created
+#### Initial Global Admin Not Created
 
 **Symptom**: No admin user after fresh installation
 
 **Solution**:
-1. Check database migrations ran successfully: `mvn flyway:info -pl ezkey-migration`
-2. Check application logs for admin creation: `grep "Admin zero" logs/admin-api.log`
-3. If database was manually cleared, restart application to trigger fallback creation
+1. Check configuration: Ensure `ezkey.admin.initial.username` and `ezkey.admin.initial.email` are set
+2. Verify username is not generic (not "admin", "administrator", etc.)
+3. Check database migrations ran successfully: `mvn flyway:info -pl ezkey-migration` (V3, V13)
+4. Check application logs for admin creation: `grep "Global Admin" logs/admin-api.log`
+5. Check InitialGlobalAdminService logs for validation errors
+6. If database was manually cleared, restart application to trigger fallback creation
 
 #### Rate Limiting Too Strict
 
