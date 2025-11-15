@@ -35,6 +35,8 @@
 
 **Priority:** Medium (works with workaround, but incorrect semantics)
 
+**Status:** ✅ **FIXED** - Modified `AdminAuthController.login()` to check `status` in addition to `success`. Pending state now returns HTTP 200 with proper audit logging and rate limiting.
+
 ---
 
 ### 2. Java Compilation Flag Missing: `-parameters`
@@ -151,6 +153,8 @@ public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValidException(
 - Spring Framework Bean Validation documentation
 
 **Priority:** High (incorrect HTTP semantics, poor user experience)
+
+**Status:** ✅ **FIXED** - Added `handleMethodArgumentNotValidException` handler in `GlobalExceptionHandler` (placed before generic handlers). Validation errors now return HTTP 400 with detailed messages.
 
 ---
 

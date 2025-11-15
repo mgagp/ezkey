@@ -91,7 +91,15 @@ class HttpClient:
             error_data = response.json()
             if isinstance(error_data, dict):
                 # Try to extract meaningful error message
+                # Backend returns ErrorResponseDto with 'message' and 'error' fields
                 message = error_data.get('message', error_data.get('error', 'Unknown error'))
+                
+                # For validation errors, the message contains the detailed validation info
+                # Format: "field: error message; field2: error message2"
+                if error_data.get('error') == 'VALIDATION_ERROR' and message:
+                    # Return just the validation message (without HTTP prefix for cleaner display)
+                    return message
+                
                 return f"HTTP {response.status_code}: {message}"
             else:
                 return f"HTTP {response.status_code}: {str(error_data)}"
@@ -169,14 +177,16 @@ class HttpClient:
                     status=response.status_code
                 )
             else:
-                # For 400 errors, check if it contains challenge info (pending passwordless)
-                # This is a special case where 400 is actually a valid response
+                # Legacy workaround: Check if 400 contains challenge info (pending passwordless)
+                # NOTE: Backend now returns 200 for pending, but keeping this for backward compatibility
+                # with older backend versions. This should not be triggered with the fixed backend.
                 if response.status_code == 400 and isinstance(response_data, dict):
                     # Check if this looks like a pending passwordless response
                     if (response_data.get('status') == 'pending' and 
                         response_data.get('authAttemptId') is not None and
                         response_data.get('challengeCode') is not None):
                         # This is actually a valid pending response, not an error
+                        # (Backend should return 200, but handling 400 for compatibility)
                         return ApiResponse(
                             success=True,
                             data=response_data,

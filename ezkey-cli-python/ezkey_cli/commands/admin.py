@@ -625,11 +625,11 @@ def admin_login(ctx, username, challenge, save_token):
         OutputUtils.info("Try again or use --challenge mode for two-step authentication")
         return
     
-    # Check if we have response data (even if status code is 400, it might contain challenge info)
+    # Check if we have response data
     if response.data:
         data = response.data if isinstance(response.data, dict) else {}
         
-        # Challenge mode - pending with challenge code (can come as 400 from server)
+        # Challenge mode - pending with challenge code (now returns HTTP 200 from server)
         if data.get('status') == 'pending' and data.get('challengeCode') and data.get('authAttemptId'):
             auth_attempt_id = data['authAttemptId']
             challenge_code = data['challengeCode']
@@ -855,15 +855,39 @@ def admin_recover(ctx, username, recovery_code, save_token):
     
     response = http_client.post(url, json_data=json_data)
     
-    # Handle HTTP 500 errors that are actually validation errors (backend issue)
+    # Handle validation errors (now returns HTTP 400 with detailed message from backend)
+    if not response.success and response.status == 400:
+        error_msg = response.error or ""
+        error_data = response.data if isinstance(response.data, dict) else {}
+        
+        # Check if this is a validation error (backend now returns 400 with VALIDATION_ERROR)
+        if isinstance(error_data, dict):
+            error_type = error_data.get('error', '')
+            error_message = error_data.get('message', '')
+            
+            # Backend now returns validation errors as 400 with VALIDATION_ERROR type
+            if 'VALIDATION_ERROR' in error_type or 'validation' in error_message.lower():
+                OutputUtils.error("Invalid recovery code format")
+                OutputUtils.info("")
+                # Extract and display the validation message from backend
+                if error_message:
+                    OutputUtils.info(f"💡 {error_message}")
+                else:
+                    OutputUtils.info("💡 Recovery code must be 32 digits in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
+                OutputUtils.info("")
+                if verbose:
+                    OutputUtils.verbose(f"Full error: {error_data}", verbose=True)
+                return
+    
+    # Legacy workaround: Handle HTTP 500 errors (should not happen with fixed backend)
+    # Keeping for backward compatibility with older backend versions
     if not response.success and response.status == 500:
         error_msg = response.error or ""
         error_data = response.data if isinstance(response.data, dict) else {}
         
-        # Check if this is actually a validation error (common backend issue)
-        # Backend sometimes returns 500 for validation errors instead of 400
+        # Check if this is actually a validation error (legacy backend issue)
         if "unexpected error" in error_msg.lower() or "internal" in error_msg.lower():
-            # Even though server returned 500, this is likely a validation error
+            # Even though server returned 500, this might be a validation error
             OutputUtils.error("Invalid recovery code")
             OutputUtils.info("")
             OutputUtils.info("💡 The recovery code format is invalid.")
