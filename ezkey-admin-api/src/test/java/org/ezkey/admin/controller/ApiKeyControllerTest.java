@@ -97,9 +97,7 @@ class ApiKeyControllerTest {
 
     // Mock admin repository to return a mock admin for getCurrentAdmin() calls
     EzkeyAdmin mockAdmin = createMockAdmin();
-    lenient()
-        .when(adminRepository.findByUsername("john.doe"))
-        .thenReturn(Optional.of(mockAdmin));
+    lenient().when(adminRepository.findByUsername("john.doe")).thenReturn(Optional.of(mockAdmin));
   }
 
   @Nested

@@ -82,8 +82,10 @@ public class InitialGlobalAdminProperties {
    *
    * <p><b>Examples of invalid usernames:</b> "admin", "administrator", "root"
    */
-  @NotBlank(message = "Initial global admin username is REQUIRED for SOC 2 compliance. "
-      + "Must identify a specific individual, not a generic account.")
+  @NotBlank(
+      message =
+          "Initial global admin username is REQUIRED for SOC 2 compliance. "
+              + "Must identify a specific individual, not a generic account.")
   @Pattern(
       regexp = "^(?!(admin|administrator|root|superuser|super|user|test|demo)$).*",
       flags = Pattern.Flag.CASE_INSENSITIVE,
@@ -213,4 +215,3 @@ public class InitialGlobalAdminProperties {
     return true;
   }
 }
-

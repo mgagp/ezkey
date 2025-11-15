@@ -203,9 +203,7 @@ public class GlobalExceptionHandler {
 
     ErrorResponseDto errorResponse =
         new ErrorResponseDto(
-            "VALIDATION_ERROR",
-            message,
-            request.getDescription(false).replace("uri=", ""));
+            "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }

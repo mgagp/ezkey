@@ -27,8 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for initializing the initial global administrator with SOC 2 compliant credentials.
  *
  * <p>This service ensures that the initial global admin has an identifiable username and email
- * address for SOC 2 compliance. It runs before the MFA bootstrap service to ensure the admin
- * exists with proper credentials.
+ * address for SOC 2 compliance. It runs before the MFA bootstrap service to ensure the admin exists
+ * with proper credentials.
  *
  * <p><b>Responsibilities:</b>
  *
@@ -237,4 +237,3 @@ public class InitialGlobalAdminService {
         lastName);
   }
 }
-

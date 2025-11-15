@@ -209,8 +209,7 @@ public class AdminBootstrapService {
 
     integrationRepository.save(systemIntegration);
 
-    logger.info(
-        "✅ System Integration created successfully (ID: {})", systemIntegration.getId());
+    logger.info("✅ System Integration created successfully (ID: {})", systemIntegration.getId());
 
     return systemIntegration;
   }
@@ -284,10 +283,7 @@ public class AdminBootstrapService {
 
     // Create Global Admin Enrollment with personalized name
     String enrollmentName =
-        "Global Admin MFA - "
-            + globalAdmin.getFirstName()
-            + " "
-            + globalAdmin.getLastName();
+        "Global Admin MFA - " + globalAdmin.getFirstName() + " " + globalAdmin.getLastName();
     Enrollment globalAdminEnrollment = new Enrollment();
     globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
     globalAdminEnrollment.setEnrollmentName(enrollmentName);
@@ -318,8 +314,7 @@ public class AdminBootstrapService {
     adminRepository.save(globalAdmin);
 
     logger.info(
-        "✅ Global Admin Enrollment created (ID: {})",
-        globalAdminEnrollment.getEnrollmentId());
+        "✅ Global Admin Enrollment created (ID: {})", globalAdminEnrollment.getEnrollmentId());
     logger.info("✅ Passwordless authentication enabled for global admin");
     logger.info(
         "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
