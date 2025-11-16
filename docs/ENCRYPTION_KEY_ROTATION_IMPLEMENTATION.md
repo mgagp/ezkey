@@ -2137,7 +2137,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v3
       - name: Run unit tests
         run: mvn test -Dtest=Encryption*Test

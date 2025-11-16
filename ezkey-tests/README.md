@@ -65,10 +65,9 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 
 ## Prerequisites
 
-- **Java 21** or higher
-- **Maven 3.6+**
-- **Docker Desktop** (or Docker Engine + Docker Compose)
-- **Docker Stack Running**: Admin API, Auth API, Crypto API, PostgreSQL
+- Java 25 or higher
+- Maven 3.6+
+- Docker (for TestContainers)
 
 ## Quick Start
 

@@ -1121,7 +1121,7 @@ brew reinstall comply
 
 ### CodeQL Fails to Analyze
 
-- Check that Java version matches (Java 21)
+- Check that Java version matches (Java 25)
 - Verify Maven build succeeds first
 - Check CodeQL workflow logs in GitHub Actions
 

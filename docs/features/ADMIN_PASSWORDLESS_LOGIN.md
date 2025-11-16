@@ -744,7 +744,7 @@ ezkey.admin.rate-limit.passwordless.block-duration-minutes=30
 # Tomcat thread pool (default: 200)
 server.tomcat.threads.max=300  # Allow 300 concurrent passwordless logins
 
-# Alternative: Use virtual threads (Java 21+)
+# Alternative: Use virtual threads (Java 25+)
 spring.threads.virtual.enabled=true
 ```
 

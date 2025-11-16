@@ -8,7 +8,7 @@ For build, setup, and project organization, refer to `README.md`.
 ## Code Style
 
 ### Java Standards
-- Use Java 21+ features where appropriate (records, switch expressions, pattern matching)
+- Use Java 25+ features where appropriate (records, switch expressions, pattern matching)
 - Follow idiomatic Spring Boot practices:
   - `@Service` for business logic
   - `@Repository` for persistence  
@@ -227,7 +227,7 @@ mvn clean verify
 - **Phase 4**: Mobile app and Maven Central publication
 
 ### Technology Constraints
-- Backend: Java 21, Spring Boot 3.5.3, Spring Data JPA
+- Backend: Java 25, Spring Boot 3.5.3, Spring Data JPA
 - Database: PostgreSQL with Flyway migrations
 - Documentation: SpringDoc OpenAPI
 - Testing: JUnit 5, Spring Boot Test

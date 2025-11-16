@@ -9,7 +9,7 @@
 ### ✅ **Implemented Features**
 
 #### 1. **Base Architecture**
-- ✅ Spring Boot 3.x application (Java 21)
+- ✅ Spring Boot 3.x application (Java 25)
 - ✅ Maven configuration with OpenAPI generation
 - ✅ MVC structure with Thymeleaf
 - ✅ Base services (AuthApiService, DeviceCryptoService, EnrollmentStoreService)
@@ -42,7 +42,7 @@
 ### 🔧 **Technical Configuration**
 
 #### **Technology Stack**
-- **Framework**: Spring Boot 3.x (Java 21)
+- **Framework**: Spring Boot 3.x (Java 25)
 - **Templates**: Thymeleaf
 - **HTTP Client**: WebClient (Spring WebFlux)
 - **Serialization**: Jackson
@@ -293,7 +293,7 @@ data/
 ### **Prerequisites**
 - **ezkey-auth-api**: Running on `http://localhost:8080`
 - **ezkey-admin-api**: Running on `http://localhost:9080` (for enrollments)
-- **Java 21**: Required Java runtime
+- **Java 25**: Required Java runtime
 
 ## Cryptographic Features
 

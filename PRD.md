@@ -196,7 +196,7 @@ graph TB
 
 ### Technology Stack
 
-- **Backend**: Spring Boot 3.x with Java 21
+- **Backend**: Spring Boot 3.x with Java 25
 - **Database**: PostgreSQL with Flyway migrations
 - **APIs**: RESTful with OpenAPI documentation
 - **Mobile**: Cross-platform mobile development

@@ -467,7 +467,7 @@ This will start the complete EZ Key stack including PostgreSQL, all APIs, and th
 
 ### Prerequisites
 
-- **Java 21** or higher
+- **Java 25** or higher
 - **Maven 3.6+**
 - **PostgreSQL** (or H2 for development)
 - **Mobile development tools** (for mobile development)
@@ -649,7 +649,7 @@ See `ezkey-cli/README.md` for complete documentation and examples.
 
 ### Technology Stack
 
-- **Backend**: Java 21, Spring Boot 3.4.10, Spring Data JPA
+- **Backend**: Java 25, Spring Boot 3.4.10, Spring Data JPA
 - **Database**: PostgreSQL with Flyway migrations
 - **Mapping**: MapStruct for DTO conversions
 - **Documentation**: SpringDoc OpenAPI

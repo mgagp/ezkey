@@ -218,7 +218,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ## 🔧 Technology Stack
 
 ### Backend
-- **Java 21+** - Modern Java with latest features
+- **Java 25+** - Modern Java with latest features
 - **Spring Boot 3.x** - Enterprise-grade framework
 - **Spring Data JPA** - Data persistence layer
 - **PostgreSQL** - Primary database
@@ -274,7 +274,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 21 or later
+- Java 25 or later
 - Maven 3.8+
 - PostgreSQL 13+
 - Node.js 18+ (for mobile app)
@@ -335,7 +335,7 @@ We welcome contributions to the Ezkey project! Here's how to get started:
 - **Monitoring** - Enhance monitoring and observability
 
 ### Code Standards
-- **Java 21+** with modern features
+- **Java 25+** with modern features
 - **Spring Boot 3.x** best practices
 - **UTF-8 encoding** without BOM
 - **Comprehensive Javadoc** documentation
