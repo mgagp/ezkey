@@ -46,6 +46,7 @@
 		<module>ezkey-crypto-api</module>
 		<module>ezkey-demo-app-acme</module>
 		<module>ezkey-demo-device</module>
+		<module>ezkey-tests</module>
 	</modules>
 	
 	<properties>
