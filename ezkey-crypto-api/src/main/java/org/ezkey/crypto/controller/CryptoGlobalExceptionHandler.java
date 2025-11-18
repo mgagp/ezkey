@@ -64,9 +64,7 @@ public class CryptoGlobalExceptionHandler {
 
     var errorResponse =
         new ErrorResponseDto(
-            "INTERNAL_ERROR",
-            "An internal error occurred: " + e.getMessage(),
-            path);
+            "INTERNAL_ERROR", "An internal error occurred: " + e.getMessage(), path);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
   }
 
@@ -82,9 +80,7 @@ public class CryptoGlobalExceptionHandler {
 
     var errorResponse =
         new ErrorResponseDto(
-            "UNKNOWN_ERROR",
-            "An unexpected error occurred: " + e.getMessage(),
-            path);
+            "UNKNOWN_ERROR", "An unexpected error occurred: " + e.getMessage(), path);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
   }
 }

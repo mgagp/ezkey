@@ -159,10 +159,7 @@ public class GlobalExceptionHandler {
     }
 
     ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INTERNAL_ERROR",
-            "An unexpected error occurred",
-            path);
+        new ErrorResponseDto("INTERNAL_ERROR", "An unexpected error occurred", path);
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
@@ -190,10 +187,7 @@ public class GlobalExceptionHandler {
     }
 
     ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INTERNAL_SERVER_ERROR",
-            "An unexpected error occurred",
-            path);
+        new ErrorResponseDto("INTERNAL_SERVER_ERROR", "An unexpected error occurred", path);
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
