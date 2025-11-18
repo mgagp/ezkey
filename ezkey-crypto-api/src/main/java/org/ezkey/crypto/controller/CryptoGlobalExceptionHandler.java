@@ -55,22 +55,36 @@ public class CryptoGlobalExceptionHandler {
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ErrorResponseDto> handleRuntimeException(
       RuntimeException e, HttpServletRequest request) {
+    // Exclude actuator endpoints from global exception handling
+    String path = request.getRequestURI();
+    if (path != null && path.startsWith("/actuator/")) {
+      // Return null to let Spring Boot handle actuator exceptions with its default handler
+      return null;
+    }
+
     var errorResponse =
         new ErrorResponseDto(
             "INTERNAL_ERROR",
             "An internal error occurred: " + e.getMessage(),
-            request.getRequestURI());
+            path);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponseDto> handleGenericException(
       Exception e, HttpServletRequest request) {
+    // Exclude actuator endpoints from global exception handling
+    String path = request.getRequestURI();
+    if (path != null && path.startsWith("/actuator/")) {
+      // Return null to let Spring Boot handle actuator exceptions with its default handler
+      return null;
+    }
+
     var errorResponse =
         new ErrorResponseDto(
             "UNKNOWN_ERROR",
             "An unexpected error occurred: " + e.getMessage(),
-            request.getRequestURI());
+            path);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
   }
 }
