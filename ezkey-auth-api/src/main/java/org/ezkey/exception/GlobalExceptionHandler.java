@@ -151,11 +151,18 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ErrorResponseDto> handleRuntimeException(
       RuntimeException ex, WebRequest request) {
+    // Exclude actuator endpoints from global exception handling
+    String path = request.getDescription(false).replace("uri=", "");
+    if (path != null && path.startsWith("/actuator/")) {
+      // Return null to let Spring Boot handle actuator exceptions with its default handler
+      return null;
+    }
+
     ErrorResponseDto errorResponse =
         new ErrorResponseDto(
             "INTERNAL_ERROR",
             "An unexpected error occurred",
-            request.getDescription(false).replace("uri=", ""));
+            path);
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
@@ -166,17 +173,27 @@ public class GlobalExceptionHandler {
    * <p>This method serves as a catch-all for any exceptions not handled by more specific exception
    * handlers. It ensures that all exceptions result in a consistent error response.
    *
+   * <p><b>Note:</b> Actuator endpoints are excluded from this handler to allow Spring Boot to
+   * handle actuator exceptions properly.
+   *
    * @param ex the Exception that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 500 status
    */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
+    // Exclude actuator endpoints from global exception handling
+    String path = request.getDescription(false).replace("uri=", "");
+    if (path != null && path.startsWith("/actuator/")) {
+      // Return null to let Spring Boot handle actuator exceptions with its default handler
+      return null;
+    }
+
     ErrorResponseDto errorResponse =
         new ErrorResponseDto(
             "INTERNAL_SERVER_ERROR",
             "An unexpected error occurred",
-            request.getDescription(false).replace("uri=", ""));
+            path);
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
