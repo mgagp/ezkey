@@ -441,6 +441,24 @@ flowchart TD
 
 ## Quick Start
 
+### Option 1: Docker (Recommended - 5 Minutes)
+
+The fastest way to get started is using Docker:
+
+```bash
+# Linux/Mac
+./docker/start.sh
+
+# Windows
+docker\start.bat
+```
+
+This will start the complete EZ Key stack including PostgreSQL, all APIs, and the demo device.
+
+**See [Docker Documentation](docker/README.md) for complete details.**
+
+### Option 2: Manual Setup
+
 ### Prerequisites
 
 - **Java 21** or higher
@@ -740,22 +758,35 @@ npm test
 
 ## Deployment
 
-### Docker Support
+### Docker Deployment
 
-Each module can be containerized:
+EZ Key provides a complete Docker setup for easy deployment, testing, and demonstrations.
 
+**Quick Start:**
 ```bash
-# Build API images
-docker build -t ezkey-admin-api ./ezkey-admin-api
-docker build -t ezkey-auth-api ./ezkey-auth-api
+# Linux/Mac
+./docker/start.sh
 
-# Run with docker-compose
-docker-compose up -d
+# Windows
+docker\start.bat
 ```
 
-### Environment Configuration
+**Complete Documentation:** See [docker/README.md](docker/README.md) for:
+- Complete setup instructions
+- Architecture overview
+- Management commands
+- Troubleshooting guide
+- Production considerations
 
-Configure each module with environment-specific properties:
+**Services:**
+- Admin API: http://localhost:9080
+- Auth API: http://localhost:8080
+- Crypto API: http://localhost:9090
+- Demo Device: http://localhost:8083
+
+### Manual Deployment
+
+For manual deployment without Docker, configure each module with environment-specific properties:
 
 ```properties
 # Database

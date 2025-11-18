@@ -333,5 +333,43 @@
 				<native.maven.plugin.version>0.10.3</native.maven.plugin.version>
 			</properties>
 		</profile>
+
+		<!--
+			Profile used for Docker image builds and other environments
+			where we explicitly want to skip all Checkstyle execution.
+			This keeps local Maven builds unchanged while ensuring that
+			container builds are fast and do not depend on quality tooling.
+		-->
+		<profile>
+			<id>no-checkstyle</id>
+			<properties>
+				<!-- Standard flag recognized by maven-checkstyle-plugin -->
+				<checkstyle.skip>true</checkstyle.skip>
+			</properties>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<!-- Disable Checkstyle plugin completely in Docker builds -->
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-checkstyle-plugin</artifactId>
+							<configuration>
+								<skip>true</skip>
+							</configuration>
+							<dependencies>
+								<!-- Override: Remove checkstyle-config dependency in Docker builds -->
+								<!-- Empty dependencies list prevents resolution of checkstyle-config -->
+							</dependencies>
+							<executions>
+								<execution>
+									<id>validate</id>
+									<phase>none</phase>
+								</execution>
+							</executions>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
 	</profiles>	
 </project>
