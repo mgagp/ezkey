@@ -187,7 +187,7 @@ public class EmbeddedServerManager {
   private void startAdminApi() throws Exception {
     log.info("Starting Admin API...");
 
-    SpringApplication app = new SpringApplication(AdminApplication.class, TestSecurityConfig.class);
+    SpringApplication app = new SpringApplication(AdminApplication.class);
     app.setWebApplicationType(WebApplicationType.SERVLET);
 
     // Override database and security properties
@@ -200,6 +200,13 @@ public class EmbeddedServerManager {
     properties.put("ezkey.test.security.disabled", true);
     properties.put("ezkey.admin.ratelimit.enabled", false);
     properties.put("spring.task.scheduling.enabled", false);
+    // Disable Spring Security completely for tests
+    properties.put("spring.autoconfigure.exclude", "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration");
+    // Initial global admin configuration (required for SOC 2 compliance)
+    properties.put("ezkey.admin.initial.username", "test.admin");
+    properties.put("ezkey.admin.initial.email", "test.admin@ezkey.test");
+    properties.put("ezkey.admin.initial.first-name", "Test");
+    properties.put("ezkey.admin.initial.last-name", "Administrator");
 
     app.setDefaultProperties(properties);
 

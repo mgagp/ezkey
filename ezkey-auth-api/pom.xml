@@ -85,6 +85,23 @@
 
 	<build>
 		<plugins>
+			<!-- Create JAR with classifier before Spring Boot repackages -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>original-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classifier>original</classifier>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<!-- Spring Boot Maven Plugin -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

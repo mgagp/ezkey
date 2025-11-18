@@ -6,6 +6,7 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 # Copy all POMs first (for dependency caching)
+# Note: We copy ezkey-tests/pom.xml so Maven can resolve it, but we don't build it
 COPY pom.xml ./pom.xml
 COPY checkstyle-config/pom.xml ./checkstyle-config/pom.xml
 COPY ezkey-core/pom.xml ./ezkey-core/pom.xml
@@ -17,13 +18,17 @@ COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
 COPY ezkey-demo-device/openapi-spec.json ./ezkey-demo-device/openapi-spec.json
 COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
 COPY ezkey-demo-app-acme/openapi-spec.json ./ezkey-demo-app-acme/openapi-spec.json
+COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 
 # Download all dependencies with shared Maven cache (shared across all parallel builds)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
 # This step downloads dependencies and caches them for subsequent builds
+# Using -pl to explicitly list modules (excludes ezkey-tests which uses Karate/TestContainers)
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
-    mvn dependency:go-offline -Pno-checkstyle -B || true && \
+    mvn dependency:go-offline -Pno-checkstyle -B \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-crypto-api,ezkey-demo-app-acme,ezkey-demo-device \
+        -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
 
 # Copy all source code
@@ -42,9 +47,13 @@ COPY ezkey-demo-app-acme/src ./ezkey-demo-app-acme/src
 # Build all modules in one go (this creates all JARs)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
 # Dependencies from previous step are reused from cache, significantly speeding up builds
+# Using -pl to explicitly list modules to build (excludes ezkey-tests which uses Karate/TestContainers)
+# -am (also-make) ensures dependencies are built, -amd (also-make-dependents) not needed here
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
-    mvn clean package -DskipTests -Pno-checkstyle -B && \
+    mvn clean package -DskipTests -Pno-checkstyle -B \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-crypto-api,ezkey-demo-app-acme,ezkey-demo-device \
+        -am && \
     echo "✅ Build completed successfully"
 
 # ============================================
