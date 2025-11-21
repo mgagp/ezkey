@@ -90,6 +90,9 @@ plan_doc.md
 ezkey-core/classpath.txt
 EZKEY_EVALUATION.md
 
+# Test credentials (contains sensitive bootstrap data)
+.ezkey-test/
+
 # ==========================
 # Node.js / JavaScript
 # ==========================

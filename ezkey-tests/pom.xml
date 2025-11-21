@@ -14,11 +14,11 @@
 
   <artifactId>ezkey-tests</artifactId>
   <name>Ezkey Functional Tests</name>
-  <description>BDD functional tests using Karate with embedded servers</description>
+  <description>Real-world security end-to-end functional tests using RestAssured against Docker stack</description>
 
   <properties>
-    <karate.version>1.4.1</karate.version>
-    <testcontainers.version>1.19.8</testcontainers.version>
+    <rest-assured.version>5.4.0</rest-assured.version>
+    <assertj.version>3.24.2</assertj.version>
   </properties>
 
   <dependencies>
@@ -50,50 +50,38 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Karate for BDD testing -->
+    <!-- RestAssured for API testing -->
     <dependency>
-      <groupId>com.intuit.karate</groupId>
-      <artifactId>karate-junit5</artifactId>
-      <version>${karate.version}</version>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>json-path</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>xml-path</artifactId>
+      <version>${rest-assured.version}</version>
       <scope>test</scope>
     </dependency>
 
-    <!-- TestContainers for PostgreSQL -->
+    <!-- AssertJ for fluent assertions -->
     <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>${testcontainers.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${testcontainers.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>${testcontainers.version}</version>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
 
-    <!-- PostgreSQL Driver -->
+    <!-- Jackson for JSON processing -->
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- Flyway for migrations -->
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -113,11 +101,7 @@
         <configuration>
           <includes>
             <include>**/*Test.java</include>
-            <include>**/*Runner.java</include>
           </includes>
-          <systemProperties>
-            <karate.options>--tags ~@ignore</karate.options>
-          </systemProperties>
         </configuration>
       </plugin>
     </plugins>
