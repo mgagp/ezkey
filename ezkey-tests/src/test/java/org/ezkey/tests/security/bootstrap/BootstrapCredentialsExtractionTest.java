@@ -10,12 +10,12 @@
 
 package org.ezkey.tests.security.bootstrap;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor.BootstrapCredentials;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test utility for extracting bootstrap credentials from Docker container logs.
@@ -80,4 +80,3 @@ public class BootstrapCredentialsExtractionTest {
     assertThat(credentials.enrollmentChallengeCode()).isNotNull();
   }
 }
-

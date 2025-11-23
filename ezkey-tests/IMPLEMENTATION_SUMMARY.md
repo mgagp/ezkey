@@ -1,90 +1,81 @@
-# Implementation Summary: BDD Tests for Ezkey
+# Implementation Summary: Security Tests for Ezkey
 
 ## Overview
-Successfully implemented comprehensive BDD functional tests for Ezkey using Karate framework with embedded servers approach as specified in the issue.
+Successfully implemented comprehensive security-focused end-to-end functional tests for Ezkey using RestAssured against Docker stack. Tests validate security features in a production-like environment.
 
 ## What Was Implemented
 
-### 1. New Maven Module: ezkey-tests
-Created a new Maven module with:
-- **Karate 1.4.1**: BDD-style API testing framework
-- **TestContainers 1.19.8**: PostgreSQL container for database tests
-- **Spring Boot Test**: For embedded server management
-- **Flyway**: Database migration support
+### 1. Maven Module: ezkey-tests
+Maven module with:
+- **RestAssured**: HTTP client for API testing
+- **JUnit 5**: Test framework
+- **Docker Stack Integration**: Tests run against manually started Docker stack
+- **Security-First**: All security features remain enabled during testing
 
 ### 2. Core Components
 
-#### EmbeddedServerManager.java
-Manages the complete lifecycle of embedded servers:
-- Starts PostgreSQL TestContainer with database `ezkey_test`
-- Runs Flyway migrations from `db/migration`
-- Starts Admin API on port 9080 with custom configuration
-- Starts Auth API on port 8080 with custom configuration
-- Configures test-specific settings (security disabled, rate limiting off)
-- Provides graceful shutdown for all components
+#### AdminBootstrapService
+Manages admin enrollment bootstrap and token creation:
+- **Three-tier strategy**: Cached token → Device credentials → Initial bootstrap
+- **Initial Bootstrap**: Device enrollment (bind + verify) - one-time operation
+- **Token Creation**: Creates admin token using enrolled device - reusable
+- **Idempotent**: Can be run multiple times efficiently
+- **Independent**: No dependencies on other tests
 
-#### KarateTestRunner.java
-JUnit 5 test runner with lifecycle management:
-- `@BeforeAll`: Sets up embedded servers before tests
-- `@Test`: Runs all Karate feature files
-- `@AfterAll`: Tears down servers after tests
-- Sets system properties for Karate configuration
+#### AuthTokenManager
+Manages authentication tokens for tests:
+- **Priority order**: Environment variable → Cached file → Automatic bootstrap
+- **Automatic token creation**: Uses AdminBootstrapService when needed
+- **Token caching**: Reuses tokens across test runs
 
-#### TestSecurityConfig.java
-Test security configuration:
-- Conditional on `ezkey.test.security.disabled=true`
-- Provides permissive security filter chain
-- Overrides production security configuration
+#### BootstrapCredentialsExtractor
+Extracts bootstrap credentials from Docker logs:
+- Reads Admin API container logs
+- Extracts enrollment credentials (ID, proof token, challenge code)
+- Saves to `.ezkey-test/bootstrap-credentials.json`
 
-### 3. Configuration Files
+#### CryptoApiClient
+REST client for Crypto API operations:
+- Key pair generation
+- Proof token generation
+- Data signing
+- Signature validation
 
-#### karate-config.js
-Global Karate configuration:
-- Reads system properties from KarateTestRunner
-- Provides base URLs for Admin and Auth APIs
-- Common headers and wait times
-- Retry configuration
+### 3. Test Structure
 
-#### test-data.js
-Shared test data:
-- Mock RSA public key for testing
-- Reusable across test scenarios
+#### Building Block Tests
+- **AdminTokenCreationTest**: Core building block for creating admin tokens
+  - Independent and idempotent
+  - Reuses cached tokens and device credentials
+  - Three-tier strategy for efficiency
 
-#### admin-test.properties & auth-test.properties
-Test-specific application properties:
-- Database configuration (overridden by TestContainers)
-- Disabled security and rate limiting
-- Reduced logging for tests
-- Disabled Swagger UI
+- **AdminInitialBootstrapTest**: Force initial bootstrap enrollment
+  - Useful for testing bootstrap flow in isolation
+  - Useful after Docker reset
 
-### 4. Feature Files
+- **BootstrapCredentialsExtractionTest**: Extract bootstrap credentials
+  - Utility test for credential extraction
+  - Creates bootstrap-credentials.json
 
-#### Admin API Tests (karate/admin-api/)
-- **integration-management.feature**: 
-  - Create integration
-  - List integrations
-  - Get integration by ID
-  - Delete integration
+#### Security Tests
+- **AdminAuthenticationSecurityTest**: Admin authentication security
+  - Unauthorized access (401)
+  - Invalid token handling
+  - Token invalidation (logout)
+  - Automatic token recreation (idempotent)
 
-- **enrollment-management.feature**:
-  - Create enrollment
-  - List enrollments
-  - Delete enrollment
+- **ApiKeySecurityTest**: API key authorization
+- **CryptographicSecurityTest**: Cryptographic validation
+- **EnrollmentFlowSecurityTest**: Enrollment flow security
+- **AuthenticationFlowSecurityTest**: Authentication flow security
+- **RateLimitingSecurityTest**: Rate limiting validation
 
-#### Auth API Tests (karate/auth-api/)
-- **enrollment-binding.feature**:
-  - Bind device to enrollment
-  - Handle non-existent enrollment
+### 4. File Management
 
-#### E2E Tests (karate/e2e/)
-- **passwordless-login.feature**:
-  - Complete 8-step passwordless authentication flow
-  - Integration creation → enrollment → binding → verification → auth attempt → pending → respond → completion
-
-#### Parallel Tests (karate/parallel/)
-- **concurrent-auth.feature**:
-  - Multiple concurrent authentication attempts
-  - Race condition validation (marked as @ignore)
+#### JSON Files Created
+- **`.ezkey-test/bootstrap-credentials.json`**: Bootstrap credentials (created once)
+- **`.ezkey-test/device-credentials.json`**: Device credentials (created after initial bootstrap)
+- **`.ezkey-test/admin-token.json`**: Admin token (created/updated on token creation)
 
 ### 5. Documentation
 Comprehensive README in ezkey-tests/ covering:
@@ -97,60 +88,63 @@ Comprehensive README in ezkey-tests/ covering:
 
 ## Architecture Benefits
 
-### 1. Automated Setup
-- No manual server startup required
-- PostgreSQL container starts automatically
-- Database migrations run before tests
-- Servers configured with test-specific settings
+### 1. Independence
+- Tests can be run in any order
+- No dependencies on other tests
+- Each test can obtain its own admin token
+- Tests can be run individually or in parallel
 
-### 2. Test Isolation
-- Each test run uses fresh database instances
-- Automatic cleanup after tests complete
-- No state carried over between test runs
+### 2. Idempotence
+- Tests can be run multiple times with same result
+- No side effects from repeated execution
+- State is restored after destructive operations
+- Cached resources are reused efficiently
 
-### 3. CI/CD Ready
-- No external dependencies required
-- Self-contained test execution
-- Consistent results across environments
+### 3. Efficiency
+- Three-tier strategy minimizes unnecessary operations
+- Reuses cached tokens when available
+- Reuses device credentials for token creation
+- Only performs bootstrap when necessary
 
-### 4. Real Servers
-- Tests run against actual Spring Boot applications
-- Not mocks or stubs
-- Validates real HTTP server behavior
-- Tests race conditions and concurrent operations
+### 4. Security-First
+- All security features remain enabled
+- Tests validate security in production-like environment
+- No security bypasses
+- Real-world validation
 
 ## Test Scenarios Covered
 
-1. **Complete Sequences**: Passwordless login from start to finish
-2. **Parallel Operations**: Multiple concurrent requests to same endpoints
-3. **Race Conditions**: Database locking validation with FOR NO KEY UPDATE
-4. **End-to-End Flows**: Enrollment → device binding → authentication → completion
-5. **CRUD Operations**: Integration and enrollment management
+1. **Admin Token Management**: Bootstrap, token creation, caching, reuse
+2. **Admin Authentication**: Unauthorized access, invalid tokens, logout
+3. **API Key Authorization**: API key validation and authorization
+4. **Cryptographic Operations**: Key generation, signing, validation
+5. **Enrollment Flow**: Complete enrollment with signature validation
+6. **Authentication Flow**: Passwordless authentication flow
+7. **Rate Limiting**: Rate limit enforcement and handling
 
 ## Technical Details
 
 ### Dependencies
-- Karate 1.4.1 (junit5 integration)
-- TestContainers 1.19.8 (PostgreSQL support)
-- Spring Boot Test (from parent)
-- Flyway Core (from parent)
+- RestAssured: HTTP client for API testing
+- JUnit 5: Test framework
+- Jackson: JSON processing
+- SLF4J: Logging
 
 ### Ports
-- Admin API: 9080
-- Auth API: 8080
-- PostgreSQL: Dynamic (managed by TestContainers)
+- Admin API: 9080 (configurable via `EZKEY_ADMIN_API_URL`)
+- Auth API: 8080 (configurable via `EZKEY_AUTH_API_URL`)
+- Crypto API: 9090 (configurable via `EZKEY_CRYPTO_API_URL`)
 
 ### Security
-- TestSecurityConfig disables authentication for tests
-- Conditional on property `ezkey.test.security.disabled=true`
-- Only active in test environment
+- **All security features enabled**: No security bypasses
+- **Production-like environment**: Tests validate real security
+- **Real authentication**: Uses actual passwordless flow
 
-### Database
-- PostgreSQL 17 container
-- Database: ezkey_test
-- Username: ezkey_test
-- Password: ezkey_test
-- Automatic migration from ezkey-core resources
+### Docker Stack
+- Manually started Docker stack
+- Production-like configuration
+- PostgreSQL database
+- All services must be healthy before tests run
 
 ## Code Quality
 
@@ -170,6 +164,11 @@ Comprehensive README in ezkey-tests/ covering:
 
 ## Running Tests
 
+### Prerequisites
+1. Start Docker stack: `./docker/start.sh` (or `docker\start.bat` on Windows)
+2. Extract bootstrap credentials: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
+3. Create admin token: `mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest`
+
 ### Basic Execution
 ```bash
 # From project root
@@ -180,63 +179,79 @@ cd ezkey-tests
 mvn test
 ```
 
-### With Tags
+### Run Specific Tests
 ```bash
-# Run only E2E tests
-mvn test -Dkarate.options="--tags @e2e"
+# Create admin token
+mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
 
-# Skip ignored tests
-mvn test -Dkarate.options="--tags ~@ignore"
+# Run security tests
+mvn test -pl ezkey-tests -Dtest=AdminAuthenticationSecurityTest
 ```
 
 ### CI/CD Integration
 ```yaml
-- name: Run Functional Tests
-  run: |
-    export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
-    mvn test -pl ezkey-tests
+- name: Start Docker Stack
+  run: ./docker/start.sh
+  
+- name: Run Tests
+  run: mvn test -pl ezkey-tests
 ```
 
-## Files Changed
+## Files Created
 
-### New Files Created
-1. `ezkey-tests/pom.xml` - Maven configuration
-2. `ezkey-tests/src/test/java/org/ezkey/tests/EmbeddedServerManager.java`
-3. `ezkey-tests/src/test/java/org/ezkey/tests/KarateTestRunner.java`
-4. `ezkey-tests/src/test/java/org/ezkey/tests/config/TestSecurityConfig.java`
-5. `ezkey-tests/src/test/resources/karate-config.js`
-6. `ezkey-tests/src/test/resources/test-data.js`
-7. `ezkey-tests/src/test/resources/admin-test.properties`
-8. `ezkey-tests/src/test/resources/auth-test.properties`
-9. Feature files (5 total):
-   - admin-api/integration-management.feature
-   - admin-api/enrollment-management.feature
-   - auth-api/enrollment-binding.feature
-   - e2e/passwordless-login.feature
-   - parallel/concurrent-auth.feature
-10. `ezkey-tests/README.md` - Comprehensive documentation
+### Core Utilities
+1. `AdminBootstrapService.java` - Bootstrap and token creation service
+2. `AuthTokenManager.java` - Token management utility
+3. `BootstrapCredentialsExtractor.java` - Credentials extraction utility
+4. `CryptoApiClient.java` - Crypto API REST client
+5. `RestAssuredTestConfig.java` - RestAssured configuration
+6. `TestDataFactory.java` - Test data creation helpers
 
-### Modified Files
-1. `pom.xml` - Added ezkey-tests module
-2. `.gitignore` - Added node_modules exclusion
+### Test Classes
+1. `AdminTokenCreationTest.java` - Building block: create admin token
+2. `AdminInitialBootstrapTest.java` - Force initial bootstrap
+3. `BootstrapCredentialsExtractionTest.java` - Extract credentials
+4. `AdminAuthenticationSecurityTest.java` - Authentication security tests
+5. `ApiKeySecurityTest.java` - API key security tests
+6. `CryptographicSecurityTest.java` - Cryptographic validation tests
+7. `EnrollmentFlowSecurityTest.java` - Enrollment flow tests
+8. `AuthenticationFlowSecurityTest.java` - Authentication flow tests
+9. `RateLimitingSecurityTest.java` - Rate limiting tests
+
+### Documentation
+1. `README.md` - Comprehensive documentation
+2. `BOOTSTRAP_FLOW_ANALYSIS.md` - Detailed bootstrap flow analysis
+3. `ADMIN_TOKEN_MANAGEMENT.md` - Token management architecture
+4. `IMPLEMENTATION_SUMMARY.md` - This file
+
+## Key Features
+
+### Three-Tier Token Strategy
+1. **Tier 1**: Reuse cached token (fastest)
+2. **Tier 2**: Reuse device credentials (fast)
+3. **Tier 3**: Initial bootstrap (slower, one-time)
+
+### Test Philosophy
+- **Independence**: Tests can run in any order
+- **Idempotence**: Tests can run multiple times
+- **Efficiency**: Reuses cached resources
+- **Security-First**: All security features enabled
 
 ## Next Steps for Users
 
 1. **Run Tests**: Execute tests to verify setup
-2. **Add More Scenarios**: Create additional feature files for specific use cases
-3. **Parallel Execution**: Enable parallel test execution in KarateTestRunner
-4. **Performance Testing**: Add performance benchmarks
-5. **Security Testing**: Expand security test scenarios
-6. **Integration Tests**: Add more complex E2E scenarios
+2. **Add More Scenarios**: Create additional test classes for specific use cases
+3. **Performance Testing**: Add performance benchmarks
+4. **Security Testing**: Expand security test scenarios
+5. **Integration Tests**: Add more complex E2E scenarios
 
 ## Limitations & Known Issues
 
-1. **Initial Startup Time**: First test run takes ~10-15 seconds for server initialization
-2. **Port Conflicts**: Requires ports 8080 and 9080 to be available
-3. **Docker Requirement**: Needs Docker for TestContainers
-4. **Race Condition Tests**: Currently marked as @ignore, need real parallel execution
-5. **Mock Data**: Uses mock RSA keys instead of generating real keys
+1. **Manual Docker Startup**: Docker stack must be started manually before tests
+2. **Port Conflicts**: Requires ports 8080, 9080, and 9090 to be available
+3. **Docker Requirement**: Needs Docker Desktop or Docker Engine
+4. **Token Expiration**: Token expiration handling not yet implemented
 
 ## Conclusion
 
-This implementation provides a solid foundation for functional testing of Ezkey's authentication flows. The embedded servers approach ensures tests run in a realistic environment while maintaining test isolation and CI/CD compatibility. The BDD-style feature files make tests readable and maintainable for both developers and non-technical stakeholders.
+This implementation provides a solid foundation for security-focused functional testing of Ezkey's authentication flows. The Docker stack approach ensures tests run in a production-like environment while maintaining test independence and idempotence. The three-tier token strategy enables efficient test execution while the building block architecture makes tests maintainable and extensible.

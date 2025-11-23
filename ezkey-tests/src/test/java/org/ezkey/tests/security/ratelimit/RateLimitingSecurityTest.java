@@ -10,18 +10,17 @@
 
 package org.ezkey.tests.security.ratelimit;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.ezkey.tests.security.AbstractSecurityTest;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import java.util.HashMap;
+import java.util.Map;
+import org.ezkey.tests.security.AbstractSecurityTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * Security tests for rate limiting feature.
@@ -144,4 +143,3 @@ public class RateLimitingSecurityTest extends AbstractSecurityTest {
     return integrationKey + ":" + secretKey;
   }
 }
-

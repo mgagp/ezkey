@@ -10,12 +10,12 @@
 
 package org.ezkey.tests.security.crypto;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.util.CryptoApiClient.RsaKeyPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Security tests for cryptographic validation.
@@ -83,7 +83,8 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
     String data = "test-data-to-sign";
     String invalidSignature = "invalid-signature-data";
 
-    boolean isValid = cryptoApiClient.validateSignature(data, invalidSignature, keyPair.publicKey());
+    boolean isValid =
+        cryptoApiClient.validateSignature(data, invalidSignature, keyPair.publicKey());
 
     assertThat(isValid).isFalse();
   }
@@ -102,4 +103,3 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
     assertThat(isValid).isFalse();
   }
 }
-

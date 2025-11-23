@@ -13,7 +13,6 @@ package org.ezkey.tests.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -30,8 +29,8 @@ import org.slf4j.LoggerFactory;
  * Utility class for extracting bootstrap credentials from Docker container logs.
  *
  * <p>This class reads the Admin API Docker container logs and extracts the initial global admin
- * enrollment credentials that are logged during bootstrap. The credentials are saved to a local JSON
- * file for use in tests.
+ * enrollment credentials that are logged during bootstrap. The credentials are saved to a local
+ * JSON file for use in tests.
  *
  * <p><b>Usage:</b>
  *
@@ -65,8 +64,7 @@ public class BootstrapCredentialsExtractor {
   private static final String CREDENTIALS_FILE_PATH = ".ezkey-test/bootstrap-credentials.json";
 
   // Patterns for parsing logs
-  private static final Pattern ENROLLMENT_ID_PATTERN =
-      Pattern.compile("Enrollment ID:\\s*(\\d+)");
+  private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
   private static final Pattern ENROLLMENT_PROOF_TOKEN_PATTERN =
       Pattern.compile("Enrollment Proof Token:\\s*([A-Za-z0-9\\-_.]+)");
   private static final Pattern ENROLLMENT_CHALLENGE_PATTERN =
@@ -112,8 +110,11 @@ public class BootstrapCredentialsExtractor {
 
       log.info("✅ Bootstrap credentials extracted successfully");
       log.debug("  Enrollment ID: {}", credentials.enrollmentId());
-      log.debug("  Enrollment Proof Token: {}...", 
-          credentials.enrollmentProofToken().substring(0, Math.min(20, credentials.enrollmentProofToken().length())));
+      log.debug(
+          "  Enrollment Proof Token: {}...",
+          credentials
+              .enrollmentProofToken()
+              .substring(0, Math.min(20, credentials.enrollmentProofToken().length())));
 
       return credentials;
     } catch (Exception e) {
@@ -154,8 +155,7 @@ public class BootstrapCredentialsExtractor {
   private String readDockerLogs() throws IOException, InterruptedException {
     log.debug("Reading logs from Docker container: {}", DOCKER_CONTAINER_NAME);
 
-    ProcessBuilder processBuilder =
-        new ProcessBuilder("docker", "logs", DOCKER_CONTAINER_NAME);
+    ProcessBuilder processBuilder = new ProcessBuilder("docker", "logs", DOCKER_CONTAINER_NAME);
     processBuilder.redirectErrorStream(true);
 
     Process process = processBuilder.start();
@@ -261,10 +261,12 @@ public class BootstrapCredentialsExtractor {
     jsonNode.put("enrollmentId", credentials.enrollmentId());
     jsonNode.put("enrollmentProofToken", credentials.enrollmentProofToken());
     jsonNode.put("enrollmentChallengeCode", credentials.enrollmentChallengeCode());
-    jsonNode.putArray("recoveryCodes").addAll(
-        credentials.recoveryCodes().stream()
-            .map(code -> mapper.getNodeFactory().textNode(code))
-            .toList());
+    jsonNode
+        .putArray("recoveryCodes")
+        .addAll(
+            credentials.recoveryCodes().stream()
+                .map(code -> mapper.getNodeFactory().textNode(code))
+                .toList());
 
     mapper.writerWithDefaultPrettyPrinter().writeValue(credentialsPath.toFile(), jsonNode);
 
@@ -288,12 +290,10 @@ public class BootstrapCredentialsExtractor {
 
     List<String> recoveryCodes = new ArrayList<>();
     if (jsonNode.has("recoveryCodes")) {
-      jsonNode.get("recoveryCodes")
-          .forEach(code -> recoveryCodes.add(code.asText()));
+      jsonNode.get("recoveryCodes").forEach(code -> recoveryCodes.add(code.asText()));
     }
 
     return new BootstrapCredentials(
         enrollmentId, enrollmentProofToken, enrollmentChallengeCode, recoveryCodes);
   }
 }
-

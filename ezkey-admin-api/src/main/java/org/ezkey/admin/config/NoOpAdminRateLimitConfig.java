@@ -86,13 +86,25 @@ public class NoOpAdminRateLimitConfig {
       havingValue = "false",
       matchIfMissing = true)
   public AdminRateLimitFilter adminRateLimitFilter(MeterRegistry meterRegistry) {
-    logger.info("╔══════════════════════════════════════════════════════════════╗");
-    logger.info("║   Admin API Rate Limiting: DISABLED                         ║");
-    logger.info("╚══════════════════════════════════════════════════════════════╝");
-    logger.info("Using NoOpAdminRateLimitFilter (Null Object Pattern)");
-    logger.info("Controllers can safely call rate limit methods without null checks");
-    logger.info("");
-    logger.info("To enable rate limiting, set: ezkey.admin.rate-limit.enabled=true");
+    logger.warn("╔══════════════════════════════════════════════════════════════╗");
+    logger.warn("║   SECURITY WARNING: Admin API Rate Limiting                ║");
+    logger.warn("║   DISABLED                                                  ║");
+    logger.warn("╚══════════════════════════════════════════════════════════════╝");
+    logger.warn("");
+    logger.warn("Admin API rate limiting is DISABLED.");
+    logger.warn("This means:");
+    logger.warn("  - Login attempts are NOT rate limited");
+    logger.warn("  - No protection against brute force attacks");
+    logger.warn("  - No IP blocking after repeated failures");
+    logger.warn("");
+    logger.warn("⚠️  PRODUCTION RISK: This configuration is NOT recommended for production!");
+    logger.warn("");
+    logger.warn("Using NoOpAdminRateLimitFilter (Null Object Pattern)");
+    logger.warn("All rate limit checks will return ALLOWED (no protection)");
+    logger.warn("");
+    logger.warn("To enable rate limiting, set: ezkey.admin.rate-limit.enabled=true");
+    logger.warn("Configuration file: application.properties or application-{profile}.properties");
+    logger.warn("");
 
     return new NoOpAdminRateLimitFilter(meterRegistry);
   }

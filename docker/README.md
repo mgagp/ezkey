@@ -233,8 +233,34 @@ export POSTGRES_PASSWORD=mysecurepassword
 
 ### Spring Profiles
 
-All services use the `docker` Spring profile, which loads configuration from:
+All services use the `docker` Spring profile by default, which loads configuration from:
 - `application-docker.properties` files in each module's `config/` directory
+
+#### Available Profiles
+
+**Default: `docker` (Production Mode)**
+- Rate limiting enabled with production values
+- Tests must handle rate limits (synchronization + retry mechanisms)
+- Validates production-like behavior
+
+**Optional: `docker-test` (Test Mode)**
+- Rate limiting disabled or very permissive
+- Allows unrestricted testing in any order and frequency
+- Useful for development and debugging
+
+#### Using Test Mode
+
+To start the stack in test mode (permissive rate limiting):
+
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
+```
+
+**Note:** The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack with the desired profile.
 
 ## Data Persistence
 

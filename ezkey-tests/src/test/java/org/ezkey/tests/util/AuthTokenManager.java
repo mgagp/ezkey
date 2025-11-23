@@ -10,16 +10,21 @@
 
 package org.ezkey.tests.util;
 
+import static io.restassured.RestAssured.given;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static io.restassured.RestAssured.given;
 
 /**
  * Manages authentication tokens and API keys for test execution.
@@ -43,9 +48,19 @@ public class AuthTokenManager {
 
   private static final Logger log = LoggerFactory.getLogger(AuthTokenManager.class);
 
+  private static final String TOKEN_FILE_PATH = ".ezkey-test/admin-token.json";
+
   private final DockerStackConfig dockerStackConfig;
   private String adminToken;
   private final Map<String, String> apiKeys = new HashMap<>();
+  private AdminBootstrapService bootstrapService;
+
+  // Dependencies stored for bootstrap service (used indirectly via bootstrapService)
+  @SuppressWarnings("unused")
+  private BootstrapCredentialsExtractor bootstrapCredentialsExtractor;
+
+  @SuppressWarnings("unused")
+  private CryptoApiClient cryptoApiClient;
 
   /**
    * Creates a new AuthTokenManager.
@@ -54,28 +69,92 @@ public class AuthTokenManager {
    */
   public AuthTokenManager(DockerStackConfig dockerStackConfig) {
     this.dockerStackConfig = dockerStackConfig;
-    // Try to get admin token from environment variable
+    // Try to get admin token from environment variable (priority 1)
     this.adminToken = System.getenv("EZKEY_ADMIN_TOKEN");
+  }
+
+  /**
+   * Sets the bootstrap service dependencies for automatic token acquisition.
+   *
+   * @param bootstrapCredentialsExtractor Bootstrap credentials extractor
+   * @param cryptoApiClient Crypto API client
+   */
+  public void setBootstrapDependencies(
+      BootstrapCredentialsExtractor bootstrapCredentialsExtractor,
+      CryptoApiClient cryptoApiClient) {
+    this.bootstrapCredentialsExtractor = bootstrapCredentialsExtractor;
+    this.cryptoApiClient = cryptoApiClient;
+    if (bootstrapCredentialsExtractor != null && cryptoApiClient != null) {
+      this.bootstrapService =
+          new AdminBootstrapService(
+              dockerStackConfig, bootstrapCredentialsExtractor, cryptoApiClient);
+    }
   }
 
   /**
    * Gets the admin bearer token.
    *
-   * <p>Returns the token from environment variable if set, otherwise attempts to obtain via login
-   * flow (requires device approval).
+   * <p>Token acquisition follows this priority order:
+   *
+   * <ol>
+   *   <li>Environment variable EZKEY_ADMIN_TOKEN (highest priority)
+   *   <li>Cached token from .ezkey-test/admin-token.json file
+   *   <li>Automatic bootstrap via AdminBootstrapService (if dependencies set)
+   * </ol>
    *
    * @return Admin bearer token
    * @throws IllegalStateException if token cannot be obtained
    */
   public String getAdminToken() {
+    // Priority 1: Environment variable
     if (adminToken != null && !adminToken.isEmpty()) {
       return adminToken;
     }
 
-    // For now, throw exception - tests should set EZKEY_ADMIN_TOKEN environment variable
-    // In future, could implement login flow with device approval
+    // Priority 2: Load from cache file
+    String cachedToken = loadTokenFromFile();
+    if (cachedToken != null && !cachedToken.isEmpty()) {
+      this.adminToken = cachedToken;
+      log.debug("Using cached admin token from file");
+      return cachedToken;
+    }
+
+    // Priority 3: Automatic bootstrap (if dependencies available)
+    if (bootstrapService != null) {
+      try {
+        String token = bootstrapService.ensureAdminToken();
+        this.adminToken = token;
+        return token;
+      } catch (Exception e) {
+        log.warn("Automatic bootstrap failed: {}", e.getMessage());
+        // Fall through to throw exception
+      }
+    }
+
     throw new IllegalStateException(
-        "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable or implement login flow.");
+        "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable, run"
+            + " AdminTokenCreationTest to create token, or ensure bootstrap dependencies are set.");
+  }
+
+  /**
+   * Loads admin token from cache file.
+   *
+   * @return Admin token, or null if not found
+   */
+  private String loadTokenFromFile() {
+    Path tokenPath = Paths.get(TOKEN_FILE_PATH);
+    if (!Files.exists(tokenPath)) {
+      return null;
+    }
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
+      return jsonNode.get("token").asText();
+    } catch (IOException e) {
+      log.warn("Failed to load token from file: {}", e.getMessage());
+      return null;
+    }
   }
 
   /**
@@ -140,11 +219,15 @@ public class AuthTokenManager {
           authAttemptId,
           challengeCode);
       throw new IllegalStateException(
-          "Login requires challenge approval. Use passwordless-wait endpoint or set EZKEY_ADMIN_TOKEN environment variable.");
+          "Login requires challenge approval. Use passwordless-wait endpoint or set"
+              + " EZKEY_ADMIN_TOKEN environment variable.");
     }
 
     throw new IllegalStateException(
-        "Admin login failed. Status: " + response.getStatusCode() + ", Response: " + response.asString());
+        "Admin login failed. Status: "
+            + response.getStatusCode()
+            + ", Response: "
+            + response.asString());
   }
 
   /**
@@ -168,4 +251,3 @@ public class AuthTokenManager {
     return this.apiKeys.get(String.valueOf(integrationId));
   }
 }
-

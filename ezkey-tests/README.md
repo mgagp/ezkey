@@ -45,15 +45,17 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 
 ### Security-First Testing
 
-- **No Security Bypass**: All security features remain enabled during testing
+- **No Security Bypass**: All security features remain enabled during testing (in production mode)
 - **Real-World Validation**: Tests validate security in production-like environment
 - **End-to-End Coverage**: Complete security flows from enrollment to authentication
+- **Two Testing Modes**: Production mode (with rate limits) and test mode (unrestricted)
 
 ### Docker Stack Integration
 
 - **Manual Startup**: Docker stack started manually before tests
 - **Production-Like**: Uses same Docker Compose configuration as production
 - **Service Health Checks**: Tests verify services are healthy before execution
+- **Profile-Based Configuration**: Choose between production mode (default) or test mode (permissive)
 
 ### Cryptographic Operations
 
@@ -72,6 +74,7 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 
 ### 1. Start Docker Stack
 
+**Mode Production (Default)** - Rate limiting enabled with production values:
 ```bash
 # Linux/Mac
 ./docker/start.sh
@@ -79,6 +82,21 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 # Windows
 docker\start.bat
 ```
+
+**Mode Test Libre** - Rate limiting disabled for unrestricted testing:
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
+```
+
+**Mode Selection:**
+- **Production Mode (default)**: Tests run with production-like constraints. Rate limiting is enabled, requiring tests to handle rate limits using built-in synchronization and retry mechanisms.
+- **Test Mode**: Rate limiting is disabled, allowing unrestricted testing in any order and frequency. Useful for development and debugging.
+
+**Note**: The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack with the desired profile.
 
 Wait for all services to be healthy (check logs or health endpoints).
 
@@ -98,9 +116,22 @@ This will:
 
 **Note**: This only needs to be done once after initial Docker stack startup. The credentials file will be reused for subsequent test runs.
 
-### 3. Set Admin Token (Optional)
+### 3. Create Admin Token (Optional but Recommended)
 
-For tests that require admin authentication, set the admin token:
+For tests that require admin authentication, create an admin token:
+
+```bash
+# Create admin token (will bootstrap if needed, reuse device credentials if available)
+mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
+```
+
+This will:
+- Perform initial bootstrap (device enrollment) if needed (one-time)
+- Create admin token using device credentials
+- Save token to `.ezkey-test/admin-token.json` for reuse
+- Save device credentials to `.ezkey-test/device-credentials.json` for future token creation
+
+**Alternative**: Set admin token manually via environment variable:
 
 ```bash
 # Linux/Mac
@@ -110,9 +141,7 @@ export EZKEY_ADMIN_TOKEN="your-admin-bearer-token"
 $env:EZKEY_ADMIN_TOKEN="your-admin-bearer-token"
 ```
 
-**Note**: Admin token can be obtained by:
-- Logging in via Admin API (requires device approval using bootstrap credentials)
-- Using a pre-configured token from Docker initialization
+**Note**: The `AdminTokenCreationTest` is idempotent and independent - it can be run multiple times and will efficiently reuse cached tokens or device credentials.
 
 ### 4. Run Tests
 
@@ -124,6 +153,7 @@ mvn test -pl ezkey-tests
 mvn test -pl ezkey-tests -X
 
 # Run specific test class
+mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
 mvn test -pl ezkey-tests -Dtest=AdminAuthenticationSecurityTest
 ```
 
@@ -139,14 +169,20 @@ ezkey-tests/
     ├── config/
     │   └── DockerStackConfig.java          # Docker stack connection config
     ├── util/
-    │   ├── RestAssuredConfig.java          # RestAssured HTTP client config
+    │   ├── RestAssuredTestConfig.java     # RestAssured HTTP client config
     │   ├── CryptoApiClient.java            # Crypto API REST client
     │   ├── TestDataFactory.java            # Test data creation helpers
-    │   └── AuthTokenManager.java           # Token management
+    │   ├── AuthTokenManager.java           # Token management
+    │   ├── AdminBootstrapService.java      # Admin bootstrap and token creation
+    │   └── BootstrapCredentialsExtractor.java # Bootstrap credentials extraction
     └── security/
         ├── AbstractSecurityTest.java        # Base test class
         ├── admin/
+        │   ├── AdminTokenCreationTest.java  # Building block: create admin token
         │   └── AdminAuthenticationSecurityTest.java
+        ├── bootstrap/
+        │   ├── BootstrapCredentialsExtractionTest.java # Extract bootstrap credentials
+        │   └── AdminInitialBootstrapTest.java # Force initial bootstrap (optional)
         ├── apikey/
         │   └── ApiKeySecurityTest.java
         ├── crypto/
@@ -161,12 +197,31 @@ ezkey-tests/
 
 ### Test Categories
 
-#### 1. Admin Authentication Tests (`AdminAuthenticationSecurityTest`)
+#### 1. Admin Token Creation (`AdminTokenCreationTest`)
+
+**Building Block Test** - Core capability for obtaining admin tokens:
+
+- **Independent**: Can be run in any order, does not depend on other tests
+- **Idempotent**: Can be run multiple times with the same result
+- **Efficient**: Reuses cached tokens and device credentials when available
+- **Three-tier strategy**:
+  1. Reuse cached token from previous run (fastest)
+  2. Reuse device credentials to create new token (fast)
+  3. Perform initial bootstrap if needed (slower, one-time)
+
+This test validates:
+- Token creation (via bootstrap or reuse)
+- Token validity by accessing protected endpoints
+
+**Usage**: Use as a dependency for other tests that require an admin token.
+
+#### 2. Admin Authentication Tests (`AdminAuthenticationSecurityTest`)
 
 - Unauthorized access attempts (401)
 - Invalid token handling
 - Token invalidation (logout)
 - Valid token access validation
+- Automatic token recreation after logout (idempotent)
 
 #### 2. API Key Authorization Tests (`ApiKeySecurityTest`)
 
@@ -202,6 +257,58 @@ ezkey-tests/
 - Rate limit enforcement on auth attempt creation
 - Rate limit enforcement on wait API
 - Rate limit exceeded handling (429)
+
+## Docker Stack Modes
+
+### Production Mode (Default)
+
+**Profile**: `docker` (default)
+
+**Characteristics**:
+- Rate limiting enabled with production values
+- Tests must handle rate limits using built-in mechanisms:
+  - **Synchronization**: `ReentrantLock` prevents parallel bootstrap attempts
+  - **Retry with Backoff**: Exponential backoff (1s, 2s, 4s, 8s, 16s) for rate limit errors
+- Validates production-like behavior
+- Tests are resilient and handle constraints gracefully
+
+**Use Cases**:
+- Full test suite execution
+- Production readiness validation
+- Security testing with real constraints
+- CI/CD pipeline testing
+
+**Rate Limit Values** (Production):
+- Bind: 3 requests / 5 minutes per IP
+- Verify: 5 requests / 5 minutes per IP
+- Pending: 10 requests / 1 minute per enrollment
+
+### Test Mode (Permissive)
+
+**Profile**: `docker,docker-test`
+
+**Characteristics**:
+- Rate limiting disabled or very permissive
+- Allows unrestricted testing in any order and frequency
+- No rate limit constraints
+- Synchronization and retry mechanisms remain active (defense in depth)
+
+**Use Cases**:
+- Development and debugging
+- Ad-hoc testing
+- Rapid iteration
+- Testing without rate limit concerns
+
+**Activation**:
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
+```
+
+**Note**: The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack.
 
 ## Configuration
 
@@ -319,9 +426,9 @@ Response response = given()
     .response();
 ```
 
-## Bootstrap Credentials
+## Bootstrap and Token Management
 
-### What Are Bootstrap Credentials?
+### Bootstrap Credentials
 
 When Admin API starts for the first time on an empty database, it automatically creates:
 - Initial global administrator
@@ -332,7 +439,7 @@ These credentials are logged to the Admin API container logs and are required to
 - Bind the admin enrollment to a device
 - Complete the admin passwordless login setup
 
-### Extracting Credentials
+### Extracting Bootstrap Credentials
 
 The `BootstrapCredentialsExtractor` utility reads Docker container logs and extracts:
 - **Enrollment ID**: ID of the admin enrollment
@@ -340,24 +447,70 @@ The `BootstrapCredentialsExtractor` utility reads Docker container logs and extr
 - **Enrollment Challenge Code**: 6-digit code for enrollment verification
 - **Recovery Codes**: Emergency access codes (single-use)
 
-### Credentials File
-
-Credentials are saved to `.ezkey-test/bootstrap-credentials.json`:
+**File**: `.ezkey-test/bootstrap-credentials.json`
 - Automatically created on first extraction
 - Reused for subsequent test runs
 - Can be manually edited if needed
 - Should be added to `.gitignore` (contains sensitive data)
 
+### Device Credentials (After Initial Bootstrap)
+
+After the initial bootstrap (device enrollment), device credentials are saved:
+- **Enrollment ID**: ID of the enrolled device
+- **Private Key**: Device private key (Base64-encoded)
+- **Public Key**: Device public key (Base64-encoded)
+- **Key Size**: RSA key size in bits
+
+**File**: `.ezkey-test/device-credentials.json`
+- Created after initial bootstrap enrollment
+- Reused for creating new admin tokens (much faster than full bootstrap)
+- Enables idempotent token creation across test runs
+- Should be added to `.gitignore` (contains sensitive data)
+
+### Admin Token
+
+The admin bearer token is saved after successful authentication:
+- **Token**: Admin bearer token for API authentication
+
+**File**: `.ezkey-test/admin-token.json`
+- Created after successful token creation
+- Reused for subsequent test runs (fastest path)
+- Automatically recreated if invalidated (e.g., after logout)
+- Should be added to `.gitignore` (contains sensitive data)
+
+### Three-Tier Token Strategy
+
+The `AdminBootstrapService` follows a three-tier strategy for efficiency:
+
+1. **Tier 1: Cached Token** (fastest)
+   - Loads token from `.ezkey-test/admin-token.json`
+   - No API calls needed
+   - Used if token file exists and is valid
+
+2. **Tier 2: Reuse Device Credentials** (fast)
+   - Loads device credentials from `.ezkey-test/device-credentials.json`
+   - Creates new token using existing device enrollment
+   - Skips bootstrap steps (bind + verify)
+   - Only performs: login → respond → wait
+
+3. **Tier 3: Initial Bootstrap** (slower, one-time)
+   - Performs complete bootstrap flow
+   - Extracts bootstrap credentials
+   - Generates device key pair
+   - Binds and verifies enrollment
+   - Creates token
+   - Saves device credentials for future reuse
+
 ### Using Credentials in Tests
 
 ```java
-// In your test
-BootstrapCredentials credentials = bootstrapCredentialsExtractor.loadOrExtractCredentials();
+// In your test - get admin token (handles all tiers automatically)
+String adminToken = authTokenManager.getAdminToken();
 
-// Use credentials for enrollment binding
-Integer enrollmentId = credentials.enrollmentId();
-String enrollmentProofToken = credentials.enrollmentProofToken();
-Integer challengeCode = credentials.enrollmentChallengeCode();
+// Or use AdminBootstrapService directly
+AdminBootstrapService bootstrapService = new AdminBootstrapService(
+    dockerStackConfig, bootstrapCredentialsExtractor, cryptoApiClient);
+String adminToken = bootstrapService.ensureAdminToken();
 ```
 
 ## Troubleshooting
@@ -386,9 +539,10 @@ Integer challengeCode = credentials.enrollmentChallengeCode();
 **Problem**: Tests requiring admin token fail with 401
 
 **Solution**:
-1. Set `EZKEY_ADMIN_TOKEN` environment variable
-2. Or implement login flow (requires device approval)
+1. Run `AdminTokenCreationTest` to create a token: `mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest`
+2. Or set `EZKEY_ADMIN_TOKEN` environment variable
 3. Check token is valid: `curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/api/v1/integrations`
+4. If token is invalidated (e.g., after logout), `AdminTokenCreationTest` will automatically recreate it
 
 ### Tests Fail: 403 Forbidden
 

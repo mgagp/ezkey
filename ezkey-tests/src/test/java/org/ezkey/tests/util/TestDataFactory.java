@@ -10,16 +10,15 @@
 
 package org.ezkey.tests.util;
 
+import static io.restassured.RestAssured.given;
+
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.util.HashMap;
+import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static io.restassured.RestAssured.given;
 
 /**
  * Factory class for creating test data via REST API calls.
@@ -62,7 +61,7 @@ public class TestDataFactory {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
     Map<String, Object> i18n = new HashMap<>();
-    i18n.put("lang", "en");
+    i18n.put("language", "en"); // Fixed: DTO expects "language", not "lang"
     i18n.put("name", name);
     i18n.put("description", description);
 
@@ -82,7 +81,7 @@ public class TestDataFactory {
             .extract()
             .response();
 
-    Integer integrationId = response.jsonPath().getInt("integrationId");
+    Integer integrationId = response.jsonPath().getInt("id");
     log.debug("Created integration with ID: {}", integrationId);
 
     return integrationId;
@@ -105,8 +104,7 @@ public class TestDataFactory {
    * @param challengeRequired Whether challenge is required
    * @return Enrollment ID
    */
-  public Integer createEnrollment(
-      Integer integrationId, String name, Boolean challengeRequired) {
+  public Integer createEnrollment(Integer integrationId, String name, Boolean challengeRequired) {
     log.debug("Creating enrollment: {} for integration: {}", name, integrationId);
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
@@ -114,7 +112,8 @@ public class TestDataFactory {
     Map<String, Object> request = new HashMap<>();
     request.put("integrationId", integrationId);
     request.put("name", name);
-    request.put("authAttemptChallengeRequired", challengeRequired != null ? challengeRequired : false);
+    request.put(
+        "authAttemptChallengeRequired", challengeRequired != null ? challengeRequired : false);
 
     Response response =
         given()
@@ -188,4 +187,3 @@ public class TestDataFactory {
     return createAuthAttempt(enrollmentId, false);
   }
 }
-

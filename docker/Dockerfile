@@ -64,7 +64,7 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-migration/target/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 3: Runtime image for admin-api service
@@ -79,7 +79,7 @@ COPY --from=build /build/ezkey-admin-api/config ./config
 EXPOSE 9080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:9080/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 4: Runtime image for auth-api service
@@ -94,7 +94,7 @@ COPY --from=build /build/ezkey-auth-api/config ./config
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 5: Runtime image for crypto-api service
@@ -109,7 +109,7 @@ COPY --from=build /build/ezkey-crypto-api/config ./config
 EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:9090/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 6: Runtime image for demo-device service
@@ -123,5 +123,5 @@ COPY --from=build /build/ezkey-demo-device/target/*.jar app.jar
 EXPOSE 8083
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8083/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 

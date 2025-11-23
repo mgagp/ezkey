@@ -10,20 +10,19 @@
 
 package org.ezkey.tests.security.authentication;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.ezkey.tests.security.AbstractSecurityTest;
-import org.ezkey.tests.util.CryptoApiClient.RsaKeyPair;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import java.util.HashMap;
+import java.util.Map;
+import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.util.CryptoApiClient.RsaKeyPair;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * End-to-end security tests for authentication flow.
@@ -69,6 +68,7 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+      Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
 
       // Complete enrollment (bind + verify)
       RsaKeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
@@ -93,11 +93,15 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
       String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
 
-      // Verify
+      // Reconfigure RestAssured for Auth API after Crypto API call
+      configureForAuthApi(dockerStackConfig);
+
+      // Verify - Fixed: use correct field names and include challengeResponse
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", enrollmentId);
+      verifyRequest.put("challengeResponse", challengeCode);
       verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
-      verifyRequest.put("deviceProofTokenSignature", signature);
+      verifyRequest.put("enrollmentProofTokenSigned", signature);
 
       given()
           .contentType(ContentType.JSON)
@@ -112,10 +116,19 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       Integer authAttemptId = testDataFactory.createAuthAttempt(enrollmentId, false);
 
       // Step 2: Get pending auth attempt via Auth API
+      // Generate device proof token and sign it (required for pending request)
+      String deviceProofToken = cryptoApiClient.generateProofToken();
+      String deviceProofTokenSigned =
+          cryptoApiClient.signData(deviceProofToken, deviceKeyPair.privateKey());
+
+      // Reconfigure RestAssured for Auth API after Crypto API calls
       configureForAuthApi(dockerStackConfig);
+
       Map<String, Object> pendingRequest = new HashMap<>();
       pendingRequest.put("enrollmentId", enrollmentId);
       pendingRequest.put("enrollmentProofToken", enrollmentProofToken);
+      pendingRequest.put("deviceProofToken", deviceProofToken);
+      pendingRequest.put("deviceProofTokenSigned", deviceProofTokenSigned);
 
       Response pendingResponse =
           given()
@@ -132,13 +145,18 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       assertThat(authAttemptProofToken).isNotNull().isNotEmpty();
 
       // Step 3: Sign auth attempt proof token
-      String authSignature = cryptoApiClient.signData(authAttemptProofToken, deviceKeyPair.privateKey());
+      // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth API after
+      String authSignature =
+          cryptoApiClient.signData(authAttemptProofToken, deviceKeyPair.privateKey());
 
-      // Step 4: Respond to auth attempt
+      // Reconfigure RestAssured for Auth API after Crypto API call
+      configureForAuthApi(dockerStackConfig);
+
+      // Step 4: Respond to auth attempt - Fixed: use correct field names
       Map<String, Object> respondRequest = new HashMap<>();
       respondRequest.put("authAttemptId", authAttemptId);
-      respondRequest.put("accepted", true);
-      respondRequest.put("authAttemptProofTokenSignature", authSignature);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put("authAttemptProofTokenSignedByDevice", authSignature);
 
       Response respondResponse =
           given()
@@ -151,7 +169,8 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(respondResponse.jsonPath().getBoolean("success")).isTrue();
+      // Response contains "result" field (APPROVED, DENIED, etc.), not "success"
+      assertThat(respondResponse.jsonPath().getString("result")).isEqualTo("APPROVED");
 
       // Step 5: Verify completion via Admin API
       configureForAdminApi(dockerStackConfig);
@@ -166,11 +185,11 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      assertThat(statusResponse.jsonPath().getString("status")).isEqualTo("ACCEPTED");
+      // AuthAttemptDto uses authAttemptStatus field (enum: PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+      assertThat(statusResponse.jsonPath().getString("authAttemptStatus")).isEqualTo("ACCEPTED");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
     }
   }
 }
-

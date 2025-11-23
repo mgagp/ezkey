@@ -51,8 +51,7 @@ public class DockerStackConfig {
    * set.
    */
   public DockerStackConfig() {
-    this.adminApiUrl =
-        System.getenv().getOrDefault("EZKEY_ADMIN_API_URL", DEFAULT_ADMIN_API_URL);
+    this.adminApiUrl = System.getenv().getOrDefault("EZKEY_ADMIN_API_URL", DEFAULT_ADMIN_API_URL);
     this.authApiUrl = System.getenv().getOrDefault("EZKEY_AUTH_API_URL", DEFAULT_AUTH_API_URL);
     this.cryptoApiUrl =
         System.getenv().getOrDefault("EZKEY_CRYPTO_API_URL", DEFAULT_CRYPTO_API_URL);
@@ -120,12 +119,12 @@ public class DockerStackConfig {
       // Save current RestAssured settings to restore later
       String savedBaseUri = RestAssured.baseURI;
       String savedBasePath = RestAssured.basePath;
-      
+
       try {
         // Set baseURI and basePath before using RestAssured (required by RestAssured 5.x)
         RestAssured.baseURI = baseUrl;
         RestAssured.basePath = "";
-        
+
         Response response =
             RestAssured.given()
                 .contentType(ContentType.JSON)
@@ -157,4 +156,3 @@ public class DockerStackConfig {
     }
   }
 }
-

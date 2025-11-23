@@ -16,8 +16,8 @@ import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.CryptoApiClient;
 import org.ezkey.tests.util.RestAssuredTestConfig;
 import org.ezkey.tests.util.TestDataFactory;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +70,9 @@ public abstract class AbstractSecurityTest {
     testDataFactory = new TestDataFactory(dockerStackConfig, authTokenManager);
     bootstrapCredentialsExtractor = new BootstrapCredentialsExtractor();
 
+    // Configure bootstrap dependencies for automatic token acquisition
+    authTokenManager.setBootstrapDependencies(bootstrapCredentialsExtractor, cryptoApiClient);
+
     log.info("Test environment setup complete");
   }
 
@@ -84,4 +87,3 @@ public abstract class AbstractSecurityTest {
     RestAssuredTestConfig.reset();
   }
 }
-

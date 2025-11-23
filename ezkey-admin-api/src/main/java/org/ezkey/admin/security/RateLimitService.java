@@ -19,6 +19,7 @@ import java.time.Duration;
 import org.ezkey.admin.config.ApiKeyRateLimitProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,6 +40,10 @@ import org.springframework.stereotype.Service;
  *   <li><b>WAIT_AUTH_ATTEMPT:</b> Configurable via ezkey.api-key.rate-limit.wait-auth-attempt.*
  * </ul>
  *
+ * <p><b>Conditional Activation:</b> This service is only created when
+ * ezkey.api-key.rate-limit.enabled=true. When disabled, controllers should handle the absence of
+ * this service gracefully or use a NoOp implementation.
+ *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
  * <p><b>License:</b> MIT
@@ -47,6 +52,10 @@ import org.springframework.stereotype.Service;
  * @since 2025
  */
 @Service
+@ConditionalOnProperty(
+    name = "ezkey.api-key.rate-limit.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class RateLimitService {
 
   private static final Logger logger = LoggerFactory.getLogger(RateLimitService.class);

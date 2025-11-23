@@ -19,6 +19,7 @@ import java.time.Duration;
 import org.ezkey.admin.config.AdminOperationsRateLimitProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
@@ -40,6 +41,10 @@ import org.springframework.stereotype.Service;
  *       ezkey.admin-operations.rate-limit.enrollment-reset.*
  * </ul>
  *
+ * <p><b>Conditional Activation:</b> This service is only created when
+ * ezkey.admin-operations.rate-limit.enabled=true. When disabled, controllers should handle the
+ * absence of this service gracefully or use a NoOp implementation.
+ *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
  * <p><b>License:</b> MIT
@@ -48,6 +53,10 @@ import org.springframework.stereotype.Service;
  * @since 2025
  */
 @Service
+@ConditionalOnProperty(
+    name = "ezkey.admin-operations.rate-limit.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class AdminOperationsRateLimitService {
 
   private static final Logger logger =

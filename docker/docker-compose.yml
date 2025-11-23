@@ -1,4 +1,5 @@
-version: '3.8'
+# Project name for Docker Compose (appears as group name in Docker Desktop)
+name: ezkey
 
 # Enable BuildKit for Maven cache mount support
 x-buildkit: &buildkit
@@ -36,7 +37,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ezkey
@@ -56,7 +57,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ezkey
@@ -88,7 +89,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ezkey
@@ -114,7 +115,7 @@ services:
       auth-api:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       EZKEY_AUTH_API_URL: http://auth-api:8080
     ports:
       - "8083:8083"
@@ -140,7 +141,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
     ports:
       - "9090:9090"
     networks:

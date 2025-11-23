@@ -10,19 +10,18 @@
 
 package org.ezkey.tests.security.apikey;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.ezkey.tests.security.AbstractSecurityTest;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+import org.ezkey.tests.security.AbstractSecurityTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * Security tests for API key authorization and access control.
@@ -72,7 +71,9 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       Response response =
           given()
               .contentType(ContentType.JSON)
-              .header("Authorization", createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
               .when()
               .get("/integrations")
               .then()
@@ -103,7 +104,9 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       Response response =
           given()
               .contentType(ContentType.JSON)
-              .header("Authorization", createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
               .when()
               .get("/enrollments")
               .then()
@@ -139,7 +142,9 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
       Response response =
           given()
               .contentType(ContentType.JSON)
-              .header("Authorization", createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
               .body(request)
               .when()
               .post("/auth-attempts")
@@ -189,4 +194,3 @@ public class ApiKeySecurityTest extends AbstractSecurityTest {
     return integrationKey + ":" + secretKey;
   }
 }
-
