@@ -115,13 +115,18 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 6: Runtime image for demo-device service
 # ============================================
 FROM eclipse-temurin:21-jre-alpine AS demo-device
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-demo-device/target/*.jar app.jar
+# Create entrypoint script that ensures directory exists with correct permissions
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo 'mkdir -p /app/data/enrollments' >> /app/entrypoint.sh && \
+    echo 'chown -R spring:spring /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 EXPOSE 8083
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8083/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 

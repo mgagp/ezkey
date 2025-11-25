@@ -22,7 +22,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +47,13 @@ import org.slf4j.LoggerFactory;
  * @since 2025
  */
 @DisplayName("Admin Authentication Security Tests")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
 
   private static final Logger log = LoggerFactory.getLogger(AdminAuthenticationSecurityTest.class);
 
   @Test
+  @Order(3)
   @DisplayName("Unauthorized access to protected endpoint should return 401")
   public void testUnauthorizedAccess() {
     configureForAdminApi(dockerStackConfig);
@@ -66,6 +71,7 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
+  @Order(4)
   @DisplayName("Invalid bearer token should return 401")
   public void testInvalidToken() {
     configureForAdminApi(dockerStackConfig);
@@ -84,6 +90,7 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
+  @Order(5)
   @DisplayName("Missing Authorization header should return 401")
   public void testMissingAuthorizationHeader() {
     configureForAdminApi(dockerStackConfig);
@@ -101,6 +108,7 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
+  @Order(1)
   @DisplayName("Valid admin token should allow access to protected endpoints")
   public void testValidTokenAccess() {
     // Skip if admin token not available
@@ -127,6 +135,7 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
+  @Order(2)
   @DisplayName("Logout should invalidate token")
   public void testLogoutInvalidatesToken() {
     // Skip if admin token not available

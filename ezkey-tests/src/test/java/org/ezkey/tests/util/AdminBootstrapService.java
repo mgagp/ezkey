@@ -289,6 +289,28 @@ public class AdminBootstrapService {
         saveDeviceCredentials(deviceCredentials);
       }
 
+      // Step 5: Write enrollment file to demo-device container
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 5: Writing enrollment file to demo-device container...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      try {
+        // Create admin token temporarily to fetch enrollment details
+        String tempAdminToken = createAdminToken(deviceCredentials);
+        DemoDeviceEnrollmentWriter enrollmentWriter =
+            new DemoDeviceEnrollmentWriter(dockerStackConfig);
+        enrollmentWriter.writeEnrollmentFile(
+            credentials.enrollmentId(),
+            deviceCredentials.publicKey(),
+            deviceCredentials.privateKey(),
+            credentials.enrollmentProofToken(),
+            tempAdminToken);
+        log.info("✅ Step 5 Complete - Enrollment file written to demo-device");
+      } catch (Exception e) {
+        log.error("❌ Failed to write enrollment file to demo-device", e);
+        throw new IllegalStateException(
+            "Failed to write enrollment file to demo-device container: " + e.getMessage(), e);
+      }
+
       log.info("═══════════════════════════════════════════════════════════════");
       log.info("🎉 INITIAL BOOTSTRAP COMPLETE - Device enrolled and credentials saved!");
       log.info("═══════════════════════════════════════════════════════════════");
