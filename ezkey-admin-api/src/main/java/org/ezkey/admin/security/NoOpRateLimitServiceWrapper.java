@@ -62,4 +62,3 @@ public class NoOpRateLimitServiceWrapper extends RateLimitService {
     noOpService.recordWaitAuthAttempt(apiKeyId);
   }
 }
-

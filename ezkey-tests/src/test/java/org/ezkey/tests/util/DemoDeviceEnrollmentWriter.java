@@ -30,14 +30,14 @@ import org.slf4j.LoggerFactory;
  * Helper class for writing enrollment JSON files to the demo-device container.
  *
  * <p>This utility creates enrollment files in the demo-device container's data directory, making
- * enrollments immediately available for manual testing and demos without requiring manual enrollment
- * through the web UI.
+ * enrollments immediately available for manual testing and demos without requiring manual
+ * enrollment through the web UI.
  *
  * <p><b>Usage Context:</b> Called after successful bootstrap to sync the initial global admin
  * enrollment to the demo-device application.
  *
- * <p><b>File Format:</b> Creates JSON files matching {@code EnrollmentStoreService.Record} structure
- * at {@code /app/data/enrollments/{enrollmentId}.json} inside the demo-device container.
+ * <p><b>File Format:</b> Creates JSON files matching {@code EnrollmentStoreService.Record}
+ * structure at {@code /app/data/enrollments/{enrollmentId}.json} inside the demo-device container.
  *
  * @since 2025
  */
@@ -260,9 +260,9 @@ public class DemoDeviceEnrollmentWriter {
   /**
    * Writes JSON content to a file in the demo-device container using docker exec.
    *
-   * <p>Uses stdin redirection: writes JSON to stdin of a shell command that creates the file.
-   * Uses su-exec to write file as spring user (matching application runtime user) to ensure
-   * correct permissions.
+   * <p>Uses stdin redirection: writes JSON to stdin of a shell command that creates the file. Uses
+   * su-exec to write file as spring user (matching application runtime user) to ensure correct
+   * permissions.
    *
    * @param filePath Path to file inside container
    * @param jsonContent JSON content to write
@@ -277,14 +277,7 @@ public class DemoDeviceEnrollmentWriter {
       String command = "su-exec spring:spring sh -c 'cat > " + escapedPath + "'";
       log.debug("Executing command: {}", command);
       ProcessBuilder processBuilder =
-          new ProcessBuilder(
-              "docker",
-              "exec",
-              "-i",
-              DEMO_DEVICE_CONTAINER,
-              "sh",
-              "-c",
-              command);
+          new ProcessBuilder("docker", "exec", "-i", DEMO_DEVICE_CONTAINER, "sh", "-c", command);
       processBuilder.redirectErrorStream(true);
 
       Process process = processBuilder.start();
@@ -324,4 +317,3 @@ public class DemoDeviceEnrollmentWriter {
     }
   }
 }
-

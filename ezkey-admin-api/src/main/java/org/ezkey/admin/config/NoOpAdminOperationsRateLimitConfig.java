@@ -92,7 +92,8 @@ public class NoOpAdminOperationsRateLimitConfig {
   }
 
   /**
-   * Creates AdminOperationsRateLimitService bean (NoOp implementation) when rate limiting is disabled.
+   * Creates AdminOperationsRateLimitService bean (NoOp implementation) when rate limiting is
+   * disabled.
    *
    * <p>This bean is created when the real AdminOperationsRateLimitService is not available (rate
    * limiting disabled). It provides a NoOp implementation that allows controllers to inject

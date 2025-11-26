@@ -596,4 +596,3 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
     }
   }
 }
-

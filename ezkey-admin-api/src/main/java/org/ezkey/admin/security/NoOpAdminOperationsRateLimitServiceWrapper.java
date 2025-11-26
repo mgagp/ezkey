@@ -63,4 +63,3 @@ public class NoOpAdminOperationsRateLimitServiceWrapper extends AdminOperationsR
     noOpService.recordResetEnrollment(tokenOrAdminId);
   }
 }
-

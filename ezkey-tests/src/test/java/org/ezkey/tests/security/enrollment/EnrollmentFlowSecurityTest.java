@@ -95,13 +95,15 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       assertThat(bindProofToken).isNotNull().isNotEmpty();
 
       // Step 4: Sign proof token with device private key
-      // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth API after
+      // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth
+      // API after
       String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
 
       // Reconfigure RestAssured for Auth API after Crypto API call
       configureForAuthApi(dockerStackConfig);
 
-      // Step 5: Verify enrollment via Auth API - Fixed: use correct field names and include challengeResponse
+      // Step 5: Verify enrollment via Auth API - Fixed: use correct field names and include
+      // challengeResponse
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", enrollmentId);
       verifyRequest.put("challengeResponse", challengeCode);

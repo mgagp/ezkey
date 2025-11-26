@@ -215,7 +215,8 @@ public class AdminBootstrapService {
 
       if ("VERIFIED".equals(enrollmentStatus)) {
         // Enrollment already verified - check if we have matching device credentials
-        log.info("   ⚠️  Enrollment already VERIFIED - Checking for existing device credentials...");
+        log.info(
+            "   ⚠️  Enrollment already VERIFIED - Checking for existing device credentials...");
         DeviceCredentials existingCredentials = loadDeviceCredentials();
         if (existingCredentials != null
             && existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
@@ -228,8 +229,7 @@ public class AdminBootstrapService {
                   existingCredentials.keySize());
           log.info("   ⏭️  Skipping bind and verify steps - Using existing credentials");
         } else {
-          log.warn(
-              "   ⚠️  Enrollment is VERIFIED but no matching device credentials found");
+          log.warn("   ⚠️  Enrollment is VERIFIED but no matching device credentials found");
           log.warn(
               "   ⚠️  Cannot proceed: enrollment has device_public_key in DB but we don't have"
                   + " matching private key");
@@ -250,9 +250,11 @@ public class AdminBootstrapService {
         log.info("   Key Size: {} bits", deviceKeyPair.keySize());
         log.info(
             "   Public Key: {}...",
-            deviceKeyPair.publicKey().substring(0, Math.min(50, deviceKeyPair.publicKey().length())));
+            deviceKeyPair
+                .publicKey()
+                .substring(0, Math.min(50, deviceKeyPair.publicKey().length())));
 
-      // Step 3: Bind device to enrollment
+        // Step 3: Bind device to enrollment
         log.info("═══════════════════════════════════════════════════════════════");
         log.info("STEP 3: Binding device to enrollment...");
         log.info("═══════════════════════════════════════════════════════════════");
@@ -270,11 +272,11 @@ public class AdminBootstrapService {
         if ("SKIPPED_BIND_ALREADY_VERIFIED".equals(bindProofToken)) {
           log.info("   ⏭️  Skipping verify - Enrollment already verified");
         } else {
-      verifyEnrollment(
-          credentials.enrollmentId(),
-          deviceKeyPair,
-          bindProofToken,
-          credentials.enrollmentChallengeCode());
+          verifyEnrollment(
+              credentials.enrollmentId(),
+              deviceKeyPair,
+              bindProofToken,
+              credentials.enrollmentChallengeCode());
           log.info("✅ Step 4 Complete - Enrollment verified and activated");
         }
 
@@ -429,15 +431,15 @@ public class AdminBootstrapService {
         }
       }
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .body(bindRequest)
-            .when()
-            .post("/enrollments/bind")
-            .then()
-            .extract()
-            .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bindRequest)
+              .when()
+              .post("/enrollments/bind")
+              .then()
+              .extract()
+              .response();
 
       log.info("   Response Status: {}", response.getStatusCode());
 
@@ -452,25 +454,29 @@ public class AdminBootstrapService {
       // - Check local device credentials first (fastest path if available)
       if (response.getStatusCode() == 409) {
         log.warn("   ⚠️  Enrollment already bound (409) - Checking enrollment status...");
-        
+
         // First check: Local device credentials (fastest, no DB query needed)
         DeviceCredentials existingCredentials = loadDeviceCredentials();
-        if (existingCredentials != null && existingCredentials.enrollmentId().equals(enrollmentId)) {
+        if (existingCredentials != null
+            && existingCredentials.enrollmentId().equals(enrollmentId)) {
           log.info(
               "   ✅ Found existing device credentials for enrollment {} - Enrollment was"
                   + " previously verified in a completed bootstrap",
               enrollmentId);
-          log.info("   ⏭️  Skipping bind step (enrollment already VERIFIED, will use existing credentials)");
+          log.info(
+              "   ⏭️  Skipping bind step (enrollment already VERIFIED, will use existing"
+                  + " credentials)");
           return "SKIPPED_BIND_ALREADY_VERIFIED";
         }
-        
+
         // Second check: Database status (opportunistic - check real state)
         String enrollmentStatus = databaseHelper.getEnrollmentStatus(enrollmentId);
         log.info("   Enrollment status in database: {}", enrollmentStatus);
-        
+
         if ("VERIFIED".equals(enrollmentStatus)) {
           log.info(
-              "   ✅ Enrollment is VERIFIED in database - Skipping bind step (enrollment is usable)");
+              "   ✅ Enrollment is VERIFIED in database - Skipping bind step (enrollment is"
+                  + " usable)");
           return "SKIPPED_BIND_ALREADY_VERIFIED";
         } else if ("BOUND".equals(enrollmentStatus)) {
           log.warn(
@@ -481,11 +487,15 @@ public class AdminBootstrapService {
           // Retry bind after reset
           return bindDeviceOrSkip(enrollmentId, enrollmentProofToken);
         } else {
-          log.error("   ❌ Unexpected enrollment status: {} - Response: {}", enrollmentStatus, response.asString());
+          log.error(
+              "   ❌ Unexpected enrollment status: {} - Response: {}",
+              enrollmentStatus,
+              response.asString());
           throw new IllegalStateException(
               "Enrollment is in unexpected state: "
                   + enrollmentStatus
-                  + ". Please reset Docker stack (docker-compose down -v) or reset the enrollment manually.");
+                  + ". Please reset Docker stack (docker-compose down -v) or reset the enrollment"
+                  + " manually.");
         }
       }
 
@@ -508,10 +518,10 @@ public class AdminBootstrapService {
 
       // If successful (200), return immediately
       if (response.getStatusCode() == 200) {
-    String bindProofToken = response.jsonPath().getString("enrollmentProofToken");
-    assertThat(bindProofToken).isNotNull().isNotEmpty();
+        String bindProofToken = response.jsonPath().getString("enrollmentProofToken");
+        assertThat(bindProofToken).isNotNull().isNotEmpty();
         log.info("   ✅ Bind successful - Proof token received");
-    return bindProofToken;
+        return bindProofToken;
       }
 
       // For other errors, fail immediately
@@ -559,12 +569,12 @@ public class AdminBootstrapService {
     verifyRequest.put("enrollmentProofTokenSigned", signature);
 
     Response response =
-    given()
-        .contentType(ContentType.JSON)
-        .body(verifyRequest)
-        .when()
-        .post("/enrollments/verify")
-        .then()
+        given()
+            .contentType(ContentType.JSON)
+            .body(verifyRequest)
+            .when()
+            .post("/enrollments/verify")
+            .then()
             .extract()
             .response();
 
@@ -864,7 +874,6 @@ public class AdminBootstrapService {
       return null;
     }
   }
-
 
   /**
    * Saves device credentials to cache file.

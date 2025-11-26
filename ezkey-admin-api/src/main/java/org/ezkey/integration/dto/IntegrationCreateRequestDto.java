@@ -52,6 +52,5 @@ public record IntegrationCreateRequestDto(
             description = "URL or path to the integration's logo image",
             example = "https://example.com/logo.png")
         String logo,
-    @Schema(description = "List of internationalization entries for multi-language support")
-        @Valid
+    @Schema(description = "List of internationalization entries for multi-language support") @Valid
         List<IntegrationI18nCreateDto> i18n) {}

@@ -612,4 +612,3 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
     }
   }
 }
-

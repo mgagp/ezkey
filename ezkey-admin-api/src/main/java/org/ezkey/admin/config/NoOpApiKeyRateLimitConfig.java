@@ -24,8 +24,8 @@ import org.springframework.context.annotation.Configuration;
  * Spring configuration for API key rate limiting when rate limiting is disabled.
  *
  * <p>This configuration ensures that {@link ApiKeyRateLimitProperties} and {@link RateLimitService}
- * beans are always available, even when rate limiting is disabled. This allows controllers to inject
- * RateLimitService without dependency injection failures.
+ * beans are always available, even when rate limiting is disabled. This allows controllers to
+ * inject RateLimitService without dependency injection failures.
  *
  * <p><b>Activation Conditions:</b>
  *
@@ -46,8 +46,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class NoOpApiKeyRateLimitConfig {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(NoOpApiKeyRateLimitConfig.class);
+  private static final Logger logger = LoggerFactory.getLogger(NoOpApiKeyRateLimitConfig.class);
 
   /**
    * Creates ApiKeyRateLimitProperties bean when rate limiting is disabled.
@@ -105,4 +104,3 @@ public class NoOpApiKeyRateLimitConfig {
     return new NoOpRateLimitServiceWrapper(properties, meterRegistry);
   }
 }
-

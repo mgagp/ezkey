@@ -214,8 +214,8 @@ public class GlobalExceptionHandler {
    *
    * <p>This method catches DataIntegrityViolationException instances thrown by Spring Data JPA when
    * database constraint violations occur (e.g., NOT NULL constraints, unique constraints). These
-   * represent invalid data sent by the client, so they should return HTTP 400 Bad Request instead of
-   * HTTP 500 Internal Server Error.
+   * represent invalid data sent by the client, so they should return HTTP 400 Bad Request instead
+   * of HTTP 500 Internal Server Error.
    *
    * <p><b>Security Note:</b> The error message is sanitized to avoid exposing sensitive database
    * schema information while still providing useful feedback about what constraint was violated.

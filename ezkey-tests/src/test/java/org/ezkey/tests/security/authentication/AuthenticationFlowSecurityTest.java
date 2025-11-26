@@ -145,7 +145,8 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       assertThat(authAttemptProofToken).isNotNull().isNotEmpty();
 
       // Step 3: Sign auth attempt proof token
-      // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth API after
+      // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth
+      // API after
       String authSignature =
           cryptoApiClient.signData(authAttemptProofToken, deviceKeyPair.privateKey());
 
@@ -185,7 +186,8 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      // AuthAttemptDto uses authAttemptStatus field (enum: PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+      // AuthAttemptDto uses authAttemptStatus field (enum: PENDING, READ, INVALID, REJECTED,
+      // ACCEPTED, EXPIRED)
       assertThat(statusResponse.jsonPath().getString("authAttemptStatus")).isEqualTo("ACCEPTED");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(

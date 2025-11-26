@@ -232,7 +232,9 @@ public class EnrollmentController {
                   AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               // integrationId omitted - doesn't exist, would violate FK constraint
-              .errorMessage("Invalid integration ID or constraint violation: " + e.getMostSpecificCause().getMessage())
+              .errorMessage(
+                  "Invalid integration ID or constraint violation: "
+                      + e.getMostSpecificCause().getMessage())
               .build());
 
       return ResponseEntity.badRequest().build();
@@ -298,7 +300,8 @@ public class EnrollmentController {
 
       return ResponseEntity.noContent().build();
     } catch (ResourceNotFoundException e) {
-      // Audit not found - do not include enrollmentId as it doesn't exist (would violate FK constraint)
+      // Audit not found - do not include enrollmentId as it doesn't exist (would violate FK
+      // constraint)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,

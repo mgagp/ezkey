@@ -20,9 +20,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for opportunistic database access in E2E tests.
  *
- * <p>Provides methods to query and update PostgreSQL database directly via docker exec, avoiding API
- * authentication requirements when appropriate. This is suitable for functional E2E tests in clean
- * room Docker environment.
+ * <p>Provides methods to query and update PostgreSQL database directly via docker exec, avoiding
+ * API authentication requirements when appropriate. This is suitable for functional E2E tests in
+ * clean room Docker environment.
  *
  * <p><b>Usage Context:</b> Use for:
  *
@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
  *   <li>Resetting state for test idempotence
  * </ul>
  *
- * <p><b>Database Configuration:</b> Assumes PostgreSQL container named "ezkey-postgres" with database
- * "ezkey_db" and user "postgres".
+ * <p><b>Database Configuration:</b> Assumes PostgreSQL container named "ezkey-postgres" with
+ * database "ezkey_db" and user "postgres".
  *
  * @since 2025
  */
@@ -229,8 +229,8 @@ public class DatabaseHelper {
    * @return true if successful, false otherwise
    */
   public boolean deleteIntegration(Integer integrationId) {
-    String sqlDelete = String.format("DELETE FROM ezkey_integration WHERE integration_id = %d;", integrationId);
+    String sqlDelete =
+        String.format("DELETE FROM ezkey_integration WHERE integration_id = %d;", integrationId);
     return executeUpdate(sqlDelete);
   }
 }
-
