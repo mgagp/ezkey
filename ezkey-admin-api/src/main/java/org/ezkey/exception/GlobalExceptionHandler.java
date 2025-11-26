@@ -13,6 +13,7 @@ package org.ezkey.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -204,6 +205,53 @@ public class GlobalExceptionHandler {
     ErrorResponseDto errorResponse =
         new ErrorResponseDto(
             "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Handles DataIntegrityViolationException and returns HTTP 400.
+   *
+   * <p>This method catches DataIntegrityViolationException instances thrown by Spring Data JPA when
+   * database constraint violations occur (e.g., NOT NULL constraints, unique constraints). These
+   * represent invalid data sent by the client, so they should return HTTP 400 Bad Request instead of
+   * HTTP 500 Internal Server Error.
+   *
+   * <p><b>Security Note:</b> The error message is sanitized to avoid exposing sensitive database
+   * schema information while still providing useful feedback about what constraint was violated.
+   *
+   * @param ex the DataIntegrityViolationException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing constraint violation error details and HTTP 400 status
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolationException(
+      DataIntegrityViolationException ex, WebRequest request) {
+
+    // Extract a user-friendly error message from the exception
+    String message = ex.getMessage();
+    if (message != null && message.contains("violates not-null constraint")) {
+      // Extract the column name from the error message
+      // Format: "null value in column \"column_name\" violates not-null constraint"
+      int columnStart = message.indexOf("\"") + 1;
+      int columnEnd = message.indexOf("\"", columnStart);
+      if (columnStart > 0 && columnEnd > columnStart) {
+        String columnName = message.substring(columnStart, columnEnd);
+        // Convert database column name to a more user-friendly field name
+        String fieldName = columnName.replace("integration_i18n_", "").replace("_", " ");
+        message = "Required field '" + fieldName + "' is missing or null";
+      } else {
+        message = "Required field is missing or null";
+      }
+    } else if (message != null && message.contains("violates unique constraint")) {
+      message = "Duplicate value violates unique constraint";
+    } else {
+      message = "Invalid data: constraint violation";
+    }
+
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }

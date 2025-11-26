@@ -11,6 +11,8 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Request DTO for creating enrollments in admin API.
@@ -53,6 +55,7 @@ public record EnrollmentCreateRequestDto(
             description = "The integration ID to which this enrollment belongs",
             example = "1",
             required = true)
+        @NotNull(message = "Integration ID is required")
         Integer integrationId,
     /**
      * Human-readable name for the enrollment. Helps identify the device or user associated with
@@ -62,6 +65,8 @@ public record EnrollmentCreateRequestDto(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
             required = true)
+        @NotNull(message = "Enrollment name is required")
+        @NotBlank(message = "Enrollment name cannot be blank")
         String name,
     /**
      * Indicates whether authentication attempts require challenge validation. When true, auth

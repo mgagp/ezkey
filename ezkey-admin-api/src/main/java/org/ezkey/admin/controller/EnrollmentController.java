@@ -31,6 +31,7 @@ import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -183,7 +184,9 @@ public class EnrollmentController {
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   public ResponseEntity<EnrollmentCreateResponseDto> create(
-      @Parameter(description = "Enrollment creation data", required = true) @RequestBody
+      @Parameter(description = "Enrollment creation data", required = true)
+          @RequestBody
+          @jakarta.validation.Valid
           EnrollmentCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
@@ -206,28 +209,44 @@ public class EnrollmentController {
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(enrollmentMapper.toCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Audit validation failure
+      // Audit validation failure - do not include integrationId as it may not exist
+      // (would violate FK constraint if integration doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_CREATED,
                   AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
-              .integrationId(request.integrationId())
-              .errorMessage(e.getMessage())
+              // integrationId omitted - may not exist, would violate FK constraint
+              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
+              .build());
+
+      return ResponseEntity.badRequest().build();
+    } catch (DataIntegrityViolationException e) {
+      // Handle database constraint violations (e.g., FK constraint for non-existent integration)
+      // This should return 400 Bad Request, not 500 Internal Server Error
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              // integrationId omitted - doesn't exist, would violate FK constraint
+              .errorMessage("Invalid integration ID or constraint violation: " + e.getMostSpecificCause().getMessage())
               .build());
 
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
-      // Audit error
+      // Audit error - do not include integrationId as it may not exist
+      // (would violate FK constraint if integration doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_CREATED,
                   AdminAuditConstants.ENROLLMENT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
-              .integrationId(request.integrationId())
-              .errorMessage(e.getMessage())
+              // integrationId omitted - may not exist, would violate FK constraint
+              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
               .build());
 
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -263,9 +282,8 @@ public class EnrollmentController {
       // Get enrollment details before deletion for audit
       var enrollment = enrollmentService.getById(id);
 
-      enrollmentService.delete(id);
-
-      // Audit successful deletion
+      // Create audit log BEFORE deletion to avoid foreign key constraint violation
+      // The enrollment must still exist when we insert the audit log
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETED)
@@ -275,17 +293,20 @@ public class EnrollmentController {
               .eventDetails("Enrollment name: " + enrollment.getEnrollmentName())
               .build());
 
+      // Delete enrollment after audit log is created
+      enrollmentService.delete(id);
+
       return ResponseEntity.noContent().build();
     } catch (ResourceNotFoundException e) {
-      // Audit not found
+      // Audit not found - do not include enrollmentId as it doesn't exist (would violate FK constraint)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_DELETED,
                   AdminAuditConstants.ENROLLMENT_DELETION_FAILED)
               .eventStatus(EventStatus.FAILURE)
-              .enrollmentId(id)
-              .errorMessage("Enrollment not found")
+              // enrollmentId omitted - enrollment doesn't exist, would violate FK constraint
+              .errorMessage("Enrollment not found: " + id)
               .build());
 
       return ResponseEntity.notFound().build();

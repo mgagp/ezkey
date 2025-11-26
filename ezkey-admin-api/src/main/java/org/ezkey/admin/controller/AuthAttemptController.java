@@ -253,28 +253,30 @@ public class AuthAttemptController {
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Audit validation failure
+      // Audit validation failure - do not include enrollmentId as it may not exist
+      // (would violate FK constraint if enrollment doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
-              .enrollmentId(request.enrollmentId())
-              .errorMessage(e.getMessage())
+              // enrollmentId omitted - may not exist, would violate FK constraint
+              .errorMessage(e.getMessage() + " (enrollmentId: " + request.enrollmentId() + ")")
               .build());
 
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
-      // Audit error
+      // Audit error - do not include enrollmentId as it may not exist
+      // (would violate FK constraint if enrollment doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
-              .enrollmentId(request.enrollmentId())
-              .errorMessage(e.getMessage())
+              // enrollmentId omitted - may not exist, would violate FK constraint
+              .errorMessage(e.getMessage() + " (enrollmentId: " + request.enrollmentId() + ")")
               .build());
 
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

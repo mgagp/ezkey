@@ -268,5 +268,6 @@ Write-Host ""
 Write-Host "🧪 Next Steps (Required):"
 Write-Host "  - Extract bootstrap credentials: mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest"
 Write-Host "  - This extracts enrollment credentials from Docker logs (first time only)"
+Write-Host "  - Initialize admin token: mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest"
 Write-Host ""
 

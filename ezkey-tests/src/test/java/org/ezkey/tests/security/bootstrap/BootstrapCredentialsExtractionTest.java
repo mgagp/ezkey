@@ -12,8 +12,11 @@ package org.ezkey.tests.security.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor.BootstrapCredentials;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +50,19 @@ public class BootstrapCredentialsExtractionTest {
   @Test
   @DisplayName("Extract bootstrap credentials from Docker logs")
   public void testExtractBootstrapCredentials() {
+    // Check if credentials file already exists (bootstrap already done)
+    String credentialsFilePath = ".ezkey-test/bootstrap-credentials.json";
+    boolean credentialsFileExists = Files.exists(Paths.get(credentialsFilePath));
+
+    // If credentials already exist, skip this test (bootstrap already completed)
+    Assumptions.assumeTrue(
+        !credentialsFileExists,
+        "Bootstrap credentials file already exists ("
+            + credentialsFilePath
+            + "). "
+            + "Bootstrap has already been completed. Skipping extraction test.");
+
+    // If we reach here, credentials file doesn't exist, so extract from logs
     BootstrapCredentialsExtractor extractor = new BootstrapCredentialsExtractor();
 
     BootstrapCredentials credentials = extractor.extractCredentials();

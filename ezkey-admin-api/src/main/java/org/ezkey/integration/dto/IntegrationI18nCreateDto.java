@@ -11,6 +11,8 @@
 package org.ezkey.integration.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Create DTO for integration internationalization data in admin API.
@@ -46,11 +48,15 @@ public record IntegrationI18nCreateDto(
             description = "Language code for the localized content",
             example = "en",
             required = true)
+        @NotNull(message = "Language code is required")
+        @NotBlank(message = "Language code cannot be blank")
         String language,
     @Schema(
             description = "Localized name of the integration",
             example = "ACME Corporation",
             required = true)
+        @NotNull(message = "Name is required")
+        @NotBlank(message = "Name cannot be blank")
         String name,
     @Schema(
             description = "Localized description of the integration",

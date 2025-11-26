@@ -1348,12 +1348,14 @@
           "language": {
             "type": "string",
             "description": "Language code for the localized content",
-            "example": "en"
+            "example": "en",
+            "minLength": 1
           },
           "name": {
             "type": "string",
             "description": "Localized name of the integration",
-            "example": "ACME Corporation"
+            "example": "ACME Corporation",
+            "minLength": 1
           },
           "description": {
             "type": "string",
@@ -1423,7 +1425,8 @@
           "name": {
             "type": "string",
             "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone"
+            "example": "John's iPhone",
+            "minLength": 1
           },
           "authAttemptChallengeRequired": {
             "type": "boolean",
@@ -2095,19 +2098,20 @@
       "PageAuditLogResponseDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -2126,12 +2130,11 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -2141,16 +2144,12 @@
       "PageableObject": {
         "type": "object",
         "properties": {
-          "offset": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
+          },
+          "paged": {
+            "type": "boolean"
           },
           "pageSize": {
             "type": "integer",
@@ -2159,21 +2158,25 @@
           "unpaged": {
             "type": "boolean"
           },
-          "paged": {
-            "type": "boolean"
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
           }
         }
       },
       "SortObject": {
         "type": "object",
         "properties": {
-          "empty": {
+          "sorted": {
             "type": "boolean"
           },
           "unsorted": {
             "type": "boolean"
           },
-          "sorted": {
+          "empty": {
             "type": "boolean"
           }
         }

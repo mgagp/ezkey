@@ -11,6 +11,7 @@
 package org.ezkey.integration.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -52,4 +53,5 @@ public record IntegrationCreateRequestDto(
             example = "https://example.com/logo.png")
         String logo,
     @Schema(description = "List of internationalization entries for multi-language support")
+        @Valid
         List<IntegrationI18nCreateDto> i18n) {}

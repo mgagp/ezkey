@@ -181,6 +181,9 @@ public class EnrollmentService {
     if (request.getIntegrationId() == null) {
       throw new IllegalArgumentException("Integration ID is required");
     }
+    if (request.getName() == null || request.getName().trim().isEmpty()) {
+      throw new IllegalArgumentException("Enrollment name is required");
+    }
     var enrollment = new Enrollment();
     enrollment.setIntegrationId(request.getIntegrationId());
     enrollment.setEnrollmentName(request.getName().trim());

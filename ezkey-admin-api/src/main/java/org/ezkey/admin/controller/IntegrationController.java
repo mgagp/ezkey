@@ -216,7 +216,9 @@ public class IntegrationController {
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   public ResponseEntity<IntegrationCreateResponseDto> create(
-      @Parameter(description = "Integration creation data", required = true) @RequestBody
+      @Parameter(description = "Integration creation data", required = true)
+          @RequestBody
+          @jakarta.validation.Valid
           IntegrationCreateRequestDto request) {
     IntegrationCreateResponse savedIntegration =
         service.createIntegration(mapper.toCreateRequest(request));

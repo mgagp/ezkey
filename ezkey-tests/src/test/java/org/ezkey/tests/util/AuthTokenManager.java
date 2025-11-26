@@ -98,9 +98,12 @@ public class AuthTokenManager {
    *
    * <ol>
    *   <li>Environment variable EZKEY_ADMIN_TOKEN (highest priority)
-   *   <li>Cached token from .ezkey-test/admin-token.json file
+   *   <li>Cached token from .ezkey-test/admin-token.json file (validated before use)
    *   <li>Automatic bootstrap via AdminBootstrapService (if dependencies set)
    * </ol>
+   *
+   * <p>Note: Cached tokens are validated before being returned to ensure they haven't been
+   * invalidated by token rotation or other operations.
    *
    * @return Admin bearer token
    * @throws IllegalStateException if token cannot be obtained
@@ -111,12 +114,27 @@ public class AuthTokenManager {
       return adminToken;
     }
 
-    // Priority 2: Load from cache file
+    // Priority 2: Load from cache file and validate
     String cachedToken = loadTokenFromFile();
     if (cachedToken != null && !cachedToken.isEmpty()) {
-      this.adminToken = cachedToken;
-      log.debug("Using cached admin token from file");
-      return cachedToken;
+      // Validate token before using it (it might have been invalidated by token rotation)
+      if (isTokenValid(cachedToken)) {
+        this.adminToken = cachedToken;
+        log.debug("Using validated cached admin token from file");
+        return cachedToken;
+      } else {
+        log.info("Cached token is invalid, will create new token");
+        // Token is invalid, clear cache and continue to Priority 3
+        setAdminToken(null);
+        Path tokenPath = Paths.get(TOKEN_FILE_PATH);
+        try {
+          if (Files.exists(tokenPath)) {
+            Files.delete(tokenPath);
+          }
+        } catch (IOException e) {
+          log.warn("Failed to delete invalid token file: {}", e.getMessage());
+        }
+      }
     }
 
     // Priority 3: Automatic bootstrap (if dependencies available)
@@ -134,6 +152,37 @@ public class AuthTokenManager {
     throw new IllegalStateException(
         "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable, run"
             + " AdminTokenCreationTest to create token, or ensure bootstrap dependencies are set.");
+  }
+
+  /**
+   * Validates a token by making a test request to the Admin API.
+   *
+   * <p>This method checks if the token is still valid in the database by attempting to access a
+   * protected endpoint. This is necessary because tokens can be invalidated by token rotation when
+   * a new token is created.
+   *
+   * @param token Admin bearer token to validate
+   * @return true if token is valid, false otherwise
+   */
+  private boolean isTokenValid(String token) {
+    try {
+      RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + token)
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
+
+      return response.getStatusCode() == 200;
+    } catch (Exception e) {
+      log.debug("Token validation failed: {}", e.getMessage());
+      return false;
+    }
   }
 
   /**

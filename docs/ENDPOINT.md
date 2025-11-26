@@ -812,6 +812,10 @@ Content-Type: application/json
 **DELETE /api/v1/integrations/{id}**     // Delete an integration
 
 **Creating an integration**
+
+**Note**: Both `logo` and `i18n` fields are **optional**. The System Integration (used for global admin authentication) is created without logo or i18n data. Regular integrations typically include i18n for multi-language support in client applications.
+
+**Example with i18n (recommended for regular integrations):**
 ```http
 POST /api/v1/integrations
 Content-Type: application/json
@@ -830,6 +834,16 @@ Content-Type: application/json
       "description": "Système d'authentification sécurisé pour les applications ACME"
     }
   ]
+}
+```
+
+**Example without i18n (valid, used for System Integration):**
+```http
+POST /api/v1/integrations
+Content-Type: application/json
+
+{
+  "logo": "https://example.com/logo.png"
 }
 ```
 
