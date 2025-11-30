@@ -1072,7 +1072,58 @@ ezkey:
     algorithm: "AES256_GCM" # or "CHACHA20_POLY1305"
 ```
 
-### 4.4 Security Properties
+### 4.4 Encryption Format
+
+#### **4.4.1 Format Specification**
+
+Ezkey uses a prefix-based format to distinguish encrypted values from plaintext and to enable key rotation operations:
+
+**Format:**
+```
+ENC:keyID:Base64(ciphertext)
+```
+
+- **Prefix**: `ENC:` - Identifies encrypted data
+- **Key ID**: Numeric Tink primary key ID (e.g., `1234567`)
+- **Separator**: `:` - Separates key ID from ciphertext
+- **Ciphertext**: Base64-encoded encrypted data
+
+**Example:**
+```
+ENC:1234567:AbCdEf1234567890...
+```
+
+#### **4.4.2 Why Include Key ID?**
+
+The key ID in the prefix enables:
+
+1. **SQL Queries for Key Rotation**: Identify records encrypted with specific keys
+   ```sql
+   -- Find all records encrypted with key ID 1234567
+   SELECT * FROM ezkey_enrollment 
+   WHERE integration_private_key LIKE 'ENC:1234567:%';
+   ```
+
+2. **Batch Re-encryption**: Select records for re-encryption with new keys
+   ```sql
+   -- Find records with oldest key ID for rotation
+   SELECT * FROM ezkey_enrollment 
+   WHERE integration_private_key LIKE 'ENC:1234567:%'
+   ORDER BY created_at;
+   ```
+
+3. **Audit Trail**: Track which key was used for each encryption operation
+
+#### **4.4.3 Format Validation**
+
+The implementation validates:
+
+- **Key ID**: Must be numeric (digits only)
+- **Base64**: Must be valid Base64 encoding
+- **Structure**: Must match exact pattern `ENC:keyID:Base64`
+- **Length**: Base64 portion must meet minimum ciphertext size requirements
+
+### 4.5 Security Properties
 
 ```java
 @Configuration

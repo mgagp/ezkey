@@ -180,6 +180,24 @@ public class TinkKeyManager {
     }
   }
 
+  /**
+   * Returns the current primary key ID from the keyset.
+   *
+   * <p>The primary key ID identifies which key in the keyset is currently used for encryption. This
+   * ID is included in encrypted values to enable future key rotation and re-encryption operations.
+   *
+   * @return the primary key ID (unsigned 64-bit integer)
+   * @throws IllegalStateException if encryption is not initialized
+   */
+  public long getCurrentPrimaryKeyId() {
+    if (!isInitialized()) {
+      throw new IllegalStateException(
+          "Tink encryption not initialized. "
+              + "Check that master key file exists and encryption is enabled.");
+    }
+    return keysetHandle.getKeysetInfo().getPrimaryKeyId();
+  }
+
   /** Verify keyset is operational by encrypting and decrypting test data. */
   private void verifyKeyset() throws GeneralSecurityException {
     Aead aead = keysetHandle.getPrimitive(Aead.class);

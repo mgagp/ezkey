@@ -121,12 +121,26 @@ public class AdminBootstrapService {
    * @throws IllegalStateException if bootstrap or token creation fails
    */
   public String ensureAdminToken() {
-    // Tier 1: Try to load from cache first
+    // Tier 1: Try to load from cache first and validate
     log.info("Checking for cached admin token...");
     String cachedToken = loadTokenFromFile();
     if (cachedToken != null && !cachedToken.isEmpty()) {
-      log.info("✅ Using cached admin token from file");
-      return cachedToken;
+      // Validate token before using it (it might have been invalidated)
+      if (isTokenValid(cachedToken)) {
+        log.info("✅ Using validated cached admin token from file");
+        return cachedToken;
+      } else {
+        log.info("Cached token is invalid, will create new token");
+        // Token is invalid, clear cache and continue to Tier 2
+        Path tokenPath = Paths.get(TOKEN_FILE_PATH);
+        try {
+          if (Files.exists(tokenPath)) {
+            Files.delete(tokenPath);
+          }
+        } catch (IOException e) {
+          log.warn("Failed to delete invalid token file: {}", e.getMessage());
+        }
+      }
     }
 
     // Tier 2: Try to reuse device credentials to create new token
@@ -937,6 +951,37 @@ public class AdminBootstrapService {
     } catch (IOException e) {
       log.warn("Failed to save device credentials to file: {}", e.getMessage());
       // Don't throw - bootstrap can continue even if save fails
+    }
+  }
+
+  /**
+   * Validates a token by making a test request to the Admin API.
+   *
+   * <p>This method checks if the token is still valid in the database by attempting to access a
+   * protected endpoint. This is necessary because tokens can be invalidated by token rotation or
+   * database resets.
+   *
+   * @param token Admin bearer token to validate
+   * @return true if token is valid, false otherwise
+   */
+  private boolean isTokenValid(String token) {
+    try {
+      RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + token)
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
+
+      return response.getStatusCode() == 200;
+    } catch (Exception e) {
+      log.debug("Token validation failed: {}", e.getMessage());
+      return false;
     }
   }
 
