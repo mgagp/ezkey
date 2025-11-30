@@ -169,4 +169,6 @@ volumes:
   demo-device-data:
   maven-cache:
   encryption-secrets:
+    external: true
+    name: ezkey_encryption-secrets
 
