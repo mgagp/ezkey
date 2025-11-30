@@ -146,7 +146,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"logo\": \"https://acmemfg.com/wp-content/uploads/2020/10/cropped-acme-logo-favicon.png\",\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"La patate à Brigitte\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
+					"raw": "{\n    \"logo\": null,\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"Garage du coin\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
 					"options": {
 						"raw": {
 							"language": "json"

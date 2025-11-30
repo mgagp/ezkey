@@ -29,7 +29,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"Anna White\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
+					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"John Smith\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"

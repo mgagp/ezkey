@@ -30,7 +30,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"username\": \"admin\",\r\n    \"authMode\": \"ezkey\"\r\n}",
+					"raw": "{\r\n    \"username\": \"admin.docker\",\r\n    \"authMode\": \"ezkey\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"

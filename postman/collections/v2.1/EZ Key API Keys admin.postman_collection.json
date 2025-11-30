@@ -30,7 +30,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"integrationId\": {{integrationId}},\r\n  \"description\": \"Fritte Server API Key\",\r\n  \"expiresAt\": \"2025-12-31T23:59:59Z\",\r\n  \"ipWhitelist\": [\r\n    \"192.168.1.0/24\",\r\n    \"10.0.0.100\",\r\n    \"0:0:0:0:0:0:0:1\"\r\n  ]\r\n}",
+					"raw": "{\r\n  \"integrationId\": {{integrationId}},\r\n  \"description\": \"Administration Server API Key\",\r\n  \"expiresAt\": \"2025-12-31T23:59:59Z\",\r\n  \"ipWhitelist\": [\r\n    \"192.168.1.0/24\",\r\n    \"10.0.0.100\",\r\n    \"0:0:0:0:0:0:0:1\"\r\n  ]\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -46,6 +46,43 @@
 						"api",
 						"v1",
 						"api-keys"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(pm.response.text());\r",
+							"pm.environment.set(\"apiKeyId\", jsonData.apiKeyId);\r",
+							"pm.environment.set(\"integrationKey\", jsonData.integrationKey);\r",
+							"pm.environment.set(\"secretKey\", jsonData.secretKey);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/api-keys/1",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"api-keys",
+						"1"
 					]
 				}
 			},
