@@ -34,7 +34,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.signature.RsaKeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -100,13 +100,12 @@ class EnrollmentServiceTest {
   private EnrollmentVerifyRequest verifyRequest;
   private Enrollment enrollment;
   private Integration integration;
-  private RsaKeyPair rsaKeyPair;
+  private Ed25519KeyPair ed25519KeyPair;
 
   @BeforeEach
   void setUp() {
     // Setup configuration properties
     EzkeyCoreProperties.Crypto crypto = new EzkeyCoreProperties.Crypto();
-    crypto.setRsaKeySize(2048);
     when(ezkeyCoreProperties.getCrypto()).thenReturn(crypto);
 
     // Setup create request
@@ -146,8 +145,8 @@ class EnrollmentServiceTest {
     integration.setId(123);
     integration.setLogo("test-logo");
 
-    // Setup RSA key pair
-    rsaKeyPair = new RsaKeyPair("private-key", "public-key");
+    // Setup Ed25519 key pair
+    ed25519KeyPair = new Ed25519KeyPair("private-key", "public-key");
   }
 
   // ===== CREATE ENDPOINT TESTS =====
@@ -157,7 +156,7 @@ class EnrollmentServiceTest {
   void create_WhenValidRequest_ShouldCreateEnrollmentSuccessfully() {
     // Arrange
     when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
-    when(signatureService.generateRsaKeyPair(2048)).thenReturn(rsaKeyPair);
+    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
     when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 
@@ -171,7 +170,7 @@ class EnrollmentServiceTest {
 
     // Verify service interactions
     verify(signatureService, times(1)).generateProofToken();
-    verify(signatureService, times(1)).generateRsaKeyPair(2048);
+    verify(signatureService, times(1)).generateEd25519KeyPair();
     verify(signatureService, times(1)).generateSecureChallenge(6);
     verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
   }
@@ -199,7 +198,7 @@ class EnrollmentServiceTest {
     // Arrange
     createRequest.setName("  Test Enrollment  ");
     when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
-    when(signatureService.generateRsaKeyPair(2048)).thenReturn(rsaKeyPair);
+    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
     when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 

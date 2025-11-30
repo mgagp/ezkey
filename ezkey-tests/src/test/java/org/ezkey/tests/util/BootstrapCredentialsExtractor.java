@@ -65,8 +65,12 @@ public class BootstrapCredentialsExtractor {
 
   // Patterns for parsing logs
   private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
+  // Proof token format: Base64 URL-safe parts separated by dots (e.g., "randomPart.timestamp.saltPart")
+  // Base64 URL-safe includes: A-Z, a-z, 0-9, -, _ (no padding with withoutPadding())
+  // Capture everything after "Enrollment Proof Token: " until end of line (non-greedy to stop at newline)
+  // Token format: ~43chars.~13digits.~22chars = ~80 chars total
   private static final Pattern ENROLLMENT_PROOF_TOKEN_PATTERN =
-      Pattern.compile("Enrollment Proof Token:\\s*([A-Za-z0-9\\-_.]+)");
+      Pattern.compile("Enrollment Proof Token:\\s*([^\\r\\n]+)", Pattern.MULTILINE);
   private static final Pattern ENROLLMENT_CHALLENGE_PATTERN =
       Pattern.compile("Enrollment Challenge Code:\\s*(\\d+)");
   private static final Pattern RECOVERY_CODE_PATTERN =
@@ -209,9 +213,30 @@ public class BootstrapCredentialsExtractor {
     // Extract enrollment proof token
     Matcher tokenMatcher = ENROLLMENT_PROOF_TOKEN_PATTERN.matcher(credentialsSection);
     if (!tokenMatcher.find()) {
+      log.error("Failed to find enrollment proof token in logs. Credentials section preview:");
+      log.error(credentialsSection.substring(0, Math.min(500, credentialsSection.length())));
       throw new IllegalStateException("Enrollment Proof Token not found in logs");
     }
-    String enrollmentProofToken = tokenMatcher.group(1);
+    String enrollmentProofToken = tokenMatcher.group(1).trim(); // Remove any trailing whitespace
+    log.debug("Extracted enrollment proof token length: {} chars", enrollmentProofToken.length());
+    log.debug("Extracted enrollment proof token (first 50): {}...", 
+        enrollmentProofToken.length() > 50 
+            ? enrollmentProofToken.substring(0, 50) 
+            : enrollmentProofToken);
+    log.debug("Extracted enrollment proof token (last 30): ...{}", 
+        enrollmentProofToken.length() > 30 
+            ? enrollmentProofToken.substring(enrollmentProofToken.length() - 30) 
+            : enrollmentProofToken);
+    
+    // Validate token format: should have 2 dots (3 parts: random.timestamp.salt)
+    String[] parts = enrollmentProofToken.split("\\.");
+    if (parts.length != 3) {
+      log.error("Invalid proof token format: expected 3 parts separated by dots, got {} parts", parts.length);
+      log.error("Token parts: {}", java.util.Arrays.toString(parts));
+      throw new IllegalStateException(
+          "Invalid proof token format: expected format 'randomPart.timestamp.saltPart', got: " 
+              + enrollmentProofToken.substring(0, Math.min(100, enrollmentProofToken.length())));
+    }
 
     // Extract enrollment challenge code
     Matcher challengeMatcher = ENROLLMENT_CHALLENGE_PATTERN.matcher(credentialsSection);

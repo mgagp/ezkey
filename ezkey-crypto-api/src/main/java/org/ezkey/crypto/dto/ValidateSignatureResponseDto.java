@@ -30,7 +30,7 @@ public class ValidateSignatureResponseDto {
 
   @Schema(
       description = "Algorithm used for validation",
-      example = "SHA256withRSA",
+      example = "Ed25519",
       requiredMode = RequiredMode.REQUIRED)
   private String algorithm;
 

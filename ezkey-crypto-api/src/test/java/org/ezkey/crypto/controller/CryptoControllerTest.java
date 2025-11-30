@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.crypto.config.SecurityConfig;
-import org.ezkey.signature.RsaKeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,39 +52,15 @@ class CryptoControllerTest {
 
   @Test
   void testKeyPairGenerationEndpoint() throws Exception {
-    RsaKeyPair keyPair = new RsaKeyPair("test-private-key", "test-public-key");
-    when(signatureService.generateRsaKeyPair(2048)).thenReturn(keyPair);
+    Ed25519KeyPair keyPair = new Ed25519KeyPair("test-private-key", "test-public-key");
+    when(signatureService.generateEd25519KeyPair()).thenReturn(keyPair);
 
     mockMvc
         .perform(get("/api/v1/crypto/keypair"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.privateKey").value("test-private-key"))
-        .andExpect(jsonPath("$.publicKey").value("test-public-key"))
-        .andExpect(jsonPath("$.keySize").value(2048));
-  }
-
-  @Test
-  void testKeyPairGenerationWithCustomSize() throws Exception {
-    RsaKeyPair keyPair = new RsaKeyPair("test-private-key-4096", "test-public-key-4096");
-    when(signatureService.generateRsaKeyPair(4096)).thenReturn(keyPair);
-
-    mockMvc
-        .perform(get("/api/v1/crypto/keypair?keySize=4096"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.privateKey").value("test-private-key-4096"))
-        .andExpect(jsonPath("$.publicKey").value("test-public-key-4096"))
-        .andExpect(jsonPath("$.keySize").value(4096));
-  }
-
-  @Test
-  void testKeyPairGenerationWithInvalidSize() throws Exception {
-    mockMvc
-        .perform(get("/api/v1/crypto/keypair?keySize=512"))
-        .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));
+        .andExpect(jsonPath("$.publicKey").value("test-public-key"));
   }
 
   @Test
@@ -108,7 +84,7 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.signature").value("test-signature"))
         .andExpect(jsonPath("$.originalData").value("Hello, World!"))
-        .andExpect(jsonPath("$.algorithm").value("SHA256withRSA"));
+        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
   }
 
   @Test
@@ -154,7 +130,7 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.valid").value(true))
         .andExpect(jsonPath("$.message").value("Signature is valid"))
-        .andExpect(jsonPath("$.algorithm").value("SHA256withRSA"));
+        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
   }
 
   @Test
@@ -180,6 +156,6 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.valid").value(false))
         .andExpect(jsonPath("$.message").value("Signature is invalid"))
-        .andExpect(jsonPath("$.algorithm").value("SHA256withRSA"));
+        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
   }
 }

@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
  * <p>Supported operations:
  *
  * <ul>
- *   <li>Generate RSA key pairs for device simulation
+ *   <li>Generate Ed25519 key pairs for device simulation
  *   <li>Generate proof tokens
- *   <li>Sign data with private keys
+ *   <li>Sign data with private keys (Ed25519)
  *   <li>Validate signatures (optional, for testing)
  * </ul>
  *
@@ -54,32 +54,32 @@ public class CryptoApiClient {
   }
 
   /**
-   * Represents an RSA key pair returned by the Crypto API.
+   * Represents an Ed25519 key pair returned by the Crypto API.
    *
-   * @param privateKey Base64-encoded private key
-   * @param publicKey Base64-encoded public key
-   * @param keySize Key size in bits
+   * <p>Ed25519 keys are always 32 bytes (256 bits) for both private and public keys.
+   *
+   * @param privateKey Base64-encoded Ed25519 private key seed (32 bytes)
+   * @param publicKey Base64-encoded Ed25519 public key (32 bytes)
    */
-  public record RsaKeyPair(String privateKey, String publicKey, int keySize) {}
+  public record Ed25519KeyPair(String privateKey, String publicKey) {}
 
   /**
-   * Generates a new RSA key pair using the Crypto API.
+   * Generates a new Ed25519 key pair using the Crypto API.
    *
-   * <p>Calls GET /api/v1/crypto/keypair with optional key size parameter.
+   * <p>Calls GET /api/v1/crypto/keypair. Ed25519 keys are always 32 bytes (256 bits) - no key size
+   * parameter needed.
    *
-   * @param keySize Key size in bits (1024-4096, default: 2048)
-   * @return RSA key pair with private key, public key, and key size
+   * @return Ed25519 key pair with private key and public key
    * @throws RuntimeException if key generation fails
    */
-  public RsaKeyPair generateKeyPair(int keySize) {
-    log.debug("Generating RSA key pair with size: {} bits", keySize);
+  public Ed25519KeyPair generateKeyPair() {
+    log.debug("Generating Ed25519 key pair");
 
     RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
 
     Response response =
         given()
             .contentType(ContentType.JSON)
-            .queryParam("keySize", keySize)
             .when()
             .get("/keypair")
             .then()
@@ -89,20 +89,10 @@ public class CryptoApiClient {
 
     String privateKey = response.jsonPath().getString("privateKey");
     String publicKey = response.jsonPath().getString("publicKey");
-    int actualKeySize = response.jsonPath().getInt("keySize");
 
-    log.debug("Generated RSA key pair with size: {} bits", actualKeySize);
+    log.debug("Generated Ed25519 key pair (32 bytes each)");
 
-    return new RsaKeyPair(privateKey, publicKey, actualKeySize);
-  }
-
-  /**
-   * Generates a new RSA key pair with default 2048-bit key size.
-   *
-   * @return RSA key pair
-   */
-  public RsaKeyPair generateKeyPair() {
-    return generateKeyPair(2048);
+    return new Ed25519KeyPair(privateKey, publicKey);
   }
 
   /**

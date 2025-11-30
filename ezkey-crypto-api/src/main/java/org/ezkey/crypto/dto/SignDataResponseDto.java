@@ -30,7 +30,7 @@ public class SignDataResponseDto {
 
   @Schema(
       description = "Signature algorithm used",
-      example = "SHA256withRSA",
+      example = "Ed25519",
       requiredMode = RequiredMode.REQUIRED)
   private String algorithm;
 

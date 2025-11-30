@@ -18,9 +18,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -71,9 +74,9 @@ public class AdminBootstrapService {
    * Represents device credentials saved after initial bootstrap.
    *
    * @param enrollmentId Enrollment ID
-   * @param privateKey Base64-encoded device private key
-   * @param publicKey Base64-encoded device public key
-   * @param keySize Key size in bits
+   * @param privateKey Base64-encoded Ed25519 device private key seed (32 bytes)
+   * @param publicKey Base64-encoded Ed25519 device public key (32 bytes)
+   * @param keySize Key size in bits (always 256 for Ed25519)
    */
   private record DeviceCredentials(
       Integer enrollmentId, String privateKey, String publicKey, int keySize) {}
@@ -202,15 +205,48 @@ public class AdminBootstrapService {
               .substring(0, Math.min(30, credentials.enrollmentProofToken().length())));
       log.info("   Challenge Code: {}", credentials.enrollmentChallengeCode());
 
-      // Step 2: Check if enrollment is already verified in database
+      // Step 2: Check if enrollment exists and its status in database
       // If verified, we need to use existing device credentials, not generate new ones
       log.info("═══════════════════════════════════════════════════════════════");
       log.info("STEP 2: Checking enrollment status...");
       log.info("═══════════════════════════════════════════════════════════════");
       String enrollmentStatus = databaseHelper.getEnrollmentStatus(credentials.enrollmentId());
+      if (enrollmentStatus == null) {
+        log.error("   ❌ Enrollment ID {} not found in database!", credentials.enrollmentId());
+        log.error("   This usually means:");
+        log.error("   1. Admin API bootstrap did not complete successfully");
+        log.error("   2. Database was reset after bootstrap");
+        log.error("   3. Enrollment was deleted");
+        throw new IllegalStateException(
+            "Enrollment ID " + credentials.enrollmentId() + " not found in database. "
+                + "Please ensure Admin API bootstrap completed successfully.");
+      }
       log.info("   Enrollment status: {}", enrollmentStatus);
+      
+      // Debug: Verify proof token hash matches
+      String dbTokenHash = databaseHelper.getEnrollmentProofTokenHash(credentials.enrollmentId());
+      if (dbTokenHash != null) {
+        // Calculate hash from extracted token for comparison
+        String extractedTokenHash = calculateSha256Hex(credentials.enrollmentProofToken());
+        log.debug("   Database token hash: {}...", dbTokenHash.substring(0, Math.min(16, dbTokenHash.length())));
+        log.debug("   Extracted token hash: {}...", extractedTokenHash != null ? extractedTokenHash.substring(0, Math.min(16, extractedTokenHash.length())) : "null");
+        if (!dbTokenHash.equals(extractedTokenHash)) {
+          log.error("   ❌ Token hash mismatch!");
+          log.error("   Database hash: {}", dbTokenHash);
+          log.error("   Extracted token hash: {}", extractedTokenHash);
+          log.error("   Extracted token (first 50 chars): {}", 
+              credentials.enrollmentProofToken().substring(0, Math.min(50, credentials.enrollmentProofToken().length())));
+          throw new IllegalStateException(
+              "Enrollment proof token hash mismatch. The token extracted from logs does not match "
+                  + "the token stored in database. This usually means the token was truncated or "
+                  + "incorrectly parsed from logs. Please check the bootstrap credentials file or "
+                  + "re-extract from Docker logs.");
+        } else {
+          log.debug("   ✅ Token hash matches");
+        }
+      }
 
-      CryptoApiClient.RsaKeyPair deviceKeyPair;
+      CryptoApiClient.Ed25519KeyPair deviceKeyPair;
       DeviceCredentials deviceCredentials;
 
       if ("VERIFIED".equals(enrollmentStatus)) {
@@ -223,10 +259,8 @@ public class AdminBootstrapService {
           log.info("   ✅ Found existing device credentials - Reusing them");
           deviceCredentials = existingCredentials;
           deviceKeyPair =
-              new CryptoApiClient.RsaKeyPair(
-                  existingCredentials.privateKey(),
-                  existingCredentials.publicKey(),
-                  existingCredentials.keySize());
+              new CryptoApiClient.Ed25519KeyPair(
+                  existingCredentials.privateKey(), existingCredentials.publicKey());
           log.info("   ⏭️  Skipping bind and verify steps - Using existing credentials");
         } else {
           log.warn("   ⚠️  Enrollment is VERIFIED but no matching device credentials found");
@@ -243,11 +277,11 @@ public class AdminBootstrapService {
       } else {
         // Enrollment not verified - proceed with normal bootstrap
         log.info("═══════════════════════════════════════════════════════════════");
-        log.info("STEP 2: Generating device key pair...");
+        log.info("STEP 2: Generating Ed25519 device key pair...");
         log.info("═══════════════════════════════════════════════════════════════");
         deviceKeyPair = cryptoApiClient.generateKeyPair();
-        log.info("✅ Step 2 Complete - Device key pair generated:");
-        log.info("   Key Size: {} bits", deviceKeyPair.keySize());
+        log.info("✅ Step 2 Complete - Ed25519 device key pair generated:");
+        log.info("   Key Size: 256 bits (Ed25519 - fixed size)");
         log.info(
             "   Public Key: {}...",
             deviceKeyPair
@@ -286,7 +320,7 @@ public class AdminBootstrapService {
                 credentials.enrollmentId(),
                 deviceKeyPair.privateKey(),
                 deviceKeyPair.publicKey(),
-                deviceKeyPair.keySize());
+                256); // Ed25519 is always 256 bits (32 bytes)
         log.info("Saving device credentials to file: {}", DEVICE_CREDENTIALS_FILE_PATH);
         saveDeviceCredentials(deviceCredentials);
       }
@@ -340,11 +374,9 @@ public class AdminBootstrapService {
           bootstrapCredentialsExtractor.loadOrExtractCredentials();
 
       // Reconstruct device key pair from saved credentials
-      CryptoApiClient.RsaKeyPair deviceKeyPair =
-          new CryptoApiClient.RsaKeyPair(
-              deviceCredentials.privateKey(),
-              deviceCredentials.publicKey(),
-              deviceCredentials.keySize());
+      CryptoApiClient.Ed25519KeyPair deviceKeyPair =
+          new CryptoApiClient.Ed25519KeyPair(
+              deviceCredentials.privateKey(), deviceCredentials.publicKey());
 
       // Step 5: Login admin (creates auth attempt)
       log.info("═══════════════════════════════════════════════════════════════");
@@ -404,6 +436,10 @@ public class AdminBootstrapService {
   private String bindDeviceOrSkip(Integer enrollmentId, String enrollmentProofToken) {
     log.info("   Calling: POST /api/v1/enrollments/bind");
     log.info("   Enrollment ID: {}", enrollmentId);
+    log.debug("   Enrollment Proof Token: {}...", 
+        enrollmentProofToken != null && enrollmentProofToken.length() > 30 
+            ? enrollmentProofToken.substring(0, 30) + "..." 
+            : enrollmentProofToken);
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();
@@ -546,7 +582,7 @@ public class AdminBootstrapService {
    */
   private void verifyEnrollment(
       Integer enrollmentId,
-      CryptoApiClient.RsaKeyPair deviceKeyPair,
+      CryptoApiClient.Ed25519KeyPair deviceKeyPair,
       String bindProofToken,
       Integer challengeCode) {
     log.info("   Signing bind proof token with device private key...");
@@ -654,7 +690,7 @@ public class AdminBootstrapService {
    */
   private void respondToAuthAttempt(
       Integer authAttemptId,
-      CryptoApiClient.RsaKeyPair deviceKeyPair,
+      CryptoApiClient.Ed25519KeyPair deviceKeyPair,
       String enrollmentProofToken,
       Integer challengeCode) {
     log.info("   Sub-step 6a: Generating device proof token...");
@@ -865,7 +901,7 @@ public class AdminBootstrapService {
       Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
       String privateKey = jsonNode.get("privateKey").asText();
       String publicKey = jsonNode.get("publicKey").asText();
-      int keySize = jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 2048;
+      int keySize = jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
 
       log.info("Device credentials loaded from file");
       return new DeviceCredentials(enrollmentId, privateKey, publicKey, keySize);
@@ -901,6 +937,35 @@ public class AdminBootstrapService {
     } catch (IOException e) {
       log.warn("Failed to save device credentials to file: {}", e.getMessage());
       // Don't throw - bootstrap can continue even if save fails
+    }
+  }
+
+  /**
+   * Calculates SHA-256 hash of a string (same as SensitiveDataHasher.sha256Hex).
+   *
+   * @param value the value to hash
+   * @return hexadecimal SHA-256 hash or null if value is null/blank
+   */
+  private String calculateSha256Hex(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+      StringBuilder hexString = new StringBuilder(hashBytes.length * 2);
+      for (byte hashByte : hashBytes) {
+        String hex = Integer.toHexString(0xff & hashByte);
+        if (hex.length() == 1) {
+          hexString.append('0');
+        }
+        hexString.append(hex);
+      }
+      return hexString.toString();
+    } catch (NoSuchAlgorithmException e) {
+      log.error("SHA-256 algorithm not available", e);
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
     }
   }
 }

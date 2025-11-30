@@ -11,16 +11,17 @@
 package org.ezkey.signature;
 
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Objects;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
+import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
+import org.bouncycastle.crypto.signers.Ed25519Signer;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,17 +30,17 @@ import org.springframework.stereotype.Service;
 /**
  * Cryptographic signature service providing digital signature generation and validation.
  *
- * <p>This service is a fundamental component of the Ezkey security architecture, implementing RSA
- * digital signatures with SHA-256 hashing. It provides the cryptographic foundation for ensuring
- * data integrity, authenticity, and non-repudiation across the Ezkey platform.
+ * <p>This service is a fundamental component of the Ezkey security architecture, implementing
+ * Ed25519 digital signatures. It provides the cryptographic foundation for ensuring data
+ * integrity, authenticity, and non-repudiation across the Ezkey platform.
  *
  * <p><b>Cryptographic Implementation:</b>
  *
  * <ul>
- *   <li><b>Algorithm:</b> RSA with SHA-256 (SHA256withRSA)
- *   <li><b>Key Format:</b> PKCS#8 for private keys, X.509 for public keys
+ *   <li><b>Algorithm:</b> Ed25519 (pure Ed25519, not EdDSA)
+ *   <li><b>Key Format:</b> 32-byte private key seed, 32-byte public key (Ed25519 standard)
  *   <li><b>Encoding:</b> Base64 for key and signature representation
- *   <li><b>Security Level:</b> Industry-standard cryptographic strength
+ *   <li><b>Security Level:</b> Production-grade cryptographic strength (equivalent to RSA-3072)
  * </ul>
  *
  * <p><b>Security Applications:</b>
@@ -63,8 +64,9 @@ import org.springframework.stereotype.Service;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see java.security.Signature
- * @see java.security.KeyFactory
+ * @see org.bouncycastle.crypto.signers.Ed25519Signer
+ * @see org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
+ * @see org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
  */
 @Service
 public class SignatureService {
@@ -75,10 +77,19 @@ public class SignatureService {
 
   private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
 
+  private static final String ED25519_ALGORITHM = "Ed25519";
+
   // Reuse a single SecureRandom instance
   private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
 
   private final EzkeyCoreProperties ezkeyCoreProperties;
+
+  static {
+    // Register BouncyCastle provider if not already registered
+    if (java.security.Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+      java.security.Security.addProvider(new BouncyCastleProvider());
+    }
+  }
 
   /**
    * Constructs the signature service with configuration properties.
@@ -90,20 +101,20 @@ public class SignatureService {
   }
 
   /**
-   * Generates a digital signature for the provided data using RSA private key.
+   * Generates a digital signature for the provided data using Ed25519 private key.
    *
    * <p>This method creates a cryptographically secure digital signature that can be used to verify
-   * the authenticity and integrity of the original data. The signature is generated using RSA with
-   * SHA-256 hashing, providing industry-standard security.
+   * the authenticity and integrity of the original data. The signature is generated using Ed25519,
+   * providing production-grade security with compact signatures.
    *
    * <p><b>Cryptographic Process:</b>
    *
    * <ol>
-   *   <li>Decode the Base64-encoded private key
-   *   <li>Create PKCS#8 key specification
-   *   <li>Initialize RSA signature with SHA-256
+   *   <li>Decode the Base64-encoded private key seed (32 bytes)
+   *   <li>Create Ed25519 private key parameters from seed
+   *   <li>Initialize Ed25519 signer
    *   <li>Sign the data bytes
-   *   <li>Return Base64-encoded signature
+   *   <li>Return Base64-encoded signature (64 bytes)
    * </ol>
    *
    * <p><b>Security Considerations:</b>
@@ -115,33 +126,46 @@ public class SignatureService {
    * </ul>
    *
    * @param data the data to be signed (typically JSON payload or message content)
-   * @param base64PrivateKey the Base64-encoded RSA private key in PKCS#8 format
-   * @return Base64-encoded digital signature
+   * @param base64PrivateKey the Base64-encoded Ed25519 private key seed (32 bytes raw) or PKCS#8
+   *     format
+   * @return Base64-encoded digital signature (64 bytes raw)
    * @throws RuntimeException if signature generation fails due to cryptographic errors
-   * @see java.security.PrivateKey
-   * @see java.security.spec.PKCS8EncodedKeySpec
+   * @see org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
+   * @see org.bouncycastle.crypto.signers.Ed25519Signer
    */
   public String generateSignature(String data, String base64PrivateKey) {
     Objects.requireNonNull(data, "Data cannot be null");
     Objects.requireNonNull(base64PrivateKey, "Private key cannot be null");
     try {
-      byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PrivateKey);
-      PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
-      PrivateKey privateKey = kf.generatePrivate(spec);
-      Signature signature =
-          Signature.getInstance(ezkeyCoreProperties.getCrypto().getSignatureAlgorithm());
-      signature.initSign(privateKey);
-      signature.update(data.getBytes(StandardCharsets.UTF_8));
-      byte[] signed = signature.sign();
-      return java.util.Base64.getEncoder().encodeToString(signed);
+      byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
+      // Handle both raw 32-byte keys and PKCS#8 encoded keys
+      Ed25519PrivateKeyParameters privateKeyParams;
+      if (keyBytes.length == 32) {
+        // Raw 32-byte Ed25519 private key seed
+        privateKeyParams = new Ed25519PrivateKeyParameters(keyBytes, 0);
+      } else {
+        // PKCS#8 encoded key - extract the raw key bytes
+        PrivateKeyInfo privateKeyInfo = PrivateKeyInfo.getInstance(keyBytes);
+        byte[] rawKey = privateKeyInfo.getPrivateKey().getOctets();
+        if (rawKey.length != 32) {
+          throw new IllegalArgumentException(
+              "Ed25519 private key must be 32 bytes, got: " + rawKey.length);
+        }
+        privateKeyParams = new Ed25519PrivateKeyParameters(rawKey, 0);
+      }
+      Ed25519Signer signer = new Ed25519Signer();
+      signer.init(true, privateKeyParams);
+      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+      signer.update(dataBytes, 0, dataBytes.length);
+      byte[] signature = signer.generateSignature();
+      return Base64.getEncoder().encodeToString(signature);
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate signature", e);
     }
   }
 
   /**
-   * Validates a digital signature against the provided data using RSA public key.
+   * Validates a digital signature against the provided data using Ed25519 public key.
    *
    * <p>This method verifies the authenticity and integrity of data by validating its associated
    * digital signature. It confirms that the data was signed by the holder of the corresponding
@@ -150,9 +174,9 @@ public class SignatureService {
    * <p><b>Cryptographic Process:</b>
    *
    * <ol>
-   *   <li>Decode the Base64-encoded public key
-   *   <li>Create X.509 key specification
-   *   <li>Initialize RSA signature verification with SHA-256
+   *   <li>Decode the Base64-encoded public key (32 bytes)
+   *   <li>Create Ed25519 public key parameters
+   *   <li>Initialize Ed25519 verifier
    *   <li>Verify the signature against the data
    *   <li>Return verification result
    * </ol>
@@ -166,63 +190,70 @@ public class SignatureService {
    * </ul>
    *
    * @param data the original data that was signed
-   * @param signatureBase64 the Base64-encoded digital signature to validate
-   * @param base64PublicKey the Base64-encoded RSA public key in X.509 format
+   * @param signatureBase64 the Base64-encoded digital signature to validate (64 bytes raw)
+   * @param base64PublicKey the Base64-encoded Ed25519 public key (32 bytes raw) or X.509 format
    * @return <code>true</code> if the signature is valid, <code>false</code> otherwise
-   * @see java.security.PublicKey
-   * @see java.security.spec.X509EncodedKeySpec
+   * @see org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+   * @see org.bouncycastle.crypto.signers.Ed25519Signer
    */
   public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
-      byte[] keyBytes = java.util.Base64.getDecoder().decode(base64PublicKey);
-      X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
-      PublicKey publicKey = kf.generatePublic(spec);
-      if (publicKey instanceof RSAPublicKey) {
-        RSAPublicKey rsaKey = (RSAPublicKey) publicKey;
-        if (rsaKey.getModulus().bitLength() < ezkeyCoreProperties.getCrypto().getMinimumKeySize()) {
-          logger.warn(
-              "Weak RSA key detected: {} bits (minimum required: {} bits)",
-              rsaKey.getModulus().bitLength(),
-              ezkeyCoreProperties.getCrypto().getMinimumKeySize());
+      byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
+      // Handle both raw 32-byte keys and X.509 encoded keys
+      Ed25519PublicKeyParameters publicKeyParams;
+      if (keyBytes.length == 32) {
+        // Raw 32-byte Ed25519 public key
+        publicKeyParams = new Ed25519PublicKeyParameters(keyBytes, 0);
+      } else {
+        // X.509 encoded key - extract the raw key bytes
+        SubjectPublicKeyInfo publicKeyInfo = SubjectPublicKeyInfo.getInstance(keyBytes);
+        byte[] rawKey = publicKeyInfo.getPublicKeyData().getOctets();
+        if (rawKey.length != 32) {
+          logger.warn("Ed25519 public key must be 32 bytes, got: {}", rawKey.length);
           return false;
         }
+        publicKeyParams = new Ed25519PublicKeyParameters(rawKey, 0);
       }
-      Signature signature =
-          Signature.getInstance(ezkeyCoreProperties.getCrypto().getSignatureAlgorithm());
-      signature.initVerify(publicKey);
-      signature.update(data.getBytes(StandardCharsets.UTF_8));
-      byte[] signatureBytes = java.util.Base64.getDecoder().decode(signatureBase64);
-      return signature.verify(signatureBytes);
+      Ed25519Signer verifier = new Ed25519Signer();
+      verifier.init(false, publicKeyParams);
+      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+      verifier.update(dataBytes, 0, dataBytes.length);
+      byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+      if (signatureBytes.length != 64) {
+        logger.warn("Ed25519 signature must be 64 bytes, got: {}", signatureBytes.length);
+        return false;
+      }
+      return verifier.verifySignature(signatureBytes);
     } catch (Exception e) {
+      logger.debug("Signature validation failed", e);
       return false;
     }
   }
 
   /**
-   * Generates a new RSA key pair and returns it as Base64-encoded strings.
+   * Generates a new Ed25519 key pair and returns it as Base64-encoded strings.
    *
-   * <p>The generated private key is returned in PKCS#8 format and the public key in X.509 format.
-   * Keys are generated using a secure {@link KeyPairGenerator} and encoded with Base64 for
-   * storage/transmission.
+   * <p>The generated private key is a 32-byte seed (Ed25519 standard) and the public key is a
+   * 32-byte public key (Ed25519 standard). Keys are generated using BouncyCastle's Ed25519
+   * implementation and encoded with Base64 for storage/transmission.
    *
-   * @param keySize the RSA key size in bits (e.g., 2048)
-   * @return an immutable {@link RsaKeyPair} containing Base64-encoded keys
+   * @return an immutable {@link Ed25519KeyPair} containing Base64-encoded keys
    * @throws RuntimeException if key generation fails due to cryptographic errors
    */
-  public RsaKeyPair generateRsaKeyPair(int keySize) {
+  public Ed25519KeyPair generateEd25519KeyPair() {
     try {
-      KeyPairGenerator keyGen =
-          KeyPairGenerator.getInstance(ezkeyCoreProperties.getCrypto().getRsaAlgorithm());
-      keyGen.initialize(keySize);
-      KeyPair keyPair = keyGen.generateKeyPair();
-      String privateKeyBase64 =
-          java.util.Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-      String publicKeyBase64 =
-          java.util.Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-      return new RsaKeyPair(privateKeyBase64, publicKeyBase64);
+      Ed25519KeyPairGenerator keyGen = new Ed25519KeyPairGenerator();
+      keyGen.init(new Ed25519KeyGenerationParameters(secureRandom));
+      AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
+      Ed25519PrivateKeyParameters privateKey =
+          (Ed25519PrivateKeyParameters) keyPair.getPrivate();
+      Ed25519PublicKeyParameters publicKey = (Ed25519PublicKeyParameters) keyPair.getPublic();
+      // Get raw 32-byte keys
+      String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+      String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+      return new Ed25519KeyPair(privateKeyBase64, publicKeyBase64);
     } catch (Exception e) {
-      throw new RuntimeException("RSA key pair generation failed", e);
+      throw new RuntimeException("Ed25519 key pair generation failed", e);
     }
   }
 
@@ -289,9 +320,8 @@ public class SignatureService {
       long timestamp = System.currentTimeMillis();
       byte[] salt = new byte[PROOF_TOKEN_SALT_BYTES];
       secureRandom.nextBytes(salt);
-      String randomPart =
-          java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
-      String saltPart = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
+      String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+      String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
       return randomPart + "." + timestamp + "." + saltPart;
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate proof token", e);

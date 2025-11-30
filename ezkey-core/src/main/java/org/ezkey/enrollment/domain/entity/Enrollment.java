@@ -106,28 +106,35 @@ public class Enrollment {
   private Boolean authAttemptChallengeRequired;
 
   /**
-   * Encrypted private key for integration communication (persisted in database).
+   * Encrypted Ed25519 private key seed for integration communication (persisted in database).
    *
-   * <p>This field stores the encrypted private key in the database. The value is automatically
-   * encrypted before persistence and decrypted when needed via the transient field.
+   * <p>This field stores the encrypted Ed25519 private key seed (32 bytes raw, Base64 encoded) in
+   * the database. The value is automatically encrypted before persistence and decrypted when needed
+   * via the transient field.
    */
   @Column(name = "integration_private_key", columnDefinition = "TEXT")
   private String encryptedIntegrationPrivateKey;
 
   /**
-   * Decrypted private key for integration communication (transient, not persisted).
+   * Decrypted Ed25519 private key seed for integration communication (transient, not persisted).
    *
-   * <p>This transient field holds the decrypted private key in memory. It is populated
-   * automatically when {@link #getIntegrationPrivateKey()} is called. This separation prevents
-   * Hibernate dirty checking from triggering re-encryption cycles.
+   * <p>This transient field holds the decrypted Ed25519 private key seed (32 bytes raw, Base64
+   * encoded) in memory. It is populated automatically when {@link #getIntegrationPrivateKey()} is
+   * called. This separation prevents Hibernate dirty checking from triggering re-encryption cycles.
    */
   @Transient private String integrationPrivateKey;
 
-  /** Public key for integration communication. Used for verifying messages from the integration. */
+  /**
+   * Ed25519 public key for integration communication (Base64 encoded, 32 bytes raw). Used for
+   * verifying messages from the integration.
+   */
   @Column(name = "integration_public_key", columnDefinition = "TEXT")
   private String integrationPublicKey;
 
-  /** Public key for the device for auth attempts. Used for device authentication verification. */
+  /**
+   * Ed25519 public key for the device for auth attempts (Base64 encoded, 32 bytes raw). Used for
+   * device authentication verification.
+   */
   @Column(name = "device_public_key", columnDefinition = "TEXT")
   private String devicePublicKey;
 

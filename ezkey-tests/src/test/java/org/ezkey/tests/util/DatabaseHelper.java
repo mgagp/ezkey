@@ -176,6 +176,20 @@ public class DatabaseHelper {
   }
 
   /**
+   * Gets enrollment proof token hash from database.
+   *
+   * @param enrollmentId Enrollment ID to check
+   * @return Enrollment proof token hash (SHA-256 hex) or null if not found
+   */
+  public String getEnrollmentProofTokenHash(Integer enrollmentId) {
+    String sqlQuery =
+        String.format(
+            "SELECT enrollment_proof_token_hash FROM ezkey_enrollment WHERE enrollment_id = %d;",
+            enrollmentId);
+    return executeQuerySingleValue(sqlQuery);
+  }
+
+  /**
    * Finds integration ID by name (i18n).
    *
    * <p>Note: This is a simple lookup. For more complex queries, use executeQuery directly.

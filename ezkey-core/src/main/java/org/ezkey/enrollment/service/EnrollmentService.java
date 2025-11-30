@@ -24,7 +24,7 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
-import org.ezkey.signature.RsaKeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +55,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Security Features:</b>
  *
  * <ul>
- *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using RSA-2048
+ *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using Ed25519
  *   <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through secure token-based
  *       identification
  *   <li><b>Device Key Uniqueness:</b> Ensures device public keys are used only once
@@ -169,9 +169,10 @@ public class EnrollmentService {
   /**
    * Creates a new enrollment using the new DTO format.
    *
-   * <p>This method creates a new enrollment with the provided data, requests an RSA key pair from
-   * the cryptographic service, and returns the new response format. RSA key generation
-   * responsibility is delegated to {@link SignatureService} to centralize cryptographic operations.
+   * <p>This method creates a new enrollment with the provided data, requests an Ed25519 key pair
+   * from the cryptographic service, and returns the new response format. Ed25519 key generation
+   * responsibility is delegated to {@link SignatureService} to centralize cryptographic
+   * operations.
    *
    * @param request the enrollment creation request
    * @return the created enrollment response
@@ -195,8 +196,7 @@ public class EnrollmentService {
             ? request.getAuthAttemptChallengeRequired()
             : false);
     enrollment.setCreatedAt(OffsetDateTime.now());
-    RsaKeyPair integrationKeys =
-        signatureService.generateRsaKeyPair(ezkeyCoreProperties.getCrypto().getRsaKeySize());
+    Ed25519KeyPair integrationKeys = signatureService.generateEd25519KeyPair();
     enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
     enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
     enrollment.setDevicePublicKey(null);

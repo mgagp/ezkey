@@ -12,7 +12,6 @@ package org.ezkey.config;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -46,59 +45,21 @@ public class EzkeyCoreProperties {
   public static class Crypto {
 
     /**
-     * RSA key size in bits for key pair generation. Minimum: 2048 bits (security requirement)
-     * Default: 2048 bits
+     * Ed25519 algorithm name constant. Ed25519 keys are always 32 bytes (256 bits) for both
+     * private and public keys.
      */
-    @Min(value = 2048, message = "RSA key size must be at least 2048 bits for security")
-    private int rsaKeySize = 2048;
-
-    /** RSA algorithm name for key generation and operations. Default: "RSA" */
-    @NotBlank(message = "RSA algorithm name cannot be blank")
-    private String rsaAlgorithm = "RSA";
-
-    /** Digital signature algorithm for signing and verification. Default: "SHA256withRSA" */
-    @NotBlank(message = "Signature algorithm cannot be blank")
-    private String signatureAlgorithm = "SHA256withRSA";
+    public static final String ED25519_ALGORITHM = "Ed25519";
 
     /**
-     * Minimum RSA key size for validation (security enforcement). Keys smaller than this will be
-     * rejected. Default: 2048 bits
+     * Ed25519 key size in bytes (constant). Ed25519 uses fixed-size keys: 32 bytes for both private
+     * and public keys.
      */
-    @Min(value = 2048, message = "Minimum key size must be at least 2048 bits")
-    private int minimumKeySize = 2048;
+    public static final int ED25519_KEY_SIZE_BYTES = 32;
 
-    // Getters and setters
-    public int getRsaKeySize() {
-      return rsaKeySize;
-    }
-
-    public void setRsaKeySize(int rsaKeySize) {
-      this.rsaKeySize = rsaKeySize;
-    }
-
-    public String getRsaAlgorithm() {
-      return rsaAlgorithm;
-    }
-
-    public void setRsaAlgorithm(String rsaAlgorithm) {
-      this.rsaAlgorithm = rsaAlgorithm;
-    }
-
-    public String getSignatureAlgorithm() {
-      return signatureAlgorithm;
-    }
-
-    public void setSignatureAlgorithm(String signatureAlgorithm) {
-      this.signatureAlgorithm = signatureAlgorithm;
-    }
-
-    public int getMinimumKeySize() {
-      return minimumKeySize;
-    }
-
-    public void setMinimumKeySize(int minimumKeySize) {
-      this.minimumKeySize = minimumKeySize;
-    }
+    /**
+     * Ed25519 signature size in bytes (constant). Ed25519 signatures are always 64 bytes.
+     */
+    public static final int ED25519_SIGNATURE_SIZE_BYTES = 64;
   }
 
   /** Authentication attempt configuration properties. */

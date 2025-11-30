@@ -63,10 +63,10 @@ class SignatureServiceTest {
     EzkeyCoreProperties ezkeyCoreProperties = new EzkeyCoreProperties();
     signatureService = new SignatureService(ezkeyCoreProperties);
 
-    // Generate RSA key pair for testing via service API
-    RsaKeyPair rsaKeyPair = signatureService.generateRsaKeyPair(2048);
-    base64PrivateKey = rsaKeyPair.base64PrivateKey();
-    base64PublicKey = rsaKeyPair.base64PublicKey();
+    // Generate Ed25519 key pair for testing via service API
+    Ed25519KeyPair ed25519KeyPair = signatureService.generateEd25519KeyPair();
+    base64PrivateKey = ed25519KeyPair.base64PrivateKey();
+    base64PublicKey = ed25519KeyPair.base64PublicKey();
 
     // Test data
     testData = "Signature test payload for Ezkey";
@@ -269,10 +269,10 @@ class SignatureServiceTest {
   }
 
   @Test
-  @DisplayName("Should generate RSA key pair via service")
-  void testGenerateRsaKeyPair() {
+  @DisplayName("Should generate Ed25519 key pair via service")
+  void testGenerateEd25519KeyPair() {
     // Act
-    RsaKeyPair pair = signatureService.generateRsaKeyPair(2048);
+    Ed25519KeyPair pair = signatureService.generateEd25519KeyPair();
     // Assert
     assertTrue(
         pair.base64PrivateKey() != null && !pair.base64PrivateKey().isEmpty(),

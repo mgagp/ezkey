@@ -201,7 +201,7 @@ graph TB
 - **APIs**: RESTful with OpenAPI documentation
 - **Mobile**: Cross-platform mobile development
 - **Deployment**: Docker support for self-hosting
-- **Security**: RSA-2048 cryptographic signatures
+- **Security**: Ed25519 cryptographic signatures
 
 ### Core Entities
 
@@ -334,9 +334,10 @@ graph TB
 - **Anti-Replay**: Prevents replay of authentication attempts
 
 #### Cryptographic Implementation
-- **RSA-2048**: Strong cryptographic signatures for all operations
-- **Device Keys**: Each device generates unique key pairs
-- **Integration Keys**: Each integration has its own key pair
+- **Ed25519**: Production-grade cryptographic signatures for all operations (32-byte keys, 64-byte signatures)
+- **Device Keys**: Each device generates unique Ed25519 key pairs (mobile: derived via HKDF from root key)
+- **Integration Keys**: Each integration has its own Ed25519 key pair (backend: direct generation)
+- **Mutual Authentication**: Both backend and mobile cryptographically verify each other's authenticity
 - **Signature Validation**: All requests validated cryptographically
 
 ### Database Schema

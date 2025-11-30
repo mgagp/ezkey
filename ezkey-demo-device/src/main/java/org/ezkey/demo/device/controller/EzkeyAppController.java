@@ -1,9 +1,9 @@
 package org.ezkey.demo.device.controller;
 
-import java.security.KeyPair;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
+import org.ezkey.demo.device.service.DeviceCryptoService.Ed25519DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
@@ -76,9 +76,9 @@ public class EzkeyAppController {
           authApiService.bind(enrollmentId, enrollmentProofToken, language).block();
       if (bindResponse != null) {
         // Generate device keys
-        KeyPair keyPair = cryptoService.generateDeviceKeyPair();
-        String devicePublicKeyB64 = cryptoService.publicKeyToBase64(keyPair.getPublic());
-        String devicePrivateKeyB64 = cryptoService.privateKeyToBase64(keyPair.getPrivate());
+        Ed25519DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
+        String devicePublicKeyB64 = keyPair.base64PublicKey();
+        String devicePrivateKeyB64 = keyPair.base64PrivateKey();
 
         String integrationPublicKey = bindResponse.getIntegrationPublicKey();
         String responseProofToken = bindResponse.getEnrollmentProofToken();
@@ -153,8 +153,7 @@ public class EzkeyAppController {
 
       // Sign the enrollment proof token with device private key
       String enrollmentProofTokenSigned =
-          cryptoService.signStringToBase64(
-              rec.enrollmentProofToken(), cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+          cryptoService.signStringToBase64(rec.enrollmentProofToken(), rec.devicePrivateKey());
 
       // Create typed request DTO
       EnrollmentVerifyRequestDto requestDto =
@@ -231,8 +230,7 @@ public class EzkeyAppController {
       // Generate device proof token for pending request
       String deviceProofToken = cryptoService.generateProofToken();
       String deviceProofTokenSigned =
-          cryptoService.signStringToBase64(
-              deviceProofToken, cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+          cryptoService.signStringToBase64(deviceProofToken, rec.devicePrivateKey());
 
       // Create pending request with enrollmentProofToken
       AuthAttemptPendingRequestDto pendingRequest =
@@ -317,8 +315,7 @@ public class EzkeyAppController {
 
       // Sign the auth attempt proof token for the response (security: one-time use token)
       String responseSignature =
-          cryptoService.signStringToBase64(
-              authAttemptProofToken, cryptoService.base64ToPrivateKey(rec.devicePrivateKey()));
+          cryptoService.signStringToBase64(authAttemptProofToken, rec.devicePrivateKey());
 
       // Create respond request with authAttemptId explicitly set
       AuthAttemptRespondRequestDto respondRequest =

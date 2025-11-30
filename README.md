@@ -394,7 +394,7 @@ sequenceDiagram
     participant DB as Database
     
     Note over Device,DB: Key Generation & Enrollment
-    Device->>Device: Generate RSA-2048 Key Pair
+    Device->>Device: Generate Ed25519 Key Pair
     Device->>Auth: Send Public Key + Enrollment Request
     Auth->>Core: Validate Request
     Core->>Core: Generate Proof Token
@@ -624,7 +624,7 @@ npm run build
 # Example usage
 ./bin/ezkey admin integration list
 ./bin/ezkey auth enrollment bind --enrollment-id 123 --proof-token EZK-ABC123-DEF456
-./bin/ezkey sim keypair --key-size 2048
+./bin/ezkey sim keypair
 ./bin/ezkey database migrate
 ```
 
@@ -872,7 +872,7 @@ See our [Security Policy](SECURITY.md) for full details on:
 
 ### Security Features
 
-- **RSA-2048** cryptographic authentication with SHA-256
+- **Ed25519** cryptographic authentication (production-grade, compact signatures)
 - **One-time proof tokens** to prevent replay attacks
 - **Signature validation** on all authentication attempts
 - **API Keys** for secure machine-to-machine authentication

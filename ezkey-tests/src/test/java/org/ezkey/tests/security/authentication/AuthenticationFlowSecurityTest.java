@@ -20,7 +20,7 @@ import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
-import org.ezkey.tests.util.CryptoApiClient.RsaKeyPair;
+import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -71,7 +71,7 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
 
       // Complete enrollment (bind + verify)
-      RsaKeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+      Ed25519KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
       configureForAuthApi(dockerStackConfig);
 
       // Bind

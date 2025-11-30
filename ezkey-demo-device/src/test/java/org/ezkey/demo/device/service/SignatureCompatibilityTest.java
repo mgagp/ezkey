@@ -4,14 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
+import org.bouncycastle.crypto.signers.Ed25519Signer;
+import org.ezkey.demo.device.service.DeviceCryptoService.Ed25519DeviceKeyPair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +21,7 @@ public class SignatureCompatibilityTest {
 
   private DeviceCryptoService deviceCryptoService;
 
-  private KeyPair testKeyPair;
+  private Ed25519DeviceKeyPair testKeyPair;
 
   @BeforeEach
   void setUp() {
@@ -36,14 +33,23 @@ public class SignatureCompatibilityTest {
   private String simulateCoreSignature(String data, String base64PrivateKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-      PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance("RSA");
-      PrivateKey privateKey = kf.generatePrivate(spec);
-      Signature signature = Signature.getInstance("SHA256withRSA");
-      signature.initSign(privateKey);
-      signature.update(data.getBytes(StandardCharsets.UTF_8));
-      byte[] signed = signature.sign();
-      return Base64.getEncoder().encodeToString(signed);
+      // Handle both raw 32-byte keys and PKCS#8 encoded keys
+      Ed25519PrivateKeyParameters privateKeyParams;
+      if (keyBytes.length == 32) {
+        privateKeyParams = new Ed25519PrivateKeyParameters(keyBytes, 0);
+      } else {
+        // Extract from PKCS#8 format (not needed for demo device, but for compatibility)
+        org.bouncycastle.asn1.pkcs.PrivateKeyInfo privateKeyInfo =
+            org.bouncycastle.asn1.pkcs.PrivateKeyInfo.getInstance(keyBytes);
+        byte[] rawKey = privateKeyInfo.getPrivateKey().getOctets();
+        privateKeyParams = new Ed25519PrivateKeyParameters(rawKey, 0);
+      }
+      Ed25519Signer signer = new Ed25519Signer();
+      signer.init(true, privateKeyParams);
+      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+      signer.update(dataBytes, 0, dataBytes.length);
+      byte[] signature = signer.generateSignature();
+      return Base64.getEncoder().encodeToString(signature);
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate signature", e);
     }
@@ -54,14 +60,23 @@ public class SignatureCompatibilityTest {
       String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
-      X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-      KeyFactory kf = KeyFactory.getInstance("RSA");
-      PublicKey publicKey = kf.generatePublic(spec);
-      Signature signature = Signature.getInstance("SHA256withRSA");
-      signature.initVerify(publicKey);
-      signature.update(data.getBytes()); // Default charset like in core
+      // Handle both raw 32-byte keys and X.509 encoded keys
+      Ed25519PublicKeyParameters publicKeyParams;
+      if (keyBytes.length == 32) {
+        publicKeyParams = new Ed25519PublicKeyParameters(keyBytes, 0);
+      } else {
+        // Extract from X.509 format (not needed for demo device, but for compatibility)
+        org.bouncycastle.asn1.x509.SubjectPublicKeyInfo publicKeyInfo =
+            org.bouncycastle.asn1.x509.SubjectPublicKeyInfo.getInstance(keyBytes);
+        byte[] rawKey = publicKeyInfo.getPublicKeyData().getOctets();
+        publicKeyParams = new Ed25519PublicKeyParameters(rawKey, 0);
+      }
+      Ed25519Signer verifier = new Ed25519Signer();
+      verifier.init(false, publicKeyParams);
+      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+      verifier.update(dataBytes, 0, dataBytes.length);
       byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
-      return signature.verify(signatureBytes);
+      return verifier.verifySignature(signatureBytes);
     } catch (Exception e) {
       return false;
     }
@@ -74,10 +89,8 @@ public class SignatureCompatibilityTest {
 
     // Generate signatures using both approaches
     String deviceSignature =
-        deviceCryptoService.signStringToBase64(testData, testKeyPair.getPrivate());
-    String coreSignature =
-        simulateCoreSignature(
-            testData, deviceCryptoService.privateKeyToBase64(testKeyPair.getPrivate()));
+        deviceCryptoService.signStringToBase64(testData, testKeyPair.base64PrivateKey());
+    String coreSignature = simulateCoreSignature(testData, testKeyPair.base64PrivateKey());
 
     // Log for debugging
     System.out.println("Test data: " + testData);
@@ -86,7 +99,7 @@ public class SignatureCompatibilityTest {
     System.out.println("Signatures match: " + deviceSignature.equals(coreSignature));
 
     // Verify that both signatures can be validated by the core service
-    String publicKeyBase64 = deviceCryptoService.publicKeyToBase64(testKeyPair.getPublic());
+    String publicKeyBase64 = testKeyPair.base64PublicKey();
 
     boolean deviceSignatureValid =
         simulateCoreValidation(testData, deviceSignature, publicKeyBase64);
@@ -110,10 +123,10 @@ public class SignatureCompatibilityTest {
 
     // Generate signature with device service
     String deviceSignature =
-        deviceCryptoService.signStringToBase64(testData, testKeyPair.getPrivate());
+        deviceCryptoService.signStringToBase64(testData, testKeyPair.base64PrivateKey());
 
     // Validate with simulated core service
-    String publicKeyBase64 = deviceCryptoService.publicKeyToBase64(testKeyPair.getPublic());
+    String publicKeyBase64 = testKeyPair.base64PublicKey();
     boolean isValid = simulateCoreValidation(testData, deviceSignature, publicKeyBase64);
 
     System.out.println("Cross-validation test:");

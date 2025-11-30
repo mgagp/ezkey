@@ -63,7 +63,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Security Features:</b>
  *
  * <ul>
- *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using RSA-2048
+ *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using Ed25519
  *   <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through secure token-based
  *       identification
  *   <li><b>Anti-Replay Protection:</b> Ensures device proof tokens are used only once

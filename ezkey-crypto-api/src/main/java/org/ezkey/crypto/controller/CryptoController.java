@@ -16,13 +16,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.ezkey.crypto.dto.Ed25519KeyPairResponseDto;
 import org.ezkey.crypto.dto.ProofTokenResponseDto;
-import org.ezkey.crypto.dto.RsaKeyPairResponseDto;
 import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
 import org.ezkey.crypto.dto.ValidateSignatureRequestDto;
 import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
-import org.ezkey.signature.RsaKeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <ul>
  *   <li>Generating cryptographically secure proof tokens.
- *   <li>Creating RSA key pairs for device simulation.
+ *   <li>Creating Ed25519 key pairs for device simulation.
  *   <li>Signing data with a private key.
  *   <li>Validating signatures with a public key.
  * </ul>
@@ -78,34 +78,28 @@ public class CryptoController {
   }
 
   @Operation(
-      summary = "Generate RSA key pair",
+      summary = "Generate Ed25519 key pair",
       description =
-          "Generates a new RSA key pair for use in device simulation. Default key size is 2048"
-              + " bits.")
+          "Generates a new Ed25519 key pair for use in device simulation. Ed25519 keys are always"
+              + " 32 bytes (256 bits) for both private and public keys.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "RSA key pair generated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid key size parameter"),
+        @ApiResponse(responseCode = "200", description = "Ed25519 key pair generated successfully"),
         @ApiResponse(responseCode = "500", description = "Key generation failed")
       })
   @GetMapping("/keypair")
-  public ResponseEntity<RsaKeyPairResponseDto> generateKeyPair(
-      @Parameter(description = "RSA key size in bits (default: 2048, min: 1024, max: 4096)")
-          @RequestParam(name = "keySize", defaultValue = "2048")
-          int keySize) {
-    if (keySize < 1024 || keySize > 4096) {
-      throw new IllegalArgumentException("Key size must be between 1024 and 4096 bits");
-    }
-
-    RsaKeyPair keyPair = signatureService.generateRsaKeyPair(keySize);
+  public ResponseEntity<Ed25519KeyPairResponseDto> generateKeyPair() {
+    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
     var response =
-        new RsaKeyPairResponseDto(keyPair.base64PrivateKey(), keyPair.base64PublicKey(), keySize);
+        new Ed25519KeyPairResponseDto(
+            keyPair.base64PrivateKey(), keyPair.base64PublicKey());
     return ResponseEntity.ok(response);
   }
 
   @Operation(
       summary = "Sign data with private key",
-      description = "Signs the provided data using RSA-SHA256 signature with the given private key")
+      description =
+          "Signs the provided data using Ed25519 signature with the given private key seed")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Data signed successfully"),
@@ -119,13 +113,14 @@ public class CryptoController {
       @Valid @RequestBody SignDataRequestDto request) {
     String signature =
         signatureService.generateSignature(request.getData(), request.getPrivateKey());
-    var response = new SignDataResponseDto(signature, request.getData(), "SHA256withRSA");
+    var response = new SignDataResponseDto(signature, request.getData(), "Ed25519");
     return ResponseEntity.ok(response);
   }
 
   @Operation(
       summary = "Validate signature",
-      description = "Validates a signature against the original data using the provided public key")
+      description =
+          "Validates an Ed25519 signature against the original data using the provided public key")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Signature validation completed"),
@@ -142,7 +137,7 @@ public class CryptoController {
             request.getData(), request.getSignature(), request.getPublicKey());
 
     String message = isValid ? "Signature is valid" : "Signature is invalid";
-    var response = new ValidateSignatureResponseDto(isValid, message, "SHA256withRSA");
+    var response = new ValidateSignatureResponseDto(isValid, message, "Ed25519");
     return ResponseEntity.ok(response);
   }
 }

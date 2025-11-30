@@ -61,6 +61,15 @@
 			<version>1.19.0</version>
 		</dependency>
 		
+		<!-- Cryptography: BouncyCastle for Ed25519 signatures -->
+		<!-- Repository: https://github.com/bcgit/bc-java -->
+		<!-- Latest Release: v1.78.1 -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.78.1</version>
+		</dependency>
+		
 	<!-- QR Code Generation -->
 	<dependency>
 		<groupId>com.google.zxing</groupId>

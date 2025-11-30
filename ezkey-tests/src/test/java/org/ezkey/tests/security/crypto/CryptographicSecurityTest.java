@@ -13,7 +13,7 @@ package org.ezkey.tests.security.crypto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.ezkey.tests.security.AbstractSecurityTest;
-import org.ezkey.tests.util.CryptoApiClient.RsaKeyPair;
+import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
  * <p>Validates cryptographic operations including:
  *
  * <ul>
- *   <li>RSA key pair generation
+ *   <li>Ed25519 key pair generation
  *   <li>Proof token generation
  *   <li>Data signing with private keys
  *   <li>Signature validation
@@ -37,13 +37,15 @@ import org.junit.jupiter.api.Test;
 public class CryptographicSecurityTest extends AbstractSecurityTest {
 
   @Test
-  @DisplayName("Can generate RSA key pair via Crypto API")
+  @DisplayName("Can generate Ed25519 key pair via Crypto API")
   public void testGenerateKeyPair() {
-    RsaKeyPair keyPair = cryptoApiClient.generateKeyPair(2048);
+    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
 
     assertThat(keyPair.privateKey()).isNotNull().isNotEmpty();
     assertThat(keyPair.publicKey()).isNotNull().isNotEmpty();
-    assertThat(keyPair.keySize()).isEqualTo(2048);
+    // Ed25519 keys are always 32 bytes (256 bits) - verify Base64 length
+    assertThat(keyPair.privateKey().length()).isGreaterThan(40); // Base64 of 32 bytes
+    assertThat(keyPair.publicKey().length()).isGreaterThan(40); // Base64 of 32 bytes
   }
 
   @Test
@@ -57,7 +59,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Can sign data with private key via Crypto API")
   public void testSignData() {
-    RsaKeyPair keyPair = cryptoApiClient.generateKeyPair();
+    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair.privateKey());
 
@@ -67,7 +69,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Can validate signature via Crypto API")
   public void testValidateSignature() {
-    RsaKeyPair keyPair = cryptoApiClient.generateKeyPair();
+    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair.privateKey());
 
@@ -79,7 +81,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Invalid signature should fail validation")
   public void testInvalidSignatureFails() {
-    RsaKeyPair keyPair = cryptoApiClient.generateKeyPair();
+    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String invalidSignature = "invalid-signature-data";
 
@@ -92,8 +94,8 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Signature validation fails with wrong public key")
   public void testSignatureValidationFailsWithWrongKey() {
-    RsaKeyPair keyPair1 = cryptoApiClient.generateKeyPair();
-    RsaKeyPair keyPair2 = cryptoApiClient.generateKeyPair();
+    Ed25519KeyPair keyPair1 = cryptoApiClient.generateKeyPair();
+    Ed25519KeyPair keyPair2 = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair1.privateKey());
 

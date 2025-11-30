@@ -24,7 +24,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
-import org.ezkey.signature.RsaKeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ol>
  *   <li>Check if System Integration (for global admin authentication) already exists
- *   <li>If not exists, create System Integration with RSA-2048 key pair
+ *   <li>If not exists, create System Integration with Ed25519 key pair
  *   <li>Optionally create Global Admin Enrollment
  *   <li>Log enrollment credentials with highly visible formatting
  * </ol>
@@ -52,7 +52,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li>Idempotent operation (can be run multiple times safely)
- *   <li>RSA-2048 cryptographic keys for System Integration
+ *   <li>Ed25519 cryptographic keys for System Integration
  *   <li>Unique enrollment proof tokens for security
  *   <li>Highly visible credential logging for easy admin access
  * </ul>
@@ -75,8 +75,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminBootstrapService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminBootstrapService.class);
-
-  private static final int RSA_KEY_SIZE = 2048;
 
   private final IntegrationRepository integrationRepository;
 
@@ -253,7 +251,7 @@ public class AdminBootstrapService {
   /**
    * Create Global Admin Enrollment.
    *
-   * <p>This method creates an enrollment for the initial global admin with RSA-2048 key pair for
+   * <p>This method creates an enrollment for the initial global admin with Ed25519 key pair for
    * cryptographic operations. The enrollment credentials are logged with highly visible formatting.
    *
    * @param systemIntegration the System Integration to enroll with
@@ -271,9 +269,9 @@ public class AdminBootstrapService {
                         "Initial global admin not found: "
                             + initialGlobalAdminProperties.getUsername()));
 
-    // Generate RSA-2048 key pair for enrollment
-    logger.info("🔐 Generating RSA-2048 key pair for Global Admin Enrollment...");
-    RsaKeyPair keyPair = signatureService.generateRsaKeyPair(RSA_KEY_SIZE);
+    // Generate Ed25519 key pair for enrollment
+    logger.info("🔐 Generating Ed25519 key pair for Global Admin Enrollment...");
+    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
 
     // Generate enrollment proof token
     String enrollmentProofToken = signatureService.generateProofToken();
