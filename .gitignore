@@ -83,8 +83,6 @@ application-*.yml
 application-*.properties
 
 # Scripts spécifiques à l'utilisateur
-*.sh
-*.bat
 ezkey-demo-device/data/enrollments/*.json
 plan_doc.md
 ezkey-core/classpath.txt
