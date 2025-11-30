@@ -29,6 +29,11 @@ That's it! The script will:
 4. Start all API services
 5. Wait for services to be healthy
 
+**Note**: For first-time setup, generate encryption keys before starting:
+```bash
+./docker/generate-encryption-keys.sh
+```
+
 ### Access the Services
 
 Once started, you can access:
@@ -99,12 +104,14 @@ Once started, you can access:
 - **Purpose**: Administration interface for integrations, enrollments, and auth attempts
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
 - **Health Check**: http://localhost:9080/actuator/health
+- **Encryption**: Uses shared encryption keys from `encryption-secrets` volume
 
 ### Auth API (auth-api)
 - **Port**: `8080`
 - **Purpose**: Mobile authentication API for enrollment and authentication flows
 - **Depends on**: PostgreSQL (healthy), Migration (completed)
 - **Health Check**: http://localhost:8080/actuator/health
+- **Encryption**: Uses shared encryption keys from `encryption-secrets` volume
 
 ### Crypto API (crypto-api)
 - **Port**: `9090`
@@ -286,6 +293,79 @@ docker exec ezkey-postgres pg_dump -U postgres ezkey_db > backup.sql
 # Restore database (from host)
 docker exec -i ezkey-postgres psql -U postgres ezkey_db < backup.sql
 ```
+
+### Encryption Keys (Tink)
+
+**Encryption is enabled by default** in Docker to match production behavior. Sensitive data (private keys) is encrypted at rest using Google Tink.
+
+#### Encryption Setup
+
+Encryption keys are stored in a persistent Docker volume named `encryption-secrets`:
+- **Master Key**: `/etc/ezkey/secrets/master.key` - Base64-encoded 256-bit key
+- **Keyset**: `/etc/ezkey/keysets/keyset.json.encrypted` - Tink keyset encrypted with master key
+
+Both `admin-api` and `auth-api` share the same encryption keys for data compatibility.
+
+#### First-Time Setup
+
+Before first startup, generate the master key:
+
+```bash
+# Linux/Mac
+./docker/generate-encryption-keys.sh
+
+# Windows (Git Bash)
+bash docker/generate-encryption-keys.sh
+```
+
+This script:
+1. Creates the `encryption-secrets` volume if it doesn't exist (Docker Compose will prefix it as `ezkey_encryption-secrets`)
+2. Generates a cryptographically secure master key
+3. Sets proper file permissions (600)
+
+**Note**: The keyset file will be automatically generated on first startup by `TinkKeyManager` if it doesn't exist.
+
+#### Encryption Behavior
+
+- **First Boot** (master key exists, keyset missing):
+  - `TinkKeyManager` automatically generates a new keyset
+  - Keyset is encrypted with the master key and saved to the volume
+
+- **Subsequent Starts** (both files exist):
+  - `TinkKeyManager` loads the existing keyset
+  - Encryption continues seamlessly
+
+- **Master Key Missing**:
+  - Application logs a warning
+  - Encryption is disabled (backward compatible mode)
+  - Data is stored in plaintext
+
+#### Volume Persistence
+
+The encryption keys volume persists across:
+- Container restarts (`docker-compose restart`)
+- Container stops (`docker-compose stop`)
+- Stack shutdown (`docker-compose down`)
+
+**Warning**: The volume is removed only when using `clean` command or `docker-compose down -v`. **Backup the master key before removing volumes!**
+
+#### Backup Encryption Keys
+
+```bash
+# Backup master key (from host)
+# Note: Use the actual volume name with Docker Compose prefix: ezkey_encryption-secrets
+docker run --rm -v ezkey_encryption-secrets:/data alpine tar czf - /data/secrets/master.key | gzip > master-key-backup.tar.gz
+
+# Restore master key (from host)
+gunzip -c master-key-backup.tar.gz | docker run --rm -i -v ezkey_encryption-secrets:/data alpine tar xzf - -C /data
+```
+
+#### Security Notes
+
+- Master key file has 600 permissions (owner read/write only)
+- Keyset is encrypted with the master key using AES-256-GCM
+- Both APIs use the same keys for shared data decryption
+- Keys persist in Docker volume (backup recommended for production)
 
 ## Network Configuration
 

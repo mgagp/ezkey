@@ -70,31 +70,60 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 3: Runtime image for admin-api service
 # ============================================
 FROM eclipse-temurin:21-jre-alpine AS admin-api
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-admin-api/target/*.jar app.jar
 COPY --from=build /build/ezkey-admin-api/config ./config
+# Create entrypoint script that ensures encryption directories exist with correct permissions
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo '# Only create directories if they do not exist (avoid masking volume mounts)' >> /app/entrypoint.sh && \
+    echo 'if [ ! -d /etc/ezkey/secrets ]; then mkdir -p /etc/ezkey/secrets; fi' >> /app/entrypoint.sh && \
+    echo 'if [ ! -d /etc/ezkey/keysets ]; then mkdir -p /etc/ezkey/keysets; fi' >> /app/entrypoint.sh && \
+    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
+    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
+    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '# Fix directory permissions' >> /app/entrypoint.sh && \
+    echo 'chmod 700 /etc/ezkey/secrets 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'chmod 755 /etc/ezkey/keysets 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'chown spring:spring /etc/ezkey/secrets /etc/ezkey/keysets 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 EXPOSE 9080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:9080/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================
 # Stage 4: Runtime image for auth-api service
 # ============================================
 FROM eclipse-temurin:21-jre-alpine AS auth-api
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 WORKDIR /app
 COPY --from=build /build/ezkey-auth-api/target/*.jar app.jar
 COPY --from=build /build/ezkey-auth-api/config ./config
+# Create entrypoint script that fixes permissions without creating directories
+# Note: Directories should already exist from volume mount, creating them would mask volume content
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
+    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
+    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '# Fix directory permissions (only if directories exist from volume)' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/secrets ]; then chmod 700 /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/keysets ]; then chmod 755 /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/secrets ]; then chown spring:spring /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/keysets ]; then chown spring:spring /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================
 # Stage 5: Runtime image for crypto-api service
