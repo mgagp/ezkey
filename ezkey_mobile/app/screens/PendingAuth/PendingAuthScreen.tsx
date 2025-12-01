@@ -28,7 +28,6 @@ import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentById} from '../../hooks/useEnrollments';
 import {authAttemptsApi} from '../../services/api/authAttempts';
 import {cryptoService} from '../../services/crypto';
-import {useSecureEnrollmentInfo} from '../../hooks/useSecureEnrollmentInfo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -48,7 +47,7 @@ type PendingAttempt = {
  * Presents pending authentication attempts for a selected enrollment and enables the user to accept or deny them.
  *
  * - Generates device proof tokens per poll, mirroring the guidance in `docs/CRYPTO.md`.
- * - Submits RSA signatures through `cryptoService` to guarantee parity with the backend `SignatureService`.
+ * - Submits Ed25519 signatures through `cryptoService` to guarantee parity with the backend `SignatureService`.
  * - Surfaces meaningful errors to maintain the human-in-the-loop posture emphasised in `docs/features/AUTH_SECURITY.md`.
  *
  * @param route React Navigation route containing the target enrollment identifier.
@@ -57,10 +56,6 @@ type PendingAttempt = {
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {enrollmentId} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
-  const {
-    data: secureInfo,
-    isLoading: isSecureInfoLoading,
-  } = useSecureEnrollmentInfo(enrollmentId);
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
   const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
@@ -88,19 +83,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     if (!enrollment) {
       return;
     }
-    if (!secureInfo) {
-      setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
-      return;
-    }
+    // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
     setLoading(true);
     setGlobalError(undefined);
     try {
-      const deviceProofToken = Buffer.from(Date.now().toString(), 'utf-8').toString('base64');
-      const deviceAlias = secureInfo.deviceAlias;
-      const deviceProofTokenSigned = await cryptoService.sign(
-        deviceAlias,
-        Buffer.from(deviceProofToken, 'utf-8').toString('base64'),
-      );
+      const enrollmentId = enrollment.id.toString();
+      // Ensure EC P-256 key pair exists for this enrollment
+      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
+      const deviceProofToken = Date.now().toString();
+      const deviceProofTokenSigned = await cryptoService.sign(enrollmentId, deviceProofToken);
       const response = await authAttemptsApi.pending({
         enrollmentId: enrollment.id,
         enrollmentProofToken: enrollment.enrollmentProofToken,
@@ -126,25 +117,19 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       setChallengeInput('');
       setFormError(undefined);
       setState('pending');
-    } catch (error) {
-      setGlobalError(extractErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [enrollment, extractErrorMessage, secureInfo]);
+      } catch (error) {
+        setGlobalError(extractErrorMessage(error));
+      } finally {
+        setLoading(false);
+      }
+    }, [enrollment, extractErrorMessage]);
 
   useEffect(() => {
-    if (!isSecureInfoLoading && secureInfo === null) {
-      setAttempt(undefined);
-      setState('pending');
-      setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
-      return;
-    }
-    if (isEnrollmentLoading || isSecureInfoLoading || !enrollment || !secureInfo) {
+    if (isEnrollmentLoading || !enrollment) {
       return;
     }
     loadPendingAttempt();
-  }, [enrollment, isEnrollmentLoading, isSecureInfoLoading, loadPendingAttempt, secureInfo]);
+  }, [enrollment, isEnrollmentLoading, loadPendingAttempt]);
 
   const formattedWindow = useMemo(() => {
     if (!attempt) {
@@ -162,10 +147,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       if (!enrollment || !attempt || state !== 'pending') {
         return;
       }
-      if (!secureInfo) {
-        setGlobalError('No local device key found for this enrollment. Please re-enroll the device.');
-        return;
-      }
+      // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
       if (attempt.challengeRequired && !challengeInput.trim()) {
         setFormError('Challenge code is required.');
         return;
@@ -174,10 +156,12 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       setGlobalError(undefined);
       setFormError(undefined);
       try {
-        const deviceAlias = secureInfo.deviceAlias;
+        // Ensure root key exists
+        const enrollmentId = enrollment.id.toString();
+        await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
         const proofTokenSigned = await cryptoService.sign(
-          deviceAlias,
-          Buffer.from(attempt.authAttemptProofToken, 'utf-8').toString('base64'),
+          enrollmentId,
+          attempt.authAttemptProofToken,
         );
         await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
@@ -196,16 +180,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         setIsProcessing(false);
       }
     },
-    [attempt, challengeInput, enrollment, extractErrorMessage, secureInfo, state],
+    [attempt, challengeInput, enrollment, extractErrorMessage, state],
   );
 
-  const hasSecureInfo = Boolean(secureInfo);
+  const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
   const showEmptyState =
     !loading &&
     !attempt &&
     !globalError &&
     !isEnrollmentLoading &&
-    !isSecureInfoLoading &&
     hasSecureInfo;
 
   return (

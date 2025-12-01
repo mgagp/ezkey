@@ -113,6 +113,10 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation "com.google.mlkit:barcode-scanning:17.2.0"
 
+    // Note: EC P-256 uses native Android Keystore, no external crypto library needed
+    // BouncyCastle kept for potential future use or testing
+    // implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

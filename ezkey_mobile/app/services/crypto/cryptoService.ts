@@ -6,141 +6,93 @@
  *
  * Module: cryptoService
  * Description: Factory-backed facade that abstracts native cryptographic primitives for enrollment and authentication.
- * Security Context: Complies with the RSA requirements detailed in docs/CRYPTO.md by preferring native modules and
- *                   gracefully downgrading to deterministic mocks for development-only flows.
+ * Security Context: Uses EC P-256 with hardware-backed storage as described in docs/MOBILE_CRYPTO_REFERENCE.md.
  * @since 2025
  */
 
 import {Platform} from 'react-native';
-import {mockCrypto} from './mockCrypto';
 import {isNativeCryptoLinked, nativeCrypto} from './nativeCrypto';
-
-/**
- * Contract implemented by crypto delegates.
- *
- * @since 2025
- */
-type CryptoDelegate = {
-  generateKeyPair(alias: string): Promise<boolean>;
-  getPublicKey(alias: string): Promise<string>;
-  sign(alias: string, payloadBase64: string): Promise<string>;
-  deleteKey(alias: string): Promise<boolean>;
-};
-
-type CryptoProvider = 'native' | 'mock';
 
 /**
  * Provides a uniform cryptographic interface across platforms.
  *
+ * Uses EC P-256 (Elliptic Curve P-256) with hardware-backed storage.
+ * Requires native crypto module - no fallbacks or mocks.
+ *
  * @since 2025
  */
 class CryptoService {
-  private delegate: CryptoDelegate;
-  private provider: CryptoProvider;
-
-  constructor(delegate: CryptoDelegate, provider: CryptoProvider) {
-    this.delegate = delegate;
-    this.provider = provider;
-  }
-
   /**
-   * Builds a crypto service that prefers the native RSA implementation.
+   * Builds a crypto service using the native EC P-256 implementation.
    *
-   * @return Crypto service instance backed by native or mock implementation.
+   * **Security Policy**: The application requires the native crypto module to function.
+   * This ensures hardware-backed keys are always used.
+   *
+   * @return Crypto service instance backed by native implementation.
+   * @throws Error if native module unavailable or platform not supported.
    * @since 2025
    */
   static create(): CryptoService {
-    if (Platform.OS === 'android' || Platform.OS === 'ios') {
-      try {
-        if (isNativeCryptoLinked) {
-          return new CryptoService(nativeCrypto, 'native');
-        }
-        throw new Error('Native crypto module unavailable');
-      } catch (error) {
-        console.warn('[cryptoService] Falling back to mock crypto adapter:', error);
-        return new CryptoService(mockCrypto, 'mock');
-      }
+    // Verify platform is supported
+    if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+      throw new Error(
+        'CRITICAL: Mobile platform required for secure crypto operations. ' +
+        'Ezkey requires Android or iOS for hardware-backed key storage.',
+      );
     }
-    return new CryptoService(mockCrypto, 'mock');
-  }
 
-  /**
-   * Indicates which crypto delegate is currently active.
-   *
-   * @return Active provider label.
-   * @since 2025
-   */
-  get activeProvider(): CryptoProvider {
-    return this.provider;
-  }
-
-  /**
-   * Ensures an RSA key pair exists for the given alias, generating one if necessary.
-   *
-   * This helper is aligned with the key management workflow described in `docs/CRYPTO.md`, guaranteeing that
-   * authentication signatures reuse the same device key pair.
-   *
-   * @param alias Android keystore alias.
-   * @return Base64-encoded RSA public key compliant with X.509 format.
-   * @since 2025
-   */
-  async ensureKeyPair(alias: string): Promise<string> {
-    try {
-      const publicKey = await this.delegate.getPublicKey(alias);
-      return publicKey;
-    } catch (error) {
-      await this.delegate.generateKeyPair(alias);
-      return this.delegate.getPublicKey(alias);
+    // Verify native module is available
+    if (!isNativeCryptoLinked) {
+      throw new Error(
+        'CRITICAL: Native crypto module not available. ' +
+        'Application cannot function securely without hardware-backed keys. ' +
+        'Please ensure the native module is properly linked.',
+      );
     }
+
+    return new CryptoService();
   }
 
   /**
-   * Delegates RSA key pair generation to the active provider.
+   * Ensures an EC P-256 key pair exists for the given enrollment, generating it if necessary.
    *
-   * @param alias Android keystore alias.
+   * The key pair is stored in hardware-backed storage (StrongBox/Secure Enclave).
+   * Each enrollment gets its own key pair.
+   *
+   * @param enrollmentId The enrollment ID to ensure the key pair for.
    * @return Whether the key pair exists after the call.
    * @since 2025
    */
-  generateKeyPair(alias: string) {
-    return this.delegate.generateKeyPair(alias);
+  async ensureEnrollmentKeyPair(enrollmentId: string): Promise<boolean> {
+    return nativeCrypto.generateEnrollmentKeyPair(enrollmentId);
   }
 
   /**
-   * Retrieves the X.509 encoded public key for the requested alias.
+   * Retrieves the EC P-256 public key for a given enrollment ID.
    *
-   * @param alias Android keystore alias.
-   * @return Base64 encoded public key.
+   * The public key is stored in hardware-backed storage and encoded as X.509 SubjectPublicKeyInfo.
+   *
+   * @param enrollmentId The enrollment ID to get the public key for.
+   * @return Base64-encoded X.509 public key (ASN.1 DER format).
    * @since 2025
    */
-  getPublicKey(alias: string) {
-    return this.delegate.getPublicKey(alias);
+  getPublicKey(enrollmentId: string): Promise<string> {
+    return nativeCrypto.getPublicKey(enrollmentId);
   }
 
   /**
-   * Signs the provided payload using SHA256withRSA, mirroring the backend `SignatureService`.
+   * Signs the provided data using EC P-256 with ECDSA-SHA256.
    *
-   * @param alias Android keystore alias.
-   * @param payloadBase64 Base64-encoded payload to sign.
-   * @return Base64 encoded signature.
+   * @param enrollmentId The enrollment ID to sign with.
+   * @param data UTF-8 string data to sign.
+   * @return Base64-encoded ECDSA signature (ASN.1 DER format).
    * @since 2025
    */
-  sign(alias: string, payloadBase64: string) {
-    return this.delegate.sign(alias, payloadBase64);
-  }
-
-  /**
-   * Deletes the key material associated with the alias.
-   *
-   * @param alias Android keystore alias.
-   * @return Whether the deletion completed successfully.
-   * @since 2025
-   */
-  deleteKey(alias: string) {
-    return this.delegate.deleteKey(alias);
+  sign(enrollmentId: string, data: string): Promise<string> {
+    return nativeCrypto.sign(enrollmentId, data);
   }
 }
 
 export const cryptoService = CryptoService.create();
 
 export type CryptoServiceInstance = CryptoService;
-

@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {Buffer} from 'buffer';
+import {Alert} from 'react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,9 +10,8 @@ import {
   View,
 } from 'react-native';
 import {useEnrollments} from '../../hooks/useEnrollments';
-import {useSecureEnrollmentInfo} from '../../hooks/useSecureEnrollmentInfo';
 import {cryptoService} from '../../services/crypto';
-import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {enrollmentStorage, StoredEnrollment} from '../../services/storage/enrollmentStorage';
 
 type DiagnosticState = {
   publicKey?: string;
@@ -24,25 +23,46 @@ type DiagnosticState = {
 const TEST_PHRASE = 'ezkey-mobile-diagnostic';
 
 export const DiagnosticsScreen: React.FC = () => {
-  const {data: enrollments, isLoading} = useEnrollments();
+  const {data: enrollments, isLoading, refetch} = useEnrollments();
 
-  const providerLabel = useMemo(
-    () =>
-      cryptoService.activeProvider === 'native'
-        ? 'Native Keystore/Keychain'
-        : 'Mock (fallback)',
-    [],
-  );
+  const handleClearAllData = async () => {
+    Alert.alert(
+      'Clear All Data',
+      'This will delete all enrollments and reset the app. This action cannot be undone.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await enrollmentStorage.clearAll();
+              await refetch();
+              Alert.alert('Success', 'All enrollment data has been cleared.');
+            } catch (error) {
+              Alert.alert(
+                'Error',
+                `Failed to clear data: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={styles.screen}>
       <View style={styles.banner}>
         <Text style={styles.bannerTitle}>Crypto diagnostics</Text>
-        <Text style={styles.bannerMeta}>Provider: {providerLabel}</Text>
+        <Text style={styles.bannerMeta}>Provider: Native Keystore/Keychain</Text>
         <Text style={styles.bannerHelp}>
           Run a self-test to generate a diagnostic signature using the stored device key. Share the
           signature and public key with the backend to validate.
         </Text>
+        <TouchableOpacity style={styles.clearButton} onPress={handleClearAllData}>
+          <Text style={styles.clearButtonLabel}>Clear All Enrollment Data</Text>
+        </TouchableOpacity>
       </View>
       {isLoading ? (
         <View style={styles.loader}>
@@ -66,24 +86,19 @@ export const DiagnosticsScreen: React.FC = () => {
 };
 
 const DiagnosticCard: React.FC<{enrollment: StoredEnrollment}> = ({enrollment}) => {
-  const {data: secureInfo, isLoading: secureLoading} = useSecureEnrollmentInfo(enrollment.id);
   const [result, setResult] = useState<DiagnosticState>();
 
-  const alias = secureInfo?.deviceAlias;
+  const enrollmentId = enrollment.id.toString();
 
   const runSelfTest = async () => {
-    if (!alias) {
-      setResult({
-        error: 'No device alias available for this enrollment.',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
     setResult({timestamp: new Date().toISOString()});
     try {
-      const publicKey = await cryptoService.ensureKeyPair(alias);
-      const payload = Buffer.from(`${TEST_PHRASE}:${Date.now()}`, 'utf-8').toString('base64');
-      const signature = await cryptoService.sign(alias, payload);
+      // Ensure EC P-256 key pair exists for this enrollment
+      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
+      // Get EC P-256 public key for this enrollment
+      const publicKey = await cryptoService.getPublicKey(enrollmentId);
+      const payload = `${TEST_PHRASE}:${Date.now()}`;
+      const signature = await cryptoService.sign(enrollmentId, payload);
       setResult({
         publicKey,
         signature,
@@ -106,17 +121,6 @@ const DiagnosticCard: React.FC<{enrollment: StoredEnrollment}> = ({enrollment}) 
       <Text style={styles.subtitle}>{enrollment.enrollmentName ?? 'Device enrollment'}</Text>
       <Text style={styles.meta}>Enrollment ID: {enrollment.id}</Text>
       <Text style={styles.meta}>Tenant: {enrollment.tenantName}</Text>
-      <Text style={styles.meta}>Alias: {alias ?? '—'}</Text>
-      {secureLoading ? (
-        <View style={styles.inlineLoader}>
-          <ActivityIndicator size="small" />
-          <Text style={styles.meta}>Resolving secure storage…</Text>
-        </View>
-      ) : !alias ? (
-        <Text style={styles.error}>
-          No secure alias stored. Re-enroll the device or run recovery to restore keys.
-        </Text>
-      ) : null}
       {result?.timestamp ? (
         <Text style={styles.meta}>
           Last test: {new Date(result.timestamp).toLocaleTimeString(undefined, {hour12: false})}
@@ -135,11 +139,8 @@ const DiagnosticCard: React.FC<{enrollment: StoredEnrollment}> = ({enrollment}) 
           <Text style={styles.monoValue}>{truncate(result.signature)}</Text>
         </ScrollView>
       ) : null}
-      <TouchableOpacity
-        style={[styles.button, !alias ? styles.buttonDisabled : undefined]}
-        onPress={runSelfTest}
-        disabled={!alias}>
-        <Text style={styles.buttonLabel}>{alias ? 'Run self-test' : 'Alias missing'}</Text>
+      <TouchableOpacity style={styles.button} onPress={runSelfTest}>
+        <Text style={styles.buttonLabel}>Run self-test</Text>
       </TouchableOpacity>
     </View>
   );
@@ -170,6 +171,19 @@ const styles = StyleSheet.create({
   bannerHelp: {
     fontSize: 13,
     color: '#c2c8d5',
+  },
+  clearButton: {
+    marginTop: 12,
+    backgroundColor: '#ff6666',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  clearButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   loader: {
     flex: 1,

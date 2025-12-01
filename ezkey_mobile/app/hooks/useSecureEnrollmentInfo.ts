@@ -5,9 +5,9 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: useSecureEnrollmentInfo Hook
- * Description: Lightweight selector for sensitive enrollment metadata cached locally with secure storage.
- * Security Context: Supports principle of least privilege described in docs/CRYPTO.md by exposing only non-cryptographic
- *                   metadata (device alias) to the UI layer while proof tokens remain sealed.
+ * Description: Hook for checking enrollment availability.
+ * Security Context: With Ed25519, device keys are derived on-demand from the root key,
+ *                   so no device alias needs to be stored or retrieved.
  * @since 2025
  */
 
@@ -15,14 +15,16 @@ import {useQuery} from '@tanstack/react-query';
 import {enrollmentStorage} from '../services/storage/enrollmentStorage';
 
 type SecureEnrollmentInfo = {
-  deviceAlias: string;
+  enrollmentId: string;
 };
 
 /**
- * Fetches secure enrollment metadata limited to the device alias while ensuring proof tokens remain undisclosed.
+ * Checks if enrollment exists and returns basic info.
  *
- * @param enrollmentId Enrollment identifier used to locate secure storage entries.
- * @return React Query result containing optional secure metadata.
+ * With Ed25519, keys are derived on-demand, so this hook mainly verifies enrollment exists.
+ *
+ * @param enrollmentId Enrollment identifier.
+ * @return React Query result containing enrollment info if available.
  * @since 2025
  */
 export const useSecureEnrollmentInfo = (enrollmentId: string) =>
@@ -33,8 +35,8 @@ export const useSecureEnrollmentInfo = (enrollmentId: string) =>
       if (!enrollmentId) {
         return null;
       }
-      const deviceAlias = await enrollmentStorage.getDeviceAlias(enrollmentId);
-      return deviceAlias ? {deviceAlias} : null;
+      const enrollment = await enrollmentStorage.getEnrollmentById(enrollmentId);
+      return enrollment ? {enrollmentId} : null;
     },
   });
 

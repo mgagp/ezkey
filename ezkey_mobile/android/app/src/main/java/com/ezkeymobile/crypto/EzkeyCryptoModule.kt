@@ -5,9 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * File: EzkeyCryptoModule.kt
- * Description: Android native module exposing RSA key management and signing operations to React Native.
- * Security Context: Implements the RSA-2048, SHA256withRSA workflow described in docs/CRYPTO.md with StrongBox support
- * where available.
+ * Description: Android native module exposing EC P-256 key management and signing operations to React Native.
+ * Security Context: Implements EC P-256 with hardware-backed storage (StrongBox) as described in docs/MOBILE_CRYPTO_REFERENCE.md.
  * @since 2025
  */
 
@@ -22,14 +21,17 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import java.nio.charset.StandardCharsets
+import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.security.PrivateKey
 import java.security.Signature
-import java.security.interfaces.RSAPublicKey
+import java.security.spec.ECGenParameterSpec
 
 /**
- * React Native module providing RSA key generation, retrieval, signing, and deletion.
+ * React Native module providing EC P-256 key generation, retrieval, signing, and deletion.
+ *
+ * Uses Android Keystore with StrongBox support for hardware-backed key storage.
  *
  * @since 2025
  */
@@ -44,30 +46,39 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   override fun getName(): String = NAME
 
   /**
-   * Generates an RSA key pair with StrongBox preference when available.
+   * Generates an EC P-256 key pair for a specific enrollment.
    *
-   * @param alias Android keystore alias.
-   * @param promise Promise resolved with true when the key already exists or after generation.
+   * The key pair is stored in Android Keystore with StrongBox preference when available.
+   * Each enrollment gets its own key pair stored securely in hardware-backed storage.
+   *
+   * @param enrollmentId The enrollment ID to generate the key pair for.
+   * @param promise Promise resolved with true when the key pair already exists or after generation.
    * @since 2025
    */
   @ReactMethod
-  fun generateRsaKeyPair(alias: String, promise: Promise) {
+  fun generateEnrollmentKeyPair(enrollmentId: String, promise: Promise) {
     try {
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      val alias = getEnrollmentAlias(enrollmentId)
+
+      // Check if key pair already exists
       if (keyStore.containsAlias(alias)) {
         promise.resolve(true)
         return
       }
 
-      val keyPairGenerator =
-          KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEY_STORE)
-      val builder =
-          KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
-              .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-              .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-              .setKeySize(KEY_SIZE)
-              .setRandomizedEncryptionRequired(true)
-              .setUserAuthenticationRequired(false)
+      val keyPairGenerator = KeyPairGenerator.getInstance(
+          KeyProperties.KEY_ALGORITHM_EC,
+          ANDROID_KEY_STORE
+      )
+
+      val builder = KeyGenParameterSpec.Builder(
+          alias,
+          KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+      )
+          .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1")) // EC P-256
+          .setDigests(KeyProperties.DIGEST_SHA256)
+          .setUserAuthenticationRequired(false)
 
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         builder.setUnlockedDeviceRequired(true)
@@ -75,7 +86,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         try {
-          builder.setIsStrongBoxBacked(true)
+          builder.setIsStrongBoxBacked(true) // Hardware-backed if available
         } catch (error: StrongBoxUnavailableException) {
           // Device does not provide StrongBox; continue without it.
         }
@@ -86,93 +97,118 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
       promise.resolve(true)
     } catch (error: Exception) {
-      promise.reject(ERROR_CODE_KEYPAIR, error)
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
     }
   }
 
   /**
-   * Retrieves the X.509 encoded RSA public key for a given alias.
+   * Retrieves the EC P-256 public key for a given enrollment.
    *
-   * @param alias Android keystore alias.
-   * @param promise Promise resolved with the Base64 public key or rejected when missing.
+   * @param enrollmentId The enrollment ID to get the public key for.
+   * @param promise Promise resolved with Base64-encoded X.509 public key.
    * @since 2025
    */
   @ReactMethod
-  fun getPublicKey(alias: String, promise: Promise) {
+  fun getPublicKey(enrollmentId: String, promise: Promise) {
     try {
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-      val certificate = keyStore.getCertificate(alias)
-      val publicKey = certificate?.publicKey as? RSAPublicKey
-      if (publicKey == null) {
-        promise.reject(ERROR_CODE_NOT_FOUND, "RSA public key for alias $alias not found")
+      val alias = getEnrollmentAlias(enrollmentId)
+
+      if (!keyStore.containsAlias(alias)) {
+        promise.reject(ERROR_CODE_NOT_FOUND, "Key pair not found for enrollment $enrollmentId")
         return
       }
 
-      val encoded = Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
-      promise.resolve(encoded)
+      val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
+      val publicKey = entry?.certificate?.publicKey
+          ?: throw IllegalStateException("Public key not found for enrollment $enrollmentId")
+
+      // Encode public key as X.509 SubjectPublicKeyInfo (ASN.1 DER)
+      val encoded = publicKey.encoded
+      val encodedBase64 = Base64.encodeToString(encoded, Base64.NO_WRAP)
+
+      promise.resolve(encodedBase64)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_PUBLIC_KEY, error)
     }
   }
 
   /**
-   * Signs the provided payload using SHA256withRSA.
+   * Signs data using the EC P-256 private key for a given enrollment.
    *
-   * @param alias Android keystore alias.
-   * @param dataBase64 Base64 encoded payload to sign.
-   * @param promise Promise resolved with the Base64 signature.
+   * Uses ECDSA with SHA-256 signature algorithm.
+   *
+   * @param enrollmentId The enrollment ID to sign with.
+   * @param data The data to sign (UTF-8 string).
+   * @param promise Promise resolved with Base64-encoded ECDSA signature.
    * @since 2025
    */
   @ReactMethod
-  fun sign(alias: String, dataBase64: String, promise: Promise) {
+  fun sign(enrollmentId: String, data: String, promise: Promise) {
     try {
-      val payload = Base64.decode(dataBase64, Base64.NO_WRAP)
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-      val privateKey = keyStore.getKey(alias, null) as? PrivateKey
-      if (privateKey == null) {
-        promise.reject(ERROR_CODE_NOT_FOUND, "RSA private key for alias $alias not found")
+      val alias = getEnrollmentAlias(enrollmentId)
+
+      if (!keyStore.containsAlias(alias)) {
+        promise.reject(ERROR_CODE_NOT_FOUND, "Key pair not found for enrollment $enrollmentId")
         return
       }
 
-      val signature = Signature.getInstance(SIGNATURE_ALGORITHM)
-      signature.initSign(privateKey)
-      signature.update(payload)
-      val signed = signature.sign()
-      val encoded = Base64.encodeToString(signed, Base64.NO_WRAP)
+      val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
+      val privateKey = entry?.privateKey
+          ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
 
-      promise.resolve(encoded)
+      // Sign using ECDSA with SHA-256
+      val signature = Signature.getInstance("SHA256withECDSA")
+      signature.initSign(privateKey)
+      signature.update(data.toByteArray(StandardCharsets.UTF_8))
+      val signatureBytes = signature.sign()
+
+      val encodedBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+      promise.resolve(encodedBase64)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_SIGN, error)
     }
   }
 
   /**
-   * Deletes the stored key pair associated with the alias.
+   * Deletes the EC P-256 key pair for a given enrollment.
    *
-   * @param alias Android keystore alias.
-   * @param promise Promise resolved when deletion completes.
+   * @param enrollmentId The enrollment ID to delete the key pair for.
+   * @param promise Promise resolved with true after deletion.
    * @since 2025
    */
   @ReactMethod
-  fun deleteKey(alias: String, promise: Promise) {
+  fun deleteKeyPair(enrollmentId: String, promise: Promise) {
     try {
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      val alias = getEnrollmentAlias(enrollmentId)
+
       if (keyStore.containsAlias(alias)) {
         keyStore.deleteEntry(alias)
       }
+
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_DELETE, error)
     }
   }
 
+  /**
+   * Generates the Android Keystore alias for an enrollment.
+   *
+   * @param enrollmentId The enrollment ID.
+   * @return The keystore alias.
+   * @since 2025
+   */
+  private fun getEnrollmentAlias(enrollmentId: String): String {
+    return "ezkey_enrollment_$enrollmentId"
+  }
+
   companion object {
     const val NAME = "EzkeyCryptoModule"
     private const val ANDROID_KEY_STORE = "AndroidKeyStore"
-    private const val KEY_SIZE = 2048
-    private const val SIGNATURE_ALGORITHM = "SHA256withRSA"
-
-    private const val ERROR_CODE_KEYPAIR = "EZK_KEYPAIR_ERROR"
+    private const val ERROR_CODE_KEY_GENERATION = "EZK_KEY_GENERATION_ERROR"
     private const val ERROR_CODE_PUBLIC_KEY = "EZK_PUBLIC_KEY_ERROR"
     private const val ERROR_CODE_SIGN = "EZK_SIGN_ERROR"
     private const val ERROR_CODE_NOT_FOUND = "EZK_KEY_NOT_FOUND"

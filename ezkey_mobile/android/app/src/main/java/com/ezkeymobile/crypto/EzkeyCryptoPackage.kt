@@ -6,7 +6,7 @@
  *
  * File: EzkeyCryptoPackage.kt
  * Description: ReactPackage that registers Ezkey's cryptographic native module.
- * Security Context: Guarantees that the RSA module is always part of the native bridge ensuring
+ * Security Context: Guarantees that the Ed25519 module is always part of the native bridge ensuring
  * cryptographic parity with backend services as outlined in docs/CRYPTO.md.
  * @since 2025
  */

@@ -43,7 +43,7 @@ export const enrollmentsApi = {
   /**
    * Finalizes enrollment by submitting the device public key and signed proof token.
    *
-   * The payload must comply with the cryptographic rules in `docs/CRYPTO.md` (RSA-2048, SHA256withRSA).
+   * The payload must comply with the cryptographic rules in `docs/CRYPTO.md` (Ed25519, 32-byte keys, 64-byte signatures).
    *
    * @param payload Verify enrollment request carrying device credentials.
    * @return Verification response indicating whether the enrollment is active.

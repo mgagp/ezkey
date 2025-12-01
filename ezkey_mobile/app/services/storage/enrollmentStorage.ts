@@ -7,25 +7,27 @@
  * Module: enrollmentStorage
  * Description: Persistence facade that splits sensitive enrollment metadata between secure storage and AsyncStorage.
  * Security Context: Implements the storage strategy described in docs/features/AUTH_SECURITY.md by isolating proof tokens
- *                   from user-friendly metadata and supporting device alias retrieval without exposing cryptographic material.
+ *                   from user-friendly metadata. Uses platform Keychain for secure storage.
  * @since 2025
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {EnrollmentSummary} from '../api/types';
-import {mockSecureStorage} from './mockSecureStorage';
 import {secureStorage} from './secureStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 
 /**
- * Local representation of enrollment records including proof tokens and device alias metadata.
+ * Local representation of enrollment records including proof tokens.
+ *
+ * With EC P-256, device keys are stored directly in hardware-backed storage per enrollment,
+ * so no device alias needs to be stored.
  *
  * @since 2025
  */
 export type StoredEnrollment = EnrollmentSummary & {
   enrollmentProofToken: string;
-  deviceAlias: string;
+  enrollmentId?: string; // Enrollment ID used for key derivation (for backward compatibility)
   integrationPublicKey?: string;
   enrollmentName?: string;
   deviceLabel?: string;
@@ -45,6 +47,8 @@ type EnrollmentStorageOptions = {
 /**
  * Secure storage gateway in charge of persisting enrollment information on device.
  *
+ * Uses platform Keychain (iOS Keychain / Android Keystore) for secure storage.
+ *
  * @since 2025
  */
 class EnrollmentStorage {
@@ -57,15 +61,13 @@ class EnrollmentStorage {
   }
 
   /**
-   * Factory used to instantiate the storage module, optionally using a mock secure store for development.
+   * Factory used to instantiate the storage module with platform secure storage.
    *
-   * @param useMockSecure Whether to rely on the mock secure storage adapter.
-   * @return Enrollment storage instance.
+   * @return Enrollment storage instance using platform Keychain.
    * @since 2025
    */
-  static create({useMockSecure}: {useMockSecure?: boolean} = {}) {
-    const secure = useMockSecure ? mockSecureStorage : secureStorage;
-    return new EnrollmentStorage({secure, metadata: AsyncStorage});
+  static create() {
+    return new EnrollmentStorage({secure: secureStorage, metadata: AsyncStorage});
   }
 
   /**
@@ -89,7 +91,10 @@ class EnrollmentStorage {
   }
 
   /**
-   * Adds or updates an enrollment record and stores the device alias in secure storage.
+   * Adds or updates an enrollment record.
+   *
+   * With EC P-256, device keys are stored in hardware-backed storage per enrollment,
+   * so no device alias needs to be stored.
    *
    * @param record Enrollment payload to persist.
    * @since 2025
@@ -98,7 +103,6 @@ class EnrollmentStorage {
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== record.id).concat(record);
     await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
-    await this.secure.setItem(this.aliasKey(record.id), record.deviceAlias);
   }
 
   /**
@@ -114,7 +118,7 @@ class EnrollmentStorage {
   }
 
   /**
-   * Removes enrollment metadata and its secure alias entry.
+   * Removes enrollment metadata.
    *
    * @param id Enrollment identifier.
    * @since 2025
@@ -123,28 +127,20 @@ class EnrollmentStorage {
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== id);
     await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
-    await this.secure.removeItem(this.aliasKey(id));
   }
 
   /**
-   * Retrieves the device alias bound to a specific enrollment from secure storage.
+   * Clears all enrollment data from storage.
    *
-   * @param id Enrollment identifier.
-   * @return Device alias or undefined.
+   * Useful for development/testing or complete reset scenarios.
+   *
    * @since 2025
    */
-  async getDeviceAlias(id: string): Promise<string | undefined> {
-    return this.secure.getItem(this.aliasKey(id));
-  }
-
-  private aliasKey(id: string) {
-    return `enrollment-alias/${id}`;
+  async clearAll() {
+    await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
   }
 }
 
-const DEFAULT_USE_MOCK = __DEV__;
-
-export const enrollmentStorage = EnrollmentStorage.create({useMockSecure: DEFAULT_USE_MOCK});
+export const enrollmentStorage = EnrollmentStorage.create();
 
 export type EnrollmentStorageInstance = EnrollmentStorage;
-

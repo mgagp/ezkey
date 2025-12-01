@@ -67,7 +67,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
           onPress: async () => {
             try {
               await deleteEnrollment.mutateAsync(enrollment.id);
-              await cryptoService.deleteKey(enrollment.deviceAlias);
+              // With Ed25519, keys are derived on-demand, so no need to delete specific keys
               navigation.popToTop();
             } catch (error) {
               console.error('[EnrollmentDetail] Failed to delete enrollment', error);

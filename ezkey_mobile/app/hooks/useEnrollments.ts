@@ -12,48 +12,18 @@
  */
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {EnrollmentSummary} from '../services/api/types';
-import {MOCK_ENROLLMENTS} from '../services/api/mock/enrollments';
 import {enrollmentStorage, StoredEnrollment} from '../services/storage/enrollmentStorage';
 
 /**
- * Transforms an enrollment API response into the persisted format expected by the secure storage module.
+ * Fetches enrollments from secure storage.
  *
- * The mock implementation decorates the record with deterministic proof tokens to simulate the cryptographic
- * material described in `docs/features/AUTH_SECURITY.md`. Real implementations must never generate proof tokens
- * client-side.
- *
- * @param summary Enrollment summary returned by the Admin API mock.
- * @return Stored representation ready for secure persistence.
- * @since 2025
- */
-const toStoredEnrollment = (summary: EnrollmentSummary): StoredEnrollment => ({
-  ...summary,
-  enrollmentProofToken: `mock-proof-${summary.id}`,
-  deviceAlias: `mock-alias-${summary.id}`,
-});
-
-let seeded = false;
-
-/**
- * Fetches enrollments from secure storage, seeding mock data when running in developer mode.
- *
- * The seeding logic is strictly for local development; production code must always rely on server-provided
- * tokens that comply with the anti-enumeration guarantees referenced in `docs/ENDPOINT.md`.
+ * No seeding logic - enrollments must be created through the normal enrollment flow.
  *
  * @return List of persisted enrollments with locally cached proof tokens.
  * @since 2025
  */
 const fetchEnrollments = async (): Promise<StoredEnrollment[]> => {
-  const current = await enrollmentStorage.listEnrollments();
-  if (current.length === 0 && !seeded) {
-    await Promise.all(
-      MOCK_ENROLLMENTS.map(item => enrollmentStorage.saveEnrollment(toStoredEnrollment(item))),
-    );
-    seeded = true;
-    return enrollmentStorage.listEnrollments();
-  }
-  return current;
+  return enrollmentStorage.listEnrollments();
 };
 
 /**

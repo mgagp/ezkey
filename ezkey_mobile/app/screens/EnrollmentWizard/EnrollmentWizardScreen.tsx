@@ -6,7 +6,7 @@
  *
  * Module: EnrollmentWizardScreen
  * Description: Guided enrollment experience that walks the user through QR scanning, challenge verification, and secure key generation.
- * Security Context: Implements the enrollment safeguards described in docs/features/AUTH_SECURITY.md by ensuring proof tokens are captured via QR, challenges are enforced, and RSA keys follow docs/CRYPTO.md.
+ * Security Context: Implements the enrollment safeguards described in docs/features/AUTH_SECURITY.md by ensuring proof tokens are captured via QR, challenges are enforced, and Ed25519 keys follow docs/CRYPTO.md.
  * @since 2025
  */
 
@@ -132,8 +132,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         id: 'confirm',
         title: 'Review and finish',
         description: draft
-          ? `You are about to bind ${MOCK_DEVICE_NAME} to ${draft.integrationName}. We will generate an RSA key pair, store the private key securely, and verify the proof token before activating.`
-          : `You are about to bind ${MOCK_DEVICE_NAME} to your Ezkey enrollment. On the real flow, we generate an RSA key pair, store the private key in secure storage, and verify the proof token before activating.`,
+          ? `You are about to bind ${MOCK_DEVICE_NAME} to ${draft.integrationName}. We will generate an Ed25519 key pair derived from the root key, and verify the proof token before activating.`
+          : `You are about to bind ${MOCK_DEVICE_NAME} to your Ezkey enrollment. On the real flow, we generate an Ed25519 key pair derived from the root key, and verify the proof token before activating.`,
         actionLabel: 'Finish',
         secondaryLabel: 'Back to Home',
       },
@@ -226,13 +226,16 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       }
       return;
     }
-    const alias = `device-${draft.id}`;
+    const enrollmentId = draft.id.toString();
     const now = new Date().toISOString();
     setIsSubmitting(true);
     try {
-      const publicKey = await cryptoService.ensureKeyPair(alias);
-      const proofTokenBase64 = Buffer.from(draft.enrollmentProofToken, 'utf-8').toString('base64');
-      const proofTokenSigned = await cryptoService.sign(alias, proofTokenBase64);
+      // Ensure EC P-256 key pair exists for this enrollment (generates if needed)
+      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
+      // Get EC P-256 public key for this enrollment
+      const publicKey = await cryptoService.getPublicKey(enrollmentId);
+      // Sign the proof token with EC P-256 (ECDSA-SHA256)
+      const proofTokenSigned = await cryptoService.sign(enrollmentId, draft.enrollmentProofToken);
       const verifyResponse = await enrollmentsApi.verify({
         enrollmentId: draft.id,
         devicePublicKey: publicKey,
@@ -253,7 +256,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           `https://placehold.co/128x128?text=${draft.integrationName.charAt(0).toUpperCase()}`,
         favorited: false,
         enrollmentProofToken: draft.enrollmentProofToken,
-        deviceAlias: alias,
+        enrollmentId: enrollmentId,
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
