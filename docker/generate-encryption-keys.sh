@@ -23,11 +23,16 @@ fi
 # Check if volume exists, create if not
 # Note: Docker Compose prefixes volume names with project name (from docker-compose.yml "name: ezkey")
 # So the actual volume name is "ezkey_encryption-secrets" (project prefix + volume name)
+# The volume will be created automatically by docker-compose if it doesn't exist,
+# but we check/create it here to ensure it exists before generating keys
 VOLUME_NAME="ezkey_encryption-secrets"
 if ! docker volume inspect "$VOLUME_NAME" > /dev/null 2>&1; then
     echo "📦 Creating Docker volume: $VOLUME_NAME"
+    echo "   Note: This volume will also be created by docker-compose if it doesn't exist"
     docker volume create "$VOLUME_NAME"
     echo "✅ Volume created"
+else
+    echo "✅ Volume already exists: $VOLUME_NAME"
 fi
 
 # Create temporary container to generate master key

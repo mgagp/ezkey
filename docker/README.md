@@ -347,7 +347,9 @@ The encryption keys volume persists across:
 - Container stops (`docker-compose stop`)
 - Stack shutdown (`docker-compose down`)
 
-**Warning**: The volume is removed only when using `clean` command or `docker-compose down -v`. **Backup the master key before removing volumes!**
+**Warning**: The volume is removed when using `clean` command or `docker-compose down -v`. **Backup the master key before removing volumes!**
+
+**Note**: The `encryption-secrets` volume is managed by Docker Compose and will be automatically created if it doesn't exist. It will be removed with `docker-compose down -v` along with other volumes.
 
 #### Backup Encryption Keys
 

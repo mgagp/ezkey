@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.crypto.config.SecurityConfig;
-import org.ezkey.signature.Ed25519KeyPair;
+import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,8 +52,8 @@ class CryptoControllerTest {
 
   @Test
   void testKeyPairGenerationEndpoint() throws Exception {
-    Ed25519KeyPair keyPair = new Ed25519KeyPair("test-private-key", "test-public-key");
-    when(signatureService.generateEd25519KeyPair()).thenReturn(keyPair);
+    ECP256KeyPair keyPair = new ECP256KeyPair("test-private-key", "test-public-key");
+    when(signatureService.generateECP256KeyPair()).thenReturn(keyPair);
 
     mockMvc
         .perform(get("/api/v1/crypto/keypair"))
@@ -84,7 +84,7 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.signature").value("test-signature"))
         .andExpect(jsonPath("$.originalData").value("Hello, World!"))
-        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
+        .andExpect(jsonPath("$.algorithm").value("EC_P256"));
   }
 
   @Test
@@ -130,7 +130,7 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.valid").value(true))
         .andExpect(jsonPath("$.message").value("Signature is valid"))
-        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
+        .andExpect(jsonPath("$.algorithm").value("EC_P256"));
   }
 
   @Test
@@ -156,6 +156,6 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.valid").value(false))
         .andExpect(jsonPath("$.message").value("Signature is invalid"))
-        .andExpect(jsonPath("$.algorithm").value("Ed25519"));
+        .andExpect(jsonPath("$.algorithm").value("EC_P256"));
   }
 }

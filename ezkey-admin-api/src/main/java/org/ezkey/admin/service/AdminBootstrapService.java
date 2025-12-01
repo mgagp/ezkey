@@ -24,7 +24,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
-import org.ezkey.signature.Ed25519KeyPair;
+import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -269,9 +269,9 @@ public class AdminBootstrapService {
                         "Initial global admin not found: "
                             + initialGlobalAdminProperties.getUsername()));
 
-    // Generate Ed25519 key pair for enrollment
-    logger.info("🔐 Generating Ed25519 key pair for Global Admin Enrollment...");
-    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
+    // Generate EC P-256 key pair for enrollment
+    logger.info("🔐 Generating EC P-256 key pair for Global Admin Enrollment...");
+    ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
 
     // Generate enrollment proof token
     String enrollmentProofToken = signatureService.generateProofToken();
@@ -293,6 +293,9 @@ public class AdminBootstrapService {
     globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64PublicKey());
     globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
+
+    // Store token in local variable before save (to ensure we log the exact token that was set)
+    String tokenToLog = enrollmentProofToken;
 
     enrollmentRepository.save(globalAdminEnrollment);
 
@@ -318,7 +321,8 @@ public class AdminBootstrapService {
         "✅ {} recovery codes generated for global admin", recoveryCodes.getPlainCodes().size());
 
     // Log credentials with highly visible formatting
-    logGlobalAdminEnrollmentCredentials(globalAdminEnrollment, recoveryCodes.getPlainCodes());
+    // Use the token from local variable to ensure we log the exact token that was set
+    logGlobalAdminEnrollmentCredentials(globalAdminEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
   }
 
   /**
@@ -330,9 +334,10 @@ public class AdminBootstrapService {
    *
    * @param enrollment the enrollment with credentials to log
    * @param recoveryCodes the plain recovery codes to log
+   * @param enrollmentProofToken the enrollment proof token to log (from local variable, before save)
    */
   private void logGlobalAdminEnrollmentCredentials(
-      Enrollment enrollment, java.util.List<String> recoveryCodes) {
+      Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
     String email = initialGlobalAdminProperties.getEmail();
@@ -351,12 +356,13 @@ public class AdminBootstrapService {
     logger.warn("");
     logger.warn("🔐 ENROLLMENT CREDENTIALS:");
     logger.warn("   Enrollment ID: {}", enrollment.getEnrollmentId());
-    logger.warn("   Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
+    // Use token from parameter (from local variable before save) to ensure exact match with hash
+    logger.warn("   Enrollment Proof Token: {}", enrollmentProofToken);
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
     String enrollmentPayload =
-        enrollment.getEnrollmentId() + "|" + enrollment.getEnrollmentProofToken();
+        enrollment.getEnrollmentId() + "|" + enrollmentProofToken;
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {
@@ -373,7 +379,7 @@ public class AdminBootstrapService {
     logger.warn("   Option A - CLI (Recommended):");
     logger.warn("     ezkey admin enroll bind \\");
     logger.warn("       --enrollment-id {} \\", enrollment.getEnrollmentId());
-    logger.warn("       --enrollment-proof-token \"{}\"", enrollment.getEnrollmentProofToken());
+    logger.warn("       --enrollment-proof-token \"{}\"", enrollmentProofToken);
     logger.warn("");
     logger.warn("   Option B - Demo-Device:");
     logger.warn("     1. Start: cd ezkey-demo-device && mvn spring-boot:run");
@@ -381,7 +387,7 @@ public class AdminBootstrapService {
     logger.warn("     3. Navigate to 'Bind Enrollment' page");
     logger.warn("     4. Enter credentials:");
     logger.warn("        - Enrollment ID: {}", enrollment.getEnrollmentId());
-    logger.warn("        - Enrollment Proof Token: {}", enrollment.getEnrollmentProofToken());
+    logger.warn("        - Enrollment Proof Token: {}", enrollmentProofToken);
     logger.warn(
         "     5. During verify, enter Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");

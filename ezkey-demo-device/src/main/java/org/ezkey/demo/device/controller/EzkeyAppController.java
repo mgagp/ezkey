@@ -3,7 +3,7 @@ package org.ezkey.demo.device.controller;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
-import org.ezkey.demo.device.service.DeviceCryptoService.Ed25519DeviceKeyPair;
+import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
@@ -76,7 +76,7 @@ public class EzkeyAppController {
           authApiService.bind(enrollmentId, enrollmentProofToken, language).block();
       if (bindResponse != null) {
         // Generate device keys
-        Ed25519DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
+        ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
         String devicePublicKeyB64 = keyPair.base64PublicKey();
         String devicePrivateKeyB64 = keyPair.base64PrivateKey();
 

@@ -24,7 +24,7 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
-import org.ezkey.signature.Ed25519KeyPair;
+import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -196,7 +196,7 @@ public class EnrollmentService {
             ? request.getAuthAttemptChallengeRequired()
             : false);
     enrollment.setCreatedAt(OffsetDateTime.now());
-    Ed25519KeyPair integrationKeys = signatureService.generateEd25519KeyPair();
+    ECP256KeyPair integrationKeys = signatureService.generateECP256KeyPair();
     enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
     enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
     enrollment.setDevicePublicKey(null);

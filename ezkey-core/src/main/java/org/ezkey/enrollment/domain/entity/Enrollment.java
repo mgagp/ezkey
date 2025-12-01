@@ -106,9 +106,9 @@ public class Enrollment {
   private Boolean authAttemptChallengeRequired;
 
   /**
-   * Encrypted Ed25519 private key seed for integration communication (persisted in database).
+   * Encrypted EC P-256 private key for integration communication (persisted in database).
    *
-   * <p>This field stores the encrypted Ed25519 private key seed (32 bytes raw, Base64 encoded) in
+   * <p>This field stores the encrypted EC P-256 private key (PKCS#8 format, Base64 encoded) in
    * the database. The value is automatically encrypted before persistence and decrypted when needed
    * via the transient field.
    */
@@ -116,23 +116,23 @@ public class Enrollment {
   private String encryptedIntegrationPrivateKey;
 
   /**
-   * Decrypted Ed25519 private key seed for integration communication (transient, not persisted).
+   * Decrypted EC P-256 private key for integration communication (transient, not persisted).
    *
-   * <p>This transient field holds the decrypted Ed25519 private key seed (32 bytes raw, Base64
+   * <p>This transient field holds the decrypted EC P-256 private key (PKCS#8 format, Base64
    * encoded) in memory. It is populated automatically when {@link #getIntegrationPrivateKey()} is
    * called. This separation prevents Hibernate dirty checking from triggering re-encryption cycles.
    */
   @Transient private String integrationPrivateKey;
 
   /**
-   * Ed25519 public key for integration communication (Base64 encoded, 32 bytes raw). Used for
+   * EC P-256 public key for integration communication (Base64 encoded, X.509 format). Used for
    * verifying messages from the integration.
    */
   @Column(name = "integration_public_key", columnDefinition = "TEXT")
   private String integrationPublicKey;
 
   /**
-   * Ed25519 public key for the device for auth attempts (Base64 encoded, 32 bytes raw). Used for
+   * EC P-256 public key for the device for auth attempts (Base64 encoded, X.509 format). Used for
    * device authentication verification.
    */
   @Column(name = "device_public_key", columnDefinition = "TEXT")

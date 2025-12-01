@@ -63,10 +63,10 @@ class SignatureServiceTest {
     EzkeyCoreProperties ezkeyCoreProperties = new EzkeyCoreProperties();
     signatureService = new SignatureService(ezkeyCoreProperties);
 
-    // Generate Ed25519 key pair for testing via service API
-    Ed25519KeyPair ed25519KeyPair = signatureService.generateEd25519KeyPair();
-    base64PrivateKey = ed25519KeyPair.base64PrivateKey();
-    base64PublicKey = ed25519KeyPair.base64PublicKey();
+    // Generate EC P-256 key pair for testing via service API
+    ECP256KeyPair ecp256KeyPair = signatureService.generateECP256KeyPair();
+    base64PrivateKey = ecp256KeyPair.base64PrivateKey();
+    base64PublicKey = ecp256KeyPair.base64PublicKey();
 
     // Test data
     testData = "Signature test payload for Ezkey";
@@ -255,8 +255,8 @@ class SignatureServiceTest {
   }
 
   @Test
-  @DisplayName("Should generate consistent signatures for same data")
-  void testConsistentSignaturesForSameData() throws Exception {
+  @DisplayName("Should generate valid signatures for same data (ECDSA uses random nonce)")
+  void testValidSignaturesForSameData() throws Exception {
     // Arrange
     String data = "Identical data for consistency test";
 
@@ -265,14 +265,24 @@ class SignatureServiceTest {
     String signature2 = signatureService.generateSignature(data, base64PrivateKey);
 
     // Assert
-    assertTrue(signature1.equals(signature2), "Signatures should be identical for the same data");
+    // ECDSA uses a random nonce (k) for each signature, so signatures will differ
+    // However, both signatures should be valid for the same data
+    assertFalse(signature1.equals(signature2), "ECDSA signatures should differ due to random nonce");
+    
+    // Both signatures should validate correctly
+    assertTrue(
+        signatureService.validateSignature(data, signature1, base64PublicKey),
+        "First signature should be valid");
+    assertTrue(
+        signatureService.validateSignature(data, signature2, base64PublicKey),
+        "Second signature should be valid");
   }
 
   @Test
-  @DisplayName("Should generate Ed25519 key pair via service")
-  void testGenerateEd25519KeyPair() {
+  @DisplayName("Should generate EC P-256 key pair via service")
+  void testGenerateECP256KeyPair() {
     // Act
-    Ed25519KeyPair pair = signatureService.generateEd25519KeyPair();
+    ECP256KeyPair pair = signatureService.generateECP256KeyPair();
     // Assert
     assertTrue(
         pair.base64PrivateKey() != null && !pair.base64PrivateKey().isEmpty(),

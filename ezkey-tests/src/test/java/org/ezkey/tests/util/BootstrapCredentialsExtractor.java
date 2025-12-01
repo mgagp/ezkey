@@ -131,6 +131,7 @@ public class BootstrapCredentialsExtractor {
    * Loads bootstrap credentials from saved file if available.
    *
    * <p>Checks if credentials file exists and loads it, otherwise extracts from logs.
+   * Validates that the token has the correct format (3 parts separated by dots).
    *
    * @return BootstrapCredentials from file or logs
    */
@@ -140,7 +141,30 @@ public class BootstrapCredentialsExtractor {
     if (Files.exists(credentialsPath)) {
       try {
         log.info("Loading bootstrap credentials from file: {}", CREDENTIALS_FILE_PATH);
-        return loadCredentialsFromFile(credentialsPath);
+        BootstrapCredentials credentials = loadCredentialsFromFile(credentialsPath);
+        
+        // Validate token format before using cached credentials
+        String token = credentials.enrollmentProofToken();
+        if (token != null) {
+          String[] parts = token.split("\\.");
+          if (parts.length != 3) {
+            log.warn(
+                "Cached token has invalid format (expected 3 parts, got {}). Re-extracting from logs.",
+                parts.length);
+            log.warn("Token (first 100 chars): {}", 
+                token.length() > 100 ? token.substring(0, 100) + "..." : token);
+            // Delete invalid cache file and re-extract
+            try {
+              Files.delete(credentialsPath);
+              log.info("Deleted invalid credentials cache file");
+            } catch (IOException e) {
+              log.warn("Failed to delete invalid cache file: {}", e.getMessage());
+            }
+            return extractCredentials();
+          }
+        }
+        
+        return credentials;
       } catch (Exception e) {
         log.warn("Failed to load credentials from file, extracting from logs: {}", e.getMessage());
       }
@@ -218,6 +242,11 @@ public class BootstrapCredentialsExtractor {
       throw new IllegalStateException("Enrollment Proof Token not found in logs");
     }
     String enrollmentProofToken = tokenMatcher.group(1).trim(); // Remove any trailing whitespace
+    
+    // Debug: Log the raw matched string to see if it's complete
+    String rawMatch = tokenMatcher.group(0);
+    log.debug("Raw regex match: '{}'", rawMatch);
+    log.debug("Extracted token (group 1): '{}'", enrollmentProofToken);
     log.debug("Extracted enrollment proof token length: {} chars", enrollmentProofToken.length());
     log.debug("Extracted enrollment proof token (first 50): {}...", 
         enrollmentProofToken.length() > 50 

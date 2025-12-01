@@ -16,13 +16,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.ezkey.crypto.dto.Ed25519KeyPairResponseDto;
+import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
 import org.ezkey.crypto.dto.ProofTokenResponseDto;
 import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
 import org.ezkey.crypto.dto.ValidateSignatureRequestDto;
 import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
-import org.ezkey.signature.Ed25519KeyPair;
+import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <ul>
  *   <li>Generating cryptographically secure proof tokens.
- *   <li>Creating Ed25519 key pairs for device simulation.
+ *   <li>Creating EC P-256 key pairs for device simulation.
  *   <li>Signing data with a private key.
  *   <li>Validating signatures with a public key.
  * </ul>
@@ -78,20 +78,22 @@ public class CryptoController {
   }
 
   @Operation(
-      summary = "Generate Ed25519 key pair",
+      summary = "Generate EC P-256 key pair",
       description =
-          "Generates a new Ed25519 key pair for use in device simulation. Ed25519 keys are always"
-              + " 32 bytes (256 bits) for both private and public keys.")
+          "Generates a new EC P-256 (secp256r1) key pair for use in device simulation. "
+              + "Private key is in PKCS#8 format and public key is in X.509 format.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "Ed25519 key pair generated successfully"),
-        @ApiResponse(responseCode = "500", description = "Key generation failed")
+        @ApiResponse(responseCode = "200", 
+            description = "EC P-256 key pair generated successfully"),
+        @ApiResponse(responseCode = "500", 
+            description = "Key generation failed")
       })
   @GetMapping("/keypair")
-  public ResponseEntity<Ed25519KeyPairResponseDto> generateKeyPair() {
-    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
+  public ResponseEntity<ECP256KeyPairResponseDto> generateKeyPair() {
+    ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
     var response =
-        new Ed25519KeyPairResponseDto(
+        new ECP256KeyPairResponseDto(
             keyPair.base64PrivateKey(), keyPair.base64PublicKey());
     return ResponseEntity.ok(response);
   }
@@ -99,7 +101,9 @@ public class CryptoController {
   @Operation(
       summary = "Sign data with private key",
       description =
-          "Signs the provided data using Ed25519 signature with the given private key seed")
+          "Signs the provided data using EC P-256 ECDSA-SHA256 signature " 
+          +
+          "with the given private key")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Data signed successfully"),
@@ -113,14 +117,16 @@ public class CryptoController {
       @Valid @RequestBody SignDataRequestDto request) {
     String signature =
         signatureService.generateSignature(request.getData(), request.getPrivateKey());
-    var response = new SignDataResponseDto(signature, request.getData(), "Ed25519");
+    var response = new SignDataResponseDto(signature, request.getData(), "EC_P256");
     return ResponseEntity.ok(response);
   }
 
   @Operation(
       summary = "Validate signature",
       description =
-          "Validates an Ed25519 signature against the original data using the provided public key")
+          "Validates an EC P-256 ECDSA-SHA256 signature " 
+          + 
+          "against the original data using the provided public key")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Signature validation completed"),
@@ -137,7 +143,7 @@ public class CryptoController {
             request.getData(), request.getSignature(), request.getPublicKey());
 
     String message = isValid ? "Signature is valid" : "Signature is invalid";
-    var response = new ValidateSignatureResponseDto(isValid, message, "Ed25519");
+    var response = new ValidateSignatureResponseDto(isValid, message, "EC_P256");
     return ResponseEntity.ok(response);
   }
 }

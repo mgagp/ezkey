@@ -13,14 +13,26 @@ package org.ezkey.signature;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
+import java.math.BigInteger;
+import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
-import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
-import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
-import org.bouncycastle.crypto.signers.Ed25519Signer;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.ec.CustomNamedCurves;
+import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
+import org.bouncycastle.crypto.params.ECKeyGenerationParameters;
+import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
+import org.bouncycastle.crypto.params.ECPublicKeyParameters;
+import org.bouncycastle.crypto.params.ECDomainParameters;
+import org.bouncycastle.crypto.signers.ECDSASigner;
+import org.bouncycastle.crypto.util.PrivateKeyFactory;
+import org.bouncycastle.crypto.util.PublicKeyFactory;
+import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
+import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.slf4j.Logger;
@@ -31,14 +43,15 @@ import org.springframework.stereotype.Service;
  * Cryptographic signature service providing digital signature generation and validation.
  *
  * <p>This service is a fundamental component of the Ezkey security architecture, implementing
- * Ed25519 digital signatures. It provides the cryptographic foundation for ensuring data
- * integrity, authenticity, and non-repudiation across the Ezkey platform.
+ * EC P-256 (secp256r1) digital signatures with ECDSA-SHA256. It provides the cryptographic
+ * foundation for ensuring data integrity, authenticity, and non-repudiation across the Ezkey
+ * platform.
  *
  * <p><b>Cryptographic Implementation:</b>
  *
  * <ul>
- *   <li><b>Algorithm:</b> Ed25519 (pure Ed25519, not EdDSA)
- *   <li><b>Key Format:</b> 32-byte private key seed, 32-byte public key (Ed25519 standard)
+ *   <li><b>Algorithm:</b> EC P-256 (secp256r1) with ECDSA-SHA256
+ *   <li><b>Key Format:</b> PKCS#8 private key, X.509 public key (standard formats)
  *   <li><b>Encoding:</b> Base64 for key and signature representation
  *   <li><b>Security Level:</b> Production-grade cryptographic strength (equivalent to RSA-3072)
  * </ul>
@@ -55,6 +68,8 @@ import org.springframework.stereotype.Service;
  * <p><b>Usage Context:</b> This service is used throughout the Ezkey platform for securing API
  * communications, validating enrollment requests, and ensuring the integrity of authentication
  * attempts. It forms the cryptographic backbone that enables secure MFA and passkey operations.
+ * This implementation is compatible with mobile applications using native hardware-backed EC P-256
+ * keys.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -64,9 +79,9 @@ import org.springframework.stereotype.Service;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.bouncycastle.crypto.signers.Ed25519Signer
- * @see org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
- * @see org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+ * @see org.bouncycastle.crypto.signers.ECDSASigner
+ * @see org.bouncycastle.crypto.params.ECPrivateKeyParameters
+ * @see org.bouncycastle.crypto.params.ECPublicKeyParameters
  */
 @Service
 public class SignatureService {
@@ -77,7 +92,33 @@ public class SignatureService {
 
   private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
 
-  private static final String ED25519_ALGORITHM = "Ed25519";
+  private static final String EC_P256_ALGORITHM = "EC_P256";
+  
+  /**
+   * Gets EC P-256 domain parameters (secp256r1).
+   *
+   * @return EC domain parameters for secp256r1 curve
+   * @throws IllegalStateException if curve parameters cannot be obtained
+   */
+  private static ECDomainParameters getECP256DomainParameters() {
+    // Try CustomNamedCurves first (optimized implementation)
+    X9ECParameters ecParams = CustomNamedCurves.getByName("secp256r1");
+    if (ecParams == null) {
+      // Fallback: use standard curve (should always be available)
+      // secp256r1 is a standard NIST curve, should be in CustomNamedCurves
+      throw new IllegalStateException(
+          "Failed to get EC P-256 domain parameters. "
+          + "BouncyCastle EC curve 'secp256r1' not available. "
+          + "Please ensure BouncyCastle is properly configured.");
+    }
+    return new ECDomainParameters(
+        ecParams.getCurve(),
+        ecParams.getG(),
+        ecParams.getN(),
+        ecParams.getH(),
+        ecParams.getSeed()
+    );
+  }
 
   // Reuse a single SecureRandom instance
   private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
@@ -101,20 +142,22 @@ public class SignatureService {
   }
 
   /**
-   * Generates a digital signature for the provided data using Ed25519 private key.
+   * Generates a digital signature for the provided data using EC P-256 private key.
    *
    * <p>This method creates a cryptographically secure digital signature that can be used to verify
-   * the authenticity and integrity of the original data. The signature is generated using Ed25519,
-   * providing production-grade security with compact signatures.
+   * the authenticity and integrity of the original data. The signature is generated using EC P-256
+   * with ECDSA-SHA256, providing production-grade security compatible with mobile hardware-backed
+   * keys.
    *
    * <p><b>Cryptographic Process:</b>
    *
    * <ol>
-   *   <li>Decode the Base64-encoded private key seed (32 bytes)
-   *   <li>Create Ed25519 private key parameters from seed
-   *   <li>Initialize Ed25519 signer
+   *   <li>Decode the Base64-encoded private key (PKCS#8 format)
+   *   <li>Create EC P-256 private key parameters
+   *   <li>Initialize ECDSA signer with SHA-256 digest
    *   <li>Sign the data bytes
-   *   <li>Return Base64-encoded signature (64 bytes)
+   *   <li>Encode signature as ASN.1 DER format
+   *   <li>Return Base64-encoded signature
    * </ol>
    *
    * <p><b>Security Considerations:</b>
@@ -126,46 +169,40 @@ public class SignatureService {
    * </ul>
    *
    * @param data the data to be signed (typically JSON payload or message content)
-   * @param base64PrivateKey the Base64-encoded Ed25519 private key seed (32 bytes raw) or PKCS#8
-   *     format
-   * @return Base64-encoded digital signature (64 bytes raw)
+   * @param base64PrivateKey the Base64-encoded EC P-256 private key (PKCS#8 format)
+   * @return Base64-encoded digital signature (ASN.1 DER encoded ECDSA signature)
    * @throws RuntimeException if signature generation fails due to cryptographic errors
-   * @see org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
-   * @see org.bouncycastle.crypto.signers.Ed25519Signer
+   * @see org.bouncycastle.crypto.params.ECPrivateKeyParameters
+   * @see org.bouncycastle.crypto.signers.ECDSASigner
    */
   public String generateSignature(String data, String base64PrivateKey) {
     Objects.requireNonNull(data, "Data cannot be null");
     Objects.requireNonNull(base64PrivateKey, "Private key cannot be null");
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-      // Handle both raw 32-byte keys and PKCS#8 encoded keys
-      Ed25519PrivateKeyParameters privateKeyParams;
-      if (keyBytes.length == 32) {
-        // Raw 32-byte Ed25519 private key seed
-        privateKeyParams = new Ed25519PrivateKeyParameters(keyBytes, 0);
-      } else {
-        // PKCS#8 encoded key - extract the raw key bytes
-        PrivateKeyInfo privateKeyInfo = PrivateKeyInfo.getInstance(keyBytes);
-        byte[] rawKey = privateKeyInfo.getPrivateKey().getOctets();
-        if (rawKey.length != 32) {
-          throw new IllegalArgumentException(
-              "Ed25519 private key must be 32 bytes, got: " + rawKey.length);
-        }
-        privateKeyParams = new Ed25519PrivateKeyParameters(rawKey, 0);
-      }
-      Ed25519Signer signer = new Ed25519Signer();
+      ECPrivateKeyParameters privateKeyParams = 
+          (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
+      
+      ECDSASigner signer = new ECDSASigner();
       signer.init(true, privateKeyParams);
+      
       byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-      signer.update(dataBytes, 0, dataBytes.length);
-      byte[] signature = signer.generateSignature();
-      return Base64.getEncoder().encodeToString(signature);
+      // Hash the data with SHA-256 before signing (ECDSA requires hashed input)
+      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(dataBytes);
+      
+      BigInteger[] signature = signer.generateSignature(hash);
+      
+      // Encode signature as ASN.1 DER format
+      byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
+      return Base64.getEncoder().encodeToString(derSignature);
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate signature", e);
     }
   }
 
   /**
-   * Validates a digital signature against the provided data using Ed25519 public key.
+   * Validates a digital signature against the provided data using EC P-256 public key.
    *
    * <p>This method verifies the authenticity and integrity of data by validating its associated
    * digital signature. It confirms that the data was signed by the holder of the corresponding
@@ -174,10 +211,11 @@ public class SignatureService {
    * <p><b>Cryptographic Process:</b>
    *
    * <ol>
-   *   <li>Decode the Base64-encoded public key (32 bytes)
-   *   <li>Create Ed25519 public key parameters
-   *   <li>Initialize Ed25519 verifier
-   *   <li>Verify the signature against the data
+   *   <li>Decode the Base64-encoded public key (X.509 format)
+   *   <li>Create EC P-256 public key parameters
+   *   <li>Decode signature from ASN.1 DER format
+   *   <li>Hash the data with SHA-256
+   *   <li>Verify the signature against the hash
    *   <li>Return verification result
    * </ol>
    *
@@ -190,40 +228,35 @@ public class SignatureService {
    * </ul>
    *
    * @param data the original data that was signed
-   * @param signatureBase64 the Base64-encoded digital signature to validate (64 bytes raw)
-   * @param base64PublicKey the Base64-encoded Ed25519 public key (32 bytes raw) or X.509 format
+   * @param signatureBase64 the Base64-encoded digital signature to validate (ASN.1 DER encoded)
+   * @param base64PublicKey the Base64-encoded EC P-256 public key (X.509 format)
    * @return <code>true</code> if the signature is valid, <code>false</code> otherwise
-   * @see org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-   * @see org.bouncycastle.crypto.signers.Ed25519Signer
+   * @see org.bouncycastle.crypto.params.ECPublicKeyParameters
+   * @see org.bouncycastle.crypto.signers.ECDSASigner
    */
   public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
-      // Handle both raw 32-byte keys and X.509 encoded keys
-      Ed25519PublicKeyParameters publicKeyParams;
-      if (keyBytes.length == 32) {
-        // Raw 32-byte Ed25519 public key
-        publicKeyParams = new Ed25519PublicKeyParameters(keyBytes, 0);
-      } else {
-        // X.509 encoded key - extract the raw key bytes
-        SubjectPublicKeyInfo publicKeyInfo = SubjectPublicKeyInfo.getInstance(keyBytes);
-        byte[] rawKey = publicKeyInfo.getPublicKeyData().getOctets();
-        if (rawKey.length != 32) {
-          logger.warn("Ed25519 public key must be 32 bytes, got: {}", rawKey.length);
-          return false;
-        }
-        publicKeyParams = new Ed25519PublicKeyParameters(rawKey, 0);
-      }
-      Ed25519Signer verifier = new Ed25519Signer();
-      verifier.init(false, publicKeyParams);
-      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-      verifier.update(dataBytes, 0, dataBytes.length);
+      // Handle X.509 encoded public keys (standard format from mobile)
+      ECPublicKeyParameters publicKeyParams = 
+          (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
+      
       byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
-      if (signatureBytes.length != 64) {
-        logger.warn("Ed25519 signature must be 64 bytes, got: {}", signatureBytes.length);
+      BigInteger[] signature = decodeDERSignature(signatureBytes);
+      if (signature == null) {
+        logger.warn("Invalid signature format: failed to decode ASN.1 DER");
         return false;
       }
-      return verifier.verifySignature(signatureBytes);
+      
+      ECDSASigner verifier = new ECDSASigner();
+      verifier.init(false, publicKeyParams);
+      
+      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+      // Hash the data with SHA-256 before verification (ECDSA requires hashed input)
+      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(dataBytes);
+      
+      return verifier.verifySignature(hash, signature[0], signature[1]);
     } catch (Exception e) {
       logger.debug("Signature validation failed", e);
       return false;
@@ -231,29 +264,77 @@ public class SignatureService {
   }
 
   /**
-   * Generates a new Ed25519 key pair and returns it as Base64-encoded strings.
+   * Generates a new EC P-256 key pair and returns it as Base64-encoded strings.
    *
-   * <p>The generated private key is a 32-byte seed (Ed25519 standard) and the public key is a
-   * 32-byte public key (Ed25519 standard). Keys are generated using BouncyCastle's Ed25519
-   * implementation and encoded with Base64 for storage/transmission.
+   * <p>The generated private key is in PKCS#8 format and the public key is in X.509 format
+   * (SubjectPublicKeyInfo). Keys are generated using BouncyCastle's EC P-256 implementation
+   * with secp256r1 curve and encoded with Base64 for storage/transmission.
    *
-   * @return an immutable {@link Ed25519KeyPair} containing Base64-encoded keys
+   * @return an immutable {@link ECP256KeyPair} containing Base64-encoded keys
    * @throws RuntimeException if key generation fails due to cryptographic errors
    */
-  public Ed25519KeyPair generateEd25519KeyPair() {
+  public ECP256KeyPair generateECP256KeyPair() {
     try {
-      Ed25519KeyPairGenerator keyGen = new Ed25519KeyPairGenerator();
-      keyGen.init(new Ed25519KeyGenerationParameters(secureRandom));
+      ECKeyPairGenerator keyGen = new ECKeyPairGenerator();
+      ECDomainParameters domainParams = getECP256DomainParameters();
+      keyGen.init(new ECKeyGenerationParameters(domainParams, secureRandom));
       AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
-      Ed25519PrivateKeyParameters privateKey =
-          (Ed25519PrivateKeyParameters) keyPair.getPrivate();
-      Ed25519PublicKeyParameters publicKey = (Ed25519PublicKeyParameters) keyPair.getPublic();
-      // Get raw 32-byte keys
-      String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKey.getEncoded());
-      String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
-      return new Ed25519KeyPair(privateKeyBase64, publicKeyBase64);
+      ECPrivateKeyParameters privateKey = (ECPrivateKeyParameters) keyPair.getPrivate();
+      ECPublicKeyParameters publicKey = (ECPublicKeyParameters) keyPair.getPublic();
+      
+      // Encode private key as PKCS#8
+      PrivateKeyInfo privateKeyInfo = PrivateKeyInfoFactory.createPrivateKeyInfo(privateKey);
+      String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKeyInfo.getEncoded());
+      
+      // Encode public key as X.509 SubjectPublicKeyInfo
+      SubjectPublicKeyInfo publicKeyInfo = SubjectPublicKeyInfoFactory.
+          createSubjectPublicKeyInfo(publicKey);
+
+      String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyInfo.getEncoded());
+      
+      return new ECP256KeyPair(privateKeyBase64, publicKeyBase64);
     } catch (Exception e) {
-      throw new RuntimeException("Ed25519 key pair generation failed", e);
+      throw new RuntimeException("EC P-256 key pair generation failed", e);
+    }
+  }
+  
+  /**
+   * Encodes an ECDSA signature (r, s) as ASN.1 DER format.
+   *
+   * @param r the r component of the signature
+   * @param s the s component of the signature
+   * @return ASN.1 DER encoded signature bytes
+   * @throws RuntimeException if encoding fails
+   */
+  private byte[] encodeDERSignature(BigInteger r, BigInteger s) {
+    try {
+      ASN1EncodableVector v = new ASN1EncodableVector();
+      v.add(new ASN1Integer(r));
+      v.add(new ASN1Integer(s));
+      return new DERSequence(v).getEncoded();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to encode DER signature", e);
+    }
+  }
+  
+  /**
+   * Decodes an ASN.1 DER encoded ECDSA signature to (r, s) components.
+   *
+   * @param derSignature ASN.1 DER encoded signature bytes
+   * @return array containing [r, s] components, or null if decoding fails
+   */
+  private BigInteger[] decodeDERSignature(byte[] derSignature) {
+    try {
+      ASN1Sequence seq = ASN1Sequence.getInstance(derSignature);
+      if (seq.size() != 2) {
+        return null;
+      }
+      BigInteger r = ASN1Integer.getInstance(seq.getObjectAt(0)).getValue();
+      BigInteger s = ASN1Integer.getInstance(seq.getObjectAt(1)).getValue();
+      return new BigInteger[] {r, s};
+    } catch (Exception e) {
+      logger.debug("Failed to decode DER signature", e);
+      return null;
     }
   }
 

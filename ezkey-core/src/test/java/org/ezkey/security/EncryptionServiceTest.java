@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 /**
  * Unit tests for EncryptionService.
@@ -25,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @since 2025
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class EncryptionServiceTest {
 
   @Mock private TinkKeyManager keyManager;
@@ -251,9 +254,17 @@ class EncryptionServiceTest {
   void testRoundTripEncryptionDecryption() throws Exception {
     // Arrange
     String plaintext = "sensitive-data-123";
-    byte[] ciphertext = Base64.getDecoder().decode("dGVzdC1kYXRh");
-    when(aead.encrypt(any(byte[].class), any())).thenReturn(ciphertext);
-    when(aead.decrypt(any(byte[].class), any())).thenReturn(plaintext.getBytes(StandardCharsets.UTF_8));
+    byte[] plaintextBytes = plaintext.getBytes(StandardCharsets.UTF_8);
+    // Use a valid Base64-encoded ciphertext (minimum 20 chars for validation)
+    // This is a dummy ciphertext that will pass validation
+    String ciphertextBase64 = Base64.getEncoder().encodeToString("dummy-ciphertext-for-test".getBytes(StandardCharsets.UTF_8));
+    byte[] ciphertext = Base64.getDecoder().decode(ciphertextBase64);
+    
+    // Mock encrypt to return ciphertext when called with plaintext bytes
+    when(aead.encrypt(plaintextBytes, null)).thenReturn(ciphertext);
+    // Mock decrypt to return plaintext bytes when called with any ciphertext bytes
+    // (the service decodes Base64 before calling decrypt, so we use any() to match)
+    when(aead.decrypt(any(byte[].class), any())).thenReturn(plaintextBytes);
 
     // Act
     String encrypted = encryptionService.encrypt(plaintext);

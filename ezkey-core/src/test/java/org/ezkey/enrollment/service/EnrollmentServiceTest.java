@@ -34,7 +34,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.signature.Ed25519KeyPair;
+import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -100,7 +100,7 @@ class EnrollmentServiceTest {
   private EnrollmentVerifyRequest verifyRequest;
   private Enrollment enrollment;
   private Integration integration;
-  private Ed25519KeyPair ed25519KeyPair;
+  private ECP256KeyPair ecp256KeyPair;
 
   @BeforeEach
   void setUp() {
@@ -145,8 +145,8 @@ class EnrollmentServiceTest {
     integration.setId(123);
     integration.setLogo("test-logo");
 
-    // Setup Ed25519 key pair
-    ed25519KeyPair = new Ed25519KeyPair("private-key", "public-key");
+    // Setup EC P-256 key pair
+    ecp256KeyPair = new ECP256KeyPair("private-key", "public-key");
   }
 
   // ===== CREATE ENDPOINT TESTS =====
@@ -156,7 +156,7 @@ class EnrollmentServiceTest {
   void create_WhenValidRequest_ShouldCreateEnrollmentSuccessfully() {
     // Arrange
     when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
-    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
+    when(signatureService.generateECP256KeyPair()).thenReturn(ecp256KeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
     when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 
@@ -170,7 +170,7 @@ class EnrollmentServiceTest {
 
     // Verify service interactions
     verify(signatureService, times(1)).generateProofToken();
-    verify(signatureService, times(1)).generateEd25519KeyPair();
+    verify(signatureService, times(1)).generateECP256KeyPair();
     verify(signatureService, times(1)).generateSecureChallenge(6);
     verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
   }
@@ -198,7 +198,7 @@ class EnrollmentServiceTest {
     // Arrange
     createRequest.setName("  Test Enrollment  ");
     when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
-    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
+    when(signatureService.generateECP256KeyPair()).thenReturn(ecp256KeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
     when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 
