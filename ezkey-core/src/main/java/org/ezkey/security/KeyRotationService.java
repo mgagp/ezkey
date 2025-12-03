@@ -210,6 +210,13 @@ public class KeyRotationService {
   /**
    * Check if key rotation is due based on primary key age.
    *
+   * <p><b>Defensive Measures:</b>
+   *
+   * <ul>
+   *   <li>Detects and corrects multiple PRIMARY keys before checking rotation
+   *   <li>Uses keyset primary key as source of truth if database inconsistency detected
+   * </ul>
+   *
    * @return true if rotation is due, false otherwise
    */
   public boolean isRotationDue() {
@@ -217,8 +224,18 @@ public class KeyRotationService {
       return false;
     }
 
-    // Get current primary key from database
+    // DEFENSIVE: Check for multiple PRIMARY keys and correct if needed
     List<EncryptionKey> primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (primaryKeys.size() > 1) {
+      logger.warn(
+          "⚠️  Found {} PRIMARY keys in database (expected 1). Correcting inconsistency...",
+          primaryKeys.size());
+      long keysetPrimaryKeyId = keyManager.getCurrentPrimaryKeyId();
+      ensureSinglePrimaryKey(keysetPrimaryKeyId, "ROTATION_CHECK_CORRECTION");
+      // Re-fetch after correction
+      primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    }
+
     if (primaryKeys.isEmpty()) {
       logger.warn("No PRIMARY key found in database, rotation check cannot proceed");
       return false;
@@ -246,11 +263,20 @@ public class KeyRotationService {
    * <p>This method performs the actual rotation:
    *
    * <ol>
+   *   <li>Corrects multiple PRIMARY keys if detected (defensive measure)
    *   <li>Creates backup if configured
    *   <li>Rotates keyset using TinkKeyManager
    *   <li>Syncs key metadata to database
    *   <li>Emits audit log events
    * </ol>
+   *
+   * <p><b>Defensive Measures:</b>
+   *
+   * <ul>
+   *   <li>Detects and corrects multiple PRIMARY keys before rotation
+   *   <li>Uses keyset primary key as source of truth
+   *   <li>Verifies exactly one PRIMARY key after rotation
+   * </ul>
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
    * @return the new primary key ID
@@ -260,9 +286,18 @@ public class KeyRotationService {
   public long introduceNewKey(String createdBy) throws Exception {
     logger.info("🔄 Introducing new encryption key (triggered by: {})", createdBy);
 
-    // Get current primary key before rotation
+    // DEFENSIVE: Check for multiple PRIMARY keys and correct if needed BEFORE rotation
     List<EncryptionKey> primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
     Long oldPrimaryKeyId = null;
+    if (primaryKeys.size() > 1) {
+      logger.warn(
+          "⚠️  Found {} PRIMARY keys before rotation (expected 1). Correcting inconsistency...",
+          primaryKeys.size());
+      long currentKeysetPrimaryId = keyManager.getCurrentPrimaryKeyId();
+      ensureSinglePrimaryKey(currentKeysetPrimaryId, "PRE_ROTATION_CORRECTION");
+      // Re-fetch after correction
+      primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    }
     if (!primaryKeys.isEmpty()) {
       oldPrimaryKeyId = primaryKeys.get(0).getKeyId();
     }
@@ -294,6 +329,14 @@ public class KeyRotationService {
    * <p>This method is used when the keyset exists but the database table is empty. It creates
    * records for all keys in the keyset, marking the primary key as PRIMARY and others as ENABLED.
    *
+   * <p><b>Defensive Measures:</b>
+   *
+   * <ul>
+   *   <li>Demotes ALL existing PRIMARY keys before synchronization (prevents multiple PRIMARY)
+   *   <li>Verifies exactly one PRIMARY key exists after sync
+   *   <li>Logs warnings/errors if data consistency issues are detected
+   * </ul>
+   *
    * <p><b>Note:</b> Since we don't know the actual introduction dates, we use the current timestamp
    * and add a note indicating this is a retroactive sync.
    *
@@ -310,6 +353,25 @@ public class KeyRotationService {
 
     String algorithm = properties.getAlgorithm();
     OffsetDateTime now = OffsetDateTime.now();
+
+    // DEFENSIVE: Demote ALL existing PRIMARY keys before sync (prevents multiple PRIMARY)
+    List<EncryptionKey> existingPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (!existingPrimaryKeys.isEmpty()) {
+      logger.warn(
+          "Found {} existing PRIMARY key(s) before sync. Demoting all except keyset primary {}",
+          existingPrimaryKeys.size(),
+          Long.toUnsignedString(primaryKeyId));
+      for (EncryptionKey existingPrimary : existingPrimaryKeys) {
+        if (!existingPrimary.getKeyId().equals(primaryKeyId)) {
+          logger.debug(
+              "Demoting existing PRIMARY key {} to ENABLED before sync",
+              Long.toUnsignedString(existingPrimary.getKeyId()));
+          existingPrimary.setKeyStatus(KeyStatus.ENABLED);
+          existingPrimary.setPromotedPrimaryAt(null);
+          keyRepository.save(existingPrimary);
+        }
+      }
+    }
 
     // Get all key IDs from keyset
     var allKeyIds = keyManager.getAllKeyIds();
@@ -337,7 +399,16 @@ public class KeyRotationService {
             "Retroactive sync: Keyset existed before database tracking was enabled. "
                 + "Actual introduction date unknown.");
       } else {
-        key.setKeyStatus(KeyStatus.ENABLED);
+        // DEFENSIVE: Ensure non-primary keys are ENABLED, not PRIMARY
+        if (key.getKeyStatus() == KeyStatus.PRIMARY) {
+          logger.warn(
+              "Found unexpected PRIMARY key {} during sync, demoting to ENABLED",
+              Long.toUnsignedString(keyId));
+          key.setKeyStatus(KeyStatus.ENABLED);
+          key.setPromotedPrimaryAt(null);
+        } else {
+          key.setKeyStatus(KeyStatus.ENABLED);
+        }
       }
 
       if (key.getIntroducedAt() == null) {
@@ -350,6 +421,25 @@ public class KeyRotationService {
           keyId,
           Long.toUnsignedString(keyId),
           savedKey.getKeyStatus());
+    }
+
+    // DEFENSIVE: Verify exactly one PRIMARY key exists after sync
+    List<EncryptionKey> finalPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (finalPrimaryKeys.size() != 1) {
+      logger.error(
+          "❌ CRITICAL: Expected exactly 1 PRIMARY key after sync, but found {}. "
+              + "This is a data consistency issue!",
+          finalPrimaryKeys.size());
+    } else if (!finalPrimaryKeys.get(0).getKeyId().equals(primaryKeyId)) {
+      logger.error(
+          "❌ CRITICAL: PRIMARY key mismatch after sync! Expected {}, but found {}",
+          Long.toUnsignedString(primaryKeyId),
+          Long.toUnsignedString(finalPrimaryKeys.get(0).getKeyId()));
+    } else {
+      logger.debug(
+          "✅ Verification passed: Exactly one PRIMARY key exists: {} (unsigned: {})",
+          primaryKeyId,
+          Long.toUnsignedString(primaryKeyId));
     }
 
     // Verify synchronization by counting keys in database
@@ -390,6 +480,7 @@ public class KeyRotationService {
    *   <li>Creates/updates records for all keys in the keyset
    *   <li>Sets correct status (PRIMARY, ENABLED)
    *   <li>Updates timestamps (introduced_at, promoted_primary_at)
+   *   <li>Ensures only ONE key has PRIMARY status (the new primary key)
    * </ul>
    *
    * @param newPrimaryKeyId the new primary key ID
@@ -403,7 +494,23 @@ public class KeyRotationService {
     String algorithm = properties.getAlgorithm();
     OffsetDateTime now = OffsetDateTime.now();
 
-    // Update or create record for new primary key
+    // FIRST: Demote ALL existing PRIMARY keys to ENABLED (safety measure)
+    // This ensures we don't have multiple PRIMARY keys
+    List<EncryptionKey> allPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    for (EncryptionKey existingPrimaryKey : allPrimaryKeys) {
+      // Don't demote the new primary key if it already exists
+      if (!existingPrimaryKey.getKeyId().equals(newPrimaryKeyId)) {
+        logger.debug(
+            "Demoting existing PRIMARY key {} to ENABLED (new primary: {})",
+            existingPrimaryKey.getKeyId(),
+            newPrimaryKeyId);
+        existingPrimaryKey.setKeyStatus(KeyStatus.ENABLED);
+        existingPrimaryKey.setPromotedPrimaryAt(null);
+        keyRepository.save(existingPrimaryKey);
+      }
+    }
+
+    // SECOND: Update or create record for new primary key
     EncryptionKey newKey =
         keyRepository
             .findById(newPrimaryKeyId)
@@ -414,21 +521,31 @@ public class KeyRotationService {
     if (newKey.getIntroducedAt() == null) {
       newKey.setIntroducedAt(now);
     }
-    keyRepository.save(newKey);
+    EncryptionKey savedNewKey = keyRepository.save(newKey);
+    logger.debug(
+        "✅ New primary key {} (unsigned: {}) saved with status: {}",
+        newPrimaryKeyId,
+        Long.toUnsignedString(newPrimaryKeyId),
+        savedNewKey.getKeyStatus());
 
-    // Update old primary key to ENABLED
-    if (oldPrimaryKeyId != null) {
+    // THIRD: Update old primary key to ENABLED (if specified and different from new)
+    if (oldPrimaryKeyId != null && !oldPrimaryKeyId.equals(newPrimaryKeyId)) {
       keyRepository
           .findById(oldPrimaryKeyId)
           .ifPresent(
               oldKey -> {
-                oldKey.setKeyStatus(KeyStatus.ENABLED);
-                oldKey.setPromotedPrimaryAt(null); // Clear promotion timestamp
-                keyRepository.save(oldKey);
+                if (oldKey.getKeyStatus() == KeyStatus.PRIMARY) {
+                  logger.debug(
+                      "Demoting old primary key {} to ENABLED",
+                      Long.toUnsignedString(oldPrimaryKeyId));
+                  oldKey.setKeyStatus(KeyStatus.ENABLED);
+                  oldKey.setPromotedPrimaryAt(null);
+                  keyRepository.save(oldKey);
+                }
               });
     }
 
-    // Sync all other keys in keyset (mark as ENABLED if not already PRIMARY)
+    // FOURTH: Sync all other keys in keyset (ensure they are ENABLED, not PRIMARY)
     var allKeyIds = keyManager.getAllKeyIds();
     for (Long keyId : allKeyIds) {
       if (!keyId.equals(newPrimaryKeyId)) {
@@ -436,8 +553,11 @@ public class KeyRotationService {
             .findById(keyId)
             .ifPresentOrElse(
                 key -> {
-                  // Update existing key
+                  // Update existing key - ensure it's not PRIMARY
                   if (key.getKeyStatus() == KeyStatus.PRIMARY) {
+                    logger.warn(
+                        "Found unexpected PRIMARY key {} during sync, demoting to ENABLED",
+                        Long.toUnsignedString(keyId));
                     key.setKeyStatus(KeyStatus.ENABLED);
                     key.setPromotedPrimaryAt(null);
                     keyRepository.save(key);
@@ -450,6 +570,25 @@ public class KeyRotationService {
                   keyRepository.save(key);
                 });
       }
+    }
+
+    // VERIFY: Ensure only one PRIMARY key exists
+    List<EncryptionKey> finalPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (finalPrimaryKeys.size() != 1) {
+      logger.error(
+          "❌ CRITICAL: Expected exactly 1 PRIMARY key, but found {}. This is a data consistency"
+              + " issue!",
+          finalPrimaryKeys.size());
+    } else if (!finalPrimaryKeys.get(0).getKeyId().equals(newPrimaryKeyId)) {
+      logger.error(
+          "❌ CRITICAL: PRIMARY key mismatch! Expected {}, but found {}",
+          Long.toUnsignedString(newPrimaryKeyId),
+          Long.toUnsignedString(finalPrimaryKeys.get(0).getKeyId()));
+    } else {
+      logger.debug(
+          "✅ Verification passed: Exactly one PRIMARY key exists: {} (unsigned: {})",
+          newPrimaryKeyId,
+          Long.toUnsignedString(newPrimaryKeyId));
     }
 
     logger.debug("Keyset metadata synced to database");
@@ -543,6 +682,13 @@ public class KeyRotationService {
    *   <li>Older than auto-disable-days
    *   <li>All data has been re-encrypted (records_reencrypted >= records_encrypted)
    * </ul>
+   *
+   * <p><b>Defensive Measures:</b>
+   *
+   * <ul>
+   *   <li>Double-checks that key is not PRIMARY before disabling (safety net)
+   *   <li>Logs warning if PRIMARY key is somehow in the disable list
+   * </ul>
    */
   @Transactional
   public void cleanupOldKeys() {
@@ -557,6 +703,15 @@ public class KeyRotationService {
     List<EncryptionKey> keysToDisable = keyRepository.findKeysEligibleForDisable(cutoffDate);
 
     for (EncryptionKey key : keysToDisable) {
+      // DEFENSIVE: Double-check that key is not PRIMARY (safety net)
+      if (key.getKeyStatus() == KeyStatus.PRIMARY) {
+        logger.error(
+            "❌ CRITICAL: Attempted to disable PRIMARY key {}! This should never happen. "
+                + "Skipping disable operation for this key.",
+            Long.toUnsignedString(key.getKeyId()));
+        continue;
+      }
+
       // Only disable if all data has been re-encrypted
       if (key.getRecordsReencrypted() >= key.getRecordsEncrypted()) {
         key.setKeyStatus(KeyStatus.DISABLED);
@@ -590,12 +745,124 @@ public class KeyRotationService {
   /**
    * Get current primary encryption key from database.
    *
+   * <p><b>Defensive Measures:</b>
+   *
+   * <ul>
+   *   <li>Detects multiple PRIMARY keys and logs warning
+   *   <li>Uses keyset primary key as source of truth if database inconsistency detected
+   * </ul>
+   *
    * @return Optional containing the primary key if found
    */
   public java.util.Optional<EncryptionKey> getCurrentPrimaryKey() {
     List<EncryptionKey> primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (primaryKeys.size() > 1) {
+      logger.warn(
+          "⚠️  Found {} PRIMARY keys (expected 1). Using keyset primary as source of truth...",
+          primaryKeys.size());
+      if (keyManager.isInitialized()) {
+        long keysetPrimaryId = keyManager.getCurrentPrimaryKeyId();
+        ensureSinglePrimaryKey(keysetPrimaryId, "GET_CURRENT_PRIMARY_CORRECTION");
+        // Re-fetch after correction
+        primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+      }
+    }
     return primaryKeys.isEmpty()
         ? java.util.Optional.empty()
         : java.util.Optional.of(primaryKeys.get(0));
+  }
+
+  /**
+   * Ensures exactly one PRIMARY key exists, using the keyset primary key as source of truth.
+   *
+   * <p>This defensive method corrects data consistency issues where multiple PRIMARY keys exist in
+   * the database. It demotes all PRIMARY keys except the one matching the keyset's primary key ID.
+   *
+   * <p><b>Use Cases:</b>
+   *
+   * <ul>
+   *   <li>Correcting inconsistencies detected during rotation checks
+   *   <li>Fixing multiple PRIMARY keys before critical operations
+   *   <li>Recovery from data corruption or manual database modifications
+   * </ul>
+   *
+   * @param correctPrimaryKeyId the key ID that should be PRIMARY (from keyset)
+   * @param reason reason for correction (for logging and audit)
+   */
+  @Transactional
+  private void ensureSinglePrimaryKey(long correctPrimaryKeyId, String reason) {
+    List<EncryptionKey> allPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (allPrimaryKeys.size() <= 1) {
+      // No correction needed
+      return;
+    }
+
+    logger.warn(
+        "Correcting {} PRIMARY keys to ensure single PRIMARY key {} (reason: {})",
+        allPrimaryKeys.size(),
+        Long.toUnsignedString(correctPrimaryKeyId),
+        reason);
+
+    int demotedCount = 0;
+    for (EncryptionKey primaryKey : allPrimaryKeys) {
+      if (!primaryKey.getKeyId().equals(correctPrimaryKeyId)) {
+        logger.info(
+            "Demoting PRIMARY key {} to ENABLED (correct primary: {})",
+            Long.toUnsignedString(primaryKey.getKeyId()),
+            Long.toUnsignedString(correctPrimaryKeyId));
+        primaryKey.setKeyStatus(KeyStatus.ENABLED);
+        primaryKey.setPromotedPrimaryAt(null);
+        keyRepository.save(primaryKey);
+        demotedCount++;
+      }
+    }
+
+    // Ensure correct key is PRIMARY
+    keyRepository
+        .findById(correctPrimaryKeyId)
+        .ifPresentOrElse(
+            key -> {
+              if (key.getKeyStatus() != KeyStatus.PRIMARY) {
+                logger.info(
+                    "Promoting key {} to PRIMARY (reason: {})",
+                    Long.toUnsignedString(correctPrimaryKeyId),
+                    reason);
+                key.setKeyStatus(KeyStatus.PRIMARY);
+                if (key.getPromotedPrimaryAt() == null) {
+                  key.setPromotedPrimaryAt(OffsetDateTime.now());
+                }
+                keyRepository.save(key);
+              }
+            },
+            () -> {
+              logger.warn(
+                  "Correct primary key {} not found in database. Creating new record...",
+                  Long.toUnsignedString(correctPrimaryKeyId));
+              EncryptionKey newKey =
+                  new EncryptionKey(
+                      correctPrimaryKeyId,
+                      KeyStatus.PRIMARY,
+                      properties.getAlgorithm(),
+                      OffsetDateTime.now(),
+                      reason);
+              newKey.setPromotedPrimaryAt(OffsetDateTime.now());
+              keyRepository.save(newKey);
+            });
+
+    // Verify correction
+    List<EncryptionKey> finalPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    if (finalPrimaryKeys.size() == 1
+        && finalPrimaryKeys.get(0).getKeyId().equals(correctPrimaryKeyId)) {
+      logger.info(
+          "✅ Correction successful: Exactly one PRIMARY key exists: {} (unsigned: {}, demoted: {})",
+          correctPrimaryKeyId,
+          Long.toUnsignedString(correctPrimaryKeyId),
+          demotedCount);
+    } else {
+      logger.error(
+          "❌ CRITICAL: Correction failed! Expected 1 PRIMARY key {}, but found {}",
+          Long.toUnsignedString(correctPrimaryKeyId),
+          finalPrimaryKeys.size());
+    }
   }
 }

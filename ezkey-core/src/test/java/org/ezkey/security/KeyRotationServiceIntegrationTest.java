@@ -80,8 +80,7 @@ class KeyRotationServiceIntegrationTest {
     // Setup mock TinkKeyManager behavior
     org.mockito.Mockito.when(tinkKeyManager.isInitialized()).thenReturn(true);
     org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(PRIMARY_KEY_ID_1);
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
-        .thenReturn(List.of(PRIMARY_KEY_ID_1));
+    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_1));
     org.mockito.Mockito.when(tinkKeyManager.rotateKey()).thenReturn(PRIMARY_KEY_ID_2);
   }
 
@@ -132,8 +131,7 @@ class KeyRotationServiceIntegrationTest {
     assertThat(keyRepository.count()).isZero();
 
     // Update mock to return only new key after rotation
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
-        .thenReturn(List.of(PRIMARY_KEY_ID_2));
+    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_2));
 
     // Act
     long newKeyId = keyRotationService.introduceNewKey("TEST_USER");
@@ -259,4 +257,3 @@ class KeyRotationServiceIntegrationTest {
     assertEquals(KeyStatus.ENABLED, enabledKeyOpt.get().getKeyStatus());
   }
 }
-

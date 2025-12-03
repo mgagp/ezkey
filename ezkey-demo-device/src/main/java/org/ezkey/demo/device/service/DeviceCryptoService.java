@@ -203,7 +203,6 @@ public class DeviceCryptoService {
    */
   public String generateProofToken() {
     try {
-      SecureRandom secureRandom = new SecureRandom();
       byte[] randomBytes = new byte[32]; // 256 bits
       secureRandom.nextBytes(randomBytes);
       long timestamp = System.currentTimeMillis();

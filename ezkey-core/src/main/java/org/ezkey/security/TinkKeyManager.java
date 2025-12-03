@@ -61,6 +61,8 @@ public class TinkKeyManager {
   private final TinkProperties properties;
 
   private volatile KeysetHandle keysetHandle;
+  private volatile long keysetFileLastModified = 0;
+  private volatile String keysetFilePath;
   private volatile Aead masterAead;
 
   public TinkKeyManager(TinkProperties properties) {
@@ -120,6 +122,8 @@ public class TinkKeyManager {
         // Load existing encrypted keyset (use normalized path)
         logger.info("Loading existing keyset from: {}", normalizedKeysetPath);
         this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
+        this.keysetFilePath = normalizedKeysetPath;
+        this.keysetFileLastModified = keysetFile.lastModified();
         logger.info("✅ Keyset loaded successfully from: {}", normalizedKeysetPath);
       } else {
         // First boot - generate new keyset (use normalized path)
@@ -129,6 +133,8 @@ public class TinkKeyManager {
                 + "and is accessible. All APIs must use the same keyset file.",
             normalizedKeysetPath);
         this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
+        this.keysetFilePath = normalizedKeysetPath;
+        this.keysetFileLastModified = keysetFile.lastModified();
         logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
       }
 
@@ -169,13 +175,48 @@ public class TinkKeyManager {
     return keysetHandle;
   }
 
-  /** Returns an AEAD primitive from the current keyset. */
-  public Aead getAeadPrimitive() {
+  /**
+   * Returns an AEAD primitive from the current keyset.
+   *
+   * <p><b>Automatic Keyset Reload:</b> This method automatically checks if the keyset file has been
+   * modified (e.g., after key rotation by another instance) and reloads it if necessary. This ensures
+   * that all application instances stay synchronized with the latest keyset state.
+   *
+   * @return AEAD primitive for encryption/decryption
+   * @throws IllegalStateException if encryption is not initialized
+   */
+  public synchronized Aead getAeadPrimitive() {
     if (!isInitialized()) {
       throw new IllegalStateException(
           "Tink encryption not initialized. "
               + "Check that master key file exists and encryption is enabled.");
     }
+
+    // Check if keyset file has been modified (e.g., by another instance after rotation)
+    if (keysetFilePath != null) {
+      try {
+        File keysetFile = new File(keysetFilePath);
+        if (keysetFile.exists()) {
+          long currentLastModified = keysetFile.lastModified();
+          if (currentLastModified > keysetFileLastModified) {
+            logger.info(
+                "🔄 Keyset file modified (last modified: {} > {}), reloading keyset...",
+                currentLastModified,
+                keysetFileLastModified);
+            this.keysetHandle = loadEncryptedKeyset(keysetFilePath);
+            this.keysetFileLastModified = currentLastModified;
+            logger.info("✅ Keyset reloaded successfully");
+          }
+        }
+      } catch (Exception e) {
+        logger.warn(
+            "Failed to check/reload keyset file. Using cached keyset. Error: {}",
+            e.getMessage());
+        logger.debug("Keyset reload error", e);
+        // Continue with existing keyset - don't fail if reload check fails
+      }
+    }
+
     try {
       return keysetHandle.getPrimitive(Aead.class);
     } catch (GeneralSecurityException e) {
@@ -603,8 +644,13 @@ public class TinkKeyManager {
     String normalizedPath = normalizePath(keysetPath);
     saveKeyset(rotatedHandle, normalizedPath);
 
-    // Update in-memory handle
+    // Update in-memory handle and file modification timestamp
     this.keysetHandle = rotatedHandle;
+    File keysetFile = new File(normalizedPath);
+    if (keysetFile.exists()) {
+      this.keysetFileLastModified = keysetFile.lastModified();
+      this.keysetFilePath = normalizedPath;
+    }
 
     logger.info(
         "✅ Key rotation completed. Old primary: {} (unsigned: {}), New primary: {} (unsigned: {})",

@@ -271,7 +271,8 @@ class ReencryptionServiceIntegrationTest {
 
     // Act - Find active batches (PENDING, IN_PROGRESS, PAUSED)
     List<ReencryptionBatch> pendingBatches = batchRepository.findByStatus(BatchStatus.PENDING);
-    List<ReencryptionBatch> inProgressBatches = batchRepository.findByStatus(BatchStatus.IN_PROGRESS);
+    List<ReencryptionBatch> inProgressBatches =
+        batchRepository.findByStatus(BatchStatus.IN_PROGRESS);
     List<ReencryptionBatch> pausedBatches = batchRepository.findByStatus(BatchStatus.PAUSED);
     int activeCount = pendingBatches.size() + inProgressBatches.size() + pausedBatches.size();
 
@@ -393,4 +394,3 @@ class ReencryptionServiceIntegrationTest {
     assertEquals(new BigDecimal("100.00"), at100.getProgressPct());
   }
 }
-
