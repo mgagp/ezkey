@@ -322,7 +322,8 @@ public class AdminBootstrapService {
 
     // Log credentials with highly visible formatting
     // Use the token from local variable to ensure we log the exact token that was set
-    logGlobalAdminEnrollmentCredentials(globalAdminEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
+    logGlobalAdminEnrollmentCredentials(
+        globalAdminEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
   }
 
   /**
@@ -334,7 +335,8 @@ public class AdminBootstrapService {
    *
    * @param enrollment the enrollment with credentials to log
    * @param recoveryCodes the plain recovery codes to log
-   * @param enrollmentProofToken the enrollment proof token to log (from local variable, before save)
+   * @param enrollmentProofToken the enrollment proof token to log (from local variable, before
+   *     save)
    */
   private void logGlobalAdminEnrollmentCredentials(
       Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
@@ -361,8 +363,7 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
-    String enrollmentPayload =
-        enrollment.getEnrollmentId() + "|" + enrollmentProofToken;
+    String enrollmentPayload = enrollment.getEnrollmentId() + "|" + enrollmentProofToken;
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {

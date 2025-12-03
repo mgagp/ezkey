@@ -267,8 +267,9 @@ class SignatureServiceTest {
     // Assert
     // ECDSA uses a random nonce (k) for each signature, so signatures will differ
     // However, both signatures should be valid for the same data
-    assertFalse(signature1.equals(signature2), "ECDSA signatures should differ due to random nonce");
-    
+    assertFalse(
+        signature1.equals(signature2), "ECDSA signatures should differ due to random nonce");
+
     // Both signatures should validate correctly
     assertTrue(
         signatureService.validateSignature(data, signature1, base64PublicKey),

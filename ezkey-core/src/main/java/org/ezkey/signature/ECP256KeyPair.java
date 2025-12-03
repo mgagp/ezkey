@@ -21,4 +21,3 @@ package org.ezkey.signature;
  * @since 2025
  */
 public record ECP256KeyPair(String base64PrivateKey, String base64PublicKey) {}
-

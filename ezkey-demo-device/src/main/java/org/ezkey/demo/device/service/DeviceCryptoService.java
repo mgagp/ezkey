@@ -14,10 +14,10 @@ import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
+import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.params.ECKeyGenerationParameters;
 import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
 import org.bouncycastle.crypto.params.ECPublicKeyParameters;
-import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.signers.ECDSASigner;
 import org.bouncycastle.crypto.util.PrivateKeyFactory;
 import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
  * <p><b>Algorithm:</b> EC P-256 (secp256r1) with ECDSA-SHA256
  *
  * <p><b>Key Format:</b>
+ *
  * <ul>
  *   <li>Private keys: PKCS#8 format, Base64 encoded
  *   <li>Public keys: X.509 SubjectPublicKeyInfo format, Base64 encoded
@@ -64,16 +65,11 @@ public class DeviceCryptoService {
     if (ecParams == null) {
       throw new IllegalStateException(
           "Failed to get EC P-256 domain parameters. "
-          + "BouncyCastle EC curve 'secp256r1' not available. "
-          + "Please ensure BouncyCastle is properly configured.");
+              + "BouncyCastle EC curve 'secp256r1' not available. "
+              + "Please ensure BouncyCastle is properly configured.");
     }
     return new ECDomainParameters(
-        ecParams.getCurve(),
-        ecParams.getG(),
-        ecParams.getN(),
-        ecParams.getH(),
-        ecParams.getSeed()
-    );
+        ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH(), ecParams.getSeed());
   }
 
   /**
@@ -89,17 +85,17 @@ public class DeviceCryptoService {
       AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
       ECPrivateKeyParameters privateKey = (ECPrivateKeyParameters) keyPair.getPrivate();
       ECPublicKeyParameters publicKey = (ECPublicKeyParameters) keyPair.getPublic();
-      
+
       // Encode private key as PKCS#8
-      org.bouncycastle.asn1.pkcs.PrivateKeyInfo privateKeyInfo = 
+      org.bouncycastle.asn1.pkcs.PrivateKeyInfo privateKeyInfo =
           PrivateKeyInfoFactory.createPrivateKeyInfo(privateKey);
       String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKeyInfo.getEncoded());
-      
+
       // Encode public key as X.509 SubjectPublicKeyInfo
-      org.bouncycastle.asn1.x509.SubjectPublicKeyInfo publicKeyInfo = 
+      org.bouncycastle.asn1.x509.SubjectPublicKeyInfo publicKeyInfo =
           SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(publicKey);
       String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyInfo.getEncoded());
-      
+
       return new ECP256DeviceKeyPair(privateKeyBase64, publicKeyBase64);
     } catch (Exception e) {
       logger.error("Failed to generate device key pair", e);
@@ -129,19 +125,19 @@ public class DeviceCryptoService {
     Objects.requireNonNull(base64PrivateKey, "base64PrivateKey must not be null");
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-      ECPrivateKeyParameters privateKeyParams = 
+      ECPrivateKeyParameters privateKeyParams =
           (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
-      
+
       ECDSASigner signer = new ECDSASigner();
       signer.init(true, privateKeyParams);
-      
+
       byte[] dataBytes = content.getBytes(StandardCharsets.UTF_8);
       // Hash the data with SHA-256 before signing (ECDSA requires hashed input)
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(dataBytes);
-      
+
       BigInteger[] signature = signer.generateSignature(hash);
-      
+
       // Encode signature as ASN.1 DER format
       byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
       return Base64.getEncoder().encodeToString(derSignature);
@@ -237,24 +233,24 @@ public class DeviceCryptoService {
   public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
-      ECPublicKeyParameters publicKeyParams = 
+      ECPublicKeyParameters publicKeyParams =
           (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
-      
+
       byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
       BigInteger[] signature = decodeDERSignature(signatureBytes);
       if (signature == null) {
         logger.warn("Invalid signature format: failed to decode ASN.1 DER");
         return false;
       }
-      
+
       ECDSASigner verifier = new ECDSASigner();
       verifier.init(false, publicKeyParams);
-      
+
       byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
       // Hash the data with SHA-256 before verification (ECDSA requires hashed input)
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(dataBytes);
-      
+
       return verifier.verifySignature(hash, signature[0], signature[1]);
     } catch (Exception e) {
       logger.error("Signature validation failed", e);

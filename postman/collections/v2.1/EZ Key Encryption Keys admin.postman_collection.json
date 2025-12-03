@@ -1,0 +1,334 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "EZ Key Encryption Keys admin",
+		"description": "Collection for encryption key management and rotation operations in the Admin API.\n\n## Endpoints\n\n- **List Keys**: Get all encryption keys\n- **Get Primary Key**: Get current primary encryption key\n- **Get Key by ID**: Get specific encryption key details\n- **Rotate Key**: Manually trigger key rotation\n- **List Re-encryption Batches**: Get all re-encryption batches\n- **Resume Batch**: Resume a failed or paused re-encryption batch\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4087"
+	},
+	"item": [
+		{
+			"name": "list keys",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"encryptionKeyId\", jsonData[0].keyId);",
+							"        var primaryKey = jsonData.find(k => k.keyStatus === 'PRIMARY');",
+							"        if (primaryKey) {",
+							"            pm.environment.set(\"primaryKeyId\", primaryKey.keyId);",
+							"        }",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys"
+					]
+				},
+				"description": "Returns all encryption keys in the system with their status, algorithm, and usage statistics."
+			},
+			"response": []
+		},
+		{
+			"name": "get primary key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect([200, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"primaryKeyId\", jsonData.keyId);",
+							"    pm.test(\"Key status is PRIMARY\", function () {",
+							"        pm.expect(jsonData.keyStatus).to.equal('PRIMARY');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/primary",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"primary"
+					]
+				},
+				"description": "Returns the current primary encryption key used for new encryption operations. Returns 404 if no primary key is found."
+			},
+			"response": []
+		},
+		{
+			"name": "get key by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect([200, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test(\"Key ID matches\", function () {",
+							"        pm.expect(jsonData.keyId.toString()).to.equal(pm.environment.get('encryptionKeyId') || '{{encryptionKeyId}}');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/:keyId",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						":keyId"
+					],
+					"variable": [
+						{
+							"key": "keyId",
+							"value": "{{encryptionKeyId}}",
+							"description": "The encryption key ID"
+						}
+					]
+				},
+				"description": "Returns details for a specific encryption key by its ID. Use the keyId from the list keys response."
+			},
+			"response": []
+		},
+		{
+			"name": "rotate key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 500\", function () {",
+							"    pm.expect([200, 500]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"newPrimaryKeyId\", jsonData.newPrimaryKeyId);",
+							"    pm.test(\"Rotation successful\", function () {",
+							"        pm.expect(jsonData.newPrimaryKeyId).to.be.a('number');",
+							"        pm.expect(jsonData.message).to.include('successfully');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/rotate",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"rotate"
+					]
+				},
+				"description": "Manually triggers encryption key rotation. This creates a new primary key and demotes the old primary key to ENABLED status. Useful for emergency rotations or testing. ⚠️ Use with caution in production."
+			},
+			"response": []
+		},
+		{
+			"name": "list re-encryption batches",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        var failedBatch = jsonData.find(b => b.status === 'FAILED' || b.status === 'PAUSED');",
+							"        if (failedBatch) {",
+							"            pm.environment.set(\"reencryptionBatchId\", failedBatch.batchId);",
+							"        }",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"reencryption-batches"
+					]
+				},
+				"description": "Returns all re-encryption batches with their status, progress, and statistics. Use this to monitor the progress of data re-encryption after key rotation."
+			},
+			"response": []
+		},
+		{
+			"name": "resume batch",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 404, or 500\", function () {",
+							"    pm.expect([200, 404, 500]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test(\"Resume successful\", function () {",
+							"        pm.expect(jsonData.batchId).to.be.a('number');",
+							"        pm.expect(jsonData.message).to.include('successfully');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches/:batchId/resume",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"reencryption-batches",
+						":batchId",
+						"resume"
+					],
+					"variable": [
+						{
+							"key": "batchId",
+							"value": "{{reencryptionBatchId}}",
+							"description": "The re-encryption batch ID"
+						}
+					]
+				},
+				"description": "Resumes processing of a failed or paused re-encryption batch. Use the batchId from the list re-encryption batches response. The batch will continue from where it left off."
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
+

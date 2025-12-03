@@ -29,6 +29,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  *   <li><b>Auth Attempt:</b> Repositories for authentication attempt operations
  *   <li><b>Enrollment:</b> Repositories for device enrollment management
  *   <li><b>Audit:</b> Repositories for audit logging
+ *   <li><b>Security:</b> Repositories for encryption key and re-encryption batch management
  * </ul>
  *
  * <p><b>Configured Entities:</b>
@@ -38,6 +39,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  *   <li><b>Auth Attempt Entities:</b> AuthAttempt and related entities
  *   <li><b>Enrollment Entities:</b> Enrollment and related entities
  *   <li><b>Audit Entities:</b> AuditLog and related entities
+ *   <li><b>Security Entities:</b> EncryptionKey, ReencryptionBatch
  * </ul>
  *
  * <p><b>Usage Context:</b> This configuration is automatically detected by Spring Boot and applies
@@ -57,14 +59,16 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.integration.domain.repository",
       "org.ezkey.authattempt.domain.repository",
       "org.ezkey.enrollment.domain.repository",
-      "org.ezkey.audit.domain.repository"
+      "org.ezkey.audit.domain.repository",
+      "org.ezkey.security.domain.repository"
     })
 @EntityScan(
     basePackages = {
       "org.ezkey.integration.domain.entity",
       "org.ezkey.authattempt.domain.entity",
       "org.ezkey.enrollment.domain.entity",
-      "org.ezkey.audit.domain.entity"
+      "org.ezkey.audit.domain.entity",
+      "org.ezkey.security.domain.entity"
     })
 public class AdminJpaConfig {
   // Configuration for JPA repositories and entity scanning

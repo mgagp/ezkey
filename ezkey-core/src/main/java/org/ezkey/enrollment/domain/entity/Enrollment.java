@@ -108,9 +108,9 @@ public class Enrollment {
   /**
    * Encrypted EC P-256 private key for integration communication (persisted in database).
    *
-   * <p>This field stores the encrypted EC P-256 private key (PKCS#8 format, Base64 encoded) in
-   * the database. The value is automatically encrypted before persistence and decrypted when needed
-   * via the transient field.
+   * <p>This field stores the encrypted EC P-256 private key (PKCS#8 format, Base64 encoded) in the
+   * database. The value is automatically encrypted before persistence and decrypted when needed via
+   * the transient field.
    */
   @Column(name = "integration_private_key", columnDefinition = "TEXT")
   private String encryptedIntegrationPrivateKey;

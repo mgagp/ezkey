@@ -11,7 +11,6 @@
 package org.ezkey.crypto.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +29,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -84,26 +82,24 @@ public class CryptoController {
               + "Private key is in PKCS#8 format and public key is in X.509 format.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", 
+        @ApiResponse(
+            responseCode = "200",
             description = "EC P-256 key pair generated successfully"),
-        @ApiResponse(responseCode = "500", 
-            description = "Key generation failed")
+        @ApiResponse(responseCode = "500", description = "Key generation failed")
       })
   @GetMapping("/keypair")
   public ResponseEntity<ECP256KeyPairResponseDto> generateKeyPair() {
     ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
     var response =
-        new ECP256KeyPairResponseDto(
-            keyPair.base64PrivateKey(), keyPair.base64PublicKey());
+        new ECP256KeyPairResponseDto(keyPair.base64PrivateKey(), keyPair.base64PublicKey());
     return ResponseEntity.ok(response);
   }
 
   @Operation(
       summary = "Sign data with private key",
       description =
-          "Signs the provided data using EC P-256 ECDSA-SHA256 signature " 
-          +
-          "with the given private key")
+          "Signs the provided data using EC P-256 ECDSA-SHA256 signature "
+              + "with the given private key")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Data signed successfully"),
@@ -124,9 +120,8 @@ public class CryptoController {
   @Operation(
       summary = "Validate signature",
       description =
-          "Validates an EC P-256 ECDSA-SHA256 signature " 
-          + 
-          "against the original data using the provided public key")
+          "Validates an EC P-256 ECDSA-SHA256 signature "
+              + "against the original data using the provided public key")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Signature validation completed"),

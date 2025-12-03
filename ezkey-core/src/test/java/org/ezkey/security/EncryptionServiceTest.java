@@ -74,7 +74,8 @@ class EncryptionServiceTest {
     String ciphertextBase64 = Base64.getEncoder().encodeToString(ciphertext);
     String encryptedValue = "ENC:" + TEST_KEY_ID + ":" + ciphertextBase64;
 
-    when(aead.decrypt(any(byte[].class), any())).thenReturn(plaintext.getBytes(StandardCharsets.UTF_8));
+    when(aead.decrypt(any(byte[].class), any()))
+        .thenReturn(plaintext.getBytes(StandardCharsets.UTF_8));
 
     // Act
     String result = encryptionService.decrypt(encryptedValue);
@@ -86,7 +87,8 @@ class EncryptionServiceTest {
   @Test
   void testIsEncrypted() {
     // Arrange - Use valid Base64 with minimum length
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
     // Act
@@ -132,7 +134,8 @@ class EncryptionServiceTest {
   @Test
   void testParseKeyIdFromPrefix() {
     // Arrange - Use valid Base64 with minimum length
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
     // Act
@@ -170,7 +173,8 @@ class EncryptionServiceTest {
   @Test
   void testExtractCiphertext() {
     // Arrange - Use valid Base64 with minimum length
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
     // Act
@@ -213,7 +217,8 @@ class EncryptionServiceTest {
   @Test
   void testEncryptAlreadyEncrypted() throws Exception {
     // Arrange - Use valid Base64 with minimum length
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String alreadyEncrypted = "ENC:1234567:" + validBase64;
 
     // Act
@@ -240,7 +245,8 @@ class EncryptionServiceTest {
   void testDecryptWhenNotAvailable() {
     // Arrange
     when(keyManager.isInitialized()).thenReturn(false);
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + validBase64;
 
     // Act
@@ -257,9 +263,11 @@ class EncryptionServiceTest {
     byte[] plaintextBytes = plaintext.getBytes(StandardCharsets.UTF_8);
     // Use a valid Base64-encoded ciphertext (minimum 20 chars for validation)
     // This is a dummy ciphertext that will pass validation
-    String ciphertextBase64 = Base64.getEncoder().encodeToString("dummy-ciphertext-for-test".getBytes(StandardCharsets.UTF_8));
+    String ciphertextBase64 =
+        Base64.getEncoder()
+            .encodeToString("dummy-ciphertext-for-test".getBytes(StandardCharsets.UTF_8));
     byte[] ciphertext = Base64.getDecoder().decode(ciphertextBase64);
-    
+
     // Mock encrypt to return ciphertext when called with plaintext bytes
     when(aead.encrypt(plaintextBytes, null)).thenReturn(ciphertext);
     // Mock decrypt to return plaintext bytes when called with any ciphertext bytes
@@ -280,7 +288,8 @@ class EncryptionServiceTest {
   void testParseKeyIdLargeValue() {
     // Arrange - Use valid Base64 with minimum length
     long largeKeyId = Long.MAX_VALUE;
-    String validBase64 = Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
+    String validBase64 =
+        Base64.getEncoder().encodeToString("test-data-1234567890".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:" + largeKeyId + ":" + validBase64;
 
     // Act
@@ -296,7 +305,8 @@ class EncryptionServiceTest {
     // Arrange
     // Base64 with padding and special characters (ensure minimum length)
     String complexData = "AbCdEf123+/=XYZ1234567890";
-    String complexBase64 = Base64.getEncoder().encodeToString(complexData.getBytes(StandardCharsets.UTF_8));
+    String complexBase64 =
+        Base64.getEncoder().encodeToString(complexData.getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + complexBase64;
 
     // Act
@@ -384,7 +394,8 @@ class EncryptionServiceTest {
   void testExtractCiphertextPrefixManipulationDoublePrefix() {
     // Arrange - Double prefix attack (nested ENC: in Base64)
     // This should match pattern but Base64 validation should catch invalid encoding
-    String nestedBase64 = Base64.getEncoder().encodeToString("ENC:1234567:data".getBytes(StandardCharsets.UTF_8));
+    String nestedBase64 =
+        Base64.getEncoder().encodeToString("ENC:1234567:data".getBytes(StandardCharsets.UTF_8));
     String encryptedValue = "ENC:1234567:" + nestedBase64;
 
     // Act
@@ -483,4 +494,3 @@ class EncryptionServiceTest {
     assertEquals(0L, keyId);
   }
 }
-

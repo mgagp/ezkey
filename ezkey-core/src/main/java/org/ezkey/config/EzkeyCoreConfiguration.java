@@ -12,7 +12,6 @@ package org.ezkey.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Configuration class to enable ezkey-core properties.
@@ -23,6 +22,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * <p><b>Usage:</b> Applications using ezkey-core should import this configuration or
  * use @EnableConfigurationProperties(EzkeyCoreProperties.class) in their own configuration.
  *
+ * <p><b>Note:</b> Scheduling is NOT enabled here. Each application must explicitly enable
+ * scheduling via @EnableScheduling on its main application class if it needs scheduled tasks. This
+ * prevents scheduled jobs from running in applications that don't need them (e.g., Auth API).
+ *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
  * <p><b>License:</b> MIT
@@ -32,7 +35,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @Configuration
 @EnableConfigurationProperties(EzkeyCoreProperties.class)
-@EnableScheduling
 public class EzkeyCoreConfiguration {
   // Configuration class - no additional implementation needed
 }

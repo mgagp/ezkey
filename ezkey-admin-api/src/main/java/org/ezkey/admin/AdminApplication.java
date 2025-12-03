@@ -20,10 +20,17 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * the core package (for shared services and entities) and the admin package (for admin-specific
  * controllers and configuration).
  *
- * <p><b>Scheduled Tasks:</b> This application enables scheduling for periodic tasks such as token
- * cleanup. Scheduled tasks are configured via {@link
- * org.springframework.scheduling.annotation.Scheduled} annotations and can be controlled through
- * application properties.
+ * <p><b>Scheduled Tasks:</b> This application enables scheduling for periodic tasks including:
+ *
+ * <ul>
+ *   <li>Token cleanup and rotation
+ *   <li>Encryption key rotation (KeyRotationService)
+ *   <li>Re-encryption batch processing (ReencryptionService)
+ *   <li>Audit log cleanup
+ * </ul>
+ *
+ * Scheduled tasks are configured via {@link org.springframework.scheduling.annotation.Scheduled}
+ * annotations and can be controlled through application properties.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

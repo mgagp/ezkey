@@ -20,7 +20,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * JPA configuration for Ezkey Auth API.
  *
  * <p>This configuration enables JPA repositories and entity scanning for all domains used by the
- * auth API: authattempt, enrollment, and integration.
+ * auth API: authattempt, enrollment, integration, audit, and security (for encryption key
+ * management services).
  *
  * @since 2025
  */
@@ -31,6 +32,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.authattempt.domain.repository", //
       "org.ezkey.enrollment.domain.repository", //
       "org.ezkey.audit.domain.repository", //
+      "org.ezkey.security.domain.repository", //
     })
 @EntityScan(
     basePackages = { //
@@ -38,6 +40,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.authattempt.domain.entity", //
       "org.ezkey.enrollment.domain.entity", //
       "org.ezkey.audit.domain.entity", //
+      "org.ezkey.security.domain.entity", //
     })
 public class AuthJpaConfig {
   // Configuration for JPA repositories and entity scanning

@@ -171,8 +171,7 @@ public class EnrollmentService {
    *
    * <p>This method creates a new enrollment with the provided data, requests an Ed25519 key pair
    * from the cryptographic service, and returns the new response format. Ed25519 key generation
-   * responsibility is delegated to {@link SignatureService} to centralize cryptographic
-   * operations.
+   * responsibility is delegated to {@link SignatureService} to centralize cryptographic operations.
    *
    * @param request the enrollment creation request
    * @return the created enrollment response

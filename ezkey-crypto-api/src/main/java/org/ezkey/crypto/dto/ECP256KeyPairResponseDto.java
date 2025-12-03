@@ -49,4 +49,3 @@ public class ECP256KeyPairResponseDto {
     this.publicKey = publicKey;
   }
 }
-

@@ -232,24 +232,35 @@ public class AdminBootstrapService {
         log.error("   2. Database was reset after bootstrap");
         log.error("   3. Enrollment was deleted");
         throw new IllegalStateException(
-            "Enrollment ID " + credentials.enrollmentId() + " not found in database. "
+            "Enrollment ID "
+                + credentials.enrollmentId()
+                + " not found in database. "
                 + "Please ensure Admin API bootstrap completed successfully.");
       }
       log.info("   Enrollment status: {}", enrollmentStatus);
-      
+
       // Debug: Verify proof token hash matches
       String dbTokenHash = databaseHelper.getEnrollmentProofTokenHash(credentials.enrollmentId());
       if (dbTokenHash != null) {
         // Calculate hash from extracted token for comparison
         String extractedTokenHash = calculateSha256Hex(credentials.enrollmentProofToken());
-        log.debug("   Database token hash: {}...", dbTokenHash.substring(0, Math.min(16, dbTokenHash.length())));
-        log.debug("   Extracted token hash: {}...", extractedTokenHash != null ? extractedTokenHash.substring(0, Math.min(16, extractedTokenHash.length())) : "null");
+        log.debug(
+            "   Database token hash: {}...",
+            dbTokenHash.substring(0, Math.min(16, dbTokenHash.length())));
+        log.debug(
+            "   Extracted token hash: {}...",
+            extractedTokenHash != null
+                ? extractedTokenHash.substring(0, Math.min(16, extractedTokenHash.length()))
+                : "null");
         if (!dbTokenHash.equals(extractedTokenHash)) {
           log.error("   ❌ Token hash mismatch!");
           log.error("   Database hash: {}", dbTokenHash);
           log.error("   Extracted token hash: {}", extractedTokenHash);
-          log.error("   Extracted token (first 50 chars): {}", 
-              credentials.enrollmentProofToken().substring(0, Math.min(50, credentials.enrollmentProofToken().length())));
+          log.error(
+              "   Extracted token (first 50 chars): {}",
+              credentials
+                  .enrollmentProofToken()
+                  .substring(0, Math.min(50, credentials.enrollmentProofToken().length())));
           throw new IllegalStateException(
               "Enrollment proof token hash mismatch. The token extracted from logs does not match "
                   + "the token stored in database. This usually means the token was truncated or "
@@ -450,9 +461,10 @@ public class AdminBootstrapService {
   private String bindDeviceOrSkip(Integer enrollmentId, String enrollmentProofToken) {
     log.info("   Calling: POST /api/v1/enrollments/bind");
     log.info("   Enrollment ID: {}", enrollmentId);
-    log.debug("   Enrollment Proof Token: {}...", 
-        enrollmentProofToken != null && enrollmentProofToken.length() > 30 
-            ? enrollmentProofToken.substring(0, 30) + "..." 
+    log.debug(
+        "   Enrollment Proof Token: {}...",
+        enrollmentProofToken != null && enrollmentProofToken.length() > 30
+            ? enrollmentProofToken.substring(0, 30) + "..."
             : enrollmentProofToken);
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);
 
@@ -915,7 +927,8 @@ public class AdminBootstrapService {
       Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
       String privateKey = jsonNode.get("privateKey").asText();
       String publicKey = jsonNode.get("publicKey").asText();
-      int keySize = jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
+      int keySize =
+          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
 
       log.info("Device credentials loaded from file");
       return new DeviceCredentials(enrollmentId, privateKey, publicKey, keySize);

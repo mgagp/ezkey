@@ -36,6 +36,7 @@ public class EncryptionService {
    * <p>Group 1: key ID (numeric), Group 2: Base64 ciphertext
    *
    * <p>Strict pattern ensures:
+   *
    * <ul>
    *   <li>Key ID contains only digits (prevents injection attacks)
    *   <li>Base64 contains only valid Base64 characters
@@ -127,6 +128,7 @@ public class EncryptionService {
    * <p>Format: {@code ENC:keyID:Base64(ciphertext)}.
    *
    * <p>Performs strict validation before decryption:
+   *
    * <ul>
    *   <li>Format integrity validation
    *   <li>Key ID validation (numeric, valid range)
@@ -218,6 +220,7 @@ public class EncryptionService {
    * stored in Java's signed {@code long} type).
    *
    * <p>Validates:
+   *
    * <ul>
    *   <li>Key ID is numeric (digits only, no sign)
    *   <li>Key ID is a valid unsigned 64-bit integer (0 to 2^64-1)
@@ -254,6 +257,7 @@ public class EncryptionService {
    * <p>Format: {@code ENC:keyID:Base64(ciphertext)}.
    *
    * <p>Validates:
+   *
    * <ul>
    *   <li>Format matches exact pattern (prevents prefix manipulation)
    *   <li>Base64 is valid Base64 encoding

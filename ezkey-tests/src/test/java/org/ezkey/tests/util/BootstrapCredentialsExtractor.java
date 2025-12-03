@@ -65,9 +65,11 @@ public class BootstrapCredentialsExtractor {
 
   // Patterns for parsing logs
   private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
-  // Proof token format: Base64 URL-safe parts separated by dots (e.g., "randomPart.timestamp.saltPart")
+  // Proof token format: Base64 URL-safe parts separated by dots (e.g.,
+  // "randomPart.timestamp.saltPart")
   // Base64 URL-safe includes: A-Z, a-z, 0-9, -, _ (no padding with withoutPadding())
-  // Capture everything after "Enrollment Proof Token: " until end of line (non-greedy to stop at newline)
+  // Capture everything after "Enrollment Proof Token: " until end of line (non-greedy to stop at
+  // newline)
   // Token format: ~43chars.~13digits.~22chars = ~80 chars total
   private static final Pattern ENROLLMENT_PROOF_TOKEN_PATTERN =
       Pattern.compile("Enrollment Proof Token:\\s*([^\\r\\n]+)", Pattern.MULTILINE);
@@ -130,8 +132,8 @@ public class BootstrapCredentialsExtractor {
   /**
    * Loads bootstrap credentials from saved file if available.
    *
-   * <p>Checks if credentials file exists and loads it, otherwise extracts from logs.
-   * Validates that the token has the correct format (3 parts separated by dots).
+   * <p>Checks if credentials file exists and loads it, otherwise extracts from logs. Validates that
+   * the token has the correct format (3 parts separated by dots).
    *
    * @return BootstrapCredentials from file or logs
    */
@@ -142,16 +144,18 @@ public class BootstrapCredentialsExtractor {
       try {
         log.info("Loading bootstrap credentials from file: {}", CREDENTIALS_FILE_PATH);
         BootstrapCredentials credentials = loadCredentialsFromFile(credentialsPath);
-        
+
         // Validate token format before using cached credentials
         String token = credentials.enrollmentProofToken();
         if (token != null) {
           String[] parts = token.split("\\.");
           if (parts.length != 3) {
             log.warn(
-                "Cached token has invalid format (expected 3 parts, got {}). Re-extracting from logs.",
+                "Cached token has invalid format (expected 3 parts, got {}). Re-extracting from"
+                    + " logs.",
                 parts.length);
-            log.warn("Token (first 100 chars): {}", 
+            log.warn(
+                "Token (first 100 chars): {}",
                 token.length() > 100 ? token.substring(0, 100) + "..." : token);
             // Delete invalid cache file and re-extract
             try {
@@ -163,7 +167,7 @@ public class BootstrapCredentialsExtractor {
             return extractCredentials();
           }
         }
-        
+
         return credentials;
       } catch (Exception e) {
         log.warn("Failed to load credentials from file, extracting from logs: {}", e.getMessage());
@@ -242,28 +246,32 @@ public class BootstrapCredentialsExtractor {
       throw new IllegalStateException("Enrollment Proof Token not found in logs");
     }
     String enrollmentProofToken = tokenMatcher.group(1).trim(); // Remove any trailing whitespace
-    
+
     // Debug: Log the raw matched string to see if it's complete
     String rawMatch = tokenMatcher.group(0);
     log.debug("Raw regex match: '{}'", rawMatch);
     log.debug("Extracted token (group 1): '{}'", enrollmentProofToken);
     log.debug("Extracted enrollment proof token length: {} chars", enrollmentProofToken.length());
-    log.debug("Extracted enrollment proof token (first 50): {}...", 
-        enrollmentProofToken.length() > 50 
-            ? enrollmentProofToken.substring(0, 50) 
+    log.debug(
+        "Extracted enrollment proof token (first 50): {}...",
+        enrollmentProofToken.length() > 50
+            ? enrollmentProofToken.substring(0, 50)
             : enrollmentProofToken);
-    log.debug("Extracted enrollment proof token (last 30): ...{}", 
-        enrollmentProofToken.length() > 30 
-            ? enrollmentProofToken.substring(enrollmentProofToken.length() - 30) 
+    log.debug(
+        "Extracted enrollment proof token (last 30): ...{}",
+        enrollmentProofToken.length() > 30
+            ? enrollmentProofToken.substring(enrollmentProofToken.length() - 30)
             : enrollmentProofToken);
-    
+
     // Validate token format: should have 2 dots (3 parts: random.timestamp.salt)
     String[] parts = enrollmentProofToken.split("\\.");
     if (parts.length != 3) {
-      log.error("Invalid proof token format: expected 3 parts separated by dots, got {} parts", parts.length);
+      log.error(
+          "Invalid proof token format: expected 3 parts separated by dots, got {} parts",
+          parts.length);
       log.error("Token parts: {}", java.util.Arrays.toString(parts));
       throw new IllegalStateException(
-          "Invalid proof token format: expected format 'randomPart.timestamp.saltPart', got: " 
+          "Invalid proof token format: expected format 'randomPart.timestamp.saltPart', got: "
               + enrollmentProofToken.substring(0, Math.min(100, enrollmentProofToken.length())));
     }
 

@@ -13,6 +13,7 @@ This directory contains comprehensive SOC2 compliance preparation documentation 
 | **[SOC2_ROADMAP_VISUAL.md](SOC2_ROADMAP_VISUAL.md)** | Visual timelines and decision trees | 10 min | All |
 | **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** | First 30 days implementation guide | 45 min | Implementation Team |
 | **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** | Complete 18-month roadmap | 2 hours | All Team Members |
+| **[SOC2_KEY_ROTATION_PROCEDURES.md](SOC2_KEY_ROTATION_PROCEDURES.md)** | Key rotation operational procedures | 30 min | Operators, Security Team |
 | **[../SECURITY.md](../SECURITY.md)** | Vulnerability disclosure policy | 10 min | All |
 
 ## 🚀 Getting Started
@@ -42,6 +43,20 @@ This document provides:
 - Verification checklist
 
 **Time to first implementation:** 2 hours
+
+---
+
+### For Operations Team
+
+**Start here:** [SOC2_KEY_ROTATION_PROCEDURES.md](SOC2_KEY_ROTATION_PROCEDURES.md)
+
+This document provides:
+- Key rotation operational procedures
+- Daily/weekly/monthly checklists
+- Emergency recovery procedures
+- Runbook for operators
+
+**Time to understand:** 30 minutes
 
 ---
 

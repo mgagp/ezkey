@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Security tests for authentication attempt supersession logic.
  *
- * <p>Validates that creating a new authentication attempt for an enrollment
- * automatically expires any previous pending attempts. This is a critical security
- * feature to prevent user confusion and replay attacks.
+ * <p>Validates that creating a new authentication attempt for an enrollment automatically expires
+ * any previous pending attempts. This is a critical security feature to prevent user confusion and
+ * replay attacks.
  *
  * @since 2025
  */
@@ -46,32 +46,39 @@ public class AuthAttemptSupersessionTest extends AbstractSecurityTest {
 
       // Step 1: Create first auth attempt
       Integer attempt1Id = testDataFactory.createAuthAttempt(enrollmentId, false);
-      
+
       // Verify attempt 1 is initially PENDING
-      String status1 = databaseHelper.executeQuerySingleValue(
-          "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = " + attempt1Id);
+      String status1 =
+          databaseHelper.executeQuerySingleValue(
+              "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = "
+                  + attempt1Id);
       assertThat(status1).isEqualTo("PENDING");
 
       // Step 2: Create second auth attempt (superseding the first)
       // Small delay to ensure timestamp difference if running extremely fast
-      try { Thread.sleep(100); } catch (InterruptedException e) {}
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+      }
       Integer attempt2Id = testDataFactory.createAuthAttempt(enrollmentId, false);
 
       // Step 3: Probe Database to verify supersession
-      
+
       // Attempt 1 should now be EXPIRED
-      String status1After = databaseHelper.executeQuerySingleValue(
-          "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = " + attempt1Id);
+      String status1After =
+          databaseHelper.executeQuerySingleValue(
+              "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = "
+                  + attempt1Id);
       assertThat(status1After)
           .as("Older attempt should be expired by newer attempt")
           .isEqualTo("EXPIRED");
 
       // Attempt 2 should be PENDING
-      String status2 = databaseHelper.executeQuerySingleValue(
-          "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = " + attempt2Id);
-      assertThat(status2)
-          .as("Newer attempt should be pending")
-          .isEqualTo("PENDING");
+      String status2 =
+          databaseHelper.executeQuerySingleValue(
+              "SELECT auth_attempt_status FROM ezkey_auth_attempt WHERE auth_attempt_id = "
+                  + attempt2Id);
+      assertThat(status2).as("Newer attempt should be pending").isEqualTo("PENDING");
 
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
@@ -79,4 +86,3 @@ public class AuthAttemptSupersessionTest extends AbstractSecurityTest {
     }
   }
 }
-

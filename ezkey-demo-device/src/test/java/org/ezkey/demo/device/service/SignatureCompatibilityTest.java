@@ -44,23 +44,23 @@ public class SignatureCompatibilityTest {
       String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
-      ECPublicKeyParameters publicKeyParams = 
+      ECPublicKeyParameters publicKeyParams =
           (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
-      
+
       byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
       BigInteger[] signature = decodeDERSignature(signatureBytes);
       if (signature == null) {
         return false;
       }
-      
+
       ECDSASigner verifier = new ECDSASigner();
       verifier.init(false, publicKeyParams);
-      
+
       byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
       // Hash the data with SHA-256 before verification (ECDSA requires hashed input)
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(dataBytes);
-      
+
       return verifier.verifySignature(hash, signature[0], signature[1]);
     } catch (Exception e) {
       return false;

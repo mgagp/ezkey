@@ -50,5 +50,20 @@ public enum EventType {
   API_KEY_IP_BLOCKED,
 
   // System events
-  SYSTEM_ERROR
+  SYSTEM_ERROR,
+
+  // Encryption key lifecycle events
+  KEY_INTRODUCED, // New encryption key added to keyset
+  KEY_PROMOTED_PRIMARY, // Key promoted to primary for new encryption
+  KEY_DEMOTED, // Key demoted from PRIMARY to ENABLED
+  KEY_DISABLED, // Key disabled (no longer for decryption)
+  KEYSET_BACKUP_CREATED, // Backup created before rotation
+
+  // Re-encryption batch events
+  REENCRYPTION_STARTED, // Batch re-encryption initiated
+  REENCRYPTION_BATCH_PROGRESS, // Periodic progress update (every 10%)
+  REENCRYPTION_COMPLETED, // Batch re-encryption finished successfully
+  REENCRYPTION_FAILED, // Batch re-encryption error
+  REENCRYPTION_RESUMED, // Batch resumed after pause/failure
+  REENCRYPTION_PAUSED // Batch paused by admin
 }

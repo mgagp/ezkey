@@ -10,28 +10,28 @@
 
 package org.ezkey.signature;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
-import java.math.BigInteger;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
+import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.params.ECKeyGenerationParameters;
 import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
 import org.bouncycastle.crypto.params.ECPublicKeyParameters;
-import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.signers.ECDSASigner;
 import org.bouncycastle.crypto.util.PrivateKeyFactory;
-import org.bouncycastle.crypto.util.PublicKeyFactory;
 import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
+import org.bouncycastle.crypto.util.PublicKeyFactory;
 import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ezkey.config.EzkeyCoreProperties;
@@ -42,10 +42,9 @@ import org.springframework.stereotype.Service;
 /**
  * Cryptographic signature service providing digital signature generation and validation.
  *
- * <p>This service is a fundamental component of the Ezkey security architecture, implementing
- * EC P-256 (secp256r1) digital signatures with ECDSA-SHA256. It provides the cryptographic
- * foundation for ensuring data integrity, authenticity, and non-repudiation across the Ezkey
- * platform.
+ * <p>This service is a fundamental component of the Ezkey security architecture, implementing EC
+ * P-256 (secp256r1) digital signatures with ECDSA-SHA256. It provides the cryptographic foundation
+ * for ensuring data integrity, authenticity, and non-repudiation across the Ezkey platform.
  *
  * <p><b>Cryptographic Implementation:</b>
  *
@@ -92,8 +91,6 @@ public class SignatureService {
 
   private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
 
-  private static final String EC_P256_ALGORITHM = "EC_P256";
-  
   /**
    * Gets EC P-256 domain parameters (secp256r1).
    *
@@ -108,16 +105,11 @@ public class SignatureService {
       // secp256r1 is a standard NIST curve, should be in CustomNamedCurves
       throw new IllegalStateException(
           "Failed to get EC P-256 domain parameters. "
-          + "BouncyCastle EC curve 'secp256r1' not available. "
-          + "Please ensure BouncyCastle is properly configured.");
+              + "BouncyCastle EC curve 'secp256r1' not available. "
+              + "Please ensure BouncyCastle is properly configured.");
     }
     return new ECDomainParameters(
-        ecParams.getCurve(),
-        ecParams.getG(),
-        ecParams.getN(),
-        ecParams.getH(),
-        ecParams.getSeed()
-    );
+        ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH(), ecParams.getSeed());
   }
 
   // Reuse a single SecureRandom instance
@@ -180,19 +172,19 @@ public class SignatureService {
     Objects.requireNonNull(base64PrivateKey, "Private key cannot be null");
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-      ECPrivateKeyParameters privateKeyParams = 
+      ECPrivateKeyParameters privateKeyParams =
           (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
-      
+
       ECDSASigner signer = new ECDSASigner();
       signer.init(true, privateKeyParams);
-      
+
       byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
       // Hash the data with SHA-256 before signing (ECDSA requires hashed input)
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(dataBytes);
-      
+
       BigInteger[] signature = signer.generateSignature(hash);
-      
+
       // Encode signature as ASN.1 DER format
       byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
       return Base64.getEncoder().encodeToString(derSignature);
@@ -238,24 +230,24 @@ public class SignatureService {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
       // Handle X.509 encoded public keys (standard format from mobile)
-      ECPublicKeyParameters publicKeyParams = 
+      ECPublicKeyParameters publicKeyParams =
           (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
-      
+
       byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
       BigInteger[] signature = decodeDERSignature(signatureBytes);
       if (signature == null) {
         logger.warn("Invalid signature format: failed to decode ASN.1 DER");
         return false;
       }
-      
+
       ECDSASigner verifier = new ECDSASigner();
       verifier.init(false, publicKeyParams);
-      
+
       byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
       // Hash the data with SHA-256 before verification (ECDSA requires hashed input)
       java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(dataBytes);
-      
+
       return verifier.verifySignature(hash, signature[0], signature[1]);
     } catch (Exception e) {
       logger.debug("Signature validation failed", e);
@@ -267,8 +259,8 @@ public class SignatureService {
    * Generates a new EC P-256 key pair and returns it as Base64-encoded strings.
    *
    * <p>The generated private key is in PKCS#8 format and the public key is in X.509 format
-   * (SubjectPublicKeyInfo). Keys are generated using BouncyCastle's EC P-256 implementation
-   * with secp256r1 curve and encoded with Base64 for storage/transmission.
+   * (SubjectPublicKeyInfo). Keys are generated using BouncyCastle's EC P-256 implementation with
+   * secp256r1 curve and encoded with Base64 for storage/transmission.
    *
    * @return an immutable {@link ECP256KeyPair} containing Base64-encoded keys
    * @throws RuntimeException if key generation fails due to cryptographic errors
@@ -281,23 +273,23 @@ public class SignatureService {
       AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
       ECPrivateKeyParameters privateKey = (ECPrivateKeyParameters) keyPair.getPrivate();
       ECPublicKeyParameters publicKey = (ECPublicKeyParameters) keyPair.getPublic();
-      
+
       // Encode private key as PKCS#8
       PrivateKeyInfo privateKeyInfo = PrivateKeyInfoFactory.createPrivateKeyInfo(privateKey);
       String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKeyInfo.getEncoded());
-      
+
       // Encode public key as X.509 SubjectPublicKeyInfo
-      SubjectPublicKeyInfo publicKeyInfo = SubjectPublicKeyInfoFactory.
-          createSubjectPublicKeyInfo(publicKey);
+      SubjectPublicKeyInfo publicKeyInfo =
+          SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(publicKey);
 
       String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyInfo.getEncoded());
-      
+
       return new ECP256KeyPair(privateKeyBase64, publicKeyBase64);
     } catch (Exception e) {
       throw new RuntimeException("EC P-256 key pair generation failed", e);
     }
   }
-  
+
   /**
    * Encodes an ECDSA signature (r, s) as ASN.1 DER format.
    *
@@ -316,7 +308,7 @@ public class SignatureService {
       throw new RuntimeException("Failed to encode DER signature", e);
     }
   }
-  
+
   /**
    * Decodes an ASN.1 DER encoded ECDSA signature to (r, s) components.
    *

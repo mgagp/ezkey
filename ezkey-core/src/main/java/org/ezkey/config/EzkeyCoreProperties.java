@@ -45,8 +45,8 @@ public class EzkeyCoreProperties {
   public static class Crypto {
 
     /**
-     * Ed25519 algorithm name constant. Ed25519 keys are always 32 bytes (256 bits) for both
-     * private and public keys.
+     * Ed25519 algorithm name constant. Ed25519 keys are always 32 bytes (256 bits) for both private
+     * and public keys.
      */
     public static final String ED25519_ALGORITHM = "Ed25519";
 
@@ -56,9 +56,7 @@ public class EzkeyCoreProperties {
      */
     public static final int ED25519_KEY_SIZE_BYTES = 32;
 
-    /**
-     * Ed25519 signature size in bytes (constant). Ed25519 signatures are always 64 bytes.
-     */
+    /** Ed25519 signature size in bytes (constant). Ed25519 signatures are always 64 bytes. */
     public static final int ED25519_SIGNATURE_SIZE_BYTES = 64;
   }
 

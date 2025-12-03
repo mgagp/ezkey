@@ -49,4 +49,3 @@ public class Ed25519KeyPairResponseDto {
     this.publicKey = publicKey;
   }
 }
-
