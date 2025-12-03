@@ -201,7 +201,7 @@ graph TB
 - **APIs**: RESTful with OpenAPI documentation
 - **Mobile**: Cross-platform mobile development
 - **Deployment**: Docker support for self-hosting
-- **Security**: Ed25519 cryptographic signatures
+- **Security**: EC P-256 (ECDSA-SHA256) cryptographic signatures
 
 ### Core Entities
 
@@ -334,9 +334,9 @@ graph TB
 - **Anti-Replay**: Prevents replay of authentication attempts
 
 #### Cryptographic Implementation
-- **Ed25519**: Production-grade cryptographic signatures for all operations (32-byte keys, 64-byte signatures)
-- **Device Keys**: Each device generates unique Ed25519 key pairs (mobile: derived via HKDF from root key)
-- **Integration Keys**: Each integration has its own Ed25519 key pair (backend: direct generation)
+- **EC P-256**: Production-grade cryptographic signatures for all operations (PKCS#8/X.509 keys, ASN.1 DER signatures)
+- **Device Keys**: Each device generates unique EC P-256 key pairs (mobile: hardware-backed via Android Keystore/iOS Secure Enclave)
+- **Integration Keys**: Each integration has its own EC P-256 key pair (backend: direct generation using BouncyCastle)
 - **Mutual Authentication**: Both backend and mobile cryptographically verify each other's authenticity
 - **Signature Validation**: All requests validated cryptographically
 

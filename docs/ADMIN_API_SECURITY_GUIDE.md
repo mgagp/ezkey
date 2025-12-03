@@ -790,7 +790,7 @@ Retry-After: 300
 ✅ Cannot be guessed (106-bit recovery codes, cryptographic keys)
 ✅ No password reuse (device-bound credentials)
 ✅ Cannot be forgotten (device has key, recovery codes as backup)
-✅ Strong by default (Ed25519 cryptography)
+✅ Strong by default (EC P-256 cryptography)
 ✅ Phishing resistant (cryptographic challenge-response)
 ```
 

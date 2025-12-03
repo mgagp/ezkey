@@ -983,40 +983,48 @@ DELETE /api/v1/enrollments/456
 - Explain in the documentation that the model is pull (no push notification).
 ## ðŸ” Cryptographic Key and Signature Formats
 
-### Ed25519 Key Format
+### EC P-256 Key Format
 
-All cryptographic keys in Ezkey use **Ed25519** (pure Ed25519, not EdDSA).
+All cryptographic keys in Ezkey use **EC P-256 (secp256r1)** with **ECDSA-SHA256** for digital signatures.
 
 #### **Public Keys**
-- **Raw Format**: 32 bytes (256 bits)
+- **Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded)
+- **Curve**: secp256r1 (NIST P-256)
 - **Encoding**: Base64 (standard encoding for REST APIs)
-- **Example**: `"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="`
+- **Example**: `"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..."`
+- **Size**: ~91 bytes Base64 encoded
 - **Storage**: TEXT column in database
 - **Transmission**: Base64 string in JSON
 
 #### **Private Keys**
-- **Raw Format**: 32 bytes (256 bits) seed
+- **Format**: PKCS#8 (ASN.1 DER encoded)
+- **Curve**: secp256r1 (NIST P-256)
 - **Encoding**: Base64 (standard encoding for REST APIs)
-- **Example**: `"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="`
+- **Example**: `"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg..."`
+- **Size**: ~138 bytes Base64 encoded
 - **Storage**: Encrypted at rest in database
 - **Transmission**: Base64 string in JSON (when needed)
 
-**Note**: The backend also supports PKCS#8/X.509 encoded keys for compatibility, but raw 32-byte keys are preferred.
+**Note**: EC P-256 keys use standard PKCS#8 (private) and X.509 (public) formats for compatibility with native mobile hardware-backed keystores (Android Keystore, iOS Secure Enclave).
 
-### Ed25519 Signature Format
+### EC P-256 Signature Format (ECDSA-SHA256)
 
 #### **Signatures**
-- **Raw Format**: 64 bytes (512 bits)
+- **Algorithm**: ECDSA with SHA-256
+- **Format**: ASN.1 DER encoded (variable length)
 - **Encoding**: Base64 (standard encoding for REST APIs)
-- **Example**: `"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="`
+- **Size**: ~70 bytes Base64 encoded (variable due to ASN.1 DER encoding)
+- **Example**: `"MEQCI..."`
 - **Transmission**: Base64 string in JSON
+
+**Note**: ECDSA signatures are non-deterministic (different signatures for same data) but both are valid. The signature format is ASN.1 DER encoded (r, s) components.
 
 ### Mutual Cryptographic Authentication
 
 Ezkey implements mutual cryptographic authentication:
 
-- **Backend â†’ Mobile**: Backend signs `authAttemptProofToken` with `integration_private_key` (Ed25519), mobile verifies with `integration_public_key` (Ed25519)
-- **Mobile â†’ Backend**: Mobile signs responses with `device_private_key` (Ed25519), backend verifies with `device_public_key` (Ed25519)
+- **Backend → Mobile**: Backend signs `authAttemptProofToken` with `integration_private_key` (EC P-256, PKCS#8), mobile verifies with `integration_public_key` (EC P-256, X.509)
+- **Mobile → Backend**: Mobile signs responses with `device_private_key` (EC P-256, hardware-backed), backend verifies with `device_public_key` (EC P-256, X.509)
 
 This ensures both parties can cryptographically verify each other's authenticity.
 - The `/wait` endpoint enables synchronous behavior in the asynchronous MFA flow.

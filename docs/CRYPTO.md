@@ -1,77 +1,87 @@
-# ðŸ” Cryptographic Guide - Ezkey
+# 🔐 Cryptographic Guide - Ezkey
 
-## ðŸ“‹ **Overview**
+## 📋 **Overview**
 
-This document defines the strict cryptographic requirements for Ezkey implementation. The system uses Ed25519 for all digital signatures, providing production-grade security with compact keys and signatures.
+This document defines the strict cryptographic requirements for Ezkey implementation. The system uses **EC P-256 (secp256r1)** with **ECDSA-SHA256** for all digital signatures, providing production-grade security with native mobile hardware support.
 
-## ðŸŽ¯ **Objective**
+## 🎯 **Objective**
 
-Ensure cryptographic compatibility between all implementations (Java backend, mobile apps) by defining precise and unambiguous specifications for Ed25519 signatures.
+Ensure cryptographic compatibility between all implementations (Java backend, mobile apps) by defining precise and unambiguous specifications for EC P-256 signatures.
 
-## ðŸ”§ **Cryptographic Specifications**
+## 🔧 **Cryptographic Specifications**
 
-### **1. Ed25519 Key Generation**
+### **1. EC P-256 Key Generation**
 
 #### **Algorithm**
-- **Type**: Ed25519 (pure Ed25519, not EdDSA)
-- **Private Key**: 32 bytes (256 bits) seed
-- **Public Key**: 32 bytes (256 bits)
-- **Signature**: 64 bytes (512 bits)
+- **Type**: EC P-256 (secp256r1) - Elliptic Curve P-256
+- **Curve**: secp256r1 (NIST P-256)
+- **Private Key Format**: PKCS#8 (ASN.1 DER encoded)
+- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded)
+- **Signature Algorithm**: ECDSA with SHA-256
+- **Signature Format**: ASN.1 DER encoded (variable length, ~70 bytes Base64)
 
 #### **Key Formats**
 
-##### **Private Key (32 bytes raw, Base64 encoded)**
+##### **Private Key (PKCS#8 format, Base64 encoded)**
 ```java
 // Java format using BouncyCastle
-Ed25519KeyPairGenerator keyGen = new Ed25519KeyPairGenerator();
-keyGen.init(new Ed25519KeyGenerationParameters(secureRandom));
+ECKeyPairGenerator keyGen = new ECKeyPairGenerator();
+ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
+keyGen.init(new ECKeyGenerationParameters(ecSpec, secureRandom));
 AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
-Ed25519PrivateKeyParameters privateKey = 
-    (Ed25519PrivateKeyParameters) keyPair.getPrivate();
-String privateKeyBase64 = Base64.getEncoder().encodeToString(
-    privateKey.getEncoded()
-);
+ECPrivateKeyParameters privateKey = (ECPrivateKeyParameters) keyPair.getPrivate();
+
+// Encode as PKCS#8
+PrivateKeyInfo privateKeyInfo = PrivateKeyInfoFactory.createPrivateKeyInfo(privateKey);
+String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKeyInfo.getEncoded());
 ```
 
-##### **Public Key (32 bytes raw, Base64 encoded)**
+##### **Public Key (X.509 format, Base64 encoded)**
 ```java
 // Java format using BouncyCastle
-Ed25519PublicKeyParameters publicKey = 
-    (Ed25519PublicKeyParameters) keyPair.getPublic();
-String publicKeyBase64 = Base64.getEncoder().encodeToString(
-    publicKey.getEncoded()
-);
+ECPublicKeyParameters publicKey = (ECPublicKeyParameters) keyPair.getPublic();
+
+// Encode as X.509 SubjectPublicKeyInfo
+SubjectPublicKeyInfo publicKeyInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(publicKey);
+String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyInfo.getEncoded());
 ```
 
-**Note**: Ed25519 keys are stored as raw 32-byte values, Base64 encoded for transmission. The backend also supports PKCS#8/X.509 encoded keys for compatibility.
+**Note**: EC P-256 keys are stored in standard PKCS#8 (private) and X.509 (public) formats, Base64 encoded for transmission. This ensures compatibility with native mobile hardware-backed keystores (Android Keystore, iOS Secure Enclave).
 
-### **2. Ed25519 Signature**
+### **2. EC P-256 Signature (ECDSA-SHA256)**
 
 #### **Algorithm**
-- **Name**: Ed25519
-- **Type**: Pure Ed25519 (not EdDSA)
-- **Signature Size**: 64 bytes (512 bits)
+- **Name**: ECDSA with SHA-256
+- **Curve**: secp256r1 (EC P-256)
+- **Hash Algorithm**: SHA-256
+- **Signature Format**: ASN.1 DER encoded (variable length, typically ~70 bytes Base64)
 
 #### **Signature Process**
 
-1. **Data Encoding**
+1. **Data Encoding and Hashing**
    ```java
    byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+   MessageDigest digest = MessageDigest.getInstance("SHA-256");
+   byte[] hash = digest.digest(dataBytes);
    ```
 
 2. **Signing**
    ```java
-   Ed25519PrivateKeyParameters privateKey = 
-       new Ed25519PrivateKeyParameters(keyBytes, 0);
-   Ed25519Signer signer = new Ed25519Signer();
-   signer.init(true, privateKey);
-   signer.update(dataBytes, 0, dataBytes.length);
-   byte[] signature = signer.generateSignature();
+   byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
+   ECPrivateKeyParameters privateKeyParams = 
+       (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
+   
+   ECDSASigner signer = new ECDSASigner();
+   signer.init(true, privateKeyParams);
+   BigInteger[] signature = signer.generateSignature(hash);
+   
+   // Encode as ASN.1 DER
+   byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
    ```
 
 3. **Base64 Encoding**
    ```java
-   String signatureBase64 = Base64.getEncoder().encodeToString(signature);
+   String signatureBase64 = Base64.getEncoder().encodeToString(derSignature);
    ```
 
 #### **Verification Process**
@@ -79,47 +89,54 @@ String publicKeyBase64 = Base64.getEncoder().encodeToString(
 1. **Signature Decoding**
    ```java
    byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+   BigInteger[] signature = decodeDERSignature(signatureBytes);
    ```
 
 2. **Verification**
    ```java
-   Ed25519PublicKeyParameters publicKey = 
-       new Ed25519PublicKeyParameters(keyBytes, 0);
-   Ed25519Signer verifier = new Ed25519Signer();
-   verifier.init(false, publicKey); // false = verification mode
-   verifier.update(data.getBytes(StandardCharsets.UTF_8), 0, dataBytes.length);
-   boolean valid = verifier.verifySignature(signatureBytes);
+   byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
+   ECPublicKeyParameters publicKeyParams = 
+       (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
+   
+   byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+   MessageDigest digest = MessageDigest.getInstance("SHA-256");
+   byte[] hash = digest.digest(dataBytes);
+   
+   ECDSASigner verifier = new ECDSASigner();
+   verifier.init(false, publicKeyParams);
+   boolean valid = verifier.verifySignature(hash, signature[0], signature[1]);
    ```
 
 ### **3. Mutual Cryptographic Authentication**
 
 Ezkey implements mutual cryptographic authentication where both the backend and mobile app cryptographically verify each other's authenticity:
 
-#### **Backend â†’ Mobile Authentication**
-- Backend signs `authAttemptProofToken` with `integration_private_key` (Ed25519)
-- Mobile verifies signature using stored `integration_public_key` (Ed25519)
+#### **Backend → Mobile Authentication**
+- Backend signs `authAttemptProofToken` with `integration_private_key` (EC P-256, PKCS#8)
+- Mobile verifies signature using stored `integration_public_key` (EC P-256, X.509)
 - This ensures the mobile app can trust that authentication requests come from the legitimate backend
 
-#### **Mobile â†’ Backend Authentication**
-- Mobile signs responses with `device_private_key` (Ed25519)
-- Backend verifies signature using stored `device_public_key` (Ed25519)
+#### **Mobile → Backend Authentication**
+- Mobile signs responses with `device_private_key` (EC P-256, hardware-backed)
+- Backend verifies signature using stored `device_public_key` (EC P-256, X.509)
 - This ensures the backend can trust that responses come from the legitimate device
 
 ### **4. Key Management**
 
 #### **Backend Integration Keys**
 - Generated per enrollment during enrollment creation
-- Ed25519 key pair (32 bytes private key seed, 32 bytes public key)
+- EC P-256 key pair (PKCS#8 private key, X.509 public key)
 - Direct generation using BouncyCastle (no derivation needed)
 - Stored in database: `integration_private_key` (encrypted at rest), `integration_public_key` (plaintext)
 
-#### **Mobile Device Keys (Phase 2)**
-- Root key: 256-bit symmetric key stored in hardware-backed storage (Secure Enclave/StrongBox)
-- HKDF-SHA-256 derivation: `seed = HKDF(root_key, info = "enrollment:<enrollment_id>:signing")`
-- Ed25519 key pair: Generated from 32-byte seed
-- Only `device_public_key` sent to backend during enrollment verify
+#### **Mobile Device Keys**
+- **Android**: Hardware-backed keys stored in Android Keystore (StrongBox preferred)
+- **iOS**: Hardware-backed keys stored in Secure Enclave
+- EC P-256 key pair generated natively by platform keystores
+- Only `device_public_key` (X.509 format) sent to backend during enrollment verify
+- Private keys are **non-extractable** and managed entirely by hardware security modules
 
-**Note**: Phase 1 (backend + demo device) uses direct Ed25519 key generation without HKDF. HKDF derivation is mobile-specific and will be implemented in Phase 2.
+**Note**: Mobile keys are generated directly by platform keystores (no HKDF derivation needed). This provides better security and performance compared to software-based key derivation.
 
 ### **5. Proof Tokens**
 
@@ -133,7 +150,7 @@ Ezkey implements mutual cryptographic authentication where both the backend and 
 - **Size**: 32 bytes random
 - **Usage**: Unique authentication
 
-## ðŸ“ **Implementation Guide by Language**
+## 💻 **Implementation Guide by Language**
 
 ### **Java (Reference - Backend)**
 
@@ -141,70 +158,102 @@ Ezkey implements mutual cryptographic authentication where both the backend and 
 // SignatureService.java - Reference implementation
 public String generateSignature(String data, String base64PrivateKey) {
     byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-    // Handle both raw 32-byte keys and PKCS#8 encoded keys
-    Ed25519PrivateKeyParameters privateKeyParams;
-    if (keyBytes.length == 32) {
-        privateKeyParams = new Ed25519PrivateKeyParameters(keyBytes, 0);
-    } else {
-        // Extract from PKCS#8 format
-        PrivateKeyInfo privateKeyInfo = PrivateKeyInfo.getInstance(keyBytes);
-        byte[] rawKey = privateKeyInfo.getPrivateKey().getOctets();
-        privateKeyParams = new Ed25519PrivateKeyParameters(rawKey, 0);
-    }
-    Ed25519Signer signer = new Ed25519Signer();
+    ECPrivateKeyParameters privateKeyParams = 
+        (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
+    
+    ECDSASigner signer = new ECDSASigner();
     signer.init(true, privateKeyParams);
+    
     byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-    signer.update(dataBytes, 0, dataBytes.length);
-    byte[] signature = signer.generateSignature();
-    return Base64.getEncoder().encodeToString(signature);
+    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+    byte[] hash = digest.digest(dataBytes);
+    
+    BigInteger[] signature = signer.generateSignature(hash);
+    byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
+    return Base64.getEncoder().encodeToString(derSignature);
 }
 ```
 
-### **Mobile App (Phase 2)**
+### **Mobile App**
 
 #### **Android Native Module (Kotlin)**
 ```kotlin
-// Root key generation and HKDF derivation
-fun generateRootKey(): ByteArray {
-    // Generate 256-bit symmetric key
-    // Store in Android Keystore (StrongBox if available)
+// Generate EC P-256 key pair using Android Keystore
+fun generateEnrollmentKeyPair(enrollmentId: String): KeyPair {
+    val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+        "ezkey_enrollment_$enrollmentId",
+        KeyProperties.PURPOSE_SIGN
+    )
+        .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+        .setDigests(KeyProperties.DIGEST_SHA256)
+        .setKeySize(256)
+        .setIsStrongBoxBacked(true) // Use StrongBox if available
+        .build()
+    
+    val keyPairGenerator = KeyPairGenerator.getInstance(
+        KeyProperties.KEY_ALGORITHM_EC,
+        "AndroidKeyStore"
+    )
+    keyPairGenerator.initialize(keyGenParameterSpec)
+    return keyPairGenerator.generateKeyPair()
 }
 
-fun deriveEd25519KeyPair(enrollmentId: String): Ed25519KeyPair {
-    val rootKey = loadRootKey()
-    val seed = hkdfSha256(rootKey, "enrollment:$enrollmentId:signing")
-    // Generate Ed25519 key pair from seed
-    // Return key pair
-}
-
-fun signData(data: String, privateKeySeed: ByteArray): String {
-    // Sign using Ed25519 with private key seed
-    // Return Base64-encoded signature
+fun signData(data: String, keyAlias: String): String {
+    val keyStore = KeyStore.getInstance("AndroidKeyStore")
+    keyStore.load(null)
+    val privateKey = keyStore.getKey(keyAlias, null) as PrivateKey
+    
+    val signature = Signature.getInstance("SHA256withECDSA")
+    signature.initSign(privateKey)
+    signature.update(data.toByteArray(StandardCharsets.UTF_8))
+    val signatureBytes = signature.sign()
+    
+    return Base64.getEncoder().encodeToString(signatureBytes)
 }
 ```
 
 #### **iOS Native Module (Swift)**
 ```swift
-// Root key generation and HKDF derivation
-func generateRootKey() -> Data {
-    // Generate 256-bit symmetric key
-    // Store in iOS Keychain (Secure Enclave if available)
+// Generate EC P-256 key pair using Secure Enclave
+func generateEnrollmentKeyPair(enrollmentId: String) throws -> SecKey {
+    let attributes: [String: Any] = [
+        kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+        kSecAttrKeySizeInBits as String: 256,
+        kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
+        kSecPrivateKeyAttrs as String: [
+            kSecAttrIsPermanent as String: true,
+            kSecAttrApplicationTag as String: "ezkey.enrollment.\(enrollmentId)".data(using: .utf8)!
+        ]
+    ]
+    
+    var error: Unmanaged<CFError>?
+    guard let privateKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
+        throw error!.takeRetainedValue() as Error
+    }
+    
+    return privateKey
 }
 
-func deriveEd25519KeyPair(enrollmentId: String) -> Ed25519KeyPair {
-    let rootKey = loadRootKey()
-    let seed = hkdfSha256(rootKey, "enrollment:\(enrollmentId):signing")
-    // Generate Ed25519 key pair from seed using CryptoKit
-    // Return key pair
-}
-
-func signData(data: String, privateKeySeed: Data) -> String {
-    // Sign using Ed25519 with private key seed
-    // Return Base64-encoded signature
+func signData(data: String, privateKey: SecKey) throws -> String {
+    guard let dataToSign = data.data(using: .utf8) else {
+        throw CryptoError.invalidData
+    }
+    
+    var error: Unmanaged<CFError>?
+    guard let signature = SecKeyCreateSignature(
+        privateKey,
+        .ecdsaSignatureMessageX962SHA256,
+        dataToSign as CFData,
+        &error
+    ) as Data? else {
+        throw error!.takeRetainedValue() as Error
+    }
+    
+    return signature.base64EncodedString()
 }
 ```
 
-## ðŸ§ª **Compatibility Tests**
+## 🧪 **Compatibility Tests**
 
 ### **Cross-Validation Test**
 ```bash
@@ -217,36 +266,42 @@ func signData(data: String, privateKeySeed: Data) -> String {
 ```json
 {
   "data": "test-enrollment-proof-token-123",
-  "privateKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "expectedSignature": "base64-encoded-64-byte-signature"
+  "privateKey": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg...",
+  "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...",
+  "expectedSignature": "base64-encoded-asn1-der-signature"
 }
 ```
 
-## âš ï¸ **Pitfalls to Avoid**
+## ⚠️ **Pitfalls to Avoid**
 
 ### **1. Key Format**
-- âŒ Never use incorrect key sizes (must be 32 bytes for Ed25519)
-- âŒ Never confuse Ed25519 with EdDSA
-- âœ… Always use 32-byte raw keys or proper PKCS#8/X.509 encoding
+- ❌ Never use raw 32-byte keys (Ed25519 format) - EC P-256 uses PKCS#8/X.509
+- ❌ Never confuse EC P-256 with Ed25519
+- ✅ Always use PKCS#8 format for private keys
+- ✅ Always use X.509 format for public keys
 
 ### **2. Signature Algorithm**
-- âŒ Never use EdDSA instead of pure Ed25519
-- âŒ Never use incorrect signature size (must be 64 bytes)
-- âœ… Always use Ed25519 with 64-byte signatures
+- ❌ Never use Ed25519 or EdDSA - use ECDSA-SHA256
+- ❌ Never forget to hash data with SHA-256 before signing (ECDSA requirement)
+- ❌ Never use raw (r, s) signature format - use ASN.1 DER encoding
+- ✅ Always use ECDSA-SHA256 with EC P-256
+- ✅ Always encode signatures as ASN.1 DER
 
-### **3. Key Derivation (Mobile Only)**
-- âŒ Never derive keys incorrectly (must use HKDF-SHA-256)
-- âŒ Never reuse root key directly as signing key
-- âœ… Always derive Ed25519 keys from root key using HKDF
+### **3. Key Derivation (Mobile)**
+- ❌ Never derive keys manually - use platform keystores
+- ❌ Never extract private keys from hardware-backed storage
+- ✅ Always use Android Keystore or iOS Secure Enclave for key generation
+- ✅ Always use native platform APIs for signing
 
 ### **4. Encoding**
-- âŒ Never ignore UTF-8 encoding for data
-- âŒ Never use incorrect Base64 encoding
-- âœ… Always use StandardCharsets.UTF_8 for data
-- âœ… Always use standard Base64 encoding for keys and signatures
+- ❌ Never ignore UTF-8 encoding for data
+- ❌ Never use incorrect Base64 encoding
+- ❌ Never forget to hash data before ECDSA signing
+- ✅ Always use StandardCharsets.UTF_8 for data
+- ✅ Always use standard Base64 encoding for keys and signatures
+- ✅ Always hash data with SHA-256 before ECDSA signing
 
-## ðŸ” **Validation and Debugging**
+## 🔍 **Validation and Debugging**
 
 ### **Mobile Diagnostics (React Native)**
 
@@ -258,18 +313,18 @@ func signData(data: String, privateKeySeed: Data) -> String {
    - Tap `Run self-test`; the app generates a payload `ezkey-mobile-diagnostic:<timestamp>` and signs it with the device key.  
    - The UI shows:
      - Alias used for signing  
-     - Current public key (Base64 encoded, 32 bytes raw)  
-     - Signature (Base64 encoded, 64 bytes raw)  
+     - Current public key (Base64 encoded, X.509 format)  
+     - Signature (Base64 encoded, ASN.1 DER format)  
      - Any error (e.g., "No secure alias stored")
    - You can copy these values to reproduce the verification with `SignatureService`.
 
 3. **Interpreting results**
-   - **Success** â†’ Keys exist and signatures match the backend expectations.  
-   - **Error: No secure alias stored** â†’ The enrollment was wiped (clear app data, new device, recovery). Re-enroll the device.  
-   - **Other errors** â†’ The native bridge failed (e.g., Secure Enclave unavailable). Re-run on a device that supports key generation or fall back to mock provider.
+   - **Success** → Keys exist and signatures match the backend expectations.  
+   - **Error: No secure alias stored** → The enrollment was wiped (clear app data, new device, recovery). Re-enroll the device.  
+   - **Other errors** → The native bridge failed (e.g., Secure Enclave unavailable). Re-run on a device that supports key generation.
 
 4. **Resetting the environment**
-   - **Android**: Settings â†’ Apps â†’ Ezkey Mobile â†’ Storage â†’ "Clear storage".  
+   - **Android**: Settings → Apps → Ezkey Mobile → Storage → "Clear storage".  
    - **iOS**: Delete the app.  
    - Reinstall/rebind the device afterwards to restore keys.
 
@@ -278,45 +333,51 @@ func signData(data: String, privateKeySeed: Data) -> String {
 logger.debug("Data to sign: {}", data);
 logger.debug("Data length: {}", data.length());
 logger.debug("Private key length: {}", privateKeyBase64.length());
+logger.debug("Public key length: {}", publicKeyBase64.length());
 logger.debug("Signature length: {}", signatureBase64.length());
 logger.debug("Signature: {}", signatureBase64);
 ```
 
 ### **Validation Tests**
-1. **Generation Test**: Verify keys are 32 bytes (Ed25519)
-2. **Signature Test**: Verify signature is 64 bytes (Ed25519)
+1. **Generation Test**: Verify keys are valid PKCS#8/X.509 format (EC P-256)
+2. **Signature Test**: Verify signature is valid ASN.1 DER format (ECDSA-SHA256)
 3. **Validation Test**: Verify backend can validate signature
 4. **Cross Test**: Verify compatibility between backend and mobile
 
-## ðŸ“š **Reference Resources**
+## 📚 **Reference Resources**
 
 ### **Standards**
-- [RFC 8032 - Ed25519](https://tools.ietf.org/html/rfc8032)
-- [RFC 5869 - HKDF](https://tools.ietf.org/html/rfc5869)
+- [RFC 5480 - Elliptic Curve Cryptography Subject Public Key Info](https://tools.ietf.org/html/rfc5480)
+- [NIST SP 800-186 - Recommendations for Discrete Logarithm-Based Cryptography: Elliptic Curve Domain Parameters](https://csrc.nist.gov/publications/detail/sp/800-186/final)
+- [SEC 1: Elliptic Curve Cryptography](https://www.secg.org/sec1-v2.pdf)
+- [RFC 3279 - Algorithms and Identifiers for the Internet X.509 Public Key Infrastructure](https://tools.ietf.org/html/rfc3279)
 
 ### **Reference Implementations**
 - [Java SignatureService.java](../ezkey-core/src/main/java/org/ezkey/signature/SignatureService.java)
 - [Java SignatureServiceTest.java](../ezkey-core/src/test/java/org/ezkey/signature/SignatureServiceTest.java)
+- [Android EzkeyCryptoModule.kt](../ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt)
 
 ### **Testing Tools**
-- [BouncyCastle](https://www.bouncycastle.org/) for Java Ed25519 support
+- [BouncyCastle](https://www.bouncycastle.org/) for Java EC P-256 support
 - [Base64 Decoder](https://www.base64decode.org/) for validation
+- [ASN.1 Decoder](https://lapo.it/asn1js/) for signature format validation
 
-## ðŸŽ¯ **Implementation Checklist**
+## 🎯 **Implementation Checklist**
 
 ### **Before Starting**
-- [ ] Understand Ed25519 key format (32 bytes raw)
-- [ ] Understand Ed25519 signature format (64 bytes)
-- [ ] Understand HKDF-SHA-256 derivation (mobile only)
+- [ ] Understand EC P-256 key format (PKCS#8/X.509)
+- [ ] Understand ECDSA-SHA256 signature format (ASN.1 DER)
+- [ ] Understand native mobile keystore APIs (Android Keystore, iOS Secure Enclave)
 - [ ] Have access to testing tools
 
 ### **During Implementation**
-- [ ] Generate real Ed25519 keys (32 bytes)
-- [ ] Use correct Ed25519 signature algorithm
-- [ ] Implement 64-byte signatures correctly
+- [ ] Generate real EC P-256 keys (PKCS#8/X.509 format)
+- [ ] Use correct ECDSA-SHA256 signature algorithm
+- [ ] Implement ASN.1 DER signature encoding correctly
+- [ ] Hash data with SHA-256 before signing (ECDSA requirement)
 - [ ] Use UTF-8 for data encoding
 - [ ] Use Base64 for key/signature encoding
-- [ ] Implement HKDF derivation for mobile (Phase 2)
+- [ ] Use native platform keystores for mobile (no manual derivation)
 
 ### **After Implementation**
 - [ ] Test with test vectors
@@ -324,23 +385,27 @@ logger.debug("Signature: {}", signatureBase64);
 - [ ] Test cross-validation between backend and mobile
 - [ ] Document language-specific details
 
-## ðŸš€ **Onboarding for New Developers**
+## 🚀 **Onboarding for New Developers**
 
 ### **Recommended Steps**
 1. **Read this document** entirely
 2. **Study SignatureService.java** as reference
-3. **Implement tests** before implementation
-4. **Validate with Java backend** at each step
-5. **Document language-specific** details
+3. **Review mobile native modules** (Android/iOS) for platform-specific details
+4. **Implement tests** before implementation
+5. **Validate with Java backend** at each step
+6. **Document language-specific** details
 
 ### **Questions to Ask Yourself**
-- Are my keys 32 bytes (Ed25519)?
-- Am I using pure Ed25519 (not EdDSA)?
-- Are my signatures 64 bytes?
+- Are my keys in PKCS#8/X.509 format (EC P-256)?
+- Am I using ECDSA-SHA256 (not Ed25519)?
+- Are my signatures ASN.1 DER encoded?
+- Am I hashing data with SHA-256 before signing?
 - Can the Java backend validate my signatures?
 - Can I validate Java backend signatures?
-- Am I using HKDF correctly for mobile key derivation (Phase 2)?
+- Am I using native platform keystores for mobile (not manual derivation)?
 
 ---
 
 **Note**: This document must be updated whenever Ezkey's cryptographic specifications are modified.
+
+**Migration Note**: Ezkey previously used Ed25519 but migrated to EC P-256 for better mobile hardware support and native platform integration. See [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) for migration details.

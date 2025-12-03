@@ -56,7 +56,7 @@ For up-to-date information, consult:
 **Final Architecture:**
 - **No passwords stored** - Eliminated `password_hash`, `mfa_enabled`, `mfa_required`, `passwordless_enabled` columns
 - **No temp tokens** - Dropped `ezkey_admin_temp_tokens` table entirely
-- **Cryptographic authentication** - Device-bound Ed25519 keys
+- **Cryptographic authentication** - Device-bound EC P-256 keys
 - **Recovery codes** - 32-digit, 106-bit entropy (paranoia-level security)
 - **Challenge-based auth** - Optional 6-digit challenge verification
 - **Emergency recovery** - Single-use recovery codes + enrollment reset

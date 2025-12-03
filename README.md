@@ -394,7 +394,7 @@ sequenceDiagram
     participant DB as Database
     
     Note over Device,DB: Key Generation & Enrollment
-    Device->>Device: Generate Ed25519 Key Pair
+    Device->>Device: Generate EC P-256 Key Pair
     Device->>Auth: Send Public Key + Enrollment Request
     Auth->>Core: Validate Request
     Core->>Core: Generate Proof Token
@@ -872,7 +872,7 @@ See our [Security Policy](SECURITY.md) for full details on:
 
 ### Security Features
 
-- **Ed25519** cryptographic authentication (production-grade, compact signatures)
+- **EC P-256** cryptographic authentication (production-grade, native mobile hardware support)
 - **One-time proof tokens** to prevent replay attacks
 - **Signature validation** on all authentication attempts
 - **API Keys** for secure machine-to-machine authentication
