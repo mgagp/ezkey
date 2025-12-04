@@ -21,9 +21,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
@@ -46,6 +48,8 @@ import org.slf4j.LoggerFactory;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.ADMIN)
 @DisplayName("Admin Authentication Security Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {

@@ -20,8 +20,10 @@ import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -40,6 +42,9 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.SMOKE)
+@Tag(TestTags.ENROLLMENT)
 @DisplayName("Enrollment Flow Security Tests")
 public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
 

@@ -22,9 +22,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
 import org.ezkey.tests.util.DatabaseHelper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +66,10 @@ import org.slf4j.LoggerFactory;
  *
  * @since 2025
  */
+@Tag(TestTags.SLOW)
+@Tag(TestTags.TIME_DEPENDENT)
+@Tag(TestTags.ENCRYPTION)
+@Tag(TestTags.CROSS_INSTANCE)
 @DisplayName("Key Rotation Sync Window Tests")
 public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
 

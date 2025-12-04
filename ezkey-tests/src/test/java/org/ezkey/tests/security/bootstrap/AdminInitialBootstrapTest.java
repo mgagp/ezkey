@@ -21,10 +21,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.AdminBootstrapService;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.DatabaseHelper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +59,9 @@ import org.slf4j.LoggerFactory;
  *
  * @since 2025
  */
+@Tag(TestTags.SLOW)
+@Tag(TestTags.ADMIN)
+@Tag(TestTags.DATABASE)
 @DisplayName("Admin Initial Bootstrap Test")
 public class AdminInitialBootstrapTest extends AbstractSecurityTest {
 

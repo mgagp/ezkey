@@ -20,7 +20,9 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,6 +41,8 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.API_KEY)
 @DisplayName("API Key Security Tests")
 public class ApiKeySecurityTest extends AbstractSecurityTest {
 

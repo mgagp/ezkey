@@ -13,8 +13,10 @@ package org.ezkey.tests.security.crypto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -33,6 +35,8 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.ENCRYPTION)
 @DisplayName("Cryptographic Security Tests")
 public class CryptographicSecurityTest extends AbstractSecurityTest {
 

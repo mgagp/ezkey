@@ -14,8 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.DatabaseHelper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -27,6 +29,9 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.AUTHENTICATION)
+@Tag(TestTags.DATABASE)
 @DisplayName("Auth Attempt Supersession Security Tests")
 public class AuthAttemptSupersessionTest extends AbstractSecurityTest {
 

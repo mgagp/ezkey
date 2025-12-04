@@ -19,7 +19,9 @@ import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -40,6 +42,8 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.SLOW)
+@Tag(TestTags.TIME_DEPENDENT)
 @DisplayName("Rate Limiting Security Tests")
 public class RateLimitingSecurityTest extends AbstractSecurityTest {
 

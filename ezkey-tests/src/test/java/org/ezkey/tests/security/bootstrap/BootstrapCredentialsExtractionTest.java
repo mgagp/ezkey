@@ -14,10 +14,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor.BootstrapCredentials;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -44,6 +46,8 @@ import org.junit.jupiter.api.Test;
  *
  * @since 2025
  */
+@Tag(TestTags.FAST)
+@Tag(TestTags.ADMIN)
 @DisplayName("Bootstrap Credentials Extraction Test")
 public class BootstrapCredentialsExtractionTest {
 
