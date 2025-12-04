@@ -2,6 +2,7 @@
 	"info": {
 		"_postman_id": "633c8fa1-be1d-47da-ba89-79304eb68eb2",
 		"name": "EZ Key API Keys admin",
+		"description": "Collection for API key management operations in the Admin API.\n\n## Endpoints\n\n- **Create API Key**: Create a new API key pair for machine-to-machine authentication\n- **List API Keys**: List all active API keys for a specific integration\n- **Get API Key**: Get details of a specific API key by ID\n- **Revoke API Key**: Immediately revoke an API key, making it unusable\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Security Notes\n\n- Secret keys are shown **ONLY ONCE** during creation and cannot be retrieved later\n- Lost secret keys cannot be recovered - create a new key instead\n- API keys use HTTP Basic Authentication for machine-to-machine access\n- Rate limiting: 1000 requests per hour per integration key",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -13,11 +14,23 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"apiKeyId\", jsonData.apiKeyId);\r",
-							"pm.environment.set(\"integrationKey\", jsonData.integrationKey);\r",
-							"pm.environment.set(\"secretKey\", jsonData.secretKey);\r",
-							""
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"apiKeyId\", jsonData.apiKeyId);",
+							"    pm.environment.set(\"integrationKey\", jsonData.integrationKey);",
+							"    pm.environment.set(\"secretKey\", jsonData.secretKey);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('apiKeyId');",
+							"        pm.expect(jsonData).to.have.property('integrationKey');",
+							"        pm.expect(jsonData).to.have.property('secretKey');",
+							"        pm.expect(jsonData).to.have.property('warning');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -47,22 +60,34 @@
 						"v1",
 						"api-keys"
 					]
-				}
+				},
+				"description": "Creates a new API key pair for an integration. The secret key is shown **ONLY ONCE** in the response and must be saved immediately.\n\n**Request Body:**\n- `integrationId` (required): Integration ID this API key belongs to\n- `description` (optional): Human-readable description\n- `expiresAt` (optional): Expiration date in UTC (ISO 8601 format)\n- `ipWhitelist` (optional): Array of IP addresses or CIDR ranges\n\n**Response (201 Created):**\n- `apiKeyId`: Database ID of the created API key\n- `integrationKey`: Public integration key (safe to display)\n- `secretKey`: Secret key (**SHOWN ONCE ONLY** - save immediately!)\n- `description`: Description provided in request\n- `createdAt`: Creation timestamp\n- `expiresAt`: Expiration date (null if no expiration)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `warning`: Security warning message\n\n**Status Codes:**\n- 201: API key created successfully\n- 400: Invalid request data\n- 401: Unauthorized - admin token required\n- 404: Integration not found or inactive\n- 409: Maximum active keys limit reached (5 keys per integration)"
 			},
 			"response": []
 		},
 		{
-			"name": "list",
+			"name": "list keys for integration",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"apiKeyId\", jsonData.apiKeyId);\r",
-							"pm.environment.set(\"integrationKey\", jsonData.integrationKey);\r",
-							"pm.environment.set(\"secretKey\", jsonData.secretKey);\r",
-							""
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"apiKeyId\", jsonData[0].apiKeyId);",
+							"        pm.environment.set(\"integrationKey\", jsonData[0].integrationKey);",
+							"    }",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -74,7 +99,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/api-keys/1",
+					"raw": "{{base_url_admin_api}}/api/v1/api-keys/integration/:integrationId",
 					"host": [
 						"{{base_url_admin_api}}"
 					],
@@ -82,9 +107,120 @@
 						"api",
 						"v1",
 						"api-keys",
-						"1"
+						"integration",
+						":integrationId"
+					],
+					"variable": [
+						{
+							"key": "integrationId",
+							"value": "{{integrationId}}",
+							"description": "Integration ID to list API keys for"
+						}
 					]
+				},
+				"description": "Lists all active (non-revoked) API keys for a specific integration. Secret keys are **never** included in the response.\n\n**Path Parameters:**\n- `integrationId` (required): Integration ID to list API keys for\n\n**Response (200 OK):**\nArray of API key objects, each containing:\n- `apiKeyId`: Database ID of the API key\n- `integrationId`: Integration ID this key belongs to\n- `integrationKey`: Public integration key (safe to display)\n- `description`: Human-readable description\n- `active`: Whether the key is active (false if revoked)\n- `createdAt`: Creation timestamp\n- `expiresAt`: Expiration date (null if no expiration)\n- `lastUsedAt`: Last successful authentication timestamp (null if never used)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `revokedAt`: Revocation timestamp (null if active)\n- `revokedByUsername`: Admin who revoked this key (null if active)\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required"
+			},
+			"response": []
+		},
+		{
+			"name": "get key by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect([200, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"apiKeyId\", jsonData.apiKeyId);",
+							"    pm.environment.set(\"integrationKey\", jsonData.integrationKey);",
+							"    ",
+							"    pm.test(\"Key ID matches\", function () {",
+							"        pm.expect(jsonData.apiKeyId.toString()).to.equal(pm.environment.get('apiKeyId') || '{{apiKeyId}}');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
 				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/api-keys/:keyId",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"api-keys",
+						":keyId"
+					],
+					"variable": [
+						{
+							"key": "keyId",
+							"value": "{{apiKeyId}}",
+							"description": "The API key ID"
+						}
+					]
+				},
+				"description": "Returns details of a specific API key by its ID. Secret key is **never** included in the response.\n\n**Path Parameters:**\n- `keyId` (required): API key ID to retrieve\n\n**Response (200 OK):**\n- `apiKeyId`: Database ID of the API key\n- `integrationId`: Integration ID this key belongs to\n- `integrationKey`: Public integration key (safe to display)\n- `description`: Human-readable description\n- `active`: Whether the key is active (false if revoked)\n- `createdAt`: Creation timestamp\n- `expiresAt`: Expiration date (null if no expiration)\n- `lastUsedAt`: Last successful authentication timestamp (null if never used)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `revokedAt`: Revocation timestamp (null if active)\n- `revokedByUsername`: Admin who revoked this key (null if active)\n\n**Status Codes:**\n- 200: API key found\n- 401: Unauthorized - admin token required\n- 404: API key not found"
+			},
+			"response": []
+		},
+		{
+			"name": "revoke key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 or 404\", function () {",
+							"    pm.expect([204, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 204) {",
+							"    pm.test(\"Revocation successful\", function () {",
+							"        pm.expect(pm.response.code).to.equal(204);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/api-keys/:keyId",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"api-keys",
+						":keyId"
+					],
+					"variable": [
+						{
+							"key": "keyId",
+							"value": "{{apiKeyId}}",
+							"description": "The API key ID to revoke"
+						}
+					]
+				},
+				"description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes with revocation metadata.\n\n**Path Parameters:**\n- `keyId` (required): API key ID to revoke\n\n**Use Cases:**\n- Compromised key security incident\n- Key rotation cleanup (after new key is deployed)\n- Decommissioning an application\n\n**Response (204 No Content):**\nNo response body. The key is immediately revoked and cannot be used for authentication.\n\n**Status Codes:**\n- 204: API key revoked successfully\n- 401: Unauthorized - admin token required\n- 404: API key not found"
 			},
 			"response": []
 		}

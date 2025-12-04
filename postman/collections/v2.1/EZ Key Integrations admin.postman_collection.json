@@ -2,13 +2,13 @@
 	"info": {
 		"_postman_id": "a0da518a-b849-4528-a8f5-c39c88f51435",
 		"name": "EZ Key Integrations admin",
-		"description": "# 🚀 Get started here\n\nThis template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this template**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT request.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n ```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Scripts\" tab**\n\nAdding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n\" alt=\"\" height=\"1530\" width=\"2162\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n    \n- Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.\n    \n\n## 💡Related templates\n\n[API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)",
+		"description": "Collection for integration management operations in the Admin API.\n\n## Endpoints\n\n- **List All Integrations**: Retrieve all integrations in the system\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration with i18n support\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration can have:\n- Multiple language support (i18n) for names and descriptions\n- Logo for branding\n- Active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n\n## Internationalization (i18n)\n\nIntegrations support multiple languages through the `i18n` array. Each entry contains:\n- `language`: Language code (e.g., \"en\", \"fr\")\n- `name`: Localized integration name\n- `description`: Localized integration description",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
 	"item": [
 		{
-			"name": "integrations",
+			"name": "list all",
 			"event": [
 				{
 					"listen": "test",
@@ -17,17 +17,18 @@
 							"pm.test(\"Status code is 200\", function () {",
 							"    pm.response.to.have.status(200);",
 							"});",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
-							""
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"integrationId\", jsonData[0].id);",
+							"    }",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -48,20 +49,32 @@
 						"integrations"
 					]
 				},
-				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+				"description": "Retrieves all integrations configured in the system for administrative purposes.\n\n**Response (200 OK):**\nArray of integration objects, each containing:\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag (true if active, false if inactive)\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects, each containing:\n  - `language`: Language code (e.g., \"en\", \"fr\")\n  - `name`: Localized integration name\n  - `description`: Localized integration description\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},
 		{
-			"name": "applications ID",
+			"name": "get by ID",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});"
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect([200, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"integrationId\", jsonData.id);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('id');",
+							"        pm.expect(jsonData).to.have.property('active');",
+							"        pm.expect(jsonData).to.have.property('createdAt');",
+							"        pm.expect(jsonData).to.have.property('i18n');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -82,21 +95,15 @@
 						"integrations",
 						":id"
 					],
-					"query": [
-						{
-							"key": "id",
-							"value": "1",
-							"disabled": true
-						}
-					],
 					"variable": [
 						{
 							"key": "id",
-							"value": "{{integrationId}}"
+							"value": "{{integrationId}}",
+							"description": "The integration ID"
 						}
 					]
 				},
-				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+				"description": "Retrieves details of a specific integration by its unique identifier for administrative purposes.\n\n**Path Parameters:**\n- `id` (required): Integration ID to retrieve\n\n**Response (200 OK):**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag (true if active, false if inactive)\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects, each containing:\n  - `language`: Language code (e.g., \"en\", \"fr\")\n  - `name`: Localized integration name\n  - `description`: Localized integration description\n\n**Status Codes:**\n- 200: Integration found\n- 401: Unauthorized - admin token required\n- 404: Integration not found\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -107,14 +114,19 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Successful POST request\", function () {",
-							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
 							"});",
 							"",
-							"var jsonData = JSON.parse(pm.response.text());",
-							"pm.environment.set(\"integrationId\", jsonData.id);",
-							"",
-							""
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"integrationId\", jsonData.id);",
+							"    ",
+							"    pm.test(\"Response contains id\", function () {",
+							"        pm.expect(jsonData).to.have.property('id');",
+							"        pm.expect(jsonData.id).to.be.a('number');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -164,21 +176,27 @@
 						"integrations"
 					]
 				},
-				"description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+				"description": "Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.\n\n**Request Body:**\n- `logo` (optional): URL or path to the integration logo image\n- `i18n` (required): Array of internationalized content objects, each containing:\n  - `language` (required): Language code (e.g., \"en\", \"fr\")\n  - `name` (required): Localized integration name\n  - `description` (optional): Localized integration description\n\n**Response (201 Created):**\n- `id`: Unique identifier of the newly created integration\n- Location header: `/api/v1/integrations/{id}`\n\n**Status Codes:**\n- 201: Integration created successfully\n- 400: Invalid data (validation errors)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons."
 			},
 			"response": []
 		},
 		{
-			"name": "Delete data",
+			"name": "delete",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Successful DELETE request\", function () {",
-							"    pm.expect(pm.response.code).to.be.oneOf([200, 202, 204]);",
+							"pm.test(\"Status code is 204 or 404\", function () {",
+							"    pm.expect([204, 404]).to.include(pm.response.code);",
 							"});",
-							""
+							"",
+							"if (pm.response.code === 204) {",
+							"    pm.test(\"Deletion successful\", function () {",
+							"        pm.expect(pm.response.code).to.equal(204);",
+							"        // DELETE returns 204 No Content with no body",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -202,11 +220,12 @@
 					"variable": [
 						{
 							"key": "id",
-							"value": "1"
+							"value": "{{integrationId}}",
+							"description": "The integration ID to delete"
 						}
 					]
 				},
-				"description": "This is a DELETE request, and it is used to delete data that was previously created via a POST request. You typically identify the entity being updated by including an identifier in the URL (eg. `id=1`).\n\nA successful DELETE request typically returns a `200 OK`, `202 Accepted`, or `204 No Content` response code."
+				"description": "Removes an integration from the system, effectively disabling MFA protection for the associated application.\n\n**Path Parameters:**\n- `id` (required): Integration ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Integration is removed from the system\n- All associated enrollments and API keys are also removed\n\n**Status Codes:**\n- 204: Integration deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Integration not found\n- 500: Internal server error\n\n**Warning:** This operation is irreversible. Deleting an integration will also delete all associated enrollments, API keys, and authentication attempts."
 			},
 			"response": []
 		}

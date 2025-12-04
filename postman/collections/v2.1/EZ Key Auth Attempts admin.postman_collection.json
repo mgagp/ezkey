@@ -2,6 +2,7 @@
 	"info": {
 		"_postman_id": "a4d0f823-0ca4-4ea5-8e57-bff5be9282c1",
 		"name": "EZ Key Auth Attempts admin",
+		"description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Delete Auth Attempt**: Remove an authentication attempt from the system\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -13,9 +14,19 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r",
-							""
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+							"    ",
+							"    pm.test(\"Response contains authAttemptId\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttemptId');",
+							"        pm.expect(jsonData.authAttemptId).to.be.a('number');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -27,7 +38,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}\r\n",
+					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -44,7 +55,8 @@
 						"v1",
 						"auth-attempts"
 					]
-				}
+				},
+				"description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -55,9 +67,19 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);\r",
-							""
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+							"    ",
+							"    pm.test(\"Response contains authAttemptId\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttemptId');",
+							"        pm.expect(jsonData.authAttemptId).to.be.a('number');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -85,7 +107,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}\r\n",
+					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -102,7 +124,8 @@
 						"v1",
 						"auth-attempts"
 					]
-				}
+				},
+				"description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -113,7 +136,21 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());"
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"authAttemptId\", jsonData[0].authAttemptId);",
+							"    }",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -133,7 +170,8 @@
 						"v1",
 						"auth-attempts"
 					]
-				}
+				},
+				"description": "Retrieves all authentication attempts in the system for administrative purposes.\n\n**Response (200 OK):**\nArray of authentication attempt objects, each containing:\n- `authAttemptId`: Unique identifier for the authentication attempt\n- `enrollmentId`: Enrollment identifier this attempt belongs to\n- `authAttemptStatus`: Current lifecycle status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)\n- `authAttemptChallenge`: Challenge value (null if not required)\n- `authAttemptProofToken`: Proof token for the authentication attempt\n- `createdAt`: Timestamp when the attempt was created\n- `expiresAt`: Timestamp when the attempt expires\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -144,7 +182,21 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());"
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"authAttemptId\", jsonData[0].authAttemptId);",
+							"    }",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -180,7 +232,62 @@
 						"v1",
 						"auth-attempts"
 					]
+				},
+				"description": "Retrieves all authentication attempts using API key authentication. Access control ensures API keys can only access attempts for enrollments belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Response (200 OK):**\nArray of authentication attempt objects (same structure as list all)\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - invalid API key\n- 500: Internal server error"
+			},
+			"response": []
+		},
+		{
+			"name": "get by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404\", function () {",
+							"    pm.expect([200, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttemptId');",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"        pm.expect(jsonData).to.have.property('authAttemptStatus');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
 				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID"
+						}
+					]
+				},
+				"description": "Retrieves details of a specific authentication attempt by its ID for administrative purposes.\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to retrieve\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier for the authentication attempt\n- `enrollmentId`: Enrollment identifier this attempt belongs to\n- `authAttemptStatus`: Current lifecycle status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)\n- `authAttemptChallenge`: Challenge value (null if not required)\n- `authAttemptProofToken`: Proof token for the authentication attempt\n- `createdAt`: Timestamp when the attempt was created\n- `expiresAt`: Timestamp when the attempt expires\n\n**Status Codes:**\n- 200: Auth attempt found\n- 401: Unauthorized - admin token required\n- 404: Auth attempt not found\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -191,7 +298,25 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());"
+							"pm.test(\"Status code is 200, 408, or 404\", function () {",
+							"    pm.expect([200, 408, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttempt');",
+							"        pm.expect(jsonData).to.have.property('status');",
+							"        pm.expect(jsonData).to.have.property('completed');",
+							"        pm.expect(jsonData).to.have.property('timeoutReached');",
+							"    });",
+							"    ",
+							"    pm.test(\"Status is valid\", function () {",
+							"        var validStatuses = ['PENDING', 'READ', 'INVALID', 'REJECTED', 'ACCEPTED', 'EXPIRED'];",
+							"        pm.expect(validStatuses).to.include(jsonData.status);",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -217,21 +342,25 @@
 						{
 							"key": "timeout",
 							"value": "30",
+							"description": "Maximum wait duration in seconds (1-300, default: 30)",
 							"disabled": true
 						},
 						{
 							"key": "polling",
 							"value": "2",
+							"description": "Polling interval in seconds (1-60, default: 2)",
 							"disabled": true
 						}
 					],
 					"variable": [
 						{
 							"key": "id",
-							"value": "{{authAttemptId}}"
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID to wait for"
 						}
 					]
-				}
+				},
+				"description": "Waits for authentication response completion with configurable timeout and polling. This endpoint enables synchronous-like behavior in the asynchronous MFA authentication flow.\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to wait for\n\n**Query Parameters:**\n- `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)\n- `polling` (optional, default: 2): Polling interval in seconds (1-60)\n\n**Response (200 OK):**\n- `authAttempt`: Complete authentication attempt data\n- `status`: Calculated status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)\n- `completed`: Whether authentication process is complete\n- `timeoutReached`: Whether wait ended due to timeout\n- `waitDuration`: Actual duration waited in seconds\n- `completedAt`: Timestamp when wait operation completed\n\n**Status Codes:**\n- 200: Authentication completed\n- 408: Timeout reached, authentication still pending\n- 404: Auth attempt not found\n- 400: Invalid parameters (timeout, polling)\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -242,7 +371,20 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());"
+							"pm.test(\"Status code is 200, 408, or 404\", function () {",
+							"    pm.expect([200, 408, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttempt');",
+							"        pm.expect(jsonData).to.have.property('status');",
+							"        pm.expect(jsonData).to.have.property('completed');",
+							"        pm.expect(jsonData).to.have.property('timeoutReached');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -284,21 +426,74 @@
 						{
 							"key": "timeout",
 							"value": "30",
+							"description": "Maximum wait duration in seconds (1-300, default: 30)",
 							"disabled": true
 						},
 						{
 							"key": "polling",
 							"value": "2",
+							"description": "Polling interval in seconds (1-60, default: 2)",
 							"disabled": true
 						}
 					],
 					"variable": [
 						{
 							"key": "id",
-							"value": "{{authAttemptId}}"
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID to wait for"
 						}
 					]
+				},
+				"description": "Waits for authentication response using API key authentication. Access control ensures API keys can only wait for attempts belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to wait for\n\n**Query Parameters:**\n- `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)\n- `polling` (optional, default: 2): Polling interval in seconds (1-60)\n\n**Response (200 OK):**\nSame structure as wait endpoint\n\n**Status Codes:**\n- 200: Authentication completed\n- 408: Timeout reached\n- 404: Auth attempt not found\n- 400: Invalid parameters\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (200 requests per hour per integration key)\n- 500: Internal server error"
+			},
+			"response": []
+		},
+		{
+			"name": "delete",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 or 404\", function () {",
+							"    pm.expect([204, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 204) {",
+							"    pm.test(\"Deletion successful\", function () {",
+							"        pm.expect(pm.response.code).to.equal(204);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
 				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID to delete"
+						}
+					]
+				},
+				"description": "Removes an authentication attempt from the system. This endpoint is used for administrative cleanup of authentication attempts.\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to delete\n\n**Response (204 No Content):**\nNo response body. The authentication attempt is removed from the system.\n\n**Status Codes:**\n- 204: Auth attempt deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Auth attempt not found\n- 500: Internal server error"
 			},
 			"response": []
 		}

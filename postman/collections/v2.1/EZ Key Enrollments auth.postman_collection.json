@@ -2,6 +2,7 @@
 	"info": {
 		"_postman_id": "8ba6663c-3153-4378-b8f1-13ac06b3caa9",
 		"name": "EZ Key Enrollments auth",
+		"description": "Collection for mobile device enrollment operations in the Auth API.\n\n## Endpoints\n\n- **Bind**: Initiate device binding using secure enrollment proof token\n- **Verify**: Complete enrollment verification process with device keys and signatures\n\n## Crypto Operations\n\nThis collection includes helper endpoints from the Crypto API:\n- **Generate Key Pair**: Generate EC P-256 key pair for device\n- **Sign**: Cryptographically sign enrollment proof token with device private key\n\n## Enrollment Flow\n\n1. **Bind**: Mobile device initiates binding with enrollment ID and proof token\n2. **Generate Keys**: Device generates EC P-256 key pair\n3. **Sign Token**: Device signs enrollment proof token with private key\n4. **Verify**: Device submits public key and signature to complete enrollment\n\n## Security Notes\n\n- Uses enrollment proof token in request body (not URL) to prevent enumeration attacks\n- All cryptographic operations use EC P-256 (ECDSA-SHA256)\n- Device generates its own key pair (private key never leaves device in production)\n- Enrollment proof token signature proves device received the original token\n- Challenge response validates device possession of enrollment credentials",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -13,10 +14,22 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);\r",
-							"pm.environment.set(\"integrationPublicKey\", jsonData.integrationPublicKey);\r",
-							"pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);"
+							"pm.test(\"Status code is 200, 400, or 409\", function () {",
+							"    pm.expect([200, 400, 409]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
+							"    pm.environment.set(\"integrationPublicKey\", jsonData.integrationPublicKey);",
+							"    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"        pm.expect(jsonData).to.have.property('integrationPublicKey');",
+							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -46,7 +59,8 @@
 						"enrollments",
 						"bind"
 					]
-				}
+				},
+				"description": "Initiates the device binding process for mobile enrollment. The mobile device calls this endpoint to start the enrollment binding process using secure enrollment proof token.\n\n**Security Enhancement:** This endpoint requires both enrollment ID and enrollment proof token to prevent enumeration attacks and ensure secure access to enrollment data.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to bind to the mobile device\n- `enrollmentProofToken` (required): Enrollment proof token for authentication\n- `language` (optional): Preferred language for i18n fields (e.g., \"en\", \"fr\")\n\n**Response (200 OK):**\n- `enrollmentId`: Enrollment ID that was bound to the mobile device\n- `integrationPublicKey`: Integration's public key for cryptographic verification (EC P-256, X.509 format, Base64)\n- `enrollmentProofToken`: Enrollment proof token to be signed by the device\n- `integrationLogo` (optional): Logo URL or base64-encoded image for the integration\n- `integrationName` (optional): Display name of the integration\n- `integrationDescription` (optional): Description of the integration\n- `enrollmentName` (optional): Human-readable name for the enrollment\n\n**Status Codes:**\n- 200: Enrollment binding information retrieved successfully\n- 400: Invalid enrollment ID, proof token, or enrollment expired\n- 409: Enrollment already bound or proof token already used\n- 500: Internal server error\n\n**Usage:** After binding, the device generates its own key pair and signs the enrollment proof token to complete verification."
 			},
 			"response": []
 		},
@@ -57,9 +71,22 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"device_privateKey\", jsonData.privateKey);\r",
-							"pm.environment.set(\"device_publicKey\", jsonData.publicKey);"
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"device_privateKey\", jsonData.privateKey);",
+							"    pm.environment.set(\"device_publicKey\", jsonData.publicKey);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('privateKey');",
+							"        pm.expect(jsonData).to.have.property('publicKey');",
+							"        pm.expect(jsonData.privateKey).to.be.a('string');",
+							"        pm.expect(jsonData.publicKey).to.be.a('string');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -81,7 +108,8 @@
 						"crypto",
 						"keypair"
 					]
-				}
+				},
+				"description": "Generates a new EC P-256 key pair for the mobile device. In production, this would be done on the device itself using hardware-backed keystores (Android Keystore, iOS Secure Enclave).\n\n**Response (200 OK):**\n- `privateKey`: Base64-encoded EC P-256 private key (PKCS#8 format)\n- `publicKey`: Base64-encoded EC P-256 public key (X.509 SubjectPublicKeyInfo format)\n\n**Usage:** The private key is used for signing enrollment proof token, and the public key is submitted during verification."
 			},
 			"response": []
 		},
@@ -92,8 +120,19 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);"
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);",
+							"    ",
+							"    pm.test(\"Response contains signature\", function () {",
+							"        pm.expect(jsonData).to.have.property('signature');",
+							"        pm.expect(jsonData.signature).to.be.a('string');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -124,12 +163,41 @@
 						"crypto",
 						"sign"
 					]
-				}
+				},
+				"description": "Signs the enrollment proof token with the device's private key. This signature proves that the device has received the original enrollment proof token and is responding to it.\n\n**Request Body:**\n- `data`: The enrollment proof token (from bind response)\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n- `originalData`: Original data that was signed\n- `algorithm`: Signature algorithm used (\"EC_P256\")\n\n**Security Note:** This signature is included in the verify request as `enrollmentProofTokenSigned`. It proves the device received the original token and prevents replay attacks."
 			},
 			"response": []
 		},
 		{
 			"name": "4 verify",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, or 409\", function () {",
+							"    pm.expect([200, 400, 409]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    pm.test(\"Response contains active field\", function () {",
+							"        pm.expect(jsonData).to.have.property('active');",
+							"        pm.expect(jsonData.active).to.be.a('boolean');",
+							"    });",
+							"    ",
+							"    pm.test(\"Enrollment is active\", function () {",
+							"        pm.expect(jsonData.active).to.be.true;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -153,7 +221,8 @@
 						"enrollments",
 						"verify"
 					]
-				}
+				},
+				"description": "Completes the enrollment verification process for mobile devices. The device submits its cryptographic keys and signed proof token to finalize the enrollment.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID being verified\n- `challengeResponse` (required): Response to enrollment challenge (challenge code from enrollment creation)\n- `devicePublicKey` (required): Device's public key (EC P-256, X.509 format, Base64 encoded)\n- `enrollmentProofTokenSigned` (required): Device's signature on the enrollment proof token (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Response (200 OK):**\n- `active`: Boolean indicating whether the enrollment is now active and ready for authentication\n\n**Status Codes:**\n- 200: Enrollment verification completed successfully\n- 400: Invalid verification data or cryptographic validation failed\n- 409: Enrollment state conflict or already verified\n- 500: Internal server error\n\n**Security Note:** The enrollment proof token signature must sign the token obtained from the bind endpoint. This proves the device received the original token and prevents replay attacks.\n\n**Usage:** After successful verification, the enrollment becomes active and the device can participate in authentication attempts for the associated integration."
 			},
 			"response": []
 		}

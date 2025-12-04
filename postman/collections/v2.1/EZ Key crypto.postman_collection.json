@@ -2,6 +2,7 @@
 	"info": {
 		"_postman_id": "43367c4d-84a5-4cda-a93a-42fa5cfb6d8b",
 		"name": "EZ Key Crypto",
+		"description": "Collection for cryptographic operations in the Crypto API.\n\n## Endpoints\n\n- **Generate Proof Token**: Generate cryptographically secure proof token\n- **Generate Key Pair**: Generate EC P-256 key pair for device simulation\n- **Sign Data**: Sign data with EC P-256 private key (ECDSA-SHA256)\n- **Validate Signature**: Validate EC P-256 signature against data and public key\n\n## Purpose\n\nThis Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities.\n\n## Cryptographic Standards\n\n- **Algorithm**: EC P-256 (secp256r1) with ECDSA-SHA256\n- **Private Key Format**: PKCS#8 (ASN.1 DER encoded, Base64)\n- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded, Base64)\n- **Signature Format**: ASN.1 DER encoded (variable length, Base64)\n\n## Usage Context\n\nThis API is designed primarily for:\n- Testing and development scenarios\n- Integration with tools that lack cryptographic capabilities\n- Device simulation in authentication flows\n- End-to-end testing of Ezkey authentication flows\n\n## Security Notes\n\n- **Testing Only**: This API is intended for testing and development, not production use\n- **Key Management**: Generated keys should be stored securely in test environments\n- **Proof Tokens**: Generated tokens are cryptographically secure but should not be reused",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -13,9 +14,20 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"proofToken\", jsonData.proofToken);\r",
-							""
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"proofToken\", jsonData.proofToken);",
+							"    ",
+							"    pm.test(\"Response contains proofToken\", function () {",
+							"        pm.expect(jsonData).to.have.property('proofToken');",
+							"        pm.expect(jsonData.proofToken).to.be.a('string');",
+							"        pm.expect(jsonData.proofToken.length).to.be.greaterThan(0);",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -36,7 +48,8 @@
 						"crypto",
 						"prooftoken"
 					]
-				}
+				},
+				"description": "Generates a cryptographically secure proof token for use in authentication flows. This token is typically used for device authentication when checking for pending authentication attempts.\n\n**Response (200 OK):**\n- `proofToken`: Cryptographically secure proof token string\n\n**Status Codes:**\n- 200: Proof token generated successfully\n- 500: Internal server error\n\n**Usage:** The generated token should be signed with the device's private key and included in authentication requests."
 			},
 			"response": []
 		},
@@ -47,9 +60,22 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"privateKey\", jsonData.privateKey);\r",
-							"pm.environment.set(\"publicKey\", jsonData.publicKey);"
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"privateKey\", jsonData.privateKey);",
+							"    pm.environment.set(\"publicKey\", jsonData.publicKey);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('privateKey');",
+							"        pm.expect(jsonData).to.have.property('publicKey');",
+							"        pm.expect(jsonData.privateKey).to.be.a('string');",
+							"        pm.expect(jsonData.publicKey).to.be.a('string');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -70,7 +96,8 @@
 						"crypto",
 						"keypair"
 					]
-				}
+				},
+				"description": "Generates a new EC P-256 (secp256r1) key pair for use in device simulation. The keys are suitable for use in Ezkey authentication flows.\n\n**Key Formats:**\n- **Private Key**: PKCS#8 format (ASN.1 DER encoded, Base64)\n- **Public Key**: X.509 SubjectPublicKeyInfo format (ASN.1 DER encoded, Base64)\n\n**Response (200 OK):**\n- `privateKey`: Base64-encoded EC P-256 private key (PKCS#8 format)\n- `publicKey`: Base64-encoded EC P-256 public key (X.509 SubjectPublicKeyInfo format)\n\n**Status Codes:**\n- 200: Key pair generated successfully\n- 500: Key generation failed\n\n**Usage:** The private key is used for signing data, and the public key is used for signature validation. Store keys securely in test environments."
 			},
 			"response": []
 		},
@@ -81,8 +108,22 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"signature\", jsonData.signature);"
+							"pm.test(\"Status code is 200 or 400\", function () {",
+							"    pm.expect([200, 400]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"signature\", jsonData.signature);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('signature');",
+							"        pm.expect(jsonData).to.have.property('originalData');",
+							"        pm.expect(jsonData).to.have.property('algorithm');",
+							"        pm.expect(jsonData.signature).to.be.a('string');",
+							"        pm.expect(jsonData.algorithm).to.equal('EC_P256');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -112,7 +153,8 @@
 						"crypto",
 						"sign"
 					]
-				}
+				},
+				"description": "Signs the provided data using EC P-256 ECDSA-SHA256 signature with the given private key.\n\n**Request Body:**\n- `data` (required): Data to sign (string)\n- `privateKey` (required): EC P-256 private key in PKCS#8 format (Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Base64-encoded signature (ASN.1 DER encoded, variable length)\n- `originalData`: Original data that was signed\n- `algorithm`: Signature algorithm used (\"EC_P256\")\n\n**Status Codes:**\n- 200: Data signed successfully\n- 400: Invalid request data or malformed private key\n- 500: Signing operation failed\n\n**Usage:** The signature can be verified using the `/validate` endpoint with the original data and corresponding public key."
 			},
 			"response": []
 		},
@@ -123,8 +165,22 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"var jsonData = JSON.parse(pm.response.text());\r",
-							"pm.environment.set(\"valid\", jsonData.valid);"
+							"pm.test(\"Status code is 200 or 400\", function () {",
+							"    pm.expect([200, 400]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"valid\", jsonData.valid);",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('valid');",
+							"        pm.expect(jsonData).to.have.property('message');",
+							"        pm.expect(jsonData).to.have.property('algorithm');",
+							"        pm.expect(jsonData.valid).to.be.a('boolean');",
+							"        pm.expect(jsonData.algorithm).to.equal('EC_P256');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -154,7 +210,8 @@
 						"crypto",
 						"validate"
 					]
-				}
+				},
+				"description": "Validates an EC P-256 ECDSA-SHA256 signature against the original data using the provided public key.\n\n**Request Body:**\n- `data` (required): Original data that was signed\n- `signature` (required): Base64-encoded signature to validate (ASN.1 DER encoded)\n- `publicKey` (required): EC P-256 public key in X.509 SubjectPublicKeyInfo format (Base64 encoded)\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n- `message`: Validation message (\"Signature is valid\" or \"Signature is invalid\")\n- `algorithm`: Algorithm used for validation (\"EC_P256\")\n\n**Status Codes:**\n- 200: Signature validation completed\n- 400: Invalid request data, malformed signature or public key\n- 500: Validation operation failed\n\n**Usage:** Use this endpoint to verify that a signature was created with the corresponding private key and that the data has not been tampered with."
 			},
 			"response": []
 		}
@@ -185,7 +242,7 @@
 		{
 			"key": "data",
 			"value": "salut",
-			"type": "string"
+			"description": "Sample data for signing and validation operations"
 		}
 	]
 }
