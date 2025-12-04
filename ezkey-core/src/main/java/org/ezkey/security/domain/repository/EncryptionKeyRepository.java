@@ -30,8 +30,9 @@ import org.springframework.stereotype.Repository;
  *
  * <ul>
  *   <li><b>CRUD Operations:</b> Standard JPA repository operations
- *   <li><b>Status Queries:</b> Find keys by status (PRIMARY, ENABLED, DISABLED)
+ *   <li><b>Status Queries:</b> Find keys by status (PENDING, PRIMARY, ENABLED, DISABLED)
  *   <li><b>Primary Key Lookup:</b> Find current primary key for encryption
+ *   <li><b>Pending Key Queries:</b> Find PENDING keys ready for promotion
  *   <li><b>Rotation Queries:</b> Find keys eligible for rotation or cleanup
  * </ul>
  *
@@ -113,4 +114,45 @@ public interface EncryptionKeyRepository extends JpaRepository<EncryptionKey, Lo
    * @return number of keys with the specified status
    */
   long countByKeyStatus(KeyStatus status);
+
+  /**
+   * Find PENDING keys that are ready for promotion to PRIMARY.
+   *
+   * <p>A key is ready for promotion when:
+   *
+   * <ul>
+   *   <li>Status is PENDING
+   *   <li>effective_at timestamp is less than or equal to current time
+   * </ul>
+   *
+   * <p>This query is used by the scheduled promotion job to find keys whose synchronization window
+   * has expired.
+   *
+   * @param now current timestamp to compare against effective_at
+   * @return list of PENDING keys ready for promotion, ordered by effective_at (oldest first)
+   */
+  @Query(
+      "SELECT k FROM EncryptionKey k WHERE k.keyStatus = 'PENDING' AND k.effectiveAt <= :now "
+          + "ORDER BY k.effectiveAt ASC")
+  List<EncryptionKey> findPendingKeysReadyForPromotion(@Param("now") OffsetDateTime now);
+
+  /**
+   * Find all PENDING keys (regardless of effective_at).
+   *
+   * <p>Used for administrative queries and status checks.
+   *
+   * @return list of all PENDING keys
+   */
+  @Query("SELECT k FROM EncryptionKey k WHERE k.keyStatus = 'PENDING' ORDER BY k.effectiveAt ASC")
+  List<EncryptionKey> findAllPendingKeys();
+
+  /**
+   * Check if any PENDING key exists.
+   *
+   * <p>Used to determine if a rotation is in progress (waiting for synchronization window).
+   *
+   * @return true if at least one PENDING key exists
+   */
+  @Query("SELECT COUNT(k) > 0 FROM EncryptionKey k WHERE k.keyStatus = 'PENDING'")
+  boolean existsPendingKey();
 }

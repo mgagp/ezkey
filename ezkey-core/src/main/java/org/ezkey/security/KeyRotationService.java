@@ -152,6 +152,123 @@ public class KeyRotationService {
   }
 
   /**
+   * Scheduled job to check and promote PENDING keys that are ready.
+   *
+   * <p>Runs at a fixed rate configured by promotion-check-interval-seconds (default: 5 seconds).
+   * This job finds PENDING keys whose effective_at timestamp has passed and promotes them to
+   * PRIMARY status.
+   *
+   * <p><b>Distributed Synchronization:</b> This ensures all instances see the key as PRIMARY at
+   * approximately the same time, after the synchronization window has expired.
+   */
+  @Scheduled(fixedRateString = "${ezkey.encryption.rotation.promotion-check-interval-seconds:5}000")
+  @Transactional
+  public void checkAndPromotePendingKeys() {
+    if (!properties.isEnabled()) {
+      return; // Encryption disabled
+    }
+
+    if (!keyManager.isInitialized()) {
+      return; // Not initialized
+    }
+
+    try {
+      List<EncryptionKey> pendingKeys =
+          keyRepository.findPendingKeysReadyForPromotion(OffsetDateTime.now());
+
+      if (pendingKeys.isEmpty()) {
+        return; // No pending keys ready
+      }
+
+      // Should only be one, but handle multiple defensively
+      for (EncryptionKey pendingKey : pendingKeys) {
+        promotePendingToPrimary(pendingKey);
+      }
+    } catch (Exception e) {
+      logger.error("Failed to check/promote pending keys: {}", e.getMessage());
+      logger.debug("Pending key promotion error", e);
+    }
+  }
+
+  /**
+   * Promote a PENDING key to PRIMARY status.
+   *
+   * <p>This is called by the scheduled promotion job when a PENDING key's effective_at timestamp
+   * has passed. The promotion:
+   *
+   * <ol>
+   *   <li>Demotes current PRIMARY key(s) to ENABLED
+   *   <li>Promotes PENDING key to PRIMARY
+   *   <li>Emits audit log events
+   * </ol>
+   *
+   * @param pendingKey the PENDING key to promote
+   */
+  @Transactional
+  public void promotePendingToPrimary(EncryptionKey pendingKey) {
+    logger.info(
+        "🔄 Promoting PENDING key {} (unsigned: {}) to PRIMARY...",
+        pendingKey.getKeyId(),
+        Long.toUnsignedString(pendingKey.getKeyId()));
+
+    // Demote all current PRIMARY keys to ENABLED
+    List<EncryptionKey> currentPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    Long oldPrimaryKeyId = null;
+    for (EncryptionKey primaryKey : currentPrimaryKeys) {
+      oldPrimaryKeyId = primaryKey.getKeyId();
+      logger.debug(
+          "Demoting current PRIMARY key {} to ENABLED",
+          Long.toUnsignedString(primaryKey.getKeyId()));
+      primaryKey.setKeyStatus(KeyStatus.ENABLED);
+      primaryKey.setPromotedPrimaryAt(null);
+      keyRepository.save(primaryKey);
+    }
+
+    // Promote PENDING key to PRIMARY
+    pendingKey.setKeyStatus(KeyStatus.PRIMARY);
+    pendingKey.setPromotedPrimaryAt(OffsetDateTime.now());
+    pendingKey.setEffectiveAt(null); // Clear effective_at after promotion
+    keyRepository.save(pendingKey);
+
+    // Emit audit events
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.KEY_PROMOTED_PRIMARY)
+            .eventAction("promote_pending_to_primary")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .ipAddress("127.0.0.1")
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .encryptionKeyId(pendingKey.getKeyId())
+                    .previousPrimaryKeyId(oldPrimaryKeyId)
+                    .custom("promotion_reason", "sync_window_expired")
+                    .toJson())
+            .build());
+
+    if (oldPrimaryKeyId != null) {
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.KEY_DEMOTED)
+              .eventAction("demote_for_pending_promotion")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .encryptionKeyId(oldPrimaryKeyId)
+                      .custom("reason", "PENDING key promoted to PRIMARY")
+                      .toJson())
+              .build());
+    }
+
+    logger.info(
+        "✅ PENDING key {} (unsigned: {}) promoted to PRIMARY",
+        pendingKey.getKeyId(),
+        Long.toUnsignedString(pendingKey.getKeyId()));
+  }
+
+  /**
    * Scheduled job to check and perform key rotation if needed.
    *
    * <p>Runs according to the cron schedule configured in ezkey.encryption.rotation.schedule
@@ -162,7 +279,7 @@ public class KeyRotationService {
    * <ul>
    *   <li>Checks if rotation is enabled
    *   <li>Verifies if rotation is due (primary key age >= max-key-age-days)
-   *   <li>Performs rotation if needed
+   *   <li>Performs rotation if needed (creates PENDING key)
    *   <li>Cleans up old keys if configured
    * </ul>
    */
@@ -258,33 +375,63 @@ public class KeyRotationService {
   }
 
   /**
-   * Introduce a new encryption key and promote it to PRIMARY.
+   * Introduce a new encryption key with PENDING status.
    *
-   * <p>This method performs the actual rotation:
+   * <p>This method performs the actual rotation with distributed synchronization:
    *
    * <ol>
    *   <li>Corrects multiple PRIMARY keys if detected (defensive measure)
    *   <li>Creates backup if configured
    *   <li>Rotates keyset using TinkKeyManager
-   *   <li>Syncs key metadata to database
+   *   <li>Creates key record with PENDING status and effective_at timestamp
    *   <li>Emits audit log events
    * </ol>
+   *
+   * <p>The new key remains PENDING until effective_at timestamp passes, then a scheduled job
+   * promotes it to PRIMARY. This allows all instances to synchronize before key activation.
    *
    * <p><b>Defensive Measures:</b>
    *
    * <ul>
    *   <li>Detects and corrects multiple PRIMARY keys before rotation
    *   <li>Uses keyset primary key as source of truth
-   *   <li>Verifies exactly one PRIMARY key after rotation
+   *   <li>Checks for existing PENDING keys before creating new one
    * </ul>
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
-   * @return the new primary key ID
+   * @return the new key ID (will be PRIMARY after sync window expires)
    * @throws Exception if rotation fails
    */
   @Transactional
   public long introduceNewKey(String createdBy) throws Exception {
-    logger.info("🔄 Introducing new encryption key (triggered by: {})", createdBy);
+    return introduceNewKey(createdBy, false);
+  }
+
+  /**
+   * Introduce a new encryption key with optional immediate promotion.
+   *
+   * @param createdBy identifier of who/what triggered the rotation
+   * @param immediatePromotion if true, promotes to PRIMARY immediately (skip sync window)
+   * @return the new key ID
+   * @throws Exception if rotation fails
+   */
+  @Transactional
+  public long introduceNewKey(String createdBy, boolean immediatePromotion) throws Exception {
+    logger.info(
+        "🔄 Introducing new encryption key (triggered by: {}, immediate: {})",
+        createdBy,
+        immediatePromotion);
+
+    // Check if there's already a PENDING key
+    if (!immediatePromotion && keyRepository.existsPendingKey()) {
+      List<EncryptionKey> pendingKeys = keyRepository.findAllPendingKeys();
+      logger.warn(
+          "⚠️  A PENDING key already exists (key ID: {}). Cannot introduce another key until "
+              + "the pending key is promoted. Use immediate promotion or wait for sync window.",
+          pendingKeys.isEmpty() ? "unknown" : Long.toUnsignedString(pendingKeys.get(0).getKeyId()));
+      throw new IllegalStateException(
+          "A PENDING key already exists. Wait for it to be promoted or use immediate promotion.");
+    }
 
     // DEFENSIVE: Check for multiple PRIMARY keys and correct if needed BEFORE rotation
     List<EncryptionKey> primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
@@ -308,19 +455,33 @@ public class KeyRotationService {
     }
 
     // Perform rotation using TinkKeyManager
-    long newPrimaryKeyId = keyManager.rotateKey();
+    long newKeyId = keyManager.rotateKey();
 
-    // Sync keyset metadata to database
-    syncKeyMetadataToDatabase(newPrimaryKeyId, oldPrimaryKeyId, createdBy);
+    // Sync keyset metadata to database with appropriate status
+    if (immediatePromotion) {
+      // Immediate promotion: use existing behavior
+      syncKeyMetadataToDatabase(newKeyId, oldPrimaryKeyId, createdBy);
+      emitRotationAuditEvents(newKeyId, oldPrimaryKeyId, createdBy);
+      logger.info(
+          "✅ New key introduced and promoted immediately. Primary key ID: {} (unsigned: {})",
+          newKeyId,
+          Long.toUnsignedString(newKeyId));
+    } else {
+      // PENDING status with sync window
+      int syncWindowSeconds = properties.getRotation().getSyncWindowSeconds();
+      OffsetDateTime effectiveAt = OffsetDateTime.now().plusSeconds(syncWindowSeconds);
+      syncKeyMetadataToDatabaseAsPending(newKeyId, oldPrimaryKeyId, createdBy, effectiveAt);
+      emitPendingKeyAuditEvents(newKeyId, oldPrimaryKeyId, createdBy, effectiveAt);
+      logger.info(
+          "✅ New PENDING key introduced. Key ID: {} (unsigned: {}), effective at: {} "
+              + "(in {} seconds)",
+          newKeyId,
+          Long.toUnsignedString(newKeyId),
+          effectiveAt,
+          syncWindowSeconds);
+    }
 
-    // Emit audit log events
-    emitRotationAuditEvents(newPrimaryKeyId, oldPrimaryKeyId, createdBy);
-
-    logger.info(
-        "✅ New key introduced successfully. New primary key ID: {} (unsigned: {})",
-        newPrimaryKeyId,
-        Long.toUnsignedString(newPrimaryKeyId));
-    return newPrimaryKeyId;
+    return newKeyId;
   }
 
   /**
@@ -592,6 +753,73 @@ public class KeyRotationService {
     }
 
     logger.debug("Keyset metadata synced to database");
+  }
+
+  /**
+   * Sync keyset metadata to database with PENDING status.
+   *
+   * <p>Used during distributed rotation: the new key is set to PENDING with an effective_at
+   * timestamp. It will be promoted to PRIMARY by the scheduled promotion job after the sync window
+   * expires.
+   *
+   * @param newKeyId the new key ID
+   * @param oldPrimaryKeyId the old primary key ID (nullable)
+   * @param createdBy who created the new key
+   * @param effectiveAt when the key should become PRIMARY
+   */
+  private void syncKeyMetadataToDatabaseAsPending(
+      Long newKeyId, Long oldPrimaryKeyId, String createdBy, OffsetDateTime effectiveAt) {
+    logger.debug("Syncing new key {} as PENDING (effective at: {})...", newKeyId, effectiveAt);
+
+    String algorithm = properties.getAlgorithm();
+    OffsetDateTime now = OffsetDateTime.now();
+
+    // Create or update record for new key with PENDING status
+    EncryptionKey newKey =
+        keyRepository
+            .findById(newKeyId)
+            .orElse(new EncryptionKey(newKeyId, KeyStatus.PENDING, algorithm, now, createdBy));
+    newKey.setKeyStatus(KeyStatus.PENDING);
+    newKey.setEffectiveAt(effectiveAt);
+    if (newKey.getIntroducedAt() == null) {
+      newKey.setIntroducedAt(now);
+    }
+    keyRepository.save(newKey);
+
+    logger.debug(
+        "✅ New PENDING key {} (unsigned: {}) saved, effective at: {}",
+        newKeyId,
+        Long.toUnsignedString(newKeyId),
+        effectiveAt);
+  }
+
+  /**
+   * Emit audit log events for PENDING key introduction.
+   *
+   * @param newKeyId the new key ID
+   * @param oldPrimaryKeyId the old primary key ID (nullable)
+   * @param createdBy who triggered the rotation
+   * @param effectiveAt when the key will become PRIMARY
+   */
+  private void emitPendingKeyAuditEvents(
+      Long newKeyId, Long oldPrimaryKeyId, String createdBy, OffsetDateTime effectiveAt) {
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.KEY_INTRODUCED)
+            .eventAction("introduce_pending_encryption_key")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .ipAddress("127.0.0.1")
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .encryptionKeyId(newKeyId)
+                    .algorithm(properties.getAlgorithm())
+                    .triggeredBy(createdBy)
+                    .custom("status", "PENDING")
+                    .custom("effective_at", effectiveAt.toString())
+                    .custom("sync_window_seconds", properties.getRotation().getSyncWindowSeconds())
+                    .toJson())
+            .build());
   }
 
   /**

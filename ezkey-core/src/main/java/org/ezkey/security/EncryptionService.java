@@ -2,11 +2,16 @@ package org.ezkey.security;
 
 import com.google.crypto.tink.Aead;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.ezkey.config.TinkProperties;
+import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
+import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -57,8 +62,27 @@ public class EncryptionService {
    */
   private static final int MIN_CIPHERTEXT_BASE64_LENGTH = 20;
 
-  public EncryptionService(TinkKeyManager keyManager) {
+  private final TinkProperties properties;
+  private final EncryptionKeyRepository keyRepository;
+
+  /**
+   * Constructor with optional dependencies for defensive decryption handling.
+   *
+   * <p>Uses Spring's ObjectProvider to handle optional dependencies gracefully. This allows the
+   * service to work even when TinkProperties or EncryptionKeyRepository are not available (e.g., in
+   * simpler deployment scenarios).
+   *
+   * @param keyManager the Tink key manager (required)
+   * @param propertiesProvider optional provider for Tink configuration properties
+   * @param keyRepositoryProvider optional provider for key repository (for defensive decryption)
+   */
+  public EncryptionService(
+      TinkKeyManager keyManager,
+      ObjectProvider<TinkProperties> propertiesProvider,
+      ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider) {
     this.keyManager = keyManager;
+    this.properties = propertiesProvider.getIfAvailable();
+    this.keyRepository = keyRepositoryProvider.getIfAvailable();
     if (!keyManager.isInitialized()) {
       logger.warn(
           "EncryptionService created but TinkKeyManager is not initialized. "
@@ -186,12 +210,116 @@ public class EncryptionService {
           e.getMessage());
       logger.debug("Base64 decoding error", e);
       return encryptedValue;
+    } catch (GeneralSecurityException e) {
+      // Decryption failed - try defensive recovery
+      return handleDecryptionFailureWithSync(encryptedValue, ciphertextBase64, keyId, e);
     } catch (Exception e) {
-      // Decryption failed (corrupted data, wrong key, etc.)
+      // Other errors (corrupted data, etc.)
       logger.warn("Decryption failed, returning original value: {}", e.getMessage());
       logger.debug("Decryption error details", e);
       return encryptedValue;
     }
+  }
+
+  /**
+   * Handle decryption failure with defensive synchronization.
+   *
+   * <p>When decryption fails with a GeneralSecurityException, this method:
+   *
+   * <ol>
+   *   <li>Checks if the key ID exists in the database
+   *   <li>If key exists but decryption failed, tries to reload keyset from database
+   *   <li>Retries decryption once after reload
+   *   <li>If still fails, logs critical error and returns original value
+   * </ol>
+   *
+   * @param encryptedValue the original encrypted value
+   * @param ciphertextBase64 the extracted ciphertext
+   * @param keyId the key ID from the encrypted value
+   * @param originalException the original decryption exception
+   * @return decrypted value if recovery succeeds, original value otherwise
+   */
+  private String handleDecryptionFailureWithSync(
+      String encryptedValue,
+      String ciphertextBase64,
+      Long keyId,
+      GeneralSecurityException originalException) {
+
+    logger.warn(
+        "Decryption failed for key ID {}. Attempting defensive recovery...",
+        keyId != null ? Long.toUnsignedString(keyId) : "unknown");
+
+    // Check if key exists in database (indicates key is valid but not in local keyset)
+    boolean keyExistsInDb = false;
+    if (keyRepository != null && keyId != null) {
+      try {
+        var keyOpt = keyRepository.findById(keyId);
+        if (keyOpt.isPresent()) {
+          KeyStatus status = keyOpt.get().getKeyStatus();
+          keyExistsInDb = (status == KeyStatus.PRIMARY || status == KeyStatus.ENABLED);
+          logger.info(
+              "Key {} exists in database with status {}", Long.toUnsignedString(keyId), status);
+        }
+      } catch (Exception e) {
+        logger.debug("Failed to check key in database: {}", e.getMessage());
+      }
+    }
+
+    // If key exists in DB but not in local keyset, try reloading from database
+    // Note: keyId cannot be null here since keyExistsInDb would be false if keyId was null
+    if (keyExistsInDb && keyManager.isDatabaseStorageAvailable() && keyId != null) {
+      int maxRetries = properties != null ? properties.getKeyset().getMaxReloadRetries() : 1;
+      long keyIdValue = keyId; // Safe unboxing after null check
+
+      for (int retry = 0; retry < maxRetries; retry++) {
+        logger.info(
+            "🔄 Key {} exists in database but decryption failed. "
+                + "Attempting keyset reload from database (attempt {}/{})...",
+            Long.toUnsignedString(keyIdValue),
+            retry + 1,
+            maxRetries);
+
+        if (keyManager.forceReloadFromDatabase()) {
+          // Retry decryption after reload
+          try {
+            Aead aead = keyManager.getAeadPrimitive();
+            byte[] ct = Base64.getDecoder().decode(ciphertextBase64);
+            byte[] pt = aead.decrypt(ct, null);
+            logger.info(
+                "✅ Decryption succeeded after keyset reload for key {}",
+                Long.toUnsignedString(keyIdValue));
+            return new String(pt, StandardCharsets.UTF_8);
+          } catch (Exception retryException) {
+            logger.warn(
+                "Decryption still failed after keyset reload (attempt {}): {}",
+                retry + 1,
+                retryException.getMessage());
+          }
+        } else {
+          logger.warn("Failed to reload keyset from database");
+        }
+      }
+    }
+
+    // If we get here, recovery failed
+    logger.error(
+        "❌ CRITICAL: Decryption failed for key {} and recovery was unsuccessful. "
+            + "This may indicate: "
+            + "(1) Key was disabled/deleted, "
+            + "(2) Data corruption, "
+            + "(3) Keyset synchronization failure. "
+            + "Original error: {}",
+        keyId != null ? Long.toUnsignedString(keyId) : "unknown",
+        originalException.getMessage());
+
+    // Check if degraded mode should be enabled
+    if (properties != null && properties.getKeyset().isDegradedModeEnabled()) {
+      logger.warn("⚠️ Degraded mode is enabled. Consider investigating this decryption failure.");
+      // In degraded mode, we return the original encrypted value
+      // The application can continue but encrypted data is not accessible
+    }
+
+    return encryptedValue;
   }
 
   /**

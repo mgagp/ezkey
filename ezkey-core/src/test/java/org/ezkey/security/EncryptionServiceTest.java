@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 import com.google.crypto.tink.Aead;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import org.ezkey.config.TinkProperties;
+import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * Unit tests for EncryptionService.
@@ -34,6 +37,10 @@ class EncryptionServiceTest {
 
   @Mock private Aead aead;
 
+  @Mock private ObjectProvider<TinkProperties> propertiesProvider;
+
+  @Mock private ObjectProvider<EncryptionKeyRepository> keyRepositoryProvider;
+
   private EncryptionService encryptionService;
 
   private static final long TEST_KEY_ID = 1234567L;
@@ -45,7 +52,12 @@ class EncryptionServiceTest {
     when(keyManager.getCurrentPrimaryKeyId()).thenReturn(TEST_KEY_ID);
     when(keyManager.getAeadPrimitive()).thenReturn(aead);
 
-    encryptionService = new EncryptionService(keyManager);
+    // ObjectProviders return null (optional dependencies not available in unit test)
+    when(propertiesProvider.getIfAvailable()).thenReturn(null);
+    when(keyRepositoryProvider.getIfAvailable()).thenReturn(null);
+
+    encryptionService =
+        new EncryptionService(keyManager, propertiesProvider, keyRepositoryProvider);
   }
 
   @Test

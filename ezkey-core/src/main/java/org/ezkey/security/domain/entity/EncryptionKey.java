@@ -28,6 +28,7 @@ import java.time.OffsetDateTime;
  * <p><b>Key Lifecycle:</b>
  *
  * <ul>
+ *   <li><b>PENDING:</b> New key waiting for synchronization window before becoming PRIMARY
  *   <li><b>PRIMARY:</b> Active key used for new encryption operations
  *   <li><b>ENABLED:</b> Available for decryption only (old keys kept for backward compatibility)
  *   <li><b>DISABLED:</b> Retired key no longer used (after all data re-encrypted)
@@ -95,6 +96,15 @@ public class EncryptionKey {
    */
   @Column(name = "promoted_primary_at")
   private OffsetDateTime promotedPrimaryAt;
+
+  /**
+   * Timestamp when a PENDING key is scheduled to become PRIMARY.
+   *
+   * <p>Used for distributed synchronization: all instances wait until this time before the key is
+   * promoted. Nullable - only set for PENDING keys.
+   */
+  @Column(name = "effective_at")
+  private OffsetDateTime effectiveAt;
 
   /**
    * Timestamp when this key was disabled.
@@ -225,6 +235,14 @@ public class EncryptionKey {
     this.promotedPrimaryAt = promotedPrimaryAt;
   }
 
+  public OffsetDateTime getEffectiveAt() {
+    return effectiveAt;
+  }
+
+  public void setEffectiveAt(OffsetDateTime effectiveAt) {
+    this.effectiveAt = effectiveAt;
+  }
+
   public OffsetDateTime getDisabledAt() {
     return disabledAt;
   }
@@ -287,6 +305,9 @@ public class EncryptionKey {
    * <p>Defines the lifecycle states of encryption keys in the keyset.
    */
   public enum KeyStatus {
+    /** New key waiting for synchronization window before becoming PRIMARY. */
+    PENDING,
+
     /** Active key used for new encryption operations. */
     PRIMARY,
 

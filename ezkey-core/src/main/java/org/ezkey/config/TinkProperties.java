@@ -30,6 +30,8 @@ public class TinkProperties {
 
   private final Reencryption reencryption = new Reencryption();
 
+  private final Keyset keyset = new Keyset();
+
   public boolean isEnabled() {
     return enabled;
   }
@@ -68,6 +70,10 @@ public class TinkProperties {
 
   public Reencryption getReencryption() {
     return reencryption;
+  }
+
+  public Keyset getKeyset() {
+    return keyset;
   }
 
   /** Nested rotation configuration. */
@@ -159,6 +165,44 @@ public class TinkProperties {
     public void setAutoDisableDays(int autoDisableDays) {
       this.autoDisableDays = autoDisableDays;
     }
+
+    /**
+     * Synchronization window in seconds before PENDING key becomes PRIMARY.
+     *
+     * <p>When a new key is introduced, it is set to PENDING status and will become PRIMARY after
+     * this many seconds. This allows all instances to synchronize and load the new keyset before
+     * the key is activated.
+     *
+     * <p>Default: 30 seconds (provides buffer for network latency, database replication, clock
+     * skew).
+     */
+    private int syncWindowSeconds = 30;
+
+    /**
+     * Interval in seconds between checks for pending keys ready for promotion.
+     *
+     * <p>A scheduled job runs at this interval to check if any PENDING keys have passed their
+     * effective_at timestamp and should be promoted to PRIMARY.
+     *
+     * <p>Default: 5 seconds.
+     */
+    private int promotionCheckIntervalSeconds = 5;
+
+    public int getSyncWindowSeconds() {
+      return syncWindowSeconds;
+    }
+
+    public void setSyncWindowSeconds(int syncWindowSeconds) {
+      this.syncWindowSeconds = syncWindowSeconds;
+    }
+
+    public int getPromotionCheckIntervalSeconds() {
+      return promotionCheckIntervalSeconds;
+    }
+
+    public void setPromotionCheckIntervalSeconds(int promotionCheckIntervalSeconds) {
+      this.promotionCheckIntervalSeconds = promotionCheckIntervalSeconds;
+    }
   }
 
   /** Nested re-encryption configuration. */
@@ -238,6 +282,81 @@ public class TinkProperties {
 
     public void setAutoRetryFailed(boolean autoRetryFailed) {
       this.autoRetryFailed = autoRetryFailed;
+    }
+  }
+
+  /** Nested keyset storage configuration. */
+  public static class Keyset {
+
+    /**
+     * Keyset storage mode: FILE, DATABASE, or HYBRID.
+     *
+     * <ul>
+     *   <li><b>FILE:</b> Keyset stored only in file (original behavior)
+     *   <li><b>DATABASE:</b> Keyset stored in database as source of truth, file as cache
+     *   <li><b>HYBRID:</b> Keyset stored in both, database preferred for reads
+     * </ul>
+     *
+     * <p>Default: DATABASE (recommended for distributed deployments).
+     */
+    private StorageMode storageMode = StorageMode.DATABASE;
+
+    /**
+     * Enable degraded mode on decryption failure.
+     *
+     * <p>When enabled and a decryption failure occurs due to missing key, the instance will:
+     *
+     * <ul>
+     *   <li>Attempt to reload keyset from database
+     *   <li>If reload fails, enter degraded mode (read-only)
+     *   <li>Log critical errors and emit audit events
+     * </ul>
+     *
+     * <p>Default: false (fail fast on decryption errors).
+     */
+    private boolean degradedModeEnabled = false;
+
+    /**
+     * Maximum retries for keyset reload on decryption failure.
+     *
+     * <p>Default: 1 (try reload once before giving up).
+     */
+    private int maxReloadRetries = 1;
+
+    public StorageMode getStorageMode() {
+      return storageMode;
+    }
+
+    public void setStorageMode(StorageMode storageMode) {
+      this.storageMode = storageMode;
+    }
+
+    public boolean isDegradedModeEnabled() {
+      return degradedModeEnabled;
+    }
+
+    public void setDegradedModeEnabled(boolean degradedModeEnabled) {
+      this.degradedModeEnabled = degradedModeEnabled;
+    }
+
+    public int getMaxReloadRetries() {
+      return maxReloadRetries;
+    }
+
+    public void setMaxReloadRetries(int maxReloadRetries) {
+      this.maxReloadRetries = maxReloadRetries;
+    }
+
+    /** Enum for keyset storage modes. */
+    public enum StorageMode {
+      /** Keyset stored only in file (original behavior). */
+      FILE,
+
+      /** Keyset stored in database as source of truth, file as cache. */
+      DATABASE,
+
+      /** Keyset stored in both, database preferred for reads. */
+      HYBRID
     }
   }
 }

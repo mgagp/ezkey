@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.ezkey.config.TinkProperties;
+import org.ezkey.config.TinkProperties.Keyset.StorageMode;
+import org.ezkey.security.domain.entity.KeysetBlob;
+import org.ezkey.security.domain.repository.KeysetBlobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -59,14 +62,50 @@ public class TinkKeyManager {
   private static final Logger logger = LoggerFactory.getLogger(TinkKeyManager.class);
 
   private final TinkProperties properties;
+  private final KeysetBlobRepository keysetBlobRepository;
 
   private volatile KeysetHandle keysetHandle;
   private volatile long keysetFileLastModified = 0;
   private volatile String keysetFilePath;
   private volatile Aead masterAead;
+  private volatile long databaseKeysetVersion = 0;
 
-  public TinkKeyManager(TinkProperties properties) {
+  /**
+   * ThreadLocal guard to prevent recursive database calls during keyset reload.
+   *
+   * <p>When getAeadPrimitive() checks the database for version changes, this can trigger JPA
+   * operations that use EncryptionEntityListener, which calls getAeadPrimitive() again, causing a
+   * StackOverflowError. This flag prevents that recursion.
+   */
+  private static final ThreadLocal<Boolean> CHECKING_DATABASE =
+      ThreadLocal.withInitial(() -> false);
+
+  /**
+   * Timestamp of last database version check to throttle frequency.
+   *
+   * <p>We don't need to check the database on every getAeadPrimitive() call. Checking every 5
+   * seconds is sufficient for synchronization while avoiding performance issues.
+   */
+  private volatile long lastDatabaseCheckTime = 0;
+
+  /** Minimum interval between database version checks in milliseconds. */
+  private static final long DATABASE_CHECK_INTERVAL_MS = 5000; // 5 seconds
+
+  /**
+   * Constructor with optional KeysetBlobRepository for database-backed keyset storage.
+   *
+   * <p>Uses Spring's ObjectProvider to handle optional KeysetBlobRepository gracefully. This allows
+   * the manager to work in FILE mode even when the repository is not available.
+   *
+   * @param properties Tink configuration properties
+   * @param keysetBlobRepositoryProvider optional provider for database keyset storage
+   */
+  public TinkKeyManager(
+      TinkProperties properties,
+      org.springframework.beans.factory.ObjectProvider<KeysetBlobRepository>
+          keysetBlobRepositoryProvider) {
     this.properties = Objects.requireNonNull(properties, "properties");
+    this.keysetBlobRepository = keysetBlobRepositoryProvider.getIfAvailable();
     try {
       AeadConfig.register();
     } catch (GeneralSecurityException e) {
@@ -101,41 +140,85 @@ public class TinkKeyManager {
       this.masterAead = createMasterAead(masterKey);
       logger.info("Master AEAD created");
 
-      // 3. Load or create keyset
+      // 3. Load or create keyset (with database support)
       String keysetPath = properties.getKeysetFile();
-      if (keysetPath == null || keysetPath.isBlank()) {
-        logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
-        return;
+      StorageMode storageMode = properties.getKeyset().getStorageMode();
+      logger.info("Keyset storage mode: {}", storageMode);
+
+      // Try database first if DATABASE or HYBRID mode
+      boolean loadedFromDatabase = false;
+      if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+          && keysetBlobRepository != null) {
+        try {
+          loadedFromDatabase = loadKeysetFromDatabase();
+          if (loadedFromDatabase) {
+            logger.info("✅ Keyset loaded from database");
+          }
+        } catch (Exception e) {
+          logger.warn(
+              "Failed to load keyset from database, falling back to file: {}", e.getMessage());
+          logger.debug("Database keyset load error", e);
+        }
       }
 
-      // Normalize path before checking file existence (Windows compatibility)
-      String normalizedKeysetPath = normalizePath(keysetPath);
-      File keysetFile = new File(normalizedKeysetPath);
+      // Fall back to file if not loaded from database
+      if (!loadedFromDatabase) {
+        if (keysetPath == null || keysetPath.isBlank()) {
+          logger.warn("ezkey.encryption.keyset-file is not configured. Encryption disabled.");
+          return;
+        }
 
-      logger.debug(
-          "Keyset file check - Original path: {}, Normalized path: {}, Exists: {}",
-          keysetPath,
-          normalizedKeysetPath,
-          keysetFile.exists());
+        // Normalize path before checking file existence (Windows compatibility)
+        String normalizedKeysetPath = normalizePath(keysetPath);
+        File keysetFile = new File(normalizedKeysetPath);
 
-      if (keysetFile.exists()) {
-        // Load existing encrypted keyset (use normalized path)
-        logger.info("Loading existing keyset from: {}", normalizedKeysetPath);
-        this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
-        this.keysetFilePath = normalizedKeysetPath;
-        this.keysetFileLastModified = keysetFile.lastModified();
-        logger.info("✅ Keyset loaded successfully from: {}", normalizedKeysetPath);
-      } else {
-        // First boot - generate new keyset (use normalized path)
-        logger.warn(
-            "Keyset file not found at: {}. Generating new keyset. "
-                + "NOTE: If this is not the first startup, check that the keyset file exists "
-                + "and is accessible. All APIs must use the same keyset file.",
-            normalizedKeysetPath);
-        this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
-        this.keysetFilePath = normalizedKeysetPath;
-        this.keysetFileLastModified = keysetFile.lastModified();
-        logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
+        logger.debug(
+            "Keyset file check - Original path: {}, Normalized path: {}, Exists: {}",
+            keysetPath,
+            normalizedKeysetPath,
+            keysetFile.exists());
+
+        if (keysetFile.exists()) {
+          // Load existing encrypted keyset (use normalized path)
+          logger.info("Loading existing keyset from: {}", normalizedKeysetPath);
+          this.keysetHandle = loadEncryptedKeyset(normalizedKeysetPath);
+          this.keysetFilePath = normalizedKeysetPath;
+          this.keysetFileLastModified = keysetFile.lastModified();
+          logger.info("✅ Keyset loaded successfully from: {}", normalizedKeysetPath);
+
+          // Save to database if DATABASE/HYBRID mode and repository available
+          if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+              && keysetBlobRepository != null) {
+            try {
+              saveKeysetToDatabase("STARTUP_FILE_SYNC");
+              logger.info("✅ Keyset synchronized to database from file");
+            } catch (Exception e) {
+              logger.warn("Failed to sync keyset to database: {}", e.getMessage());
+            }
+          }
+        } else {
+          // First boot - generate new keyset (use normalized path)
+          logger.warn(
+              "Keyset file not found at: {}. Generating new keyset. "
+                  + "NOTE: If this is not the first startup, check that the keyset file exists "
+                  + "and is accessible. All APIs must use the same keyset file.",
+              normalizedKeysetPath);
+          this.keysetHandle = generateAndSaveKeyset(normalizedKeysetPath);
+          this.keysetFilePath = normalizedKeysetPath;
+          this.keysetFileLastModified = keysetFile.lastModified();
+          logger.info("🆕 New keyset created and saved to: {}", normalizedKeysetPath);
+
+          // Save to database if DATABASE/HYBRID mode
+          if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+              && keysetBlobRepository != null) {
+            try {
+              saveKeysetToDatabase("STARTUP_NEW_KEYSET");
+              logger.info("✅ New keyset saved to database");
+            } catch (Exception e) {
+              logger.warn("Failed to save new keyset to database: {}", e.getMessage());
+            }
+          }
+        }
       }
 
       // 4. Verify keyset is usable
@@ -178,9 +261,20 @@ public class TinkKeyManager {
   /**
    * Returns an AEAD primitive from the current keyset.
    *
-   * <p><b>Automatic Keyset Reload:</b> This method automatically checks if the keyset file has been
-   * modified (e.g., after key rotation by another instance) and reloads it if necessary. This ensures
-   * that all application instances stay synchronized with the latest keyset state.
+   * <p><b>Automatic Keyset Reload:</b> This method automatically checks if the keyset has been
+   * modified (e.g., after key rotation by another instance) and reloads it if necessary. This
+   * ensures that all application instances stay synchronized with the latest keyset state.
+   *
+   * <p><b>Synchronization Sources:</b>
+   *
+   * <ul>
+   *   <li>DATABASE mode: Checks database version for changes (throttled to every 5 seconds)
+   *   <li>FILE mode: Checks file lastModified timestamp
+   *   <li>HYBRID mode: Checks database first, then file
+   * </ul>
+   *
+   * <p><b>Recursion Protection:</b> This method uses a ThreadLocal guard to prevent infinite
+   * recursion when database queries trigger JPA entity listeners that use encryption.
    *
    * @return AEAD primitive for encryption/decryption
    * @throws IllegalStateException if encryption is not initialized
@@ -192,8 +286,63 @@ public class TinkKeyManager {
               + "Check that master key file exists and encryption is enabled.");
     }
 
-    // Check if keyset file has been modified (e.g., by another instance after rotation)
-    if (keysetFilePath != null) {
+    // Skip sync checks if we're already checking (prevents recursion)
+    // Also skip if called too recently (throttle database load)
+    boolean shouldCheckForUpdates = !CHECKING_DATABASE.get();
+    long now = System.currentTimeMillis();
+    boolean throttled = (now - lastDatabaseCheckTime) < DATABASE_CHECK_INTERVAL_MS;
+
+    if (shouldCheckForUpdates && !throttled) {
+      try {
+        CHECKING_DATABASE.set(true);
+        lastDatabaseCheckTime = now;
+        checkAndReloadKeysetIfNeeded();
+      } finally {
+        CHECKING_DATABASE.set(false);
+      }
+    }
+
+    try {
+      return keysetHandle.getPrimitive(Aead.class);
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("Unable to obtain AEAD primitive from keyset", e);
+    }
+  }
+
+  /**
+   * Check for keyset updates and reload if needed.
+   *
+   * <p>This method is called from getAeadPrimitive() with recursion protection. It checks the
+   * appropriate storage (database or file) for changes and reloads the keyset if needed.
+   */
+  private void checkAndReloadKeysetIfNeeded() {
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+
+    // Check database for changes (DATABASE or HYBRID mode)
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      try {
+        var dbVersion = keysetBlobRepository.findVersion();
+        if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
+          logger.info(
+              "🔄 Database keyset updated (version: {} > {}), reloading keyset...",
+              dbVersion.get(),
+              databaseKeysetVersion);
+          if (loadKeysetFromDatabase()) {
+            logger.info("✅ Keyset reloaded from database successfully");
+          }
+        }
+      } catch (Exception e) {
+        logger.warn(
+            "Failed to check/reload keyset from database. Using cached keyset. Error: {}",
+            e.getMessage());
+        logger.debug("Database keyset reload error", e);
+      }
+    }
+
+    // Check file for changes (FILE or HYBRID mode, or as fallback)
+    if ((storageMode == StorageMode.FILE || storageMode == StorageMode.HYBRID)
+        && keysetFilePath != null) {
       try {
         File keysetFile = new File(keysetFilePath);
         if (keysetFile.exists()) {
@@ -205,22 +354,15 @@ public class TinkKeyManager {
                 keysetFileLastModified);
             this.keysetHandle = loadEncryptedKeyset(keysetFilePath);
             this.keysetFileLastModified = currentLastModified;
-            logger.info("✅ Keyset reloaded successfully");
+            logger.info("✅ Keyset reloaded from file successfully");
           }
         }
       } catch (Exception e) {
         logger.warn(
-            "Failed to check/reload keyset file. Using cached keyset. Error: {}",
-            e.getMessage());
+            "Failed to check/reload keyset file. Using cached keyset. Error: {}", e.getMessage());
         logger.debug("Keyset reload error", e);
         // Continue with existing keyset - don't fail if reload check fails
       }
-    }
-
-    try {
-      return keysetHandle.getPrimitive(Aead.class);
-    } catch (GeneralSecurityException e) {
-      throw new IllegalStateException("Unable to obtain AEAD primitive from keyset", e);
     }
   }
 
@@ -446,11 +588,12 @@ public class TinkKeyManager {
       KeysetHandle handle = KeysetHandle.read(reader, masterAead); // Decrypt with master AEAD
 
       // Log keyset info for debugging (unsigned representation for consistency with ENC format)
-      long primaryKeyId = handle.getKeysetInfo().getPrimaryKeyId();
+      long signedPrimaryKeyId = handle.getKeysetInfo().getPrimaryKeyId();
+      long unsignedPrimaryKeyId = toUnsignedLong(signedPrimaryKeyId);
       logger.info(
-          "✅ Keyset decrypted successfully. Primary key ID: {} (unsigned: {})",
-          primaryKeyId,
-          Long.toUnsignedString(primaryKeyId));
+          "✅ Keyset decrypted successfully. Primary key ID: {} (signed: {})",
+          unsignedPrimaryKeyId,
+          signedPrimaryKeyId);
       return handle;
     } catch (GeneralSecurityException e) {
       logger.error(
@@ -596,12 +739,21 @@ public class TinkKeyManager {
 
     logger.info("🔄 Starting key rotation...");
 
-    // Get current primary key ID before rotation
-    long oldPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    // Get current primary key ID before rotation (convert to unsigned for comparison)
+    long signedOldPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long oldPrimaryKeyIdUnsigned = toUnsignedLong(signedOldPrimaryKeyId);
     logger.info(
         "Current primary key ID: {} (unsigned: {})",
-        oldPrimaryKeyId,
-        Long.toUnsignedString(oldPrimaryKeyId));
+        signedOldPrimaryKeyId,
+        Long.toUnsignedString(oldPrimaryKeyIdUnsigned));
+
+    // Get all existing key IDs before rotation (converted to unsigned)
+    @SuppressWarnings("deprecation")
+    var existingKeyIds =
+        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
+            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
+            .collect(java.util.stream.Collectors.toSet());
+    logger.debug("Existing key IDs before rotation: {}", existingKeyIds);
 
     // Use KeysetManager to rotate
     // Generate new key template matching current algorithm
@@ -609,19 +761,19 @@ public class TinkKeyManager {
     KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
 
     // Rotate using the template - KeysetManager handles the rest
-    // Note: This creates a new key and promotes it to primary
+    // Note: This creates a new key and adds it to the keyset
     KeysetManager rotatedManager = manager.add(template);
 
-    // Get the new key ID (the one that was just added)
+    // Get the new key ID (the one that was just added - not in existingKeyIds)
     @SuppressWarnings("deprecation")
     var newKeysetInfo = rotatedManager.getKeysetHandle().getKeysetInfo();
     int signedNewKeyIdInt =
         newKeysetInfo.getKeyInfoList().stream()
             .filter(
                 keyInfo -> {
-                  // Compare unsigned values: convert both to unsigned longs for comparison
+                  // Find the key that wasn't in the original keyset
                   long keyInfoUnsigned = toUnsignedLong(keyInfo.getKeyId());
-                  return keyInfoUnsigned != oldPrimaryKeyId;
+                  return !existingKeyIds.contains(keyInfoUnsigned);
                 })
             .findFirst()
             .map(keyInfo -> keyInfo.getKeyId())
@@ -652,10 +804,23 @@ public class TinkKeyManager {
       this.keysetFilePath = normalizedPath;
     }
 
+    // Save to database if DATABASE/HYBRID mode
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      try {
+        saveKeysetToDatabase("KEY_ROTATION");
+        logger.info("✅ Rotated keyset saved to database");
+      } catch (Exception e) {
+        logger.error("Failed to save rotated keyset to database: {}", e.getMessage());
+        // Don't throw - file save succeeded, database sync can be retried
+      }
+    }
+
     logger.info(
         "✅ Key rotation completed. Old primary: {} (unsigned: {}), New primary: {} (unsigned: {})",
-        oldPrimaryKeyId,
-        Long.toUnsignedString(oldPrimaryKeyId),
+        signedOldPrimaryKeyId,
+        Long.toUnsignedString(oldPrimaryKeyIdUnsigned),
         newPrimaryKeyId,
         Long.toUnsignedString(newPrimaryKeyId));
     return newPrimaryKeyId;
@@ -825,5 +990,147 @@ public class TinkKeyManager {
    */
   public Aead getMasterAead() {
     return masterAead;
+  }
+
+  /**
+   * Load keyset from database.
+   *
+   * <p>Loads the encrypted keyset blob from the database and decrypts it using the master AEAD.
+   *
+   * @return true if keyset was loaded successfully, false if not found or error
+   */
+  public boolean loadKeysetFromDatabase() {
+    if (keysetBlobRepository == null) {
+      logger.debug("KeysetBlobRepository not available, cannot load from database");
+      return false;
+    }
+
+    if (masterAead == null) {
+      logger.warn("Master AEAD not initialized, cannot decrypt keyset from database");
+      return false;
+    }
+
+    try {
+      var keysetBlobOpt = keysetBlobRepository.findKeyset();
+      if (keysetBlobOpt.isEmpty()) {
+        logger.debug("No keyset blob found in database");
+        return false;
+      }
+
+      KeysetBlob keysetBlob = keysetBlobOpt.get();
+      byte[] encryptedData = keysetBlob.getKeysetData();
+
+      // Decrypt the keyset blob
+      byte[] decryptedJson = masterAead.decrypt(encryptedData, null);
+      String keysetJson = new String(decryptedJson, StandardCharsets.UTF_8);
+
+      // Parse the keyset JSON
+      KeysetReader reader = JsonKeysetReader.withString(keysetJson);
+      // Note: We're loading an already-decrypted keyset JSON, so we use cleartext read
+      // The JSON was decrypted above using master AEAD
+      this.keysetHandle = com.google.crypto.tink.CleartextKeysetHandle.read(reader);
+
+      // Update tracking variables
+      this.databaseKeysetVersion = keysetBlob.getVersion() != null ? keysetBlob.getVersion() : 0;
+
+      long signedPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+      long unsignedPrimaryKeyId = toUnsignedLong(signedPrimaryKeyId);
+      logger.info(
+          "✅ Keyset loaded from database. Primary key ID: {} (signed: {}), version: {}",
+          unsignedPrimaryKeyId,
+          signedPrimaryKeyId,
+          databaseKeysetVersion);
+      return true;
+    } catch (Exception e) {
+      logger.error("Failed to load keyset from database: {}", e.getMessage());
+      logger.debug("Database keyset load error", e);
+      return false;
+    }
+  }
+
+  /**
+   * Save keyset to database.
+   *
+   * <p>Serializes the current keyset to JSON, encrypts it with the master AEAD, and saves it to the
+   * database. This enables distributed synchronization across multiple application instances.
+   *
+   * @param updatedBy identifier of who/what is saving the keyset
+   * @throws GeneralSecurityException if encryption fails
+   * @throws IOException if serialization fails
+   */
+  public void saveKeysetToDatabase(String updatedBy) throws GeneralSecurityException, IOException {
+    if (keysetBlobRepository == null) {
+      logger.debug("KeysetBlobRepository not available, cannot save to database");
+      return;
+    }
+
+    if (keysetHandle == null) {
+      throw new IllegalStateException("No keyset loaded, cannot save to database");
+    }
+
+    if (masterAead == null) {
+      throw new IllegalStateException("Master AEAD not initialized, cannot encrypt keyset");
+    }
+
+    try {
+      // Serialize keyset to JSON (cleartext)
+      java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+      com.google.crypto.tink.CleartextKeysetHandle.write(
+          keysetHandle, JsonKeysetWriter.withOutputStream(baos));
+      byte[] keysetJson = baos.toByteArray();
+
+      // Encrypt the keyset JSON with master AEAD
+      byte[] encryptedData = masterAead.encrypt(keysetJson, null);
+
+      // Save to database
+      KeysetBlob keysetBlob =
+          keysetBlobRepository.findKeyset().orElse(new KeysetBlob(encryptedData, updatedBy));
+      keysetBlob.setKeysetData(encryptedData);
+      keysetBlob.setUpdatedBy(updatedBy);
+      keysetBlob.setLastUpdatedAt(OffsetDateTime.now());
+
+      KeysetBlob saved = keysetBlobRepository.save(keysetBlob);
+      this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
+
+      logger.info(
+          "✅ Keyset saved to database (version: {}, updated by: {})",
+          databaseKeysetVersion,
+          updatedBy);
+    } catch (Exception e) {
+      logger.error("Failed to save keyset to database: {}", e.getMessage());
+      throw e;
+    }
+  }
+
+  /**
+   * Force reload keyset from database.
+   *
+   * <p>Used for defensive decryption error handling - when decryption fails with unknown key ID,
+   * this method can be called to reload the keyset from database in case another instance rotated
+   * keys.
+   *
+   * @return true if reload was successful, false otherwise
+   */
+  public boolean forceReloadFromDatabase() {
+    logger.info("🔄 Force reloading keyset from database...");
+    return loadKeysetFromDatabase();
+  }
+
+  /**
+   * Check if database keyset storage is available.
+   *
+   * @return true if database storage is configured and available
+   */
+  public boolean isDatabaseStorageAvailable() {
+    return keysetBlobRepository != null;
+  }
+
+  /**
+   * Get current database keyset version.
+   *
+   * @return the version number of the keyset in database, or 0 if not loaded from database
+   */
+  public long getDatabaseKeysetVersion() {
+    return databaseKeysetVersion;
   }
 }
