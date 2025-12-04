@@ -81,12 +81,58 @@ class KeyRotationServiceIntegrationTest {
     org.mockito.Mockito.when(tinkKeyManager.isInitialized()).thenReturn(true);
     org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(PRIMARY_KEY_ID_1);
     org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_1));
+    // Mock for PENDING workflow (default): adds key without promotion
+    org.mockito.Mockito.when(tinkKeyManager.addKeyWithoutPromotion()).thenReturn(PRIMARY_KEY_ID_2);
+    // Mock for immediate promotion workflow
     org.mockito.Mockito.when(tinkKeyManager.rotateKey()).thenReturn(PRIMARY_KEY_ID_2);
+    // Mock for promotion of PENDING key
+    org.mockito.Mockito.when(tinkKeyManager.promoteToPrimary(PRIMARY_KEY_ID_2))
+        .thenReturn(PRIMARY_KEY_ID_1);
   }
 
   @Test
-  @DisplayName("Should introduce new key and sync to database")
-  void shouldIntroduceNewKeyAndSyncToDatabase() throws Exception {
+  @DisplayName("Should introduce new key as PENDING (default workflow)")
+  void shouldIntroduceNewKeyAsPending() throws Exception {
+    // Arrange - Create initial primary key in database
+    EncryptionKey initialKey = new EncryptionKey();
+    initialKey.setKeyId(PRIMARY_KEY_ID_1);
+    initialKey.setKeyStatus(KeyStatus.PRIMARY);
+    initialKey.setAlgorithm("AES256_GCM");
+    initialKey.setIntroducedAt(OffsetDateTime.now().minusDays(100));
+    initialKey.setPromotedPrimaryAt(OffsetDateTime.now().minusDays(100));
+    initialKey.setCreatedBy("TEST");
+    keyRepository.save(initialKey);
+
+    // Update mock to return both keys after adding
+    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+        .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
+
+    // Act - Default behavior creates PENDING key (not immediately promoted)
+    long newKeyId = keyRotationService.introduceNewKey("TEST_USER");
+
+    // Assert
+    assertEquals(PRIMARY_KEY_ID_2, newKeyId);
+
+    // Verify new key was created in database with PENDING status
+    Optional<EncryptionKey> newKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_2);
+    assertTrue(newKeyOpt.isPresent());
+    EncryptionKey newKey = newKeyOpt.get();
+    assertEquals(KeyStatus.PENDING, newKey.getKeyStatus());
+    assertEquals("AES256_GCM", newKey.getAlgorithm());
+    assertNotNull(newKey.getIntroducedAt());
+    assertNotNull(newKey.getEffectiveAt()); // PENDING keys have effective_at
+    assertEquals("TEST_USER", newKey.getCreatedBy());
+
+    // Verify old key remains PRIMARY (not demoted yet - happens at promotion time)
+    Optional<EncryptionKey> oldKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_1);
+    assertTrue(oldKeyOpt.isPresent());
+    EncryptionKey oldKey = oldKeyOpt.get();
+    assertEquals(KeyStatus.PRIMARY, oldKey.getKeyStatus());
+  }
+
+  @Test
+  @DisplayName("Should introduce new key with immediate promotion")
+  void shouldIntroduceNewKeyWithImmediatePromotion() throws Exception {
     // Arrange - Create initial primary key in database
     EncryptionKey initialKey = new EncryptionKey();
     initialKey.setKeyId(PRIMARY_KEY_ID_1);
@@ -101,13 +147,13 @@ class KeyRotationServiceIntegrationTest {
     org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
 
-    // Act
-    long newKeyId = keyRotationService.introduceNewKey("TEST_USER");
+    // Act - Immediate promotion uses rotateKey() and sets PRIMARY immediately
+    long newKeyId = keyRotationService.introduceNewKey("TEST_USER", true);
 
     // Assert
     assertEquals(PRIMARY_KEY_ID_2, newKeyId);
 
-    // Verify new key was created in database
+    // Verify new key was created in database with PRIMARY status
     Optional<EncryptionKey> newKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_2);
     assertTrue(newKeyOpt.isPresent());
     EncryptionKey newKey = newKeyOpt.get();
@@ -125,25 +171,67 @@ class KeyRotationServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("Should handle rotation when no primary key exists")
+  @DisplayName("Should handle rotation when no primary key exists (PENDING workflow)")
   void shouldHandleRotationWhenNoPrimaryKeyExists() throws Exception {
     // Arrange - Empty database
     assertThat(keyRepository.count()).isZero();
 
-    // Update mock to return only new key after rotation
+    // Update mock to return only new key after adding
     org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_2));
 
-    // Act
+    // Act - Default workflow creates PENDING key
     long newKeyId = keyRotationService.introduceNewKey("TEST_USER");
 
     // Assert
     assertEquals(PRIMARY_KEY_ID_2, newKeyId);
 
-    // Verify new key was created
+    // Verify new key was created with PENDING status
     Optional<EncryptionKey> newKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_2);
     assertTrue(newKeyOpt.isPresent());
     EncryptionKey newKey = newKeyOpt.get();
-    assertEquals(KeyStatus.PRIMARY, newKey.getKeyStatus());
+    assertEquals(KeyStatus.PENDING, newKey.getKeyStatus());
+    assertNotNull(newKey.getEffectiveAt());
+  }
+
+  @Test
+  @DisplayName("Should promote PENDING key to PRIMARY after sync window")
+  void shouldPromotePendingKeyToPrimary() throws Exception {
+    // Arrange - Create PENDING key ready for promotion
+    EncryptionKey primaryKey = new EncryptionKey();
+    primaryKey.setKeyId(PRIMARY_KEY_ID_1);
+    primaryKey.setKeyStatus(KeyStatus.PRIMARY);
+    primaryKey.setAlgorithm("AES256_GCM");
+    primaryKey.setIntroducedAt(OffsetDateTime.now().minusDays(100));
+    primaryKey.setPromotedPrimaryAt(OffsetDateTime.now().minusDays(100));
+    primaryKey.setCreatedBy("TEST");
+    keyRepository.save(primaryKey);
+
+    EncryptionKey pendingKey = new EncryptionKey();
+    pendingKey.setKeyId(PRIMARY_KEY_ID_2);
+    pendingKey.setKeyStatus(KeyStatus.PENDING);
+    pendingKey.setAlgorithm("AES256_GCM");
+    pendingKey.setIntroducedAt(OffsetDateTime.now().minusSeconds(60));
+    pendingKey.setEffectiveAt(OffsetDateTime.now().minusSeconds(30)); // Ready for promotion
+    pendingKey.setCreatedBy("TEST");
+    keyRepository.save(pendingKey);
+
+    // Act - Promote the pending key
+    keyRotationService.promotePendingToPrimary(pendingKey);
+
+    // Assert - New key is now PRIMARY
+    Optional<EncryptionKey> promotedKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_2);
+    assertTrue(promotedKeyOpt.isPresent());
+    EncryptionKey promotedKey = promotedKeyOpt.get();
+    assertEquals(KeyStatus.PRIMARY, promotedKey.getKeyStatus());
+    assertNotNull(promotedKey.getPromotedPrimaryAt());
+    // effective_at should be cleared after promotion
+    org.junit.jupiter.api.Assertions.assertNull(promotedKey.getEffectiveAt());
+
+    // Old PRIMARY key should be demoted to ENABLED
+    Optional<EncryptionKey> oldKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_1);
+    assertTrue(oldKeyOpt.isPresent());
+    EncryptionKey oldKey = oldKeyOpt.get();
+    assertEquals(KeyStatus.ENABLED, oldKey.getKeyStatus());
   }
 
   @Test
@@ -181,8 +269,8 @@ class KeyRotationServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("Should update key metadata correctly after rotation")
-  void shouldUpdateKeyMetadataCorrectlyAfterRotation() throws Exception {
+  @DisplayName("Should update key metadata correctly after immediate rotation")
+  void shouldUpdateKeyMetadataCorrectlyAfterImmediateRotation() throws Exception {
     // Arrange
     EncryptionKey initialKey = new EncryptionKey();
     initialKey.setKeyId(PRIMARY_KEY_ID_1);
@@ -198,8 +286,8 @@ class KeyRotationServiceIntegrationTest {
     org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
 
-    // Act
-    keyRotationService.introduceNewKey("ROTATION_USER");
+    // Act - Use immediate promotion
+    keyRotationService.introduceNewKey("ROTATION_USER", true);
 
     // Assert - Verify metadata preservation
     Optional<EncryptionKey> oldKeyOpt = keyRepository.findById(PRIMARY_KEY_ID_1);
@@ -211,8 +299,8 @@ class KeyRotationServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("Should handle multiple keys in keyset correctly")
-  void shouldHandleMultipleKeysInKeysetCorrectly() throws Exception {
+  @DisplayName("Should handle multiple keys in keyset correctly with immediate promotion")
+  void shouldHandleMultipleKeysInKeysetCorrectlyWithImmediatePromotion() throws Exception {
     // Arrange
     long keyId1 = PRIMARY_KEY_ID_1;
     long keyId2 = 2222222222L;
@@ -240,8 +328,8 @@ class KeyRotationServiceIntegrationTest {
         .thenReturn(List.of(keyId1, keyId2, keyId3));
     org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(keyId3);
 
-    // Act
-    keyRotationService.introduceNewKey("ROTATION_USER");
+    // Act - Use immediate promotion
+    keyRotationService.introduceNewKey("ROTATION_USER", true);
 
     // Assert - All keys should be in correct state
     Optional<EncryptionKey> newPrimaryOpt = keyRepository.findById(keyId3);
@@ -255,5 +343,33 @@ class KeyRotationServiceIntegrationTest {
     Optional<EncryptionKey> enabledKeyOpt = keyRepository.findById(keyId2);
     assertTrue(enabledKeyOpt.isPresent());
     assertEquals(KeyStatus.ENABLED, enabledKeyOpt.get().getKeyStatus());
+  }
+
+  @Test
+  @DisplayName("Should reject new key introduction when PENDING key already exists")
+  void shouldRejectNewKeyWhenPendingKeyExists() throws Exception {
+    // Arrange - Create a PENDING key
+    EncryptionKey primaryKey = new EncryptionKey();
+    primaryKey.setKeyId(PRIMARY_KEY_ID_1);
+    primaryKey.setKeyStatus(KeyStatus.PRIMARY);
+    primaryKey.setAlgorithm("AES256_GCM");
+    primaryKey.setIntroducedAt(OffsetDateTime.now().minusDays(100));
+    primaryKey.setCreatedBy("TEST");
+    keyRepository.save(primaryKey);
+
+    EncryptionKey pendingKey = new EncryptionKey();
+    pendingKey.setKeyId(PRIMARY_KEY_ID_2);
+    pendingKey.setKeyStatus(KeyStatus.PENDING);
+    pendingKey.setAlgorithm("AES256_GCM");
+    pendingKey.setIntroducedAt(OffsetDateTime.now());
+    pendingKey.setEffectiveAt(OffsetDateTime.now().plusSeconds(30));
+    pendingKey.setCreatedBy("TEST");
+    keyRepository.save(pendingKey);
+
+    // Act & Assert - Should throw exception when trying to introduce another key
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalStateException.class,
+        () -> keyRotationService.introduceNewKey("TEST_USER"),
+        "Should reject new key when PENDING key exists");
   }
 }

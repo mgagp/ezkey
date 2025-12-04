@@ -827,6 +827,231 @@ public class TinkKeyManager {
   }
 
   /**
+   * Add a new key to the keyset WITHOUT promoting it to PRIMARY.
+   *
+   * <p>This method is used for distributed key rotation with synchronization window:
+   *
+   * <ol>
+   *   <li>New key is added to keyset as ENABLED (not PRIMARY)
+   *   <li>Keyset is saved to file and database
+   *   <li>All instances sync the keyset (new key available for decryption)
+   *   <li>After sync window, {@link #promoteToPrimary(long)} is called to activate the new key
+   * </ol>
+   *
+   * <p>This approach ensures all instances have the new key before it becomes active for
+   * encryption, preventing decryption failures during the transition period.
+   *
+   * @return the new key ID (unsigned representation)
+   * @throws GeneralSecurityException if key creation fails
+   * @throws IOException if keyset save fails
+   */
+  public synchronized long addKeyWithoutPromotion() throws GeneralSecurityException, IOException {
+    if (!isInitialized()) {
+      throw new IllegalStateException(
+          "Tink encryption not initialized. Cannot add keys without initialized keyset.");
+    }
+
+    logger.info("🔄 Adding new key to keyset (without promotion)...");
+
+    // Get current primary key ID for logging
+    long signedCurrentPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long currentPrimaryKeyIdUnsigned = toUnsignedLong(signedCurrentPrimaryKeyId);
+    logger.info(
+        "Current primary key ID (will remain primary): {} (unsigned: {})",
+        signedCurrentPrimaryKeyId,
+        Long.toUnsignedString(currentPrimaryKeyIdUnsigned));
+
+    // Get all existing key IDs before adding (converted to unsigned)
+    @SuppressWarnings("deprecation")
+    var existingKeyIds =
+        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
+            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
+            .collect(java.util.stream.Collectors.toSet());
+    logger.debug("Existing key IDs before adding: {}", existingKeyIds);
+
+    // Add new key using the configured template
+    com.google.crypto.tink.KeyTemplate template = getKeyTemplate();
+    KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
+    KeysetManager updatedManager = manager.add(template);
+
+    // Get the new key ID (the one that was just added - not in existingKeyIds)
+    @SuppressWarnings("deprecation")
+    var newKeysetInfo = updatedManager.getKeysetHandle().getKeysetInfo();
+    long newKeyId =
+        newKeysetInfo.getKeyInfoList().stream()
+            .filter(
+                keyInfo -> {
+                  long keyInfoUnsigned = toUnsignedLong(keyInfo.getKeyId());
+                  return !existingKeyIds.contains(keyInfoUnsigned);
+                })
+            .findFirst()
+            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
+            .orElseThrow(() -> new GeneralSecurityException("Failed to find new key after adding"));
+
+    // NOTE: We do NOT call setPrimary() - the old primary key remains active
+    KeysetHandle updatedHandle = updatedManager.getKeysetHandle();
+
+    // Save keyset to disk
+    String keysetPath = properties.getKeysetFile();
+    String normalizedPath = normalizePath(keysetPath);
+    saveKeyset(updatedHandle, normalizedPath);
+
+    // Update in-memory handle and file modification timestamp
+    this.keysetHandle = updatedHandle;
+    File keysetFile = new File(normalizedPath);
+    if (keysetFile.exists()) {
+      this.keysetFileLastModified = keysetFile.lastModified();
+      this.keysetFilePath = normalizedPath;
+    }
+
+    // Save to database if DATABASE/HYBRID mode
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      try {
+        saveKeysetToDatabase("KEY_ADDED_PENDING");
+        logger.info("✅ Updated keyset (with new pending key) saved to database");
+      } catch (Exception e) {
+        logger.error("Failed to save updated keyset to database: {}", e.getMessage());
+      }
+    }
+
+    logger.info(
+        "✅ New key added (NOT promoted). New key ID: {} (unsigned: {}). "
+            + "Current primary remains: {} (unsigned: {})",
+        toSignedLong(newKeyId),
+        Long.toUnsignedString(newKeyId),
+        signedCurrentPrimaryKeyId,
+        Long.toUnsignedString(currentPrimaryKeyIdUnsigned));
+
+    return newKeyId;
+  }
+
+  /**
+   * Promote an existing key to PRIMARY status.
+   *
+   * <p>This method is used after the synchronization window has passed to activate a PENDING key.
+   * It assumes the key already exists in the keyset (added by {@link #addKeyWithoutPromotion()}).
+   *
+   * <p>The promotion:
+   *
+   * <ol>
+   *   <li>Sets the specified key as PRIMARY in the Tink keyset
+   *   <li>Demotes the old primary key to ENABLED (remains available for decryption)
+   *   <li>Saves the updated keyset to file and database
+   * </ol>
+   *
+   * @param keyId the key ID to promote (unsigned representation)
+   * @return the old primary key ID (unsigned representation)
+   * @throws GeneralSecurityException if key not found or promotion fails
+   * @throws IOException if keyset save fails
+   */
+  public synchronized long promoteToPrimary(long keyId)
+      throws GeneralSecurityException, IOException {
+    if (!isInitialized()) {
+      throw new IllegalStateException(
+          "Tink encryption not initialized. Cannot promote keys without initialized keyset.");
+    }
+
+    logger.info(
+        "🔄 Promoting key {} (unsigned: {}) to PRIMARY...",
+        toSignedLong(keyId),
+        Long.toUnsignedString(keyId));
+
+    // Get current primary key ID before promotion
+    long signedOldPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long oldPrimaryKeyIdUnsigned = toUnsignedLong(signedOldPrimaryKeyId);
+    logger.info(
+        "Current primary key ID: {} (unsigned: {})",
+        signedOldPrimaryKeyId,
+        Long.toUnsignedString(oldPrimaryKeyIdUnsigned));
+
+    // Verify the key exists in the keyset
+    int signedKeyIdInt = toSignedInt(keyId);
+    @SuppressWarnings("deprecation")
+    boolean keyExists =
+        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
+            .anyMatch(keyInfo -> keyInfo.getKeyId() == signedKeyIdInt);
+
+    if (!keyExists) {
+      throw new GeneralSecurityException(
+          String.format(
+              "Key %s (unsigned: %s) not found in keyset. Cannot promote non-existent key.",
+              signedKeyIdInt, Long.toUnsignedString(keyId)));
+    }
+
+    // Promote the key to PRIMARY
+    KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
+    KeysetHandle promotedHandle = manager.setPrimary(signedKeyIdInt).getKeysetHandle();
+
+    // Verify the promotion worked
+    long newPrimaryKeyId = toUnsignedLong(promotedHandle.getKeysetInfo().getPrimaryKeyId());
+    if (newPrimaryKeyId != keyId) {
+      throw new GeneralSecurityException(
+          String.format(
+              "Key promotion failed. Expected primary: %s, actual: %s",
+              Long.toUnsignedString(keyId), Long.toUnsignedString(newPrimaryKeyId)));
+    }
+
+    // Save keyset to disk
+    String keysetPath = properties.getKeysetFile();
+    String normalizedPath = normalizePath(keysetPath);
+    saveKeyset(promotedHandle, normalizedPath);
+
+    // Update in-memory handle and file modification timestamp
+    this.keysetHandle = promotedHandle;
+    File keysetFile = new File(normalizedPath);
+    if (keysetFile.exists()) {
+      this.keysetFileLastModified = keysetFile.lastModified();
+      this.keysetFilePath = normalizedPath;
+    }
+
+    // Save to database if DATABASE/HYBRID mode
+    StorageMode storageMode = properties.getKeyset().getStorageMode();
+    if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
+        && keysetBlobRepository != null) {
+      try {
+        saveKeysetToDatabase("KEY_PROMOTED_PRIMARY");
+        logger.info("✅ Keyset with promoted primary key saved to database");
+      } catch (Exception e) {
+        logger.error("Failed to save keyset to database after promotion: {}", e.getMessage());
+      }
+    }
+
+    logger.info(
+        "✅ Key promotion completed. Old primary: {} (unsigned: {}), New primary: {} (unsigned: {})",
+        signedOldPrimaryKeyId,
+        Long.toUnsignedString(oldPrimaryKeyIdUnsigned),
+        toSignedLong(keyId),
+        Long.toUnsignedString(keyId));
+
+    return oldPrimaryKeyIdUnsigned;
+  }
+
+  /**
+   * Convert unsigned long key ID to signed int for Tink API.
+   *
+   * <p>Tink's KeysetManager.setPrimary() expects a signed int. This method converts our unsigned
+   * long representation back to the signed int that Tink uses internally.
+   *
+   * @param unsignedKeyId the unsigned key ID
+   * @return the signed int representation for Tink API
+   */
+  private int toSignedInt(long unsignedKeyId) {
+    return (int) unsignedKeyId;
+  }
+
+  /**
+   * Convert unsigned long key ID to signed long for logging.
+   *
+   * @param unsignedKeyId the unsigned key ID
+   * @return the signed long representation
+   */
+  private long toSignedLong(long unsignedKeyId) {
+    return (int) unsignedKeyId;
+  }
+
+  /**
    * Save keyset to disk with encryption.
    *
    * <p>Creates backup if backupBeforeRotation is enabled. Uses master AEAD to encrypt the keyset.

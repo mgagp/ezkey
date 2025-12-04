@@ -197,10 +197,19 @@ public class KeyRotationService {
    * has passed. The promotion:
    *
    * <ol>
-   *   <li>Demotes current PRIMARY key(s) to ENABLED
-   *   <li>Promotes PENDING key to PRIMARY
+   *   <li>Promotes the key to PRIMARY in the Tink keyset (this is the critical step!)
+   *   <li>Demotes current PRIMARY key(s) to ENABLED in database
+   *   <li>Promotes PENDING key to PRIMARY in database
    *   <li>Emits audit log events
    * </ol>
+   *
+   * <p><b>CRITICAL:</b> The Tink keyset promotion must happen FIRST. This ensures:
+   *
+   * <ul>
+   *   <li>The keyset file/database blob is updated with the new PRIMARY key
+   *   <li>All instances that sync the keyset will use the new key for encryption
+   *   <li>Database metadata stays synchronized with actual Tink state
+   * </ul>
    *
    * @param pendingKey the PENDING key to promote
    */
@@ -211,26 +220,58 @@ public class KeyRotationService {
         pendingKey.getKeyId(),
         Long.toUnsignedString(pendingKey.getKeyId()));
 
-    // Demote all current PRIMARY keys to ENABLED
-    List<EncryptionKey> currentPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    // STEP 1: Promote in Tink keyset FIRST (this is the critical change!)
+    // This updates the keyset file and database blob so all instances will use the new key
     Long oldPrimaryKeyId = null;
-    for (EncryptionKey primaryKey : currentPrimaryKeys) {
-      oldPrimaryKeyId = primaryKey.getKeyId();
-      logger.debug(
-          "Demoting current PRIMARY key {} to ENABLED",
-          Long.toUnsignedString(primaryKey.getKeyId()));
-      primaryKey.setKeyStatus(KeyStatus.ENABLED);
-      primaryKey.setPromotedPrimaryAt(null);
-      keyRepository.save(primaryKey);
+    try {
+      oldPrimaryKeyId = keyManager.promoteToPrimary(pendingKey.getKeyId());
+      logger.info(
+          "✅ Tink keyset updated: key {} is now PRIMARY (old primary was {})",
+          Long.toUnsignedString(pendingKey.getKeyId()),
+          oldPrimaryKeyId != null ? Long.toUnsignedString(oldPrimaryKeyId) : "none");
+    } catch (Exception e) {
+      logger.error(
+          "❌ Failed to promote key {} in Tink keyset: {}",
+          Long.toUnsignedString(pendingKey.getKeyId()),
+          e.getMessage());
+      // Emit failure audit event
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.KEY_PROMOTED_PRIMARY)
+              .eventAction("promote_pending_to_primary")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .encryptionKeyId(pendingKey.getKeyId())
+                      .errorSummary("Tink keyset promotion failed: " + e.getMessage())
+                      .toJson())
+              .errorMessage(e.getMessage())
+              .build());
+      throw new RuntimeException("Failed to promote key in Tink keyset", e);
     }
 
-    // Promote PENDING key to PRIMARY
+    // STEP 2: Demote all current PRIMARY keys to ENABLED in database
+    List<EncryptionKey> currentPrimaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
+    for (EncryptionKey primaryKey : currentPrimaryKeys) {
+      if (!primaryKey.getKeyId().equals(pendingKey.getKeyId())) {
+        logger.debug(
+            "Demoting current PRIMARY key {} to ENABLED in database",
+            Long.toUnsignedString(primaryKey.getKeyId()));
+        primaryKey.setKeyStatus(KeyStatus.ENABLED);
+        primaryKey.setPromotedPrimaryAt(null);
+        keyRepository.save(primaryKey);
+      }
+    }
+
+    // STEP 3: Promote PENDING key to PRIMARY in database
     pendingKey.setKeyStatus(KeyStatus.PRIMARY);
     pendingKey.setPromotedPrimaryAt(OffsetDateTime.now());
     pendingKey.setEffectiveAt(null); // Clear effective_at after promotion
     keyRepository.save(pendingKey);
 
-    // Emit audit events
+    // STEP 4: Emit audit events
     auditLogService.log(
         AuditLog.builder()
             .eventType(EventType.KEY_PROMOTED_PRIMARY)
@@ -243,6 +284,7 @@ public class KeyRotationService {
                     .encryptionKeyId(pendingKey.getKeyId())
                     .previousPrimaryKeyId(oldPrimaryKeyId)
                     .custom("promotion_reason", "sync_window_expired")
+                    .custom("tink_keyset_updated", true)
                     .toJson())
             .build());
 
@@ -263,7 +305,8 @@ public class KeyRotationService {
     }
 
     logger.info(
-        "✅ PENDING key {} (unsigned: {}) promoted to PRIMARY",
+        "✅ PENDING key {} (unsigned: {}) promoted to PRIMARY. "
+            + "Tink keyset and database are now synchronized.",
         pendingKey.getKeyId(),
         Long.toUnsignedString(pendingKey.getKeyId()));
   }
@@ -454,12 +497,13 @@ public class KeyRotationService {
       createBackup("rotation");
     }
 
-    // Perform rotation using TinkKeyManager
-    long newKeyId = keyManager.rotateKey();
+    long newKeyId;
 
-    // Sync keyset metadata to database with appropriate status
     if (immediatePromotion) {
-      // Immediate promotion: use existing behavior
+      // Immediate promotion: use rotateKey() which adds AND promotes in one step
+      newKeyId = keyManager.rotateKey();
+
+      // Sync keyset metadata to database with PRIMARY status
       syncKeyMetadataToDatabase(newKeyId, oldPrimaryKeyId, createdBy);
       emitRotationAuditEvents(newKeyId, oldPrimaryKeyId, createdBy);
       logger.info(
@@ -467,18 +511,24 @@ public class KeyRotationService {
           newKeyId,
           Long.toUnsignedString(newKeyId));
     } else {
-      // PENDING status with sync window
+      // PENDING workflow: add key WITHOUT promotion
+      // This ensures all instances have the key before it becomes active
+      newKeyId = keyManager.addKeyWithoutPromotion();
+
+      // Create PENDING record with sync window
       int syncWindowSeconds = properties.getRotation().getSyncWindowSeconds();
       OffsetDateTime effectiveAt = OffsetDateTime.now().plusSeconds(syncWindowSeconds);
       syncKeyMetadataToDatabaseAsPending(newKeyId, oldPrimaryKeyId, createdBy, effectiveAt);
       emitPendingKeyAuditEvents(newKeyId, oldPrimaryKeyId, createdBy, effectiveAt);
       logger.info(
-          "✅ New PENDING key introduced. Key ID: {} (unsigned: {}), effective at: {} "
-              + "(in {} seconds)",
+          "✅ New PENDING key introduced (NOT yet active for encryption). "
+              + "Key ID: {} (unsigned: {}), will become PRIMARY at: {} (in {} seconds). "
+              + "Current primary {} remains active until promotion.",
           newKeyId,
           Long.toUnsignedString(newKeyId),
           effectiveAt,
-          syncWindowSeconds);
+          syncWindowSeconds,
+          oldPrimaryKeyId != null ? Long.toUnsignedString(oldPrimaryKeyId) : "none");
     }
 
     return newKeyId;
