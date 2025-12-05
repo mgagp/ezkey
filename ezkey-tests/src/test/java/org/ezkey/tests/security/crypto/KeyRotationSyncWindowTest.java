@@ -61,8 +61,8 @@ import org.slf4j.LoggerFactory;
  *        - All instances now use new key for encryption
  * </pre>
  *
- * <p><b>Note:</b> These tests depend on the sync window configuration (default 10s for docker-test).
- * The tests use database queries to verify which key was used for encryption.
+ * <p><b>Note:</b> These tests depend on the sync window configuration (default 10s for
+ * docker-test). The tests use database queries to verify which key was used for encryption.
  *
  * @since 2025
  */
@@ -121,9 +121,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
       }
     }
 
-    assertThat(rotateResponse.getStatusCode())
-        .as("Key rotation should succeed")
-        .isEqualTo(200);
+    assertThat(rotateResponse.getStatusCode()).as("Key rotation should succeed").isEqualTo(200);
 
     Long newKeyId = rotateResponse.jsonPath().getLong("newPrimaryKeyId");
     log.info("New PENDING key ID: {}", newKeyId);
@@ -149,10 +147,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
 
     // Step 6: Query database to verify which key was used for encryption
-    Long keyUsedForProofToken = getKeyIdFromEncryptedField(
-        "ezkey_enrollment",
-        "enrollment_proof_token",
-        "enrollment_id = " + enrollmentId);
+    Long keyUsedForProofToken =
+        getKeyIdFromEncryptedField(
+            "ezkey_enrollment", "enrollment_proof_token", "enrollment_id = " + enrollmentId);
 
     log.info(
         "Key used for proof token encryption: {} (expected old primary: {})",
@@ -220,10 +217,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
       waitedSeconds += 5;
       keyStatus = getKeyStatus(pendingKeyId);
       log.info(
-          "After {}s: PENDING key {} status is now: {}",
-          waitedSeconds,
-          pendingKeyId,
-          keyStatus);
+          "After {}s: PENDING key {} status is now: {}", waitedSeconds, pendingKeyId, keyStatus);
     } while ("PENDING".equals(keyStatus) && waitedSeconds < maxWaitSeconds);
 
     assertThat(keyStatus)
@@ -242,10 +236,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
 
     // Step 6: Verify new key is used for encryption
-    Long keyUsedForProofToken = getKeyIdFromEncryptedField(
-        "ezkey_enrollment",
-        "enrollment_proof_token",
-        "enrollment_id = " + enrollmentId);
+    Long keyUsedForProofToken =
+        getKeyIdFromEncryptedField(
+            "ezkey_enrollment", "enrollment_proof_token", "enrollment_id = " + enrollmentId);
 
     log.info(
         "Key used for proof token encryption: {} (expected new primary: {})",
@@ -439,8 +432,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
    * @return PRIMARY key ID, or null if not found
    */
   private Long getCurrentPrimaryKeyId() {
-    String result = databaseHelper.executeQuerySingleValue(
-        "SELECT key_id FROM ezkey_encryption_key WHERE key_status = 'PRIMARY' LIMIT 1");
+    String result =
+        databaseHelper.executeQuerySingleValue(
+            "SELECT key_id FROM ezkey_encryption_key WHERE key_status = 'PRIMARY' LIMIT 1");
     return result != null ? Long.parseLong(result.trim()) : null;
   }
 
@@ -450,8 +444,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
    * @return PENDING key ID, or null if not found
    */
   private Long getPendingKeyId() {
-    String result = databaseHelper.executeQuerySingleValue(
-        "SELECT key_id FROM ezkey_encryption_key WHERE key_status = 'PENDING' LIMIT 1");
+    String result =
+        databaseHelper.executeQuerySingleValue(
+            "SELECT key_id FROM ezkey_encryption_key WHERE key_status = 'PENDING' LIMIT 1");
     return result != null ? Long.parseLong(result.trim()) : null;
   }
 
@@ -462,8 +457,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
    * @return key status (PRIMARY, PENDING, ENABLED, DISABLED), or null if not found
    */
   private String getKeyStatus(Long keyId) {
-    String result = databaseHelper.executeQuerySingleValue(
-        "SELECT key_status FROM ezkey_encryption_key WHERE key_id = " + keyId);
+    String result =
+        databaseHelper.executeQuerySingleValue(
+            "SELECT key_status FROM ezkey_encryption_key WHERE key_id = " + keyId);
     return result != null ? result.trim() : null;
   }
 
@@ -478,8 +474,9 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
    * @return key ID extracted from encrypted value, or null if not encrypted/not found
    */
   private Long getKeyIdFromEncryptedField(String tableName, String columnName, String whereClause) {
-    String encryptedValue = databaseHelper.executeQuerySingleValue(
-        String.format("SELECT %s FROM %s WHERE %s", columnName, tableName, whereClause));
+    String encryptedValue =
+        databaseHelper.executeQuerySingleValue(
+            String.format("SELECT %s FROM %s WHERE %s", columnName, tableName, whereClause));
 
     if (encryptedValue == null || encryptedValue.isEmpty()) {
       log.warn("Encrypted field not found: {}.{} WHERE {}", tableName, columnName, whereClause);
@@ -501,4 +498,3 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     return null;
   }
 }
-

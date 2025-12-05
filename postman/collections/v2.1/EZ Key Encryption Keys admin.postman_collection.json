@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "EZ Key Encryption Keys admin",
-		"description": "Collection for encryption key management and rotation operations in the Admin API.\n\n## Endpoints\n\n- **List Keys**: Get all encryption keys\n- **Get Primary Key**: Get current primary encryption key\n- **Get Key by ID**: Get specific encryption key details\n- **Rotate Key**: Manually trigger key rotation\n- **List Re-encryption Batches**: Get all re-encryption batches\n- **Resume Batch**: Resume a failed or paused re-encryption batch\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.",
+		"description": "Collection for encryption key management and rotation operations in the Admin API.\n\n## Endpoints\n\n- **List Keys**: Get all encryption keys\n- **Get Primary Key**: Get current primary encryption key\n- **Get Key by ID**: Get specific encryption key details\n- **Rotate Key**: Manually trigger key rotation\n- **List Re-encryption Batches**: Get all re-encryption batches\n- **Resume Batch**: Resume a failed or paused re-encryption batch\n- **Trigger Full Re-encryption**: Manually trigger full re-encryption process\n- **Trigger Re-encryption for Key**: Trigger re-encryption for a specific key\n- **Create Re-encryption Batches**: Create batches without processing\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -292,6 +292,157 @@
 					]
 				},
 				"description": "Resumes processing of a failed or paused re-encryption batch. Use the batchId from the list re-encryption batches response. The batch will continue from where it left off."
+			},
+			"response": []
+		},
+		{
+			"name": "trigger full re-encryption",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, or 500\", function () {",
+							"    pm.expect([200, 400, 500]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test(\"Response has batchesCreated\", function () {",
+							"        pm.expect(jsonData).to.have.property('batchesCreated');",
+							"    });",
+							"    pm.test(\"Response has batchesProcessed\", function () {",
+							"        pm.expect(jsonData).to.have.property('batchesProcessed');",
+							"    });",
+							"    pm.test(\"Response has message\", function () {",
+							"        pm.expect(jsonData).to.have.property('message');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencrypt/trigger",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"reencrypt",
+						"trigger"
+					]
+				},
+				"description": "Manually triggers full re-encryption process. Creates batches for all old keys and processes them immediately. Useful for testing or emergency re-encryption operations. ⚠️ Use with caution in production as this may process large amounts of data."
+			},
+			"response": []
+		},
+		{
+			"name": "trigger re-encryption for key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, 404, or 500\", function () {",
+							"    pm.expect([200, 400, 404, 500]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test(\"Response has keyId\", function () {",
+							"        pm.expect(jsonData).to.have.property('keyId');",
+							"    });",
+							"    pm.test(\"Response has batchesCreated\", function () {",
+							"        pm.expect(jsonData).to.have.property('batchesCreated');",
+							"    });",
+							"    pm.test(\"Response has message\", function () {",
+							"        pm.expect(jsonData).to.have.property('message');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/:keyId/reencrypt",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						":keyId",
+						"reencrypt"
+					],
+					"variable": [
+						{
+							"key": "keyId",
+							"value": "{{encryptionKeyId}}",
+							"description": "The old encryption key ID to re-encrypt (must not be PRIMARY)"
+						}
+					]
+				},
+				"description": "Creates and processes re-encryption batches for a specific old key. The key must not be PRIMARY. Useful for targeted re-encryption operations. Use the keyId from the list keys response (select an ENABLED key, not PRIMARY)."
+			},
+			"response": []
+		},
+		{
+			"name": "create re-encryption batches",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 500\", function () {",
+							"    pm.expect([200, 500]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.test(\"Response has batchesCreated\", function () {",
+							"        pm.expect(jsonData).to.have.property('batchesCreated');",
+							"    });",
+							"    pm.test(\"Response has message\", function () {",
+							"        pm.expect(jsonData).to.have.property('message');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencrypt/create-batches",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"encryption-keys",
+						"reencrypt",
+						"create-batches"
+					]
+				},
+				"description": "Creates re-encryption batches for all old keys without processing them. The batches will be processed by the scheduled job. Useful for preparing batches before scheduled processing or for testing batch creation logic."
 			},
 			"response": []
 		}

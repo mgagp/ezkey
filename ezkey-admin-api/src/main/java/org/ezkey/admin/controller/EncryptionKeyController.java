@@ -53,8 +53,14 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><b>GET /api/v1/encryption-keys/primary:</b> Get current primary key
  *   <li><b>POST /api/v1/encryption-keys/rotate:</b> Manually trigger key rotation
  *   <li><b>GET /api/v1/encryption-keys/{keyId}:</b> Get key details
- *   <li><b>GET /api/v1/reencryption-batches:</b> List re-encryption batches
- *   <li><b>POST /api/v1/reencryption-batches/{batchId}/resume:</b> Resume failed batch
+ *   <li><b>GET /api/v1/encryption-keys/reencryption-batches:</b> List re-encryption batches
+ *   <li><b>POST /api/v1/encryption-keys/reencryption-batches/{batchId}/resume:</b> Resume failed
+ *       batch
+ *   <li><b>POST /api/v1/encryption-keys/reencrypt/trigger:</b> Trigger full re-encryption
+ *   <li><b>POST /api/v1/encryption-keys/{keyId}/reencrypt:</b> Trigger re-encryption for specific
+ *       key
+ *   <li><b>POST /api/v1/encryption-keys/reencrypt/create-batches:</b> Create re-encryption batches
+ *       only
  * </ul>
  *
  * <p><b>Security:</b>
@@ -266,6 +272,236 @@ public class EncryptionKeyController {
         .orElse(ResponseEntity.notFound().build());
   }
 
+  /**
+   * Manually trigger full re-encryption process.
+   *
+   * <p>This endpoint creates batches for all old keys and processes them immediately. Useful for
+   * testing or emergency re-encryption operations.
+   *
+   * @return summary of re-encryption operation
+   */
+  @Operation(
+      summary = "Trigger full re-encryption",
+      description =
+          "Manually triggers full re-encryption process. Creates batches for all old keys and"
+              + " processes them immediately.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Re-encryption triggered successfully"),
+    @ApiResponse(responseCode = "400", description = "Invalid request (encryption not available)"),
+    @ApiResponse(responseCode = "500", description = "Re-encryption failed")
+  })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/reencrypt/trigger")
+  public ResponseEntity<ReencryptionTriggerResponse> triggerFullReencryption() {
+    try {
+      logger.info("Manual full re-encryption triggered by admin");
+      org.ezkey.security.ReencryptionService.ReencryptionSummary summary =
+          reencryptionService.triggerFullReencryption();
+
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_STARTED)
+              .eventAction("manual_full_reencryption")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .custom("batches_created", summary.batchesCreated())
+                      .custom("batches_processed", summary.batchesProcessed())
+                      .custom("batches_failed", summary.batchesFailed())
+                      .toJson())
+              .build());
+
+      return ResponseEntity.ok(
+          new ReencryptionTriggerResponse(
+              summary.batchesCreated(),
+              summary.batchesProcessed(),
+              summary.batchesFailed(),
+              "Full re-encryption completed successfully"));
+    } catch (IllegalStateException e) {
+      logger.error("Full re-encryption failed: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(
+              new ReencryptionTriggerResponse(0, 0, 0, "Re-encryption failed: " + e.getMessage()));
+    } catch (Exception e) {
+      logger.error("Full re-encryption failed", e);
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_FAILED)
+              .eventAction("manual_full_reencryption")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .errorSummary("Manual full re-encryption failed: " + e.getMessage())
+                      .toJson())
+              .errorMessage(e.getMessage())
+              .build());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(
+              new ReencryptionTriggerResponse(0, 0, 0, "Re-encryption failed: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * Manually trigger re-encryption for a specific old key.
+   *
+   * <p>This endpoint creates and processes re-encryption batches for a specific old key. Useful for
+   * targeted re-encryption operations.
+   *
+   * @param keyId the old key ID to re-encrypt
+   * @return summary of re-encryption operation for this key
+   */
+  @Operation(
+      summary = "Trigger re-encryption for specific key",
+      description =
+          "Creates and processes re-encryption batches for a specific old key. The key must not be"
+              + " PRIMARY.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Re-encryption triggered successfully"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid request (key not found or is PRIMARY)"),
+    @ApiResponse(responseCode = "404", description = "Key not found"),
+    @ApiResponse(responseCode = "500", description = "Re-encryption failed")
+  })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{keyId}/reencrypt")
+  public ResponseEntity<ReencryptionKeyResponse> triggerReencryptionForKey(
+      @PathVariable Long keyId) {
+    try {
+      logger.info("Manual re-encryption triggered for key {} by admin", keyId);
+      org.ezkey.security.ReencryptionService.ReencryptionSummary summary =
+          reencryptionService.triggerReencryptionForKey(keyId);
+
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_STARTED)
+              .eventAction("manual_key_reencryption")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .custom("key_id", keyId)
+                      .custom("batches_created", summary.batchesCreated())
+                      .custom("batches_processed", summary.batchesProcessed())
+                      .custom("batches_failed", summary.batchesFailed())
+                      .toJson())
+              .build());
+
+      return ResponseEntity.ok(
+          new ReencryptionKeyResponse(
+              keyId,
+              summary.batchesCreated(),
+              summary.batchesProcessed(),
+              summary.batchesFailed(),
+              "Re-encryption for key " + keyId + " completed successfully"));
+    } catch (IllegalArgumentException e) {
+      logger.error("Re-encryption for key {} failed: {}", keyId, e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(
+              new ReencryptionKeyResponse(
+                  keyId, 0, 0, 0, "Re-encryption failed: " + e.getMessage()));
+    } catch (IllegalStateException e) {
+      logger.error("Re-encryption for key {} failed: {}", keyId, e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(
+              new ReencryptionKeyResponse(
+                  keyId, 0, 0, 0, "Re-encryption failed: " + e.getMessage()));
+    } catch (Exception e) {
+      logger.error("Re-encryption for key {} failed", keyId, e);
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_FAILED)
+              .eventAction("manual_key_reencryption")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .custom("key_id", keyId)
+                      .errorSummary("Manual re-encryption for key failed: " + e.getMessage())
+                      .toJson())
+              .errorMessage(e.getMessage())
+              .build());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(
+              new ReencryptionKeyResponse(
+                  keyId, 0, 0, 0, "Re-encryption failed: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * Create re-encryption batches for all old keys without processing them.
+   *
+   * <p>This endpoint creates re-encryption batches for all old keys without processing them. The
+   * batches will be processed by the scheduled job. Useful for preparing batches before scheduled
+   * processing.
+   *
+   * @return summary of batch creation operation
+   */
+  @Operation(
+      summary = "Create re-encryption batches",
+      description =
+          "Creates re-encryption batches for all old keys without processing them. Batches will be"
+              + " processed by the scheduled job.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Batches created successfully"),
+    @ApiResponse(responseCode = "500", description = "Batch creation failed")
+  })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/reencrypt/create-batches")
+  public ResponseEntity<BatchCreationResponse> createBatches() {
+    try {
+      logger.info("Manual batch creation triggered by admin");
+
+      // Count existing batches before creation
+      long batchesBefore = batchRepository.count();
+
+      // Create batches for all old keys
+      reencryptionService.createBatchesForOldKeys();
+
+      // Count batches after creation
+      long batchesAfter = batchRepository.count();
+      int batchesCreated = (int) (batchesAfter - batchesBefore);
+
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_STARTED)
+              .eventAction("manual_batch_creation")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder().custom("batches_created", batchesCreated).toJson())
+              .build());
+
+      return ResponseEntity.ok(
+          new BatchCreationResponse(
+              batchesCreated, "Created " + batchesCreated + " re-encryption batches"));
+    } catch (Exception e) {
+      logger.error("Batch creation failed", e);
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_FAILED)
+              .eventAction("manual_batch_creation")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .errorSummary("Manual batch creation failed: " + e.getMessage())
+                      .toJson())
+              .errorMessage(e.getMessage())
+              .build());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(new BatchCreationResponse(0, "Batch creation failed: " + e.getMessage()));
+    }
+  }
+
   private EncryptionKeyResponse toResponse(EncryptionKey key) {
     return new EncryptionKeyResponse(
         key.getKeyId(),
@@ -379,4 +615,35 @@ public class EncryptionKeyController {
    * @param message human-readable message describing the resume operation result
    */
   public record BatchResumeResponse(Integer batchId, String message) {}
+
+  /**
+   * Response DTO for full re-encryption trigger operation.
+   *
+   * @param batchesCreated number of batches created
+   * @param batchesProcessed number of batches successfully processed
+   * @param batchesFailed number of batches that failed
+   * @param message human-readable message describing the operation result
+   */
+  public record ReencryptionTriggerResponse(
+      int batchesCreated, int batchesProcessed, int batchesFailed, String message) {}
+
+  /**
+   * Response DTO for key-specific re-encryption operation.
+   *
+   * @param keyId the key ID that was re-encrypted
+   * @param batchesCreated number of batches created for this key
+   * @param batchesProcessed number of batches successfully processed
+   * @param batchesFailed number of batches that failed
+   * @param message human-readable message describing the operation result
+   */
+  public record ReencryptionKeyResponse(
+      Long keyId, int batchesCreated, int batchesProcessed, int batchesFailed, String message) {}
+
+  /**
+   * Response DTO for batch creation operation.
+   *
+   * @param batchesCreated number of batches created
+   * @param message human-readable message describing the operation result
+   */
+  public record BatchCreationResponse(int batchesCreated, String message) {}
 }

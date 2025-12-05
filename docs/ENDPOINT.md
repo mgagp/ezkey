@@ -707,6 +707,171 @@ Content-Type: application/json
 
 ---
 
+## Encryption Key Management and Re-encryption
+
+Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys are automatically rotated on a schedule, and data encrypted with old keys can be re-encrypted with new keys.
+
+### Encryption Key Endpoints
+
+**GET    /api/v1/encryption-keys**                    // List all encryption keys
+**GET    /api/v1/encryption-keys/primary**           // Get current primary key
+**GET    /api/v1/encryption-keys/{keyId}**           // Get key details
+**POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation
+**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches
+**POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
+
+### Re-encryption Trigger Endpoints
+
+These endpoints allow manual triggering of re-encryption operations, useful for testing and emergency operations.
+
+#### a) Trigger Full Re-encryption
+
+**POST /api/v1/encryption-keys/reencrypt/trigger**
+
+Manually triggers the full re-encryption process. Creates batches for all old keys and processes them immediately.
+
+**Use Cases:**
+- Testing re-encryption functionality
+- Emergency re-encryption after security incident
+- Completing re-encryption faster than scheduled job
+
+**Request:**
+```http
+POST /api/v1/encryption-keys/reencrypt/trigger
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+{
+  "batchesCreated": 8,
+  "batchesProcessed": 8,
+  "batchesFailed": 0,
+  "message": "Full re-encryption completed successfully"
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Encryption not available or re-encryption disabled
+- **500 Internal Server Error**: Re-encryption processing failed
+
+**Security Considerations:**
+- Requires ADMIN role
+- All operations are audited
+- May process large amounts of data - use with caution in production
+- Batches are processed immediately (no throttling limits)
+
+---
+
+#### b) Trigger Re-encryption for Specific Key
+
+**POST /api/v1/encryption-keys/{keyId}/reencrypt**
+
+Creates and processes re-encryption batches for a specific old key. The key must not be PRIMARY.
+
+**Use Cases:**
+- Targeted re-encryption for a specific key
+- Testing re-encryption for a particular key
+- Re-encrypting data after key compromise
+
+**Request:**
+```http
+POST /api/v1/encryption-keys/12345/reencrypt
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Path Parameters:**
+- `keyId` (Long): The old encryption key ID to re-encrypt (must be ENABLED, not PRIMARY)
+
+**Response (200 OK):**
+```json
+{
+  "keyId": 12345,
+  "batchesCreated": 4,
+  "batchesProcessed": 4,
+  "batchesFailed": 0,
+  "message": "Re-encryption for key 12345 completed successfully"
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Key is PRIMARY (cannot re-encrypt PRIMARY key) or encryption not available
+- **404 Not Found**: Key not found
+- **500 Internal Server Error**: Re-encryption processing failed
+
+**Security Considerations:**
+- Requires ADMIN role
+- All operations are audited
+- Key must be ENABLED (not PRIMARY or DISABLED)
+- Creates batches for all tables/columns encrypted with this key
+
+---
+
+#### c) Create Re-encryption Batches Only
+
+**POST /api/v1/encryption-keys/reencrypt/create-batches**
+
+Creates re-encryption batches for all old keys without processing them. The batches will be processed by the scheduled job.
+
+**Use Cases:**
+- Preparing batches before scheduled processing
+- Testing batch creation logic
+- Creating batches during maintenance window for later processing
+
+**Request:**
+```http
+POST /api/v1/encryption-keys/reencrypt/create-batches
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+{
+  "batchesCreated": 8,
+  "message": "Created 8 re-encryption batches"
+}
+```
+
+**Error Responses:**
+- **500 Internal Server Error**: Batch creation failed
+
+**Security Considerations:**
+- Requires ADMIN role
+- All operations are audited
+- Batches are created but not processed (will be processed by scheduled job)
+- Useful for preparing batches during low-traffic periods
+
+---
+
+### Re-encryption Process Overview
+
+**Normal Flow (Scheduled):**
+1. Key rotation job creates new PRIMARY key
+2. Scheduled re-encryption job (daily at 3 AM) creates batches for old keys
+3. Scheduled job processes batches in batches (respects limits)
+4. Old keys are disabled after all data is re-encrypted
+
+**Manual Flow (Using Endpoints):**
+1. Admin triggers key rotation (or scheduled job does it)
+2. Admin can manually trigger re-encryption:
+   - **Full re-encryption**: Creates and processes all batches immediately
+   - **Key-specific**: Creates and processes batches for one key
+   - **Batch creation only**: Creates batches for scheduled job to process
+
+**Batch Status:**
+- **PENDING**: Batch created, not yet started
+- **IN_PROGRESS**: Batch is being processed
+- **COMPLETED**: Batch completed successfully
+- **FAILED**: Batch failed (can be resumed)
+- **PAUSED**: Batch paused (can be resumed)
+
+**Monitoring:**
+- Use `GET /api/v1/encryption-keys/reencryption-batches` to monitor progress
+- Check `progressPct` field for completion percentage
+- Review `recordsDone`, `recordsFailed`, `recordsSkipped` for statistics
+
+---
+
 ### a) Authentication request management
 
 **GET    /api/v1/auth-attempts**          // List all authentication requests

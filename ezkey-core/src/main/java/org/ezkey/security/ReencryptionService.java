@@ -625,4 +625,210 @@ public class ReencryptionService {
             .errorMessage(errorMessage)
             .build());
   }
+
+  /**
+   * Manually trigger full re-encryption process.
+   *
+   * <p>Creates batches for all old keys and processes them immediately. This method is useful for
+   * testing or emergency re-encryption operations.
+   *
+   * <p><b>Process:</b>
+   *
+   * <ol>
+   *   <li>Create batches for all old keys that need re-encryption
+   *   <li>Process all created batches immediately
+   *   <li>Return summary of batches created and processed
+   * </ol>
+   *
+   * @return summary containing number of batches created and processed
+   * @throws IllegalStateException if encryption is not available or re-encryption is disabled
+   */
+  @Transactional
+  public ReencryptionSummary triggerFullReencryption() {
+    if (!encryptionService.isEncryptionAvailable()) {
+      throw new IllegalStateException("Encryption not available");
+    }
+
+    logger.info("🔄 Manual full re-encryption triggered");
+
+    // Create batches for all old keys
+    createBatchesForOldKeys();
+
+    // Find all batches that need processing
+    List<ReencryptionBatch> batchesToProcess = batchRepository.findBatchesEligibleForResume();
+    batchesToProcess.addAll(batchRepository.findByStatus(BatchStatus.PENDING));
+
+    int batchesCreated = batchesToProcess.size();
+    int batchesProcessed = 0;
+    int batchesFailed = 0;
+
+    // Process all batches
+    for (ReencryptionBatch batch : batchesToProcess) {
+      try {
+        processBatch(batch);
+        if (batch.getStatus() == BatchStatus.COMPLETED) {
+          batchesProcessed++;
+        } else if (batch.getStatus() == BatchStatus.FAILED) {
+          batchesFailed++;
+        }
+      } catch (Exception e) {
+        logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
+        markBatchFailed(batch, e.getMessage());
+        batchesFailed++;
+      }
+    }
+
+    logger.info(
+        "✅ Full re-encryption completed. Created: {}, Processed: {}, Failed: {}",
+        batchesCreated,
+        batchesProcessed,
+        batchesFailed);
+
+    return new ReencryptionSummary(batchesCreated, batchesProcessed, batchesFailed);
+  }
+
+  /**
+   * Manually trigger re-encryption for a specific old key.
+   *
+   * <p>Creates and processes re-encryption batches for a specific old key. Useful for targeted
+   * re-encryption operations.
+   *
+   * <p><b>Process:</b>
+   *
+   * <ol>
+   *   <li>Validate that the key exists and is not PRIMARY
+   *   <li>Create batches for all tables/columns encrypted with this key
+   *   <li>Process all created batches immediately
+   *   <li>Return summary of batches created and processed
+   * </ol>
+   *
+   * @param keyId the old key ID to re-encrypt
+   * @return summary containing number of batches created and processed for this key
+   * @throws IllegalArgumentException if key not found or key is PRIMARY
+   * @throws IllegalStateException if encryption is not available
+   */
+  @Transactional
+  public ReencryptionSummary triggerReencryptionForKey(Long keyId) {
+    if (!encryptionService.isEncryptionAvailable()) {
+      throw new IllegalStateException("Encryption not available");
+    }
+
+    EncryptionKey oldKey =
+        keyRepository
+            .findById(keyId)
+            .orElseThrow(() -> new IllegalArgumentException("Key not found: " + keyId));
+
+    if (oldKey.getKeyStatus() == EncryptionKey.KeyStatus.PRIMARY) {
+      throw new IllegalArgumentException("Cannot re-encrypt PRIMARY key: " + keyId);
+    }
+
+    logger.info("🔄 Manual re-encryption triggered for key: {}", keyId);
+
+    // Get current primary key
+    List<EncryptionKey> primaryKeys =
+        keyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY);
+    if (primaryKeys.isEmpty()) {
+      throw new IllegalStateException("No PRIMARY key found");
+    }
+    EncryptionKey primaryKey = primaryKeys.get(0);
+
+    // Define tables/columns that need re-encryption
+    String[][] targets = {
+      {"ezkey_enrollment", "integration_private_key"},
+      {"ezkey_enrollment", "enrollment_proof_token"},
+      {"ezkey_auth_attempt", "auth_attempt_proof_token"},
+      {"ezkey_auth_attempt", "device_proof_token"}
+    };
+
+    int batchesCreated = 0;
+    int batchesProcessed = 0;
+    int batchesFailed = 0;
+
+    for (String[] target : targets) {
+      String table = target[0];
+      String column = target[1];
+
+      // Check if active batch already exists
+      List<ReencryptionBatch> activeBatches =
+          batchRepository.findActiveBatchesByTarget(table, column);
+      if (!activeBatches.isEmpty()) {
+        logger.debug("Active batch already exists for {}.{}", table, column);
+        continue;
+      }
+
+      // Count records encrypted with old key
+      int recordCount = countRecordsEncryptedWithKey(table, column, oldKey.getKeyId());
+      if (recordCount == 0) {
+        logger.debug(
+            "No records found encrypted with key {} in {}.{}", oldKey.getKeyId(), table, column);
+        continue;
+      }
+
+      // Create batch
+      ReencryptionBatch batch =
+          new ReencryptionBatch(table, column, oldKey, primaryKey, recordCount, "ADMIN_MANUAL");
+      batchRepository.save(batch);
+      batchesCreated++;
+
+      logger.info(
+          "Created re-encryption batch {} for {}.{} (old key: {}, new key: {}, records: {})",
+          batch.getBatchId(),
+          table,
+          column,
+          oldKey.getKeyId(),
+          primaryKey.getKeyId(),
+          recordCount);
+
+      // Emit audit log
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_STARTED)
+              .eventAction("create_reencryption_batch")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .reencryptionBatchId(batch.getBatchId())
+                      .targetTable(table)
+                      .targetColumn(column)
+                      .oldKeyId(oldKey.getKeyId())
+                      .newKeyId(primaryKey.getKeyId())
+                      .recordsTotal(recordCount)
+                      .toJson())
+              .build());
+
+      // Process batch immediately
+      try {
+        processBatch(batch);
+        if (batch.getStatus() == BatchStatus.COMPLETED) {
+          batchesProcessed++;
+        } else if (batch.getStatus() == BatchStatus.FAILED) {
+          batchesFailed++;
+        }
+      } catch (Exception e) {
+        logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
+        markBatchFailed(batch, e.getMessage());
+        batchesFailed++;
+      }
+    }
+
+    logger.info(
+        "✅ Re-encryption for key {} completed. Created: {}, Processed: {}, Failed: {}",
+        keyId,
+        batchesCreated,
+        batchesProcessed,
+        batchesFailed);
+
+    return new ReencryptionSummary(batchesCreated, batchesProcessed, batchesFailed);
+  }
+
+  /**
+   * Summary of re-encryption operation.
+   *
+   * @param batchesCreated number of batches created
+   * @param batchesProcessed number of batches successfully processed
+   * @param batchesFailed number of batches that failed
+   */
+  public record ReencryptionSummary(int batchesCreated, int batchesProcessed, int batchesFailed) {}
 }
