@@ -21,9 +21,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.security.EncryptionEntityListener;
 import org.ezkey.security.EncryptionService;
+import org.ezkey.security.Reencryptable;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +56,7 @@ import org.slf4j.LoggerFactory;
 @Entity
 @EntityListeners(EncryptionEntityListener.class)
 @Table(name = "ezkey_auth_attempt")
-public class AuthAttempt {
+public class AuthAttempt implements Reencryptable {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -384,5 +387,45 @@ public class AuthAttempt {
         + ", expiresAt="
         + expiresAt
         + '}';
+  }
+
+  // ===== Reencryptable Interface Implementation =====
+
+  @Override
+  public Map<String, String> getEncryptedFields() {
+    Map<String, String> fields = new HashMap<>();
+    if (encryptedAuthAttemptProofToken != null) {
+      fields.put("auth_attempt_proof_token", encryptedAuthAttemptProofToken);
+    }
+    if (encryptedDeviceProofToken != null) {
+      fields.put("device_proof_token", encryptedDeviceProofToken);
+    }
+    return fields;
+  }
+
+  @Override
+  public void setEncryptedField(String columnName, String encryptedValue) {
+    switch (columnName) {
+      case "auth_attempt_proof_token":
+        this.encryptedAuthAttemptProofToken = encryptedValue;
+        this.authAttemptProofToken = null; // Clear transient to force re-decryption
+        break;
+      case "device_proof_token":
+        this.encryptedDeviceProofToken = encryptedValue;
+        this.deviceProofToken = null; // Clear transient to force re-decryption
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+    }
+  }
+
+  @Override
+  public Long getEntityId() {
+    return authAttemptId != null ? Long.valueOf(authAttemptId) : null;
+  }
+
+  @Override
+  public String getTableName() {
+    return "ezkey_auth_attempt";
   }
 }

@@ -248,4 +248,80 @@ public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Intege
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
       @Param("newStatus") AuthAttemptStatus newStatus);
+
+  /**
+   * Counts auth attempts with encrypted auth attempt proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @return count of matching records
+   */
+  @Query(
+      value = "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE auth_attempt_proof_token LIKE :prefix",
+      nativeQuery = true)
+  int countByEncryptedAuthAttemptProofTokenLike(@Param("prefix") String prefix);
+
+  /**
+   * Counts auth attempts with encrypted device proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @return count of matching records
+   */
+  @Query(
+      value = "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE device_proof_token LIKE :prefix",
+      nativeQuery = true)
+  int countByEncryptedDeviceProofTokenLike(@Param("prefix") String prefix);
+
+  /**
+   * Finds auth attempts with encrypted auth attempt proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
+   * by auth_attempt_id for resumable batch processing.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param lastId the last processed auth attempt ID (for resumability), or null to start from
+   *     beginning
+   * @param limit maximum number of records to return
+   * @return list of matching auth attempts
+   */
+  @Query(
+      value =
+          """
+          SELECT * FROM ezkey_auth_attempt
+          WHERE auth_attempt_proof_token LIKE :prefix
+            AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+          ORDER BY auth_attempt_id ASC
+          LIMIT :limit
+          """,
+      nativeQuery = true)
+  List<AuthAttempt> findEncryptedAuthAttemptProofTokenLike(
+      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+
+  /**
+   * Finds auth attempts with encrypted device proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
+   * by auth_attempt_id for resumable batch processing.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param lastId the last processed auth attempt ID (for resumability), or null to start from
+   *     beginning
+   * @param limit maximum number of records to return
+   * @return list of matching auth attempts
+   */
+  @Query(
+      value =
+          """
+          SELECT * FROM ezkey_auth_attempt
+          WHERE device_proof_token LIKE :prefix
+            AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+          ORDER BY auth_attempt_id ASC
+          LIMIT :limit
+          """,
+      nativeQuery = true)
+  List<AuthAttempt> findEncryptedDeviceProofTokenLike(
+      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }

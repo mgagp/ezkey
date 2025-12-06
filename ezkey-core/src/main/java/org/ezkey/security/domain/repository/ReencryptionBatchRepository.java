@@ -94,6 +94,26 @@ public interface ReencryptionBatchRepository extends JpaRepository<ReencryptionB
       @Param("targetTable") String targetTable, @Param("targetColumn") String targetColumn);
 
   /**
+   * Find active batches (PENDING or IN_PROGRESS) for a specific table, column, and old key.
+   *
+   * <p>Used to prevent duplicate batch creation for the same target and old key combination. This
+   * allows multiple batches for the same table/column if they target different old keys.
+   *
+   * @param targetTable the target table name
+   * @param targetColumn the target column name
+   * @param oldKeyId the old encryption key ID
+   * @return list of active batches for the specified target and old key
+   */
+  @Query(
+      "SELECT b FROM ReencryptionBatch b WHERE b.targetTable = :targetTable "
+          + "AND b.targetColumn = :targetColumn AND b.oldKey.keyId = :oldKeyId "
+          + "AND b.status IN ('PENDING', 'IN_PROGRESS')")
+  List<ReencryptionBatch> findActiveBatchesByTargetAndOldKey(
+      @Param("targetTable") String targetTable,
+      @Param("targetColumn") String targetColumn,
+      @Param("oldKeyId") Long oldKeyId);
+
+  /**
    * Find batches by old and new key IDs.
    *
    * <p>Used to track all batches involved in migrating from one key to another.

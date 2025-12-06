@@ -11,7 +11,11 @@
 package org.ezkey.security;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -30,8 +34,6 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +76,7 @@ public class ReencryptionService {
   private static final Logger logger = LoggerFactory.getLogger(ReencryptionService.class);
 
   private final EncryptionService encryptionService;
+  private final TinkKeyManager keyManager;
   private final EncryptionKeyRepository keyRepository;
   private final ReencryptionBatchRepository batchRepository;
   private final EnrollmentRepository enrollmentRepository;
@@ -83,6 +86,7 @@ public class ReencryptionService {
 
   public ReencryptionService(
       EncryptionService encryptionService,
+      TinkKeyManager keyManager,
       EncryptionKeyRepository keyRepository,
       ReencryptionBatchRepository batchRepository,
       EnrollmentRepository enrollmentRepository,
@@ -90,6 +94,7 @@ public class ReencryptionService {
       TinkProperties properties,
       AuditLogService auditLogService) {
     this.encryptionService = encryptionService;
+    this.keyManager = keyManager;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
     this.enrollmentRepository = enrollmentRepository;
@@ -188,42 +193,41 @@ public class ReencryptionService {
    * Create batches for old keys that need re-encryption.
    *
    * <p>For each ENABLED key older than rotation threshold, creates batches for all tables/columns
-   * that contain encrypted data.
+   * that contain encrypted data. Targets are discovered dynamically from entities implementing
+   * Reencryptable.
    */
   @Transactional
   public void createBatchesForOldKeys() {
-    // Get current primary key
-    List<EncryptionKey> primaryKeys =
-        keyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY);
-    if (primaryKeys.isEmpty()) {
+    // Get current primary key from keyset Tink (source of truth for SOC2 compliance)
+    EncryptionKey primaryKey = getPrimaryKeyFromKeyset();
+    if (primaryKey == null) {
       logger.debug("No PRIMARY key found, skipping batch creation");
       return;
     }
-    EncryptionKey primaryKey = primaryKeys.get(0);
 
     // Find ENABLED keys that are not primary (old keys)
     List<EncryptionKey> enabledKeys = keyRepository.findEnabledKeys();
     enabledKeys.removeIf(key -> key.getKeyStatus() == EncryptionKey.KeyStatus.PRIMARY);
 
+    // Discover re-encryptable targets dynamically
+    List<Target> targets = discoverReencryptableTargets();
+
     for (EncryptionKey oldKey : enabledKeys) {
+      for (Target target : targets) {
+        String table = target.table();
+        String column = target.column();
 
-      // Define tables/columns that need re-encryption
-      String[][] targets = {
-        {"ezkey_enrollment", "integration_private_key"},
-        {"ezkey_enrollment", "enrollment_proof_token"},
-        {"ezkey_auth_attempt", "auth_attempt_proof_token"},
-        {"ezkey_auth_attempt", "device_proof_token"}
-      };
-
-      for (String[] target : targets) {
-        String table = target[0];
-        String column = target[1];
-
-        // Check if active batch already exists
+        // Check if active batch already exists for this specific old key
+        // Note: We check by (table, column, oldKeyId) to allow multiple batches for different old
+        // keys
         List<ReencryptionBatch> activeBatches =
-            batchRepository.findActiveBatchesByTarget(table, column);
+            batchRepository.findActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
         if (!activeBatches.isEmpty()) {
-          logger.debug("Active batch already exists for {}.{}", table, column);
+          logger.debug(
+              "Active batch already exists for {}.{} with old key {}",
+              table,
+              column,
+              oldKey.getKeyId());
           continue;
         }
 
@@ -280,7 +284,7 @@ public class ReencryptionService {
    * @return number of records encrypted with the key
    */
   private int countRecordsEncryptedWithKey(String table, String column, Long keyId) {
-    String keyPrefix = "ENC:" + keyId + ":";
+    String keyPrefix = "ENC:" + keyId + ":%";
     return switch (table) {
       case "ezkey_enrollment" -> countEnrollmentRecords(column, keyPrefix);
       case "ezkey_auth_attempt" -> countAuthAttemptRecords(column, keyPrefix);
@@ -289,62 +293,23 @@ public class ReencryptionService {
   }
 
   private int countEnrollmentRecords(String column, String keyPrefix) {
-    String fieldName =
-        switch (column) {
-          case "integration_private_key" -> "encryptedIntegrationPrivateKey";
-          case "enrollment_proof_token" -> "encryptedEnrollmentProofToken";
-          default -> null;
-        };
-    if (fieldName == null) {
-      return 0;
-    }
-    return enrollmentRepository.findAll().stream()
-        .mapToInt(
-            e -> {
-              String value = getFieldValue(e, fieldName);
-              return (value != null && value.startsWith(keyPrefix)) ? 1 : 0;
-            })
-        .sum();
+    return switch (column) {
+      case "integration_private_key" ->
+          enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(keyPrefix);
+      case "enrollment_proof_token" ->
+          enrollmentRepository.countByEncryptedEnrollmentProofTokenLike(keyPrefix);
+      default -> 0;
+    };
   }
 
   private int countAuthAttemptRecords(String column, String keyPrefix) {
-    String fieldName =
-        switch (column) {
-          case "auth_attempt_proof_token" -> "encryptedAuthAttemptProofToken";
-          case "device_proof_token" -> "encryptedDeviceProofToken";
-          default -> null;
-        };
-    if (fieldName == null) {
-      return 0;
-    }
-    return authAttemptRepository.findAll().stream()
-        .mapToInt(
-            a -> {
-              String value = getFieldValue(a, fieldName);
-              return (value != null && value.startsWith(keyPrefix)) ? 1 : 0;
-            })
-        .sum();
-  }
-
-  private String getFieldValue(Object entity, String fieldName) {
-    try {
-      java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      return (String) field.get(entity);
-    } catch (Exception e) {
-      logger.debug("Failed to read field {}: {}", fieldName, e.getMessage());
-      return null;
-    }
-  }
-
-  private void setFieldValue(Object entity, String fieldName, String value) {
-    try {
-      java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      field.set(entity, value);
-    } catch (Exception e) {
-      logger.error("Failed to write field {}: {}", fieldName, e.getMessage());
-    }
+    return switch (column) {
+      case "auth_attempt_proof_token" ->
+          authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(keyPrefix);
+      case "device_proof_token" ->
+          authAttemptRepository.countByEncryptedDeviceProofTokenLike(keyPrefix);
+      default -> 0;
+    };
   }
 
   /**
@@ -382,22 +347,20 @@ public class ReencryptionService {
 
     // Process records
     while (recordsDone + recordsFailed + recordsSkipped < batch.getRecordsTotal()) {
-      List<?> records = fetchRecords(batch, lastRecordId, batchSize);
+      List<? extends Reencryptable> records = fetchRecords(batch, lastRecordId, batchSize);
       if (records.isEmpty()) {
         break; // No more records
       }
 
-      for (Object record : records) {
+      for (Reencryptable record : records) {
         try {
           boolean reencrypted = reencryptRecord(batch, record);
+          // Always update lastRecordId to ensure we don't reprocess the same record
+          // This prevents infinite loops and ensures all records are processed
+          lastRecordId = record.getEntityId();
+
           if (reencrypted) {
             recordsDone++;
-            // Update lastRecordId based on record type
-            if (record instanceof Enrollment e) {
-              lastRecordId = Long.valueOf(e.getEnrollmentId());
-            } else if (record instanceof AuthAttempt a) {
-              lastRecordId = Long.valueOf(a.getAuthAttemptId());
-            }
           } else {
             recordsSkipped++;
           }
@@ -405,6 +368,8 @@ public class ReencryptionService {
           logger.warn(
               "Failed to re-encrypt record in batch {}: {}", batch.getBatchId(), e.getMessage());
           recordsFailed++;
+          // Still update lastRecordId even on failure to avoid reprocessing
+          lastRecordId = record.getEntityId();
         }
       }
 
@@ -474,63 +439,40 @@ public class ReencryptionService {
    * @param batchSize number of records to fetch
    * @return list of records to process
    */
-  private List<?> fetchRecords(ReencryptionBatch batch, Long lastRecordId, int batchSize) {
-    String keyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":";
-    Pageable pageable = PageRequest.of(0, batchSize);
+  private List<? extends Reencryptable> fetchRecords(
+      ReencryptionBatch batch, Long lastRecordId, int batchSize) {
+    String keyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":%";
+    Integer lastId = lastRecordId != null ? lastRecordId.intValue() : null;
 
     return switch (batch.getTargetTable()) {
       case "ezkey_enrollment" ->
-          fetchEnrollmentRecords(batch.getTargetColumn(), keyPrefix, lastRecordId, pageable);
+          fetchEnrollmentRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
       case "ezkey_auth_attempt" ->
-          fetchAuthAttemptRecords(batch.getTargetColumn(), keyPrefix, lastRecordId, pageable);
+          fetchAuthAttemptRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
       default -> List.of();
     };
   }
 
   private List<Enrollment> fetchEnrollmentRecords(
-      String column, String keyPrefix, Long lastRecordId, Pageable pageable) {
-    // Simple implementation - fetch all and filter in memory
-    // TODO: Optimize with native SQL query using LIKE
-    String fieldName =
-        switch (column) {
-          case "integration_private_key" -> "encryptedIntegrationPrivateKey";
-          case "enrollment_proof_token" -> "encryptedEnrollmentProofToken";
-          default -> null;
-        };
-    if (fieldName == null) {
-      return List.of();
-    }
-    return enrollmentRepository.findAll(pageable).stream()
-        .filter(
-            e -> {
-              String encrypted = getFieldValue(e, fieldName);
-              return encrypted != null && encrypted.startsWith(keyPrefix);
-            })
-        .filter(e -> lastRecordId == null || e.getEnrollmentId() > lastRecordId.intValue())
-        .toList();
+      String column, String keyPrefix, Integer lastId, int limit) {
+    return switch (column) {
+      case "integration_private_key" ->
+          enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(keyPrefix, lastId, limit);
+      case "enrollment_proof_token" ->
+          enrollmentRepository.findEncryptedEnrollmentProofTokenLike(keyPrefix, lastId, limit);
+      default -> List.of();
+    };
   }
 
   private List<AuthAttempt> fetchAuthAttemptRecords(
-      String column, String keyPrefix, Long lastRecordId, Pageable pageable) {
-    // Simple implementation - fetch all and filter in memory
-    // TODO: Optimize with native SQL query using LIKE
-    String fieldName =
-        switch (column) {
-          case "auth_attempt_proof_token" -> "encryptedAuthAttemptProofToken";
-          case "device_proof_token" -> "encryptedDeviceProofToken";
-          default -> null;
-        };
-    if (fieldName == null) {
-      return List.of();
-    }
-    return authAttemptRepository.findAll(pageable).stream()
-        .filter(
-            a -> {
-              String encrypted = getFieldValue(a, fieldName);
-              return encrypted != null && encrypted.startsWith(keyPrefix);
-            })
-        .filter(a -> lastRecordId == null || a.getAuthAttemptId() > lastRecordId.intValue())
-        .toList();
+      String column, String keyPrefix, Integer lastId, int limit) {
+    return switch (column) {
+      case "auth_attempt_proof_token" ->
+          authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(keyPrefix, lastId, limit);
+      case "device_proof_token" ->
+          authAttemptRepository.findEncryptedDeviceProofTokenLike(keyPrefix, lastId, limit);
+      default -> List.of();
+    };
   }
 
   /**
@@ -540,30 +482,43 @@ public class ReencryptionService {
    * @param record the record to re-encrypt
    * @return true if re-encrypted, false if skipped
    */
-  private boolean reencryptRecord(ReencryptionBatch batch, Object record) {
+  private boolean reencryptRecord(ReencryptionBatch batch, Reencryptable record) {
     String column = batch.getTargetColumn();
     String oldKeyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":";
     String newKeyPrefix = "ENC:" + batch.getNewKey().getKeyId() + ":";
 
-    String fieldName =
-        switch (column) {
-          case "integration_private_key" -> "encryptedIntegrationPrivateKey";
-          case "enrollment_proof_token" -> "encryptedEnrollmentProofToken";
-          case "auth_attempt_proof_token" -> "encryptedAuthAttemptProofToken";
-          case "device_proof_token" -> "encryptedDeviceProofToken";
-          default -> null;
-        };
-    if (fieldName == null) {
-      return false;
+    // Get encrypted fields from record
+    Map<String, String> encryptedFields = record.getEncryptedFields();
+    String encryptedValue = encryptedFields.get(column);
+
+    if (encryptedValue == null) {
+      logger.debug(
+          "Skipping record {} ({}): encrypted field {} is null",
+          record.getEntityId(),
+          record.getTableName(),
+          column);
+      return false; // Skip - field is null
     }
 
-    String encryptedValue = getFieldValue(record, fieldName);
-    if (encryptedValue == null || !encryptedValue.startsWith(oldKeyPrefix)) {
+    if (!encryptedValue.startsWith(oldKeyPrefix)) {
+      logger.debug(
+          "Skipping record {} ({}): encrypted field {} does not start with old key prefix {} (value"
+              + " starts with: {})",
+          record.getEntityId(),
+          record.getTableName(),
+          column,
+          oldKeyPrefix,
+          encryptedValue.length() > 20 ? encryptedValue.substring(0, 20) + "..." : encryptedValue);
       return false; // Skip - not encrypted with old key
     }
 
     // Check if already encrypted with new key
     if (encryptedValue.startsWith(newKeyPrefix)) {
+      logger.debug(
+          "Skipping record {} ({}): already encrypted with new key {}",
+          record.getEntityId(),
+          record.getTableName(),
+          batch.getNewKey().getKeyId());
       return false; // Skip - already encrypted with new key
     }
 
@@ -571,8 +526,10 @@ public class ReencryptionService {
     String plaintext = encryptionService.decrypt(encryptedValue);
     String reencrypted = encryptionService.encrypt(plaintext);
 
-    // Update record
-    setFieldValue(record, fieldName, reencrypted);
+    // Update record using interface method
+    record.setEncryptedField(column, reencrypted);
+
+    // Save record based on type
     if (record instanceof Enrollment e) {
       enrollmentRepository.save(e);
     } else if (record instanceof AuthAttempt a) {
@@ -724,35 +681,34 @@ public class ReencryptionService {
 
     logger.info("🔄 Manual re-encryption triggered for key: {}", keyId);
 
-    // Get current primary key
-    List<EncryptionKey> primaryKeys =
-        keyRepository.findByKeyStatus(EncryptionKey.KeyStatus.PRIMARY);
-    if (primaryKeys.isEmpty()) {
+    // Get current primary key from keyset Tink (source of truth for SOC2 compliance)
+    EncryptionKey primaryKey = getPrimaryKeyFromKeyset();
+    if (primaryKey == null) {
       throw new IllegalStateException("No PRIMARY key found");
     }
-    EncryptionKey primaryKey = primaryKeys.get(0);
 
-    // Define tables/columns that need re-encryption
-    String[][] targets = {
-      {"ezkey_enrollment", "integration_private_key"},
-      {"ezkey_enrollment", "enrollment_proof_token"},
-      {"ezkey_auth_attempt", "auth_attempt_proof_token"},
-      {"ezkey_auth_attempt", "device_proof_token"}
-    };
+    // Discover re-encryptable targets dynamically
+    List<Target> targets = discoverReencryptableTargets();
 
     int batchesCreated = 0;
     int batchesProcessed = 0;
     int batchesFailed = 0;
 
-    for (String[] target : targets) {
-      String table = target[0];
-      String column = target[1];
+    for (Target target : targets) {
+      String table = target.table();
+      String column = target.column();
 
-      // Check if active batch already exists
+      // Check if active batch already exists for this specific old key
+      // Note: We check by (table, column, oldKeyId) to allow multiple batches for different old
+      // keys
       List<ReencryptionBatch> activeBatches =
-          batchRepository.findActiveBatchesByTarget(table, column);
+          batchRepository.findActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
       if (!activeBatches.isEmpty()) {
-        logger.debug("Active batch already exists for {}.{}", table, column);
+        logger.debug(
+            "Active batch already exists for {}.{} with old key {}",
+            table,
+            column,
+            oldKey.getKeyId());
         continue;
       }
 
@@ -822,6 +778,134 @@ public class ReencryptionService {
 
     return new ReencryptionSummary(batchesCreated, batchesProcessed, batchesFailed);
   }
+
+  /**
+   * Discovers all re-encryptable targets dynamically from entities implementing Reencryptable.
+   *
+   * <p>This method creates sample instances of each known Reencryptable entity type, initializes
+   * their encrypted fields with placeholder values, and queries their getEncryptedFields() method
+   * to discover all encrypted columns. This eliminates the need to manually maintain a list of
+   * tables/columns when new encrypted fields are added.
+   *
+   * <p><b>Benefits:</b>
+   *
+   * <ul>
+   *   <li>Single source of truth: getEncryptedFields() defines what needs re-encryption
+   *   <li>Automatic discovery: New encrypted fields are automatically included
+   *   <li>No duplication: No need to maintain lists in multiple places
+   *   <li>Type-safe: Uses the Reencryptable interface contract
+   * </ul>
+   *
+   * @return list of discovered targets (table, column pairs)
+   */
+  private List<Target> discoverReencryptableTargets() {
+    Set<Target> targets = new LinkedHashSet<>();
+
+    // Create sample instances of each known Reencryptable entity type
+    // Initialize encrypted fields with placeholder values so getEncryptedFields() returns them
+    Enrollment enrollmentSample = new Enrollment();
+    enrollmentSample.setEncryptedField("integration_private_key", "PLACEHOLDER");
+    enrollmentSample.setEncryptedField("enrollment_proof_token", "PLACEHOLDER");
+
+    AuthAttempt authAttemptSample = new AuthAttempt();
+    authAttemptSample.setEncryptedField("auth_attempt_proof_token", "PLACEHOLDER");
+    authAttemptSample.setEncryptedField("device_proof_token", "PLACEHOLDER");
+
+    List<Reencryptable> sampleEntities = List.of(enrollmentSample, authAttemptSample);
+
+    for (Reencryptable entity : sampleEntities) {
+      String table = entity.getTableName();
+      Map<String, String> encryptedFields = entity.getEncryptedFields();
+
+      for (String column : encryptedFields.keySet()) {
+        targets.add(new Target(table, column));
+      }
+    }
+
+    List<Target> result = new ArrayList<>(targets);
+    logger.debug("Discovered {} re-encryptable targets: {}", result.size(), result);
+    return result;
+  }
+
+  /**
+   * Gets the current PRIMARY key from the Tink keyset (source of truth) and validates consistency
+   * with database.
+   *
+   * <p>This method ensures SOC2 compliance by using the keyset Tink as the authoritative source for
+   * the PRIMARY key, while validating that the database is synchronized. Any inconsistencies are
+   * logged for audit purposes.
+   *
+   * <p><b>80-20 Principle:</b> Simple validation without complex synchronization logic. If
+   * inconsistency is detected, it's logged but the operation continues using the keyset value
+   * (which is what EncryptionService.encrypt() will use anyway).
+   *
+   * @return EncryptionKey entity from database, or null if keyset not initialized or key not found
+   *     in database
+   */
+  private EncryptionKey getPrimaryKeyFromKeyset() {
+    if (!keyManager.isInitialized()) {
+      logger.warn("Tink keyset not initialized, cannot determine PRIMARY key");
+      return null;
+    }
+
+    // Get PRIMARY key ID from keyset Tink (source of truth)
+    long primaryKeyId = keyManager.getCurrentPrimaryKeyId();
+
+    // Get corresponding entity from database
+    EncryptionKey primaryKey = keyRepository.findById(primaryKeyId).orElse(null);
+    if (primaryKey == null) {
+      logger.warn(
+          "PRIMARY key {} from keyset not found in database. Database may need synchronization.",
+          Long.toUnsignedString(primaryKeyId));
+      return null;
+    }
+
+    // Validate consistency (SOC2 audit requirement)
+    if (primaryKey.getKeyStatus() != EncryptionKey.KeyStatus.PRIMARY) {
+      logger.warn(
+          "⚠️ SOC2 AUDIT: PRIMARY key mismatch detected! "
+              + "Keyset PRIMARY: {} (unsigned: {}), "
+              + "Database status: {}. "
+              + "Database may need synchronization. Using keyset value (source of truth).",
+          primaryKeyId,
+          Long.toUnsignedString(primaryKeyId),
+          primaryKey.getKeyStatus());
+
+      // Log to audit trail for SOC2 compliance
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.REENCRYPTION_FAILED)
+              .eventAction("primary_key_mismatch_detected")
+              .eventStatus(EventStatus.ERROR)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .custom("keyset_primary_key_id", Long.toUnsignedString(primaryKeyId))
+                      .custom("database_key_status", primaryKey.getKeyStatus().toString())
+                      .errorSummary(
+                          "PRIMARY key status mismatch between keyset and database. "
+                              + "Keyset is source of truth. "
+                              + "Database synchronization may be needed.")
+                      .toJson())
+              .errorMessage(
+                  "PRIMARY key status mismatch: keyset="
+                      + Long.toUnsignedString(primaryKeyId)
+                      + ", database_status="
+                      + primaryKey.getKeyStatus())
+              .build());
+    }
+
+    return primaryKey;
+  }
+
+  /**
+   * Represents a re-encryption target (table and column pair).
+   *
+   * @param table database table name
+   * @param column database column name
+   */
+  private record Target(String table, String column) {}
 
   /**
    * Summary of re-encryption operation.

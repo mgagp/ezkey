@@ -216,4 +216,80 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
    */
   Optional<Enrollment> findByEnrollmentProofTokenHashAndActive(
       String enrollmentProofTokenHash, Boolean active);
+
+  /**
+   * Counts enrollments with encrypted integration private key matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @return count of matching records
+   */
+  @Query(
+      value = "SELECT COUNT(*) FROM ezkey_enrollment WHERE integration_private_key LIKE :prefix",
+      nativeQuery = true)
+  int countByEncryptedIntegrationPrivateKeyLike(@Param("prefix") String prefix);
+
+  /**
+   * Counts enrollments with encrypted enrollment proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @return count of matching records
+   */
+  @Query(
+      value = "SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_proof_token LIKE :prefix",
+      nativeQuery = true)
+  int countByEncryptedEnrollmentProofTokenLike(@Param("prefix") String prefix);
+
+  /**
+   * Finds enrollments with encrypted integration private key matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
+   * by enrollment_id for resumable batch processing.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param lastId the last processed enrollment ID (for resumability), or null to start from
+   *     beginning
+   * @param limit maximum number of records to return
+   * @return list of matching enrollments
+   */
+  @Query(
+      value =
+          """
+          SELECT * FROM ezkey_enrollment
+          WHERE integration_private_key LIKE :prefix
+            AND (:lastId IS NULL OR enrollment_id > :lastId)
+          ORDER BY enrollment_id ASC
+          LIMIT :limit
+          """,
+      nativeQuery = true)
+  List<Enrollment> findEncryptedIntegrationPrivateKeyLike(
+      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+
+  /**
+   * Finds enrollments with encrypted enrollment proof token matching the prefix pattern.
+   *
+   * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
+   * by enrollment_id for resumable batch processing.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param lastId the last processed enrollment ID (for resumability), or null to start from
+   *     beginning
+   * @param limit maximum number of records to return
+   * @return list of matching enrollments
+   */
+  @Query(
+      value =
+          """
+          SELECT * FROM ezkey_enrollment
+          WHERE enrollment_proof_token LIKE :prefix
+            AND (:lastId IS NULL OR enrollment_id > :lastId)
+          ORDER BY enrollment_id ASC
+          LIMIT :limit
+          """,
+      nativeQuery = true)
+  List<Enrollment> findEncryptedEnrollmentProofTokenLike(
+      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }
