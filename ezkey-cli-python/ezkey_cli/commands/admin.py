@@ -293,6 +293,109 @@ def create_enrollment(ctx, integration_id, data):
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
+@enrollment_group.command('delete')
+@click.option('--id', required=True, type=int, help='Enrollment ID')
+@click.confirmation_option(prompt='Are you sure you want to delete this enrollment?')
+@click.pass_context
+def delete_enrollment(ctx, id):
+    """
+    Delete an enrollment from the system.
+    
+    WARNING: This will permanently remove the enrollment and all associated
+    authentication attempts. This action cannot be undone.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/enrollments/{id}"
+    OutputUtils.verbose(f"DELETE {url}", verbose)
+    
+    response = http_client.delete(url)
+    
+    if response.success:
+        OutputUtils.success(f"✅ Enrollment {id} deleted successfully")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@enrollment_group.command('qrcode')
+@click.option('--id', required=True, type=int, help='Enrollment ID')
+@click.option('--output', '-o', help='Output file path (default: enrollment-{id}.png)')
+@click.pass_context
+def get_enrollment_qrcode(ctx, id, output):
+    """
+    Generate QR code for enrollment credentials.
+    
+    Returns a PNG QR code image containing enrollment credentials
+    (enrollmentId|enrollmentProofToken) that can be scanned by a device
+    to bind to this enrollment.
+    
+    The QR code is saved to a file. If --output is not specified,
+    it defaults to enrollment-{id}.png in the current directory.
+    """
+    config: ConfigManager = ctx.obj['config']
+    verbose = ctx.obj.get('verbose', False)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    # Set up HTTP client with binary response support
+    http_client = HttpClient(config)
+    # Override Accept header to accept image/png
+    original_accept = http_client.session.headers.get('Accept')
+    http_client.session.headers['Accept'] = 'image/png,*/*'
+    
+    url = f"{admin_url}/api/v1/enrollments/{id}/qrcode"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    
+    try:
+        response = http_client.session.get(url, timeout=http_client.timeout)
+        
+        if response.ok:
+            # Determine output filename
+            if output:
+                output_file = output
+            else:
+                output_file = f"enrollment-{id}.png"
+            
+            # Save binary content to file
+            with open(output_file, 'wb') as f:
+                f.write(response.content)
+            
+            OutputUtils.success(f"✅ QR code saved to {output_file}")
+            OutputUtils.info(f"File size: {len(response.content)} bytes")
+        else:
+            # Try to parse error as JSON
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('message', error_data.get('error', 'Unknown error'))
+                OutputUtils.error(f"Failed to generate QR code: {error_msg}")
+            except ValueError:
+                OutputUtils.error(f"Failed to generate QR code: HTTP {response.status_code}")
+            
+            if response.status_code == 400:
+                OutputUtils.info("💡 Enrollment may be missing proof token")
+            elif response.status_code == 404:
+                OutputUtils.info("💡 Enrollment not found")
+    except Exception as e:
+        OutputUtils.error(f"Request failed: {str(e)}")
+    finally:
+        # Restore original Accept header
+        if original_accept:
+            http_client.session.headers['Accept'] = original_accept
+        else:
+            http_client.session.headers.pop('Accept', None)
+
+
 # Auth attempt commands
 @admin_group.group('auth-attempt')
 @click.pass_context
@@ -458,6 +561,38 @@ def wait_for_auth_attempt(ctx, id, timeout, polling):
         if status_text:
             OutputUtils.success(f"Auth attempt completed with status: {status_text}")
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@auth_attempt_group.command('delete')
+@click.option('--id', required=True, type=int, help='Auth attempt ID')
+@click.confirmation_option(prompt='Are you sure you want to delete this auth attempt?')
+@click.pass_context
+def delete_auth_attempt(ctx, id):
+    """
+    Delete an authentication attempt from the system.
+    
+    WARNING: This will permanently remove the authentication attempt.
+    This action cannot be undone.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/auth-attempts/{id}"
+    OutputUtils.verbose(f"DELETE {url}", verbose)
+    
+    response = http_client.delete(url)
+    
+    if response.success:
+        OutputUtils.success(f"✅ Auth attempt {id} deleted successfully")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -987,6 +1122,314 @@ def admin_logout(ctx):
             config.clear_recovery_token()
         config.save(global_config=True)
         OutputUtils.info("Authentication token removed from config")
+
+
+# Encryption Keys management commands
+@admin_group.group('encryption-key')
+@click.pass_context
+def encryption_key_group(ctx):
+    """Encryption key lifecycle management and rotation operations."""
+    pass
+
+
+@encryption_key_group.command('list')
+@click.pass_context
+def list_encryption_keys(ctx):
+    """
+    List all encryption keys in the system.
+    
+    Returns all encryption keys with their status, algorithm, timestamps,
+    and usage statistics (records encrypted, records reencrypted).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@encryption_key_group.command('get')
+@click.option('--id', 'key_id', required=True, type=int, help='Encryption key ID')
+@click.pass_context
+def get_encryption_key(ctx, key_id):
+    """
+    Get detailed information about a specific encryption key.
+    
+    Returns key details including status, algorithm, timestamps,
+    usage statistics, and metadata.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/{key_id}"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@encryption_key_group.command('primary')
+@click.pass_context
+def get_primary_encryption_key(ctx):
+    """
+    Get the current primary encryption key.
+    
+    Returns the primary encryption key used for new encryption operations.
+    This is the key that will be used when encrypting new data.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/primary"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@encryption_key_group.command('rotate')
+@click.confirmation_option(prompt='Are you sure you want to rotate the encryption key? This will create a new primary key.')
+@click.pass_context
+def rotate_encryption_key(ctx):
+    """
+    Manually trigger encryption key rotation.
+    
+    Immediately rotates the encryption key, creating a new primary key.
+    The old primary key becomes a regular key and can be used for decryption
+    of existing data. New data will be encrypted with the new primary key.
+    
+    WARNING: This operation is critical and should be performed during
+    maintenance windows. Re-encryption of existing data should follow.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/rotate"
+    OutputUtils.verbose(f"POST {url}", verbose)
+    OutputUtils.info("Rotating encryption key...")
+    
+    response = http_client.post(url)
+    
+    if response.success and response.data:
+        data = response.data
+        new_key_id = data.get('newPrimaryKeyId')
+        if new_key_id:
+            OutputUtils.success(f"✅ Key rotation completed successfully")
+            OutputUtils.info(f"New primary key ID: {new_key_id}")
+            OutputUtils.info("💡 Consider running re-encryption to migrate existing data to the new key")
+        else:
+            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+# Re-encryption operations
+@encryption_key_group.group('reencrypt')
+@click.pass_context
+def reencrypt_group(ctx):
+    """Re-encryption batch management and operations."""
+    pass
+
+
+@reencrypt_group.command('trigger')
+@click.option('--key-id', type=int, help='Trigger re-encryption for specific key (optional, triggers full if omitted)')
+@click.pass_context
+def trigger_reencryption(ctx, key_id):
+    """
+    Trigger re-encryption process.
+    
+    If --key-id is provided, creates and processes re-encryption batches
+    for that specific old key (must not be PRIMARY).
+    
+    If --key-id is omitted, triggers full re-encryption for all old keys,
+    creating batches and processing them immediately.
+    
+    This operation migrates data encrypted with old keys to the current
+    primary key for improved security and key lifecycle management.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    if key_id:
+        # Trigger re-encryption for specific key
+        url = f"{admin_url}/api/v1/encryption-keys/{key_id}/reencrypt"
+        OutputUtils.verbose(f"POST {url}", verbose)
+        OutputUtils.info(f"Triggering re-encryption for key {key_id}...")
+        
+        response = http_client.post(url)
+        
+        if response.success and response.data:
+            data = response.data
+            OutputUtils.success(f"✅ Re-encryption triggered successfully")
+            OutputUtils.info(f"Batches created: {data.get('batchesCreated', 0)}")
+            OutputUtils.info(f"Batches processed: {data.get('batchesProcessed', 0)}")
+            OutputUtils.info(f"Batches failed: {data.get('batchesFailed', 0)}")
+            if data.get('message'):
+                OutputUtils.info(f"Message: {data.get('message')}")
+        else:
+            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+    else:
+        # Trigger full re-encryption
+        url = f"{admin_url}/api/v1/encryption-keys/reencrypt/trigger"
+        OutputUtils.verbose(f"POST {url}", verbose)
+        OutputUtils.info("Triggering full re-encryption for all old keys...")
+        
+        response = http_client.post(url)
+        
+        if response.success and response.data:
+            data = response.data
+            OutputUtils.success(f"✅ Full re-encryption triggered successfully")
+            OutputUtils.info(f"Batches created: {data.get('batchesCreated', 0)}")
+            OutputUtils.info(f"Batches processed: {data.get('batchesProcessed', 0)}")
+            OutputUtils.info(f"Batches failed: {data.get('batchesFailed', 0)}")
+            if data.get('message'):
+                OutputUtils.info(f"Message: {data.get('message')}")
+        else:
+            OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@reencrypt_group.command('create-batches')
+@click.pass_context
+def create_reencryption_batches(ctx):
+    """
+    Create re-encryption batches without processing them.
+    
+    Creates re-encryption batches for all old keys without processing them.
+    Batches will be processed by the scheduled job automatically.
+    
+    Use this when you want to prepare batches for background processing
+    rather than immediate execution.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/reencrypt/create-batches"
+    OutputUtils.verbose(f"POST {url}", verbose)
+    OutputUtils.info("Creating re-encryption batches...")
+    
+    response = http_client.post(url)
+    
+    if response.success and response.data:
+        data = response.data
+        OutputUtils.success(f"✅ Batches created successfully")
+        OutputUtils.info(f"Batches created: {data.get('batchesCreated', 0)}")
+        OutputUtils.info("💡 Batches will be processed by the scheduled job")
+        if data.get('message'):
+            OutputUtils.info(f"Message: {data.get('message')}")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@reencrypt_group.command('batches')
+@click.pass_context
+def list_reencryption_batches(ctx):
+    """
+    List all re-encryption batches with their status and progress.
+    
+    Returns all re-encryption batches showing:
+    - Status (PENDING, PROCESSING, COMPLETED, FAILED, PAUSED)
+    - Progress percentage
+    - Record counts (total, done, failed, skipped)
+    - Timestamps (started, completed)
+    - Error messages (if failed)
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches"
+    OutputUtils.verbose(f"GET {url}", verbose)
+    
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@reencrypt_group.command('resume')
+@click.option('--batch-id', required=True, type=int, help='Re-encryption batch ID to resume')
+@click.pass_context
+def resume_reencryption_batch(ctx, batch_id):
+    """
+    Resume processing of a failed or paused re-encryption batch.
+    
+    Resumes a batch that was previously paused or failed. The batch will
+    continue processing from where it left off.
+    
+    Use this to recover from transient failures or to resume paused batches.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+    
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+    
+    url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches/{batch_id}/resume"
+    OutputUtils.verbose(f"POST {url}", verbose)
+    OutputUtils.info(f"Resuming re-encryption batch {batch_id}...")
+    
+    response = http_client.post(url)
+    
+    if response.success and response.data:
+        data = response.data
+        OutputUtils.success(f"✅ Batch resumed successfully")
+        if data.get('message'):
+            OutputUtils.info(f"Message: {data.get('message')}")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
 # API Keys management commands
