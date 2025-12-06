@@ -31,6 +31,10 @@
   ],
   "tags": [
     {
+      "name": "Encryption Keys",
+      "description": "Encryption key lifecycle management and rotation operations"
+    },
+    {
       "name": "API Keys",
       "description": "API key management for machine-to-machine (M2M) authentication"
     },
@@ -226,6 +230,228 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/EnrollmentCreateResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/{keyId}/reencrypt": {
+      "post": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Trigger re-encryption for specific key",
+        "description": "Creates and processes re-encryption batches for a specific old key. The key must not be PRIMARY.",
+        "operationId": "triggerReencryptionForKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Re-encryption triggered successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (key not found or is PRIMARY)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Key not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Re-encryption failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/rotate": {
+      "post": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Manually trigger key rotation",
+        "description": "Immediately rotates the encryption key, creating a new primary key",
+        "operationId": "rotateKey",
+        "responses": {
+          "200": {
+            "description": "Key rotation completed successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyRotationResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Key rotation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyRotationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/reencryption-batches/{batchId}/resume": {
+      "post": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Resume re-encryption batch",
+        "description": "Resumes processing of a failed or paused re-encryption batch",
+        "operationId": "resumeBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch resumed successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResumeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Batch not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResumeResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to resume batch",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResumeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/reencrypt/trigger": {
+      "post": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Trigger full re-encryption",
+        "description": "Manually triggers full re-encryption process. Creates batches for all old keys and processes them immediately.",
+        "operationId": "triggerFullReencryption",
+        "responses": {
+          "200": {
+            "description": "Re-encryption triggered successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionTriggerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (encryption not available)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionTriggerResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Re-encryption failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReencryptionTriggerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/reencrypt/create-batches": {
+      "post": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Create re-encryption batches",
+        "description": "Creates re-encryption batches for all old keys without processing them. Batches will be processed by the scheduled job.",
+        "operationId": "createBatches",
+        "responses": {
+          "200": {
+            "description": "Batches created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchCreationResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Batch creation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchCreationResponse"
                 }
               }
             }
@@ -857,6 +1083,177 @@
         }
       }
     },
+    "/api/v1/encryption-keys": {
+      "get": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "List all encryption keys",
+        "description": "Returns all encryption keys in the system",
+        "operationId": "listKeys",
+        "responses": {
+          "200": {
+            "description": "Keys retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EncryptionKeyResponse"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EncryptionKeyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/{keyId}": {
+      "get": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Get encryption key by ID",
+        "description": "Returns details for a specific encryption key",
+        "operationId": "getKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Key retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Key not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/reencryption-batches": {
+      "get": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "List re-encryption batches",
+        "description": "Returns all re-encryption batches with their status and progress",
+        "operationId": "listBatches",
+        "responses": {
+          "200": {
+            "description": "Batches retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReencryptionBatchResponse"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReencryptionBatchResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encryption-keys/primary": {
+      "get": {
+        "tags": [
+          "Encryption Keys"
+        ],
+        "summary": "Get primary encryption key",
+        "description": "Returns the current primary encryption key used for new encryption operations",
+        "operationId": "getPrimaryKey",
+        "responses": {
+          "200": {
+            "description": "Primary key retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No primary key found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth-attempts/{id}": {
       "get": {
         "tags": [
@@ -1077,7 +1474,18 @@
                 "API_KEY_AUTH_SUCCESS",
                 "API_KEY_AUTH_FAILED",
                 "API_KEY_IP_BLOCKED",
-                "SYSTEM_ERROR"
+                "SYSTEM_ERROR",
+                "KEY_INTRODUCED",
+                "KEY_PROMOTED_PRIMARY",
+                "KEY_DEMOTED",
+                "KEY_DISABLED",
+                "KEYSET_BACKUP_CREATED",
+                "REENCRYPTION_STARTED",
+                "REENCRYPTION_BATCH_PROGRESS",
+                "REENCRYPTION_COMPLETED",
+                "REENCRYPTION_FAILED",
+                "REENCRYPTION_RESUMED",
+                "REENCRYPTION_PAUSED"
               ]
             }
           },
@@ -1454,6 +1862,86 @@
             "format": "int32",
             "description": "Challenge number for enrollment verification",
             "example": 154982
+          }
+        }
+      },
+      "ReencryptionKeyResponse": {
+        "type": "object",
+        "properties": {
+          "keyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "batchesCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batchesProcessed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batchesFailed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "KeyRotationResponse": {
+        "type": "object",
+        "properties": {
+          "newPrimaryKeyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchResumeResponse": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ReencryptionTriggerResponse": {
+        "type": "object",
+        "properties": {
+          "batchesCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batchesProcessed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batchesFailed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchCreationResponse": {
+        "type": "object",
+        "properties": {
+          "batchesCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
           }
         }
       },
@@ -1903,6 +2391,107 @@
           }
         }
       },
+      "EncryptionKeyResponse": {
+        "type": "object",
+        "properties": {
+          "keyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "keyStatus": {
+            "type": "string"
+          },
+          "algorithm": {
+            "type": "string"
+          },
+          "introducedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "promotedPrimaryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordsEncrypted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recordsReencrypted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "ReencryptionBatchResponse": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetTable": {
+            "type": "string"
+          },
+          "targetColumn": {
+            "type": "string"
+          },
+          "oldKeyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "newKeyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "recordsTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recordsDone": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recordsFailed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recordsSkipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "progressPct": {
+            "type": "number"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "retryCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "AuthAttemptDto": {
         "type": "object",
         "description": "Response DTO containing complete authentication attempt information for administrative purposes",
@@ -2036,7 +2625,18 @@
               "API_KEY_AUTH_SUCCESS",
               "API_KEY_AUTH_FAILED",
               "API_KEY_IP_BLOCKED",
-              "SYSTEM_ERROR"
+              "SYSTEM_ERROR",
+              "KEY_INTRODUCED",
+              "KEY_PROMOTED_PRIMARY",
+              "KEY_DEMOTED",
+              "KEY_DISABLED",
+              "KEYSET_BACKUP_CREATED",
+              "REENCRYPTION_STARTED",
+              "REENCRYPTION_BATCH_PROGRESS",
+              "REENCRYPTION_COMPLETED",
+              "REENCRYPTION_FAILED",
+              "REENCRYPTION_RESUMED",
+              "REENCRYPTION_PAUSED"
             ]
           },
           "eventAction": {
@@ -2144,9 +2744,8 @@
       "PageableObject": {
         "type": "object",
         "properties": {
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "unpaged": {
+            "type": "boolean"
           },
           "paged": {
             "type": "boolean"
@@ -2155,8 +2754,9 @@
             "type": "integer",
             "format": "int32"
           },
-          "unpaged": {
-            "type": "boolean"
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
           },
           "offset": {
             "type": "integer",
@@ -2170,10 +2770,10 @@
       "SortObject": {
         "type": "object",
         "properties": {
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           },
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           },
           "empty": {
