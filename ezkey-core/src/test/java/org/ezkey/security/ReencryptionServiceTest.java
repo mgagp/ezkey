@@ -13,10 +13,12 @@ package org.ezkey.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
@@ -149,16 +151,16 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:encrypted-data");
     when(encryptionService.decrypt("ENC:1111111111:encrypted-data")).thenReturn("plaintext-data");
     when(encryptionService.encrypt("plaintext-data")).thenReturn("ENC:2222222222:reencrypted-data");
-    when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
 
     // Act
-    boolean result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
-    assertTrue(result);
+    assertTrue(result.reencrypted());
+    assertNotNull(result.modifiedRecord());
     verify(encryptionService).decrypt("ENC:1111111111:encrypted-data");
     verify(encryptionService).encrypt("plaintext-data");
-    verify(enrollmentRepository).save(enrollment);
+    // Note: save() is no longer called here, records are batch saved in processBatch()
     // Note: setEncryptedField is called internally, verified by the save() call
   }
 
@@ -170,17 +172,17 @@ class ReencryptionServiceTest {
     when(encryptionService.decrypt("ENC:1111111111:encrypted-token")).thenReturn("plaintext-token");
     when(encryptionService.encrypt("plaintext-token"))
         .thenReturn("ENC:2222222222:reencrypted-token");
-    when(authAttemptRepository.save(any(AuthAttempt.class))).thenReturn(authAttempt);
 
     // Act
     ReencryptionBatch authBatch = createBatch("ezkey_auth_attempt", "auth_attempt_proof_token");
-    boolean result = invokeReencryptRecord(authBatch, authAttempt);
+    ReencryptionService.ReencryptResult result = invokeReencryptRecord(authBatch, authAttempt);
 
     // Assert
-    assertTrue(result);
+    assertTrue(result.reencrypted());
+    assertNotNull(result.modifiedRecord());
     verify(encryptionService).decrypt("ENC:1111111111:encrypted-token");
     verify(encryptionService).encrypt("plaintext-token");
-    verify(authAttemptRepository).save(authAttempt);
+    // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
   @Test
@@ -190,13 +192,13 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, "ENC:2222222222:already-reencrypted");
 
     // Act
-    boolean result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
-    assertFalse(result);
+    assertFalse(result.reencrypted());
+    assertNull(result.modifiedRecord());
     verify(encryptionService, never()).decrypt(anyString());
     verify(encryptionService, never()).encrypt(anyString());
-    verify(enrollmentRepository, never()).save(any());
   }
 
   @Test
@@ -206,13 +208,13 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, "ENC:9999999999:other-key-data");
 
     // Act
-    boolean result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
-    assertFalse(result);
+    assertFalse(result.reencrypted());
+    assertNull(result.modifiedRecord());
     verify(encryptionService, never()).decrypt(anyString());
     verify(encryptionService, never()).encrypt(anyString());
-    verify(enrollmentRepository, never()).save(any());
   }
 
   @Test
@@ -222,13 +224,13 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, null);
 
     // Act
-    boolean result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
-    assertFalse(result);
+    assertFalse(result.reencrypted());
+    assertNull(result.modifiedRecord());
     verify(encryptionService, never()).decrypt(anyString());
     verify(encryptionService, never()).encrypt(anyString());
-    verify(enrollmentRepository, never()).save(any());
   }
 
   @Test
@@ -243,7 +245,7 @@ class ReencryptionServiceTest {
     assertThrows(RuntimeException.class, () -> invokeReencryptRecord(batch, enrollment));
     verify(encryptionService).decrypt("ENC:1111111111:corrupted-data");
     verify(encryptionService, never()).encrypt(anyString());
-    verify(enrollmentRepository, never()).save(any());
+    // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
   @Test
@@ -259,7 +261,7 @@ class ReencryptionServiceTest {
     assertThrows(RuntimeException.class, () -> invokeReencryptRecord(batch, enrollment));
     verify(encryptionService).decrypt("ENC:1111111111:encrypted-data");
     verify(encryptionService).encrypt("plaintext-data");
-    verify(enrollmentRepository, never()).save(any());
+    // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
   // ===== PRIORITY 1: processBatch() Tests =====
@@ -313,7 +315,7 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment1, enrollment2);
+    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -324,6 +326,7 @@ class ReencryptionServiceTest {
     assertEquals(0, batch.getRecordsSkipped());
     assertEquals(new BigDecimal("100.00"), batch.getProgressPct());
     verify(batchRepository, atLeast(1)).save(batch);
+    verify(enrollmentRepository).saveAll(anyList()); // Verify batch save
   }
 
   @Test
@@ -342,7 +345,7 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment);
+    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
     when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
 
     // Act
@@ -375,8 +378,8 @@ class ReencryptionServiceTest {
     when(encryptionService.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
     when(encryptionService.decrypt("ENC:1111111111:data2"))
         .thenThrow(new RuntimeException("Decryption failed"));
-
-    when(enrollmentRepository.save(enrollment1)).thenReturn(enrollment1);
+    // Note: saveAll() may not be called if no records are successfully re-encrypted
+    lenient().when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -406,7 +409,7 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.save(any(Enrollment.class))).thenReturn(enrollment1, enrollment2);
+    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -432,7 +435,7 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
     when(encryptionService.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
-    when(enrollmentRepository.save(enrollment1)).thenReturn(enrollment1);
+    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -677,13 +680,14 @@ class ReencryptionServiceTest {
   }
 
   /** Helper method to invoke the private reencryptRecord method via reflection. */
-  private boolean invokeReencryptRecord(ReencryptionBatch batch, Reencryptable record) {
+  private ReencryptionService.ReencryptResult invokeReencryptRecord(
+      ReencryptionBatch batch, Reencryptable record) {
     try {
       java.lang.reflect.Method method =
           ReencryptionService.class.getDeclaredMethod(
               "reencryptRecord", ReencryptionBatch.class, Reencryptable.class);
       method.setAccessible(true);
-      return (boolean) method.invoke(service, batch, record);
+      return (ReencryptionService.ReencryptResult) method.invoke(service, batch, record);
     } catch (Exception e) {
       throw new RuntimeException("Failed to invoke reencryptRecord", e);
     }

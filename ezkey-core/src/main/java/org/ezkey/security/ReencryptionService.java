@@ -352,15 +352,25 @@ public class ReencryptionService {
         break; // No more records
       }
 
+      // Collect modified records for batch save (optimize N+1 problem)
+      List<Enrollment> modifiedEnrollments = new java.util.ArrayList<>();
+      List<AuthAttempt> modifiedAuthAttempts = new java.util.ArrayList<>();
+
       for (Reencryptable record : records) {
         try {
-          boolean reencrypted = reencryptRecord(batch, record);
+          ReencryptResult result = reencryptRecord(batch, record);
           // Always update lastRecordId to ensure we don't reprocess the same record
           // This prevents infinite loops and ensures all records are processed
           lastRecordId = record.getEntityId();
 
-          if (reencrypted) {
+          if (result.reencrypted()) {
             recordsDone++;
+            // Collect modified record for batch save
+            if (result.modifiedRecord() instanceof Enrollment e) {
+              modifiedEnrollments.add(e);
+            } else if (result.modifiedRecord() instanceof AuthAttempt a) {
+              modifiedAuthAttempts.add(a);
+            }
           } else {
             recordsSkipped++;
           }
@@ -371,6 +381,14 @@ public class ReencryptionService {
           // Still update lastRecordId even on failure to avoid reprocessing
           lastRecordId = record.getEntityId();
         }
+      }
+
+      // Batch save all modified records (optimize N+1 problem)
+      if (!modifiedEnrollments.isEmpty()) {
+        enrollmentRepository.saveAll(modifiedEnrollments);
+      }
+      if (!modifiedAuthAttempts.isEmpty()) {
+        authAttemptRepository.saveAll(modifiedAuthAttempts);
       }
 
       // Update batch progress
@@ -476,13 +494,26 @@ public class ReencryptionService {
   }
 
   /**
+   * Result of re-encryption operation.
+   *
+   * <p>Package-private for testing purposes.
+   *
+   * @param reencrypted whether the record was re-encrypted
+   * @param modifiedRecord the modified record (null if skipped)
+   */
+  record ReencryptResult(boolean reencrypted, Reencryptable modifiedRecord) {}
+
+  /**
    * Re-encrypt a single record.
+   *
+   * <p>Note: This method modifies the record in memory but does NOT save it. The caller is
+   * responsible for batch saving all modified records using saveAll() to optimize N+1 queries.
    *
    * @param batch the batch
    * @param record the record to re-encrypt
-   * @return true if re-encrypted, false if skipped
+   * @return ReencryptResult indicating if re-encrypted and the modified record
    */
-  private boolean reencryptRecord(ReencryptionBatch batch, Reencryptable record) {
+  private ReencryptResult reencryptRecord(ReencryptionBatch batch, Reencryptable record) {
     String column = batch.getTargetColumn();
     String oldKeyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":";
     String newKeyPrefix = "ENC:" + batch.getNewKey().getKeyId() + ":";
@@ -497,7 +528,7 @@ public class ReencryptionService {
           record.getEntityId(),
           record.getTableName(),
           column);
-      return false; // Skip - field is null
+      return new ReencryptResult(false, null); // Skip - field is null
     }
 
     if (!encryptedValue.startsWith(oldKeyPrefix)) {
@@ -509,7 +540,7 @@ public class ReencryptionService {
           column,
           oldKeyPrefix,
           encryptedValue.length() > 20 ? encryptedValue.substring(0, 20) + "..." : encryptedValue);
-      return false; // Skip - not encrypted with old key
+      return new ReencryptResult(false, null); // Skip - not encrypted with old key
     }
 
     // Check if already encrypted with new key
@@ -519,7 +550,7 @@ public class ReencryptionService {
           record.getEntityId(),
           record.getTableName(),
           batch.getNewKey().getKeyId());
-      return false; // Skip - already encrypted with new key
+      return new ReencryptResult(false, null); // Skip - already encrypted with new key
     }
 
     // Decrypt with old key, encrypt with new key
@@ -529,14 +560,7 @@ public class ReencryptionService {
     // Update record using interface method
     record.setEncryptedField(column, reencrypted);
 
-    // Save record based on type
-    if (record instanceof Enrollment e) {
-      enrollmentRepository.save(e);
-    } else if (record instanceof AuthAttempt a) {
-      authAttemptRepository.save(a);
-    }
-
-    return true;
+    return new ReencryptResult(true, record);
   }
 
   /**
