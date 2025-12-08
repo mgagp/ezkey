@@ -12,7 +12,9 @@ package org.ezkey.authattempt.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -32,6 +34,9 @@ import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -183,6 +188,83 @@ public class AuthAttemptService {
   @Transactional(readOnly = true)
   public List<AuthAttempt> getAll() {
     return authAttemptRepository.findAll();
+  }
+
+  /**
+   * Searches authentication attempts with optional filters and pagination.
+   *
+   * <p>This method supports multi-criteria search for administrative and operational purposes. All
+   * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
+   * creation date descending (newest first) for operational relevance.
+   *
+   * <p><b>Use Case:</b> Security operators monitoring authentication attempts, forensic analysis,
+   * and compliance reporting.
+   *
+   * @param status optional authentication attempt status filter
+   * @param enrollmentId optional enrollment ID filter
+   * @param integrationId optional integration ID filter
+   * @param createdAfter optional start of date range filter
+   * @param createdBefore optional end of date range filter
+   * @param pageable pagination parameters
+   * @return page of authentication attempts matching criteria
+   */
+  @Transactional(readOnly = true)
+  public Page<AuthAttempt> findByFilters(
+      AuthAttemptStatus status,
+      Integer enrollmentId,
+      Integer integrationId,
+      OffsetDateTime createdAfter,
+      OffsetDateTime createdBefore,
+      Pageable pageable) {
+
+    Specification<AuthAttempt> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+
+          if (status != null) {
+            predicates.add(cb.equal(root.get("authAttemptStatus"), status));
+          }
+
+          if (enrollmentId != null) {
+            predicates.add(cb.equal(root.get("enrollmentId"), enrollmentId));
+          }
+
+          if (integrationId != null) {
+            // Join with Enrollment to filter by integrationId
+            // Assuming AuthAttempt has a relationship to Enrollment or we subquery
+            // Since AuthAttempt entity only has enrollmentId (Integer) and no @ManyToOne
+            // relationship defined in the code I saw earlier, we must use a subquery
+            // or rely on the repository to have added the relationship.
+            // Let's check AuthAttempt entity again. It has enrollmentId field.
+            // If no relationship, we use a subquery.
+
+            // Subquery: enrollmentId IN
+            // (SELECT e.enrollmentId FROM Enrollment e WHERE e.integrationId = :integrationId)
+            var subquery = query.subquery(Integer.class);
+            var enrollmentRoot = subquery.from(Enrollment.class);
+            subquery.select(enrollmentRoot.get("enrollmentId"));
+            subquery.where(cb.equal(enrollmentRoot.get("integrationId"), integrationId));
+
+            predicates.add(root.get("enrollmentId").in(subquery));
+          }
+
+          if (createdAfter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+          }
+
+          if (createdBefore != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
+
+          // Force ordering by createdAt DESC if not specified in pageable
+          if (pageable.getSort().isUnsorted()) {
+            query.orderBy(cb.desc(root.get("createdAt")));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return authAttemptRepository.findAll(spec, pageable);
   }
 
   /**

@@ -10,7 +10,10 @@
 
 package org.ezkey.audit.service;
 
+import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -20,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,13 +79,20 @@ public class AuditLogService {
   /**
    * Find audit logs with filters and pagination.
    *
+   * <p>This method supports multi-criteria search for administrative and operational purposes. All
+   * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
+   * creation date descending (newest first) for operational relevance by default.
+   *
+   * <p><b>Use Case:</b> Security operators monitoring audit logs, forensic analysis, and compliance
+   * reporting.
+   *
    * @param eventType optional event type filter
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
    * @param adminId optional admin ID filter
-   * @param pageable pagination parameters
-   * @return page of audit logs
+   * @param pageable pagination and sorting parameters
+   * @return page of audit logs matching criteria
    */
   @Transactional(readOnly = true)
   public Page<AuditLog> findByFilters(
@@ -91,8 +102,40 @@ public class AuditLogService {
       Integer enrollmentId,
       Integer adminId,
       Pageable pageable) {
-    return auditLogRepository.findByFilters(
-        eventType, eventStatus, apiName, enrollmentId, adminId, pageable);
+
+    Specification<AuditLog> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+
+          if (eventType != null) {
+            predicates.add(cb.equal(root.get("eventType"), eventType));
+          }
+
+          if (eventStatus != null) {
+            predicates.add(cb.equal(root.get("eventStatus"), eventStatus));
+          }
+
+          if (apiName != null) {
+            predicates.add(cb.equal(root.get("apiName"), apiName));
+          }
+
+          if (enrollmentId != null) {
+            predicates.add(cb.equal(root.get("enrollmentId"), enrollmentId));
+          }
+
+          if (adminId != null) {
+            predicates.add(cb.equal(root.get("adminId"), adminId));
+          }
+
+          // Force ordering by createdAt DESC if not specified in pageable
+          if (pageable.getSort().isUnsorted()) {
+            query.orderBy(cb.desc(root.get("createdAt")));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return auditLogRepository.findAll(spec, pageable);
   }
 
   /**

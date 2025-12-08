@@ -11,6 +11,7 @@
 package org.ezkey.crypto.controller;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,24 +26,33 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CryptoController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, CryptoControllerTest.TestConfig.class})
 class CryptoControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockBean private SignatureService signatureService;
+  @Autowired private SignatureService signatureService;
+
+  @TestConfiguration
+  static class TestConfig {
+
+    @Bean
+    public SignatureService signatureService() {
+      return mock(SignatureService.class);
+    }
+  }
 
   @Test
   void testProofTokenEndpoint() throws Exception {
     when(signatureService.generateProofToken()).thenReturn("test-proof-token");
-
     mockMvc
         .perform(get("/api/v1/crypto/prooftoken"))
         .andExpect(status().isOk())

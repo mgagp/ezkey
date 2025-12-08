@@ -18,7 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
+import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.admin.util.AuditHelper;
@@ -27,6 +27,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
@@ -43,6 +44,11 @@ import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -132,25 +138,76 @@ public class AuthAttemptController {
   }
 
   /**
-   * Retrieves all authorization attempts for administrative purposes.
+   * Searches authentication attempts with optional filters and pagination.
    *
-   * <p>Returns a list of all authorization attempts in the system as DTOs. This endpoint is used by
-   * administrators to monitor and manage authentication requests.
+   * <p>Retrieves authentication attempts matching the specified criteria with pagination support.
+   * All filter parameters are optional - if none are provided, returns all authentication attempts
+   * (paginated). Results are ordered by creation date descending (newest first) by default.
    *
-   * @return ResponseEntity containing list of authorization attempt DTOs with HTTP 200 status
+   * <p><b>Use Case:</b> Security operators monitoring authentication attempts, forensic analysis,
+   * incident investigation, and compliance reporting.
+   *
+   * <p><b>Pagination and Sorting:</b>
+   *
+   * <ul>
+   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=authAttemptId,asc
+   *       </code> or <code>?sort=createdAt,desc</code>)
+   *   <li>Default: page=0, size=20, sort=createdAt,DESC
+   *   <li>Sortable fields: authAttemptId, createdAt, expiresAt, enrollmentId
+   * </ul>
+   *
+   * @param status optional filter by authentication attempt status
+   * @param enrollmentId optional filter by enrollment ID
+   * @param integrationId optional filter by integration ID
+   * @param createdAfter optional filter for attempts created after this timestamp
+   * @param createdBefore optional filter for attempts created before this timestamp
+   * @param pageable pagination and sorting parameters (default: page=0, size=20,
+   *     sort=createdAt,DESC)
+   * @return ResponseEntity containing page of authorization attempt DTOs with HTTP 200 status
    */
   @Operation(
-      summary = "Retrieve all auth attempts",
-      description = "Returns the complete list of authentication attempts in the system")
+      summary = "Search auth attempts",
+      description =
+          "Retrieves authentication attempts with optional filters and pagination for security "
+              + "monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting "
+              + "via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by "
+              + "creation date descending (newest first).")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
+        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
-  public ResponseEntity<List<AuthAttemptDto>> getAll() {
-    List<AuthAttemptDto> authAttempts = authAttemptMapper.toDtoList(authAttemptService.getAll());
+  public ResponseEntity<Page<AuthAttemptDto>> search(
+      @Parameter(
+              description =
+                  "Filter by authentication attempt status (PENDING, READ, ACCEPTED, "
+                      + "REJECTED, INVALID, EXPIRED)")
+          @RequestParam(required = false)
+          AuthAttemptStatus status,
+      @Parameter(description = "Filter by enrollment ID") @RequestParam(required = false)
+          Integer enrollmentId,
+      @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
+          Integer integrationId,
+      @Parameter(description = "Filter attempts created after this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdAfter,
+      @Parameter(description = "Filter attempts created before this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdBefore,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+
+    Page<AuthAttemptDto> authAttempts =
+        authAttemptService
+            .findByFilters(
+                status, enrollmentId, integrationId, createdAfter, createdBefore, pageable)
+            .map(authAttemptMapper::toDto);
+
     return ResponseEntity.ok(authAttempts);
   }
 

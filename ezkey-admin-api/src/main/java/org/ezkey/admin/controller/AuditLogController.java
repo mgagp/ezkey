@@ -21,9 +21,11 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.dto.AuditLogResponseDto;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,15 +81,26 @@ public class AuditLogController {
    * Query audit logs with optional filters and pagination.
    *
    * <p>Retrieves audit logs matching the specified criteria with pagination support. All filter
-   * parameters are optional - if none are provided, returns all audit logs (paginated).
+   * parameters are optional - if none are provided, returns all audit logs (paginated). Results are
+   * ordered by creation date descending (newest first) by default.
+   *
+   * <p><b>Pagination and Sorting:</b>
+   *
+   * <ul>
+   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=auditLogId,asc
+   *       </code> or <code>?sort=createdAt,desc</code>)
+   *   <li>Default: page=0, size=20, sort=createdAt,DESC
+   *   <li>Sortable fields: auditLogId, createdAt, eventType, eventStatus, apiName
+   * </ul>
    *
    * @param eventType optional event type filter
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
    * @param adminId optional admin ID filter
-   * @param page page number (zero-based, default 0)
-   * @param size page size (default 20, max 100)
+   * @param pageable pagination and sorting parameters (default: page=0, size=20,
+   *     sort=createdAt,DESC)
    * @return ResponseEntity containing page of audit logs
    */
   @PreAuthorize("hasRole('ADMIN')")
@@ -96,7 +109,9 @@ public class AuditLogController {
       summary = "Query audit logs",
       description =
           "Retrieves audit logs with optional filters and pagination for security monitoring and"
-              + " compliance reporting")
+              + " compliance reporting. Supports dynamic sorting via ?sort=field,direction "
+              + "(e.g., ?sort=auditLogId,asc). Default sort is by creation date descending "
+              + "(newest first).")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Audit logs retrieved successfully"),
@@ -114,16 +129,9 @@ public class AuditLogController {
           Integer enrollmentId,
       @Parameter(description = "Filter by admin ID") @RequestParam(required = false)
           Integer adminId,
-      @Parameter(description = "Page number (zero-based)") @RequestParam(defaultValue = "0")
-          int page,
-      @Parameter(description = "Page size (max 100)") @RequestParam(defaultValue = "20") int size) {
-
-    // Validate page size
-    if (size < 1 || size > 100) {
-      size = 20;
-    }
-
-    Pageable pageable = PageRequest.of(page, size);
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
 
     Page<AuditLogResponseDto> auditLogs =
         auditLogService

@@ -315,7 +315,8 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(enrollmentRepository.saveAll(anyList()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -345,7 +346,8 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(enrollmentRepository.saveAll(anyList()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
 
     // Act
@@ -379,7 +381,9 @@ class ReencryptionServiceTest {
     when(encryptionService.decrypt("ENC:1111111111:data2"))
         .thenThrow(new RuntimeException("Decryption failed"));
     // Note: saveAll() may not be called if no records are successfully re-encrypted
-    lenient().when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    lenient()
+        .when(enrollmentRepository.saveAll(anyList()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -409,7 +413,8 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(enrollmentRepository.saveAll(anyList()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);
@@ -435,7 +440,8 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
     when(encryptionService.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
-    when(enrollmentRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(enrollmentRepository.saveAll(anyList()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
     service.processBatch(batch);

@@ -140,15 +140,18 @@
 							"    pm.response.to.have.status(200);",
 							"});",
 							"",
-							"pm.test(\"Response is an array\", function () {",
+							"pm.test(\"Response is paginated\", function () {",
 							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('totalElements');",
+							"    pm.expect(jsonData).to.have.property('totalPages');",
 							"});",
 							"",
 							"if (pm.response.code === 200) {",
 							"    var jsonData = pm.response.json();",
-							"    if (jsonData.length > 0) {",
-							"        pm.environment.set(\"authAttemptId\", jsonData[0].authAttemptId);",
+							"    if (jsonData.content.length > 0) {",
+							"        pm.environment.set(\"authAttemptId\", jsonData.content[0].authAttemptId);",
 							"    }",
 							"}"
 						],
@@ -161,7 +164,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts?page=0&size=20",
 					"host": [
 						"{{base_url_admin_api}}"
 					],
@@ -169,71 +172,57 @@
 						"api",
 						"v1",
 						"auth-attempts"
-					]
-				},
-				"description": "Retrieves all authentication attempts in the system for administrative purposes.\n\n**Response (200 OK):**\nArray of authentication attempt objects, each containing:\n- `authAttemptId`: Unique identifier for the authentication attempt\n- `enrollmentId`: Enrollment identifier this attempt belongs to\n- `authAttemptStatus`: Current lifecycle status (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)\n- `authAttemptChallenge`: Challenge value (null if not required)\n- `authAttemptProofToken`: Proof token for the authentication attempt\n- `createdAt`: Timestamp when the attempt was created\n- `expiresAt`: Timestamp when the attempt expires\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "list all with api key",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Response is an array\", function () {",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.be.an('array');",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    if (jsonData.length > 0) {",
-							"        pm.environment.set(\"authAttemptId\", jsonData[0].authAttemptId);",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
+					],
+					"query": [
 						{
-							"key": "username",
-							"value": "{{integrationKey}}",
-							"type": "string"
+							"key": "page",
+							"value": "0",
+							"description": "Page number (zero-based, default: 0)"
 						},
 						{
-							"key": "password",
-							"value": "{{secretKey}}",
-							"type": "string"
+							"key": "size",
+							"value": "20",
+							"description": "Page size (default: 20)"
+						},
+						{
+							"key": "sort",
+							"value": "createdAt,desc",
+							"description": "Sort field and direction (e.g., authAttemptId,asc or createdAt,desc). Default: createdAt,desc",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "PENDING",
+							"description": "Filter by status (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED)",
+							"disabled": true
+						},
+						{
+							"key": "enrollmentId",
+							"value": "",
+							"description": "Filter by enrollment ID",
+							"disabled": true
+						},
+						{
+							"key": "integrationId",
+							"value": "",
+							"description": "Filter by integration ID",
+							"disabled": true
+						},
+						{
+							"key": "createdAfter",
+							"value": "",
+							"description": "Filter by start date (ISO-8601)",
+							"disabled": true
+						},
+						{
+							"key": "createdBefore",
+							"value": "",
+							"description": "Filter by end date (ISO-8601)",
+							"disabled": true
 						}
 					]
 				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"auth-attempts"
-					]
-				},
-				"description": "Retrieves all authentication attempts using API key authentication. Access control ensures API keys can only access attempts for enrollments belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Response (200 OK):**\nArray of authentication attempt objects (same structure as list all)\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - invalid API key\n- 500: Internal server error"
+				"description": "Retrieves authentication attempts with optional filters, pagination, and dynamic sorting for security monitoring and administration.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `authAttemptId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `authAttemptId`, `createdAt`, `expiresAt`, `enrollmentId`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `status`: Filter by status (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED)\n- `enrollmentId`: Filter by enrollment ID\n- `integrationId`: Filter by integration ID\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=authAttemptId,asc` - Sort by ID ascending\n- `?status=PENDING&sort=createdAt,desc` - Filter pending attempts, newest first\n\n**Response (200 OK):**\nPaginated response containing `content` (array of auth attempts) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},

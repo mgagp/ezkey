@@ -15,6 +15,7 @@ import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -46,7 +47,8 @@ import org.springframework.stereotype.Repository;
  * @see AuthAttempt
  */
 @Repository
-public interface AuthAttemptRepository extends JpaRepository<AuthAttempt, Integer> {
+public interface AuthAttemptRepository
+    extends JpaRepository<AuthAttempt, Integer>, JpaSpecificationExecutor<AuthAttempt> {
 
   /**
    * Finds the most recent authorization attempt for a given enrollment ID.
