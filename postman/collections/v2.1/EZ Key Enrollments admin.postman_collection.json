@@ -2,13 +2,13 @@
 	"info": {
 		"_postman_id": "140e4dcd-2ae6-4a72-90f2-a6a4e6de9843",
 		"name": "EZ Key Enrollments admin",
-		"description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **List All Enrollments**: Retrieve all enrollments in the system\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API)\n4. **Verification**: Mobile device verifies enrollment (via auth API)\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
+		"description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **Search Enrollments**: Retrieve enrollments with filters and pagination\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API)\n4. **Verification**: Mobile device verifies enrollment (via auth API)\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
 	"item": [
 		{
-			"name": "list all",
+			"name": "search",
 			"event": [
 				{
 					"listen": "test",
@@ -18,15 +18,18 @@
 							"    pm.response.to.have.status(200);",
 							"});",
 							"",
-							"pm.test(\"Response is an array\", function () {",
+							"pm.test(\"Response is paginated\", function () {",
 							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('totalElements');",
+							"    pm.expect(jsonData).to.have.property('totalPages');",
 							"});",
 							"",
 							"if (pm.response.code === 200) {",
 							"    var jsonData = pm.response.json();",
-							"    if (jsonData.length > 0) {",
-							"        pm.environment.set(\"enrollmentId\", jsonData[0].enrollmentId);",
+							"    if (jsonData.content.length > 0) {",
+							"        pm.environment.set(\"enrollmentId\", jsonData.content[0].enrollmentId);",
 							"    }",
 							"}"
 						],
@@ -39,7 +42,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments",
+					"raw": "{{base_url_admin_api}}/api/v1/enrollments?page=0&size=20",
 					"host": [
 						"{{base_url_admin_api}}"
 					],
@@ -47,9 +50,63 @@
 						"api",
 						"v1",
 						"enrollments"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "0",
+							"description": "Page number (zero-based, default: 0)"
+						},
+						{
+							"key": "size",
+							"value": "20",
+							"description": "Page size (default: 20)"
+						},
+						{
+							"key": "sort",
+							"value": "createdAt,desc",
+							"description": "Sort field and direction (e.g., enrollmentId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "VERIFIED",
+							"description": "Filter by status (CREATED, BOUND, VERIFIED, INVALID)",
+							"disabled": true
+						},
+						{
+							"key": "integrationId",
+							"value": "",
+							"description": "Filter by integration ID",
+							"disabled": true
+						},
+						{
+							"key": "enrollmentName",
+							"value": "",
+							"description": "Filter by enrollment name (partial match, case-insensitive)",
+							"disabled": true
+						},
+						{
+							"key": "active",
+							"value": "true",
+							"description": "Filter by active flag (true/false)",
+							"disabled": true
+						},
+						{
+							"key": "createdAfter",
+							"value": "",
+							"description": "Filter by start date (ISO-8601)",
+							"disabled": true
+						},
+						{
+							"key": "createdBefore",
+							"value": "",
+							"description": "Filter by end date (ISO-8601)",
+							"disabled": true
+						}
 					]
 				},
-				"description": "Retrieves all enrollments in the system for administrative purposes.\n\n**Response (200 OK):**\nArray of enrollment objects, each containing:\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)\n- `enrollmentActive`: Flag indicating if the enrollment is currently active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+				"description": "Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `enrollmentId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `enrollmentId`, `enrollmentName`, `createdAt`, `integrationId`, `status`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `status`: Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)\n- `integrationId`: Filter by integration ID\n- `enrollmentName`: Filter by enrollment name (partial match, case-insensitive)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=enrollmentId,asc` - Sort by ID ascending\n- `?status=VERIFIED&active=true` - Filter verified and active enrollments\n- `?enrollmentName=John` - Search enrollments with 'John' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of enrollments) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Enrollment Fields:**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status\n- `enrollmentActive`: Flag indicating if the enrollment is active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag for challenge requirement\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},

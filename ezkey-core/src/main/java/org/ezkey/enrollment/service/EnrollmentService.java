@@ -10,7 +10,9 @@
 
 package org.ezkey.enrollment.service;
 
+import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.config.EzkeyCoreProperties;
@@ -26,6 +28,9 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -164,6 +169,77 @@ public class EnrollmentService {
    */
   public List<Enrollment> getAll() {
     return enrollmentRepository.findAll();
+  }
+
+  /**
+   * Searches enrollments with optional filters and pagination.
+   *
+   * <p>This method supports multi-criteria search for administrative and operational purposes. All
+   * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
+   * creation date descending (newest first) by default.
+   *
+   * <p><b>Use Case:</b> Security operators monitoring enrollments, forensic analysis, and
+   * compliance reporting.
+   *
+   * @param status optional enrollment status filter (CREATED, BOUND, VERIFIED, INVALID)
+   * @param integrationId optional integration ID filter
+   * @param enrollmentName optional enrollment name filter (partial match, case-insensitive)
+   * @param active optional active flag filter
+   * @param createdAfter optional start of date range filter
+   * @param createdBefore optional end of date range filter
+   * @param pageable pagination and sorting parameters
+   * @return page of enrollments matching criteria
+   */
+  @Transactional(readOnly = true)
+  public Page<Enrollment> findByFilters(
+      EnrollmentStatus status,
+      Integer integrationId,
+      String enrollmentName,
+      Boolean active,
+      OffsetDateTime createdAfter,
+      OffsetDateTime createdBefore,
+      Pageable pageable) {
+
+    Specification<Enrollment> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+
+          if (status != null) {
+            predicates.add(cb.equal(root.get("status"), status));
+          }
+
+          if (integrationId != null) {
+            predicates.add(cb.equal(root.get("integrationId"), integrationId));
+          }
+
+          if (enrollmentName != null && !enrollmentName.isBlank()) {
+            predicates.add(
+                cb.like(
+                    cb.lower(root.get("enrollmentName")),
+                    "%" + enrollmentName.toLowerCase() + "%"));
+          }
+
+          if (active != null) {
+            predicates.add(cb.equal(root.get("active"), active));
+          }
+
+          if (createdAfter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+          }
+
+          if (createdBefore != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
+
+          // Apply default sort only if pageable is unsorted
+          if (pageable.getSort().isUnsorted()) {
+            query.orderBy(cb.desc(root.get("createdAt")));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return enrollmentRepository.findAll(spec, pageable);
   }
 
   /**

@@ -15,6 +15,7 @@ import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -47,7 +48,8 @@ import org.springframework.stereotype.Repository;
  * @see org.ezkey.enrollment.domain.entity.Enrollment
  */
 @Repository
-public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
+public interface EnrollmentRepository
+    extends JpaRepository<Enrollment, Integer>, JpaSpecificationExecutor<Enrollment> {
 
   /**
    * Finds all enrollments for a specific integration.

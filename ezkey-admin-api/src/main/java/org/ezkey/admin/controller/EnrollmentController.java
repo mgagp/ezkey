@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
+import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.util.AuditHelper;
@@ -25,13 +25,19 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +47,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -107,26 +114,83 @@ public class EnrollmentController {
   }
 
   /**
-   * Retrieves all enrollments for administrative purposes.
+   * Searches enrollments with optional filters and pagination.
    *
-   * <p>Returns a list of all enrollments in the system as response DTOs. This endpoint is used by
-   * administrators to monitor and manage device enrollments.
+   * <p>Retrieves enrollments matching the specified criteria with pagination support. All filter
+   * parameters are optional - if none are provided, returns all enrollments (paginated). Results
+   * are ordered by creation date descending (newest first) by default.
    *
-   * @return ResponseEntity containing list of enrollment responses with HTTP 200 status
+   * <p><b>Use Case:</b> Security operators monitoring enrollments, forensic analysis, incident
+   * investigation, and compliance reporting.
+   *
+   * <p><b>Pagination and Sorting:</b>
+   *
+   * <ul>
+   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=enrollmentId,asc
+   *       </code> or <code>?sort=createdAt,desc</code>)
+   *   <li>Default: page=0, size=20, sort=createdAt,DESC
+   *   <li>Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status
+   * </ul>
+   *
+   * @param status optional filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)
+   * @param integrationId optional filter by integration ID
+   * @param enrollmentName optional filter by enrollment name (partial match, case-insensitive)
+   * @param active optional filter by active flag
+   * @param createdAfter optional filter for enrollments created after this timestamp
+   * @param createdBefore optional filter for enrollments created before this timestamp
+   * @param pageable pagination and sorting parameters (default: page=0, size=20,
+   *     sort=createdAt,DESC)
+   * @return ResponseEntity containing page of enrollment response DTOs with HTTP 200 status
    */
   @Operation(
-      summary = "Retrieve all enrollments",
-      description = "Returns the complete list of enrollments in the system")
+      summary = "Search enrollments",
+      description =
+          "Retrieves enrollments with optional filters and pagination for security monitoring, "
+              + "forensic analysis, and compliance reporting. Supports dynamic sorting via "
+              + "?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by "
+              + "creation date descending (newest first).")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
+        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
-  public ResponseEntity<List<EnrollmentResponseDto>> getAll() {
-    List<EnrollmentResponseDto> enrollments =
-        enrollmentMapper.toResponseList(enrollmentService.getAll());
+  public ResponseEntity<Page<EnrollmentResponseDto>> search(
+      @Parameter(description = "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)")
+          @RequestParam(required = false)
+          EnrollmentStatus status,
+      @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
+          Integer integrationId,
+      @Parameter(description = "Filter by enrollment name (partial match, case-insensitive)")
+          @RequestParam(required = false)
+          String enrollmentName,
+      @Parameter(description = "Filter by active flag") @RequestParam(required = false)
+          Boolean active,
+      @Parameter(description = "Filter enrollments created after this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdAfter,
+      @Parameter(description = "Filter enrollments created before this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdBefore,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+
+    Page<EnrollmentResponseDto> enrollments =
+        enrollmentService
+            .findByFilters(
+                status,
+                integrationId,
+                enrollmentName,
+                active,
+                createdAfter,
+                createdBefore,
+                pageable)
+            .map(enrollmentMapper::toResponse);
+
     return ResponseEntity.ok(enrollments);
   }
 
