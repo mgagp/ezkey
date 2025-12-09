@@ -5,7 +5,7 @@
 This document provides an audit of all REST API controllers in the Ezkey project to identify GET endpoints that return collections and evaluate their pagination status. The goal is to ensure consistent pagination implementation following the guidelines defined in `PAGINATION_GUIDELINES.md`.
 
 **Audit Date:** December 8, 2025  
-**Last Updated:** December 8, 2025  
+**Last Updated:** December 9, 2025  
 **Reference:** `docs/PAGINATION_GUIDELINES.md`
 
 ---
@@ -14,12 +14,12 @@ This document provides an audit of all REST API controllers in the Ezkey project
 
 | Module | Total GET Endpoints | Paginated | Non-Paginated (Lists) | Single Resource | Action Required |
 |--------|---------------------|-----------|----------------------|-----------------|-----------------|
-| ezkey-admin-api | 15 | 3 | 4 | 8 | Yes |
+| ezkey-admin-api | 15 | 4 | 3 | 8 | Yes |
 | ezkey-auth-api | 0 | 0 | 0 | 0 | No |
 | ezkey-crypto-api | 2 | 0 | 0 | 2 | No |
 | ezkey-demo-* | 17 | 0 | 0 | N/A (HTML views) | No |
 
-**Total endpoints requiring pagination:** 4
+**Total endpoints requiring pagination:** 3
 
 ---
 
@@ -36,12 +36,12 @@ This is the primary administration API where pagination is most critical for ope
 | `AuditLogController` | `GET /api/v1/audit-logs` | `getAuditLogs()` | ✅ Paginated with filters |
 | `AuthAttemptController` | `GET /api/v1/auth-attempts` | `search()` | ✅ Paginated with filters |
 | `EnrollmentController` | `GET /api/v1/enrollments` | `search()` | ✅ Paginated with filters (Phase 1 ✓) |
+| `IntegrationController` | `GET /api/v1/integrations` | `search()` | ✅ Paginated with filters (Phase 2 ✓) |
 
 #### ❌ Non-Paginated (Lists) - Action Required
 
 | Controller | Endpoint | Method | Current Return Type | Priority |
 |------------|----------|--------|---------------------|----------|
-| `IntegrationController` | `GET /api/v1/integrations` | `getAll()` | `List<IntegrationResponseDto>` | 🟡 Medium |
 | `EncryptionKeyController` | `GET /api/v1/encryption-keys` | `listKeys()` | `List<EncryptionKeyResponse>` | 🟢 Low |
 | `EncryptionKeyController` | `GET /api/v1/encryption-keys/reencryption-batches` | `listBatches()` | `List<ReencryptionBatchResponse>` | 🟢 Low |
 | `ApiKeyController` | `GET /api/v1/api-keys/integration/{integrationId}` | `listApiKeys()` | `List<ApiKeyResponseDto>` | 🟢 Low |
@@ -115,7 +115,30 @@ These are web applications with Thymeleaf views that return HTML pages. They are
 
 ---
 
-### Phase 2: Medium Priority (Pending)
+### ✅ Phase 2: Medium Priority (Completed)
+
+#### 2. IntegrationController.getAll() → search() ✓
+
+**Priority:** 🟡 Medium  
+**Status:** ✅ **COMPLETED** (December 9, 2025)
+
+**Implemented Filters:**
+- `integrationName` (partial match, case-insensitive via i18n join)
+- `active` (boolean filter)
+- `createdAfter` / `createdBefore` (date range)
+
+**Special Behavior:**
+- System integrations (`isSystemIntegration=true`) are automatically excluded from listing
+
+**Files Modified:**
+- `IntegrationRepository.java` - Added `JpaSpecificationExecutor`
+- `IntegrationService.java` - Added `findByFilters()` with `Specification`
+- `IntegrationController.java` - Replaced `getAll()` with `search()`
+- `EZ Key Integrations admin.postman_collection.json` - Updated with pagination parameters
+
+---
+
+### Phase 3: Low Priority (Pending)
 
 #### 2. IntegrationController.getAll() → search()
 
@@ -180,7 +203,7 @@ For each endpoint migration, follow the checklist in `PAGINATION_GUIDELINES.md`:
 | `AuditLogController` | ✅ Created | ✅ Yes |
 | `AuthAttemptController` | ✅ Exists | ✅ Yes |
 | `EnrollmentController` | ✅ Exists | ✅ Yes (Updated Phase 1) |
-| `IntegrationController` | ✅ Exists | ❌ No (not paginated) |
+| `IntegrationController` | ✅ Exists | ✅ Yes (Updated Phase 2) |
 | `EncryptionKeyController` | ✅ Exists | ❌ No (not paginated) |
 | `ApiKeyController` | ✅ Exists | ❌ No (not paginated) |
 
@@ -188,10 +211,10 @@ For each endpoint migration, follow the checklist in `PAGINATION_GUIDELINES.md`:
 
 ## Conclusion
 
-The Ezkey project has established a solid pagination pattern with `AuditLogController`, `AuthAttemptController`, and now `EnrollmentController` as reference implementations. The remaining 4 list endpoints should be migrated to follow this pattern, prioritized by operational impact:
+The Ezkey project has established a solid pagination pattern with `AuditLogController`, `AuthAttemptController`, `EnrollmentController`, and now `IntegrationController` as reference implementations. The remaining 3 list endpoints are low priority (small collections) and can be migrated as needed:
 
 1. **Phase 1 (High):** `EnrollmentController.getAll()` - ✅ **COMPLETED**
-2. **Phase 2 (Medium):** `IntegrationController.getAll()` - Consistency
+2. **Phase 2 (Medium):** `IntegrationController.getAll()` - ✅ **COMPLETED**
 3. **Phase 3 (Low):** `EncryptionKeyController` and `ApiKeyController` endpoints - Small collections
 
-The implementation effort is moderate, with clear guidelines available in `PAGINATION_GUIDELINES.md` and three working reference implementations.
+The implementation effort is moderate, with clear guidelines available in `PAGINATION_GUIDELINES.md` and four working reference implementations.

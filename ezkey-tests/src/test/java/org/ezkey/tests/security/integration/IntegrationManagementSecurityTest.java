@@ -116,7 +116,8 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(response.getStatusCode()).isEqualTo(200);
-      List<Map<String, Object>> integrations = response.jsonPath().getList("");
+      // Response is now paginated - content is in "content" field
+      List<Map<String, Object>> integrations = response.jsonPath().getList("content");
       assertThat(integrations).isNotNull();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(

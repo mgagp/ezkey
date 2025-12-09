@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
-import java.util.List;
+import java.time.OffsetDateTime;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
@@ -27,6 +27,11 @@ import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,6 +40,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -90,19 +96,43 @@ public class IntegrationController {
   }
 
   /**
-   * Retrieves all integration entities for administrative purposes.
+   * Searches integrations with optional filters and pagination.
    *
-   * <p>Returns a list of all available integrations in the system. This endpoint is used by
-   * administrators to view and manage all applications protected by Ezkey.
+   * <p>Retrieves integrations matching the specified criteria with pagination support. All filter
+   * parameters are optional - if none are provided, returns all integrations (paginated). Results
+   * are ordered by creation date descending (newest first) by default.
    *
-   * @return ResponseEntity containing a list of IntegrationResponseDto objects with HTTP 200 status
+   * <p><b>Use Case:</b> Administrators managing integrations, searching for specific applications,
+   * and compliance reporting.
+   *
+   * <p><b>Pagination and Sorting:</b>
+   *
+   * <ul>
+   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=id,asc</code> or
+   *       <code>?sort=createdAt,desc</code>)
+   *   <li>Default: page=0, size=20, sort=createdAt,DESC
+   *   <li>Sortable fields: id, createdAt, active
+   * </ul>
+   *
+   * @param integrationName optional filter by integration name (partial match, case-insensitive)
+   * @param active optional filter by active flag
+   * @param createdAfter optional filter for integrations created after this timestamp
+   * @param createdBefore optional filter for integrations created before this timestamp
+   * @param pageable pagination and sorting parameters (default: page=0, size=20,
+   *     sort=createdAt,DESC)
+   * @return ResponseEntity containing page of integration response DTOs with HTTP 200 status
    */
   @Operation(
-      summary = "Retrieve all integrations",
-      description = "Returns the complete list of integrations configured in the system")
+      summary = "Search integrations",
+      description =
+          "Retrieves integrations with optional filters and pagination for administration "
+              + "and compliance reporting. Supports dynamic sorting via ?sort=field,direction "
+              + "(e.g., ?sort=id,asc). Default sort is by creation date descending (newest first).")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "List retrieved successfully"),
+        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -114,10 +144,28 @@ public class IntegrationController {
       })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
-  public ResponseEntity<List<IntegrationResponseDto>> getAll() {
-    List<Integration> integrations = service.getAll();
-    List<IntegrationResponseDto> integrationResponses = mapper.toResponseList(integrations);
-    return ResponseEntity.ok(integrationResponses);
+  public ResponseEntity<Page<IntegrationResponseDto>> search(
+      @Parameter(description = "Filter by integration name (partial match, case-insensitive)")
+          @RequestParam(required = false)
+          String integrationName,
+      @Parameter(description = "Filter by active flag") @RequestParam(required = false)
+          Boolean active,
+      @Parameter(description = "Filter integrations created after this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdAfter,
+      @Parameter(description = "Filter integrations created before this timestamp (ISO-8601)")
+          @RequestParam(required = false)
+          OffsetDateTime createdBefore,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+
+    Page<IntegrationResponseDto> integrations =
+        service
+            .findByFilters(integrationName, active, createdAfter, createdBefore, pageable)
+            .map(mapper::toResponse);
+
+    return ResponseEntity.ok(integrations);
   }
 
   /**

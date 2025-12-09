@@ -13,13 +13,15 @@ package org.ezkey.integration.domain.repository;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.Integration;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 /**
  * Spring Data JPA repository for {@link Integration} entities.
  *
  * <p>This repository provides standard CRUD operations for Integration entities and can be extended
- * with custom query methods as needed.
+ * with custom query methods as needed. Extends JpaSpecificationExecutor to support dynamic queries
+ * with pagination and filtering.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -31,7 +33,8 @@ import org.springframework.stereotype.Repository;
  * @since 2025
  */
 @Repository
-public interface IntegrationRepository extends JpaRepository<Integration, Integer> {
+public interface IntegrationRepository
+    extends JpaRepository<Integration, Integer>, JpaSpecificationExecutor<Integration> {
 
   // Standard CRUD operations are inherited from JpaRepository:
   // - save(EzkeyIntegration entity)

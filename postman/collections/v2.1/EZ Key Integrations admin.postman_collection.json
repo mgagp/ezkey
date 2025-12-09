@@ -2,13 +2,13 @@
 	"info": {
 		"_postman_id": "a0da518a-b849-4528-a8f5-c39c88f51435",
 		"name": "EZ Key Integrations admin",
-		"description": "Collection for integration management operations in the Admin API.\n\n## Endpoints\n\n- **List All Integrations**: Retrieve all integrations in the system\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration with i18n support\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration can have:\n- Multiple language support (i18n) for names and descriptions\n- Logo for branding\n- Active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n\n## Internationalization (i18n)\n\nIntegrations support multiple languages through the `i18n` array. Each entry contains:\n- `language`: Language code (e.g., \"en\", \"fr\")\n- `name`: Localized integration name\n- `description`: Localized integration description",
+		"description": "Collection for integration management operations in the Admin API.\n\n## Endpoints\n\n- **Search Integrations**: Retrieve integrations with filters and pagination\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration with i18n support\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration can have:\n- Multiple language support (i18n) for names and descriptions\n- Logo for branding\n- Active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n\n## Internationalization (i18n)\n\nIntegrations support multiple languages through the `i18n` array. Each entry contains:\n- `language`: Language code (e.g., \"en\", \"fr\")\n- `name`: Localized integration name\n- `description`: Localized integration description",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
 	"item": [
 		{
-			"name": "list all",
+			"name": "search",
 			"event": [
 				{
 					"listen": "test",
@@ -18,15 +18,18 @@
 							"    pm.response.to.have.status(200);",
 							"});",
 							"",
-							"pm.test(\"Response is an array\", function () {",
+							"pm.test(\"Response is paginated\", function () {",
 							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('totalElements');",
+							"    pm.expect(jsonData).to.have.property('totalPages');",
 							"});",
 							"",
 							"if (pm.response.code === 200) {",
 							"    var jsonData = pm.response.json();",
-							"    if (jsonData.length > 0) {",
-							"        pm.environment.set(\"integrationId\", jsonData[0].id);",
+							"    if (jsonData.content.length > 0) {",
+							"        pm.environment.set(\"integrationId\", jsonData.content[0].id);",
 							"    }",
 							"}"
 						],
@@ -39,7 +42,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/integrations",
+					"raw": "{{base_url_admin_api}}/api/v1/integrations?page=0&size=20",
 					"host": [
 						"{{base_url_admin_api}}"
 					],
@@ -47,9 +50,51 @@
 						"api",
 						"v1",
 						"integrations"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "0",
+							"description": "Page number (zero-based, default: 0)"
+						},
+						{
+							"key": "size",
+							"value": "20",
+							"description": "Page size (default: 20)"
+						},
+						{
+							"key": "sort",
+							"value": "createdAt,desc",
+							"description": "Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, active",
+							"disabled": true
+						},
+						{
+							"key": "integrationName",
+							"value": "",
+							"description": "Filter by integration name (partial match, case-insensitive, searches i18n names)",
+							"disabled": true
+						},
+						{
+							"key": "active",
+							"value": "true",
+							"description": "Filter by active flag (true/false)",
+							"disabled": true
+						},
+						{
+							"key": "createdAfter",
+							"value": "",
+							"description": "Filter by start date (ISO-8601)",
+							"disabled": true
+						},
+						{
+							"key": "createdBefore",
+							"value": "",
+							"description": "Filter by end date (ISO-8601)",
+							"disabled": true
+						}
 					]
 				},
-				"description": "Retrieves all integrations configured in the system for administrative purposes.\n\n**Response (200 OK):**\nArray of integration objects, each containing:\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag (true if active, false if inactive)\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects, each containing:\n  - `language`: Language code (e.g., \"en\", \"fr\")\n  - `name`: Localized integration name\n  - `description`: Localized integration description\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+				"description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `id`, `createdAt`, `active`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `integrationName`: Filter by integration name (partial match, case-insensitive, searches i18n names)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=id,asc` - Sort by ID ascending\n- `?active=true` - Filter active integrations only\n- `?integrationName=Acme` - Search integrations with 'Acme' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Integration Fields:**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects\n\n**Note:** System integrations are automatically excluded from the listing.\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},

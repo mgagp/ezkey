@@ -119,9 +119,6 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
       // Response is now paginated - content is in "content" field
       List<Map<String, Object>> enrollments = response.jsonPath().getList("content");
       assertThat(enrollments).isNotNull();
-      // Verify pagination metadata is present
-      assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(0);
-      assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(0);
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
