@@ -198,6 +198,7 @@ public class AuthAttemptController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
+              .authAttemptCreatedAt(response.getCreatedAt())
               .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
@@ -288,7 +289,8 @@ public class AuthAttemptController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .authAttemptId(request.authAttemptId())
+              .authAttemptId(response.getAuthAttemptId())
+              .authAttemptCreatedAt(response.getCreatedAt())
               .eventDetails(
                   "User "
                       + (request.authAttemptAccepted() ? "approved" : "denied")
@@ -298,6 +300,9 @@ public class AuthAttemptController {
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
     } catch (Exception e) {
       // Audit response failure
+      // Note: For failures, we may not have the createdAt, so we try to get it from the request
+      // In case of validation errors, the service may not have been able to retrieve the attempt
+      // We'll set authAttemptCreatedAt to null if unavailable - FK constraint allows NULL
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_RESPOND)
@@ -307,6 +312,7 @@ public class AuthAttemptController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .authAttemptId(request.authAttemptId())
+              .authAttemptCreatedAt(null) // May be null if attempt not found - FK allows NULL
               .errorMessage(e.getMessage())
               .build());
 

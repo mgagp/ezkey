@@ -104,9 +104,10 @@ public class AuthAttemptRespondService {
    * @return the authentication response result with status and message
    */
   public AuthAttemptRespondResponse respond(AuthAttemptRespondRequest request) {
+    AuthAttempt authAttempt = null;
     try {
       // Step 1: Validate and get the authentication attempt
-      AuthAttempt authAttempt = validateAndGetAttempt(request);
+      authAttempt = validateAndGetAttempt(request);
 
       // Step 2: Validate enrollment
       Enrollment enrollment = validateEnrollment(authAttempt);
@@ -121,10 +122,17 @@ public class AuthAttemptRespondService {
       updateAttemptStatus(authAttempt, request);
 
       // Step 6: Build and return response
-      return buildResponse(request);
+      return buildResponse(request, authAttempt);
     } catch (IllegalArgumentException e) {
       // Return FAILED response for validation errors
-      return new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
+      // Try to get authAttempt for audit logging if available
+      AuthAttemptRespondResponse response =
+          new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
+      if (authAttempt != null) {
+        response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+        response.setCreatedAt(authAttempt.getCreatedAt());
+      }
+      return response;
     }
   }
 
@@ -291,7 +299,8 @@ public class AuthAttemptRespondService {
    * @param request the authentication response request
    * @return the authentication response with result and message
    */
-  private AuthAttemptRespondResponse buildResponse(AuthAttemptRespondRequest request) {
+  private AuthAttemptRespondResponse buildResponse(
+      AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
     AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
     // Set result based on user's choice
@@ -301,6 +310,8 @@ public class AuthAttemptRespondService {
       response.setResult(AuthenticationResult.DENIED);
     }
     response.setMessage("Auth attempt completed");
+    response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+    response.setCreatedAt(authAttempt.getCreatedAt()); // Required for FK to partitioned table
     return response;
   }
 }

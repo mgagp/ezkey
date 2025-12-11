@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.domain;
 
+import java.time.OffsetDateTime;
+
 /**
  * Domain response object for creating authentication attempts.
  *
@@ -56,6 +58,14 @@ public class AuthAttemptCreateResponse {
   private Integer authAttemptChallenge;
 
   /**
+   * Timestamp when the authentication attempt was created.
+   *
+   * <p>Required for foreign key reference to partitioned table. Used in audit logs to maintain
+   * referential integrity with the partitioned ezkey_auth_attempt table.
+   */
+  private OffsetDateTime createdAt;
+
+  /**
    * Gets the authentication attempt ID.
    *
    * @return the unique identifier of the created authentication attempt
@@ -89,5 +99,23 @@ public class AuthAttemptCreateResponse {
    */
   public void setAuthAttemptChallenge(Integer authAttemptChallenge) {
     this.authAttemptChallenge = authAttemptChallenge;
+  }
+
+  /**
+   * Gets the creation timestamp of the authentication attempt.
+   *
+   * @return the creation timestamp
+   */
+  public OffsetDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  /**
+   * Sets the creation timestamp of the authentication attempt.
+   *
+   * @param createdAt the creation timestamp to set
+   */
+  public void setCreatedAt(OffsetDateTime createdAt) {
+    this.createdAt = createdAt;
   }
 }

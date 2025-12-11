@@ -336,6 +336,7 @@ public class AuthAttemptService {
     response.setAuthAttemptId(savedAuthAttempt.getAuthAttemptId());
     response.setAuthAttemptChallenge(
         savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
+    response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
 
     return response;
   }

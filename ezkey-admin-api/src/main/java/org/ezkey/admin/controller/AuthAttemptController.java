@@ -299,6 +299,7 @@ public class AuthAttemptController {
                   context, EventType.AUTH_ATTEMPT_CREATED, AdminAuditConstants.AUTH_ATTEMPT_CREATED)
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(response.getAuthAttemptId())
+              .authAttemptCreatedAt(response.getCreatedAt())
               .enrollmentId(request.enrollmentId())
               .eventDetails(
                   "Auth Type: "

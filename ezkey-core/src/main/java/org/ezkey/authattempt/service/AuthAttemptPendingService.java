@@ -242,6 +242,7 @@ public class AuthAttemptPendingService {
       AuthAttempt authAttempt, Enrollment enrollment) {
     AuthAttemptPendingResponse response = new AuthAttemptPendingResponse();
     response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+    response.setCreatedAt(authAttempt.getCreatedAt()); // Required for FK to partitioned table
     response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
     response.setAuthAttemptProofTokenSignedByIntegration(
         signatureService.generateSignature(

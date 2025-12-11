@@ -80,6 +80,9 @@ public class AuditLog {
   @Column(name = "auth_attempt_id")
   private Integer authAttemptId;
 
+  @Column(name = "auth_attempt_created_at")
+  private OffsetDateTime authAttemptCreatedAt;
+
   @Column(name = "tenant_id")
   private Integer tenantId;
 
@@ -164,6 +167,11 @@ public class AuditLog {
 
     public Builder authAttemptId(Integer authAttemptId) {
       auditLog.authAttemptId = authAttemptId;
+      return this;
+    }
+
+    public Builder authAttemptCreatedAt(OffsetDateTime authAttemptCreatedAt) {
+      auditLog.authAttemptCreatedAt = authAttemptCreatedAt;
       return this;
     }
 
@@ -287,6 +295,14 @@ public class AuditLog {
 
   public void setAuthAttemptId(Integer authAttemptId) {
     this.authAttemptId = authAttemptId;
+  }
+
+  public OffsetDateTime getAuthAttemptCreatedAt() {
+    return authAttemptCreatedAt;
+  }
+
+  public void setAuthAttemptCreatedAt(OffsetDateTime authAttemptCreatedAt) {
+    this.authAttemptCreatedAt = authAttemptCreatedAt;
   }
 
   public Integer getTenantId() {

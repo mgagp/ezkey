@@ -27,6 +27,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *   <li>Encryption key rotation (KeyRotationService)
  *   <li>Re-encryption batch processing (ReencryptionService)
  *   <li>Audit log cleanup
+ *   <li>Database partition creation (PartitionSchedulerService)
  * </ul>
  *
  * Scheduled tasks are configured via {@link org.springframework.scheduling.annotation.Scheduled}
@@ -54,6 +55,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.tenant",
       "org.ezkey.adminauth",
       "org.ezkey.security", // Tink encryption services
+      "org.ezkey.database", // Database partition management
     })
 @EnableScheduling
 public class AdminApplication {
