@@ -69,19 +69,103 @@
         "tags": [
           "Integrations"
         ],
-        "summary": "Retrieve all integrations",
-        "description": "Returns the complete list of integrations configured in the system",
-        "operationId": "getAll",
+        "summary": "Search integrations",
+        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first).",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "integrationName",
+            "in": "query",
+            "description": "Filter by integration name (partial match, case-insensitive)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter integrations created after this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter integrations created before this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List retrieved successfully",
+            "description": "Search completed successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IntegrationResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PageIntegrationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageIntegrationResponseDto"
                 }
               }
             }
@@ -154,19 +238,128 @@
         "tags": [
           "Enrollments"
         ],
-        "summary": "Retrieve all enrollments",
-        "description": "Returns the complete list of enrollments in the system",
-        "operationId": "getAll_1",
+        "summary": "Search enrollments",
+        "description": "Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by creation date descending (newest first).",
+        "operationId": "search_1",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CREATED",
+                "BOUND",
+                "VERIFIED",
+                "INVALID"
+              ]
+            }
+          },
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "enrollmentName",
+            "in": "query",
+            "description": "Filter by enrollment name (partial match, case-insensitive)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter enrollments created after this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter enrollments created before this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List retrieved successfully",
+            "description": "Search completed successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EnrollmentResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
                 }
               }
             }
@@ -176,10 +369,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EnrollmentResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
                 }
               }
             }
@@ -464,19 +654,122 @@
         "tags": [
           "Auth Attempts"
         ],
-        "summary": "Retrieve all auth attempts",
-        "description": "Returns the complete list of authentication attempts in the system",
-        "operationId": "getAll_2",
+        "summary": "Search auth attempts",
+        "description": "Retrieves authentication attempts with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=authAttemptId,asc). Default sort is by creation date descending (newest first).",
+        "operationId": "search_2",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by authentication attempt status (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "READ",
+                "INVALID",
+                "REJECTED",
+                "ACCEPTED",
+                "EXPIRED"
+              ]
+            }
+          },
+          {
+            "name": "enrollmentId",
+            "in": "query",
+            "description": "Filter by enrollment ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter attempts created after this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter attempts created before this timestamp (ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List retrieved successfully",
+            "description": "Search completed successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AuthAttemptDto"
-                  }
+                  "$ref": "#/components/schemas/PageAuthAttemptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAuthAttemptDto"
                 }
               }
             }
@@ -486,10 +779,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AuthAttemptDto"
-                  }
+                  "$ref": "#/components/schemas/PageAuthAttemptDto"
                 }
               }
             }
@@ -1446,7 +1736,7 @@
           "Audit Logs"
         ],
         "summary": "Query audit logs",
-        "description": "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting",
+        "description": "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=auditLogId,asc). Default sort is by creation date descending (newest first).",
         "operationId": "getAuditLogs",
         "parameters": [
           {
@@ -1539,23 +1829,38 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (zero-based)",
+            "description": "Zero-based page index (0..N)",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 0
+              "default": 0,
+              "minimum": 0
             }
           },
           {
             "name": "size",
             "in": "query",
-            "description": "Page size (max 100)",
+            "description": "The size of the page to be returned",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 20
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -2328,6 +2633,92 @@
           }
         }
       },
+      "PageIntegrationResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntegrationResponseDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "unsorted": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
       "EnrollmentResponseDto": {
         "type": "object",
         "description": "Response DTO containing complete enrollment information for administrative purposes",
@@ -2388,6 +2779,52 @@
           "devicePublicKey": {
             "type": "string",
             "description": "Public key for the device"
+          }
+        }
+      },
+      "PageEnrollmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentResponseDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
           }
         }
       },
@@ -2543,6 +2980,52 @@
             "format": "date-time",
             "description": "Timestamp when the authentication attempt expires (with timezone)",
             "example": "2025-01-27T10:35:00+01:00"
+          }
+        }
+      },
+      "PageAuthAttemptDto": {
+        "type": "object",
+        "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthAttemptDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
           }
         }
       },
@@ -2734,46 +3217,6 @@
             "type": "boolean"
           },
           "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
-          }
-        }
-      },
-      "PageableObject": {
-        "type": "object",
-        "properties": {
-          "unpaged": {
-            "type": "boolean"
-          },
-          "paged": {
-            "type": "boolean"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "offset": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          }
-        }
-      },
-      "SortObject": {
-        "type": "object",
-        "properties": {
-          "unsorted": {
-            "type": "boolean"
-          },
-          "sorted": {
             "type": "boolean"
           },
           "empty": {
