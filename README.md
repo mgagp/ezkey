@@ -853,6 +853,22 @@ logging.level.org.springframework.web=WARN
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+### Third-Party Licenses
+
+Ezkey uses third-party open source software. All dependencies and their licenses are documented in license files:
+
+- **Maven Dependencies**: [THIRD-PARTY.txt](THIRD-PARTY.txt) - Complete list of all Java/Maven dependencies (~193 dependencies)
+- **React Native Mobile**: [ezkey_mobile/THIRD-PARTY-LICENSES.txt](ezkey_mobile/THIRD-PARTY-LICENSES.txt) - Mobile app dependencies
+- **Python CLI**: [ezkey-cli-python/THIRD-PARTY-LICENSES.txt](ezkey-cli-python/THIRD-PARTY-LICENSES.txt) - Python CLI dependencies
+- **JavaScript SDK**: [ezkey-sdk/javascript/THIRD-PARTY-LICENSES.txt](ezkey-sdk/javascript/THIRD-PARTY-LICENSES.txt) - JavaScript SDK dependencies
+
+**License Summary**:
+- All dependencies use licenses compatible with MIT (Apache 2.0, MIT, BSD, EPL)
+- No GPL dependencies (except with Classpath Exception for runtime components)
+- All licenses properly attributed in distribution artifacts
+
+For detailed license management information, see [docs/LICENSES.md](docs/LICENSES.md).
+
 ## Security
 
 Ezkey takes security seriously. We are committed to providing a secure authentication solution.

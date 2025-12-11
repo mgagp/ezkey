@@ -12,7 +12,9 @@
     "generate-auth": "openapi-generator-cli generate -i ../auth-api-spec.json -g typescript-fetch -o generated/auth --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=ezkey-auth-client,withoutRuntimeChecks=true",
     "compile": "tsc",
     "demo": "node dist/demo/demo.js",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified\" && exit 0",
+    "license:check": "license-checker --summary",
+    "license:generate": "license-checker --csv > THIRD-PARTY-LICENSES.txt"
   },
   "keywords": [
     "ezkey",
@@ -31,14 +33,21 @@
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.7.0",
+    "@types/node": "^20.10.6",
+    "license-checker": "^25.0.1",
     "rimraf": "^5.0.5",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.6"
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "node-fetch": "^2.7.0"
   },
   "engines": {
     "node": ">=14.0.0"
-  }
+  },
+  "files": [
+    "dist",
+    "THIRD-PARTY-LICENSES.txt",
+    "LICENSE",
+    "README.md"
+  ]
 }

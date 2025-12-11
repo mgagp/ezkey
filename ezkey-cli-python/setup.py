@@ -48,4 +48,7 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
+    package_data={
+        '': ['THIRD-PARTY-LICENSES.txt', 'LICENSE', 'README.md'],
+    },
 )
