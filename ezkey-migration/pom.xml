@@ -101,7 +101,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
+				<!--
+				  IMPORTANT:
+				  The parent POM configures spring-boot-maven-plugin with an <includes> list that effectively
+				  disables dependency packaging for library modules (\"include nothing\").
+				  For the migration app we MUST produce a fat Spring Boot JAR (BOOT-INF/lib must include Flyway).
+				  combine.self=\"override\" prevents Maven from merging that parent configuration into this module.
+				-->
+				<configuration combine.self="override">
 					<mainClass>org.ezkey.migration.EzkeyMigrationApp</mainClass>
 				</configuration>
 				<executions>

@@ -1,0 +1,169 @@
+# Project name for Docker Compose (appears as group name in Docker Desktop)
+name: ezkey-native
+
+# Enable BuildKit for Maven cache mount support
+x-buildkit: &buildkit
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ezkey-postgres-native
+    environment:
+      POSTGRES_DB: ezkey_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ezkey
+    volumes:
+      - postgres-data-native:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ezkey-network-native
+    restart: unless-stopped
+
+  migration:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: migration
+    container_name: ezkey-migration-native
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ezkey
+    networks:
+      - ezkey-network-native
+    restart: "no"
+
+  admin-api:
+    # Native image - must be built separately using:
+    # mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
+    image: ezkey-admin-api-native:latest
+    container_name: ezkey-admin-api-native
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-native}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ezkey
+      EZKEY_ADMIN_INITIAL_USERNAME: admin.docker
+      EZKEY_ADMIN_INITIAL_EMAIL: admin@ezkey.local
+      EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
+      EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
+    volumes:
+      - encryption-secrets-native:/etc/ezkey
+    ports:
+      - "9080:9080"
+    networks:
+      - ezkey-network-native
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  auth-api:
+    # Native image - must be built separately using:
+    # mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
+    image: ezkey-auth-api-native:latest
+    container_name: ezkey-auth-api-native
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-native}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ezkey
+    volumes:
+      - encryption-secrets-native:/etc/ezkey
+    ports:
+      - "8080:8080"
+    networks:
+      - ezkey-network-native
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  demo-device:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: demo-device
+    container_name: ezkey-demo-device-native
+    depends_on:
+      auth-api:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      EZKEY_AUTH_API_URL: http://auth-api:8080
+    volumes:
+      - demo-device-data-native:/app/data
+    ports:
+      - "8083:8083"
+    networks:
+      - ezkey-network-native
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+
+  crypto-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: crypto-api
+    container_name: ezkey-crypto-api-native
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+    ports:
+      - "9090:9090"
+    networks:
+      - ezkey-network-native
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9090/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+
+networks:
+  ezkey-network-native:
+    driver: bridge
+
+volumes:
+  postgres-data-native:
+  demo-device-data-native:
+  maven-cache:
+  encryption-secrets-native:

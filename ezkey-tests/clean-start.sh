@@ -9,12 +9,14 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh
+# Usage: ./clean-start.sh [--native]
+#   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
 #   - Maven installed
 #   - Scripts must be run from ezkey-tests directory
+#   - If using --native: Native images must be built separately before running
 
 set -e
 
@@ -22,6 +24,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCKER_DIR="${PROJECT_ROOT}/docker"
 TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
+NATIVE_MODE=""
+
+# Parse flags
+for arg in "$@"; do
+    case "$arg" in
+        --native)
+            NATIVE_MODE="--native"
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: ./clean-start.sh [--native]"
+            exit 1
+            ;;
+    esac
+done
 
 echo "=========================================="
 echo "  Ezkey Tests - Clean Start"
@@ -29,7 +46,13 @@ echo "=========================================="
 echo ""
 
 # Step 1: Stop Docker Compose stack including volumes
-echo "Step 1/7: Stopping Docker Compose stack (including volumes)..."
+if [ -n "$NATIVE_MODE" ]; then
+    echo "Step 1/7: Stopping Docker Compose stack (including volumes) - Native mode..."
+    COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
+else
+    echo "Step 1/7: Stopping Docker Compose stack (including volumes)..."
+    COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+fi
 cd "${PROJECT_ROOT}"
 
 # Determine docker compose command
@@ -39,9 +62,8 @@ else
     DOCKER_COMPOSE="docker-compose"
 fi
 
-COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
-
 # Stop and remove containers, networks, and volumes
+# Try both compose files to ensure cleanup
 if [ -f "${COMPOSE_FILE}" ]; then
     echo "  Stopping containers..."
     ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" down -v 2>/dev/null || {
@@ -49,7 +71,16 @@ if [ -f "${COMPOSE_FILE}" ]; then
     }
     echo "  ✅ Docker stack stopped and volumes removed"
 else
-    echo "  ⚠️  Warning: docker-compose.yml not found at ${COMPOSE_FILE}"
+    echo "  ⚠️  Warning: ${COMPOSE_FILE} not found"
+fi
+
+# Also try to stop the other compose file if it exists (for cleanup)
+OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+if [ -n "$NATIVE_MODE" ]; then
+    OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
+fi
+if [ -f "${OTHER_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${OTHER_COMPOSE_FILE}" ]; then
+    ${DOCKER_COMPOSE} -f "${OTHER_COMPOSE_FILE}" down -v 2>/dev/null || true
 fi
 
 echo ""
@@ -73,11 +104,19 @@ fi
 echo ""
 
 # Step 3: Generate master encryption key
-echo "Step 3/7: Generating master encryption key..."
+if [ -n "$NATIVE_MODE" ]; then
+    echo "Step 3/7: Generating master encryption key (Native mode)..."
+else
+    echo "Step 3/7: Generating master encryption key..."
+fi
 cd "${PROJECT_ROOT}"
 
 if [ -f "${DOCKER_DIR}/generate-encryption-keys.sh" ]; then
-    bash "${DOCKER_DIR}/generate-encryption-keys.sh"
+    if [ -n "$NATIVE_MODE" ]; then
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --native
+    else
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh"
+    fi
     echo "  ✅ Master key generated"
 else
     echo "  ❌ Error: generate-encryption-keys.sh not found at ${DOCKER_DIR}/generate-encryption-keys.sh"
@@ -87,12 +126,22 @@ fi
 echo ""
 
 # Step 4: Start Docker Compose stack with test profiles
-echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test)..."
+if [ -n "$NATIVE_MODE" ]; then
+    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test) - Native mode..."
+else
+    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test)..."
+fi
 cd "${PROJECT_ROOT}"
 
 if [ -f "${DOCKER_DIR}/start.sh" ]; then
-    echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test..."
-    SPRING_PROFILES_ACTIVE=docker,docker-test bash "${DOCKER_DIR}/start.sh"
+    if [ -n "$NATIVE_MODE" ]; then
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test,native..."
+        echo "  Using native compiled images..."
+        SPRING_PROFILES_ACTIVE=docker,docker-test,native bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
+    else
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test..."
+        SPRING_PROFILES_ACTIVE=docker,docker-test bash "${DOCKER_DIR}/start.sh"
+    fi
     echo "  ✅ Docker stack started"
 else
     echo "  ❌ Error: start.sh not found at ${DOCKER_DIR}/start.sh"
@@ -150,7 +199,12 @@ echo "  ✅ Clean Start Complete!"
 echo "=========================================="
 echo ""
 echo "📋 Stack Status:"
-echo "  - Docker stack: Running with test profiles"
+if [ -n "$NATIVE_MODE" ]; then
+    echo "  - Docker stack: Running with test profiles (NATIVE mode)"
+    echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
+else
+    echo "  - Docker stack: Running with test profiles"
+fi
 echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"
 echo "  - Admin token: Created and saved to .ezkey-test/admin-token.json"
 echo ""
@@ -179,9 +233,22 @@ echo "  Ad-hoc filtering (by test groups):"
 echo "    mvn test -pl ezkey-tests -Dgroups=encryption"
 echo "    mvn test -pl ezkey-tests -DexcludedGroups=time-dependent"
 echo ""
+if [ -n "$NATIVE_MODE" ]; then
+    echo "📦 Native Mode Information:"
+    echo "  - Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
+    echo "  - Faster startup time (~2-3 seconds vs ~15-20 seconds)"
+    echo "  - Lower memory usage (~50-100MB vs ~200-300MB)"
+    echo "  - To rebuild native images:"
+    echo "    mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests"
+    echo "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
+    echo ""
+fi
 echo "💡 Useful Commands:"
 echo "  - View logs: cd ../docker && ./manage.sh logs"
 echo "  - Stop stack: cd ../docker && ./manage.sh stop"
 echo "  - View status: cd ../docker && ./manage.sh status"
+if [ -z "$NATIVE_MODE" ]; then
+    echo "  - Start with native images: ./clean-start.sh --native"
+fi
 echo ""
 

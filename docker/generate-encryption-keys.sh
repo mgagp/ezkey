@@ -4,13 +4,35 @@
 # Generates master key file in Docker volume for Tink encryption.
 # This script should be run before first startup or when master key is missing.
 #
-# Usage: ./docker/generate-encryption-keys.sh
+# Usage: ./docker/generate-encryption-keys.sh [--native]
+#   --native: Generate keys for native stack (uses ezkey-native_encryption-secrets-native volume)
 #
 # Security: Master key file is stored in persistent Docker volume with 600 permissions
 
 set -e
 
+NATIVE_MODE=""
+VOLUME_NAME="ezkey_encryption-secrets"
+
+# Parse flags
+for arg in "$@"; do
+    case "$arg" in
+        --native)
+            NATIVE_MODE="1"
+            VOLUME_NAME="ezkey-native_encryption-secrets-native"
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: ./generate-encryption-keys.sh [--native]"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🔑 Ezkey Encryption Keys Generator (Docker)"
+if [ -n "$NATIVE_MODE" ]; then
+    echo "   Mode: Native"
+fi
 echo "=========================================="
 echo ""
 
@@ -23,9 +45,9 @@ fi
 # Check if volume exists, create if not
 # Note: Docker Compose prefixes volume names with project name (from docker-compose.yml "name: ezkey")
 # So the actual volume name is "ezkey_encryption-secrets" (project prefix + volume name)
+# For native mode: "ezkey-native_encryption-secrets-native"
 # The volume will be created automatically by docker-compose if it doesn't exist,
 # but we check/create it here to ensure it exists before generating keys
-VOLUME_NAME="ezkey_encryption-secrets"
 if ! docker volume inspect "$VOLUME_NAME" > /dev/null 2>&1; then
     echo "📦 Creating Docker volume: $VOLUME_NAME"
     echo "   Note: This volume will also be created by docker-compose if it doesn't exist"

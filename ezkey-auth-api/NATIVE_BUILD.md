@@ -53,6 +53,14 @@ Spring configuration class providing runtime hints for:
 - Resource patterns for properties files
 - Validation message bundles
 
+**Configuration Approach**: This implementation uses explicit Java-based configuration via `AuthNativeConfiguration.java` with `RuntimeHintsRegistrar` rather than relying solely on JSON configuration files. This approach provides:
+- **Explicit Control**: If something doesn't work, we know exactly where to update
+- **Type Safety**: Configuration is verified at compile time
+- **Maintainability**: Easier to follow and understand
+- **Testability**: Can be unit tested
+
+The JSON configuration files (`reflect-config.json`, `serialization-config.json`, `resource-config.json`) may be redundant with the Java configuration and can potentially be removed after validation testing.
+
 ## Build Commands
 
 ### AOT Processing

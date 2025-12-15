@@ -2,10 +2,11 @@
 
 # Ezkey Docker Start Script
 # This script builds Docker images and starts the EZ Key stack
-# Usage: start.sh [--parallel] [--no-cache] [--debug-cache]
+# Usage: start.sh [--parallel] [--no-cache] [--debug-cache] [--native]
 #   --parallel: Build images in parallel (default: sequential for easier log examination)
 #   --no-cache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   --debug-cache: Build only the first service (migration) and stop - for cache validation
+#   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 
 set -e
 
@@ -13,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_PARALLEL=""
 BUILD_NO_CACHE=""
 DEBUG_CACHE=""
+NATIVE_MODE=""
 
 # Parse flags (all parameters are optional)
 for arg in "$@"; do
@@ -26,10 +28,24 @@ for arg in "$@"; do
         --debug-cache)
             DEBUG_CACHE="1"
             ;;
+        --native)
+            NATIVE_MODE="1"
+            ;;
     esac
 done
 
-COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+# Select compose file based on mode
+if [ -n "$NATIVE_MODE" ]; then
+    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.native.yml"
+    echo "🔧 Native mode: Using docker-compose.native.yml"
+    echo "   Note: Native images must be built separately before using this mode"
+    echo "   Build commands:"
+    echo "     mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests"
+    echo "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
+    echo ""
+else
+    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+fi
 
 echo "=========================================="
 echo "  EZ Key Docker - Starting Stack"

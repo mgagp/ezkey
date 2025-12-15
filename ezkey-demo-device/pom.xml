@@ -99,6 +99,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<!--
+				  IMPORTANT:
+				  The parent POM configures spring-boot-maven-plugin with an <includes> list ("include nothing")
+				  that can result in a repackaged JAR missing BOOT-INF/lib dependencies.
+				  For demo-device we must produce a proper fat Spring Boot JAR.
+				  combine.self="override" prevents Maven from merging the parent configuration into this module.
+				-->
+				<configuration combine.self="override"/>
 				<executions>
 					<execution>
 						<goals>

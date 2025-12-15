@@ -89,6 +89,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<!--
+				  IMPORTANT:
+				  The parent POM configures spring-boot-maven-plugin with an <includes> list ("include nothing")
+				  that can result in a repackaged JAR missing BOOT-INF/lib dependencies.
+				  For auth-api we must produce a proper fat Spring Boot JAR.
+				  combine.self="override" prevents Maven from merging the parent configuration into this module.
+				-->
+				<configuration combine.self="override"/>
 				<executions>
 					<execution>
 						<goals>
@@ -119,24 +127,11 @@
 	        </dependencies>
 	        <build>
 	            <plugins>
-	                <!-- Spring Boot Maven Plugin with AOT goals for native -->
+	                <!-- Spring Boot Maven Plugin -->
+	                <!-- build-image goal handles AOT processing automatically -->
 	                <plugin>
 	                    <groupId>org.springframework.boot</groupId>
 	                    <artifactId>spring-boot-maven-plugin</artifactId>
-	                    <executions>
-	                        <execution>
-	                            <id>process-aot</id>
-	                            <goals>
-	                                <goal>process-aot</goal>
-	                            </goals>
-	                        </execution>
-	                        <execution>
-	                            <id>process-test-aot</id>
-	                            <goals>
-	                                <goal>process-test-aot</goal>
-	                            </goals>
-	                        </execution>
-	                    </executions>
 	                </plugin>
 	                <!-- GraalVM Native Build Tools (used for local/native:compile when not using buildpacks) -->
 	                <plugin>
