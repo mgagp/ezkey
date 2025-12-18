@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Response DTO for enrollment verification completion in auth API.
@@ -41,5 +42,5 @@ public record EnrollmentVerifyResponseDto(
     @Schema(
             description = "Whether the enrollment is now active and ready for authentication",
             example = "true",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         boolean active) {}

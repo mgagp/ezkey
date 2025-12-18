@@ -117,6 +117,18 @@
 
 	<build>
 		<plugins>
+			<!--
+			  Prevent accidental Spring Boot image builds on this library module.
+			  Running `mvn -pl ezkey-auth-api -am spring-boot:build-image` would otherwise try to build
+			  an image for ezkey-core and fail with "Unable to find main class".
+			-->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
 			<!-- Checkstyle Plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

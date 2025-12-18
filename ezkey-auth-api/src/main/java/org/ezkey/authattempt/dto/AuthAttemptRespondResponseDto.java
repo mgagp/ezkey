@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Response DTO for authentication attempt submissions in auth API.
@@ -53,7 +54,7 @@ public record AuthAttemptRespondResponseDto(
             description = "The authentication result",
             example = "APPROVED",
             allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String result,
 
     /**
@@ -65,5 +66,5 @@ public record AuthAttemptRespondResponseDto(
     @Schema(
             description = "Success confirmation or error details for user feedback",
             example = "Authentication approved",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String message) {}

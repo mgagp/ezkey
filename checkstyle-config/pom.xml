@@ -17,5 +17,22 @@
 	
 	<name>Ezkey checkstyle configuration</name>
 	<description>Ezkey checkstyle configuration common to all components</description>
+
+	<build>
+		<plugins>
+			<!--
+			  Prevent accidental Spring Boot image builds on this utility module.
+			  Running `mvn spring-boot:build-image` from the repo root would otherwise try to build an
+			  image for this module and fail with "Unable to find main class".
+			-->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 	
 </project> 

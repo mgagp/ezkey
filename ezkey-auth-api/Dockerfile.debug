@@ -1,0 +1,34 @@
+# Debug Dockerfile for Native Auth API
+# Adds shell and basic tools to native image for memory inspection
+# 
+# Usage:
+#   docker build -f ezkey-auth-api/Dockerfile.debug -t ezkey-auth-api-native-debug .
+#   docker run -it --rm --entrypoint /bin/sh ezkey-auth-api-native-debug
+
+FROM ezkey-auth-api-native:latest AS base
+
+# Use a minimal base with shell (busybox-based)
+FROM busybox:latest
+
+# Copy the native binary and runtime from the original image
+COPY --from=base /workspace /workspace
+COPY --from=base /cnb /cnb
+
+# Add basic inspection tools
+# busybox already includes: sh, ps, cat, grep, awk, etc.
+
+# Set working directory
+WORKDIR /workspace
+
+# Keep original entrypoint but allow shell override
+ENTRYPOINT ["/cnb/process/web"]
+
+# Default command (can be overridden)
+CMD ["/cnb/process/web"]
+
+# Instructions for memory inspection:
+# docker run -it --rm --entrypoint /bin/sh ezkey-auth-api-native-debug
+# Inside container:
+#   cat /proc/self/status | grep VmRSS
+#   ps aux
+#   ls -lh /workspace

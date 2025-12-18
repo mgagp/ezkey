@@ -11,6 +11,7 @@
 package org.ezkey.admin.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -34,7 +35,7 @@ public record AdminLoginRequestDto(
     @Schema(
             description = "Administrator username for passwordless authentication",
             example = "admin",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotBlank(message = "Username is required")
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         String username,
@@ -43,5 +44,5 @@ public record AdminLoginRequestDto(
                 "Request challenge verification on device (6-digit code). When true, returns"
                     + " authAttemptId and challengeCode for two-step flow",
             example = "false",
-            required = false)
+            requiredMode = RequiredMode.NOT_REQUIRED)
         Boolean challengeRequested) {}

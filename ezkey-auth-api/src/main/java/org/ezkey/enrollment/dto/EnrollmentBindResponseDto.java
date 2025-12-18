@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Response DTO for enrollment binding information in auth API.
@@ -48,35 +49,35 @@ public record EnrollmentBindResponseDto(
     @Schema(
             description = "Enrollment ID that was bound to the mobile device",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer enrollmentId,
     @Schema(
             description = "Integration's public key for cryptographic verification",
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String integrationPublicKey,
     @Schema(
             description = "Enrollment proof token to be signed by the device",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String enrollmentProofToken,
     @Schema(
             description = "Logo URL or base64-encoded image for the integration",
             example = "https://acme.com/logo.png",
-            required = false)
+            requiredMode = RequiredMode.NOT_REQUIRED)
         String integrationLogo,
     @Schema(
             description = "Display name of the integration",
             example = "Acme Bank",
-            required = false)
+            requiredMode = RequiredMode.NOT_REQUIRED)
         String integrationName,
     @Schema(
             description = "Description of the integration",
             example = "Acme Bank provides secure online banking services.",
-            required = false)
+            requiredMode = RequiredMode.NOT_REQUIRED)
         String integrationDescription,
     @Schema(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
-            required = false)
+            requiredMode = RequiredMode.NOT_REQUIRED)
         String enrollmentName) {}

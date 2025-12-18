@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Response DTO for pending authentication attempts in auth API.
@@ -57,7 +58,7 @@ public record AuthAttemptPendingResponseDto(
     @Schema(
             description = "Unique identifier of the authentication attempt",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer authAttemptId,
 
     /**
@@ -70,7 +71,7 @@ public record AuthAttemptPendingResponseDto(
     @Schema(
             description = "Authentication proof token containing challenge data",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String authAttemptProofToken,
 
     /**
@@ -83,7 +84,7 @@ public record AuthAttemptPendingResponseDto(
     @Schema(
             description = "Integration-signed authentication proof token for integrity",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String authAttemptProofTokenSignedByIntegration,
 
     /**
@@ -96,5 +97,5 @@ public record AuthAttemptPendingResponseDto(
     @Schema(
             description = "Whether additional challenge validation is required",
             example = "true",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Boolean authAttemptChallengeRequired) {}

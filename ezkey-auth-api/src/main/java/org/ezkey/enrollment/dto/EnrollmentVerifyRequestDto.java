@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Request DTO for enrollment verification completion in auth API.
@@ -44,20 +45,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(description = "Request DTO for enrollment verification completion")
 public record EnrollmentVerifyRequestDto(
-    @Schema(description = "Enrollment ID being verified", example = "123", required = true)
+    @Schema(
+            description = "Enrollment ID being verified",
+            example = "123",
+            requiredMode = RequiredMode.REQUIRED)
         Integer enrollmentId,
     @Schema(
             description = "User's response to the enrollment challenge",
             example = "123456",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer challengeResponse,
     @Schema(
             description = "Mobile device's generated public key",
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String devicePublicKey,
     @Schema(
             description = "Device-signed enrollment proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String enrollmentProofTokenSigned) {}

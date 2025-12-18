@@ -52,6 +52,7 @@ Spring configuration class providing runtime hints for:
 - All REST endpoint DTOs (reflection and serialization)
 - Resource patterns for properties files
 - Validation message bundles
+- Hibernate and JBoss Logging classes (critical for JPA/Hibernate)
 
 **Configuration Approach**: This implementation uses explicit Java-based configuration via `AuthNativeConfiguration.java` with `RuntimeHintsRegistrar` rather than relying solely on JSON configuration files. This approach provides:
 - **Explicit Control**: If something doesn't work, we know exactly where to update
@@ -60,6 +61,15 @@ Spring configuration class providing runtime hints for:
 - **Testability**: Can be unit tested
 
 The JSON configuration files (`reflect-config.json`, `serialization-config.json`, `resource-config.json`) may be redundant with the Java configuration and can potentially be removed after validation testing.
+
+**Important Note**: Hibernate uses JBoss Logging with generated logger classes. These must be explicitly registered for reflection. Common loggers that need to be added:
+- `LobCreationLogging` - Required for JDBC environment initialization (added 2025-12-16)
+- `CoreMessageLogger` - Core Hibernate logging
+- `EntityManagerMessageLogger` - EntityManager operations
+- `DeprecationLogger` - Deprecation warnings
+- `DialectLogging` - Database dialect operations
+
+**See also**: `docs/NATIVE_IMAGE_CHALLENGES.md` for community context on why this is necessary.
 
 ## Build Commands
 

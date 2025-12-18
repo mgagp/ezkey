@@ -20,6 +20,7 @@ import org.ezkey.enrollment.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
+import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.context.annotation.Configuration;
@@ -111,12 +112,386 @@ public class AuthNativeConfiguration {
               org.springframework.aot.hint.TypeReference.of(
                   org.ezkey.integration.domain.entity.Integration.class));
 
+      // MapStruct generated implementations (e.g. *MapperImpl) must be present in native images.
+      // If the native image build prunes these classes, Spring AOT-generated bean definitions will
+      // fail at runtime with NoClassDefFoundError.
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.ezkey.authattempt.mapper.AuthAttemptMapperImpl"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.ezkey.enrollment.mapper.EnrollmentAuthMapperImpl"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS));
+
       // Register resource patterns
       hints
           .resources() //
           .registerPattern("application*.properties") //
           .registerPattern("META-INF/native-image/org.ezkey/ezkey-auth-api/*") //
-          .registerPattern("ValidationMessages.properties");
+          .registerPattern("ValidationMessages.properties") //
+          // Hibernate DTD/XSD resources - required for XML mapping resolution
+          // Register specific DTD/XSD files that Hibernate needs
+          .registerPattern("org/hibernate/hibernate-mapping-3.0.dtd") //
+          .registerPattern("org/hibernate/hibernate-configuration-3.0.dtd") //
+          .registerPattern("org/hibernate/hibernate-mapping-4.0.xsd") //
+          .registerPattern("org/hibernate/hibernate-configuration-4.0.xsd") //
+          // Also register patterns for any other DTD/XSD files in subdirectories
+          .registerPattern("org/hibernate/**/*.dtd") //
+          .registerPattern("org/hibernate/**/*.xsd");
+
+      // Register Caffeine cache classes for reflection
+      // Caffeine generates classes dynamically based on cache configuration
+      // Class names follow pattern: [S|P][S|L][M|W][S|A][W|A] where:
+      // S=Strong, P=Probabilistic, L=Linked, M=Manual, W=Window, A=Access
+      // We register all possible combinations for the cache configuration used
+      String[] caffeineGeneratedClasses = {
+        // Strong-Strong-Manual-Strong-Access (SSMSA) - used for maximumSize + expireAfterAccess
+        "com.github.benmanes.caffeine.cache.SSMSA",
+        // Probabilistic-Strong-Access-Manual-Strong (PSAMS) - another configuration variant
+        "com.github.benmanes.caffeine.cache.PSAMS",
+        // Other common combinations
+        "com.github.benmanes.caffeine.cache.PSW",
+        "com.github.benmanes.caffeine.cache.PSWMS",
+        "com.github.benmanes.caffeine.cache.SSLA",
+        "com.github.benmanes.caffeine.cache.SSLMSW",
+        "com.github.benmanes.caffeine.cache.SSMSW",
+        "com.github.benmanes.caffeine.cache.PSWA",
+        "com.github.benmanes.caffeine.cache.PSWMSA",
+        "com.github.benmanes.caffeine.cache.SSLMSA",
+        "com.github.benmanes.caffeine.cache.SSMS",
+        "com.github.benmanes.caffeine.cache.SSMW",
+        "com.github.benmanes.caffeine.cache.SSMA",
+        "com.github.benmanes.caffeine.cache.PSMSA",
+        "com.github.benmanes.caffeine.cache.PSMSW",
+        "com.github.benmanes.caffeine.cache.PSLMSA",
+        "com.github.benmanes.caffeine.cache.PSLMSW",
+        // Additional variants
+        "com.github.benmanes.caffeine.cache.PSAM",
+        "com.github.benmanes.caffeine.cache.PSAMW",
+        "com.github.benmanes.caffeine.cache.PSMA",
+        "com.github.benmanes.caffeine.cache.PSMS",
+        "com.github.benmanes.caffeine.cache.PSMW"
+      };
+
+      for (String className : caffeineGeneratedClasses) {
+        hints
+            .reflection() //
+            .registerType(
+                org.springframework.aot.hint.TypeReference.of(className),
+                hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS));
+      }
+
+      // Register Caffeine core classes
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "com.github.benmanes.caffeine.cache.Caffeine"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "com.github.benmanes.caffeine.cache.Cache"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "com.github.benmanes.caffeine.cache.LocalCacheFactory"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS));
+
+      // Register Hibernate and JBoss Logging classes for reflection
+      // JBoss Logging generates logger implementations via annotation processors
+      // These classes must be registered for reflection in native images
+
+      String[] hibernateJbossLoggingClasses = {
+        // Hibernate core classes
+        "org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl",
+        "org.hibernate.internal.HEMLogging",
+        "org.hibernate.engine.spi.EntityEntryFactory$EntityEntryImpl",
+        "org.hibernate.persister.entity.SingleTableEntityPersister",
+        "org.hibernate.persister.entity.JoinedSubclassEntityPersister",
+        "org.hibernate.persister.entity.UnionSubclassEntityPersister",
+        "org.hibernate.loader.ast.internal.SingleIdEntityLoaderStandardImpl",
+        "org.hibernate.loader.ast.internal.CollectionLoaderSingleKey",
+        "org.hibernate.type.descriptor.java.JavaTypeDescriptorRegistry",
+        // JBoss Logging generated classes - these are created by annotation processors
+        // The exact names depend on which Hibernate classes use @MessageLogger
+        // Core Hibernate logger (most important - used throughout Hibernate)
+        "org.hibernate.internal.CoreMessageLogger",
+        "org.hibernate.internal.CoreMessageLogger_$logger",
+        // EntityManager logger
+        "org.hibernate.internal.EntityManagerMessageLogger",
+        "org.hibernate.internal.EntityManagerMessageLogger_$logger",
+        // Deprecation logger
+        "org.hibernate.internal.log.DeprecationLogger",
+        "org.hibernate.internal.log.DeprecationLogger_$logger",
+        // Dialect logger
+        "org.hibernate.dialect.DialectLogging",
+        "org.hibernate.dialect.DialectLogging_$logger",
+        // LOB Creation logger - required for JDBC environment initialization
+        "org.hibernate.engine.jdbc.env.internal.LobCreationLogging",
+        "org.hibernate.engine.jdbc.env.internal.LobCreationLogging_$logger",
+        // Connection Info logger - required for JDBC connection logging
+        "org.hibernate.internal.log.ConnectionInfoLogger",
+        "org.hibernate.internal.log.ConnectionInfoLogger_$logger",
+        // JDBC batch logger - required for BatchBuilderImpl initialization
+        "org.hibernate.engine.jdbc.batch.JdbcBatchLogging",
+        "org.hibernate.engine.jdbc.batch.JdbcBatchLogging_$logger",
+        // Query logger - required for query interpretation cache initialization
+        "org.hibernate.query.QueryLogging",
+        "org.hibernate.query.QueryLogging_$logger",
+        // CoreLogging helper class
+        "org.hibernate.internal.CoreLogging",
+        "org.hibernate.engine.jdbc.env.spi.JdbcEnvironment",
+        "org.hibernate.boot.model.source.internal.hbm.HbmLocalMetadataBuilderImpl",
+        // Hibernate strategy classes - instantiated via reflection by StrategySelectorImpl
+        "org.hibernate.boot.model.relational.ColumnOrderingStrategyStandard",
+        "org.hibernate.boot.registry.selector.internal.StrategySelectorImpl",
+        "org.hibernate.boot.internal.MetadataBuilderImpl",
+        "org.hibernate.boot.internal.MetadataBuilderImpl$MetadataBuildingOptionsImpl",
+        // Hibernate EventType builds a standard event type map using reflection in native images
+        "org.hibernate.event.spi.EventType",
+        // Identifier generators instantiated via reflection (e.g. GenerationType.IDENTITY)
+        "org.hibernate.id.IdentityGenerator",
+        // Default generator used when identifiers are assigned manually (no @GeneratedValue)
+        "org.hibernate.id.Assigned",
+        // Hibernate Bean Validation integration - loaded via Class.forName in native image
+        "org.hibernate.boot.beanvalidation.TypeSafeActivator",
+        // Hibernate Validator JBoss Logging - required for HV initialization in native images
+        "org.hibernate.validator.internal.util.logging.Log",
+        "org.hibernate.validator.internal.util.logging.Log_$logger",
+        "org.hibernate.validator.internal.util.logging.Messages",
+        "org.hibernate.validator.internal.util.logging.Messages_$bundle",
+        // Hibernate dialect and transaction coordinator - instantiated via reflection
+        "org.hibernate.dialect.PostgreSQLDialect",
+        // PostgreSQL JDBC Types - required for PostgreSQL-specific type handling
+        "org.hibernate.dialect.PostgreSQLInetJdbcType",
+        "org.hibernate.dialect.PostgreSQLIntervalSecondJdbcType",
+        "org.hibernate.dialect.PostgreSQLStructPGObjectJdbcType",
+        "org.hibernate.dialect.PostgreSQLJsonPGObjectJsonbType",
+        "org.hibernate.resource.transaction.backend.jdbc.internal."
+            + "JdbcResourceLocalTransactionCoordinatorBuilderImpl",
+        // Hibernate event listeners - required for event system initialization
+        "org.hibernate.event.spi.AutoFlushEventListener",
+        "org.hibernate.event.spi.PersistEventListener",
+        "org.hibernate.event.spi.DeleteEventListener",
+        "org.hibernate.event.spi.DirtyCheckEventListener",
+        "org.hibernate.event.spi.EvictEventListener",
+        "org.hibernate.event.spi.FlushEventListener",
+        "org.hibernate.event.spi.FlushEntityEventListener",
+        "org.hibernate.event.spi.LoadEventListener",
+        "org.hibernate.event.spi.ResolveNaturalIdEventListener",
+        "org.hibernate.event.spi.InitializeCollectionEventListener",
+        "org.hibernate.event.spi.LockEventListener",
+        "org.hibernate.event.spi.MergeEventListener",
+        "org.hibernate.event.spi.PreLoadEventListener",
+        "org.hibernate.event.spi.PreInsertEventListener",
+        "org.hibernate.event.spi.PreUpdateEventListener",
+        "org.hibernate.event.spi.PreDeleteEventListener",
+        "org.hibernate.event.spi.PreUpsertEventListener",
+        "org.hibernate.event.spi.PreCollectionUpdateEventListener",
+        "org.hibernate.event.spi.PostLoadEventListener",
+        "org.hibernate.event.spi.PostUpsertEventListener",
+        "org.hibernate.event.spi.SaveOrUpdateEventListener",
+        "org.hibernate.event.spi.RefreshEventListener",
+        "org.hibernate.event.spi.ReplicateEventListener",
+      };
+
+      for (String className : hibernateJbossLoggingClasses) {
+        hints
+            .reflection() //
+            .registerType(
+                org.springframework.aot.hint.TypeReference.of(className),
+                hint ->
+                    hint.withMembers(
+                        MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+                        MemberCategory.INVOKE_DECLARED_METHODS,
+                        MemberCategory.INVOKE_PUBLIC_METHODS,
+                        MemberCategory.DECLARED_FIELDS));
+      }
+
+      // Register Hibernate event listener array types - required for event system
+      // Hibernate allocates arrays of event listeners reflectively (e.g. AutoFlushEventListener[])
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.AutoFlushEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PersistEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.DeleteEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.DirtyCheckEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.EvictEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.FlushEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.FlushEntityEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.LoadEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.ResolveNaturalIdEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.InitializeCollectionEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.LockEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.MergeEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreLoadEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreInsertEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreUpdateEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreDeleteEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreUpsertEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PreCollectionUpdateEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PostLoadEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.PostUpsertEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.SaveOrUpdateEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.RefreshEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.event.spi.ReplicateEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      // Register JBoss Logging infrastructure
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of("org.jboss.logging.Logger"),
+              hint ->
+                  hint.withMembers(
+                      MemberCategory.INVOKE_DECLARED_METHODS,
+                      MemberCategory.INVOKE_PUBLIC_METHODS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of("org.jboss.logging.Logger$Level"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of("org.jboss.logging.Messages"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)) //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of("org.jboss.logging.MessageLogger"),
+              hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_METHODS));
     }
   }
 }

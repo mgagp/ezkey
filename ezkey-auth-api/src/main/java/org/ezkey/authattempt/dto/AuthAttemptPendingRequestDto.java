@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Request DTO for retrieving pending authentication attempts. Updated to include
@@ -66,7 +67,7 @@ public record AuthAttemptPendingRequestDto(
     @Schema(
             description = "Enrollment ID to check for pending authentication attempts",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer enrollmentId,
 
     /**
@@ -79,7 +80,7 @@ public record AuthAttemptPendingRequestDto(
     @Schema(
             description = "Cryptographic proof token that authenticates the enrollment",
             example = "EZK-ABC123-DEF456",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String enrollmentProofToken,
 
     /**
@@ -91,7 +92,7 @@ public record AuthAttemptPendingRequestDto(
     @Schema(
             description = "Device proof token for authentication",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String deviceProofToken,
 
     /**
@@ -104,5 +105,5 @@ public record AuthAttemptPendingRequestDto(
     @Schema(
             description = "Cryptographically signed device proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String deviceProofTokenSigned) {}

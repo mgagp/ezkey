@@ -43,6 +43,12 @@
 			<optional>true</optional>
 		</dependency>
 		
+		<!-- Actuator for health checks and metrics -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		
 		<!-- API Documentation -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
@@ -132,6 +138,28 @@
 	                <plugin>
 	                    <groupId>org.springframework.boot</groupId>
 	                    <artifactId>spring-boot-maven-plugin</artifactId>
+	                    <configuration>
+	                        <image>
+	                            <builder>paketobuildpacks/builder-jammy-tiny</builder>
+	                            <env>
+	                                <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
+	                            </env>
+	                        </image>
+	                    </configuration>
+	                    <executions>
+	                        <execution>
+	                            <id>process-aot</id>
+	                            <goals>
+	                                <goal>process-aot</goal>
+	                            </goals>
+	                        </execution>
+	                        <execution>
+	                            <id>process-test-aot</id>
+	                            <goals>
+	                                <goal>process-test-aot</goal>
+	                            </goals>
+	                        </execution>
+	                    </executions>
 	                </plugin>
 	                <!-- GraalVM Native Build Tools (used for local/native:compile when not using buildpacks) -->
 	                <plugin>

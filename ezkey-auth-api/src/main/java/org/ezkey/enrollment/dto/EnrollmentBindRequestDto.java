@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Request DTO for enrollment binding initiation with proof token in auth API.
@@ -61,7 +62,7 @@ public record EnrollmentBindRequestDto(
     @Schema(
             description = "Enrollment ID to bind to the mobile device",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer enrollmentId,
 
     /**
@@ -74,7 +75,7 @@ public record EnrollmentBindRequestDto(
     @Schema(
             description = "Enrollment proof token for authentication",
             example = "abc123-def456-ghi789",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String enrollmentProofToken,
 
     /**

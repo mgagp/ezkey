@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 
 /**
  * Request DTO for submitting authentication attempt responses in auth API.
@@ -58,7 +59,7 @@ public record AuthAttemptRespondRequestDto(
     @Schema(
             description = "Authentication attempt ID being responded to",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer authAttemptId,
 
     /**
@@ -70,7 +71,7 @@ public record AuthAttemptRespondRequestDto(
     @Schema(
             description = "Device-signed proof token for authentication validation",
             example = "eyJhbGciOiJSUzI1NiJ9...",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String authAttemptProofTokenSignedByDevice,
 
     /**
@@ -94,5 +95,5 @@ public record AuthAttemptRespondRequestDto(
     @Schema(
             description = "User's decision: true to approve, false to deny",
             example = "true",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Boolean authAttemptAccepted) {}
