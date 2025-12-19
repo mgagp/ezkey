@@ -73,17 +73,42 @@ The JSON configuration files (`reflect-config.json`, `serialization-config.json`
 
 ## Build Commands
 
-### AOT Processing
+### Complete Native Build Process (Recommended)
+
+**Standard Production Build**:
 ```bash
-mvn spring-boot:process-aot -pl ezkey-auth-api -Pnative
+# Step 1: AOT Processing (generates runtime hints and optimizations)
+./scripts/build-native-aot.sh --skip-tests
+
+# Step 2: Native Image Compilation (creates native binary)
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
 ```
 
-### Native Image with Buildpack (Recommended)
+**Why Two Steps?**
+- AOT processing must complete successfully before native compilation
+- The build script ensures proper build order and classpath resolution
+- Native compilation reuses AOT-generated files from `target/spring-aot/`
+
+**Rebuilding Native Image (Reusing AOT)**:
+If AOT is already generated and you only need to rebuild the native image:
 ```bash
-mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -DskipTests
+# Skip AOT, just rebuild native image
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
 ```
 
-### Direct Native Compilation (Requires GraalVM)
+### Individual Commands (For Debugging)
+
+**AOT Processing Only**:
+```bash
+./scripts/build-native-aot.sh --skip-tests
+```
+
+**Native Image Only** (requires AOT to be already generated):
+```bash
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests
+```
+
+**Direct Native Compilation (Requires GraalVM)**:
 ```bash
 mvn native:compile -pl ezkey-auth-api -Pnative
 ```
@@ -120,17 +145,18 @@ The native image is optimized for AWS Lambda with:
 - Java 17+ (GraalVM for direct native compilation)
 
 ### Buildpack Approach (Recommended)
+
+**Complete Build**:
 ```bash
-cd ezkey-auth-api
-
-# Build AOT processed JAR
-mvn clean package -Pnative -DskipTests
-
-# Create native image using buildpack
-mvn spring-boot:build-image -Pnative \
+# From project root
+./scripts/build-native-aot.sh --skip-tests
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image \
     -Dspring-boot.build-image.imageName=ezkey-auth-api-native \
-    -DskipTests
+    -DskipTests \
+    -Dspring-boot.build-image.skip=false
 ```
+
+**Note**: The build script (`build-native-aot.sh`) handles the AOT processing step with proper build order to avoid classpath issues. See `scripts/README.md` for details.
 
 ### Running the Native Image
 ```bash

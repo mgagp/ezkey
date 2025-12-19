@@ -212,6 +212,8 @@ public class AuthNativeConfiguration {
         "org.hibernate.persister.entity.SingleTableEntityPersister",
         "org.hibernate.persister.entity.JoinedSubclassEntityPersister",
         "org.hibernate.persister.entity.UnionSubclassEntityPersister",
+        // Collection persisters are resolved via reflection in native images
+        "org.hibernate.persister.collection.OneToManyPersister",
         "org.hibernate.loader.ast.internal.SingleIdEntityLoaderStandardImpl",
         "org.hibernate.loader.ast.internal.CollectionLoaderSingleKey",
         "org.hibernate.type.descriptor.java.JavaTypeDescriptorRegistry",
@@ -238,9 +240,18 @@ public class AuthNativeConfiguration {
         // JDBC batch logger - required for BatchBuilderImpl initialization
         "org.hibernate.engine.jdbc.batch.JdbcBatchLogging",
         "org.hibernate.engine.jdbc.batch.JdbcBatchLogging_$logger",
+        // Bytecode enhancement interceptor logger - required during entity persister initialization
+        "org.hibernate.bytecode.enhance.spi.interceptor.BytecodeInterceptorLogging",
+        "org.hibernate.bytecode.enhance.spi.interceptor.BytecodeInterceptorLogging_$logger",
+        // Mapping model creation logger - required during Hibernate metamodel initialization
+        "org.hibernate.metamodel.mapping.MappingModelCreationLogging",
+        "org.hibernate.metamodel.mapping.MappingModelCreationLogging_$logger",
         // Query logger - required for query interpretation cache initialization
         "org.hibernate.query.QueryLogging",
         "org.hibernate.query.QueryLogging_$logger",
+        // SQL AST tree logger - required for SQL AST tree printing and translation
+        "org.hibernate.sql.ast.tree.SqlAstTreeLogger",
+        "org.hibernate.sql.ast.tree.SqlAstTreeLogger_$logger",
         // CoreLogging helper class
         "org.hibernate.internal.CoreLogging",
         "org.hibernate.engine.jdbc.env.spi.JdbcEnvironment",
@@ -305,6 +316,8 @@ public class AuthNativeConfiguration {
                 org.springframework.aot.hint.TypeReference.of(className),
                 hint ->
                     hint.withMembers(
+                        MemberCategory.INTROSPECT_PUBLIC_CONSTRUCTORS,
+                        MemberCategory.INTROSPECT_DECLARED_CONSTRUCTORS,
                         MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
                         MemberCategory.INVOKE_DECLARED_METHODS,
                         MemberCategory.INVOKE_PUBLIC_METHODS,
@@ -472,6 +485,16 @@ public class AuthNativeConfiguration {
           .registerType(
               org.springframework.aot.hint.TypeReference.of(
                   "org.hibernate.event.spi.ReplicateEventListener[]"),
+              hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
+
+      // Register Hibernate SQL AST array types - required for native image SQL AST translator.
+      // Hibernate allocates Statement[] reflectively (Array.newInstance) during mutation
+      // translation.
+      hints
+          .reflection() //
+          .registerType(
+              org.springframework.aot.hint.TypeReference.of(
+                  "org.hibernate.sql.ast.tree.Statement[]"),
               hint -> hint.withMembers(MemberCategory.UNSAFE_ALLOCATED));
 
       // Register JBoss Logging infrastructure

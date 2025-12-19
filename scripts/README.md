@@ -107,9 +107,145 @@ The old scripts are still available but deprecated:
 - `update-openapi-specs.sh` - Use `update-specs.sh` instead
 - `update-openapi-specs.bat` - Use `update-specs.bat` instead
 
-### Additional Scripts
+### Native Build Scripts
+
+### Native AOT Build Script
+
+A specialized build script to avoid intermittent MapStruct compilation issues with Spring Boot AOT processing.
+
+#### Problem
+MapStruct generates mapper implementations that reference classes from `ezkey-core`. If `ezkey-core` is not installed in the local Maven repository before `ezkey-auth-api` compilation, the generated mapper bytecode may contain "Unresolved compilation problems" that cause AOT processing to fail.
+
+#### Solution
+The script implements a specific build sequence:
+1. Clean everything
+2. Install `ezkey-core` first (ensures it's in local repository)
+3. Compile `ezkey-auth-api` with dependencies (MapStruct can resolve classes)
+4. Execute AOT processing (Spring can introspect properly compiled mappers)
+
+#### Usage
+
+**Bash Script (Linux/macOS/Git Bash):**
+```bash
+./scripts/build-native-aot.sh [options]
+```
+
+#### Available Options
+- `--skip-tests` : Skip tests during build
+- `--skip-aot` : Skip AOT processing (only compile)
+- `--verbose` : Show detailed Maven output
+- `--help` : Show help message
+
+#### Examples
+```bash
+# Standard build with tests
+./scripts/build-native-aot.sh
+
+# Build without tests
+./scripts/build-native-aot.sh --skip-tests
+
+# Compile only, skip AOT
+./scripts/build-native-aot.sh --skip-aot
+
+# Verbose output for debugging
+./scripts/build-native-aot.sh --verbose
+```
+
+#### Troubleshooting
+If AOT processing fails:
+1. Verify that `ezkey-core` is installed: `mvn -pl ezkey-core install`
+2. Check for MapStruct compilation errors in `target/generated-sources`
+3. Ensure Eclipse/IDE is closed (can interfere with compilation)
+4. Try running with `--verbose` to see detailed error messages
+5. Use `--debug-classpath` to analyze the classpath used by AOT
+
+#### Debugging Classpath Issues
+
+If you suspect classpath issues, use the debugging options:
+
+```bash
+# Show classpath analysis during build
+./scripts/build-native-aot.sh --skip-tests --debug-classpath
+
+# Or use the dedicated classpath debugging script
+./scripts/debug-aot-classpath.sh --check-class org.ezkey.authattempt.dto.AuthAttemptPendingResponse
+```
+
+The `--debug-classpath` option will:
+- Capture the compile classpath used by AOT
+- Check if `ezkey-auth-api/target/classes` is included
+- Check if `ezkey-core` JAR is included
+- Save the full classpath to a file for analysis
+
+#### Debugging Execution Order
+
+If you suspect timing issues (classes not generated before AOT runs), use:
+
+```bash
+./scripts/debug-aot-execution-order.sh --check-classes
+```
+
+This script will:
+- Check if MapStruct classes exist before/after compilation
+- Verify the Maven phase where AOT runs
+- List all classes in `target/classes`
+- Attempt AOT processing and show the actual error
+
+This is particularly useful for diagnosing intermittent `NoClassDefFoundError` issues that work sometimes but not others.
+
+### Native Admin API Build Script
+
+A simplified build script for admin-api that builds a native image WITHOUT AOT processing.
+
+#### Strategy
+Admin API uses limited native compilation (native image only) for memory footprint reduction (~50% reduction) without the complexity of AOT configuration. Startup time is similar to JVM (~15-20s), which is acceptable for batch operations.
+
+#### Usage
+
+**Bash Script (Linux/macOS/Git Bash):**
+```bash
+./scripts/build-native-admin.sh [options]
+```
+
+#### Available Options
+- `--skip-tests` : Skip tests during build
+- `--verbose` : Show detailed Maven output
+- `--help` : Show help message
+
+#### Examples
+```bash
+# Standard build without tests
+./scripts/build-native-admin.sh --skip-tests
+
+# Verbose output for debugging
+./scripts/build-native-admin.sh --verbose
+```
+
+#### Build Process
+1. Clean and compile admin-api (standard JAR)
+2. Build native image using Spring Boot buildpacks (no AOT required)
+
+#### Expected Results
+- **Memory**: ~100-150MB baseline (vs ~200-300MB JVM) - **~50% reduction**
+- **Startup**: ~15-20 seconds (similar to JVM - acceptable for batch)
+- **Binary Size**: ~80-120MB (vs JAR + JVM ~300MB+)
+
+#### When to Use
+- Production deployments with memory constraints
+- Container environments with resource limits
+- Batch processing workloads
+- Scheduled task execution
+
+See `docs/NATIVE_COMPILATION_STRATEGY.md` for complete strategy details.
+
+## Additional Scripts
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
+- `build-native-aot.sh` - Native AOT build script for auth-api (see Native Build Scripts section above)
+- `build-native-admin.sh` - Native build script for admin-api (limited - no AOT)
+- `debug-aot-classpath.sh` - Debug classpath used by AOT processor
+- `debug-aot-runtime-classpath.sh` - Debug runtime classpath during AOT execution
+- `debug-aot-execution-order.sh` - Debug execution order and timing of AOT processing
 
 ## Recommended Workflow
 

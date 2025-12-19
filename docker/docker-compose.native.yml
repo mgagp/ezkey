@@ -46,8 +46,10 @@ services:
     restart: "no"
 
   admin-api:
-    # Native image - must be built separately using:
-    # mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
+    # Native image (limited - no AOT) - must be built separately using:
+    # ./scripts/build-native-admin.sh --skip-tests
+    # OR: mvn -pl ezkey-admin-api -Pnative spring-boot:build-image -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
+    # Strategy: Native without AOT for ~50% memory reduction, acceptable startup time for batch operations
     image: ezkey-admin-api-native:latest
     container_name: ezkey-admin-api-native
     depends_on:
@@ -79,8 +81,10 @@ services:
       retries: 3
 
   auth-api:
-    # Native image - must be built separately using:
-    # mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
+    # Native image (full - with AOT) - must be built separately using:
+    # ./scripts/build-native-aot.sh --skip-tests
+    # mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+    # Strategy: Full native with AOT for fast startup (~2-3s) and low memory (~50-100MB)
     image: ezkey-auth-api-native:latest
     container_name: ezkey-auth-api-native
     depends_on:
