@@ -110,6 +110,9 @@
 				  that can result in a repackaged JAR missing BOOT-INF/lib dependencies.
 				  For admin-api we must produce a proper fat Spring Boot JAR.
 				  combine.self="override" prevents Maven from merging the parent configuration into this module.
+				  
+				  Spring Boot automatically generates the classifier "original" when repackaging.
+				  This is required by ezkey-tests module which needs access to main classes for compilation.
 				-->
 				<configuration combine.self="override"/>
 				<executions>

@@ -150,11 +150,20 @@ fi
 
 echo ""
 
-# Step 5: Compile project and dependencies
-echo "Step 5/7: Compiling project and dependencies..."
+# Step 5: Install project and dependencies
+echo "Step 5/7: Installing project and dependencies..."
 cd "${PROJECT_ROOT}"
 
-echo "  Compiling parent project and ezkey-tests module..."
+echo "  Installing ezkey-admin-api and ezkey-auth-api (required for original classifier JARs)..."
+if mvn clean install -pl ezkey-admin-api,ezkey-auth-api -am -DskipTests -q; then
+    echo "  ✅ Admin API and Auth API installed successfully"
+else
+    echo "  ❌ Error: Failed to install Admin API and Auth API"
+    echo "  Check logs above for details"
+    exit 1
+fi
+
+echo "  Compiling ezkey-tests module..."
 if mvn clean compile test-compile -pl ezkey-tests -am -q; then
     echo "  ✅ Project compiled successfully"
 else

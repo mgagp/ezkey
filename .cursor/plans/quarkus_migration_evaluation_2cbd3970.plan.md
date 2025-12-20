@@ -251,4 +251,3 @@ quarkus.http.port=8080
 ## References
 
 - [Quarkus Native Image Guide](https://quarkus.io/guides/native-image)
-- [Quarkus MapStruct Extension](https://docs.quarkiverse.io/quarkus-mapstruct/dev/)
