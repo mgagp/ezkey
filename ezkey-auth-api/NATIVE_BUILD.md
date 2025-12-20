@@ -184,6 +184,16 @@ curl http://localhost:8080/actuator/health
 2. **Corporate Networks**: Configure proxy settings for buildpack downloads
 3. **Offline Builds**: Cache buildpack layers in corporate registries
 
+### Troubleshooting Approach
+
+When encountering native image issues, follow the systematic troubleshooting strategy defined in `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md`:
+
+1. **Check for disablement options first**: Many issues can be resolved by disabling non-critical features
+2. **Evaluate functional impact**: Categorize disablements as Category 1 (fully functional) or Category 2 (non-production-ready)
+3. **Document for review**: All disablements should be documented for future optimization
+
+**Current Disablements**: See `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` for a complete list of current disablements and their status.
+
 ## Performance Expectations
 
 ### Startup Time
@@ -233,15 +243,60 @@ curl http://localhost:8080/actuator/health
 - Implement health checks and metrics
 - Document deployment procedures
 
+## Current Status (2025-12-19)
+
+### ✅ Completed
+- AOT processing configuration and build scripts
+- Comprehensive reflection hints for DTOs, mappers, and Hibernate classes
+- Native image build arguments configuration
+- Application properties optimized for native execution
+- Build process documented and scripted
+
+### ⚠️ Blocking Issue
+**SQL AST Tree Logger Initialization Failure**
+
+The application fails to start in native mode due to:
+```
+Invalid logger interface org.hibernate.sql.ast.tree.SqlAstTreeLogger (implementation not found)
+```
+
+**Root Cause**: JBoss Logging generates `SqlAstTreeLogger_$logger` at compile time, but this class is not found in the native image. The logger initializes statically during class loading, before configuration properties are read.
+
+**Failed Solutions**:
+- ❌ Property-based disablement (`hibernate.sql.log_sql_ast=false`)
+- ❌ Logging level disablement
+- ❌ Reflection hints for logger classes
+- ❌ Runtime initialization configuration
+
+**Impact**: Native image compilation is blocked until this issue is resolved.
+
+### 📋 Next Steps (When Resuming)
+
+See `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` for detailed next steps, including:
+1. Verify generated class existence in dependencies
+2. Investigate JBoss Logging class generation process
+3. Check Hibernate version compatibility
+4. Explore GraalVM substitution mechanism
+5. Research community solutions (Quarkus, Spring Boot native image issues)
+6. Consider alternative approaches
+
+**Reference Documentation**:
+- `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` - Troubleshooting strategy and current disablements
+- `docs/NATIVE_COMPILATION_STRATEGY.md` - Overall native compilation strategy
+
 ## Conclusion
 
-The ezkey-auth-api native build implementation is complete and ready for testing. The configuration supports both buildpack and direct GraalVM compilation approaches, with optimizations specifically for AWS Lambda deployment.
+The ezkey-auth-api native build implementation is **partially complete**. The configuration and build process are in place, but a blocking issue with Hibernate's JBoss Logging prevents successful native image execution. Work is paused pending resolution of the `SqlAstTreeLogger` initialization issue.
 
-The implementation includes comprehensive AOT processing, reflection configuration, and runtime hints to ensure all application components work correctly in native mode.
+**Quick Reference Commands**:
+```bash
+# AOT Processing
+./scripts/build-native-aot.sh --skip-tests
 
-My summary
-mvn spring-boot:build-image -pl ezkey-auth-api -Pnative  -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
-mvn spring-boot:build-image -pl ezkey-admin-api -Pnative  -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
+# Native Image Build (currently blocked by SqlAstTreeLogger issue)
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+
+# Run Native Container (when issue is resolved)
 docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=native -d ezkey-auth-api-native
-docker run -p 9080:9080 -e SPRING_PROFILES_ACTIVE=native -d ezkey-admin-api-native
+```
 

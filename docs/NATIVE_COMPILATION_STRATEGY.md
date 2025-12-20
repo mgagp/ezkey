@@ -187,9 +187,23 @@ To upgrade admin-api to full AOT:
 3. Update build process to include AOT step
 4. Test thoroughly before production deployment
 
+## Troubleshooting Strategy
+
+When encountering native image issues, follow the systematic approach defined in `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md`:
+
+1. **First**: Check if the problematic feature can be disabled via configuration properties
+2. **Evaluate**: Assess functional impact of disablement
+3. **Categorize**: 
+   - **Category 1**: Disablement → Fully functional application (document for review)
+   - **Category 2**: Disablement → Non-production-ready (note for later resolution)
+4. **Goal**: Achieve a working native image that starts without errors and passes all end-to-end tests
+
+This strategy prioritizes progress while maintaining clear documentation for future optimization.
+
 ## References
 
 - [Spring Boot Native Image Documentation](https://docs.spring.io/spring-boot/docs/current/reference/html/native-image.html)
 - [GraalVM Native Image Guide](https://www.graalvm.org/latest/reference-manual/native-image/)
 - `ezkey-auth-api/NATIVE_BUILD.md` - Detailed auth-api native build documentation
 - `docs/AOT_CLASSPATH_ISSUE_ANALYSIS.md` - AOT classpath troubleshooting guide
+- `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` - Systematic troubleshooting approach with disablement strategy
