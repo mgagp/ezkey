@@ -62,8 +62,7 @@ public class BootstrapCredentialsFileExporter {
    *     match)
    * @param username the admin username
    */
-  public void exportIfEnabled(
-      Enrollment enrollment, String enrollmentProofToken, String username) {
+  public void exportIfEnabled(Enrollment enrollment, String enrollmentProofToken, String username) {
     if (!exportProperties.isEnabled()) {
       logger.debug("Bootstrap credentials file export is disabled");
       return;
@@ -121,4 +120,3 @@ public class BootstrapCredentialsFileExporter {
     }
   }
 }
-

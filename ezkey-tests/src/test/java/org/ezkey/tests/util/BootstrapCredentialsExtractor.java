@@ -192,7 +192,10 @@ public class BootstrapCredentialsExtractor {
     boolean haContainer2Exists = containerExists(DOCKER_CONTAINER_NAME_HA_2);
 
     if (haContainer1Exists && haContainer2Exists) {
-      log.info("HA mode detected: Found containers {} and {}", DOCKER_CONTAINER_NAME_HA_1, DOCKER_CONTAINER_NAME_HA_2);
+      log.info(
+          "HA mode detected: Found containers {} and {}",
+          DOCKER_CONTAINER_NAME_HA_1,
+          DOCKER_CONTAINER_NAME_HA_2);
       // Find which instance created the admin global
       return findInstanceWithBootstrapLogs();
     }
@@ -220,8 +223,7 @@ public class BootstrapCredentialsExtractor {
    */
   private boolean containerExists(String containerName) {
     try {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder("docker", "inspect", containerName);
+      ProcessBuilder processBuilder = new ProcessBuilder("docker", "inspect", containerName);
       processBuilder.redirectErrorStream(true);
       Process process = processBuilder.start();
 
@@ -261,11 +263,13 @@ public class BootstrapCredentialsExtractor {
           return instanceFromShedLock;
         }
         log.warn(
-            "ShedLock-selected instance '{}' does not contain bootstrap credentials banner. Will scan both instances.",
+            "ShedLock-selected instance '{}' does not contain bootstrap credentials banner. Will"
+                + " scan both instances.",
             instanceFromShedLock);
       } catch (Exception e) {
         log.warn(
-            "Failed to read logs from ShedLock-selected instance '{}': {}. Will scan both instances.",
+            "Failed to read logs from ShedLock-selected instance '{}': {}. Will scan both"
+                + " instances.",
             instanceFromShedLock,
             e.getMessage());
       }
@@ -360,7 +364,8 @@ public class BootstrapCredentialsExtractor {
         return DOCKER_CONTAINER_NAME_HA_2;
       }
 
-      // Some environments may store a different locked_by (e.g., custom instance id). Handle that too.
+      // Some environments may store a different locked_by (e.g., custom instance id). Handle that
+      // too.
       if (lockedBy.contains("admin-api-1")) {
         return DOCKER_CONTAINER_NAME_HA_1;
       }
@@ -369,7 +374,8 @@ public class BootstrapCredentialsExtractor {
       }
 
       log.warn(
-          "Unexpected locked_by value: '{}' (admin-api-1 idPrefix='{}', admin-api-2 idPrefix='{}'); cannot map to container reliably.",
+          "Unexpected locked_by value: '{}' (admin-api-1 idPrefix='{}', admin-api-2 idPrefix='{}');"
+              + " cannot map to container reliably.",
           lockedBy,
           ha1IdPrefix,
           ha2IdPrefix);
@@ -465,7 +471,10 @@ public class BootstrapCredentialsExtractor {
     int exitCode = process.waitFor();
     if (exitCode != 0) {
       throw new IOException(
-          "Docker logs command failed with exit code: " + exitCode + " for container: " + containerName);
+          "Docker logs command failed with exit code: "
+              + exitCode
+              + " for container: "
+              + containerName);
     }
 
     return logs.toString();

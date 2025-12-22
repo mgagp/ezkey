@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -54,7 +55,7 @@ public record EnrollmentCreateRequestDto(
     @Schema(
             description = "The integration ID to which this enrollment belongs",
             example = "1",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Integration ID is required")
         Integer integrationId,
     /**
@@ -64,7 +65,7 @@ public record EnrollmentCreateRequestDto(
     @Schema(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Enrollment name is required")
         @NotBlank(message = "Enrollment name cannot be blank")
         String name,

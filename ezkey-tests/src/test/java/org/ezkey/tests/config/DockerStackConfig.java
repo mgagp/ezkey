@@ -92,7 +92,8 @@ public class DockerStackConfig {
   /**
    * Verifies that all Docker stack services are healthy and accessible.
    *
-   * <p>Checks the health endpoint of each service. Admin API, Auth API, and Crypto API are required.
+   * <p>Checks the health endpoint of each service. Admin API, Auth API, and Crypto API are
+   * required.
    *
    * @throws IllegalStateException if any service is not healthy
    */
@@ -188,8 +189,11 @@ public class DockerStackConfig {
           log.debug("{} is healthy", serviceName);
         } else {
           log.warn(
-              "{} at {} returned status {}. Service may not be available in this stack configuration.",
-              serviceName, baseUrl, response.getStatusCode());
+              "{} at {} returned status {}. Service may not be available in this stack"
+                  + " configuration.",
+              serviceName,
+              baseUrl,
+              response.getStatusCode());
         }
       } finally {
         // Restore original RestAssured settings
@@ -198,8 +202,11 @@ public class DockerStackConfig {
       }
     } catch (Exception e) {
       log.warn(
-          "{} at {} is not accessible: {}. Service may not be available in this stack configuration (e.g., HA stack).",
-          serviceName, baseUrl, e.getMessage());
+          "{} at {} is not accessible: {}. Service may not be available in this stack configuration"
+              + " (e.g., HA stack).",
+          serviceName,
+          baseUrl,
+          e.getMessage());
     }
   }
 }

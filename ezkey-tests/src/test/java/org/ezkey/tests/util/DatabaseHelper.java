@@ -88,8 +88,7 @@ public class DatabaseHelper {
    */
   private boolean containerExists(String containerName) {
     try {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder("docker", "inspect", containerName);
+      ProcessBuilder processBuilder = new ProcessBuilder("docker", "inspect", containerName);
       processBuilder.redirectErrorStream(true);
       Process process = processBuilder.start();
 

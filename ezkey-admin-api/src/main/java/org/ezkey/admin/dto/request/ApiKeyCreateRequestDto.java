@@ -11,6 +11,7 @@
 package org.ezkey.admin.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
@@ -56,7 +57,7 @@ public record ApiKeyCreateRequestDto(
         @Schema(
             description = "Integration ID to create the API key for",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Integer integrationId,
     @Size(max = 255, message = "Description must not exceed 255 characters")
         @Schema(

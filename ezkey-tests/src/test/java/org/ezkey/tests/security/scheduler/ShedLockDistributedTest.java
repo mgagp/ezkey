@@ -15,7 +15,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -93,8 +92,7 @@ public class ShedLockDistributedTest {
 
     // Wait for lock to be acquired (job execution)
     log.info("Waiting for lock '{}' to be acquired...", lockName);
-    ShedLockTestHelper.ShedLockEntry lock =
-        shedLockHelper.waitForLockAcquisition(lockName, 30);
+    ShedLockTestHelper.ShedLockEntry lock = shedLockHelper.waitForLockAcquisition(lockName, 30);
 
     if (lock == null) {
       throw new AssertionError(
@@ -150,14 +148,16 @@ public class ShedLockDistributedTest {
               + "Check that both instances are running and healthy.");
     }
 
-    log.info("✅ Verified: Lock distribution across instances ({} unique instances)", instancesThatHeldLock.size());
+    log.info(
+        "✅ Verified: Lock distribution across instances ({} unique instances)",
+        instancesThatHeldLock.size());
   }
 
   /**
    * Test B: Vérification Locks dans DB
    *
-   * <p>Validates that locks are correctly created and updated in the PostgreSQL shedlock table. This
-   * verifies the database-level locking mechanism.
+   * <p>Validates that locks are correctly created and updated in the PostgreSQL shedlock table.
+   * This verifies the database-level locking mechanism.
    *
    * <p><b>Test Steps:</b>
    *
@@ -203,8 +203,12 @@ public class ShedLockDistributedTest {
     OffsetDateTime now = OffsetDateTime.now();
 
     for (ShedLockTestHelper.ShedLockEntry lock : activeLocks) {
-      log.info("Validating lock: name='{}', locked_by='{}', locked_at={}, lock_until={}",
-          lock.name(), lock.lockedBy(), lock.lockedAt(), lock.lockUntil());
+      log.info(
+          "Validating lock: name='{}', locked_by='{}', locked_at={}, lock_until={}",
+          lock.name(),
+          lock.lockedBy(),
+          lock.lockedAt(),
+          lock.lockUntil());
 
       // Verify lock name is not empty
       if (lock.name() == null || lock.name().isEmpty()) {
@@ -219,12 +223,20 @@ public class ShedLockDistributedTest {
       // Verify locked_at is in the past (lock was acquired)
       if (lock.lockedAt().isAfter(now)) {
         throw new AssertionError(
-            "Lock locked_at is in the future for lock: " + lock.name() + " (locked_at=" + lock.lockedAt() + ")");
+            "Lock locked_at is in the future for lock: "
+                + lock.name()
+                + " (locked_at="
+                + lock.lockedAt()
+                + ")");
       }
 
       // Verify lock_until is in the future for active locks
       if (!lock.isActive()) {
-        log.warn("Lock '{}' is not active (lock_until={} <= now={})", lock.name(), lock.lockUntil(), now);
+        log.warn(
+            "Lock '{}' is not active (lock_until={} <= now={})",
+            lock.name(),
+            lock.lockUntil(),
+            now);
       } else {
         if (lock.lockUntil().isBefore(now) || lock.lockUntil().isEqual(now)) {
           throw new AssertionError(
@@ -241,18 +253,26 @@ public class ShedLockDistributedTest {
         Duration lockDuration = Duration.between(lock.lockedAt(), lock.lockUntil());
         if (lockDuration.isNegative()) {
           throw new AssertionError(
-              "Lock duration is negative for lock: " + lock.name() + " (duration=" + lockDuration + ")");
+              "Lock duration is negative for lock: "
+                  + lock.name()
+                  + " (duration="
+                  + lockDuration
+                  + ")");
         }
 
         // Verify lock duration is not excessive (e.g., > 1 hour for KEY_PROMOTION)
         if (lockDuration.toHours() > 1) {
           log.warn(
               "Lock '{}' has unusually long duration: {} (expected < 1 hour for most jobs)",
-              lock.name(), lockDuration);
+              lock.name(),
+              lockDuration);
         }
 
-        log.info("✅ Lock '{}' validated: duration={}, locked_by='{}'",
-            lock.name(), lockDuration, lock.lockedBy());
+        log.info(
+            "✅ Lock '{}' validated: duration={}, locked_by='{}'",
+            lock.name(),
+            lockDuration,
+            lock.lockedBy());
       }
     }
 
@@ -314,8 +334,7 @@ public class ShedLockDistributedTest {
 
     // Crash the instance
     try {
-      ProcessBuilder killProcess =
-          new ProcessBuilder("docker", "kill", containerToKill);
+      ProcessBuilder killProcess = new ProcessBuilder("docker", "kill", containerToKill);
       Process killProc = killProcess.start();
       int exitCode = killProc.waitFor();
 
@@ -363,7 +382,10 @@ public class ShedLockDistributedTest {
               + "This may indicate the instance restarted quickly or instance ID is not unique.",
           recoveredInstance);
     } else {
-      log.info("✅ Lock recovered by different instance: {} -> {}", instanceHoldingLock, recoveredInstance);
+      log.info(
+          "✅ Lock recovered by different instance: {} -> {}",
+          instanceHoldingLock,
+          recoveredInstance);
     }
 
     log.info("✅ Verified: Failover mechanism works - lock recovered after instance crash");

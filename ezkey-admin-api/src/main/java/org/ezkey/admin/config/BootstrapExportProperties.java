@@ -27,8 +27,8 @@ import org.springframework.stereotype.Component;
  * ezkey.admin.bootstrap.export.path=/var/lib/ezkey/bootstrap/bootstrap-credentials.json
  * </pre>
  *
- * <p><b>Security Note:</b> This feature exports enrollment credentials (excluding recovery codes) to
- * a file. It should only be enabled in Docker/demo profiles, never in production.
+ * <p><b>Security Note:</b> This feature exports enrollment credentials (excluding recovery codes)
+ * to a file. It should only be enabled in Docker/demo profiles, never in production.
  *
  * @since 2025
  */
@@ -95,4 +95,3 @@ public class BootstrapExportProperties {
     this.path = path;
   }
 }
-

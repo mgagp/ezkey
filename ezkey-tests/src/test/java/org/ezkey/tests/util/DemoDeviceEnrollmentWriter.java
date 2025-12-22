@@ -347,7 +347,10 @@ public class DemoDeviceEnrollmentWriter {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.error("File write command failed with exit code: {} (container: {})", exitCode, containerName);
+        log.error(
+            "File write command failed with exit code: {} (container: {})",
+            exitCode,
+            containerName);
         log.error("Output: {}", output);
         throw new IllegalStateException(
             "Failed to write file to demo-device container. Exit code: "

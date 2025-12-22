@@ -11,6 +11,7 @@
 package org.ezkey.integration.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -47,14 +48,14 @@ public record IntegrationI18nCreateDto(
     @Schema(
             description = "Language code for the localized content",
             example = "en",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Language code is required")
         @NotBlank(message = "Language code cannot be blank")
         String language,
     @Schema(
             description = "Localized name of the integration",
             example = "ACME Corporation",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Name is required")
         @NotBlank(message = "Name cannot be blank")
         String name,

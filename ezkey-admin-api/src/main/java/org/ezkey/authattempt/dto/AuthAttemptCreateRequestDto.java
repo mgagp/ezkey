@@ -12,6 +12,7 @@ package org.ezkey.authattempt.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -48,7 +49,7 @@ public record AuthAttemptCreateRequestDto(
     @Schema(
             description = "The enrollment ID for which the authentication attempt is requested",
             example = "123",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Enrollment ID is required")
         @JsonProperty("enrollmentId")
         Integer enrollmentId,
@@ -56,7 +57,7 @@ public record AuthAttemptCreateRequestDto(
             description =
                 "Indicates whether a challenge is requested for this authentication attempt",
             example = "false",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Challenge requested flag is required")
         @JsonProperty("challengeRequested")
         Boolean challengeRequested) {}

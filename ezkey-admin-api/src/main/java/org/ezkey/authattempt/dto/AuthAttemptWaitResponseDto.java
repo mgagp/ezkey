@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import java.time.OffsetDateTime;
 
 /**
@@ -67,7 +68,9 @@ public record AuthAttemptWaitResponseDto(
      * Complete authentication attempt data. Contains all the raw authentication attempt information
      * for detailed processing.
      */
-    @Schema(description = "Complete authentication attempt data", required = true)
+    @Schema(
+            description = "Complete authentication attempt data",
+            requiredMode = RequiredMode.REQUIRED)
         AuthAttemptDto authAttempt,
     /**
      * Calculated authentication status based on the rules defined in ENDPOINT.md. Provides a
@@ -87,7 +90,7 @@ public record AuthAttemptWaitResponseDto(
             description = "Calculated authentication status",
             example = "ACCEPTED",
             allowableValues = {"PENDING", "READ", "INVALID", "REJECTED", "ACCEPTED"},
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         String status,
     /**
      * Indicates whether the authentication process is complete. True when the device has responded
@@ -96,23 +99,29 @@ public record AuthAttemptWaitResponseDto(
     @Schema(
             description = "Whether authentication process is complete",
             example = "true",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         Boolean completed,
     /**
      * Indicates whether the wait operation ended due to timeout. True when the maximum wait
      * duration was reached before completion.
      */
-    @Schema(description = "Whether wait ended due to timeout", example = "false", required = true)
+    @Schema(
+            description = "Whether wait ended due to timeout",
+            example = "false",
+            requiredMode = RequiredMode.REQUIRED)
         Boolean timeoutReached,
     /**
      * Actual duration waited in seconds before returning the response. Useful for monitoring and
      * debugging wait operations.
      */
-    @Schema(description = "Actual duration waited in seconds", example = "15", required = true)
+    @Schema(
+            description = "Actual duration waited in seconds",
+            example = "15",
+            requiredMode = RequiredMode.REQUIRED)
         Integer waitDuration,
     /** Timestamp when the wait operation completed. Used for auditing and monitoring purposes. */
     @Schema(
             description = "Timestamp when wait operation completed (with timezone)",
             example = "2025-01-27T10:30:15+01:00",
-            required = true)
+            requiredMode = RequiredMode.REQUIRED)
         OffsetDateTime completedAt) {}

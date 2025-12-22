@@ -12,8 +12,8 @@ package org.ezkey.tests.security.scheduler;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
  * Helper class for querying ShedLock distributed locks table in PostgreSQL.
  *
  * <p>Provides methods to query the `shedlock` table directly via docker exec to verify distributed
- * locking behavior in HA deployments. This is suitable for functional E2E tests validating
- * ShedLock exclusion mutuelle.
+ * locking behavior in HA deployments. This is suitable for functional E2E tests validating ShedLock
+ * exclusion mutuelle.
  *
  * <p><b>Usage Context:</b> Use for:
  *
@@ -62,7 +62,11 @@ public class ShedLockTestHelper {
    * @param isActive whether the lock is currently active (lock_until > NOW())
    */
   public record ShedLockEntry(
-      String name, String lockedBy, OffsetDateTime lockedAt, OffsetDateTime lockUntil, boolean isActive) {}
+      String name,
+      String lockedBy,
+      OffsetDateTime lockedAt,
+      OffsetDateTime lockUntil,
+      boolean isActive) {}
 
   /**
    * Executes a SQL query and returns the result as a list of strings (one per row).
@@ -94,8 +98,7 @@ public class ShedLockTestHelper {
 
       List<String> results = new ArrayList<>();
       try (java.io.BufferedReader reader =
-          new java.io.BufferedReader(
-              new java.io.InputStreamReader(process.getInputStream()))) {
+          new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
           String trimmed = line.trim();

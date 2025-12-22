@@ -11,6 +11,7 @@
 package org.ezkey.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import java.time.OffsetDateTime;
 
 /**
@@ -38,14 +39,14 @@ public class ErrorResponseDto {
   @Schema(
       description = "Error code identifier for categorizing the error type",
       example = "RESOURCE_NOT_FOUND",
-      required = true)
+      requiredMode = RequiredMode.REQUIRED)
   private String code;
 
   /** Human-readable error message. Provides a clear description of what went wrong. */
   @Schema(
       description = "Human-readable error message describing what went wrong",
       example = "The requested resource was not found",
-      required = true)
+      requiredMode = RequiredMode.REQUIRED)
   private String message;
 
   /**
@@ -55,7 +56,7 @@ public class ErrorResponseDto {
   @Schema(
       description = "Timestamp when the error occurred",
       example = "2025-10-15T14:30:00+00:00",
-      required = true)
+      requiredMode = RequiredMode.REQUIRED)
   private OffsetDateTime timestamp;
 
   /**
@@ -65,7 +66,7 @@ public class ErrorResponseDto {
   @Schema(
       description = "Request path that caused the error",
       example = "/api/v1/auth-attempts/123",
-      required = false)
+      requiredMode = RequiredMode.NOT_REQUIRED)
   private String path;
 
   /**
