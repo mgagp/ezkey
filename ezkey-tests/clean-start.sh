@@ -9,13 +9,14 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--native] [--ha]
+# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap]
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
+#   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
-#   - Maven installed
+#   - Maven installed (only if --mvn-bootstrap is used)
 #   - Scripts must be run from ezkey-tests directory
 #   - If using --native: Native images must be built separately before running
 #   - If using --ha: HA stack will be started (for testing ShedLock distributed locking)
@@ -28,6 +29,7 @@ DOCKER_DIR="${PROJECT_ROOT}/docker"
 TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
 NATIVE_MODE=""
 HA_MODE=""
+MVN_BOOTSTRAP=""
 
 # Parse flags
 for arg in "$@"; do
@@ -38,9 +40,12 @@ for arg in "$@"; do
         --ha)
             HA_MODE="--ha"
             ;;
+        --mvn-bootstrap)
+            MVN_BOOTSTRAP="true"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native] [--ha]"
+            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap]"
             exit 1
             ;;
     esac
@@ -200,56 +205,62 @@ fi
 
 echo ""
 
-# Step 5: Install project and dependencies
-echo "Step 5/7: Installing project and dependencies..."
-cd "${PROJECT_ROOT}"
+# Step 5-7: Maven-based bootstrap (optional, disabled by default)
+if [ -n "$MVN_BOOTSTRAP" ]; then
+    echo "Step 5/7: Installing project and dependencies..."
+    cd "${PROJECT_ROOT}"
 
-echo "  Installing ezkey-admin-api and ezkey-auth-api (required for original classifier JARs)..."
-if mvn clean install -pl ezkey-admin-api,ezkey-auth-api -am -DskipTests -q; then
-    echo "  ✅ Admin API and Auth API installed successfully"
+    echo "  Installing ezkey-admin-api and ezkey-auth-api (required for original classifier JARs)..."
+    if mvn clean install -pl ezkey-admin-api,ezkey-auth-api -am -DskipTests -q; then
+        echo "  ✅ Admin API and Auth API installed successfully"
+    else
+        echo "  ❌ Error: Failed to install Admin API and Auth API"
+        echo "  Check logs above for details"
+        exit 1
+    fi
+
+    echo "  Compiling ezkey-tests module..."
+    if mvn clean compile test-compile -pl ezkey-tests -am -q; then
+        echo "  ✅ Project compiled successfully"
+    else
+        echo "  ❌ Error: Failed to compile project"
+        echo "  Check logs above for details"
+        exit 1
+    fi
+
+    echo ""
+
+    echo "Step 6/7: Extracting bootstrap credentials..."
+    cd "${PROJECT_ROOT}"
+
+    echo "  Running BootstrapCredentialsExtractionTest..."
+    if mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest -q; then
+        echo "  ✅ Bootstrap credentials extracted"
+    else
+        echo "  ❌ Error: Failed to extract bootstrap credentials"
+        echo "  Check logs above for details"
+        exit 1
+    fi
+
+    echo ""
+
+    echo "Step 7/7: Initializing admin token..."
+    cd "${PROJECT_ROOT}"
+
+    echo "  Running AdminTokenCreationTest..."
+    if mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest -q; then
+        echo "  ✅ Admin token initialized"
+    else
+        echo "  ❌ Error: Failed to initialize admin token"
+        echo "  Check logs above for details"
+        exit 1
+    fi
+
+    echo ""
 else
-    echo "  ❌ Error: Failed to install Admin API and Auth API"
-    echo "  Check logs above for details"
-    exit 1
-fi
-
-echo "  Compiling ezkey-tests module..."
-if mvn clean compile test-compile -pl ezkey-tests -am -q; then
-    echo "  ✅ Project compiled successfully"
-else
-    echo "  ❌ Error: Failed to compile project"
-    echo "  Check logs above for details"
-    exit 1
-fi
-
-echo ""
-
-# Step 6: Extract bootstrap credentials
-echo "Step 6/7: Extracting bootstrap credentials..."
-cd "${PROJECT_ROOT}"
-
-echo "  Running BootstrapCredentialsExtractionTest..."
-if mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest -q; then
-    echo "  ✅ Bootstrap credentials extracted"
-else
-    echo "  ❌ Error: Failed to extract bootstrap credentials"
-    echo "  Check logs above for details"
-    exit 1
-fi
-
-echo ""
-
-# Step 7: Initialize admin token
-echo "Step 7/7: Initializing admin token..."
-cd "${PROJECT_ROOT}"
-
-echo "  Running AdminTokenCreationTest..."
-if mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest -q; then
-    echo "  ✅ Admin token initialized"
-else
-    echo "  ❌ Error: Failed to initialize admin token"
-    echo "  Check logs above for details"
-    exit 1
+    echo "Step 5/7: Skipping Maven-based bootstrap (Docker bootstrap-init handles this)"
+    echo "  ✅ Bootstrap handled by Docker bootstrap-init container"
+    echo ""
 fi
 
 echo ""
@@ -270,8 +281,13 @@ elif [ -n "$NATIVE_MODE" ]; then
 else
     echo "  - Docker stack: Running with test profiles"
 fi
-echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"
-echo "  - Admin token: Created and saved to .ezkey-test/admin-token.json"
+if [ -n "$MVN_BOOTSTRAP" ]; then
+    echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"
+    echo "  - Admin token: Created and saved to .ezkey-test/admin-token.json"
+else
+    echo "  - Bootstrap: Handled automatically by Docker bootstrap-init container"
+    echo "  - Demo-device: Pre-seeded and ready for use"
+fi
 echo ""
 echo "🧪 Next Steps - Running Tests:"
 echo ""

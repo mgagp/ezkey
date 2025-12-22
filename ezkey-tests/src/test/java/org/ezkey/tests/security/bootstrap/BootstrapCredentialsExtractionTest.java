@@ -18,6 +18,7 @@ import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor.BootstrapCredentials;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ import org.junit.jupiter.api.Test;
 @Tag(TestTags.FAST)
 @Tag(TestTags.ADMIN)
 @DisplayName("Bootstrap Credentials Extraction Test")
+@Disabled("Replaced by Docker bootstrap-init in Phase 1; revisit in Phase 2")
 public class BootstrapCredentialsExtractionTest {
 
   @Test

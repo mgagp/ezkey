@@ -67,6 +67,7 @@ services:
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
     volumes:
       - encryption-secrets:/etc/ezkey
+      - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     ports:
       - "9080:9080"
     networks:
@@ -160,6 +161,31 @@ services:
       start_period: 40s
       retries: 3
 
+  bootstrap-init:
+    build:
+      context: ..
+      dockerfile: docker/bootstrap-init/Dockerfile
+    container_name: ezkey-bootstrap-init
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
+      crypto-api:
+        condition: service_healthy
+      demo-device:
+        condition: service_started
+    environment:
+      ADMIN_API_URL: http://admin-api:9080
+      AUTH_API_URL: http://auth-api:8080
+      CRYPTO_API_URL: http://crypto-api:9090
+    volumes:
+      - bootstrap-artifacts:/bootstrap
+      - demo-device-data:/demo-device-data
+    networks:
+      - ezkey-network
+    restart: "no"
+
 networks:
   ezkey-network:
     driver: bridge
@@ -169,4 +195,5 @@ volumes:
   demo-device-data:
   maven-cache:
   encryption-secrets:
+  bootstrap-artifacts:
 

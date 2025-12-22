@@ -80,6 +80,8 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo '# Only create directories if they do not exist (avoid masking volume mounts)' >> /app/entrypoint.sh && \
     echo 'if [ ! -d /etc/ezkey/secrets ]; then mkdir -p /etc/ezkey/secrets; fi' >> /app/entrypoint.sh && \
     echo 'if [ ! -d /etc/ezkey/keysets ]; then mkdir -p /etc/ezkey/keysets; fi' >> /app/entrypoint.sh && \
+    echo '# Create bootstrap directory structure if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
+    echo 'mkdir -p /var/lib/ezkey/bootstrap' >> /app/entrypoint.sh && \
     echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
     echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
     echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
@@ -88,7 +90,8 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo '# Fix directory permissions' >> /app/entrypoint.sh && \
     echo 'chmod 700 /etc/ezkey/secrets 2>/dev/null || true' >> /app/entrypoint.sh && \
     echo 'chmod 755 /etc/ezkey/keysets 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'chown spring:spring /etc/ezkey/secrets /etc/ezkey/keysets 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'chmod 755 /var/lib/ezkey/bootstrap 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'chown spring:spring /etc/ezkey/secrets /etc/ezkey/keysets /var/lib/ezkey/bootstrap 2>/dev/null || true' >> /app/entrypoint.sh && \
     echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 EXPOSE 9080

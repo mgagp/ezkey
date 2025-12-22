@@ -48,6 +48,7 @@ That's it! The script will:
 3. Run database migrations
 4. Start all API services
 5. Wait for services to be healthy
+6. Automatically bootstrap enrollment and seed demo-device
 
 **Note**: For first-time setup, generate encryption keys before starting:
 ```bash
@@ -145,6 +146,41 @@ Once started, you can access:
 - **Purpose**: Simulated mobile device for testing enrollment and authentication flows
 - **Depends on**: Auth API (healthy)
 - **Health Check**: http://localhost:8083/actuator/health
+- **Bootstrap**: Pre-seeded with global admin enrollment on first startup
+
+### Bootstrap Init (bootstrap-init)
+- **Type**: One-time job
+- **Purpose**: Automatically performs enrollment bind+verify and seeds demo-device
+- **Depends on**: Admin API, Auth API, Crypto API, Demo Device (all healthy)
+- **Runs**: After all services are healthy
+- **Output**: Creates bootstrap artifacts and demo-device enrollment file
+- **Note**: This service makes Docker stack fully self-contained (no Maven/JDK required)
+
+## Bootstrap and Initialization
+
+The Docker stack automatically initializes the global admin enrollment and seeds the demo-device for immediate use:
+
+1. **Admin API** creates the global admin enrollment and exports bootstrap credentials to a file
+2. **Bootstrap Init** container reads the credentials, performs bind+verify, and seeds demo-device
+3. **Demo-device** is immediately ready for authentication flows
+
+**No manual steps required!** After `docker/start.sh` completes:
+- Demo-device is pre-seeded and ready
+- Login via `POST /api/v1/admin/auth/login` and approve on demo-device
+
+### Retrieving Bootstrap Artifacts
+
+Bootstrap artifacts are stored in the `bootstrap-artifacts` Docker volume:
+
+```bash
+# View bootstrap credentials
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json
+
+# View device credentials
+docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-credentials.json
+```
+
+**Note**: Recovery codes are NOT exported to files (logs only for security).
 
 ## Management Commands
 

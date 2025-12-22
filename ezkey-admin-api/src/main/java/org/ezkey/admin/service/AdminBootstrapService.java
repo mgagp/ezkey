@@ -99,6 +99,8 @@ public class AdminBootstrapService {
 
   private final LockingTaskExecutor lockingTaskExecutor;
 
+  private final BootstrapCredentialsFileExporter bootstrapCredentialsFileExporter;
+
   public AdminBootstrapService(
       IntegrationRepository integrationRepository,
       EnrollmentRepository enrollmentRepository,
@@ -110,7 +112,8 @@ public class AdminBootstrapService {
       InitialGlobalAdminProperties initialGlobalAdminProperties,
       AdminRecoveryService recoveryService,
       QrCodeAsciiRenderer qrCodeAsciiRenderer,
-      LockingTaskExecutor lockingTaskExecutor) {
+      LockingTaskExecutor lockingTaskExecutor,
+      BootstrapCredentialsFileExporter bootstrapCredentialsFileExporter) {
     this.integrationRepository = integrationRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.adminRepository = adminRepository;
@@ -122,6 +125,7 @@ public class AdminBootstrapService {
     this.recoveryService = recoveryService;
     this.qrCodeAsciiRenderer = qrCodeAsciiRenderer;
     this.lockingTaskExecutor = lockingTaskExecutor;
+    this.bootstrapCredentialsFileExporter = bootstrapCredentialsFileExporter;
   }
 
   /**
@@ -267,6 +271,14 @@ public class AdminBootstrapService {
         adminRepository.save(globalAdmin);
         logger.info("✅ Passwordless defaults configured for global admin");
       }
+
+      // Export existing enrollment credentials if file doesn't exist yet (Docker-only)
+      // This ensures bootstrap-init can work even if enrollment was created in a previous run
+      Enrollment existingEnrollment = globalAdmin.getMfaEnrollment();
+      bootstrapCredentialsFileExporter.exportIfEnabled(
+          existingEnrollment,
+          existingEnrollment.getEnrollmentProofToken(),
+          initialGlobalAdminProperties.getUsername());
       return;
     }
 
@@ -349,6 +361,10 @@ public class AdminBootstrapService {
     // Use the token from local variable to ensure we log the exact token that was set
     logGlobalAdminEnrollmentCredentials(
         globalAdminEnrollment, recoveryCodes.getPlainCodes(), tokenToLog);
+
+    // Export bootstrap credentials to file (Docker-only, if enabled)
+    bootstrapCredentialsFileExporter.exportIfEnabled(
+        globalAdminEnrollment, tokenToLog, initialGlobalAdminProperties.getUsername());
   }
 
   /**
