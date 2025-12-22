@@ -11,6 +11,7 @@
 package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.admin.config.AdminTokenCleanupProperties;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.slf4j.Logger;
@@ -88,8 +89,12 @@ public class AdminTokenCleanupService {
    * <p>The schedule is configurable via: {@code ezkey.admin.token.cleanup.schedule}
    *
    * <p>Default schedule: Every hour (0 0 * * * *)
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time.
    */
   @Scheduled(cron = "${ezkey.admin.token.cleanup.schedule:0 0 * * * *}")
+  @SchedulerLock(name = "ADMIN_TOKEN_CLEANUP", lockAtMostFor = "PT10M")
   @Transactional
   public void cleanupExpiredTokens() {
     if (!properties.isEnabled()) {

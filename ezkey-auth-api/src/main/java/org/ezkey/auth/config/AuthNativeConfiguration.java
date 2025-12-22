@@ -46,12 +46,12 @@ import org.springframework.context.annotation.ImportRuntimeHints;
  *
  * <p>This class uses Java-based configuration via {@link RuntimeHintsRegistrar} for all hints
  * supported by Spring AOT API (reflection, resources, serialization, proxies). However, some
- * GraalVM build options (like {@code --initialize-at-run-time}) cannot be configured via the
- * Spring AOT API and must be specified in {@code native-image.properties}. This is a limitation of
- * the Spring AOT API, not a design choice.
+ * GraalVM build options (like {@code --initialize-at-run-time}) cannot be configured via the Spring
+ * AOT API and must be specified in {@code native-image.properties}. This is a limitation of the
+ * Spring AOT API, not a design choice.
  *
- * <p>For GraalVM build options, see:
- * {@code src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/native-image.properties}
+ * <p>For GraalVM build options, see: {@code
+ * src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/native-image.properties}
  *
  * @since 2025
  */
@@ -344,7 +344,7 @@ public class AuthNativeConfiguration {
       }
 
       // SqlAstTreeLogger: Multi-layered approach for JBoss Logging generated classes
-      // 
+      //
       // Problem: JBoss Logging generates implementation classes (e.g., SqlAstTreeLogger_$logger)
       // at compile time. These classes may not be properly initialized in native images,
       // causing "implementation not found" errors at runtime.
@@ -358,7 +358,7 @@ public class AuthNativeConfiguration {
       // Note: Spring AOT RuntimeHints API does NOT support GraalVM build options like
       // --initialize-at-run-time. These must be configured in native-image.properties.
       // This is a limitation of the Spring AOT API, not a design choice.
-      
+
       // Try to register the generated implementation class if it exists
       hints
           .reflection() //
@@ -373,7 +373,7 @@ public class AuthNativeConfiguration {
                       MemberCategory.INVOKE_DECLARED_METHODS,
                       MemberCategory.INVOKE_PUBLIC_METHODS,
                       MemberCategory.DECLARED_FIELDS));
-      
+
       hints
           .proxies() //
           .registerJdkProxy(

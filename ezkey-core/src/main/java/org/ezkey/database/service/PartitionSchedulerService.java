@@ -16,6 +16,7 @@ import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -112,8 +113,12 @@ public class PartitionSchedulerService {
    *
    * <p>This job is idempotent - it checks if partitions exist before creating them, so it's safe to
    * run multiple times.
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time.
    */
   @Scheduled(cron = "${ezkey.database.partition.scheduler.cron:0 0 1 * * ?}")
+  @SchedulerLock(name = "DB_PARTITION_CREATION", lockAtMostFor = "PT10M")
   @Transactional
   public void createNextMonthPartitions() {
     try {

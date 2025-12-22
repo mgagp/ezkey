@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.service;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
@@ -96,6 +97,8 @@ public class AdminBootstrapService {
 
   private final QrCodeAsciiRenderer qrCodeAsciiRenderer;
 
+  private final LockingTaskExecutor lockingTaskExecutor;
+
   public AdminBootstrapService(
       IntegrationRepository integrationRepository,
       EnrollmentRepository enrollmentRepository,
@@ -106,7 +109,8 @@ public class AdminBootstrapService {
       OrganizationProperties organizationProperties,
       InitialGlobalAdminProperties initialGlobalAdminProperties,
       AdminRecoveryService recoveryService,
-      QrCodeAsciiRenderer qrCodeAsciiRenderer) {
+      QrCodeAsciiRenderer qrCodeAsciiRenderer,
+      LockingTaskExecutor lockingTaskExecutor) {
     this.integrationRepository = integrationRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.adminRepository = adminRepository;
@@ -117,6 +121,7 @@ public class AdminBootstrapService {
     this.initialGlobalAdminProperties = initialGlobalAdminProperties;
     this.recoveryService = recoveryService;
     this.qrCodeAsciiRenderer = qrCodeAsciiRenderer;
+    this.lockingTaskExecutor = lockingTaskExecutor;
   }
 
   /**
@@ -124,9 +129,11 @@ public class AdminBootstrapService {
    *
    * <p>This method is automatically triggered when the application is ready. It creates System
    * Integration and optionally Global Admin Enrollment if they don't already exist.
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
+   * HA deployments.
    */
   @EventListener(ApplicationReadyEvent.class)
-  @Transactional
   public void bootstrapAdminMfa() {
     if (!mfaProperties.getBootstrap().isEnabled()) {
       logger.info("Admin MFA bootstrap disabled by configuration");
@@ -135,6 +142,24 @@ public class AdminBootstrapService {
 
     logger.info("🚀 Starting admin MFA bootstrap...");
 
+    // Use distributed lock to ensure only one instance performs bootstrap in HA
+    boolean executed =
+        lockingTaskExecutor.executeWithLock(
+            "ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doBootstrapAdminMfa);
+
+    if (!executed) {
+      logger.info("Skipping admin MFA bootstrap - another instance is handling bootstrap");
+    }
+  }
+
+  /**
+   * Perform the actual admin MFA bootstrap (called within distributed lock).
+   *
+   * <p>This method creates System Integration and optionally Global Admin Enrollment if they don't
+   * already exist.
+   */
+  @Transactional
+  private void doBootstrapAdminMfa() {
     try {
       // 1. Check if System Integration already exists
       Optional<Integration> existingIntegration =

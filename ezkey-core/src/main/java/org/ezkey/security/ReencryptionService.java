@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -117,8 +118,12 @@ public class ReencryptionService {
    *   <li>Respects max-duration-minutes timeout
    *   <li>Creates new batches for old keys that need re-encryption
    * </ul>
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time. Lock duration set to exceed max-duration-minutes (default 60 min) for safety.
    */
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
+  @SchedulerLock(name = "REENCRYPTION", lockAtMostFor = "PT2H")
   @Transactional
   public void processReencryptionBatches() {
     if (!properties.getReencryption().isEnabled()) {

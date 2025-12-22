@@ -4,19 +4,19 @@ overview: Introduce ShedLock to prevent scheduled job conflicts when multiple Ad
 todos:
   - id: deps
     content: Add ShedLock dependencies to ezkey-core/pom.xml (align version with docs/HA-JOB-COORDINATION.md).
-    status: pending
+    status: completed
   - id: flyway
     content: Add Flyway migration V26__create_shedlock_table.sql in ezkey-core/db/migration.
-    status: pending
+    status: completed
   - id: config
     content: Add ShedLock configuration (EnableSchedulerLock + LockProvider usingDbTime) in ezkey-admin-api config package.
-    status: pending
+    status: completed
   - id: annotate
     content: Add @SchedulerLock to all Admin API scheduled jobs (key rotation, re-encryption, audit cleanup, partition creation, admin token cleanup).
-    status: pending
+    status: completed
   - id: optional-ops
     content: Optionally add a HealthIndicator / visibility for active locks.
-    status: pending
+    status: completed
 ---
 
 # Add distributed locking to scheduled jobs (ShedLock)
@@ -80,5 +80,3 @@ This matches the existing project decision already documented in `docs/HA-JOB-CO
 5. **(Optional) Add lightweight operational visibility**
 
 - Optionally expose current locks via logs or an actuator `HealthIndicator` (as shown in `docs/HA-JOB-COORDINATION.md`).
-
-## Notes / constraints

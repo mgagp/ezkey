@@ -11,6 +11,7 @@
 
 package org.ezkey.admin.service;
 
+import java.time.Duration;
 import java.util.Optional;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -56,12 +57,15 @@ public class InitialGlobalAdminService {
 
   private final EzkeyAdminRepository adminRepository;
   private final InitialGlobalAdminProperties initialGlobalAdminProperties;
+  private final LockingTaskExecutor lockingTaskExecutor;
 
   public InitialGlobalAdminService(
       EzkeyAdminRepository adminRepository,
-      InitialGlobalAdminProperties initialGlobalAdminProperties) {
+      InitialGlobalAdminProperties initialGlobalAdminProperties,
+      LockingTaskExecutor lockingTaskExecutor) {
     this.adminRepository = adminRepository;
     this.initialGlobalAdminProperties = initialGlobalAdminProperties;
+    this.lockingTaskExecutor = lockingTaskExecutor;
   }
 
   /**
@@ -69,13 +73,33 @@ public class InitialGlobalAdminService {
    *
    * <p>This method validates the configuration and ensures the initial global admin exists with SOC
    * 2 compliant credentials. It runs before the MFA bootstrap service.
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
+   * HA deployments.
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(1) // Run before AdminBootstrapService (which has default Order)
-  @Transactional
   public void initializeGlobalAdmin() {
     logger.info("🔧 Initializing initial global administrator...");
 
+    // Use distributed lock to ensure only one instance performs bootstrap in HA
+    boolean executed =
+        lockingTaskExecutor.executeWithLock(
+            "ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doInitializeGlobalAdmin);
+
+    if (!executed) {
+      logger.info("Skipping global admin initialization - another instance is handling bootstrap");
+    }
+  }
+
+  /**
+   * Perform the actual global admin initialization (called within distributed lock).
+   *
+   * <p>This method validates the configuration and ensures the initial global admin exists with SOC
+   * 2 compliant credentials.
+   */
+  @Transactional
+  private void doInitializeGlobalAdmin() {
     // Validate configuration
     validateConfiguration();
 

@@ -10,6 +10,7 @@
 
 package org.ezkey.audit.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,8 +66,12 @@ public class AuditLogCleanupScheduler {
    *
    * <p>Runs daily at 2 AM by default (configurable via ezkey.audit.cleanup.cron). Deletes audit
    * logs older than the retention period.
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time.
    */
   @Scheduled(cron = "${ezkey.audit.cleanup.cron:0 0 2 * * ?}")
+  @SchedulerLock(name = "AUDIT_CLEANUP", lockAtMostFor = "PT10M")
   public void cleanupOldAuditLogs() {
     try {
       logger.info("Starting audit log cleanup (retention: {} days)", retentionDays);

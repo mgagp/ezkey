@@ -13,6 +13,7 @@ package org.ezkey.security;
 import jakarta.annotation.PostConstruct;
 import java.time.OffsetDateTime;
 import java.util.List;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -160,8 +161,12 @@ public class KeyRotationService {
    *
    * <p><b>Distributed Synchronization:</b> This ensures all instances see the key as PRIMARY at
    * approximately the same time, after the synchronization window has expired.
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time.
    */
   @Scheduled(fixedRateString = "${ezkey.encryption.rotation.promotion-check-interval-seconds:5}000")
+  @SchedulerLock(name = "KEY_PROMOTION", lockAtMostFor = "PT1M", lockAtLeastFor = "PT4S")
   @Transactional
   public void checkAndPromotePendingKeys() {
     if (!properties.isEnabled()) {
@@ -325,8 +330,12 @@ public class KeyRotationService {
    *   <li>Performs rotation if needed (creates PENDING key)
    *   <li>Cleans up old keys if configured
    * </ul>
+   *
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance executes this job at
+   * a time.
    */
   @Scheduled(cron = "${ezkey.encryption.rotation.schedule:0 0 2 * * ?}")
+  @SchedulerLock(name = "KEY_ROTATION", lockAtMostFor = "PT10M", lockAtLeastFor = "PT0S")
   @Transactional
   public void checkAndRotate() {
     if (!properties.getRotation().isEnabled()) {
