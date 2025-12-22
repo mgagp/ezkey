@@ -102,9 +102,11 @@ Once started, you can access:
 - **Crypto API**: http://localhost:9090
 - **Demo Device**: http://localhost:8083
 
-**HAProxy Statistics:**
-- **Admin API LB**: http://localhost:9081/stats
-- **Auth API LB**: http://localhost:8081/stats
+**HAProxy Statistics Pages:**
+- **Admin API Load Balancer Stats**: http://localhost:9081/stats
+- **Auth API Load Balancer Stats**: http://localhost:8081/stats
+
+See the [HAProxy Statistics](#haproxy-statistics) section below for detailed information about these monitoring pages.
 
 **Direct Instance Access** (for debugging):
 - Admin API Instance 1: `docker exec ezkey-admin-api-1 curl http://localhost:9080/actuator/health`
@@ -249,17 +251,51 @@ docker ps | grep ezkey-admin-api
 
 You should see both `ezkey-admin-api-1` and `ezkey-admin-api-2` running.
 
-### Check HAProxy Statistics
+### HAProxy Statistics
 
-Open in browser:
-- Admin API LB: http://localhost:9081/stats
-- Auth API LB: http://localhost:8081/stats
+HAProxy provides real-time statistics pages for monitoring load balancer health and performance. These pages are accessible on dedicated ports and provide comprehensive visibility into the HA setup.
 
-The stats page shows:
-- **Backend servers**: admin-api-1, admin-api-2 (or auth-api-1, auth-api-2)
-- **Status**: UP/DOWN for each backend
-- **Sessions**: Request distribution across instances
-- **Health checks**: Last check time and status
+#### Access URLs
+
+- **Admin API Load Balancer**: http://localhost:9081/stats
+- **Auth API Load Balancer**: http://localhost:8081/stats
+
+#### What You'll See
+
+The stats pages display:
+
+**Backend Servers:**
+- List of all backend instances (admin-api-1, admin-api-2 or auth-api-1, auth-api-2)
+- Current status: **UP** (healthy) or **DOWN** (unhealthy)
+- Health check status and last check time
+
+**Request Distribution:**
+- **Sessions**: Number of active sessions per backend
+- **Total requests**: Request count distributed across instances
+- **Bytes**: Data transferred per backend
+
+**Performance Metrics:**
+- **Response time**: Average response time per backend
+- **Last check**: Time since last health check
+- **Check status**: Success/failure of health checks
+
+**Error Tracking:**
+- **4xx errors**: Client errors (bad requests, not found, etc.)
+- **5xx errors**: Server errors (internal errors, timeouts, etc.)
+- **Connection errors**: Failed connection attempts
+
+**Load Balancing:**
+- **Algorithm**: Round-robin (requests distributed evenly)
+- **Session distribution**: Visual representation of load distribution
+
+#### Using the Stats Pages
+
+1. **Monitor Health**: Check that all backend servers show **UP** status
+2. **Verify Load Balancing**: Make multiple requests and watch the session count increase evenly across instances
+3. **Detect Issues**: Look for error counts or DOWN status indicating problems
+4. **Performance Analysis**: Monitor response times to identify slow backends
+
+**Note**: The stats pages are read-only in this configuration. For production, consider adding authentication (`stats auth`) and admin actions (`stats admin`) for server management.
 
 ### Verify Load Balancing
 
@@ -382,8 +418,9 @@ docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
    ```
 
 2. **Check HAProxy stats:**
-   - Open http://localhost:9081/stats
+   - Open http://localhost:9081/stats (Admin API) or http://localhost:8081/stats (Auth API)
    - Verify both backend servers show "UP" status
+   - Check for any error counts or connection issues
 
 3. **Check backend health:**
    ```bash
@@ -489,5 +526,7 @@ For production HA deployment, consider:
 For issues or questions:
 - Check the troubleshooting section above
 - Review service logs: `./docker/manage-ha.sh logs`
-- Check HAProxy stats: http://localhost:9081/stats
+- Check HAProxy stats: 
+  - Admin API: http://localhost:9081/stats
+  - Auth API: http://localhost:8081/stats
 - Review the main project documentation

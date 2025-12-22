@@ -153,4 +153,3 @@ flowchart TD
 ## Implementation todos
 
 - **admin-bootstrap-export**: Add Docker-only file export of bootstrap credentials (no recovery codes) in Admin API; make it configurable and idempotent.
-- **docker-bootstrap-init-service**: Add `bootstrap-init` service + image + script; mount `bootstrap-artifacts` and `demo-device-data`; perform enrollment bind+verify and demo-device seeding (no pre-created admin token in Phase 1).
