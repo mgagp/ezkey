@@ -11,7 +11,10 @@
 package org.ezkey.tests.security.scheduler;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,8 +51,6 @@ public class ShedLockTestHelper {
   private static final String DOCKER_CONTAINER = "ezkey-postgres-ha";
   private static final String DATABASE = "ezkey_db";
   private static final String USER = "postgres";
-  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
 
   /**
    * Represents a ShedLock entry from the database.
@@ -334,21 +335,61 @@ public class ShedLockTestHelper {
    * @return Parsed OffsetDateTime
    */
   private OffsetDateTime parseTimestamp(String timestampStr) {
+    if (timestampStr == null || timestampStr.isBlank()) {
+      return OffsetDateTime.now();
+    }
+
+    String raw = timestampStr.trim();
+
+    /*
+     * Why do we normalize/accept multiple formats here?
+     *
+     * These timestamps come from `psql` output (via `docker exec ... psql -t -A -c "SELECT ..."`),
+     * not from the Java APIs. Postgres stores TIMESTAMPTZ consistently, but its *text rendering*
+     * (and `psql` formatting) is not guaranteed to be strict ISO-8601.
+     *
+     * Examples observed in practice:
+     * - "2025-12-22 16:04:50.14368+00"   (space separator, variable fractional precision, "+00")
+     * - "2025-12-22 16:04:50.143680+00" (6 digits)
+     * - "2025-12-22T16:04:50.14368Z"    (already ISO)
+     *
+     * So we normalize the string into an ISO_OFFSET_DATE_TIME-compatible form before parsing.
+     * This keeps tests focused on lock semantics (instants/ordering) rather than `psql` formatting.
+     */
+
+    // Normalize common PostgreSQL formats to ISO_OFFSET_DATE_TIME.
+    // Examples from psql output:
+    // - "2025-12-22 16:04:50.14368+00"      -> "2025-12-22T16:04:50.14368+00:00"
+    // - "2025-12-22 16:04:50.143680+00"    -> "2025-12-22T16:04:50.143680+00:00"
+    // - "2025-12-22 16:04:50+00"           -> "2025-12-22T16:04:50+00:00"
+    // - "2025-12-22T16:04:50.14368Z"       -> unchanged
+    String normalized = raw;
+    if (normalized.length() >= 19 && normalized.charAt(10) == ' ') {
+      normalized = normalized.substring(0, 10) + "T" + normalized.substring(11);
+    }
+
+    // Convert timezone offsets like +00 or -05 to +00:00 / -05:00 for ISO parsing.
+    normalized = normalized.replaceAll("([+-]\\d{2})$", "$1:00");
+    normalized = normalized.replaceAll("([+-]\\d{2})(\\d{2})$", "$1:$2");
+
     try {
-      // PostgreSQL TIMESTAMPTZ format: "2025-12-21 20:00:00.123456+00"
-      // Try ISO format first
-      return OffsetDateTime.parse(timestampStr);
-    } catch (Exception e) {
-      try {
-        // Try parsing with PostgreSQL format
-        // Remove timezone if present and parse as UTC
-        String cleaned = timestampStr.replaceAll("\\+\\d{2}$", "").trim();
-        return java.time.LocalDateTime.parse(cleaned, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS"))
-            .atOffset(java.time.ZoneOffset.UTC);
-      } catch (Exception e2) {
-        log.warn("Failed to parse timestamp: {}", timestampStr, e2);
-        return OffsetDateTime.now(); // Fallback
-      }
+      return OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    } catch (Exception ignored) {
+      // Fall back to a tolerant parser (treat as UTC if no offset present).
+    }
+
+    try {
+      DateTimeFormatter localTolerant =
+          new DateTimeFormatterBuilder()
+              .appendPattern("yyyy-MM-dd['T'][' ']HH:mm:ss")
+              .optionalStart()
+              .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, true)
+              .optionalEnd()
+              .toFormatter();
+      return java.time.LocalDateTime.parse(raw, localTolerant).atOffset(ZoneOffset.UTC);
+    } catch (Exception e2) {
+      log.warn("Failed to parse timestamp: {}", timestampStr, e2);
+      return OffsetDateTime.now(); // Fallback
     }
   }
 
