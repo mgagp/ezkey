@@ -92,8 +92,7 @@ public class DockerStackConfig {
   /**
    * Verifies that all Docker stack services are healthy and accessible.
    *
-   * <p>Checks the health endpoint of each service and throws an exception if any service is
-   * unavailable.
+   * <p>Checks the health endpoint of each service. Admin API, Auth API, and Crypto API are required.
    *
    * @throws IllegalStateException if any service is not healthy
    */
@@ -153,6 +152,54 @@ public class DockerStackConfig {
               "%s at %s is not accessible: %s. Is the Docker stack running?",
               serviceName, baseUrl, e.getMessage()),
           e);
+    }
+  }
+
+  /**
+   * Verifies a single service is healthy, but logs a warning instead of throwing if unavailable.
+   *
+   * <p>This is used for optional services like Crypto API that may not be present in all stack
+   * configurations (e.g., HA stack).
+   *
+   * @param baseUrl the service base URL
+   * @param serviceName the service name for logging
+   */
+  private void verifyServiceHealthyOptional(String baseUrl, String serviceName) {
+    try {
+      // Save current RestAssured settings to restore later
+      String savedBaseUri = RestAssured.baseURI;
+      String savedBasePath = RestAssured.basePath;
+
+      try {
+        // Set baseURI and basePath before using RestAssured (required by RestAssured 5.x)
+        RestAssured.baseURI = baseUrl;
+        RestAssured.basePath = "";
+
+        Response response =
+            RestAssured.given()
+                .contentType(ContentType.JSON)
+                .when()
+                .get("/actuator/health")
+                .then()
+                .extract()
+                .response();
+
+        if (response.getStatusCode() == 200) {
+          log.debug("{} is healthy", serviceName);
+        } else {
+          log.warn(
+              "{} at {} returned status {}. Service may not be available in this stack configuration.",
+              serviceName, baseUrl, response.getStatusCode());
+        }
+      } finally {
+        // Restore original RestAssured settings
+        RestAssured.baseURI = savedBaseUri;
+        RestAssured.basePath = savedBasePath;
+      }
+    } catch (Exception e) {
+      log.warn(
+          "{} at {} is not accessible: {}. Service may not be available in this stack configuration (e.g., HA stack).",
+          serviceName, baseUrl, e.getMessage());
     }
   }
 }

@@ -9,14 +9,16 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--native]
+# Usage: ./clean-start.sh [--native] [--ha]
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
+#   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
 #   - Maven installed
 #   - Scripts must be run from ezkey-tests directory
 #   - If using --native: Native images must be built separately before running
+#   - If using --ha: HA stack will be started (for testing ShedLock distributed locking)
 
 set -e
 
@@ -25,6 +27,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCKER_DIR="${PROJECT_ROOT}/docker"
 TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
 NATIVE_MODE=""
+HA_MODE=""
 
 # Parse flags
 for arg in "$@"; do
@@ -32,13 +35,23 @@ for arg in "$@"; do
         --native)
             NATIVE_MODE="--native"
             ;;
+        --ha)
+            HA_MODE="--ha"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native]"
+            echo "Usage: ./clean-start.sh [--native] [--ha]"
             exit 1
             ;;
     esac
 done
+
+# Validate incompatible options
+if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
+    echo "❌ Error: --native and --ha options are incompatible"
+    echo "   HA mode currently only supports regular Spring Boot builds"
+    exit 1
+fi
 
 echo "=========================================="
 echo "  Ezkey Tests - Clean Start"
@@ -46,7 +59,10 @@ echo "=========================================="
 echo ""
 
 # Step 1: Stop Docker Compose stack including volumes
-if [ -n "$NATIVE_MODE" ]; then
+if [ -n "$HA_MODE" ]; then
+    echo "Step 1/7: Stopping Docker Compose HA stack (including volumes)..."
+    COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
+elif [ -n "$NATIVE_MODE" ]; then
     echo "Step 1/7: Stopping Docker Compose stack (including volumes) - Native mode..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
 else
@@ -74,13 +90,29 @@ else
     echo "  ⚠️  Warning: ${COMPOSE_FILE} not found"
 fi
 
-# Also try to stop the other compose file if it exists (for cleanup)
-OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
-if [ -n "$NATIVE_MODE" ]; then
-    OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
-fi
-if [ -f "${OTHER_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${OTHER_COMPOSE_FILE}" ]; then
-    ${DOCKER_COMPOSE} -f "${OTHER_COMPOSE_FILE}" down -v 2>/dev/null || true
+# Also try to stop the other compose files if they exist (for cleanup)
+if [ -n "$HA_MODE" ]; then
+    # Stop standard and native stacks if running
+    for other_file in "${DOCKER_DIR}/docker-compose.yml" "${DOCKER_DIR}/docker-compose.native.yml"; do
+        if [ -f "${other_file}" ] && [ "${COMPOSE_FILE}" != "${other_file}" ]; then
+            ${DOCKER_COMPOSE} -f "${other_file}" down -v 2>/dev/null || true
+        fi
+    done
+else
+    # Stop HA stack if running
+    HA_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
+    if [ -f "${HA_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${HA_COMPOSE_FILE}" ]; then
+        ${DOCKER_COMPOSE} -f "${HA_COMPOSE_FILE}" down -v 2>/dev/null || true
+    fi
+    # Stop other mode if running
+    if [ -n "$NATIVE_MODE" ]; then
+        OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+    else
+        OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
+    fi
+    if [ -f "${OTHER_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${OTHER_COMPOSE_FILE}" ]; then
+        ${DOCKER_COMPOSE} -f "${OTHER_COMPOSE_FILE}" down -v 2>/dev/null || true
+    fi
 fi
 
 echo ""
@@ -104,7 +136,9 @@ fi
 echo ""
 
 # Step 3: Generate master encryption key
-if [ -n "$NATIVE_MODE" ]; then
+if [ -n "$HA_MODE" ]; then
+    echo "Step 3/7: Generating master encryption key (HA mode)..."
+elif [ -n "$NATIVE_MODE" ]; then
     echo "Step 3/7: Generating master encryption key (Native mode)..."
 else
     echo "Step 3/7: Generating master encryption key..."
@@ -112,7 +146,10 @@ fi
 cd "${PROJECT_ROOT}"
 
 if [ -f "${DOCKER_DIR}/generate-encryption-keys.sh" ]; then
-    if [ -n "$NATIVE_MODE" ]; then
+    if [ -n "$HA_MODE" ]; then
+        # For HA mode, use HA volume name (shared between instances)
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --ha
+    elif [ -n "$NATIVE_MODE" ]; then
         bash "${DOCKER_DIR}/generate-encryption-keys.sh" --native
     else
         bash "${DOCKER_DIR}/generate-encryption-keys.sh"
@@ -126,14 +163,27 @@ fi
 echo ""
 
 # Step 4: Start Docker Compose stack with test profiles
-if [ -n "$NATIVE_MODE" ]; then
+if [ -n "$HA_MODE" ]; then
+    echo "Step 4/7: Starting Docker Compose HA stack with test profiles (docker,docker-test)..."
+    echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
+elif [ -n "$NATIVE_MODE" ]; then
     echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test) - Native mode..."
 else
     echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test)..."
 fi
 cd "${PROJECT_ROOT}"
 
-if [ -f "${DOCKER_DIR}/start.sh" ]; then
+if [ -n "$HA_MODE" ]; then
+    # Use HA start script
+    if [ -f "${DOCKER_DIR}/start-ha.sh" ]; then
+        echo "  Starting HA stack with SPRING_PROFILES_ACTIVE=docker,docker-test..."
+        SPRING_PROFILES_ACTIVE=docker,docker-test bash "${DOCKER_DIR}/start-ha.sh"
+        echo "  ✅ Docker HA stack started"
+    else
+        echo "  ❌ Error: start-ha.sh not found at ${DOCKER_DIR}/start-ha.sh"
+        exit 1
+    fi
+elif [ -f "${DOCKER_DIR}/start.sh" ]; then
     if [ -n "$NATIVE_MODE" ]; then
         echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test,native..."
         echo "  Using native compiled images..."
@@ -208,7 +258,13 @@ echo "  ✅ Clean Start Complete!"
 echo "=========================================="
 echo ""
 echo "📋 Stack Status:"
-if [ -n "$NATIVE_MODE" ]; then
+if [ -n "$HA_MODE" ]; then
+    echo "  - Docker stack: Running HA mode with test profiles (docker,docker-test)"
+    echo "  - Instances: 2x admin-api, 2x auth-api behind HAProxy load balancers"
+    echo "  - Admin API: http://localhost:9080 (via HAProxy)"
+    echo "  - Auth API: http://localhost:8080 (via HAProxy)"
+    echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8081/stats (Auth)"
+elif [ -n "$NATIVE_MODE" ]; then
     echo "  - Docker stack: Running with test profiles (NATIVE mode)"
     echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
 else
@@ -253,11 +309,21 @@ if [ -n "$NATIVE_MODE" ]; then
     echo ""
 fi
 echo "💡 Useful Commands:"
-echo "  - View logs: cd ../docker && ./manage.sh logs"
-echo "  - Stop stack: cd ../docker && ./manage.sh stop"
-echo "  - View status: cd ../docker && ./manage.sh status"
-if [ -z "$NATIVE_MODE" ]; then
-    echo "  - Start with native images: ./clean-start.sh --native"
+if [ -n "$HA_MODE" ]; then
+    echo "  - View logs: cd ../docker && ./manage-ha.sh logs"
+    echo "  - View instance logs: cd ../docker && ./manage-ha.sh logs admin-api-1"
+    echo "  - Stop stack: cd ../docker && ./manage-ha.sh stop"
+    echo "  - View status: cd ../docker && ./manage-ha.sh status"
+    echo "  - Check HAProxy stats: curl http://localhost:9081/stats"
+    echo "  - Start standard stack: ./clean-start.sh"
+else
+    echo "  - View logs: cd ../docker && ./manage.sh logs"
+    echo "  - Stop stack: cd ../docker && ./manage.sh stop"
+    echo "  - View status: cd ../docker && ./manage.sh status"
+    if [ -z "$NATIVE_MODE" ]; then
+        echo "  - Start with native images: ./clean-start.sh --native"
+        echo "  - Start with HA stack: ./clean-start.sh --ha"
+    fi
 fi
 echo ""
 

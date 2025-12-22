@@ -60,8 +60,11 @@ public class BootstrapCredentialsExtractor {
 
   private static final Logger log = LoggerFactory.getLogger(BootstrapCredentialsExtractor.class);
 
-  private static final String DOCKER_CONTAINER_NAME = "ezkey-admin-api";
+  private static final String DOCKER_CONTAINER_NAME_STANDARD = "ezkey-admin-api";
+  private static final String DOCKER_CONTAINER_NAME_HA_1 = "ezkey-admin-api-1";
+  private static final String DOCKER_CONTAINER_NAME_HA_2 = "ezkey-admin-api-2";
   private static final String CREDENTIALS_FILE_PATH = ".ezkey-test/bootstrap-credentials.json";
+  private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
 
   // Patterns for parsing logs
   private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
@@ -178,6 +181,251 @@ public class BootstrapCredentialsExtractor {
   }
 
   /**
+   * Detects which Admin API container to use based on environment (standard or HA mode).
+   *
+   * @return Container name to use for reading logs
+   * @throws IllegalStateException if no valid container is found
+   */
+  private String detectAdminApiContainer() throws IOException, InterruptedException {
+    // Check if HA mode containers exist
+    boolean haContainer1Exists = containerExists(DOCKER_CONTAINER_NAME_HA_1);
+    boolean haContainer2Exists = containerExists(DOCKER_CONTAINER_NAME_HA_2);
+
+    if (haContainer1Exists && haContainer2Exists) {
+      log.info("HA mode detected: Found containers {} and {}", DOCKER_CONTAINER_NAME_HA_1, DOCKER_CONTAINER_NAME_HA_2);
+      // Find which instance created the admin global
+      return findInstanceWithBootstrapLogs();
+    }
+
+    // Standard mode
+    if (containerExists(DOCKER_CONTAINER_NAME_STANDARD)) {
+      log.debug("Standard mode detected: Using container {}", DOCKER_CONTAINER_NAME_STANDARD);
+      return DOCKER_CONTAINER_NAME_STANDARD;
+    }
+
+    throw new IllegalStateException(
+        "No Admin API container found. Expected one of: "
+            + DOCKER_CONTAINER_NAME_STANDARD
+            + ", "
+            + DOCKER_CONTAINER_NAME_HA_1
+            + ", or "
+            + DOCKER_CONTAINER_NAME_HA_2);
+  }
+
+  /**
+   * Checks if a Docker container exists.
+   *
+   * @param containerName Container name to check
+   * @return true if container exists, false otherwise
+   */
+  private boolean containerExists(String containerName) {
+    try {
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "inspect", containerName);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+
+      // Consume output to avoid blocking
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        while (reader.readLine() != null) {
+          // Consume output
+        }
+      }
+
+      int exitCode = process.waitFor();
+      return exitCode == 0;
+    } catch (Exception e) {
+      log.debug("Container {} does not exist: {}", containerName, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Finds which HA instance created the bootstrap credentials by checking logs or ShedLock table.
+   *
+   * @return Container name of the instance that created the admin
+   * @throws IllegalStateException if instance cannot be identified
+   */
+  private String findInstanceWithBootstrapLogs() throws IOException, InterruptedException {
+    // Strategy 1: Try to query ShedLock table to find which instance holds/held the lock
+    String instanceFromShedLock = findInstanceFromShedLock();
+    if (instanceFromShedLock != null) {
+      log.info("Found bootstrap instance hint from ShedLock: {}", instanceFromShedLock);
+
+      // Validate the hint: the enrollment banner must exist in logs, otherwise fall back.
+      try {
+        String logs = readDockerLogs(instanceFromShedLock);
+        if (logs.contains("GLOBAL ADMIN PASSWORDLESS ENROLLMENT")) {
+          log.info("Validated bootstrap banner present in logs of: {}", instanceFromShedLock);
+          return instanceFromShedLock;
+        }
+        log.warn(
+            "ShedLock-selected instance '{}' does not contain bootstrap credentials banner. Will scan both instances.",
+            instanceFromShedLock);
+      } catch (Exception e) {
+        log.warn(
+            "Failed to read logs from ShedLock-selected instance '{}': {}. Will scan both instances.",
+            instanceFromShedLock,
+            e.getMessage());
+      }
+    }
+
+    // Strategy 2: Read logs from both instances and find the one with bootstrap credentials
+    log.info("ShedLock query failed or returned no result, checking logs of both instances...");
+    for (String container : new String[] {DOCKER_CONTAINER_NAME_HA_1, DOCKER_CONTAINER_NAME_HA_2}) {
+      try {
+        String logs = readDockerLogs(container);
+        if (logs.contains("GLOBAL ADMIN PASSWORDLESS ENROLLMENT")) {
+          log.info("Found bootstrap credentials in logs of container: {}", container);
+          return container;
+        }
+      } catch (Exception e) {
+        log.debug("Failed to read logs from {}: {}", container, e.getMessage());
+      }
+    }
+
+    throw new IllegalStateException(
+        "Could not identify which HA instance created the admin global. "
+            + "Bootstrap credentials not found in logs of either "
+            + DOCKER_CONTAINER_NAME_HA_1
+            + " or "
+            + DOCKER_CONTAINER_NAME_HA_2);
+  }
+
+  /**
+   * Queries ShedLock table to find which instance holds or held the bootstrap lock.
+   *
+   * @return Container name (e.g., "ezkey-admin-api-1") or null if not found
+   */
+  private String findInstanceFromShedLock() {
+    try {
+      // Query ShedLock table for ADMIN_STARTUP_BOOTSTRAP lock
+      // locked_by column contains host identifier (often Docker container ID prefix)
+      ProcessBuilder processBuilder =
+          new ProcessBuilder(
+              "docker",
+              "exec",
+              "ezkey-postgres-ha",
+              "psql",
+              "-U",
+              "postgres",
+              "-d",
+              "ezkey_db",
+              "-t",
+              "-A",
+              "-c",
+              "SELECT locked_by FROM shedlock WHERE name = '"
+                  + SHEDLOCK_LOCK_NAME
+                  + "' ORDER BY locked_at DESC LIMIT 1;");
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          String trimmed = line.trim();
+          if (!trimmed.isEmpty()) {
+            output.append(trimmed);
+          }
+        }
+      }
+
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        log.debug("ShedLock query failed with exit code: {}", exitCode);
+        return null;
+      }
+
+      String lockedBy = output.toString().trim();
+      if (lockedBy.isEmpty()) {
+        log.debug("No lock found in ShedLock table for {}", SHEDLOCK_LOCK_NAME);
+        return null;
+      }
+
+      log.debug("Found locked_by in ShedLock: {}", lockedBy);
+
+      // Map locked_by to a specific container by comparing with Docker container ID prefix.
+      // In Docker, the container hostname is often the first 12 chars of the container ID.
+      String ha1IdPrefix = getDockerContainerIdPrefix(DOCKER_CONTAINER_NAME_HA_1);
+      String ha2IdPrefix = getDockerContainerIdPrefix(DOCKER_CONTAINER_NAME_HA_2);
+
+      if (ha1IdPrefix != null && lockedBy.equalsIgnoreCase(ha1IdPrefix)) {
+        return DOCKER_CONTAINER_NAME_HA_1;
+      }
+      if (ha2IdPrefix != null && lockedBy.equalsIgnoreCase(ha2IdPrefix)) {
+        return DOCKER_CONTAINER_NAME_HA_2;
+      }
+
+      // Some environments may store a different locked_by (e.g., custom instance id). Handle that too.
+      if (lockedBy.contains("admin-api-1")) {
+        return DOCKER_CONTAINER_NAME_HA_1;
+      }
+      if (lockedBy.contains("admin-api-2")) {
+        return DOCKER_CONTAINER_NAME_HA_2;
+      }
+
+      log.warn(
+          "Unexpected locked_by value: '{}' (admin-api-1 idPrefix='{}', admin-api-2 idPrefix='{}'); cannot map to container reliably.",
+          lockedBy,
+          ha1IdPrefix,
+          ha2IdPrefix);
+      return null;
+    } catch (Exception e) {
+      log.debug("Failed to query ShedLock table: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Returns the Docker container ID prefix (first 12 hex chars) for a given container.
+   *
+   * <p>This is used to map ShedLock's {@code locked_by} (often hostname == container ID prefix) to
+   * the correct HA instance.
+   *
+   * @param containerName Docker container name (e.g., {@code ezkey-admin-api-1})
+   * @return 12-char container ID prefix, or null if not available
+   */
+  private String getDockerContainerIdPrefix(String containerName) {
+    try {
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "inspect", "-f", "{{.Id}}", containerName);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          String trimmed = line.trim();
+          if (!trimmed.isEmpty()) {
+            output.append(trimmed);
+          }
+        }
+      }
+
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        log.debug("docker inspect failed for {} with exit code {}", containerName, exitCode);
+        return null;
+      }
+
+      String fullId = output.toString().trim();
+      if (fullId.length() < 12) {
+        return null;
+      }
+      return fullId.substring(0, 12);
+    } catch (Exception e) {
+      log.debug("Failed to inspect docker container id for {}: {}", containerName, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
    * Reads Docker container logs.
    *
    * @return Log content as string
@@ -185,9 +433,22 @@ public class BootstrapCredentialsExtractor {
    * @throws InterruptedException if process is interrupted
    */
   private String readDockerLogs() throws IOException, InterruptedException {
-    log.debug("Reading logs from Docker container: {}", DOCKER_CONTAINER_NAME);
+    String containerName = detectAdminApiContainer();
+    return readDockerLogs(containerName);
+  }
 
-    ProcessBuilder processBuilder = new ProcessBuilder("docker", "logs", DOCKER_CONTAINER_NAME);
+  /**
+   * Reads Docker container logs from a specific container.
+   *
+   * @param containerName Container name to read logs from
+   * @return Log content as string
+   * @throws IOException if log reading fails
+   * @throws InterruptedException if process is interrupted
+   */
+  private String readDockerLogs(String containerName) throws IOException, InterruptedException {
+    log.debug("Reading logs from Docker container: {}", containerName);
+
+    ProcessBuilder processBuilder = new ProcessBuilder("docker", "logs", containerName);
     processBuilder.redirectErrorStream(true);
 
     Process process = processBuilder.start();
@@ -203,7 +464,8 @@ public class BootstrapCredentialsExtractor {
 
     int exitCode = process.waitFor();
     if (exitCode != 0) {
-      throw new IOException("Docker logs command failed with exit code: " + exitCode);
+      throw new IOException(
+          "Docker logs command failed with exit code: " + exitCode + " for container: " + containerName);
     }
 
     return logs.toString();

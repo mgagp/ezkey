@@ -45,7 +45,8 @@ public class DemoDeviceEnrollmentWriter {
 
   private static final Logger log = LoggerFactory.getLogger(DemoDeviceEnrollmentWriter.class);
 
-  private static final String DEMO_DEVICE_CONTAINER = "ezkey-demo-device";
+  private static final String DEMO_DEVICE_CONTAINER_STANDARD = "ezkey-demo-device";
+  private static final String DEMO_DEVICE_CONTAINER_HA = "ezkey-demo-device-ha";
   private static final String ENROLLMENTS_DIR = "/app/data/enrollments";
 
   private final DockerStackConfig dockerStackConfig;
@@ -59,6 +60,47 @@ public class DemoDeviceEnrollmentWriter {
   public DemoDeviceEnrollmentWriter(DockerStackConfig dockerStackConfig) {
     this.dockerStackConfig = dockerStackConfig;
     this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+  }
+
+  /**
+   * Detects which demo-device container to use (standard vs HA).
+   *
+   * @return demo-device container name
+   */
+  private String detectDemoDeviceContainer() {
+    if (containerExists(DEMO_DEVICE_CONTAINER_HA)) {
+      log.debug("HA mode detected: Using demo-device container {}", DEMO_DEVICE_CONTAINER_HA);
+      return DEMO_DEVICE_CONTAINER_HA;
+    }
+    return DEMO_DEVICE_CONTAINER_STANDARD;
+  }
+
+  /**
+   * Checks if a Docker container exists.
+   *
+   * @param containerName container name to check
+   * @return true if container exists, false otherwise
+   */
+  private boolean containerExists(String containerName) {
+    try {
+      ProcessBuilder processBuilder = new ProcessBuilder("docker", "inspect", containerName);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+
+      // Consume output to avoid blocking.
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        while (reader.readLine() != null) {
+          // no-op
+        }
+      }
+
+      int exitCode = process.waitFor();
+      return exitCode == 0;
+    } catch (Exception e) {
+      log.debug("Container {} does not exist: {}", containerName, e.getMessage());
+      return false;
+    }
   }
 
   /**
@@ -225,11 +267,12 @@ public class DemoDeviceEnrollmentWriter {
    */
   private void ensureDirectoryExists() {
     try {
+      String containerName = detectDemoDeviceContainer();
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
               "exec",
-              DEMO_DEVICE_CONTAINER,
+              containerName,
               "sh",
               "-c",
               "su-exec spring:spring mkdir -p " + ENROLLMENTS_DIR);
@@ -248,7 +291,10 @@ public class DemoDeviceEnrollmentWriter {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.warn("Directory creation command returned exit code: {}", exitCode);
+        log.warn(
+            "Directory creation command returned exit code: {} (container: {})",
+            exitCode,
+            containerName);
         // Continue anyway - directory might already exist
       }
     } catch (Exception e) {
@@ -270,6 +316,7 @@ public class DemoDeviceEnrollmentWriter {
    */
   private void writeFileToContainer(String filePath, String jsonContent) {
     try {
+      String containerName = detectDemoDeviceContainer();
       // Use su-exec to write file as spring user (matching application runtime user)
       // Simple approach: use double quotes for outer shell, single quotes for inner shell path
       // Escape any single quotes in filePath by replacing ' with '\''
@@ -277,7 +324,7 @@ public class DemoDeviceEnrollmentWriter {
       String command = "su-exec spring:spring sh -c 'cat > " + escapedPath + "'";
       log.debug("Executing command: {}", command);
       ProcessBuilder processBuilder =
-          new ProcessBuilder("docker", "exec", "-i", DEMO_DEVICE_CONTAINER, "sh", "-c", command);
+          new ProcessBuilder("docker", "exec", "-i", containerName, "sh", "-c", command);
       processBuilder.redirectErrorStream(true);
 
       Process process = processBuilder.start();
@@ -300,7 +347,7 @@ public class DemoDeviceEnrollmentWriter {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.error("File write command failed with exit code: {}", exitCode);
+        log.error("File write command failed with exit code: {} (container: {})", exitCode, containerName);
         log.error("Output: {}", output);
         throw new IllegalStateException(
             "Failed to write file to demo-device container. Exit code: "

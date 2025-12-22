@@ -33,8 +33,14 @@ import org.slf4j.LoggerFactory;
  *   <li>Resetting state for test idempotence
  * </ul>
  *
- * <p><b>Database Configuration:</b> Assumes PostgreSQL container named "ezkey-postgres" with
- * database "ezkey_db" and user "postgres".
+ * <p><b>Database Configuration:</b> Automatically detects PostgreSQL container:
+ *
+ * <ul>
+ *   <li>HA mode: "ezkey-postgres-ha" (when HA containers are present)
+ *   <li>Standard mode: "ezkey-postgres" (default)
+ * </ul>
+ *
+ * <p>Database: "ezkey_db", User: "postgres"
  *
  * @since 2025
  */
@@ -42,9 +48,66 @@ public class DatabaseHelper {
 
   private static final Logger log = LoggerFactory.getLogger(DatabaseHelper.class);
 
-  private static final String DOCKER_CONTAINER = "ezkey-postgres";
+  private static final String DOCKER_CONTAINER_STANDARD = "ezkey-postgres";
+  private static final String DOCKER_CONTAINER_HA = "ezkey-postgres-ha";
   private static final String DATABASE = "ezkey_db";
   private static final String USER = "postgres";
+
+  /**
+   * Detects which PostgreSQL container to use based on environment (standard or HA mode).
+   *
+   * @return Container name to use for database operations
+   */
+  private String detectPostgresContainer() {
+    // Check if HA mode container exists
+    if (containerExists(DOCKER_CONTAINER_HA)) {
+      log.debug("HA mode detected: Using PostgreSQL container {}", DOCKER_CONTAINER_HA);
+      return DOCKER_CONTAINER_HA;
+    }
+
+    // Fallback to standard mode
+    if (containerExists(DOCKER_CONTAINER_STANDARD)) {
+      log.debug("Standard mode detected: Using PostgreSQL container {}", DOCKER_CONTAINER_STANDARD);
+      return DOCKER_CONTAINER_STANDARD;
+    }
+
+    // Default to standard (will fail with clear error if container doesn't exist)
+    log.warn(
+        "Neither {} nor {} found, defaulting to {}",
+        DOCKER_CONTAINER_HA,
+        DOCKER_CONTAINER_STANDARD,
+        DOCKER_CONTAINER_STANDARD);
+    return DOCKER_CONTAINER_STANDARD;
+  }
+
+  /**
+   * Checks if a Docker container exists.
+   *
+   * @param containerName Container name to check
+   * @return true if container exists, false otherwise
+   */
+  private boolean containerExists(String containerName) {
+    try {
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "inspect", containerName);
+      processBuilder.redirectErrorStream(true);
+      Process process = processBuilder.start();
+
+      // Consume output to avoid blocking
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        while (reader.readLine() != null) {
+          // Consume output
+        }
+      }
+
+      int exitCode = process.waitFor();
+      return exitCode == 0;
+    } catch (Exception e) {
+      log.debug("Container {} does not exist: {}", containerName, e.getMessage());
+      return false;
+    }
+  }
 
   /**
    * Executes a SQL query and returns the result as a list of strings (one per row).
@@ -56,11 +119,12 @@ public class DatabaseHelper {
     log.debug("Executing SQL query: {}", sqlQuery);
 
     try {
+      String containerName = detectPostgresContainer();
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
               "exec",
-              DOCKER_CONTAINER,
+              containerName,
               "psql",
               "-U",
               USER,
@@ -75,10 +139,12 @@ public class DatabaseHelper {
       Process process = processBuilder.start();
 
       List<String> results = new ArrayList<>();
+      StringBuilder output = new StringBuilder();
       try (BufferedReader reader =
           new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
+          output.append(line).append("\n");
           String trimmed = line.trim();
           if (!trimmed.isEmpty()) {
             results.add(trimmed);
@@ -88,7 +154,11 @@ public class DatabaseHelper {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.warn("SQL query failed with exit code: {}", exitCode);
+        log.warn(
+            "SQL query failed with exit code: {} (container: {}). Output:\n{}",
+            exitCode,
+            containerName,
+            output);
         return new ArrayList<>();
       }
 
@@ -121,11 +191,12 @@ public class DatabaseHelper {
     log.debug("Executing SQL update: {}", sqlStatement);
 
     try {
+      String containerName = detectPostgresContainer();
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
               "exec",
-              DOCKER_CONTAINER,
+              containerName,
               "psql",
               "-U",
               USER,
@@ -149,7 +220,11 @@ public class DatabaseHelper {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.error("SQL update failed with exit code: {}: {}", exitCode, output);
+        log.error(
+            "SQL update failed with exit code: {} (container: {}): {}",
+            exitCode,
+            containerName,
+            output);
         return false;
       }
 

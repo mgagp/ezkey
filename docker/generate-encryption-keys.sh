@@ -4,14 +4,16 @@
 # Generates master key file in Docker volume for Tink encryption.
 # This script should be run before first startup or when master key is missing.
 #
-# Usage: ./docker/generate-encryption-keys.sh [--native]
+# Usage: ./docker/generate-encryption-keys.sh [--native] [--ha]
 #   --native: Generate keys for native stack (uses ezkey-native_encryption-secrets-native volume)
+#   --ha: Generate keys for HA stack (uses ezkey-ha_encryption-secrets-ha volume)
 #
 # Security: Master key file is stored in persistent Docker volume with 600 permissions
 
 set -e
 
 NATIVE_MODE=""
+HA_MODE=""
 VOLUME_NAME="ezkey_encryption-secrets"
 
 # Parse flags
@@ -21,16 +23,28 @@ for arg in "$@"; do
             NATIVE_MODE="1"
             VOLUME_NAME="ezkey-native_encryption-secrets-native"
             ;;
+        --ha)
+            HA_MODE="1"
+            VOLUME_NAME="ezkey-ha_encryption-secrets-ha"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./generate-encryption-keys.sh [--native]"
+            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha]"
             exit 1
             ;;
     esac
 done
 
+# Validate incompatible options
+if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
+    echo "❌ Error: --native and --ha options are incompatible"
+    exit 1
+fi
+
 echo "🔑 Ezkey Encryption Keys Generator (Docker)"
-if [ -n "$NATIVE_MODE" ]; then
+if [ -n "$HA_MODE" ]; then
+    echo "   Mode: High Availability (HA)"
+elif [ -n "$NATIVE_MODE" ]; then
     echo "   Mode: Native"
 fi
 echo "=========================================="
