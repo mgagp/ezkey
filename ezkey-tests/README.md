@@ -531,7 +531,7 @@ String adminToken = bootstrapService.ensureAdminToken();
 
 **Solution**: 
 1. Ensure Docker stack is running: `docker ps`
-2. Check service health: `curl http://localhost:9080/actuator/health`
+2. Check service health (management port): `curl http://localhost:9081/actuator/health`
 3. Review Docker logs: `./docker/manage.sh logs`
 
 ### Tests Fail: 401 Unauthorized

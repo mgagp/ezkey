@@ -373,6 +373,12 @@ All services use the `docker` Spring profile by default, which loads configurati
 - Tests must handle rate limits (synchronization + retry mechanisms)
 - Validates production-like behavior
 
+**Optional: `docker-dev` (Local Docker Diagnostics)**
+- Enables a richer (but still reasonable) Actuator surface for local analysis
+- Intended for local Docker usage only (never expose publicly)
+- Recommended for profiling memory/heap via `/actuator/metrics` while iterating on native build tradeoffs
+ - Uses a dedicated management port: `8081` (not published by default)
+
 **Optional: `docker-test` (Test Mode)**
 - Rate limiting disabled or very permissive
 - Allows unrestricted testing in any order and frequency
@@ -391,6 +397,28 @@ $env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 ```
 
 **Note:** The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack with the desired profile.
+
+#### Using Local Docker Diagnostics Mode
+
+To start the stack with richer Actuator diagnostics for local development:
+
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker-dev ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
+```
+
+To access Actuator from the host on the separate management port (local only), use the compose override:
+
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker-dev docker compose -f docker/docker-compose.yml -f docker/docker-compose.docker-dev.yml up -d
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker-dev"; docker compose -f docker\docker-compose.yml -f docker\docker-compose.docker-dev.yml up -d
+```
 
 ## Data Persistence
 

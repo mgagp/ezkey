@@ -105,14 +105,14 @@ function show_status() {
     fi
     
     # Check Admin API
-    if curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Admin API: Healthy"
     else
         echo "  ❌ Admin API: Unhealthy"
     fi
     
     # Check Auth API
-    if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API: Healthy"
     else
         echo "  ❌ Auth API: Unhealthy"

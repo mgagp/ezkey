@@ -1,0 +1,20 @@
+# Local Docker diagnostics override.
+#
+# This file publishes the management/Actuator port to the host for local development only.
+# Do not use this override in staging or production.
+#
+# Usage:
+#   # Linux/Mac
+#   SPRING_PROFILES_ACTIVE=docker-dev docker compose -f docker/docker-compose.yml -f docker/docker-compose.docker-dev.yml up -d
+#
+#   # Windows PowerShell
+#   $env:SPRING_PROFILES_ACTIVE="docker-dev"; docker compose -f docker\docker-compose.yml -f docker\docker-compose.docker-dev.yml up -d
+
+services:
+  admin-api:
+    ports:
+      - "9081:9081"
+  auth-api:
+    ports:
+      - "8081:8081"
+

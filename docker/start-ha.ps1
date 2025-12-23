@@ -11,6 +11,24 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $ScriptDir "docker-compose.ha.yml"
+$DevOverrideFile = Join-Path $ScriptDir "docker-compose.ha.docker-dev.yml"
+
+# Ensure docker base profile is active when using docker-dev or docker-test.
+if ($env:SPRING_PROFILES_ACTIVE) {
+    if ($env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and -not $env:SPRING_PROFILES_ACTIVE.Contains("docker," ) -and -not ($env:SPRING_PROFILES_ACTIVE -eq "docker")) {
+        $env:SPRING_PROFILES_ACTIVE = "docker,$($env:SPRING_PROFILES_ACTIVE)"
+    }
+    if ($env:SPRING_PROFILES_ACTIVE.Contains("docker-test") -and -not $env:SPRING_PROFILES_ACTIVE.Contains("docker," ) -and -not ($env:SPRING_PROFILES_ACTIVE -eq "docker")) {
+        $env:SPRING_PROFILES_ACTIVE = "docker,$($env:SPRING_PROFILES_ACTIVE)"
+    }
+}
+
+# Auto-include the HA docker-dev compose override when docker-dev profile is active.
+$ComposeArgs = "-f `"$ComposeFile`""
+if ($env:SPRING_PROFILES_ACTIVE -and $env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and (Test-Path $DevOverrideFile)) {
+    $ComposeArgs = "$ComposeArgs -f `"$DevOverrideFile`""
+    Write-Host "🔧 HA Docker diagnostics override enabled: docker-compose.ha.docker-dev.yml"
+}
 
 # Set build flags based on parameters
 $BuildParallel = if ($Parallel) { "--parallel" } else { "" }
@@ -77,13 +95,13 @@ Set-Location (Split-Path -Parent $ScriptDir)
 
 try {
     if ($Parallel) {
-        $buildCmd = "$DockerCompose -f `"$ComposeFile`" build"
+        $buildCmd = "$DockerCompose $ComposeArgs build"
         if ($NoCache) { $buildCmd += " --no-cache" }
         $buildCmd += " --parallel"
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     } else {
-        $buildCmd = "$DockerCompose -f `"$ComposeFile`" build"
+        $buildCmd = "$DockerCompose $ComposeArgs build"
         if ($NoCache) { $buildCmd += " --no-cache" }
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
@@ -102,7 +120,7 @@ Write-Host "========================================"
 Write-Host ""
 Write-Host "🚀 Starting HA services..."
 try {
-    Invoke-Expression "$DockerCompose -f `"$ComposeFile`" up -d"
+    Invoke-Expression "$DockerCompose $ComposeArgs up -d"
     if ($LASTEXITCODE -ne 0) { throw "Start failed" }
 } catch {
     Write-Host "❌ Error: Failed to start services" -ForegroundColor Red
@@ -118,14 +136,14 @@ $timeout = 60
 $elapsed = 0
 while ($true) {
     try {
-        Invoke-Expression "$DockerCompose -f `"$ComposeFile`" exec -T postgres pg_isready -U postgres" | Out-Null
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T postgres pg_isready -U postgres" | Out-Null
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         # Continue waiting
     }
     if ($elapsed -ge $timeout) {
         Write-Host "❌ Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
-        Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs postgres"
+        Invoke-Expression "$DockerCompose $ComposeArgs logs postgres"
         exit 1
     }
     Start-Sleep -Seconds 2
@@ -138,45 +156,79 @@ Write-Host "  - Waiting for database migrations..."
 Start-Sleep -Seconds 30
 Write-Host "  ✅ Database migrations completed"
 
-# Wait for Admin API via HAProxy
-Write-Host "  - Waiting for Admin API (via HAProxy)..."
+# Wait for Admin API instances (direct instance Actuator on management port)
+Write-Host "  - Waiting for Admin API instances..."
 $timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:9080/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-        if ($response.StatusCode -eq 200) { break }
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T admin-api-1 curl -sf http://localhost:9081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Admin API (via HAProxy) did not become healthy within $timeout seconds" -ForegroundColor Red
-            Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs haproxy-admin"
+            Write-Host "❌ Error: Admin API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api-1"
             exit 1
         }
         Start-Sleep -Seconds 2
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Admin API is healthy (via HAProxy)"
+Write-Host "  ✅ Admin API Instance 1 is healthy"
 
-# Wait for Auth API via HAProxy
-Write-Host "  - Waiting for Auth API (via HAProxy)..."
-$timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:8080/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-        if ($response.StatusCode -eq 200) { break }
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T admin-api-2 curl -sf http://localhost:9081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Auth API (via HAProxy) did not become healthy within $timeout seconds" -ForegroundColor Red
-            Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs haproxy-auth"
+            Write-Host "❌ Error: Admin API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api-2"
             exit 1
         }
         Start-Sleep -Seconds 2
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Auth API is healthy (via HAProxy)"
+Write-Host "  ✅ Admin API Instance 2 is healthy"
+
+# Wait for Auth API instances (direct instance Actuator on management port)
+Write-Host "  - Waiting for Auth API instances..."
+$timeout = 120
+$elapsed = 0
+while ($true) {
+    try {
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
+    } catch {
+        if ($elapsed -ge $timeout) {
+            Write-Host "❌ Error: Auth API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api-1"
+            exit 1
+        }
+        Start-Sleep -Seconds 2
+        $elapsed += 2
+    }
+}
+Write-Host "  ✅ Auth API Instance 1 is healthy"
+
+$elapsed = 0
+while ($true) {
+    try {
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
+    } catch {
+        if ($elapsed -ge $timeout) {
+            Write-Host "❌ Error: Auth API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api-2"
+            exit 1
+        }
+        Start-Sleep -Seconds 2
+        $elapsed += 2
+    }
+}
+Write-Host "  ✅ Auth API Instance 2 is healthy"
 
 Write-Host ""
 Write-Host "=========================================="

@@ -35,6 +35,29 @@ The Ezkey Docker stack supports two testing modes, allowing you to choose betwee
 
 ---
 
+### 2. Local Docker Diagnostics Mode (Actuator)
+
+**Profile**: `docker-dev`
+
+**Activation**: Set `SPRING_PROFILES_ACTIVE` environment variable
+
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker-dev ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
+```
+
+**Characteristics**:
+- ✅ Designed for local Docker development only
+- ✅ Exposes a richer Actuator surface for diagnostics (health/info/metrics/threaddump)
+- ✅ Useful for memory and heap analysis via `/actuator/metrics`
+- ✅ Uses a dedicated management port: `8081` (not published by default)
+- ⚠️ Not intended to be exposed publicly in staging/prod
+
+---
+
 ### 2. Test Mode (Permissive)
 
 **Profile**: `docker,docker-test`

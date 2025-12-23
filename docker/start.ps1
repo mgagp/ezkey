@@ -15,6 +15,24 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $ScriptDir "docker-compose.yml"
+$DevOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.yml"
+
+# Ensure docker base profile is active when using docker-dev or docker-test.
+if ($env:SPRING_PROFILES_ACTIVE) {
+    if ($env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and -not $env:SPRING_PROFILES_ACTIVE.Contains("docker," ) -and -not ($env:SPRING_PROFILES_ACTIVE -eq "docker")) {
+        $env:SPRING_PROFILES_ACTIVE = "docker,$($env:SPRING_PROFILES_ACTIVE)"
+    }
+    if ($env:SPRING_PROFILES_ACTIVE.Contains("docker-test") -and -not $env:SPRING_PROFILES_ACTIVE.Contains("docker," ) -and -not ($env:SPRING_PROFILES_ACTIVE -eq "docker")) {
+        $env:SPRING_PROFILES_ACTIVE = "docker,$($env:SPRING_PROFILES_ACTIVE)"
+    }
+}
+
+# Auto-include the docker-dev compose override when docker-dev profile is active.
+$ComposeArgs = "-f `"$ComposeFile`""
+if ($env:SPRING_PROFILES_ACTIVE -and $env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and (Test-Path $DevOverrideFile)) {
+    $ComposeArgs = "$ComposeArgs -f `"$DevOverrideFile`""
+    Write-Host "🔧 Docker diagnostics override enabled: docker-compose.docker-dev.yml"
+}
 
 # Set build flags based on parameters
 $BuildParallel = if ($Parallel) { "--parallel" } else { "" }
@@ -96,19 +114,19 @@ Set-Location (Split-Path -Parent $ScriptDir)
 try {
     if ($DebugCache) {
         Write-Host "Building migration service (first image)..."
-        $buildCmd = "$DockerCompose -f `"$ComposeFile`" build"
+        $buildCmd = "$DockerCompose $ComposeArgs build"
         if ($NoCache) { $buildCmd += " --no-cache" }
         $buildCmd += " migration"
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     } elseif ($Parallel) {
-        $buildCmd = "$DockerCompose -f `"$ComposeFile`" build"
+        $buildCmd = "$DockerCompose $ComposeArgs build"
         if ($NoCache) { $buildCmd += " --no-cache" }
         $buildCmd += " --parallel"
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     } else {
-        $buildCmd = "$DockerCompose -f `"$ComposeFile`" build"
+        $buildCmd = "$DockerCompose $ComposeArgs build"
         if ($NoCache) { $buildCmd += " --no-cache" }
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
@@ -146,7 +164,7 @@ if ($DebugCache) {
 Write-Host ""
 Write-Host "🚀 Starting services..."
 try {
-    Invoke-Expression "$DockerCompose -f `"$ComposeFile`" up -d"
+    Invoke-Expression "$DockerCompose $ComposeArgs up -d"
     if ($LASTEXITCODE -ne 0) { throw "Start failed" }
 } catch {
     Write-Host "❌ Error: Failed to start services" -ForegroundColor Red
@@ -162,14 +180,14 @@ $timeout = 60
 $elapsed = 0
 while ($true) {
     try {
-        Invoke-Expression "$DockerCompose -f `"$ComposeFile`" exec -T postgres pg_isready -U postgres" | Out-Null
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T postgres pg_isready -U postgres" | Out-Null
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         # Continue waiting
     }
     if ($elapsed -ge $timeout) {
         Write-Host "❌ Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
-        Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs postgres"
+        Invoke-Expression "$DockerCompose $ComposeArgs logs postgres"
         exit 1
     }
     Start-Sleep -Seconds 2
@@ -188,12 +206,12 @@ $timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:9080/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-        if ($response.StatusCode -eq 200) { break }
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T admin-api curl -sf http://localhost:9081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
             Write-Host "❌ Error: Admin API did not become healthy within $timeout seconds" -ForegroundColor Red
-            Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs admin-api"
+            Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api"
             exit 1
         }
         Start-Sleep -Seconds 2
@@ -207,12 +225,12 @@ $timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:8080/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-        if ($response.StatusCode -eq 200) { break }
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api curl -sf http://localhost:8081/actuator/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
             Write-Host "❌ Error: Auth API did not become healthy within $timeout seconds" -ForegroundColor Red
-            Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs auth-api"
+            Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api"
             exit 1
         }
         Start-Sleep -Seconds 2
@@ -231,7 +249,7 @@ while ($true) {
     } catch {
         if ($elapsed -ge $timeout) {
             Write-Host "❌ Error: Crypto API did not become healthy within $timeout seconds" -ForegroundColor Red
-            Invoke-Expression "$DockerCompose -f `"$ComposeFile`" logs crypto-api"
+            Invoke-Expression "$DockerCompose $ComposeArgs logs crypto-api"
             exit 1
         }
         Start-Sleep -Seconds 2

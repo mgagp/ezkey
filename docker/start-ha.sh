@@ -23,6 +23,16 @@ for arg in "$@"; do
 done
 
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.ha.yml"
+DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.ha.docker-dev.yml"
+
+# Ensure docker base profile is active when using docker-dev or docker-test.
+# Rationale: docker-dev and docker-test are intended to override docker defaults, not replace them.
+if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-dev,"* ]] && [[ ",${SPRING_PROFILES_ACTIVE:-}," != *",docker,"* ]]; then
+    export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
+fi
+if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-test,"* ]] && [[ ",${SPRING_PROFILES_ACTIVE:-}," != *",docker,"* ]]; then
+    export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
+fi
 
 echo "=========================================="
 echo "  EZ Key Docker HA - Starting Stack"
@@ -46,6 +56,14 @@ if docker compose version > /dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 else
     DOCKER_COMPOSE="docker-compose"
+fi
+
+COMPOSE_ARGS="-f ${COMPOSE_FILE}"
+
+# If docker-dev profile is active, auto-include the HA diagnostics override to publish per-instance management ports.
+if [[ ",${SPRING_PROFILES_ACTIVE:-}," == *",docker-dev,"* ]] && [ -f "${DEV_OVERRIDE_FILE}" ]; then
+    COMPOSE_ARGS="${COMPOSE_ARGS} -f ${DEV_OVERRIDE_FILE}"
+    echo "🔧 HA Docker diagnostics override enabled: $(basename "${DEV_OVERRIDE_FILE}")"
 fi
 
 # Enable BuildKit for Maven cache mount support
@@ -84,12 +102,12 @@ echo ""
 
 cd "${SCRIPT_DIR}/.."
 if [ -n "$BUILD_PARALLEL" ]; then
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build ${BUILD_NO_CACHE} --parallel || {
+    ${DOCKER_COMPOSE} ${COMPOSE_ARGS} build ${BUILD_NO_CACHE} --parallel || {
         echo "❌ Error: Failed to build Docker images"
         exit 1
     }
 else
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build ${BUILD_NO_CACHE} || {
+    ${DOCKER_COMPOSE} ${COMPOSE_ARGS} build ${BUILD_NO_CACHE} || {
         echo "❌ Error: Failed to build Docker images"
         exit 1
     }
@@ -103,7 +121,7 @@ echo "========================================"
 
 echo ""
 echo "🚀 Starting HA services..."
-${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" up -d || {
+${DOCKER_COMPOSE} ${COMPOSE_ARGS} up -d || {
     echo "❌ Error: Failed to start services"
     exit 1
 }
@@ -115,10 +133,10 @@ echo "⏳ Waiting for services to be healthy..."
 echo "  - Waiting for PostgreSQL..."
 timeout=60
 elapsed=0
-while ! ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: PostgreSQL did not become ready within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs postgres
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs postgres
         exit 1
     fi
     sleep 2
@@ -130,10 +148,10 @@ echo "  ✅ PostgreSQL is ready"
 echo "  - Waiting for database migrations..."
 timeout=120
 elapsed=0
-while ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ps migration | grep -q "Up\|running"; do
+while ${DOCKER_COMPOSE} ${COMPOSE_ARGS} ps migration | grep -q "Up\|running"; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Migration did not complete within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs migration
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs migration
         exit 1
     fi
     sleep 2
@@ -141,35 +159,55 @@ while ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ps migration | grep -q "Up\|running
 done
 echo "  ✅ Database migrations completed"
 
-# Wait for Admin API instances
+# Wait for Admin API instances (direct instance Actuator on management port)
 echo "  - Waiting for Admin API instances..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T admin-api-1 curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
-        echo "❌ Error: Admin API (via HAProxy) did not become healthy within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs haproxy-admin
+        echo "❌ Error: Admin API Instance 1 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs admin-api-1
         exit 1
     fi
     sleep 2
     elapsed=$((elapsed + 2))
 done
-echo "  ✅ Admin API is healthy (via HAProxy)"
+elapsed=0
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T admin-api-2 curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Admin API Instance 2 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs admin-api-2
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+echo "  ✅ Admin API instances are healthy"
 
-# Wait for Auth API instances
+# Wait for Auth API instances (direct instance Actuator on management port)
 echo "  - Waiting for Auth API instances..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
-        echo "❌ Error: Auth API (via HAProxy) did not become healthy within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs haproxy-auth
+        echo "❌ Error: Auth API Instance 1 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api-1
         exit 1
     fi
     sleep 2
     elapsed=$((elapsed + 2))
 done
-echo "  ✅ Auth API is healthy (via HAProxy)"
+elapsed=0
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+    if [ $elapsed -ge $timeout ]; then
+        echo "❌ Error: Auth API Instance 2 did not become healthy within ${timeout} seconds"
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api-2
+        exit 1
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+done
+echo "  ✅ Auth API instances are healthy"
 
 echo ""
 echo "=========================================="

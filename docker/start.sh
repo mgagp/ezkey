@@ -34,9 +34,24 @@ for arg in "$@"; do
     esac
 done
 
+function contains_profile() {
+    local profiles="$1"
+    local profile="$2"
+    [[ ",${profiles}," == *",${profile},"* ]]
+}
+
+# Ensure docker base profile is active when using docker-dev or docker-test.
+# Rationale: docker-dev and docker-test are intended to override docker defaults, not replace them.
+if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev" && ! contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker"; then
+    export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
+fi
+if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-test" && ! contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker"; then
+    export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
+fi
+
 # Select compose file based on mode
 if [ -n "$NATIVE_MODE" ]; then
-    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.native.yml"
+    BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.native.yml"
     echo "🔧 Native mode: Using docker-compose.native.yml"
     echo "   Note: Native images must be built separately before using this mode"
     echo "   Build commands:"
@@ -44,7 +59,25 @@ if [ -n "$NATIVE_MODE" ]; then
     echo "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
     echo ""
 else
-    COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+    BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+fi
+
+COMPOSE_ARGS="-f ${BASE_COMPOSE_FILE}"
+
+# If docker-dev profile is active, auto-include the local diagnostics override to publish management ports.
+if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
+    if [ -n "$NATIVE_MODE" ]; then
+        DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.native.docker-dev.yml"
+    else
+        DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.docker-dev.yml"
+    fi
+
+    if [ -f "${DEV_OVERRIDE_FILE}" ]; then
+        COMPOSE_ARGS="${COMPOSE_ARGS} -f ${DEV_OVERRIDE_FILE}"
+        echo "🔧 Docker diagnostics override enabled: $(basename "${DEV_OVERRIDE_FILE}")"
+    else
+        echo "⚠️  Warning: docker-dev profile is active but override file not found: ${DEV_OVERRIDE_FILE}"
+    fi
 fi
 
 echo "=========================================="
@@ -120,17 +153,17 @@ cd "${SCRIPT_DIR}/.."
 if [ -n "$DEBUG_CACHE" ]; then
     # Build only the migration service (first image to be built)
     echo "Building migration service (first image)..."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build ${BUILD_NO_CACHE} migration || {
+    ${DOCKER_COMPOSE} ${COMPOSE_ARGS} build ${BUILD_NO_CACHE} migration || {
         echo "❌ Error: Failed to build Docker images"
         exit 1
     }
 elif [ -n "$BUILD_PARALLEL" ]; then
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build ${BUILD_NO_CACHE} --parallel || {
+    ${DOCKER_COMPOSE} ${COMPOSE_ARGS} build ${BUILD_NO_CACHE} --parallel || {
         echo "❌ Error: Failed to build Docker images"
         exit 1
     }
 else
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build ${BUILD_NO_CACHE} || {
+    ${DOCKER_COMPOSE} ${COMPOSE_ARGS} build ${BUILD_NO_CACHE} || {
         echo "❌ Error: Failed to build Docker images"
         exit 1
     }
@@ -163,7 +196,7 @@ fi
 
 echo ""
 echo "🚀 Starting services..."
-${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" up -d || {
+${DOCKER_COMPOSE} ${COMPOSE_ARGS} up -d || {
     echo "❌ Error: Failed to start services"
     exit 1
 }
@@ -175,10 +208,10 @@ echo "⏳ Waiting for services to be healthy..."
 echo "  - Waiting for PostgreSQL..."
 timeout=60
 elapsed=0
-while ! ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: PostgreSQL did not become ready within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs postgres
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs postgres
         exit 1
     fi
     sleep 2
@@ -190,10 +223,10 @@ echo "  ✅ PostgreSQL is ready"
 echo "  - Waiting for database migrations..."
 timeout=120
 elapsed=0
-while ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ps migration | grep -q "Up\|running"; do
+while ${DOCKER_COMPOSE} ${COMPOSE_ARGS} ps migration | grep -q "Up\|running"; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Migration did not complete within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs migration
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs migration
         exit 1
     fi
     sleep 2
@@ -205,10 +238,10 @@ echo "  ✅ Database migrations completed"
 echo "  - Waiting for Admin API..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T admin-api curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Admin API did not become healthy within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs admin-api
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs admin-api
         exit 1
     fi
     sleep 2
@@ -219,10 +252,10 @@ echo "  ✅ Admin API is healthy"
 echo "  - Waiting for Auth API..."
 timeout=120
 elapsed=0
-while ! curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Auth API did not become healthy within ${timeout} seconds"
-        ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" logs auth-api
+        ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api
         exit 1
     fi
     sleep 2

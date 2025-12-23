@@ -39,10 +39,16 @@ public class DockerStackConfig {
   private static final String DEFAULT_ADMIN_API_URL = "http://localhost:9080";
   private static final String DEFAULT_AUTH_API_URL = "http://localhost:8080";
   private static final String DEFAULT_CRYPTO_API_URL = "http://localhost:9090";
+  private static final String DEFAULT_ADMIN_ACTUATOR_URL = "http://localhost:9081";
+  private static final String DEFAULT_AUTH_ACTUATOR_URL = "http://localhost:8081";
+  private static final String HAPROXY_ADMIN_STATS_URL = "http://localhost:9081/stats";
+  private static final String HAPROXY_AUTH_STATS_URL = "http://localhost:8081/stats";
 
   private final String adminApiUrl;
   private final String authApiUrl;
   private final String cryptoApiUrl;
+  private final String adminActuatorUrl;
+  private final String authActuatorUrl;
 
   /**
    * Creates a new DockerStackConfig with URLs from environment variables or defaults.
@@ -55,11 +61,17 @@ public class DockerStackConfig {
     this.authApiUrl = System.getenv().getOrDefault("EZKEY_AUTH_API_URL", DEFAULT_AUTH_API_URL);
     this.cryptoApiUrl =
         System.getenv().getOrDefault("EZKEY_CRYPTO_API_URL", DEFAULT_CRYPTO_API_URL);
+    this.adminActuatorUrl =
+        System.getenv().getOrDefault("EZKEY_ADMIN_ACTUATOR_URL", DEFAULT_ADMIN_ACTUATOR_URL);
+    this.authActuatorUrl =
+        System.getenv().getOrDefault("EZKEY_AUTH_ACTUATOR_URL", DEFAULT_AUTH_ACTUATOR_URL);
 
     log.info("Docker Stack Configuration:");
     log.info("  Admin API: {}", this.adminApiUrl);
     log.info("  Auth API: {}", this.authApiUrl);
     log.info("  Crypto API: {}", this.cryptoApiUrl);
+    log.info("  Admin Actuator: {}", this.adminActuatorUrl);
+    log.info("  Auth Actuator: {}", this.authActuatorUrl);
   }
 
   /**
@@ -100,11 +112,49 @@ public class DockerStackConfig {
   public void verifyServicesHealthy() {
     log.info("Verifying Docker stack services are healthy...");
 
-    verifyServiceHealthy(adminApiUrl, "Admin API");
-    verifyServiceHealthy(authApiUrl, "Auth API");
+    verifyServiceHealthyWithFallback(
+        adminActuatorUrl, "Admin API", "Admin Actuator", HAPROXY_ADMIN_STATS_URL);
+    verifyServiceHealthyWithFallback(
+        authActuatorUrl, "Auth API", "Auth Actuator", HAPROXY_AUTH_STATS_URL);
     verifyServiceHealthy(cryptoApiUrl, "Crypto API");
 
     log.info("All Docker stack services are healthy");
+  }
+
+  /**
+   * Verifies a service is healthy using its Actuator URL, with a fallback to HAProxy stats.
+   *
+   * <p>Rationale:
+   *
+   * <ul>
+   *   <li>In the standard Docker stack, Actuator runs on a dedicated management port (e.g., 9081,
+   *       8081) and may or may not be published depending on the compose mode.
+   *   <li>In the HA stack, ports 9081 and 8081 are used by HAProxy stats pages. Actuator is not
+   *       routed through HAProxy by default. In that case, the HAProxy stats endpoint is a
+   *       reasonable liveness signal for the load balancer (and indirectly for backend health).
+   * </ul>
+   *
+   * @param actuatorBaseUrl actuator base URL (no path)
+   * @param serviceName logical service name (for error messages)
+   * @param actuatorName actuator label (for logs)
+   * @param haproxyStatsUrl HAProxy stats URL (full path)
+   * @throws IllegalStateException if neither Actuator nor HAProxy stats are reachable
+   * @since 2025
+   */
+  private void verifyServiceHealthyWithFallback(
+      String actuatorBaseUrl, String serviceName, String actuatorName, String haproxyStatsUrl) {
+    try {
+      verifyServiceHealthy(actuatorBaseUrl, actuatorName);
+    } catch (Exception actuatorFailure) {
+      log.warn(
+          "{} at {} is not accessible ({}). Trying HAProxy stats fallback: {}",
+          actuatorName,
+          actuatorBaseUrl,
+          actuatorFailure.getMessage(),
+          haproxyStatsUrl);
+
+      verifyServiceHealthyUrl(haproxyStatsUrl, serviceName + " Load Balancer (stats)");
+    }
   }
 
   /**
@@ -115,6 +165,10 @@ public class DockerStackConfig {
    * @throws IllegalStateException if the service is not healthy
    */
   private void verifyServiceHealthy(String baseUrl, String serviceName) {
+    verifyServiceHealthyUrl(baseUrl + "/actuator/health", serviceName);
+  }
+
+  private void verifyServiceHealthyUrl(String url, String serviceName) {
     try {
       // Save current RestAssured settings to restore later
       String savedBaseUri = RestAssured.baseURI;
@@ -122,14 +176,14 @@ public class DockerStackConfig {
 
       try {
         // Set baseURI and basePath before using RestAssured (required by RestAssured 5.x)
-        RestAssured.baseURI = baseUrl;
+        RestAssured.baseURI = url;
         RestAssured.basePath = "";
 
         Response response =
             RestAssured.given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/actuator/health")
+                .get()
                 .then()
                 .extract()
                 .response();
@@ -138,7 +192,7 @@ public class DockerStackConfig {
           throw new IllegalStateException(
               String.format(
                   "%s at %s returned status %d. Expected 200. Is the Docker stack running?",
-                  serviceName, baseUrl, response.getStatusCode()));
+                  serviceName, url, response.getStatusCode()));
         }
 
         log.debug("{} is healthy", serviceName);
@@ -151,62 +205,8 @@ public class DockerStackConfig {
       throw new IllegalStateException(
           String.format(
               "%s at %s is not accessible: %s. Is the Docker stack running?",
-              serviceName, baseUrl, e.getMessage()),
+              serviceName, url, e.getMessage()),
           e);
-    }
-  }
-
-  /**
-   * Verifies a single service is healthy, but logs a warning instead of throwing if unavailable.
-   *
-   * <p>This is used for optional services like Crypto API that may not be present in all stack
-   * configurations (e.g., HA stack).
-   *
-   * @param baseUrl the service base URL
-   * @param serviceName the service name for logging
-   */
-  private void verifyServiceHealthyOptional(String baseUrl, String serviceName) {
-    try {
-      // Save current RestAssured settings to restore later
-      String savedBaseUri = RestAssured.baseURI;
-      String savedBasePath = RestAssured.basePath;
-
-      try {
-        // Set baseURI and basePath before using RestAssured (required by RestAssured 5.x)
-        RestAssured.baseURI = baseUrl;
-        RestAssured.basePath = "";
-
-        Response response =
-            RestAssured.given()
-                .contentType(ContentType.JSON)
-                .when()
-                .get("/actuator/health")
-                .then()
-                .extract()
-                .response();
-
-        if (response.getStatusCode() == 200) {
-          log.debug("{} is healthy", serviceName);
-        } else {
-          log.warn(
-              "{} at {} returned status {}. Service may not be available in this stack"
-                  + " configuration.",
-              serviceName,
-              baseUrl,
-              response.getStatusCode());
-        }
-      } finally {
-        // Restore original RestAssured settings
-        RestAssured.baseURI = savedBaseUri;
-        RestAssured.basePath = savedBasePath;
-      }
-    } catch (Exception e) {
-      log.warn(
-          "{} at {} is not accessible: {}. Service may not be available in this stack configuration"
-              + " (e.g., HA stack).",
-          serviceName,
-          baseUrl,
-          e.getMessage());
     }
   }
 }

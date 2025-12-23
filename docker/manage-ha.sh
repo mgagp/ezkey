@@ -87,40 +87,40 @@ function show_status() {
     fi
     
     # Check Admin API instances via HAProxy
-    if curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; then
-        echo "  ✅ Admin API (via HAProxy): Healthy"
+    if curl -sf http://localhost:9081/stats > /dev/null 2>&1; then
+        echo "  ✅ Admin API Load Balancer (stats): Healthy"
     else
-        echo "  ❌ Admin API (via HAProxy): Unhealthy"
+        echo "  ❌ Admin API Load Balancer (stats): Unhealthy"
     fi
     
     # Check individual Admin API instances
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api-1 curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api-1 curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Admin API Instance 1: Healthy"
     else
         echo "  ❌ Admin API Instance 1: Unhealthy"
     fi
     
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api-2 curl -sf http://localhost:9080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api-2 curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Admin API Instance 2: Healthy"
     else
         echo "  ❌ Admin API Instance 2: Unhealthy"
     fi
     
     # Check Auth API instances via HAProxy
-    if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "  ✅ Auth API (via HAProxy): Healthy"
+    if curl -sf http://localhost:8081/stats > /dev/null 2>&1; then
+        echo "  ✅ Auth API Load Balancer (stats): Healthy"
     else
-        echo "  ❌ Auth API (via HAProxy): Unhealthy"
+        echo "  ❌ Auth API Load Balancer (stats): Unhealthy"
     fi
     
     # Check individual Auth API instances
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-1 curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API Instance 1: Healthy"
     else
         echo "  ❌ Auth API Instance 1: Unhealthy"
     fi
     
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-2 curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API Instance 2: Healthy"
     else
         echo "  ❌ Auth API Instance 2: Unhealthy"

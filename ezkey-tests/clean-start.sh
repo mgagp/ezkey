@@ -169,20 +169,20 @@ echo ""
 
 # Step 4: Start Docker Compose stack with test profiles
 if [ -n "$HA_MODE" ]; then
-    echo "Step 4/7: Starting Docker Compose HA stack with test profiles (docker,docker-test)..."
+    echo "Step 4/7: Starting Docker Compose HA stack with test profiles (docker-dev,docker-test)..."
     echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
 elif [ -n "$NATIVE_MODE" ]; then
-    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test) - Native mode..."
+    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker-dev,docker-test,native) - Native mode..."
 else
-    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker,docker-test)..."
+    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker-dev,docker-test)..."
 fi
 cd "${PROJECT_ROOT}"
 
 if [ -n "$HA_MODE" ]; then
     # Use HA start script
     if [ -f "${DOCKER_DIR}/start-ha.sh" ]; then
-        echo "  Starting HA stack with SPRING_PROFILES_ACTIVE=docker,docker-test..."
-        SPRING_PROFILES_ACTIVE=docker,docker-test bash "${DOCKER_DIR}/start-ha.sh"
+        echo "  Starting HA stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test..."
+        SPRING_PROFILES_ACTIVE=docker-dev,docker-test bash "${DOCKER_DIR}/start-ha.sh"
         echo "  ✅ Docker HA stack started"
     else
         echo "  ❌ Error: start-ha.sh not found at ${DOCKER_DIR}/start-ha.sh"
@@ -190,12 +190,12 @@ if [ -n "$HA_MODE" ]; then
     fi
 elif [ -f "${DOCKER_DIR}/start.sh" ]; then
     if [ -n "$NATIVE_MODE" ]; then
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test,native..."
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test,native..."
         echo "  Using native compiled images..."
-        SPRING_PROFILES_ACTIVE=docker,docker-test,native bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
+        SPRING_PROFILES_ACTIVE=docker-dev,docker-test,native bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
     else
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker,docker-test..."
-        SPRING_PROFILES_ACTIVE=docker,docker-test bash "${DOCKER_DIR}/start.sh"
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test..."
+        SPRING_PROFILES_ACTIVE=docker-dev,docker-test bash "${DOCKER_DIR}/start.sh"
     fi
     echo "  ✅ Docker stack started"
 else
