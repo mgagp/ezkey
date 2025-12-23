@@ -249,5 +249,3 @@ quarkus.http.port=8080
 6. **Week 7**: Documentation and decision on full migration
 
 ## References
-
-- [Quarkus Native Image Guide](https://quarkus.io/guides/native-image)

@@ -151,5 +151,3 @@ flowchart TD
 - **HA**: base stack first; once Phase 1 is stable, port the same pattern to `docker/docker-compose.ha.yml` using the shared volume + existing distributed lock (`ADMIN_STARTUP_BOOTSTRAP`).
 
 ## Implementation todos
-
-- **admin-bootstrap-export**: Add Docker-only file export of bootstrap credentials (no recovery codes) in Admin API; make it configurable and idempotent.

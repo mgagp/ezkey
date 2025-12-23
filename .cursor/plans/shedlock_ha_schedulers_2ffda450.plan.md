@@ -78,5 +78,3 @@ This matches the existing project decision already documented in `docs/HA-JOB-CO
 - `cleanupExpiredTokens()` → `ADMIN_TOKEN_CLEANUP` (e.g. `PT10M`)
 
 5. **(Optional) Add lightweight operational visibility**
-
-- Optionally expose current locks via logs or an actuator `HealthIndicator` (as shown in `docs/HA-JOB-COORDINATION.md`).
