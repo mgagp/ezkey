@@ -420,6 +420,29 @@ SPRING_PROFILES_ACTIVE=docker-dev docker compose -f docker/docker-compose.yml -f
 $env:SPRING_PROFILES_ACTIVE="docker-dev"; docker compose -f docker\docker-compose.yml -f docker\docker-compose.docker-dev.yml up -d
 ```
 
+#### VisualVM (JMX) - Local Docker Only
+
+For deeper JVM diagnostics (heap, threads, CPU sampling) you can connect VisualVM to the Admin API
+and Auth API JVMs via JMX. This is DEV ONLY and intentionally unauthenticated / non-SSL.
+
+**Ports (host):**
+- Auth API JMX: `localhost:9010`
+- Admin API JMX: `localhost:9011`
+
+**Start with JMX enabled (Docker dev):**
+
+```bash
+# Linux/Mac
+SPRING_PROFILES_ACTIVE=docker,docker-dev EZKEY_ENABLE_JMX=true ./docker/start.sh
+
+# Windows PowerShell
+$env:SPRING_PROFILES_ACTIVE="docker,docker-dev"; $env:EZKEY_ENABLE_JMX="true"; .\docker\start.ps1
+```
+
+**VisualVM connection:**
+- Add JMX connection to `localhost:9010` (auth-api)
+- Add JMX connection to `localhost:9011` (admin-api)
+
 ## Data Persistence
 
 ### Database Data

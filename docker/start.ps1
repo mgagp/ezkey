@@ -16,6 +16,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $ScriptDir "docker-compose.yml"
 $DevOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.yml"
+$JmxOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.jmx.yml"
 
 # Ensure docker base profile is active when using docker-dev or docker-test.
 if ($env:SPRING_PROFILES_ACTIVE) {
@@ -32,6 +33,13 @@ $ComposeArgs = "-f `"$ComposeFile`""
 if ($env:SPRING_PROFILES_ACTIVE -and $env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and (Test-Path $DevOverrideFile)) {
     $ComposeArgs = "$ComposeArgs -f `"$DevOverrideFile`""
     Write-Host "🔧 Docker diagnostics override enabled: docker-compose.docker-dev.yml"
+}
+
+# Optional: enable JMX for VisualVM in local Docker diagnostics mode.
+# Enable by setting EZKEY_ENABLE_JMX=true (or 1).
+if (($env:EZKEY_ENABLE_JMX -eq "1" -or $env:EZKEY_ENABLE_JMX -eq "true") -and (Test-Path $JmxOverrideFile)) {
+    $ComposeArgs = "$ComposeArgs -f `"$JmxOverrideFile`""
+    Write-Host "🔧 JMX override enabled: docker-compose.docker-dev.jmx.yml"
 }
 
 # Set build flags based on parameters

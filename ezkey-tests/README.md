@@ -534,6 +534,20 @@ String adminToken = bootstrapService.ensureAdminToken();
 2. Check service health (management port): `curl http://localhost:9081/actuator/health`
 3. Review Docker logs: `./docker/manage.sh logs`
 
+## Clean Start Options
+
+`./clean-start.sh` is the recommended entrypoint for a deterministic local test stack.
+
+**Common options:**
+- `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure)
+- `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
+
+**Examples:**
+- Production-safe stack:
+  - `./clean-start.sh --prod-safe`
+- Production-safe + JMX (local only):
+  - `./clean-start.sh --prod-safe --jmx`
+
 ### Tests Fail: 401 Unauthorized
 
 **Problem**: Tests requiring admin token fail with 401

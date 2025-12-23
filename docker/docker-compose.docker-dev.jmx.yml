@@ -1,0 +1,49 @@
+# Local Docker JMX override (DEV ONLY).
+#
+# Enables unauthenticated, non-SSL JMX so VisualVM can connect to the JVM inside containers.
+# DO NOT use this override in staging or production.
+#
+# Ports:
+# - auth-api JMX:  localhost:9010
+# - admin-api JMX: localhost:9011
+#
+# Usage:
+#   # Linux/Mac
+#   SPRING_PROFILES_ACTIVE=docker,docker-dev docker compose \
+#     -f docker/docker-compose.yml \
+#     -f docker/docker-compose.docker-dev.yml \
+#     -f docker/docker-compose.docker-dev.jmx.yml up -d
+#
+#   # Windows PowerShell
+#   $env:SPRING_PROFILES_ACTIVE="docker,docker-dev"; docker compose `
+#     -f docker\docker-compose.yml `
+#     -f docker\docker-compose.docker-dev.yml `
+#     -f docker\docker-compose.docker-dev.jmx.yml up -d
+
+services:
+  auth-api:
+    environment:
+      # VisualVM JMX (no auth, no SSL) - dev only.
+      # RMI note: rmi.port MUST be fixed and java.rmi.server.hostname must be localhost for Docker port forwarding.
+      JAVA_TOOL_OPTIONS: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.port=9010
+        -Dcom.sun.management.jmxremote.rmi.port=9010
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=127.0.0.1
+    ports:
+      - "9010:9010"
+
+  admin-api:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.port=9011
+        -Dcom.sun.management.jmxremote.rmi.port=9011
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=127.0.0.1
+    ports:
+      - "9011:9011"
+

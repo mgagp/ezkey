@@ -13,6 +13,8 @@
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
+#   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
+#   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
@@ -30,6 +32,9 @@ TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
 NATIVE_MODE=""
 HA_MODE=""
 MVN_BOOTSTRAP=""
+ENABLE_JMX=""
+PROD_SAFE=""
+SPRING_PROFILES=""
 
 # Parse flags
 for arg in "$@"; do
@@ -43,9 +48,15 @@ for arg in "$@"; do
         --mvn-bootstrap)
             MVN_BOOTSTRAP="true"
             ;;
+        --jmx)
+            ENABLE_JMX="true"
+            ;;
+        --prod-safe)
+            PROD_SAFE="true"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap]"
+            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--jmx] [--prod-safe]"
             exit 1
             ;;
     esac
@@ -56,6 +67,25 @@ if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
     echo "❌ Error: --native and --ha options are incompatible"
     echo "   HA mode currently only supports regular Spring Boot builds"
     exit 1
+fi
+
+# Compute Spring profiles for Docker startup.
+# Defaults:
+# - docker: base production-like docker profile (required for bootstrap export configuration)
+# - docker-dev: local diagnostics (Actuator exposed on management ports)
+# - docker-test: permissive test mode (rate limiting disabled)
+# - native: native image profile (only when --native is used)
+if [ -n "$PROD_SAFE" ]; then
+    SPRING_PROFILES="docker"
+elif [ -n "$NATIVE_MODE" ]; then
+    SPRING_PROFILES="docker,docker-dev,docker-test,native"
+else
+    SPRING_PROFILES="docker,docker-dev,docker-test"
+fi
+
+# Export JMX flag so docker/start.sh and docker/start.ps1 can include JMX override.
+if [ -n "$ENABLE_JMX" ]; then
+    export EZKEY_ENABLE_JMX=true
 fi
 
 echo "=========================================="
@@ -169,20 +199,20 @@ echo ""
 
 # Step 4: Start Docker Compose stack with test profiles
 if [ -n "$HA_MODE" ]; then
-    echo "Step 4/7: Starting Docker Compose HA stack with test profiles (docker-dev,docker-test)..."
+    echo "Step 4/7: Starting Docker Compose HA stack with profiles (${SPRING_PROFILES})..."
     echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
 elif [ -n "$NATIVE_MODE" ]; then
-    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker-dev,docker-test,native) - Native mode..."
+    echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Native mode..."
 else
-    echo "Step 4/7: Starting Docker Compose stack with test profiles (docker-dev,docker-test)..."
+    echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES})..."
 fi
 cd "${PROJECT_ROOT}"
 
 if [ -n "$HA_MODE" ]; then
     # Use HA start script
     if [ -f "${DOCKER_DIR}/start-ha.sh" ]; then
-        echo "  Starting HA stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test..."
-        SPRING_PROFILES_ACTIVE=docker-dev,docker-test bash "${DOCKER_DIR}/start-ha.sh"
+        echo "  Starting HA stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
+        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start-ha.sh"
         echo "  ✅ Docker HA stack started"
     else
         echo "  ❌ Error: start-ha.sh not found at ${DOCKER_DIR}/start-ha.sh"
@@ -190,12 +220,12 @@ if [ -n "$HA_MODE" ]; then
     fi
 elif [ -f "${DOCKER_DIR}/start.sh" ]; then
     if [ -n "$NATIVE_MODE" ]; then
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test,native..."
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
         echo "  Using native compiled images..."
-        SPRING_PROFILES_ACTIVE=docker-dev,docker-test,native bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
+        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
     else
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=docker-dev,docker-test..."
-        SPRING_PROFILES_ACTIVE=docker-dev,docker-test bash "${DOCKER_DIR}/start.sh"
+        echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
+        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh"
     fi
     echo "  ✅ Docker stack started"
 else
@@ -270,16 +300,16 @@ echo "=========================================="
 echo ""
 echo "📋 Stack Status:"
 if [ -n "$HA_MODE" ]; then
-    echo "  - Docker stack: Running HA mode with test profiles (docker,docker-test)"
+    echo "  - Docker stack: Running HA mode with profiles (${SPRING_PROFILES})"
     echo "  - Instances: 2x admin-api, 2x auth-api behind HAProxy load balancers"
     echo "  - Admin API: http://localhost:9080 (via HAProxy)"
     echo "  - Auth API: http://localhost:8080 (via HAProxy)"
     echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8081/stats (Auth)"
 elif [ -n "$NATIVE_MODE" ]; then
-    echo "  - Docker stack: Running with test profiles (NATIVE mode)"
+    echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (NATIVE mode)"
     echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
 else
-    echo "  - Docker stack: Running with test profiles"
+    echo "  - Docker stack: Running with profiles (${SPRING_PROFILES})"
 fi
 if [ -n "$MVN_BOOTSTRAP" ]; then
     echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"

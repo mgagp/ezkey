@@ -80,6 +80,18 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
     fi
 fi
 
+# Optional: enable JMX for VisualVM in local Docker diagnostics mode.
+# Enable by setting EZKEY_ENABLE_JMX=true (or 1).
+if [[ "${EZKEY_ENABLE_JMX:-}" == "1" || "${EZKEY_ENABLE_JMX:-}" == "true" ]]; then
+    JMX_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.docker-dev.jmx.yml"
+    if [ -f "${JMX_OVERRIDE_FILE}" ]; then
+        COMPOSE_ARGS="${COMPOSE_ARGS} -f ${JMX_OVERRIDE_FILE}"
+        echo "🔧 JMX override enabled: $(basename "${JMX_OVERRIDE_FILE}")"
+    else
+        echo "⚠️  Warning: EZKEY_ENABLE_JMX is set but override file not found: ${JMX_OVERRIDE_FILE}"
+    fi
+fi
+
 echo "=========================================="
 echo "  EZ Key Docker - Starting Stack"
 echo "=========================================="
