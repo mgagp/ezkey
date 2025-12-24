@@ -29,7 +29,9 @@ import java.util.Optional;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
+import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
@@ -83,11 +85,15 @@ class ApiKeyControllerTest {
 
   @Mock private EzkeyAdminRepository adminRepository;
 
+  @Mock private AccessControlService accessControlService;
+
   private ApiKeyController controller;
 
   @BeforeEach
   void setUp() {
-    controller = new ApiKeyController(apiKeyService, adminOpsRateLimitService, adminRepository);
+    controller =
+        new ApiKeyController(
+            apiKeyService, adminOpsRateLimitService, adminRepository, accessControlService);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();
@@ -95,9 +101,13 @@ class ApiKeyControllerTest {
     // Mock rate limiting to always allow operations (bypass complexity)
     lenient().when(adminOpsRateLimitService.canCreateApiKey(anyString())).thenReturn(true);
 
+    // Mock access control to always allow (for tests)
+    lenient().when(accessControlService.canAccessIntegration(any(), anyInt())).thenReturn(true);
+
     // Mock admin repository to return a mock admin for getCurrentAdmin() calls
+    // getCurrentAdmin() now uses AdminPrincipal.adminId() to load the admin
     EzkeyAdmin mockAdmin = createMockAdmin();
-    lenient().when(adminRepository.findByUsername("john.doe")).thenReturn(Optional.of(mockAdmin));
+    lenient().when(adminRepository.findById(1)).thenReturn(Optional.of(mockAdmin));
   }
 
   @Nested
@@ -291,11 +301,21 @@ class ApiKeyControllerTest {
 
   /** Sets up admin authentication context. */
   private void setupAdminAuthentication() {
+    // Create AdminPrincipal for multi-tenant authentication
+    AdminPrincipal principal =
+        new AdminPrincipal(
+            1,
+            org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType.GLOBAL_ADMIN,
+            null, // tenantId (null for Global Admin)
+            null); // integrationId (null for Global Admin)
+
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
-            "john.doe", // Principal: Admin username (SOC 2 compliant: identifiable)
+            principal, // Principal: AdminPrincipal (multi-tenant)
             null, // Credentials
-            Arrays.asList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }

@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
@@ -41,6 +43,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -87,12 +91,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class EnrollmentController {
 
   private final EnrollmentService enrollmentService;
-
   private final EnrollmentAdminMapper enrollmentMapper;
-
   private final AuditLogService auditLogService;
-
   private final QrCodeGeneratorService qrCodeGeneratorService;
+  private final AccessControlService accessControlService;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -101,16 +103,19 @@ public class EnrollmentController {
    * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
    * @param qrCodeGeneratorService the QR code generator service
+   * @param accessControlService the access control service for tenant scoping validation
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
       AuditLogService auditLogService,
-      QrCodeGeneratorService qrCodeGeneratorService) {
+      QrCodeGeneratorService qrCodeGeneratorService,
+      AccessControlService accessControlService) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.qrCodeGeneratorService = qrCodeGeneratorService;
+    this.accessControlService = accessControlService;
   }
 
   /**
@@ -179,6 +184,10 @@ public class EnrollmentController {
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
+    // Extract tenant ID from authentication for tenant scoping
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Integer tenantId = extractTenantId(auth);
+
     Page<EnrollmentResponseDto> enrollments =
         enrollmentService
             .findByFilters(
@@ -188,6 +197,7 @@ public class EnrollmentController {
                 active,
                 createdAfter,
                 createdBefore,
+                tenantId,
                 pageable)
             .map(enrollmentMapper::toResponse);
 
@@ -218,6 +228,12 @@ public class EnrollmentController {
       @Parameter(description = "Unique enrollment ID", example = "1") @PathVariable("id")
           Integer id) {
     try {
+      // Validate tenant scoping: admin must have access to this enrollment
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      if (!accessControlService.canAccessEnrollment(auth, id)) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      }
+
       var enrollment = enrollmentService.getById(id);
       EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
       return ResponseEntity.ok(response);
@@ -255,6 +271,22 @@ public class EnrollmentController {
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
+
+    // Validate tenant scoping: admin must have access to the integration
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, request.integrationId())) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(
+                  "Access denied: admin does not have access to integration "
+                      + request.integrationId())
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
 
     try {
       EnrollmentCreateResponse response =
@@ -446,5 +478,27 @@ public class EnrollmentController {
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+  }
+
+  /**
+   * Extracts tenant ID from authentication context for tenant scoping.
+   *
+   * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for
+   * GlobalAdmin (who can access all tenants).
+   *
+   * @param auth the authentication context
+   * @return tenant ID if TenantAdmin, null if GlobalAdmin
+   */
+  private Integer extractTenantId(Authentication auth) {
+    if (auth == null || auth.getPrincipal() == null) {
+      return null;
+    }
+
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal.tenantId(); // null for GlobalAdmin, tenantId for TenantAdmin
+    }
+
+    return null;
   }
 }

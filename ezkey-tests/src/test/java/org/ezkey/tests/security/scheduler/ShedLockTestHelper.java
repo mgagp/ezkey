@@ -47,10 +47,14 @@ public class ShedLockTestHelper {
 
   private static final Logger log = LoggerFactory.getLogger(ShedLockTestHelper.class);
 
-  // Container name matches docker-compose.ha.yml
-  private static final String DOCKER_CONTAINER = "ezkey-postgres-ha";
+  // Container names - auto-detect based on environment
+  private static final String DOCKER_CONTAINER_STANDARD = "ezkey-postgres";
+  private static final String DOCKER_CONTAINER_HA = "ezkey-postgres-ha";
   private static final String DATABASE = "ezkey_db";
   private static final String USER = "postgres";
+
+  // Detected container name (lazy initialization)
+  private String dockerContainer = null;
 
   /**
    * Represents a ShedLock entry from the database.
@@ -69,6 +73,145 @@ public class ShedLockTestHelper {
       boolean isActive) {}
 
   /**
+   * Verifies that the shedlock table exists in the database.
+   *
+   * @return true if table exists, false otherwise
+   */
+  public boolean verifyShedLockTableExists() {
+    String sqlQuery =
+        "SELECT EXISTS ("
+            + "SELECT FROM information_schema.tables "
+            + "WHERE table_schema = 'public' "
+            + "AND table_name = 'shedlock'"
+            + ");";
+
+    List<String> results = executeQuery(sqlQuery);
+    if (results.isEmpty()) {
+      log.warn("Could not verify if shedlock table exists (query returned no results)");
+      return false;
+    }
+
+    String exists = results.get(0).trim();
+    boolean tableExists = "t".equals(exists) || "true".equalsIgnoreCase(exists);
+    if (!tableExists) {
+      log.warn(
+          "shedlock table does not exist in database. "
+              + "ShedLock should create it automatically when the first scheduled job runs. "
+              + "Make sure scheduled jobs are enabled and at least one job has executed.");
+    } else {
+      log.debug("shedlock table exists in database");
+    }
+
+    return tableExists;
+  }
+
+  /**
+   * Detects which PostgreSQL container to use based on environment (standard or HA mode).
+   *
+   * @return Container name to use for database operations
+   */
+  private String detectPostgresContainer() {
+    if (dockerContainer != null) {
+      return dockerContainer;
+    }
+
+    // Check if HA mode container exists
+    if (containerExists(DOCKER_CONTAINER_HA)) {
+      log.debug("HA mode detected: Using PostgreSQL container {}", DOCKER_CONTAINER_HA);
+      dockerContainer = DOCKER_CONTAINER_HA;
+      return dockerContainer;
+    }
+
+    // Fallback to standard mode
+    if (containerExists(DOCKER_CONTAINER_STANDARD)) {
+      log.debug("Standard mode detected: Using PostgreSQL container {}", DOCKER_CONTAINER_STANDARD);
+      dockerContainer = DOCKER_CONTAINER_STANDARD;
+      return dockerContainer;
+    }
+
+    // Default to HA (will fail with clear error if container doesn't exist)
+    log.warn(
+        "Neither {} nor {} found, defaulting to {}",
+        DOCKER_CONTAINER_HA,
+        DOCKER_CONTAINER_STANDARD,
+        DOCKER_CONTAINER_HA);
+    dockerContainer = DOCKER_CONTAINER_HA;
+    return dockerContainer;
+  }
+
+  /**
+   * Checks if a Docker container exists.
+   *
+   * @param containerName the container name to check
+   * @return true if container exists, false otherwise
+   */
+  private boolean containerExists(String containerName) {
+    try {
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "inspect", "--format", "{{.State.Running}}", containerName);
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (java.io.BufferedReader reader =
+          new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line);
+        }
+      }
+
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        return false;
+      }
+
+      String state = output.toString().trim();
+      return "true".equals(state);
+    } catch (Exception e) {
+      log.debug("Failed to check container '{}': {}", containerName, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Verifies that the PostgreSQL container exists and is accessible.
+   *
+   * @return true if container exists and is accessible, false otherwise
+   */
+  public boolean verifyContainerAccessible() {
+    String container = detectPostgresContainer();
+    if (container == null) {
+      log.warn(
+          "No PostgreSQL container found. "
+              + "Make sure Docker stack is running (standard: ./docker/start.sh or HA: ./docker/start-ha.sh)");
+      return false;
+    }
+
+    boolean exists = containerExists(container);
+    if (exists) {
+      log.debug("Container '{}' is accessible and running", container);
+    } else {
+      log.warn(
+          "Container '{}' does not exist or is not running. "
+              + "Make sure the Docker stack is running.",
+          container);
+    }
+    return exists;
+  }
+
+  /**
+   * Checks if we are running in HA mode (multiple instances).
+   *
+   * @return true if HA mode detected, false if standard mode
+   */
+  public boolean isHaMode() {
+    String container = detectPostgresContainer();
+    return DOCKER_CONTAINER_HA.equals(container);
+  }
+
+  /**
    * Executes a SQL query and returns the result as a list of strings (one per row).
    *
    * @param sqlQuery SQL query to execute
@@ -77,12 +220,13 @@ public class ShedLockTestHelper {
   private List<String> executeQuery(String sqlQuery) {
     log.debug("Executing SQL query: {}", sqlQuery);
 
+    String container = detectPostgresContainer();
     try {
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
               "exec",
-              DOCKER_CONTAINER,
+              container,
               "psql",
               "-U",
               USER,
@@ -97,12 +241,20 @@ public class ShedLockTestHelper {
       Process process = processBuilder.start();
 
       List<String> results = new ArrayList<>();
+      List<String> errorOutput = new ArrayList<>();
       try (java.io.BufferedReader reader =
           new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
           String trimmed = line.trim();
           if (!trimmed.isEmpty()) {
+            // Check if this looks like an error message
+            if (trimmed.toLowerCase().contains("error")
+                || trimmed.toLowerCase().contains("fatal")
+                || trimmed.toLowerCase().contains("could not")
+                || trimmed.toLowerCase().contains("does not exist")) {
+              errorOutput.add(trimmed);
+            }
             results.add(trimmed);
           }
         }
@@ -110,14 +262,23 @@ public class ShedLockTestHelper {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.warn("SQL query failed with exit code: {}", exitCode);
+        log.warn(
+            "SQL query failed with exit code: {} (container: {}). Output:\n{}",
+            exitCode,
+            container,
+            String.join("\n", results.isEmpty() ? errorOutput : results));
         return new ArrayList<>();
       }
 
       log.debug("Query returned {} rows", results.size());
       return results;
     } catch (Exception e) {
-      log.warn("Failed to execute SQL query: {}", e.getMessage());
+      log.warn(
+          "Failed to execute SQL query: {} (container: {}). Error: {}",
+          sqlQuery,
+          container,
+          e.getMessage(),
+          e);
       return new ArrayList<>();
     }
   }

@@ -242,6 +242,14 @@ public class DemoDeviceEnrollmentWriter {
       String filePath = ENROLLMENTS_DIR + "/" + fileName;
       log.info("   Writing file to container: {}", filePath);
 
+      // Check if file already exists (idempotence - bootstrap-init may have already created it)
+      if (fileExistsInContainer(filePath)) {
+        log.info(
+            "   ⏭️  Enrollment file already exists (likely created by bootstrap-init) - Skipping");
+        log.info("   ✅ Enrollment file already present in demo-device container");
+        return;
+      }
+
       // Ensure directory exists
       ensureDirectoryExists();
 
@@ -254,6 +262,42 @@ public class DemoDeviceEnrollmentWriter {
       log.error("❌ Failed to write enrollment file to demo-device container", e);
       throw new IllegalStateException(
           "Failed to write enrollment file to demo-device container: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Checks if a file exists in the demo-device container.
+   *
+   * <p>This method is used for idempotence - to check if bootstrap-init has already created the
+   * enrollment file.
+   *
+   * @param filePath Path to file inside container
+   * @return true if file exists, false otherwise
+   */
+  private boolean fileExistsInContainer(String filePath) {
+    try {
+      String containerName = detectDemoDeviceContainer();
+      String escapedPath = filePath.replace("'", "'\\''");
+      String command = "test -f " + escapedPath;
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "exec", containerName, "sh", "-c", command);
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      // Consume output to avoid blocking
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        while (reader.readLine() != null) {
+          // Consume output
+        }
+      }
+
+      int exitCode = process.waitFor();
+      return exitCode == 0;
+    } catch (Exception e) {
+      log.debug("Failed to check if file exists in container: {}", e.getMessage());
+      return false;
     }
   }
 

@@ -17,9 +17,15 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -42,21 +48,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class IntegrationService {
 
-  private final IntegrationRepository integrationRepository;
+  private static final Logger logger = LoggerFactory.getLogger(IntegrationService.class);
 
+  private final IntegrationRepository integrationRepository;
   private final IntegrationServiceMapper integrationServiceMapper;
+  private final TenantRepository tenantRepository;
 
   /**
    * Constructs the service with the required repository and mapper.
    *
    * @param integrationRepository the repository for Integration entities
    * @param integrationServiceMapper the mapper for converting between DTOs and entities
+   * @param tenantRepository the repository for Tenant entities
    */
   public IntegrationService(
       IntegrationRepository integrationRepository,
-      IntegrationServiceMapper integrationServiceMapper) {
+      IntegrationServiceMapper integrationServiceMapper,
+      TenantRepository tenantRepository) {
     this.integrationRepository = integrationRepository;
     this.integrationServiceMapper = integrationServiceMapper;
+    this.tenantRepository = tenantRepository;
   }
 
   /**
@@ -85,6 +96,10 @@ public class IntegrationService {
    * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
    * creation date descending (newest first) by default.
    *
+   * <p><b>Tenant Scoping:</b> If tenantId is provided (non-null), results are filtered to only
+   * include integrations belonging to that tenant. This enables tenant isolation for TenantAdmins
+   * while allowing GlobalAdmins to see all integrations (by passing null).
+   *
    * <p><b>Use Case:</b> Administrators managing integrations, searching for specific applications,
    * and compliance reporting.
    *
@@ -93,6 +108,8 @@ public class IntegrationService {
    * @param active optional active flag filter
    * @param createdAfter optional start of date range filter
    * @param createdBefore optional end of date range filter
+   * @param tenantId optional tenant ID filter for tenant scoping (null = all tenants, for
+   *     GlobalAdmin)
    * @param pageable pagination and sorting parameters
    * @return page of integrations matching criteria
    */
@@ -102,6 +119,7 @@ public class IntegrationService {
       Boolean active,
       OffsetDateTime createdAfter,
       OffsetDateTime createdBefore,
+      Integer tenantId,
       Pageable pageable) {
 
     Specification<Integration> spec =
@@ -135,6 +153,11 @@ public class IntegrationService {
                   cb.isNull(root.get("isSystemIntegration")),
                   cb.equal(root.get("isSystemIntegration"), false)));
 
+          // Tenant scoping: filter by tenant if tenantId is provided
+          if (tenantId != null) {
+            predicates.add(cb.equal(root.get("tenant").get("tenantId"), tenantId));
+          }
+
           return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -144,20 +167,85 @@ public class IntegrationService {
   /**
    * Creates a new Integration entity from a request.
    *
+   * <p>This method creates an integration and automatically associates it with the appropriate
+   * tenant based on the creating administrator:
+   *
+   * <ul>
+   *   <li><b>Global Admin:</b> Integration is associated with the "Ezkey System" tenant
+   *       (system-level integrations)
+   *   <li><b>Tenant Admin:</b> Integration is associated with the admin's tenant (tenant-scoped
+   *       integrations)
+   * </ul>
+   *
+   * <p><b>Important:</b> Administrators cannot create integrations for other tenants (no
+   * impersonation). If a global admin needs to create resources for a specific tenant, they must
+   * become a tenant admin for that tenant.
+   *
    * @param request the request containing integration data
+   * @param createdByAdmin the administrator creating the integration (for tenant assignment and
+   *     audit)
    * @return the created and saved Integration entity
+   * @throws IllegalArgumentException if admin tenant cannot be determined
    */
-  public IntegrationCreateResponse createIntegration(IntegrationCreateRequest request) {
+  @Transactional
+  public IntegrationCreateResponse createIntegration(
+      IntegrationCreateRequest request, EzkeyAdmin createdByAdmin) {
+    logger.info(
+        "Creating integration by admin: {} (type: {})",
+        createdByAdmin.getUsername(),
+        createdByAdmin.getAdminType());
+
     Integration integration = integrationServiceMapper.toEntity(request);
     integration.setActive(true);
     integration.setCreatedAt(OffsetDateTime.now());
+    integration.setCreatedByAdmin(createdByAdmin);
+
+    // Determine tenant based on admin type
+    Tenant tenant;
+    if (createdByAdmin.getAdminType() == AdminType.GLOBAL_ADMIN) {
+      // Global admins create integrations in the system tenant
+      tenant =
+          tenantRepository
+              .findByTenantName("Ezkey System")
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "System tenant 'Ezkey System' not found. Database may not be properly"
+                              + " initialized."));
+      logger.debug("Associating integration with system tenant: {}", tenant.getTenantName());
+    } else if (createdByAdmin.getAdminType() == AdminType.TENANT_ADMIN) {
+      // Tenant admins create integrations in their own tenant
+      tenant = createdByAdmin.getTenant();
+      if (tenant == null) {
+        throw new IllegalArgumentException(
+            "Tenant admin must have an associated tenant. Admin: " + createdByAdmin.getUsername());
+      }
+      logger.debug(
+          "Associating integration with tenant admin's tenant: {} (ID: {})",
+          tenant.getTenantName(),
+          tenant.getTenantId());
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported admin type for integration creation: " + createdByAdmin.getAdminType());
+    }
+
+    integration.setTenant(tenant);
 
     // Set the parent reference for each i18n if present
     if (integration.getI18n() != null) {
       integration.getI18n().forEach(i18n -> i18n.setIntegration(integration));
     }
+
     var domResponse = integrationRepository.save(integration);
     IntegrationCreateResponse response = integrationServiceMapper.toCreateResponse(domResponse);
+
+    logger.info(
+        "Integration created successfully - ID: {}, Tenant: {} (ID: {}), Admin: {}",
+        domResponse.getId(),
+        tenant.getTenantName(),
+        tenant.getTenantId(),
+        createdByAdmin.getUsername());
+
     return response;
   }
 

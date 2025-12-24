@@ -19,7 +19,6 @@ import io.restassured.response.Response;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.AdminBootstrapService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -60,7 +59,6 @@ import org.junit.jupiter.api.Test;
 @Tag(TestTags.SMOKE)
 @Tag(TestTags.ADMIN)
 @DisplayName("Admin Token Creation Test")
-@Disabled("Replaced by Docker bootstrap-init in Phase 1; revisit in Phase 2")
 public class AdminTokenCreationTest extends AbstractSecurityTest {
 
   @Test

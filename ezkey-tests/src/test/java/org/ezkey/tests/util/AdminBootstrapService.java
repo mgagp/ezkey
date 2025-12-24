@@ -279,6 +279,23 @@ public class AdminBootstrapService {
         log.info(
             "   ⚠️  Enrollment already VERIFIED - Checking for existing device credentials...");
         DeviceCredentials existingCredentials = loadDeviceCredentials();
+        
+        // If not found locally, try loading from bootstrap volume (created by bootstrap-init)
+        if (existingCredentials == null
+            || !existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
+          log.info(
+              "   ⚠️  Device credentials not found locally - Checking bootstrap volume...");
+          DeviceCredentials bootstrapCredentials =
+              loadDeviceCredentialsFromBootstrapVolume(credentials.enrollmentId());
+          if (bootstrapCredentials != null) {
+            log.info(
+                "   ✅ Found device credentials in bootstrap volume (created by bootstrap-init)");
+            // Copy to local file for future reuse
+            saveDeviceCredentials(bootstrapCredentials);
+            existingCredentials = bootstrapCredentials;
+          }
+        }
+        
         if (existingCredentials != null
             && existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
           log.info("   ✅ Found existing device credentials - Reusing them");
@@ -290,14 +307,13 @@ public class AdminBootstrapService {
         } else {
           log.warn("   ⚠️  Enrollment is VERIFIED but no matching device credentials found");
           log.warn(
-              "   ⚠️  Cannot proceed: enrollment has device_public_key in DB but we don't have"
-                  + " matching private key");
-          throw new IllegalStateException(
-              "Enrollment "
-                  + credentials.enrollmentId()
-                  + " is already VERIFIED with a different device. Cannot create new device"
-                  + " credentials. Please reset Docker stack (docker-compose down -v) or reset"
-                  + " the enrollment manually.");
+              "   ⚠️  This can happen if bootstrap-init already verified the enrollment");
+          log.warn(
+              "   ⚠️  Resetting enrollment to allow clean bootstrap retry");
+          databaseHelper.resetEnrollment(credentials.enrollmentId());
+          log.info("   ✅ Enrollment reset to CREATED state - Retrying bootstrap...");
+          // Retry bootstrap after reset (recursive call)
+          return performInitialBootstrapInternal();
         }
       } else {
         // Enrollment not verified - proceed with normal bootstrap
@@ -906,6 +922,74 @@ public class AdminBootstrapService {
     } catch (IOException e) {
       log.warn("Failed to save token to file: {}", e.getMessage());
       // Don't throw - token is still valid even if save fails
+    }
+  }
+
+  /**
+   * Loads device credentials from bootstrap volume (created by bootstrap-init).
+   *
+   * <p>This method reads device credentials from the Docker volume where bootstrap-init saves them.
+   * This allows tests to reuse credentials created by bootstrap-init during Docker stack
+   * initialization.
+   *
+   * @param enrollmentId Enrollment ID to match
+   * @return Device credentials, or null if not found
+   */
+  private DeviceCredentials loadDeviceCredentialsFromBootstrapVolume(Integer enrollmentId) {
+    try {
+      // Try to read from admin-api container (has bootstrap-artifacts volume mounted)
+      String containerName = "ezkey-admin-api";
+      String bootstrapFilePath = "/var/lib/ezkey/bootstrap/device-credentials.json";
+
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "exec", containerName, "cat", bootstrapFilePath);
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (java.io.BufferedReader reader =
+          new java.io.BufferedReader(
+              new java.io.InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line).append("\n");
+        }
+      }
+
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        log.debug(
+            "Device credentials not found in bootstrap volume (container: {}, file: {})",
+            containerName,
+            bootstrapFilePath);
+        return null;
+      }
+
+      // Parse JSON
+      ObjectMapper mapper = new ObjectMapper();
+      ObjectNode jsonNode = (ObjectNode) mapper.readTree(output.toString());
+
+      Integer credsEnrollmentId = jsonNode.get("enrollmentId").asInt();
+      if (!credsEnrollmentId.equals(enrollmentId)) {
+        log.debug(
+            "Device credentials in bootstrap volume are for enrollment {}, not {}",
+            credsEnrollmentId,
+            enrollmentId);
+        return null;
+      }
+
+      String privateKey = jsonNode.get("privateKey").asText();
+      String publicKey = jsonNode.get("publicKey").asText();
+      int keySize =
+          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
+
+      log.info("Device credentials loaded from bootstrap volume");
+      return new DeviceCredentials(credsEnrollmentId, privateKey, publicKey, keySize);
+    } catch (Exception e) {
+      log.debug(
+          "Failed to load device credentials from bootstrap volume: {}", e.getMessage());
+      return null;
     }
   }
 

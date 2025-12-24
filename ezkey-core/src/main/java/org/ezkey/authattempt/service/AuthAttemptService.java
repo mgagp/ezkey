@@ -31,6 +31,7 @@ import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,6 +198,11 @@ public class AuthAttemptService {
    * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
    * creation date descending (newest first) for operational relevance.
    *
+   * <p><b>Tenant Scoping:</b> If tenantId is provided (non-null), results are filtered to only
+   * include auth attempts whose enrollment's integration belongs to that tenant. This enables
+   * tenant isolation for TenantAdmins while allowing GlobalAdmins to see all auth attempts (by
+   * passing null).
+   *
    * <p><b>Use Case:</b> Security operators monitoring authentication attempts, forensic analysis,
    * and compliance reporting.
    *
@@ -205,6 +211,8 @@ public class AuthAttemptService {
    * @param integrationId optional integration ID filter
    * @param createdAfter optional start of date range filter
    * @param createdBefore optional end of date range filter
+   * @param tenantId optional tenant ID filter for tenant scoping (null = all tenants, for
+   *     GlobalAdmin)
    * @param pageable pagination parameters
    * @return page of authentication attempts matching criteria
    */
@@ -215,6 +223,7 @@ public class AuthAttemptService {
       Integer integrationId,
       OffsetDateTime createdAfter,
       OffsetDateTime createdBefore,
+      Integer tenantId,
       Pageable pageable) {
 
     Specification<AuthAttempt> spec =
@@ -254,6 +263,27 @@ public class AuthAttemptService {
 
           if (createdBefore != null) {
             predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
+
+          // Tenant scoping: filter by enrollment's integration's tenant if tenantId is provided
+          // Since AuthAttempt doesn't have direct JPA relations, we use nested subqueries:
+          // AuthAttempt.enrollmentId -> Enrollment.integrationId -> Integration.tenant.tenantId
+          if (tenantId != null) {
+            // Subquery 1: Get integrationIds for the tenant
+            var integrationSubquery = query.subquery(Integer.class);
+            var integrationRoot = integrationSubquery.from(Integration.class);
+            integrationSubquery.select(integrationRoot.get("id"));
+            integrationSubquery.where(
+                cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId));
+
+            // Subquery 2: Get enrollmentIds for those integrations
+            var enrollmentSubquery = query.subquery(Integer.class);
+            var enrollmentRoot = enrollmentSubquery.from(Enrollment.class);
+            enrollmentSubquery.select(enrollmentRoot.get("enrollmentId"));
+            enrollmentSubquery.where(enrollmentRoot.get("integrationId").in(integrationSubquery));
+
+            // Filter AuthAttempts by enrollmentId in the subquery
+            predicates.add(root.get("enrollmentId").in(enrollmentSubquery));
           }
 
           // Force ordering by createdAt DESC if not specified in pageable

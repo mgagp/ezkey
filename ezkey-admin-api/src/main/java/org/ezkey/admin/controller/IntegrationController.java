@@ -17,11 +17,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationResponse;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
@@ -32,8 +36,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,18 +88,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class IntegrationController {
 
   private final IntegrationService service;
-
   private final IntegrationControllerMapper mapper;
+  private final EzkeyAdminRepository adminRepository;
+  private final AccessControlService accessControlService;
 
   /**
    * Constructs the controller with required dependencies.
    *
    * @param service the service layer for Integration operations
    * @param mapper the mapper for converting between entities and DTOs
+   * @param adminRepository the admin repository for loading admin entities
+   * @param accessControlService the access control service for tenant scoping validation
    */
-  public IntegrationController(IntegrationService service, IntegrationControllerMapper mapper) {
+  public IntegrationController(
+      IntegrationService service,
+      IntegrationControllerMapper mapper,
+      EzkeyAdminRepository adminRepository,
+      AccessControlService accessControlService) {
     this.service = service;
     this.mapper = mapper;
+    this.adminRepository = adminRepository;
+    this.accessControlService = accessControlService;
   }
 
   /**
@@ -160,9 +176,13 @@ public class IntegrationController {
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
+    // Extract tenant ID from authentication for tenant scoping
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Integer tenantId = extractTenantId(auth);
+
     Page<IntegrationResponseDto> integrations =
         service
-            .findByFilters(integrationName, active, createdAfter, createdBefore, pageable)
+            .findByFilters(integrationName, active, createdAfter, createdBefore, tenantId, pageable)
             .map(mapper::toResponse);
 
     return ResponseEntity.ok(integrations);
@@ -214,6 +234,12 @@ public class IntegrationController {
   public ResponseEntity<IntegrationResponseDto> getById(
       @Parameter(description = "Unique integration ID", example = "1") @PathVariable("id")
           Integer id) {
+    // Validate tenant scoping: admin must have access to this integration
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
     Integration integration =
         service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
     return ResponseEntity.ok(mapper.toResponse(integration));
@@ -268,8 +294,12 @@ public class IntegrationController {
           @RequestBody
           @jakarta.validation.Valid
           IntegrationCreateRequestDto request) {
+    // Get authenticated admin from security context
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+
+    // Create integration with tenant automatically assigned based on admin type
     IntegrationCreateResponse savedIntegration =
-        service.createIntegration(mapper.toCreateRequest(request));
+        service.createIntegration(mapper.toCreateRequest(request), currentAdmin);
     URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
     return ResponseEntity.created(location).body(mapper.toCreateResponseDto(savedIntegration));
   }
@@ -317,5 +347,96 @@ public class IntegrationController {
     service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
     service.delete(id);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Gets the currently authenticated admin from security context.
+   *
+   * <p>This method extracts the admin entity from the Spring Security context. For admin
+   * authentication, the principal is now AdminPrincipal (with adminId), so we load the admin by ID.
+   * For API key authentication, this method should not be called.
+   *
+   * @return the authenticated admin
+   * @throws IllegalStateException if no authentication found or not an admin authentication
+   */
+  private EzkeyAdmin getCurrentAdmin() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null || !authentication.isAuthenticated()) {
+      throw new IllegalStateException("No authenticated admin found");
+    }
+
+    // Check if this is admin authentication (not API key)
+    if (!hasRole(authentication, "ROLE_ADMIN")) {
+      throw new IllegalStateException(
+          "Current authentication is not an admin - API keys cannot access this operation");
+    }
+
+    // Extract AdminPrincipal from authentication (new multi-tenant auth flow)
+    Object principal = authentication.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      // Load admin by ID from AdminPrincipal
+      return adminRepository
+          .findById(adminPrincipal.adminId())
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "Admin not found with ID: " + adminPrincipal.adminId()));
+    }
+
+    // Fallback for backward compatibility (should not happen with new auth flow)
+    // Try to extract username from principal
+    String username = authentication.getName();
+    return loadAdminByUsername(username);
+  }
+
+  /**
+   * Loads admin entity from database by username.
+   *
+   * <p>Fallback method for backward compatibility. In the new multi-tenant architecture, admins are
+   * loaded by ID from AdminPrincipal.
+   *
+   * @param username the admin username
+   * @return the admin entity
+   * @throws IllegalStateException if admin not found
+   */
+  private EzkeyAdmin loadAdminByUsername(String username) {
+    return adminRepository
+        .findByUsername(username)
+        .orElseThrow(() -> new IllegalStateException("Admin not found: " + username));
+  }
+
+  /**
+   * Checks if the authentication has the specified role.
+   *
+   * @param authentication the authentication context
+   * @param role the role to check
+   * @return true if the role is present
+   */
+  private boolean hasRole(Authentication authentication, String role) {
+    return authentication.getAuthorities().stream()
+        .anyMatch(authority -> authority.getAuthority().equals(role));
+  }
+
+  /**
+   * Extracts tenant ID from authentication context for tenant scoping.
+   *
+   * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for
+   * GlobalAdmin (who can access all tenants).
+   *
+   * @param auth the authentication context
+   * @return tenant ID if TenantAdmin, null if GlobalAdmin
+   */
+  private Integer extractTenantId(Authentication auth) {
+    if (auth == null || auth.getPrincipal() == null) {
+      return null;
+    }
+
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal.tenantId(); // null for GlobalAdmin, tenantId for TenantAdmin
+    }
+
+    return null;
   }
 }

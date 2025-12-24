@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
@@ -106,14 +108,11 @@ public class AuthAttemptController {
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
 
   private final AuthAttemptService authAttemptService;
-
   private final AuthAttemptMapper authAttemptMapper;
-
   private final AuditLogService auditLogService;
-
   private final RateLimitService rateLimitService;
-
   private final EnrollmentRepository enrollmentRepository;
+  private final AccessControlService accessControlService;
 
   /**
    * Constructs the authorization attempt controller with required dependencies.
@@ -123,18 +122,21 @@ public class AuthAttemptController {
    * @param auditLogService the audit log service for security monitoring
    * @param rateLimitService the rate limiting service for API key operations
    * @param enrollmentRepository the enrollment repository for ownership checks
+   * @param accessControlService the access control service for tenant scoping validation
    */
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
       AuthAttemptMapper authAttemptMapper,
       AuditLogService auditLogService,
       RateLimitService rateLimitService,
-      EnrollmentRepository enrollmentRepository) {
+      EnrollmentRepository enrollmentRepository,
+      AccessControlService accessControlService) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
     this.rateLimitService = rateLimitService;
     this.enrollmentRepository = enrollmentRepository;
+    this.accessControlService = accessControlService;
   }
 
   /**
@@ -202,10 +204,20 @@ public class AuthAttemptController {
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
+    // Extract tenant ID from authentication for tenant scoping
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Integer tenantId = extractTenantId(auth);
+
     Page<AuthAttemptDto> authAttempts =
         authAttemptService
             .findByFilters(
-                status, enrollmentId, integrationId, createdAfter, createdBefore, pageable)
+                status,
+                enrollmentId,
+                integrationId,
+                createdAfter,
+                createdBefore,
+                tenantId,
+                pageable)
             .map(authAttemptMapper::toDto);
 
     return ResponseEntity.ok(authAttempts);
@@ -281,6 +293,26 @@ public class AuthAttemptController {
     // Check enrollment ownership for API keys
     if (apiKeyId != null) {
       validateEnrollmentOwnership(request.enrollmentId(), apiKeyId);
+    }
+
+    // Validate tenant scoping for admins: admin must have access to the enrollment
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null
+        && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+      // Admin authentication - validate access to enrollment
+      if (!accessControlService.canAccessEnrollment(auth, request.enrollmentId())) {
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.AUTH_ATTEMPT_CREATED,
+                    AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
+                .eventStatus(EventStatus.FAILURE)
+                .errorMessage(
+                    "Access denied: admin does not have access to enrollment "
+                        + request.enrollmentId())
+                .build());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      }
     }
 
     try {
@@ -571,5 +603,27 @@ public class AuthAttemptController {
         apiKeyIntegrationId,
         enrollmentId,
         enrollment.getIntegrationId());
+  }
+
+  /**
+   * Extracts tenant ID from authentication context for tenant scoping.
+   *
+   * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for
+   * GlobalAdmin (who can access all tenants).
+   *
+   * @param auth the authentication context
+   * @return tenant ID if TenantAdmin, null if GlobalAdmin
+   */
+  private Integer extractTenantId(Authentication auth) {
+    if (auth == null || auth.getPrincipal() == null) {
+      return null;
+    }
+
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal.tenantId(); // null for GlobalAdmin, tenantId for TenantAdmin
+    }
+
+    return null;
   }
 }

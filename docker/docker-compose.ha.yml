@@ -312,7 +312,7 @@ services:
       CRYPTO_API_URL: http://crypto-api:9090
     volumes:
       - bootstrap-artifacts-ha:/bootstrap
-      - demo-device-data-ha:/demo-device-data
+      - demo-device-data-ha:/app/data
     networks:
       - ezkey-network-ha
     restart: "no"

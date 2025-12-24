@@ -11,9 +11,13 @@ import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationI18nCreate;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.IntegrationI18n;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,6 +34,8 @@ class IntegrationServiceTest {
   @Mock private IntegrationRepository repository;
 
   @Mock private IntegrationServiceMapper mapper;
+
+  @Mock private TenantRepository tenantRepository;
 
   @InjectMocks private IntegrationService service;
 
@@ -60,12 +66,27 @@ class IntegrationServiceTest {
     return entity;
   }
 
+  private EzkeyAdmin createTestGlobalAdmin() {
+    EzkeyAdmin admin = new EzkeyAdmin("testadmin", AdminType.GLOBAL_ADMIN);
+    admin.setAdminId(1);
+    Tenant systemTenant = new Tenant("Ezkey System", "System tenant");
+    systemTenant.setTenantId(1);
+    admin.setTenant(systemTenant);
+    return admin;
+  }
+
+  private Tenant createSystemTenant() {
+    Tenant tenant = new Tenant("Ezkey System", "System tenant");
+    tenant.setTenantId(1);
+    return tenant;
+  }
+
   @Nested
   class CreateIntegration {
     @Test
     @DisplayName(
-        "createIntegration with i18n should set audit + active + back references and return mapped"
-            + " response")
+        "createIntegration with i18n should set audit + active + back references + tenant and"
+            + " return mapped response")
     void create_withI18n() {
       IntegrationCreateRequest req = buildRequest(true);
       Integration mapped = buildMappedEntity(true);
@@ -75,11 +96,15 @@ class IntegrationServiceTest {
       IntegrationCreateResponse expectedResponse = new IntegrationCreateResponse();
       expectedResponse.setId(42);
 
+      EzkeyAdmin admin = createTestGlobalAdmin();
+      Tenant systemTenant = createSystemTenant();
+
       when(mapper.toEntity(req)).thenReturn(mapped);
+      when(tenantRepository.findByTenantName("Ezkey System")).thenReturn(Optional.of(systemTenant));
       when(repository.save(any(Integration.class))).thenReturn(saved);
       when(mapper.toCreateResponse(saved)).thenReturn(expectedResponse);
 
-      IntegrationCreateResponse out = service.createIntegration(req);
+      IntegrationCreateResponse out = service.createIntegration(req, admin);
 
       assertThat(out.getId()).isEqualTo(42);
 
@@ -91,12 +116,15 @@ class IntegrationServiceTest {
       assertThat(toSave.getCreatedAt()).isBeforeOrEqualTo(OffsetDateTime.now());
       assertThat(toSave.getI18n()).hasSize(1);
       assertThat(toSave.getI18n().get(0).getIntegration()).isSameAs(toSave);
+      assertThat(toSave.getTenant()).isEqualTo(systemTenant);
+      assertThat(toSave.getCreatedByAdmin()).isEqualTo(admin);
       verify(mapper).toEntity(req);
       verify(mapper).toCreateResponse(saved);
     }
 
     @Test
-    @DisplayName("createIntegration without i18n should not fail and still set audit + active")
+    @DisplayName(
+        "createIntegration without i18n should not fail and still set audit + active + tenant")
     void create_withoutI18n() {
       IntegrationCreateRequest req = buildRequest(false);
       Integration mapped = buildMappedEntity(false);
@@ -105,11 +133,15 @@ class IntegrationServiceTest {
       IntegrationCreateResponse expectedResponse = new IntegrationCreateResponse();
       expectedResponse.setId(5);
 
+      EzkeyAdmin admin = createTestGlobalAdmin();
+      Tenant systemTenant = createSystemTenant();
+
       when(mapper.toEntity(req)).thenReturn(mapped);
+      when(tenantRepository.findByTenantName("Ezkey System")).thenReturn(Optional.of(systemTenant));
       when(repository.save(any(Integration.class))).thenReturn(saved);
       when(mapper.toCreateResponse(saved)).thenReturn(expectedResponse);
 
-      IntegrationCreateResponse out = service.createIntegration(req);
+      IntegrationCreateResponse out = service.createIntegration(req, admin);
       assertThat(out.getId()).isEqualTo(5);
       ArgumentCaptor<Integration> captor = ArgumentCaptor.forClass(Integration.class);
       verify(repository).save(captor.capture());
@@ -117,6 +149,8 @@ class IntegrationServiceTest {
       assertThat(toSave.getI18n()).isNull();
       assertThat(toSave.getActive()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
+      assertThat(toSave.getTenant()).isEqualTo(systemTenant);
+      assertThat(toSave.getCreatedByAdmin()).isEqualTo(admin);
     }
   }
 

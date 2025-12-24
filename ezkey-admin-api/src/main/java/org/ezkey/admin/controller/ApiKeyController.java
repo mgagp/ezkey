@@ -23,7 +23,9 @@ import java.util.stream.Collectors;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
+import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -87,6 +89,7 @@ public class ApiKeyController {
   private final ApiKeyService apiKeyService;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
   private final EzkeyAdminRepository adminRepository;
+  private final AccessControlService accessControlService;
 
   /**
    * Constructs a new ApiKeyController.
@@ -94,14 +97,17 @@ public class ApiKeyController {
    * @param apiKeyService the API key service
    * @param adminOpsRateLimitService the admin operations rate limiting service
    * @param adminRepository the admin repository for loading admin entities
+   * @param accessControlService the access control service for tenant scoping validation
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
       AdminOperationsRateLimitService adminOpsRateLimitService,
-      EzkeyAdminRepository adminRepository) {
+      EzkeyAdminRepository adminRepository,
+      AccessControlService accessControlService) {
     this.apiKeyService = apiKeyService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
     this.adminRepository = adminRepository;
+    this.accessControlService = accessControlService;
   }
 
   /**
@@ -158,6 +164,16 @@ public class ApiKeyController {
 
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
+
+    // Validate tenant scoping: admin must have access to the integration
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, request.integrationId())) {
+      logger.warn(
+          "Admin {} attempted to create API key for integration {} without access",
+          currentAdmin.getUsername(),
+          request.integrationId());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
 
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();
@@ -375,8 +391,8 @@ public class ApiKeyController {
    * Gets the currently authenticated admin from security context.
    *
    * <p>This method extracts the EzkeyAdmin from the Spring Security context. For admin
-   * authentication, the full admin entity is already loaded by AdminTokenAuthenticationFilter. For
-   * API key authentication, this method is not applicable as API keys don't have admin context.
+   * authentication, the principal is now AdminPrincipal (with adminId), so we load the admin by ID.
+   * For API key authentication, this method is not applicable as API keys don't have admin context.
    *
    * @return the authenticated admin
    * @throws IllegalStateException if no authentication found or not an admin authentication
@@ -394,12 +410,21 @@ public class ApiKeyController {
           "Current authentication is not an admin - API keys cannot access this operation");
     }
 
-    // For admin authentication, the principal is the username
-    // We need to load the full admin entity from the database
-    String username = authentication.getName();
+    // Extract AdminPrincipal from authentication (new multi-tenant auth flow)
+    Object principal = authentication.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      // Load admin by ID from AdminPrincipal
+      return adminRepository
+          .findById(adminPrincipal.adminId())
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "Admin not found with ID: " + adminPrincipal.adminId()));
+    }
 
-    // Since we have a single global admin, we can safely assume username is "admin"
-    // and load the admin entity from the database
+    // Fallback for backward compatibility (should not happen with new auth flow)
+    // Try to extract username from principal
+    String username = authentication.getName();
     return loadAdminByUsername(username);
   }
 

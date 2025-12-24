@@ -6,7 +6,7 @@ set -e
 
 BOOTSTRAP_CREDS_FILE="/bootstrap/bootstrap-credentials.json"
 DEVICE_CREDS_FILE="/bootstrap/device-credentials.json"
-DEMO_DEVICE_ENROLLMENTS_DIR="/demo-device-data/enrollments"
+DEMO_DEVICE_ENROLLMENTS_DIR="/app/data/enrollments"
 
 ADMIN_API_URL="${ADMIN_API_URL:-http://admin-api:9080}"
 AUTH_API_URL="${AUTH_API_URL:-http://auth-api:8080}"
@@ -191,12 +191,16 @@ echo "✅ Device credentials saved to $DEVICE_CREDS_FILE"
 # Step 7: Seed demo-device enrollment file
 echo ""
 echo "Step 7: Seeding demo-device enrollment file..."
-# Ensure directory exists (demo-device creates it, but ensure it's there)
+# Ensure directory exists with correct permissions (matching demo-device entrypoint)
+# demo-device runs as spring:spring, so we need to ensure the directory is writable
 mkdir -p "$DEMO_DEVICE_ENROLLMENTS_DIR"
 if [ ! -d "$DEMO_DEVICE_ENROLLMENTS_DIR" ]; then
   echo "❌ Error: Failed to create demo-device enrollments directory"
   exit 1
 fi
+# Ensure directory is writable (demo-device entrypoint does chown spring:spring, but we run as root)
+# Set permissions to 755 (rwxr-xr-x) so spring user can read/write
+chmod 755 "$DEMO_DEVICE_ENROLLMENTS_DIR" 2>/dev/null || true
 
 # Create enrollment file matching EnrollmentStoreService.Record format
 ENROLLMENT_FILE="$DEMO_DEVICE_ENROLLMENTS_DIR/${ENROLLMENT_ID}.json"

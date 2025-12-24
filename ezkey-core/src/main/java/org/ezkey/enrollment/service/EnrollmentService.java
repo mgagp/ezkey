@@ -26,6 +26,7 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.data.domain.Page;
@@ -178,6 +179,10 @@ public class EnrollmentService {
    * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
    * creation date descending (newest first) by default.
    *
+   * <p><b>Tenant Scoping:</b> If tenantId is provided (non-null), results are filtered to only
+   * include enrollments whose integration belongs to that tenant. This enables tenant isolation for
+   * TenantAdmins while allowing GlobalAdmins to see all enrollments (by passing null).
+   *
    * <p><b>Use Case:</b> Security operators monitoring enrollments, forensic analysis, and
    * compliance reporting.
    *
@@ -187,6 +192,8 @@ public class EnrollmentService {
    * @param active optional active flag filter
    * @param createdAfter optional start of date range filter
    * @param createdBefore optional end of date range filter
+   * @param tenantId optional tenant ID filter for tenant scoping (null = all tenants, for
+   *     GlobalAdmin)
    * @param pageable pagination and sorting parameters
    * @return page of enrollments matching criteria
    */
@@ -198,6 +205,7 @@ public class EnrollmentService {
       Boolean active,
       OffsetDateTime createdAfter,
       OffsetDateTime createdBefore,
+      Integer tenantId,
       Pageable pageable) {
 
     Specification<Enrollment> spec =
@@ -229,6 +237,20 @@ public class EnrollmentService {
 
           if (createdBefore != null) {
             predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
+
+          // Tenant scoping: filter by integration's tenant if tenantId is provided
+          // Since Enrollment doesn't have a direct JPA relation to Integration, we use a subquery
+          // to check if the enrollment's integrationId belongs to an integration with the specified
+          // tenantId
+          if (tenantId != null) {
+            var subquery = query.subquery(Integer.class);
+            var integrationRoot = subquery.from(Integration.class);
+            subquery.select(integrationRoot.get("id"));
+            subquery.where(
+                cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
+                cb.equal(integrationRoot.get("id"), root.get("integrationId")));
+            predicates.add(cb.exists(subquery));
           }
 
           // Apply default sort only if pageable is unsorted

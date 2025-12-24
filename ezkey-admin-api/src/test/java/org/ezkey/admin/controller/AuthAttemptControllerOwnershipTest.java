@@ -12,12 +12,14 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -78,6 +80,8 @@ class AuthAttemptControllerOwnershipTest {
 
   @Mock private EnrollmentRepository enrollmentRepository;
 
+  @Mock private AccessControlService accessControlService;
+
   private AuthAttemptController controller;
 
   @BeforeEach
@@ -88,7 +92,8 @@ class AuthAttemptControllerOwnershipTest {
             authAttemptMapper,
             auditLogService,
             rateLimitService,
-            enrollmentRepository);
+            enrollmentRepository,
+            accessControlService);
   }
 
   @Test
@@ -197,6 +202,9 @@ class AuthAttemptControllerOwnershipTest {
 
     // Mock rate limiting (admin bypass) - lenient since admin might not trigger this
     lenient().when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    // Mock access control to allow admin access to enrollment
+    when(accessControlService.canAccessEnrollment(any(), eq(enrollmentId))).thenReturn(true);
 
     // Mock successful auth attempt creation
     AuthAttemptCreateResponse mockResponse = createMockResponse();

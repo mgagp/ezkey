@@ -20,6 +20,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +53,8 @@ class AccessControlServiceTest {
 
   @Mock private EnrollmentRepository enrollmentRepository;
 
+  @Mock private IntegrationRepository integrationRepository;
+
   private AccessControlService accessControlService;
 
   private Integration testIntegration;
@@ -64,7 +67,9 @@ class AccessControlServiceTest {
 
   @BeforeEach
   void setUp() {
-    accessControlService = new AccessControlService(authAttemptRepository, enrollmentRepository);
+    accessControlService =
+        new AccessControlService(
+            authAttemptRepository, enrollmentRepository, integrationRepository);
 
     // Setup test integration
     testIntegration = new Integration();
@@ -90,30 +95,30 @@ class AccessControlServiceTest {
   class AdminAccessTests {
 
     @Test
-    @DisplayName("Admin can access any auth attempt")
-    void adminCanAccessAnyAuthAttempt() {
+    @DisplayName("Global admin can access any auth attempt")
+    void globalAdminCanAccessAnyAuthAttempt() {
       // Arrange
-      Authentication adminAuth = createAdminAuthentication();
+      Authentication adminAuth = createGlobalAdminAuthentication();
 
       // Act & Assert
       assertTrue(accessControlService.canAccessAuthAttempt(adminAuth, 101));
     }
 
     @Test
-    @DisplayName("Admin can access any enrollment")
-    void adminCanAccessAnyEnrollment() {
+    @DisplayName("Global admin can access any enrollment")
+    void globalAdminCanAccessAnyEnrollment() {
       // Arrange
-      Authentication adminAuth = createAdminAuthentication();
+      Authentication adminAuth = createGlobalAdminAuthentication();
 
       // Act & Assert
       assertTrue(accessControlService.canAccessEnrollment(adminAuth, 789));
     }
 
     @Test
-    @DisplayName("Admin can access any integration")
-    void adminCanAccessAnyIntegration() {
+    @DisplayName("Global admin can access any integration")
+    void globalAdminCanAccessAnyIntegration() {
       // Arrange
-      Authentication adminAuth = createAdminAuthentication();
+      Authentication adminAuth = createGlobalAdminAuthentication();
 
       // Act & Assert
       assertTrue(accessControlService.canAccessIntegration(adminAuth, 123));
@@ -261,6 +266,23 @@ class AccessControlServiceTest {
   private Authentication createAdminAuthentication() {
     return new UsernamePasswordAuthenticationToken(
         "admin", "password", java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+  }
+
+  /**
+   * Creates a global admin authentication context.
+   *
+   * @return authentication with ROLE_GLOBAL_ADMIN
+   */
+  private Authentication createGlobalAdminAuthentication() {
+    AdminPrincipal principal =
+        new AdminPrincipal(
+            1, org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType.GLOBAL_ADMIN, null, null);
+    return new UsernamePasswordAuthenticationToken(
+        principal,
+        null,
+        java.util.List.of(
+            new SimpleGrantedAuthority("ROLE_ADMIN"),
+            new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
   }
 
   /**

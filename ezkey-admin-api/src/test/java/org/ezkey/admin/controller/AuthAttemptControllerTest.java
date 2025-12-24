@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -58,6 +59,7 @@ class AuthAttemptControllerTest {
   @Mock private AuditLogService auditLogService;
   @Mock private RateLimitService rateLimitService;
   @Mock private EnrollmentRepository enrollmentRepository;
+  @Mock private AccessControlService accessControlService;
 
   private AuthAttemptController controller;
 
@@ -69,7 +71,8 @@ class AuthAttemptControllerTest {
             authAttemptMapper,
             auditLogService,
             rateLimitService,
-            enrollmentRepository);
+            enrollmentRepository,
+            accessControlService);
   }
 
   @Test
@@ -100,7 +103,13 @@ class AuthAttemptControllerTest {
             );
 
     when(authAttemptService.findByFilters(
-            eq(status), eq(enrollmentId), eq(integrationId), eq(now), eq(now), any(Pageable.class)))
+            eq(status),
+            eq(enrollmentId),
+            eq(integrationId),
+            eq(now),
+            eq(now),
+            any(), // tenantId (null for tests)
+            any(Pageable.class)))
         .thenReturn(attemptPage);
     when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
 
@@ -117,7 +126,13 @@ class AuthAttemptControllerTest {
 
     verify(authAttemptService)
         .findByFilters(
-            eq(status), eq(enrollmentId), eq(integrationId), eq(now), eq(now), any(Pageable.class));
+            eq(status),
+            eq(enrollmentId),
+            eq(integrationId),
+            eq(now),
+            eq(now),
+            any(), // tenantId (null for tests)
+            any(Pageable.class));
   }
 
   @Test
@@ -143,7 +158,13 @@ class AuthAttemptControllerTest {
             );
 
     when(authAttemptService.findByFilters(
-            eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            any(Pageable.class)))
         .thenReturn(attemptPage);
     when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
 
@@ -155,7 +176,14 @@ class AuthAttemptControllerTest {
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals(1, response.getBody().getTotalElements());
     verify(authAttemptService)
-        .findByFilters(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class));
+        .findByFilters(
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            any(Pageable.class));
   }
 
   @Test
@@ -180,7 +208,13 @@ class AuthAttemptControllerTest {
             );
 
     when(authAttemptService.findByFilters(
-            eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            any(Pageable.class)))
         .thenReturn(attemptPage);
     when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
 
@@ -189,7 +223,14 @@ class AuthAttemptControllerTest {
 
     // Assert
     verify(authAttemptService)
-        .findByFilters(eq(null), eq(null), eq(null), eq(null), eq(null), eq(pageable));
+        .findByFilters(
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            eq(pageable));
   }
 
   @Test
@@ -214,7 +255,13 @@ class AuthAttemptControllerTest {
             );
 
     when(authAttemptService.findByFilters(
-            eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            any(Pageable.class)))
         .thenReturn(attemptPage);
     when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
 
@@ -225,6 +272,13 @@ class AuthAttemptControllerTest {
     // Assert
     assertEquals(HttpStatus.OK, response.getStatusCode());
     verify(authAttemptService)
-        .findByFilters(eq(null), eq(null), eq(null), eq(null), eq(null), eq(pageable));
+        .findByFilters(
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            eq(null),
+            any(), // tenantId (null for tests)
+            eq(pageable));
   }
 }

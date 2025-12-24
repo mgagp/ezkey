@@ -15,10 +15,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.service.AdminTokenValidationService;
-import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.AdminToken;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
@@ -67,18 +69,39 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
       String token = authHeader.substring(BEARER_PREFIX.length());
 
       try {
-        // Use the service for transaction-aware validation
-        Optional<EzkeyAdmin> adminOptional = tokenValidationService.validateToken(token);
+        // Use the service for transaction-aware validation with relations loaded
+        Optional<AdminToken> tokenOptional =
+            tokenValidationService.validateTokenWithRelations(token);
 
-        if (adminOptional.isPresent()) {
-          EzkeyAdmin admin = adminOptional.get();
+        if (tokenOptional.isPresent()) {
+          AdminToken adminToken = tokenOptional.get();
+          var admin = adminToken.getAdmin();
 
-          // Create authentication object
+          // Extract scope information from token
+          Integer tenantId =
+              adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
+          Integer integrationId =
+              adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
+
+          // Create AdminPrincipal with scope information
+          AdminPrincipal principal =
+              new AdminPrincipal(admin.getAdminId(), admin.getAdminType(), tenantId, integrationId);
+
+          // Build authorities: always ROLE_ADMIN, plus specific role based on admin type
+          List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+          authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+
+          AdminType adminType = admin.getAdminType();
+          if (adminType == AdminType.GLOBAL_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"));
+          } else if (adminType == AdminType.TENANT_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN"));
+          }
+          // Note: INTEGRATION_ADMIN is not activated in Phase 1, but we don't add a role for it
+
+          // Create authentication object with AdminPrincipal
           UsernamePasswordAuthenticationToken authentication =
-              new UsernamePasswordAuthenticationToken(
-                  admin.getUsername(),
-                  null,
-                  Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+              new UsernamePasswordAuthenticationToken(principal, null, authorities);
 
           // Set authentication in security context
           SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -86,10 +109,16 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
           // Update last used timestamp in a separate transaction
           tokenValidationService.updateTokenLastUsed(token);
 
-          logger.debug("✅ Token validated successfully for admin: {}", admin.getUsername());
+          logger.debug(
+              "✅ Token validated successfully for admin: {} (type: {}, tenant: {}, integration:"
+                  + " {})",
+              admin.getUsername(),
+              adminType,
+              tenantId,
+              integrationId);
         }
       } catch (Exception e) {
-        logger.error("❌ Error validating token: {}", e.getMessage());
+        logger.error("❌ Error validating token: {}", e.getMessage(), e);
       }
     }
 

@@ -51,14 +51,33 @@ public class AdminTokenValidationService {
    *
    * @param token the bearer token to validate
    * @return Optional containing the admin if token is valid, empty otherwise
+   * @deprecated Use validateTokenWithRelations instead to get AdminToken with tenant/integration
+   *     loaded
    */
+  @Deprecated
   @Transactional(readOnly = true)
   public Optional<EzkeyAdmin> validateToken(String token) {
+    Optional<AdminToken> tokenOpt = validateTokenWithRelations(token);
+    return tokenOpt.map(AdminToken::getAdmin);
+  }
+
+  /**
+   * Validates a bearer token and returns the AdminToken with all relations loaded if valid.
+   *
+   * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation
+   * without lazy loading issues.
+   *
+   * @param token the bearer token to validate
+   * @return Optional containing the AdminToken with relations if token is valid, empty otherwise
+   */
+  @Transactional(readOnly = true)
+  public Optional<AdminToken> validateTokenWithRelations(String token) {
     try {
       logger.debug(
           "🔍 Validating bearer token: {}...", token.substring(0, Math.min(10, token.length())));
 
-      Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenAndActiveTrue(token);
+      Optional<AdminToken> tokenOptional =
+          tokenRepository.findByBearerTokenAndActiveTrueWithRelations(token);
 
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
@@ -73,7 +92,7 @@ public class AdminTokenValidationService {
           admin.getActive();
 
           logger.debug("✅ Token validated successfully for admin: {}", admin.getUsername());
-          return Optional.of(admin);
+          return Optional.of(adminToken);
         } else {
           logger.warn("❌ Token expired for: {}", token.substring(0, Math.min(10, token.length())));
         }

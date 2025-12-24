@@ -63,7 +63,27 @@ public class ShedLockDistributedTest {
 
     shedLockHelper = new ShedLockTestHelper();
 
+    // Verify PostgreSQL container is accessible
+    if (!shedLockHelper.verifyContainerAccessible()) {
+      log.error(
+          "PostgreSQL container is not accessible. "
+              + "Make sure the Docker stack is running (standard: ./docker/start.sh or HA: ./docker/start-ha.sh)");
+      throw new IllegalStateException(
+          "PostgreSQL container is not accessible. "
+              + "Docker stack must be running for ShedLock tests.");
+    }
+
+    // Verify shedlock table exists (ShedLock creates it automatically on first job execution)
+    if (!shedLockHelper.verifyShedLockTableExists()) {
+      log.warn(
+          "shedlock table does not exist yet. "
+              + "This is normal if no scheduled jobs have executed yet. "
+              + "The table will be created automatically when the first job runs.");
+    }
+
+    boolean isHaMode = shedLockHelper.isHaMode();
     log.info("ShedLock distributed locking tests initialized");
+    log.info("Mode: {}", isHaMode ? "HA (High Availability)" : "Standard (Single Instance)");
     log.info("Admin API URL: {}", dockerConfig.getAdminApiUrl());
     log.info("Auth API URL: {}", dockerConfig.getAuthApiUrl());
   }
@@ -79,14 +99,20 @@ public class ShedLockDistributedTest {
    * <ol>
    *   <li>Wait for a scheduled job to execute (KEY_PROMOTION runs every 5 seconds)
    *   <li>Verify that only one active lock exists in the shedlock table
-   *   <li>Verify that the lock changes between instances over time (no instance affinity)
+   *   <li>Verify that the lock changes between instances over time (no instance affinity) - HA mode only
    * </ol>
+   *
+   * <p><b>Note:</b> In standard mode (single instance), this test verifies that locks are created
+   * correctly. In HA mode, it also verifies exclusion mutuelle across multiple instances.
    */
   @Test
   @DisplayName("Test A: Exclusion Mutuelle - Only one instance executes scheduled jobs")
   @Timeout(60) // 60 seconds timeout
   void testExclusionMutuelle() {
     log.info("=== Test A: Exclusion Mutuelle ===");
+
+    boolean isHaMode = shedLockHelper.isHaMode();
+    log.info("Running in {} mode", isHaMode ? "HA" : "Standard");
 
     String lockName = "KEY_PROMOTION"; // Job that runs every 5 seconds
 
@@ -99,7 +125,9 @@ public class ShedLockDistributedTest {
           "Lock '"
               + lockName
               + "' was not acquired within timeout. "
-              + "Is the HA stack running with 2 instances?");
+              + (isHaMode
+                  ? "Is the HA stack running with 2 instances?"
+                  : "Are scheduled jobs enabled and running?"));
     }
 
     log.info("Lock acquired by instance: {}", lock.lockedBy());
@@ -116,41 +144,46 @@ public class ShedLockDistributedTest {
 
     log.info("✅ Verified: Only one active lock exists for '{}'", lockName);
 
-    // Verify lock changes between instances over time (no instance affinity)
-    // Wait for a few job executions and verify different instances acquire the lock
-    log.info("Verifying lock distribution across instances (no affinity)...");
-    Set<String> instancesThatHeldLock = new java.util.HashSet<>();
-    instancesThatHeldLock.add(lock.lockedBy());
+    // In HA mode, verify lock changes between instances over time (no instance affinity)
+    if (isHaMode) {
+      log.info("Verifying lock distribution across instances (no affinity)...");
+      Set<String> instancesThatHeldLock = new java.util.HashSet<>();
+      instancesThatHeldLock.add(lock.lockedBy());
 
-    // Wait for 3-4 job executions (KEY_PROMOTION runs every 5 seconds)
-    for (int i = 0; i < 4; i++) {
-      try {
-        Thread.sleep(6000); // Wait 6 seconds (slightly more than job interval)
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
+      // Wait for 3-4 job executions (KEY_PROMOTION runs every 5 seconds)
+      for (int i = 0; i < 4; i++) {
+        try {
+          Thread.sleep(6000); // Wait 6 seconds (slightly more than job interval)
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+
+        ShedLockTestHelper.ShedLockEntry currentLock = shedLockHelper.getLock(lockName);
+        if (currentLock != null && currentLock.isActive()) {
+          instancesThatHeldLock.add(currentLock.lockedBy());
+          log.debug("Lock currently held by instance: {}", currentLock.lockedBy());
+        }
       }
 
-      ShedLockTestHelper.ShedLockEntry currentLock = shedLockHelper.getLock(lockName);
-      if (currentLock != null && currentLock.isActive()) {
-        instancesThatHeldLock.add(currentLock.lockedBy());
-        log.debug("Lock currently held by instance: {}", currentLock.lockedBy());
+      log.info("Instances that held the lock: {}", instancesThatHeldLock);
+
+      // In a healthy HA setup, both instances should acquire the lock over time
+      // (round-robin distribution via HAProxy)
+      if (instancesThatHeldLock.size() < 1) {
+        throw new AssertionError(
+            "Expected at least one instance to hold the lock, but none found. "
+                + "Check that both instances are running and healthy.");
       }
+
+      log.info(
+          "✅ Verified: Lock distribution across instances ({} unique instances)",
+          instancesThatHeldLock.size());
+    } else {
+      log.info(
+          "✅ Verified: Lock created successfully (Standard mode - single instance, "
+              + "exclusion mutuelle not applicable)");
     }
-
-    log.info("Instances that held the lock: {}", instancesThatHeldLock);
-
-    // In a healthy HA setup, both instances should acquire the lock over time
-    // (round-robin distribution via HAProxy)
-    if (instancesThatHeldLock.size() < 1) {
-      throw new AssertionError(
-          "Expected at least one instance to hold the lock, but none found. "
-              + "Check that both instances are running and healthy.");
-    }
-
-    log.info(
-        "✅ Verified: Lock distribution across instances ({} unique instances)",
-        instancesThatHeldLock.size());
   }
 
   /**
@@ -311,6 +344,15 @@ public class ShedLockDistributedTest {
 
     if (initialLock == null) {
       log.warn("Lock '{}' was not acquired. Skipping failover test.", lockName);
+      return;
+    }
+
+    // Failover test only makes sense in HA mode (multiple instances)
+    boolean isHaMode = shedLockHelper.isHaMode();
+    if (!isHaMode) {
+      log.info(
+          "Skipping failover test - requires HA mode with multiple instances. "
+              + "Current mode: Standard (single instance)");
       return;
     }
 

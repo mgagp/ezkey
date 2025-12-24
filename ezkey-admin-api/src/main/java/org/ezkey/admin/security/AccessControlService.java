@@ -15,6 +15,8 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -26,16 +28,20 @@ import org.springframework.stereotype.Service;
  *
  * <p>This service provides methods to verify whether the current authentication context (API key or
  * admin) has permission to access specific resources. It implements the principle of least
- * privilege by restricting API keys to their associated integration scope while allowing admins
- * full access.
+ * privilege with tenant-aware scoping for multi-tenant isolation.
  *
  * <p><b>Access Control Rules:</b>
  *
  * <ul>
+ *   <li><b>Global Admins (ROLE_GLOBAL_ADMIN):</b> Can access all resources across all tenants
+ *   <li><b>Tenant Admins (ROLE_TENANT_ADMIN):</b> Can only access resources within their tenant
  *   <li><b>API Keys (ROLE_API_KEY):</b> Can only access auth attempts for their integration
- *   <li><b>Admins (ROLE_ADMIN):</b> Can access all resources
  *   <li><b>Enrollments:</b> Always admin-only (API keys cannot access)
  * </ul>
+ *
+ * <p><b>Tenant Scoping:</b> Tenant admins are restricted to resources (integrations, enrollments,
+ * auth attempts, API keys) that belong to their tenant. This is enforced by checking the tenant_id
+ * of the target resource.
  *
  * <p><b>Integration Scope:</b> API keys are associated with a specific integration and can only
  * access auth attempts that belong to enrollments of that integration.
@@ -54,17 +60,22 @@ public class AccessControlService {
 
   private final AuthAttemptRepository authAttemptRepository;
   private final EnrollmentRepository enrollmentRepository;
+  private final IntegrationRepository integrationRepository;
 
   /**
    * Constructs a new AccessControlService.
    *
    * @param authAttemptRepository repository for auth attempt data access
    * @param enrollmentRepository repository for enrollment data access
+   * @param integrationRepository repository for integration data access
    */
   public AccessControlService(
-      AuthAttemptRepository authAttemptRepository, EnrollmentRepository enrollmentRepository) {
+      AuthAttemptRepository authAttemptRepository,
+      EnrollmentRepository enrollmentRepository,
+      IntegrationRepository integrationRepository) {
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -73,7 +84,8 @@ public class AccessControlService {
    * <p><b>Access Rules:</b>
    *
    * <ul>
-   *   <li><b>Admins:</b> Can access any auth attempt
+   *   <li><b>Global Admins:</b> Can access any auth attempt
+   *   <li><b>Tenant Admins:</b> Can only access auth attempts for enrollments in their tenant
    *   <li><b>API Keys:</b> Can only access auth attempts for their integration
    * </ul>
    *
@@ -86,9 +98,14 @@ public class AccessControlService {
       return false;
     }
 
-    // Admins can access any auth attempt
-    if (hasRole(auth, "ROLE_ADMIN")) {
+    // Global admins can access any auth attempt
+    if (hasRole(auth, "ROLE_GLOBAL_ADMIN")) {
       return true;
+    }
+
+    // Tenant admins can only access auth attempts in their tenant
+    if (hasRole(auth, "ROLE_TENANT_ADMIN")) {
+      return canAccessAuthAttemptForTenant(auth, authAttemptId);
     }
 
     // API keys can only access auth attempts for their integration
@@ -105,7 +122,8 @@ public class AccessControlService {
    * <p><b>Access Rules:</b>
    *
    * <ul>
-   *   <li><b>Admins:</b> Can access any enrollment
+   *   <li><b>Global Admins:</b> Can access any enrollment
+   *   <li><b>Tenant Admins:</b> Can only access enrollments for integrations in their tenant
    *   <li><b>API Keys:</b> Cannot access enrollments (always false)
    * </ul>
    *
@@ -118,8 +136,18 @@ public class AccessControlService {
       return false;
     }
 
-    // Only admins can access enrollments
-    return hasRole(auth, "ROLE_ADMIN");
+    // Global admins can access any enrollment
+    if (hasRole(auth, "ROLE_GLOBAL_ADMIN")) {
+      return true;
+    }
+
+    // Tenant admins can only access enrollments in their tenant
+    if (hasRole(auth, "ROLE_TENANT_ADMIN")) {
+      return canAccessEnrollmentForTenant(auth, enrollmentId);
+    }
+
+    // API keys cannot access enrollments
+    return false;
   }
 
   /**
@@ -128,7 +156,8 @@ public class AccessControlService {
    * <p><b>Access Rules:</b>
    *
    * <ul>
-   *   <li><b>Admins:</b> Can access any integration
+   *   <li><b>Global Admins:</b> Can access any integration
+   *   <li><b>Tenant Admins:</b> Can only access integrations in their tenant
    *   <li><b>API Keys:</b> Can only access their own integration
    * </ul>
    *
@@ -141,9 +170,14 @@ public class AccessControlService {
       return false;
     }
 
-    // Admins can access any integration
-    if (hasRole(auth, "ROLE_ADMIN")) {
+    // Global admins can access any integration
+    if (hasRole(auth, "ROLE_GLOBAL_ADMIN")) {
       return true;
+    }
+
+    // Tenant admins can only access integrations in their tenant
+    if (hasRole(auth, "ROLE_TENANT_ADMIN")) {
+      return canAccessIntegrationForTenant(auth, integrationId);
     }
 
     // API keys can only access their own integration
@@ -201,6 +235,135 @@ public class AccessControlService {
   }
 
   /**
+   * Checks if a tenant admin can access an auth attempt in their tenant.
+   *
+   * <p>This method verifies that the auth attempt belongs to an enrollment whose integration is in
+   * the tenant admin's tenant.
+   *
+   * @param auth the authentication context (must be tenant admin)
+   * @param authAttemptId the auth attempt ID
+   * @return true if the auth attempt belongs to the tenant admin's tenant
+   */
+  private boolean canAccessAuthAttemptForTenant(Authentication auth, Integer authAttemptId) {
+    try {
+      AdminPrincipal principal = extractAdminPrincipal(auth);
+      if (principal == null || principal.tenantId() == null) {
+        logger.warn(
+            "Cannot extract tenant ID from authentication for auth attempt {}", authAttemptId);
+        return false;
+      }
+
+      // Get the auth attempt
+      Optional<AuthAttempt> authAttemptOpt = authAttemptRepository.findById(authAttemptId);
+      if (authAttemptOpt.isEmpty()) {
+        logger.warn("Auth attempt {} not found for tenant access check", authAttemptId);
+        return false;
+      }
+
+      AuthAttempt authAttempt = authAttemptOpt.get();
+      Integer enrollmentId = authAttempt.getEnrollmentId();
+
+      // Get the enrollment
+      Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(enrollmentId);
+      if (enrollmentOpt.isEmpty()) {
+        logger.warn("Enrollment {} not found for auth attempt {}", enrollmentId, authAttemptId);
+        return false;
+      }
+
+      Enrollment enrollment = enrollmentOpt.get();
+      Integer integrationId = enrollment.getIntegrationId();
+
+      // Check if integration belongs to tenant admin's tenant
+      return canAccessIntegrationForTenant(auth, integrationId);
+    } catch (Exception e) {
+      logger.error(
+          "Error checking tenant access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
+      return false;
+    }
+  }
+
+  /**
+   * Checks if a tenant admin can access an enrollment in their tenant.
+   *
+   * <p>This method verifies that the enrollment belongs to an integration in the tenant admin's
+   * tenant.
+   *
+   * @param auth the authentication context (must be tenant admin)
+   * @param enrollmentId the enrollment ID
+   * @return true if the enrollment belongs to the tenant admin's tenant
+   */
+  private boolean canAccessEnrollmentForTenant(Authentication auth, Integer enrollmentId) {
+    try {
+      AdminPrincipal principal = extractAdminPrincipal(auth);
+      if (principal == null || principal.tenantId() == null) {
+        logger.warn("Cannot extract tenant ID from authentication for enrollment {}", enrollmentId);
+        return false;
+      }
+
+      // Get the enrollment
+      Optional<Enrollment> enrollmentOpt = enrollmentRepository.findById(enrollmentId);
+      if (enrollmentOpt.isEmpty()) {
+        logger.warn("Enrollment {} not found for tenant access check", enrollmentId);
+        return false;
+      }
+
+      Enrollment enrollment = enrollmentOpt.get();
+      Integer integrationId = enrollment.getIntegrationId();
+
+      // Check if integration belongs to tenant admin's tenant
+      return canAccessIntegrationForTenant(auth, integrationId);
+    } catch (Exception e) {
+      logger.error(
+          "Error checking tenant access to enrollment {}: {}", enrollmentId, e.getMessage(), e);
+      return false;
+    }
+  }
+
+  /**
+   * Checks if a tenant admin can access an integration in their tenant.
+   *
+   * <p>This method verifies that the integration belongs to the tenant admin's tenant by checking
+   * the integration's tenant_id.
+   *
+   * @param auth the authentication context (must be tenant admin)
+   * @param integrationId the integration ID
+   * @return true if the integration belongs to the tenant admin's tenant
+   */
+  private boolean canAccessIntegrationForTenant(Authentication auth, Integer integrationId) {
+    try {
+      AdminPrincipal principal = extractAdminPrincipal(auth);
+      if (principal == null || principal.tenantId() == null) {
+        logger.warn(
+            "Cannot extract tenant ID from authentication for integration {}", integrationId);
+        return false;
+      }
+
+      // Get the integration
+      Optional<Integration> integrationOpt = integrationRepository.findById(integrationId);
+      if (integrationOpt.isEmpty()) {
+        logger.warn("Integration {} not found for tenant access check", integrationId);
+        return false;
+      }
+
+      Integration integration = integrationOpt.get();
+      Integer integrationTenantId =
+          integration.getTenant() != null ? integration.getTenant().getTenantId() : null;
+
+      boolean matches = principal.tenantId().equals(integrationTenantId);
+      logger.debug(
+          "Tenant admin tenant {} matches integration tenant {}: {}",
+          principal.tenantId(),
+          integrationTenantId,
+          matches);
+      return matches;
+    } catch (Exception e) {
+      logger.error(
+          "Error checking tenant access to integration {}: {}", integrationId, e.getMessage(), e);
+      return false;
+    }
+  }
+
+  /**
    * Checks if an API key can access its own integration.
    *
    * @param auth the authentication context (must be API key)
@@ -232,6 +395,28 @@ public class AccessControlService {
       logger.error("Error checking integration access: {}", e.getMessage(), e);
       return false;
     }
+  }
+
+  /**
+   * Extracts AdminPrincipal from authentication context.
+   *
+   * @param auth the authentication context
+   * @return AdminPrincipal if present, null otherwise
+   */
+  private AdminPrincipal extractAdminPrincipal(Authentication auth) {
+    if (auth == null) {
+      return null;
+    }
+
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal;
+    }
+
+    logger.debug(
+        "Authentication principal is not AdminPrincipal: {}",
+        principal != null ? principal.getClass().getSimpleName() : "null");
+    return null;
   }
 
   /**

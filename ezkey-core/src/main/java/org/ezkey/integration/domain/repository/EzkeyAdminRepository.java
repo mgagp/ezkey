@@ -168,6 +168,18 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
   long countByTenantTenantIdAndAdminType(Integer tenantId, AdminType adminType);
 
   /**
+   * Counts active administrators by tenant and type.
+   *
+   * <p>This method is used for enforcing admin limits during provisioning. It counts only active
+   * administrators to ensure limits are enforced correctly.
+   *
+   * @param tenantId the ID of the tenant
+   * @param adminType the type of administrator
+   * @return the count of active administrators matching the criteria
+   */
+  long countByTenantTenantIdAndAdminTypeAndActiveTrue(Integer tenantId, AdminType adminType);
+
+  /**
    * Counts active administrators by type.
    *
    * <p>This method is used for statistics and monitoring of active administrator distribution.
