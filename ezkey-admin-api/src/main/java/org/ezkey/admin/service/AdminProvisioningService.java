@@ -28,6 +28,8 @@ import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -427,6 +429,37 @@ public class AdminProvisioningService {
         enrollmentProofToken,
         enrollmentChallenge,
         recoveryCodes.getPlainCodes());
+  }
+
+  /**
+   * Lists administrators with tenant-based filtering.
+   *
+   * <p>Returns a paginated list of administrators filtered by tenant. GlobalAdmin sees all
+   * administrators across all tenants. TenantAdmin sees only administrators from their tenant.
+   *
+   * <p><b>Tenant Filtering:</b>
+   *
+   * <ul>
+   *   <li><b>GlobalAdmin (tenantId = null):</b> Returns all administrators
+   *   <li><b>TenantAdmin (tenantId != null):</b> Returns only administrators from their tenant
+   * </ul>
+   *
+   * @param tenantId the tenant ID to filter by (null for GlobalAdmin = all tenants)
+   * @param pageable pagination and sorting parameters
+   * @return page of administrators matching the tenant filter
+   */
+  public Page<EzkeyAdmin> listAdmins(Integer tenantId, Pageable pageable) {
+    logger.debug("Listing admins - tenantId: {}, pageable: {}", tenantId, pageable);
+
+    if (tenantId == null) {
+      // GlobalAdmin: return all admins
+      logger.debug("GlobalAdmin listing all admins");
+      return adminRepository.findAll(pageable);
+    } else {
+      // TenantAdmin: return only admins from their tenant
+      logger.debug("TenantAdmin listing admins for tenant: {}", tenantId);
+      return adminRepository.findByTenantTenantId(tenantId, pageable);
+    }
   }
 
   /**

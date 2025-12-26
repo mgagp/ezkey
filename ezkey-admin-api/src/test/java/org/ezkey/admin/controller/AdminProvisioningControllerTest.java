@@ -1,0 +1,357 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Test: AdminProvisioningControllerTest
+ * Description: Unit tests for AdminProvisioningController listAdmins endpoint.
+ */
+
+package org.ezkey.admin.controller;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.ezkey.admin.dto.response.AdminResponseDto;
+import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Tenant;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+/**
+ * Unit tests for AdminProvisioningController listAdmins endpoint.
+ *
+ * <p>This test class validates the tenant-based filtering logic for listing administrators. It
+ * ensures that GlobalAdmin sees all administrators while TenantAdmin sees only administrators from
+ * their tenant.
+ *
+ * <p><b>Test Coverage:</b>
+ *
+ * <ul>
+ *   <li><b>listAdmins:</b> GlobalAdmin sees all admins, TenantAdmin sees only own tenant admins,
+ *       pagination works correctly, tenant isolation is enforced
+ * </ul>
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * @author Ezkey contributors
+ * @since 2025
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AdminProvisioningController listAdmins Tests")
+class AdminProvisioningControllerTest {
+
+  @Mock private AdminProvisioningService provisioningService;
+
+  private AdminProvisioningController controller;
+
+  private Tenant testTenant;
+
+  private EzkeyAdmin globalAdmin;
+
+  private EzkeyAdmin tenantAdmin1;
+
+  private EzkeyAdmin tenantAdmin2;
+
+  private EzkeyAdmin otherTenantAdmin;
+
+  @BeforeEach
+  void setUp() {
+    controller = new AdminProvisioningController(provisioningService);
+
+    // Setup test tenant
+    testTenant = new Tenant();
+    testTenant.setTenantId(1);
+    testTenant.setTenantName("Test Tenant");
+
+    Tenant otherTenant = new Tenant();
+    otherTenant.setTenantId(2);
+    otherTenant.setTenantName("Other Tenant");
+
+    // Setup global admin
+    globalAdmin = new EzkeyAdmin("globaladmin", AdminType.GLOBAL_ADMIN);
+    globalAdmin.setAdminId(1);
+    globalAdmin.setEmail("global@example.com");
+    globalAdmin.setFirstName("Global");
+    globalAdmin.setLastName("Admin");
+    globalAdmin.setCreatedAt(OffsetDateTime.now());
+    globalAdmin.setActive(true);
+
+    // Setup tenant admins for test tenant
+    tenantAdmin1 = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+    tenantAdmin1.setAdminId(2);
+    tenantAdmin1.setEmail("tenant1@example.com");
+    tenantAdmin1.setFirstName("Tenant");
+    tenantAdmin1.setLastName("Admin1");
+    tenantAdmin1.setTenant(testTenant);
+    tenantAdmin1.setCreatedAt(OffsetDateTime.now());
+    tenantAdmin1.setActive(true);
+
+    tenantAdmin2 = new EzkeyAdmin("tenantadmin2", AdminType.TENANT_ADMIN);
+    tenantAdmin2.setAdminId(3);
+    tenantAdmin2.setEmail("tenant2@example.com");
+    tenantAdmin2.setFirstName("Tenant");
+    tenantAdmin2.setLastName("Admin2");
+    tenantAdmin2.setTenant(testTenant);
+    tenantAdmin2.setCreatedAt(OffsetDateTime.now());
+    tenantAdmin2.setActive(true);
+
+    // Setup tenant admin for other tenant
+    otherTenantAdmin = new EzkeyAdmin("othertenantadmin", AdminType.TENANT_ADMIN);
+    otherTenantAdmin.setAdminId(4);
+    otherTenantAdmin.setEmail("other@example.com");
+    otherTenantAdmin.setFirstName("Other");
+    otherTenantAdmin.setLastName("Admin");
+    otherTenantAdmin.setTenant(otherTenant);
+    otherTenantAdmin.setCreatedAt(OffsetDateTime.now());
+    otherTenantAdmin.setActive(true);
+  }
+
+  @Nested
+  @DisplayName("GlobalAdmin Listing Tests")
+  class GlobalAdminListingTests {
+
+    @BeforeEach
+    void setUpGlobalAdmin() {
+      setupGlobalAdminAuthentication();
+    }
+
+    @Test
+    @DisplayName("GlobalAdmin sees all admins across all tenants")
+    void globalAdminSeesAllAdmins() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 20);
+      List<EzkeyAdmin> allAdmins =
+          List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(allAdmins, pageable, allAdmins.size());
+
+      when(provisioningService.listAdmins(isNull(), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(4, responseBody.getTotalElements());
+      assertEquals(4, responseBody.getContent().size());
+      verify(provisioningService).listAdmins(isNull(), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("GlobalAdmin pagination works correctly")
+    void globalAdminPaginationWorks() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 2);
+      List<EzkeyAdmin> pageContent = List.of(globalAdmin, tenantAdmin1);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(pageContent, pageable, 4);
+
+      when(provisioningService.listAdmins(isNull(), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(4, responseBody.getTotalElements());
+      assertEquals(2, responseBody.getContent().size());
+      verify(provisioningService).listAdmins(isNull(), eq(pageable));
+    }
+  }
+
+  @Nested
+  @DisplayName("TenantAdmin Listing Tests")
+  class TenantAdminListingTests {
+
+    @BeforeEach
+    void setUpTenantAdmin() {
+      setupTenantAdminAuthentication();
+    }
+
+    @Test
+    @DisplayName("TenantAdmin sees only admins from their tenant")
+    void tenantAdminSeesOnlyOwnTenantAdmins() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 20);
+      List<EzkeyAdmin> tenantAdmins = List.of(tenantAdmin1, tenantAdmin2);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(tenantAdmins, pageable, tenantAdmins.size());
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(2, responseBody.getTotalElements());
+      assertEquals(2, responseBody.getContent().size());
+
+      // Verify all returned admins belong to tenant 1
+      responseBody
+          .getContent()
+          .forEach(
+              admin -> {
+                assertNotNull(admin.tenantId());
+                assertEquals(1, admin.tenantId());
+              });
+
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("TenantAdmin does not see admins from other tenants")
+    void tenantAdminDoesNotSeeOtherTenantAdmins() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 20);
+      List<EzkeyAdmin> tenantAdmins = List.of(tenantAdmin1, tenantAdmin2);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(tenantAdmins, pageable, tenantAdmins.size());
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+
+      // Verify otherTenantAdmin (tenant 2) is not in the results
+      boolean containsOtherTenantAdmin =
+          responseBody.getContent().stream()
+              .anyMatch(admin -> admin.adminId().equals(otherTenantAdmin.getAdminId()));
+      assertEquals(false, containsOtherTenantAdmin);
+
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("TenantAdmin pagination works correctly")
+    void tenantAdminPaginationWorks() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 1);
+      List<EzkeyAdmin> pageContent = List.of(tenantAdmin1);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(pageContent, pageable, 2);
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(2, responseBody.getTotalElements());
+      assertEquals(1, responseBody.getContent().size());
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("TenantAdmin with empty tenant sees empty results")
+    void tenantAdminWithEmptyTenantSeesEmptyResults() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 20);
+      Page<EzkeyAdmin> expectedPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(0, responseBody.getTotalElements());
+      assertTrue(responseBody.getContent().isEmpty());
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+  }
+
+  /**
+   * Sets up authentication context for GlobalAdmin.
+   *
+   * <p>Creates an AdminPrincipal with GLOBAL_ADMIN type and null tenantId, then sets it in the
+   * Spring Security context.
+   */
+  private void setupGlobalAdminAuthentication() {
+    AdminPrincipal principal =
+        new AdminPrincipal(
+            1, AdminType.GLOBAL_ADMIN, null, null); // tenantId null for GlobalAdmin
+
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            principal,
+            null,
+            Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
+
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
+
+  /**
+   * Sets up authentication context for TenantAdmin.
+   *
+   * <p>Creates an AdminPrincipal with TENANT_ADMIN type and tenantId=1, then sets it in the Spring
+   * Security context.
+   */
+  private void setupTenantAdminAuthentication() {
+    AdminPrincipal principal =
+        new AdminPrincipal(
+            2, AdminType.TENANT_ADMIN, 1, null); // tenantId=1 for TenantAdmin
+
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            principal,
+            null,
+            Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")));
+
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
+}
+

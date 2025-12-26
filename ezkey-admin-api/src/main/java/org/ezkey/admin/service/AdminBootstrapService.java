@@ -261,9 +261,8 @@ public class AdminBootstrapService {
 
     // Check if admin already has enrollment
     if (globalAdmin.getMfaEnrollment() != null) {
-      logger.info(
-          "✅ Global admin already has enrollment (ID: {})",
-          globalAdmin.getMfaEnrollment().getEnrollmentId());
+      Integer enrollmentId = globalAdmin.getMfaEnrollment().getEnrollmentId();
+      logger.info("✅ Global admin already has enrollment (ID: {})", enrollmentId);
 
       // Set default challenge requirement if needed
       if (globalAdmin.getChallengeRequired() == null) {
@@ -274,7 +273,14 @@ public class AdminBootstrapService {
 
       // Export existing enrollment credentials if file doesn't exist yet (Docker-only)
       // This ensures bootstrap-init can work even if enrollment was created in a previous run
-      Enrollment existingEnrollment = globalAdmin.getMfaEnrollment();
+      // Reload enrollment from repository to ensure session is active and all properties are loaded
+      Enrollment existingEnrollment =
+          enrollmentRepository
+              .findById(enrollmentId)
+              .orElseThrow(
+                  () ->
+                      new RuntimeException(
+                          "Enrollment not found: " + enrollmentId));
       bootstrapCredentialsFileExporter.exportIfEnabled(
           existingEnrollment,
           existingEnrollment.getEnrollmentProofToken(),

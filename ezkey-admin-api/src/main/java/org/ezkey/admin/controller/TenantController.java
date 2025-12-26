@@ -118,37 +118,61 @@ public class TenantController {
   }
 
   /**
-   * Lists all tenants.
+   * Lists tenants.
    *
-   * <p>Only global administrators can list all tenants.
+   * <p>Global administrators can list all tenants. Tenant administrators can only see their own tenant.
    *
    * @param auth the authentication context
    * @return ResponseEntity with list of tenants (200 OK)
    */
   @GetMapping
-  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(summary = "List all tenants", description = "Lists all tenants. GlobalAdmin only.")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "List tenants",
+      description =
+          "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "List of tenants"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
   })
   public ResponseEntity<List<TenantResponseDto>> listTenants(Authentication auth) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
-    if (principal == null || !principal.isGlobalAdmin()) {
+    if (principal == null) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    List<TenantResponseDto> tenants =
-        tenantRepository.findAll().stream()
-            .map(
-                tenant ->
-                    new TenantResponseDto(
-                        tenant.getTenantId(),
-                        tenant.getTenantName(),
-                        tenant.getTenantDescription(),
-                        tenant.getCreatedAt(),
-                        tenant.getActive()))
-            .collect(Collectors.toList());
+    List<TenantResponseDto> tenants;
+    if (principal.isGlobalAdmin()) {
+      // GlobalAdmin: list all tenants
+      tenants =
+          tenantRepository.findAll().stream()
+              .map(
+                  tenant ->
+                      new TenantResponseDto(
+                          tenant.getTenantId(),
+                          tenant.getTenantName(),
+                          tenant.getTenantDescription(),
+                          tenant.getCreatedAt(),
+                          tenant.getActive()))
+              .collect(Collectors.toList());
+    } else if (principal.tenantId() != null) {
+      // TenantAdmin: list only their own tenant
+      tenants =
+          tenantRepository
+              .findById(principal.tenantId())
+              .map(
+                  tenant ->
+                      new TenantResponseDto(
+                          tenant.getTenantId(),
+                          tenant.getTenantName(),
+                          tenant.getTenantDescription(),
+                          tenant.getCreatedAt(),
+                          tenant.getActive()))
+              .map(List::of)
+              .orElse(List.of());
+    } else {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
 
     return ResponseEntity.ok(tenants);
   }
@@ -156,26 +180,37 @@ public class TenantController {
   /**
    * Gets a tenant by ID.
    *
-   * <p>Only global administrators can view tenant details.
+   * <p>Global administrators can view any tenant. Tenant administrators can only view their own tenant.
    *
    * @param id the tenant ID
    * @param auth the authentication context
    * @return ResponseEntity with tenant (200 OK) or 404 Not Found
    */
   @GetMapping("/{id}")
-  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(summary = "Get tenant by ID", description = "Gets a tenant by ID. GlobalAdmin only.")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get tenant by ID",
+      description =
+          "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access"
+              + " their own tenant.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Tenant found"),
     @ApiResponse(responseCode = "404", description = "Tenant not found"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
   })
   public ResponseEntity<TenantResponseDto> getTenant(
       @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
       Authentication auth) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
-    if (principal == null || !principal.isGlobalAdmin()) {
+    if (principal == null) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    // TenantAdmin can only access their own tenant
+    if (!principal.isGlobalAdmin() && principal.tenantId() != null) {
+      if (!principal.tenantId().equals(id)) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+      }
     }
 
     return tenantRepository

@@ -11,7 +11,8 @@ Ce document contient des observations et des points à réanalyser ou compléter
 
 **Date**: 2025-12-26  
 **Observateur**: Utilisateur  
-**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)
+**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)  
+**Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
 
@@ -73,13 +74,38 @@ Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son prop
 - Endpoint spécifique pour lister les "pairs" (admins du même tenant)
 - Plus simple pour TenantAdmin, mais moins flexible
 
+### Solution implémentée
+
+**✅ Option 1 sélectionnée et implémentée** - `GET /api/v1/admins` avec filtrage automatique par tenant
+
+**Implémentation:**
+- Endpoint `GET /api/v1/admins` créé dans `AdminProvisioningController`
+- Filtrage automatique basé sur le type d'admin:
+  - **GlobalAdmin**: Voit tous les admins (tous tenants)
+  - **TenantAdmin**: Voit uniquement les admins de son tenant (via `extractTenantId()`)
+- Support de pagination et filtres optionnels (`active`, `adminType`)
+- DTO `AdminResponseDto` créé pour la réponse
+- Tests unitaires et d'intégration ajoutés
+- Collection Postman mise à jour
+
+**Fichiers modifiés:**
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminProvisioningController.java` - Ajout endpoint `listAdmins()`
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/dto/response/AdminResponseDto.java` - Nouveau DTO
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java` - Ajout méthode `listAdmins()`
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/repository/EzkeyAdminRepository.java` - Ajout méthodes de recherche avec pagination
+- `ezkey-admin-api/src/test/java/org/ezkey/admin/service/AdminProvisioningServiceTest.java` - Tests unitaires
+- `ezkey-admin-api/src/test/java/org/ezkey/admin/controller/AdminProvisioningControllerTest.java` - Tests d'intégration
+- `postman/collections/v2.1/EZ Key Admin Provisioning admin.postman_collection.json` - Collection mise à jour
+
+**Note additionnelle:** L'endpoint `GET /api/v1/tenants` a également été modifié pour permettre aux TenantAdmins de voir leur propre tenant, suivant le même pattern de filtrage automatique.
+
 ### Prochaines étapes
 
-- [ ] Décider quelle option implémenter
-- [ ] Créer l'endpoint REST avec les bonnes permissions
-- [ ] Ajouter les tests unitaires et d'intégration
-- [ ] Mettre à jour la documentation API
-- [ ] Ajouter une collection Postman pour tester
+- [x] Décider quelle option implémenter
+- [x] Créer l'endpoint REST avec les bonnes permissions
+- [x] Ajouter les tests unitaires et d'intégration
+- [x] Mettre à jour la documentation API
+- [x] Ajouter une collection Postman pour tester
 
 ### Références
 

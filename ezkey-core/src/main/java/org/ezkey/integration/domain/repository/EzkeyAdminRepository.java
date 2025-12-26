@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -103,6 +105,18 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * @return list of administrators belonging to the tenant
    */
   List<EzkeyAdmin> findByTenantTenantId(Integer tenantId);
+
+  /**
+   * Finds administrators by tenant with pagination support.
+   *
+   * <p>This method returns a paginated list of administrators belonging to a specific tenant,
+   * regardless of their type. Used for listing administrators with pagination support.
+   *
+   * @param tenantId the ID of the tenant
+   * @param pageable pagination and sorting parameters
+   * @return page of administrators belonging to the tenant
+   */
+  Page<EzkeyAdmin> findByTenantTenantId(Integer tenantId, Pageable pageable);
 
   /**
    * Finds administrators by integration.

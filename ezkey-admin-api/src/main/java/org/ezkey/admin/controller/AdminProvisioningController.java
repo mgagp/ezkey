@@ -19,13 +19,22 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
+import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -201,6 +210,72 @@ public class AdminProvisioningController {
   }
 
   /**
+   * Lists administrators with tenant-based filtering.
+   *
+   * <p>Retrieves a paginated list of administrators. GlobalAdmin sees all administrators across all
+   * tenants. TenantAdmin sees only administrators from their tenant. Results are ordered by creation
+   * date descending (newest first) by default.
+   *
+   * <p><b>Tenant Filtering:</b>
+   *
+   * <ul>
+   *   <li><b>GlobalAdmin:</b> Returns all administrators (all tenants)
+   *   <li><b>TenantAdmin:</b> Returns only administrators from their tenant (automatic filtering)
+   * </ul>
+   *
+   * <p><b>Pagination and Sorting:</b>
+   *
+   * <ul>
+   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=adminId,asc</code>
+   *       or <code>?sort=createdAt,desc</code>)
+   *   <li>Default: page=0, size=20, sort=createdAt,DESC
+   *   <li>Sortable fields: adminId, username, adminType, tenantId, active, createdAt
+   * </ul>
+   *
+   * @param pageable pagination and sorting parameters (default: page=0, size=20,
+   *     sort=createdAt,DESC)
+   * @return ResponseEntity containing page of administrator response DTOs (200 OK)
+   */
+  @GetMapping
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "List administrators",
+      description =
+          "Lists administrators with tenant-based filtering. GlobalAdmin sees all admins. "
+              + "TenantAdmin sees only admins from their tenant. Supports pagination and sorting.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "List of administrators retrieved successfully"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not an administrator")
+  })
+  public ResponseEntity<Page<AdminResponseDto>> listAdmins(
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    // Extract tenant ID from authentication for tenant scoping
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Integer tenantId = extractTenantId(auth);
+
+    Page<EzkeyAdmin> admins = provisioningService.listAdmins(tenantId, pageable);
+
+    Page<AdminResponseDto> response =
+        admins.map(
+            admin ->
+                new AdminResponseDto(
+                    admin.getAdminId(),
+                    admin.getUsername(),
+                    admin.getEmail(),
+                    admin.getFirstName(),
+                    admin.getLastName(),
+                    admin.getAdminType().name(),
+                    admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
+                    admin.getActive(),
+                    admin.getCreatedAt()));
+
+    return ResponseEntity.ok(response);
+  }
+
+  /**
    * Deactivates an administrator.
    *
    * <p>Only global administrators can deactivate administrators. Deactivation enforces minimum
@@ -233,5 +308,27 @@ public class AdminProvisioningController {
     // TODO: Implement deactivation logic with min limit enforcement and token revocation
     // This will be implemented in the deactivation-revocation todo
     return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+  }
+
+  /**
+   * Extracts tenant ID from authentication context for tenant scoping.
+   *
+   * <p>This method extracts the tenant ID from the AdminPrincipal in the authentication context.
+   * Returns null for GlobalAdmin (who can access all tenants) and the tenant ID for TenantAdmin.
+   *
+   * @param auth the authentication context
+   * @return tenant ID if TenantAdmin, null if GlobalAdmin
+   */
+  private Integer extractTenantId(Authentication auth) {
+    if (auth == null || auth.getPrincipal() == null) {
+      return null;
+    }
+
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal.tenantId(); // null for GlobalAdmin, tenantId for TenantAdmin
+    }
+
+    return null;
   }
 }
