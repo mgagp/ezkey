@@ -162,3 +162,12 @@ Consistent LF line endings ensure:
 - If a command blocks for more than 30 seconds, consider alternatives
 - Use file reading and analysis instead of compilation when appropriate
 - Prefer direct code review over automated compilation checks
+
+# Script and Shell Preferences
+
+## Shell Script Preference
+- **ALWAYS prefer Bash scripts** over PowerShell scripts
+- **ONLY create PowerShell scripts** when absolutely necessary (e.g., Windows-specific functionality that cannot be done in Bash)
+- User uses Git Bash on Windows, which supports standard Bash syntax
+- When creating diagnostic or utility scripts, create Bash (.sh) version only
+- PowerShell scripts (.ps1) should only be created if explicitly requested or if functionality requires Windows-specific PowerShell features
