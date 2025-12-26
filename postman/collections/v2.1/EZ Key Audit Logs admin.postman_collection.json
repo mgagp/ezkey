@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "b5e2a934-1d5c-4f8a-9e67-c8a6d9b7e012",
 		"name": "EZ Key Audit Logs admin",
-		"description": "Collection for audit log query operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range",
+		"description": "Collection for audit log query operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Multi-Tenancy (Phase 1)\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **No Access Restrictions**: Unlike other resources, audit logs do not enforce tenant boundaries for compliance and security monitoring purposes\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -114,7 +114,7 @@
 		"bearer": [
 			{
 				"key": "token",
-				"value": "{{admin_token}}",
+				"value": "{{token}}",
 				"type": "string"
 			}
 		]
