@@ -1,0 +1,275 @@
+{
+	"info": {
+		"_postman_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+		"name": "EZ Key Admin Provisioning admin",
+		"description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, TODO)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials\nWhen creating a new admin, the response includes:\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n- `recoveryCodes`: List of recovery codes (shown once, single-use - save securely!)\n\n**CRITICAL**: These credentials are shown ONLY ONCE and cannot be retrieved again. Save them immediately!\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin)\n2. Save onboarding credentials from response\n3. Use credentials to login via `/api/v1/admin/auth/login`\n4. Bind device during first login\n5. Resume normal passwordless authentication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4087"
+	},
+	"item": [
+		{
+			"name": "create global admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 or 400\", function () {",
+							"    pm.expect([201, 400, 403]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    // Extract and save all credentials",
+							"    pm.environment.set(\"adminId\", jsonData.adminId.toString());",
+							"    pm.environment.set(\"adminEnrollmentId\", jsonData.enrollmentId.toString());",
+							"    pm.environment.set(\"adminEnrollmentProofToken\", jsonData.enrollmentProofToken);",
+							"    pm.environment.set(\"adminEnrollmentChallenge\", jsonData.enrollmentChallenge.toString());",
+							"    ",
+							"    // Save recovery codes as JSON string",
+							"    if (jsonData.recoveryCodes && Array.isArray(jsonData.recoveryCodes)) {",
+							"        pm.environment.set(\"adminRecoveryCodes\", JSON.stringify(jsonData.recoveryCodes));",
+							"    }",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('adminId');",
+							"        pm.expect(jsonData).to.have.property('username');",
+							"        pm.expect(jsonData).to.have.property('adminType');",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
+							"        pm.expect(jsonData).to.have.property('recoveryCodes');",
+							"    });",
+							"    ",
+							"    pm.test(\"Admin type is GLOBAL_ADMIN\", function () {",
+							"        pm.expect(jsonData.adminType).to.equal('GLOBAL_ADMIN');",
+							"    });",
+							"    ",
+							"    pm.test(\"Tenant ID is null for GlobalAdmin\", function () {",
+							"        pm.expect(jsonData.tenantId).to.be.null;",
+							"    });",
+							"    ",
+							"    pm.test(\"Recovery codes are provided\", function () {",
+							"        pm.expect(jsonData.recoveryCodes).to.be.an('array');",
+							"        pm.expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"new.global.admin\",\n    \"email\": \"newglobal@example.com\",\n    \"firstName\": \"New\",\n    \"lastName\": \"GlobalAdmin\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admins/global",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admins",
+						"global"
+					]
+				},
+				"description": "Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.\n\n**Permissions:**\n- **GlobalAdmin**: Can create GlobalAdmins\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (required for GlobalAdmin): Email address (SOC 2 compliance)\n- `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)\n- `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)\n- `tenantId` (ignored): Not used for GlobalAdmin creation\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address\n- `firstName`: First name\n- `lastName`: Last name\n- `adminType`: \"GLOBAL_ADMIN\"\n- `tenantId`: null (GlobalAdmins are not tenant-scoped)\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (**SHOWN ONCE - save securely!**)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (**SHOWN ONCE - save securely!**)\n- `recoveryCodes`: List of recovery codes (**SHOWN ONCE, single-use - save securely!**)\n- `createdAt`: Timestamp when the administrator was created\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Global administrator created successfully\n- 400: Invalid data, limit exceeded, or username exists\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error\n\n**CRITICAL**: Save the onboarding credentials (enrollmentProofToken, enrollmentChallenge, recoveryCodes) immediately. They cannot be retrieved again!"
+			},
+			"response": []
+		},
+		{
+			"name": "create tenant admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201, 400, or 403\", function () {",
+							"    pm.expect([201, 400, 403]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    // Extract and save all credentials",
+							"    pm.environment.set(\"adminId\", jsonData.adminId.toString());",
+							"    pm.environment.set(\"adminEnrollmentId\", jsonData.enrollmentId.toString());",
+							"    pm.environment.set(\"adminEnrollmentProofToken\", jsonData.enrollmentProofToken);",
+							"    pm.environment.set(\"adminEnrollmentChallenge\", jsonData.enrollmentChallenge.toString());",
+							"    ",
+							"    // Save tenant ID if present",
+							"    if (jsonData.tenantId) {",
+							"        pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+							"    }",
+							"    ",
+							"    // Save recovery codes as JSON string",
+							"    if (jsonData.recoveryCodes && Array.isArray(jsonData.recoveryCodes)) {",
+							"        pm.environment.set(\"adminRecoveryCodes\", JSON.stringify(jsonData.recoveryCodes));",
+							"    }",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('adminId');",
+							"        pm.expect(jsonData).to.have.property('username');",
+							"        pm.expect(jsonData).to.have.property('adminType');",
+							"        pm.expect(jsonData).to.have.property('tenantId');",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
+							"        pm.expect(jsonData).to.have.property('recoveryCodes');",
+							"    });",
+							"    ",
+							"    pm.test(\"Admin type is TENANT_ADMIN\", function () {",
+							"        pm.expect(jsonData.adminType).to.equal('TENANT_ADMIN');",
+							"    });",
+							"    ",
+							"    pm.test(\"Tenant ID is provided\", function () {",
+							"        pm.expect(jsonData.tenantId).to.not.be.null;",
+							"    });",
+							"    ",
+							"    pm.test(\"Recovery codes are provided\", function () {",
+							"        pm.expect(jsonData.recoveryCodes).to.be.an('array');",
+							"        pm.expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);",
+							"    });",
+							"} else if (pm.response.code === 403) {",
+							"    pm.test(\"Forbidden - TenantAdmin trying to create for different tenant\", function () {",
+							"        pm.expect(pm.response.code).to.equal(403);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"new.tenant.admin\",\n    \"email\": \"newtenant@example.com\",\n    \"firstName\": \"New\",\n    \"lastName\": \"TenantAdmin\",\n    \"tenantId\": {{tenantId}}\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admins/tenant",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admins",
+						"tenant"
+					]
+				},
+				"description": "Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.\n\n**Permissions:**\n- **GlobalAdmin**: Can create TenantAdmins for any tenant\n- **TenantAdmin**: Can create TenantAdmins for their own tenant only\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (optional): Email address (recommended but not required for TenantAdmin)\n- `firstName` (optional): First name (recommended but not required for TenantAdmin)\n- `lastName` (optional): Last name (recommended but not required for TenantAdmin)\n- `tenantId` (required): Tenant ID for the TenantAdmin\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (if provided)\n- `firstName`: First name (if provided)\n- `lastName`: Last name (if provided)\n- `adminType`: \"TENANT_ADMIN\"\n- `tenantId`: Tenant ID for the TenantAdmin\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (**SHOWN ONCE - save securely!**)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (**SHOWN ONCE - save securely!**)\n- `recoveryCodes`: List of recovery codes (**SHOWN ONCE, single-use - save securely!**)\n- `createdAt`: Timestamp when the administrator was created\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Tenant administrator created successfully\n- 400: Invalid data, limit exceeded, username exists, or tenant not found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create for different tenant\n- 500: Internal server error\n\n**CRITICAL**: Save the onboarding credentials (enrollmentProofToken, enrollmentChallenge, recoveryCodes) immediately. They cannot be retrieved again!"
+			},
+			"response": []
+		},
+		{
+			"name": "deactivate admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204, 400, 404, or 501\", function () {",
+							"    pm.expect([204, 400, 404, 501]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 204) {",
+							"    pm.test(\"Deactivation successful\", function () {",
+							"        pm.expect(pm.response.code).to.equal(204);",
+							"    });",
+							"} else if (pm.response.code === 400) {",
+							"    pm.test(\"Cannot deactivate below minimum limit\", function () {",
+							"        pm.expect(pm.response.code).to.equal(400);",
+							"    });",
+							"} else if (pm.response.code === 501) {",
+							"    pm.test(\"Not implemented yet\", function () {",
+							"        pm.expect(pm.response.code).to.equal(501);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admins/:id/deactivate",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admins",
+						":id",
+						"deactivate"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{adminId}}",
+							"description": "The administrator ID to deactivate"
+						}
+					]
+				},
+				"description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**Status**: This endpoint is currently not implemented (returns 501 Not Implemented). It will be implemented in the deactivation-revocation todo.\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum limits to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n  - `ezkey.security.admin.min-tenant-admins-per-tenant` (default: 1)\n- Returns 400 Bad Request if deactivation would violate minimum limits\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate below minimum limit\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 501: Not Implemented (currently returns this)\n- 500: Internal server error"
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
+
