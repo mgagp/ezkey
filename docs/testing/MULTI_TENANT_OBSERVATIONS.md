@@ -1,0 +1,572 @@
+# Observations Multi-Tenancy - À Réanalyser
+
+Ce document contient des observations et des points à réanalyser ou compléter avant de prendre action. Ces éléments nécessitent une investigation plus approfondie ou une décision architecturale.
+
+**Statut**: En cours d'analyse  
+**Date de création**: 2025-12-26
+
+---
+
+## 1. TenantAdmin ne peut pas lister les admins de son tenant
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)
+
+### Observation
+
+Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son propre tenant. L'utilisateur a créé un TenantAdmin et tente d'utiliser la fonctionnalité pour lister les admins, mais n'y a pas accès.
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Fonctionnalité manquante**
+
+**Analyse du code:**
+
+1. **Endpoint `GET /api/v1/tenants`**:
+   - Existe dans `TenantController.java`
+   - **Restriction**: `@PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")` - GlobalAdmin seulement
+   - **Fonction**: Liste tous les tenants (pas les admins)
+   - **Conclusion**: Cet endpoint ne liste pas les admins, seulement les tenants
+
+2. **Endpoint `GET /api/v1/admins`**:
+   - **N'existe pas** dans `AdminProvisioningController.java`
+   - Le contrôleur ne contient que:
+     - `POST /api/v1/admins/global` - Créer GlobalAdmin
+     - `POST /api/v1/admins/tenant` - Créer TenantAdmin
+     - `POST /api/v1/admins/{id}/deactivate` - Désactiver admin
+   - **Conclusion**: Aucun endpoint GET pour lister les admins
+
+3. **Documentation vs Implémentation**:
+   - La documentation `SECURITY_MULTI_TENANT.md` mentionne `GET /api/v1/admins` (ligne 637)
+   - Mais cet endpoint n'est **pas implémenté** dans le code
+
+4. **Repository disponible**:
+   - `EzkeyAdminRepository.findByTenantTenantId(Integer tenantId)` existe
+   - Cette méthode peut retourner tous les admins d'un tenant
+   - **Conclusion**: La fonctionnalité backend existe, mais l'endpoint REST manque
+
+### Analyse de la nécessité
+
+**Raison d'être probable:**
+- Un TenantAdmin devrait pouvoir voir qui sont les autres TenantAdmins de son tenant
+- Utile pour la gestion d'équipe et la compréhension de qui a accès
+- Cohérent avec le principe que TenantAdmin peut créer des TenantAdmins pour son tenant
+
+**Cas d'usage:**
+- Voir la liste des TenantAdmins actifs dans son tenant
+- Vérifier qui a créé quels admins (audit)
+- Comprendre la distribution des responsabilités
+
+### Recommandation
+
+**Option 1: Implémenter `GET /api/v1/admins` avec filtrage par tenant**
+- GlobalAdmin: Voit tous les admins (tous tenants)
+- TenantAdmin: Voit uniquement les admins de son tenant (via `AccessControlService`)
+- Utiliser `EzkeyAdminRepository.findByTenantTenantId()` pour TenantAdmin
+
+**Option 2: Implémenter `GET /api/v1/admins/tenant/{tenantId}`**
+- GlobalAdmin: Peut spécifier n'importe quel tenantId
+- TenantAdmin: Peut uniquement accéder à son propre tenantId (validation dans le contrôleur)
+
+**Option 3: Implémenter `GET /api/v1/admins/me/peers`**
+- Endpoint spécifique pour lister les "pairs" (admins du même tenant)
+- Plus simple pour TenantAdmin, mais moins flexible
+
+### Prochaines étapes
+
+- [ ] Décider quelle option implémenter
+- [ ] Créer l'endpoint REST avec les bonnes permissions
+- [ ] Ajouter les tests unitaires et d'intégration
+- [ ] Mettre à jour la documentation API
+- [ ] Ajouter une collection Postman pour tester
+
+### Références
+
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminProvisioningController.java`
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/TenantController.java`
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/repository/EzkeyAdminRepository.java`
+- `docs/features/SECURITY_MULTI_TENANT.md` (ligne 637 - mention non implémentée)
+
+---
+
+## 2. Gestion d'erreur générique pour violations de contraintes DB
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Endpoint concerné**: `POST /api/v1/admins/tenant`
+
+### Observation
+
+Lors de la création d'un nouveau TenantAdmin en changeant seulement le username, l'utilisateur a obtenu une erreur générique:
+
+```json
+{
+    "code": "CONSTRAINT_VIOLATION",
+    "message": "Duplicate value violates unique constraint",
+    "timestamp": "2025-12-26T21:37:33.291604728Z",
+    "path": "/api/v1/admins/tenant"
+}
+```
+
+L'utilisateur note que la validation en tant que telle est probablement correcte, mais la gestion d'erreur doit être améliorée pour être plus spécifique.
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Gestion d'erreur à améliorer**
+
+**Analyse du code:**
+
+1. **Vérification préalable dans le service**:
+   - `AdminProvisioningService.createTenantAdmin()` vérifie l'unicité du username (ligne 318)
+   - Lance `IllegalArgumentException("Username already exists: " + username)` si le username existe
+   - **Conclusion**: La vérification existe et devrait normalement prévenir l'erreur
+
+2. **Contraintes uniques dans la base de données**:
+   - `username VARCHAR(50) NOT NULL UNIQUE` (V2 migration, ligne 47)
+   - `email` avec contrainte `uq_admin_email UNIQUE` (V13 migration)
+   - **Conclusion**: Deux contraintes uniques possibles (username et email)
+
+3. **Gestion actuelle dans GlobalExceptionHandler**:
+   - `DataIntegrityViolationException` est gérée (ligne 227-257)
+   - Message générique: `"Duplicate value violates unique constraint"` (ligne 247)
+   - Code: `"CONSTRAINT_VIOLATION"`
+   - **Problème**: Le message ne spécifie pas quelle contrainte a été violée (username ou email)
+
+4. **Scénarios possibles**:
+   - **Race condition**: Deux requêtes simultanées créent le même username entre la vérification et l'insertion
+   - **Email dupliqué**: Si l'email était aussi fourni et déjà existant (non vérifié dans le service)
+   - **Exception non interceptée**: L'IllegalArgumentException n'a pas été lancée pour une raison quelconque
+
+### Analyse de la nécessité
+
+**Problèmes identifiés:**
+
+1. **Message d'erreur trop générique**:
+   - Ne spécifie pas quelle contrainte a été violée (username vs email)
+   - Ne spécifie pas quelle valeur est en conflit
+   - Difficile pour le client de comprendre et corriger
+
+2. **Vérification incomplète**:
+   - Le service vérifie seulement l'unicité du username
+   - L'unicité de l'email n'est pas vérifiée avant l'insertion
+   - Si l'email est fourni et dupliqué, la base de données lève l'exception
+
+3. **Gestion d'erreur centralisée**:
+   - Le `GlobalExceptionHandler` gère déjà `DataIntegrityViolationException`
+   - Mais le message est générique et ne parse pas les détails de la contrainte
+
+### Recommandations
+
+**Option 1: Améliorer le parsing dans GlobalExceptionHandler (Recommandé)**
+
+Améliorer le handler `DataIntegrityViolationException` pour:
+- Parser le message d'erreur PostgreSQL pour identifier la contrainte violée
+- Extraire le nom de la colonne concernée
+- Générer un message spécifique selon la contrainte:
+  - `"Username already exists: {username}"` pour violation username
+  - `"Email already exists: {email}"` pour violation email
+  - Message générique pour autres contraintes
+
+**Avantages:**
+- Solution centralisée pour toutes les violations de contraintes
+- Pas besoin de modifier chaque service
+- Cohérent pour tous les endpoints
+
+**Option 2: Vérification préalable complète dans le service**
+
+Ajouter la vérification d'unicité de l'email dans `AdminProvisioningService`:
+- Vérifier `adminRepository.existsByEmail(email)` si email fourni
+- Lancer `IllegalArgumentException` avec message spécifique
+- Prévenir l'exception de base de données
+
+**Avantages:**
+- Évite l'exception de base de données
+- Messages d'erreur plus clairs et contrôlés
+- Meilleure performance (évite le rollback de transaction)
+
+**Inconvénients:**
+- Nécessite d'ajouter la méthode `existsByEmail` au repository
+- Doit être répété pour chaque service qui crée des admins
+- Ne protège pas contre les race conditions
+
+**Option 3: Approche hybride (Meilleure solution)**
+
+1. **Vérification préalable dans le service** (Option 2):
+   - Vérifier username et email avant insertion
+   - Messages d'erreur spécifiques et contrôlés
+
+2. **Amélioration du GlobalExceptionHandler** (Option 1):
+   - Parser les violations de contraintes pour messages spécifiques
+   - Protection contre les race conditions
+   - Fallback si la vérification préalable échoue
+
+**Avantages:**
+- Meilleure expérience utilisateur (messages clairs)
+- Protection contre les race conditions
+- Solution robuste et complète
+
+### Prochaines étapes
+
+- [ ] Décider quelle option implémenter (recommandation: Option 3)
+- [ ] Améliorer le parsing dans `GlobalExceptionHandler.handleDataIntegrityViolationException()`
+- [ ] Ajouter vérification d'unicité email dans `AdminProvisioningService` (si Option 2 ou 3)
+- [ ] Ajouter méthode `existsByEmail()` au repository si nécessaire
+- [ ] Tester avec username dupliqué et email dupliqué
+- [ ] Tester les race conditions (deux requêtes simultanées)
+- [ ] Mettre à jour la documentation API avec les codes d'erreur spécifiques
+
+### Références
+
+- `ezkey-admin-api/src/main/java/org/ezkey/exception/GlobalExceptionHandler.java` (lignes 227-257)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java` (ligne 318)
+- `ezkey-core/src/main/resources/db/migration/V2__add_multi_tenant_security.sql` (ligne 47 - username UNIQUE)
+- `ezkey-core/src/main/resources/db/migration/V13__add_admin_email_for_soc2.sql` (ligne 32 - email UNIQUE)
+
+---
+
+## 3. Séparation création/récupération des credentials d'onboarding admin
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Endpoint concerné**: `POST /api/v1/admins/global`, `POST /api/v1/admins/tenant`
+
+### Observation
+
+Lors de la création d'un admin global via `POST /api/v1/admins/global`, l'endpoint retourne actuellement tous les credentials d'onboarding dans la réponse:
+- `enrollmentProofToken`
+- `enrollmentChallenge`
+- `recoveryCodes`
+
+L'utilisateur note que l'API d'enrollment (`/api/v1/enrollments`) a été conçue différemment avec une séparation des responsabilités:
+- **POST** retourne seulement le strict minimum (enrollmentId + enrollmentChallenge)
+- **GET** séparé pour récupérer les détails complets (incluant enrollmentProofToken)
+- **GET QR Code** séparé pour générer le QR code
+
+Cette séparation est plus sécuritaire et devrait être appliquée aussi pour la création d'admins pour uniformité et sécurité.
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Pattern de sécurité à uniformiser**
+
+**Analyse du pattern d'enrollment (référence):**
+
+1. **POST /api/v1/enrollments**:
+   - Retourne `EnrollmentCreateResponseDto` avec seulement:
+     - `enrollmentId`
+     - `enrollmentChallenge`
+   - **Ne retourne PAS** `enrollmentProofToken` dans la réponse de création
+   - **Sécurité**: Les credentials sensibles ne sont pas exposés dans la réponse de création
+
+2. **GET /api/v1/enrollments/{id}**:
+   - Retourne `EnrollmentResponseDto` avec tous les détails, incluant:
+     - `enrollmentProofToken` (ligne 102 de `EnrollmentResponseDto.java`)
+   - **Sécurité**: Les credentials sensibles sont récupérés via un endpoint séparé, nécessitant une requête explicite
+
+3. **GET /api/v1/enrollments/{id}/qrcode**:
+   - Retourne une image PNG du QR code
+   - Contient le `enrollmentProofToken` dans le QR code
+   - **Sécurité**: Le QR code est généré à la demande, pas inclus dans la réponse de création
+
+**Analyse du pattern admin (actuel - à améliorer):**
+
+1. **POST /api/v1/admins/global**:
+   - Retourne `AdminProvisioningResponseDto` avec TOUT:
+     - `enrollmentId`
+     - `enrollmentProofToken` (ligne 126)
+     - `enrollmentChallenge` (ligne 127)
+     - `recoveryCodes` (ligne 128)
+   - **Problème**: Tous les credentials sensibles sont exposés immédiatement dans la réponse
+
+2. **GET /api/v1/admins/{id}**:
+   - **N'existe pas** - Aucun endpoint pour récupérer les credentials d'onboarding après création
+
+3. **GET /api/v1/admins/{id}/qrcode**:
+   - **N'existe pas** - Aucun endpoint pour générer un QR code pour l'onboarding admin
+
+### Analyse de la nécessité
+
+**Problèmes identifiés:**
+
+1. **Sécurité**:
+   - Les credentials sensibles (proof token, recovery codes) sont exposés dans la réponse de création
+   - Pas de contrôle sur qui peut récupérer ces credentials après création
+   - Logs et historique peuvent contenir ces credentials sensibles
+
+2. **Uniformité**:
+   - Pattern différent de l'API d'enrollment
+   - Incohérence dans le design de l'API
+   - Confusion pour les développeurs utilisant l'API
+
+3. **Flexibilité**:
+   - Impossible de récupérer les credentials plus tard si perdues
+   - Pas de moyen de générer un QR code pour l'onboarding
+   - Pas de moyen de régénérer les recovery codes si nécessaire
+
+### Recommandations
+
+**Option 1: Séparation complète (Recommandé - aligné avec enrollment)**
+
+1. **Modifier POST /api/v1/admins/global et POST /api/v1/admins/tenant**:
+   - Retourner seulement `adminId` et `enrollmentId` dans la réponse de création
+   - Retirer `enrollmentProofToken`, `enrollmentChallenge`, et `recoveryCodes` de la réponse
+
+2. **Créer GET /api/v1/admins/{id}/onboarding**:
+   - Retourner les credentials d'onboarding complets:
+     - `enrollmentProofToken`
+     - `enrollmentChallenge`
+     - `recoveryCodes`
+   - **Sécurité**: Requiert authentification et vérification que l'admin a le droit d'accéder à ces credentials
+   - **Restriction**: Peut-être limiter à une seule récupération ou avec expiration
+
+3. **Créer GET /api/v1/admins/{id}/onboarding/qrcode**:
+   - Générer un QR code PNG pour l'onboarding
+   - Contient `enrollmentId|enrollmentProofToken` (même format que enrollment QR code)
+   - **Sécurité**: Généré à la demande, pas stocké
+
+**Avantages:**
+- Uniformité avec le pattern d'enrollment
+- Meilleure sécurité (credentials non exposés dans logs de création)
+- Flexibilité (récupération à la demande)
+- Possibilité de contrôler l'accès aux credentials
+
+**Inconvénients:**
+- Breaking change pour l'API actuelle
+- Nécessite une migration pour les clients existants
+
+**Option 2: Approche hybride (moins disruptive)**
+
+1. **Garder POST avec credentials** (pour compatibilité):
+   - Continuer à retourner les credentials dans la réponse de création
+   - Ajouter un warning dans la documentation
+
+2. **Ajouter GET /api/v1/admins/{id}/onboarding**:
+   - Permettre la récupération des credentials après création
+   - Utile si les credentials sont perdues
+
+3. **Ajouter GET /api/v1/admins/{id}/onboarding/qrcode**:
+   - Générer un QR code pour l'onboarding
+
+**Avantages:**
+- Pas de breaking change
+- Ajoute de la flexibilité sans casser l'existant
+
+**Inconvénients:**
+- Ne résout pas complètement le problème de sécurité
+- Pattern toujours incohérent avec enrollment
+
+### Prochaines étapes
+
+- [ ] Décider quelle option implémenter (recommandation: Option 1 pour uniformité et sécurité)
+- [ ] Créer `AdminOnboardingResponseDto` pour la réponse GET
+- [ ] Modifier `AdminProvisioningResponseDto` pour retirer les credentials sensibles
+- [ ] Implémenter `GET /api/v1/admins/{id}/onboarding`
+- [ ] Implémenter `GET /api/v1/admins/{id}/onboarding/qrcode`
+- [ ] Ajouter les tests unitaires et d'intégration
+- [ ] Mettre à jour la documentation API
+- [ ] Ajouter une collection Postman pour tester
+- [ ] Documenter le breaking change si Option 1 choisie
+
+### Références
+
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminProvisioningController.java` (lignes 116-129)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/EnrollmentController.java` (ligne 266 - POST, ligne 450 - GET qrcode)
+- `ezkey-admin-api/src/main/java/org/ezkey/enrollment/dto/EnrollmentCreateResponseDto.java` (retourne seulement ID + challenge)
+- `ezkey-admin-api/src/main/java/org/ezkey/enrollment/dto/EnrollmentResponseDto.java` (contient proofToken dans GET)
+
+---
+
+## 4. Affichage de l'information du tenant dans l'application mobile
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Application concernée**: DemoDevice (Phase 1), Application mobile réelle (Phase 2)
+
+### Observation
+
+Lors des tests avec l'application mobile (DemoDevice), l'utilisateur trouve que l'information sur un enrollment devrait contenir l'information sur le tenant. 
+
+**Contexte historique:**
+- À l'origine: seulement le `enrollmentName` était affiché
+- Ensuite: on a ajouté le nom et la description de l'intégration (`integrationName`, `integrationDescription`)
+- Maintenant avec multi-tenancy: c'est confus de savoir ce qu'on regarde sans l'information du tenant
+
+L'utilisateur recommande d'inclure l'information sur le tenant pour améliorer la clarté et la compréhension de l'enrollment affiché.
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Amélioration UX nécessaire**
+
+**Analyse de l'affichage actuel dans DemoDevice:**
+
+1. **Page d'accueil (home.html)**:
+   - Affiche: `enrollmentName` (ou `integrationName` en fallback)
+   - Affiche: `integrationName` (si différent de `enrollmentName`)
+   - Affiche: `integrationDescription`
+   - **Manque**: Information sur le tenant
+
+2. **Structure de données (EnrollmentStoreService.Record)**:
+   - Contient: `enrollmentId`, `integrationId`, `enrollmentName`
+   - Contient: `integrationName`, `integrationDescription`, `integrationLogo`
+   - **Ne contient pas**: `tenantId`, `tenantName`, `tenantDescription`
+
+3. **DTOs d'enrollment**:
+   - `EnrollmentResponseDto` ne contient pas d'information sur le tenant
+   - `EnrollmentResponse` (domain) ne contient pas d'information sur le tenant
+   - Les DTOs contiennent seulement `integrationId`, pas de lien direct au tenant
+
+### Analyse de la nécessité
+
+**Problèmes identifiés:**
+
+1. **Confusion utilisateur**:
+   - Avec multi-tenancy, un utilisateur peut avoir des enrollments de plusieurs tenants
+   - Sans information du tenant, difficile de distinguer les enrollments
+   - Exemple: Deux enrollments avec le même nom d'intégration mais de tenants différents
+
+2. **Hiérarchie d'information incomplète**:
+   - Actuellement: Enrollment → Integration
+   - Devrait être: Tenant → Integration → Enrollment
+   - L'information du tenant est le niveau le plus haut de la hiérarchie
+
+3. **Cohérence avec le modèle multi-tenant**:
+   - Le tenant est la base de l'isolation multi-tenant
+   - L'information devrait être visible pour clarifier le contexte
+
+### Plan d'implémentation en deux phases
+
+**Phase 1: DemoDevice (Représentatif de l'application mobile React Native)**
+
+**Objectif**: Ajouter l'affichage de l'information du tenant dans DemoDevice pour valider l'approche et l'UX.
+
+**Modifications nécessaires:**
+
+1. **Backend - DTOs et Domain Objects**:
+   - Ajouter `tenantId`, `tenantName`, `tenantDescription` à `EnrollmentResponseDto`
+   - Ajouter ces champs à `EnrollmentResponse` (domain)
+   - Modifier le mapper pour inclure l'information du tenant (via `Integration.tenant`)
+
+2. **Backend - Service Layer**:
+   - Modifier `EnrollmentService` pour joindre l'information du tenant lors de la récupération
+   - S'assurer que l'information du tenant est disponible dans les réponses
+
+3. **DemoDevice - Storage**:
+   - Ajouter `tenantId`, `tenantName`, `tenantDescription` à `EnrollmentStoreService.Record`
+   - Mettre à jour la logique de sauvegarde pour inclure ces champs
+
+4. **DemoDevice - UI (Templates Thymeleaf)**:
+   - **home.html**: Afficher le nom du tenant dans la liste des enrollments
+   - **bind_enrollment.html**: Afficher l'information du tenant dans la page de binding
+   - **auth.html**, **auth_pending.html**, **auth_result.html**: Afficher le tenant si pertinent
+   - Hiérarchie d'affichage suggérée:
+     ```
+     Tenant Name (si plusieurs tenants)
+     ├─ Integration Name
+     │  └─ Enrollment Name
+     └─ Integration Description
+     ```
+
+**Phase 2: Application mobile réelle (ezkey_mobile)**
+
+**Objectif**: Appliquer le même principe dans l'application mobile React Native réelle.
+
+**Modifications nécessaires:**
+
+1. **Types TypeScript**:
+   - Ajouter les champs tenant aux interfaces TypeScript
+   - Mettre à jour les modèles de données
+
+2. **Services API**:
+   - Mettre à jour les appels API pour récupérer l'information du tenant
+   - Adapter le stockage local pour inclure le tenant
+
+3. **Composants UI**:
+   - Mettre à jour les écrans d'enrollment pour afficher le tenant
+   - Adapter la hiérarchie d'affichage selon les besoins UX
+
+### Recommandations d'affichage
+
+**Option 1: Affichage hiérarchique complet**
+```
+Tenant Name
+Integration Name
+Enrollment Name
+Integration Description
+```
+
+**Option 2: Affichage compact (si un seul tenant)**
+```
+Integration Name
+Enrollment Name
+Integration Description
+[Tenant Name] (badge ou petit texte)
+```
+
+**Option 3: Affichage contextuel**
+- Afficher le tenant seulement si l'utilisateur a des enrollments de plusieurs tenants
+- Sinon, omettre pour réduire le bruit visuel
+
+### Note sur développement futur: Badge Tenant
+
+**Concept**: Badge tenant comme identité visuelle (équivalent du logo d'intégration)
+
+**Contexte actuel:**
+- Les intégrations ont un `integrationLogo` qui représente la différence entre applications (bancaire, administrative, etc.)
+- Le logo permet de distinguer visuellement les différentes intégrations
+
+**Évolution proposée:**
+- **Badge tenant**: Équivalent du logo pour le tenant
+- Permet de définir une identité visuelle associée au tenant
+- Améliore l'UX pour le regroupement des intégrations d'un tenant avec son identité visuelle
+- Permet de regrouper visuellement toutes les intégrations d'un même tenant
+
+**Cas d'usage:**
+- Un utilisateur avec des enrollments de plusieurs tenants peut rapidement identifier visuellement à quel tenant appartient chaque enrollment
+- Regroupement visuel des intégrations par tenant dans l'interface
+- Cohérence visuelle pour toutes les intégrations d'un même tenant
+
+**Implémentation future:**
+- Ajouter un champ `tenantLogo` ou `tenantBadge` dans la table `ezkey_tenant`
+- Permettre l'upload/gestion du badge tenant (similaire au logo d'intégration)
+- Afficher le badge tenant dans l'UI mobile pour regrouper visuellement les enrollments
+- Utiliser le badge comme indicateur visuel principal pour le regroupement par tenant
+
+**Référence:**
+- Pattern similaire à `integrationLogo` dans `ezkey_integration_i18n`
+- Pourrait être stocké dans `ezkey_tenant` ou dans une table `ezkey_tenant_i18n` si support multi-langue
+
+### Prochaines étapes - Phase 1 (DemoDevice)
+
+- [ ] Analyser comment récupérer l'information du tenant depuis l'enrollment (via Integration)
+- [ ] Modifier `EnrollmentResponseDto` pour inclure `tenantId`, `tenantName`, `tenantDescription`
+- [ ] Modifier `EnrollmentResponse` (domain) pour inclure l'information du tenant
+- [ ] Mettre à jour le mapper `EnrollmentAdminMapper` pour mapper le tenant
+- [ ] Modifier `EnrollmentService` pour joindre l'information du tenant
+- [ ] Mettre à jour `EnrollmentStoreService.Record` pour inclure les champs tenant
+- [ ] Modifier les templates Thymeleaf pour afficher l'information du tenant
+- [ ] Tester l'affichage avec plusieurs tenants
+- [ ] Valider l'UX et ajuster selon les retours
+
+### Prochaines étapes - Phase 2 (Application mobile réelle)
+
+- [ ] Analyser la structure actuelle de l'application mobile
+- [ ] Mettre à jour les types TypeScript
+- [ ] Adapter les services API
+- [ ] Mettre à jour les composants UI
+- [ ] Tester et valider
+
+### Références
+
+- `ezkey-demo-device/src/main/resources/templates/phone/ezkey/home.html` (lignes 64-77)
+- `ezkey-demo-device/src/main/java/org/ezkey/demo/device/service/EnrollmentStoreService.java` (ligne 135 - Record)
+- `ezkey-admin-api/src/main/java/org/ezkey/enrollment/dto/EnrollmentResponseDto.java`
+- `ezkey-core/src/main/java/org/ezkey/enrollment/domain/EnrollmentResponse.java`
+- `ezkey-core/src/main/java/org/ezkey/enrollment/domain/entity/Enrollment.java` (relation avec Integration)
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Integration.java` (relation avec Tenant)
+
+---
+
+## Notes
+
+*Ce document sera mis à jour au fur et à mesure que de nouvelles observations sont identifiées et analysées.*
+

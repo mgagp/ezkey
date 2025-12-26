@@ -17,6 +17,13 @@ Ce document définit un plan de tests complet pour valider la fonctionnalité mu
 - Collections Postman configurées
 - Accès à la base de données PostgreSQL
 
+**Terminologie importante:**
+- **Tenant A/B**: Un tenant (organisation) avec un `tenantId` (ex: tenantId: 2, tenantId: 3)
+- **TenantAdmin A/B**: Un administrateur de type `TENANT_ADMIN` qui est **assigné** à un tenant spécifique
+  - Lorsqu'on dit "Créer TenantAdmin A (tenantId: 2)", cela signifie créer un TenantAdmin **assigné au tenant avec tenantId: 2**
+  - Le `tenantId` dans le body de la requête `POST /api/v1/admins/tenant` indique **à quel tenant** le TenantAdmin est assigné
+  - Le TenantAdmin lui-même n'a pas de `tenantId` comme identifiant, mais a un `tenant_id` comme attribut d'assignation
+
 ---
 
 ## 1. Tests de Non-Régression - Isolation Tenant
@@ -26,12 +33,12 @@ Ce document définit un plan de tests complet pour valider la fonctionnalité mu
 **Objectif:** Vérifier que les TenantAdmins sont strictement isolés par tenant.
 
 **Setup:**
-1. Créer Tenant A (tenantId: 2)
-2. Créer Tenant B (tenantId: 3)
-3. Créer TenantAdmin A (tenantId: 2)
-4. Créer TenantAdmin B (tenantId: 3)
-5. Créer Integration A dans Tenant A (integrationId: X)
-6. Créer Integration B dans Tenant B (integrationId: Y)
+1. Créer Tenant A (tenantId: 2) - via `POST /api/v1/tenants`
+2. Créer Tenant B (tenantId: 3) - via `POST /api/v1/tenants`
+3. Créer un TenantAdmin assigné au Tenant A (tenantId: 2) - via `POST /api/v1/admins/tenant` avec `"tenantId": 2` dans le body
+4. Créer un TenantAdmin assigné au Tenant B (tenantId: 3) - via `POST /api/v1/admins/tenant` avec `"tenantId": 3` dans le body
+5. Créer Integration A dans Tenant A (integrationId: X) - via `POST /api/v1/integrations` avec le token du TenantAdmin A
+6. Créer Integration B dans Tenant B (integrationId: Y) - via `POST /api/v1/integrations` avec le token du TenantAdmin B
 
 **Tests Postman:**
 
@@ -136,7 +143,7 @@ ORDER BY tenant_id;
 
 **Setup:**
 - GlobalAdmin token
-- TenantAdmin A token (tenantId: 2)
+- TenantAdmin A token (TenantAdmin assigné au tenant avec tenantId: 2)
 
 **Tests Postman:**
 
@@ -270,9 +277,9 @@ ORDER BY e.integration_id, aa.auth_attempt_id;
 **Setup:**
 1. Tenant A avec Integration A
 2. Tenant B avec Integration B
-3. Enrollment A (integrationId: A, tenantId: 2)
-4. Enrollment B (integrationId: B, tenantId: 3)
-5. TenantAdmin A (tenantId: 2)
+3. Enrollment A (integrationId: A, tenantId: 2 via Integration A)
+4. Enrollment B (integrationId: B, tenantId: 3 via Integration B)
+5. TenantAdmin A (TenantAdmin assigné au tenant avec tenantId: 2)
 
 **Tests Postman:**
 
