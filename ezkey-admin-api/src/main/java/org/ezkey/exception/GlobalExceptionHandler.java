@@ -220,6 +220,11 @@ public class GlobalExceptionHandler {
    * <p><b>Security Note:</b> The error message is sanitized to avoid exposing sensitive database
    * schema information while still providing useful feedback about what constraint was violated.
    *
+   * <p><b>Constraint Parsing:</b> This handler parses PostgreSQL constraint violation messages to
+   * provide specific error messages for common violations (username, email) while maintaining
+   * generic fallback messages for other constraints. This provides better user experience while
+   * protecting against race conditions that might bypass pre-insertion validation.
+   *
    * @param ex the DataIntegrityViolationException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing constraint violation error details and HTTP 400 status
@@ -244,7 +249,27 @@ public class GlobalExceptionHandler {
         message = "Required field is missing or null";
       }
     } else if (message != null && message.contains("violates unique constraint")) {
-      message = "Duplicate value violates unique constraint";
+      // Parse unique constraint violations to identify specific constraints
+      // Format examples:
+      // - "duplicate key value violates unique constraint \"uq_admin_email\""
+      // - "duplicate key value violates unique constraint \"ezkey_admin_username_key\""
+      // - "duplicate key value violates unique constraint \"uq_admin_email\"\n  Detail: Key (email)=(test@example.com) already exists."
+
+      String constraintName = extractConstraintName(message);
+      if (constraintName != null) {
+        // Identify specific constraint violations
+        if (constraintName.contains("username") || constraintName.contains("_username_key")) {
+          message = "Username already exists";
+        } else if (constraintName.contains("email") || constraintName.equals("uq_admin_email")) {
+          message = "Email already exists";
+        } else {
+          // Generic message for other unique constraints
+          message = "Duplicate value violates unique constraint";
+        }
+      } else {
+        // Fallback if constraint name cannot be extracted
+        message = "Duplicate value violates unique constraint";
+      }
     } else {
       message = "Invalid data: constraint violation";
     }
@@ -254,6 +279,48 @@ public class GlobalExceptionHandler {
             "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Extracts the constraint name from a PostgreSQL constraint violation error message.
+   *
+   * <p>PostgreSQL error messages for unique constraint violations typically include the constraint
+   * name in quotes. This method extracts that constraint name for identification purposes.
+   *
+   * <p>Example formats:
+   *
+   * <ul>
+   *   <li>"duplicate key value violates unique constraint \"uq_admin_email\""
+   *   <li>"duplicate key value violates unique constraint \"ezkey_admin_username_key\""
+   * </ul>
+   *
+   * @param errorMessage the error message from DataIntegrityViolationException
+   * @return the constraint name if found, null otherwise
+   */
+  private String extractConstraintName(String errorMessage) {
+    if (errorMessage == null) {
+      return null;
+    }
+
+    // Look for constraint name in quotes after "unique constraint"
+    int constraintStart = errorMessage.indexOf("unique constraint");
+    if (constraintStart == -1) {
+      return null;
+    }
+
+    // Find the opening quote after "unique constraint"
+    int quoteStart = errorMessage.indexOf("\"", constraintStart);
+    if (quoteStart == -1) {
+      return null;
+    }
+
+    // Find the closing quote
+    int quoteEnd = errorMessage.indexOf("\"", quoteStart + 1);
+    if (quoteEnd == -1) {
+      return null;
+    }
+
+    return errorMessage.substring(quoteStart + 1, quoteEnd);
   }
 
   /**

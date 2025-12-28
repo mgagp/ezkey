@@ -207,6 +207,11 @@ public class AdminProvisioningService {
       throw new IllegalArgumentException("Username already exists: " + username);
     }
 
+    // Check if email already exists (if provided)
+    if (email != null && !email.isBlank() && adminRepository.existsByEmail(email)) {
+      throw new IllegalArgumentException("Email already exists: " + email);
+    }
+
     // Get creator admin
     EzkeyAdmin creator =
         adminRepository
@@ -319,6 +324,11 @@ public class AdminProvisioningService {
     // Check if username already exists
     if (adminRepository.existsByUsername(username)) {
       throw new IllegalArgumentException("Username already exists: " + username);
+    }
+
+    // Check if email already exists (if provided)
+    if (email != null && !email.isBlank() && adminRepository.existsByEmail(email)) {
+      throw new IllegalArgumentException("Email already exists: " + email);
     }
 
     // Get creator admin

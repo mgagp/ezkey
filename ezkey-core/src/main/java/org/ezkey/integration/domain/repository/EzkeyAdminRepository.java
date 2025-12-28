@@ -170,6 +170,17 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
   boolean existsByUsername(String username);
 
   /**
+   * Checks if an email exists.
+   *
+   * <p>This method is used to validate email uniqueness before creating new administrators. Email
+   * is optional but must be unique when provided.
+   *
+   * @param email the email to check
+   * @return true if an administrator with this email exists, false otherwise
+   */
+  boolean existsByEmail(String email);
+
+  /**
    * Counts administrators by tenant and type.
    *
    * <p>This method is used for statistics and monitoring of administrator distribution across

@@ -120,7 +120,8 @@ Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son prop
 
 **Date**: 2025-12-26  
 **Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/admins/tenant`
+**Endpoint concerné**: `POST /api/v1/admins/tenant`  
+**Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
 
@@ -232,15 +233,54 @@ Ajouter la vérification d'unicité de l'email dans `AdminProvisioningService`:
 - Protection contre les race conditions
 - Solution robuste et complète
 
+### Solution implémentée
+
+**✅ Option 3 sélectionnée et implémentée** - Approche hybride avec vérification préalable et parsing amélioré
+
+**Implémentation:**
+
+1. **Vérification préalable dans le service** (Option 2):
+   - Méthode `existsByEmail()` ajoutée au `EzkeyAdminRepository`
+   - Vérification d'unicité email ajoutée dans `AdminProvisioningService.createGlobalAdmin()`
+   - Vérification d'unicité email ajoutée dans `AdminProvisioningService.createTenantAdmin()`
+   - Messages d'erreur spécifiques: `"Email already exists: {email}"`
+   - Protection contre les erreurs évitables avant insertion
+
+2. **Amélioration du GlobalExceptionHandler** (Option 1):
+   - Parsing amélioré pour identifier les contraintes violées (username vs email)
+   - Méthode `extractConstraintName()` ajoutée pour extraire le nom de la contrainte
+   - Messages spécifiques selon la contrainte:
+     - `"Username already exists"` pour violation username
+     - `"Email already exists"` pour violation email
+     - `"Duplicate value violates unique constraint"` pour autres contraintes
+   - Protection contre les race conditions (fallback si vérification préalable échoue)
+
+**Fichiers modifiés:**
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/repository/EzkeyAdminRepository.java`
+  - Ajout de `existsByEmail(String email)`
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java`
+  - Ajout vérification email dans `createGlobalAdmin()` (ligne 210-213)
+  - Ajout vérification email dans `createTenantAdmin()` (ligne 329-332)
+- `ezkey-admin-api/src/main/java/org/ezkey/exception/GlobalExceptionHandler.java`
+  - Amélioration du parsing des violations de contraintes uniques (ligne 246-265)
+  - Ajout méthode `extractConstraintName()` (ligne 267-300)
+
+**Avantages de la solution:**
+- ✅ Meilleure expérience utilisateur (messages clairs et spécifiques)
+- ✅ Protection contre les race conditions (fallback dans le handler)
+- ✅ Solution robuste et complète (double protection)
+- ✅ Performance améliorée (évite rollback de transaction quand possible)
+- ✅ Cohérence avec les valeurs du projet (simplicité, sécurité)
+
 ### Prochaines étapes
 
-- [ ] Décider quelle option implémenter (recommandation: Option 3)
-- [ ] Améliorer le parsing dans `GlobalExceptionHandler.handleDataIntegrityViolationException()`
-- [ ] Ajouter vérification d'unicité email dans `AdminProvisioningService` (si Option 2 ou 3)
-- [ ] Ajouter méthode `existsByEmail()` au repository si nécessaire
-- [ ] Tester avec username dupliqué et email dupliqué
-- [ ] Tester les race conditions (deux requêtes simultanées)
-- [ ] Mettre à jour la documentation API avec les codes d'erreur spécifiques
+- [x] Décider quelle option implémenter (Option 3 sélectionnée)
+- [x] Améliorer le parsing dans `GlobalExceptionHandler.handleDataIntegrityViolationException()`
+- [x] Ajouter vérification d'unicité email dans `AdminProvisioningService`
+- [x] Ajouter méthode `existsByEmail()` au repository
+- [ ] Tester avec username dupliqué et email dupliqué (tests manuels recommandés)
+- [ ] Tester les race conditions (deux requêtes simultanées) - tests manuels recommandés
+- [ ] Mettre à jour la documentation API avec les codes d'erreur spécifiques (si nécessaire)
 
 ### Références
 
@@ -589,6 +629,93 @@ Integration Description
 - `ezkey-core/src/main/java/org/ezkey/enrollment/domain/EnrollmentResponse.java`
 - `ezkey-core/src/main/java/org/ezkey/enrollment/domain/entity/Enrollment.java` (relation avec Integration)
 - `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Integration.java` (relation avec Tenant)
+
+---
+
+## 3. Limitation du nombre d'API keys par tenant
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Contexte**: Tests exploratoires avec TenantAdmin  
+**Statut**: 🔍 **OBSERVATION** - À analyser et planifier
+
+### Observation
+
+Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys successivement. La seule limitation rencontrée était le rate limit (5 créations par 15 minutes par admin). 
+
+**Limites actuelles:**
+- ✅ **5 API keys actives par intégration** (déjà implémenté) - Permet la rotation de clés
+- ✅ **Rate limit: 5 créations par admin par 15 minutes** (déjà implémenté) - Protection contre création abusive
+- ❌ **Aucune limite globale par tenant** - Un tenant peut créer de nombreuses intégrations et donc potentiellement beaucoup de clés
+
+### Analyse du problème
+
+**Cas d'usage légitimes:**
+- Rotation de clés (dev → staging → prod → backup)
+- Environnements multiples (dev, staging, prod)
+- Clés de secours pour continuité d'opération
+- Migration progressive lors de rotation
+
+**Risques sans limite globale par tenant:**
+1. **Sécurité**: Plus de clés = plus grande surface d'attaque
+2. **Gestion**: Difficulté à suivre et révoquer toutes les clés d'un tenant
+3. **Audit**: Complexité accrue pour tracer l'utilisation
+4. **Coûts opérationnels**: Stockage, monitoring, validation pour chaque clé
+5. **Abus potentiel**: Création excessive d'intégrations pour contourner la limite par intégration
+
+### Recommandation initiale
+
+**Limite proposée: 20-30 API keys actives par tenant**
+
+**Justification:**
+- **Suffisant pour cas légitimes**: 
+  - 5-10 intégrations × 2-3 clés (rotation) = 10-30 clés
+  - Permet environ 5-10 intégrations avec rotation active
+- **Raisonnable pour sécurité**:
+  - Limite la surface d'attaque par tenant
+  - Facilite la gestion et l'audit
+  - Équilibre entre flexibilité et sécurité
+- **Aligné avec valeurs du projet**:
+  - Simplicité: Limite claire et compréhensible
+  - Sécurité: Réduction du risque d'abus
+  - Uniformité: Cohérent avec limite par intégration
+
+**Alternatives considérées:**
+- **10-15 clés**: Trop restrictif pour tenants avec plusieurs intégrations
+- **50+ clés**: Trop permissif, risque d'abus
+- **Limite dynamique**: Complexité inutile pour MVP
+
+### Implémentation suggérée
+
+**Niveau de validation:**
+- Service layer (`ApiKeyService.createApiKey()`)
+- Vérifier le nombre total de clés actives pour toutes les intégrations du tenant
+- Exception: `IllegalStateException` avec message clair
+
+**Message d'erreur suggéré:**
+```
+"Maximum active API keys limit (X) reached for tenant. Please revoke unused keys or contact support."
+```
+
+**Configuration:**
+- Propriété: `ezkey.api-key.max-active-keys-per-tenant=25` (configurable)
+- Valeur par défaut: 25 clés actives par tenant
+
+### Prochaines étapes
+
+- [ ] Valider la limite proposée (20-30) avec l'équipe
+- [ ] Analyser les cas d'usage réels pour confirmer le nombre optimal
+- [ ] Implémenter la validation au niveau service
+- [ ] Ajouter la configuration dans `application.properties`
+- [ ] Ajouter les tests unitaires et d'intégration
+- [ ] Mettre à jour la documentation API
+- [ ] Documenter la limite dans le guide des API keys
+
+### Références
+
+- `ezkey-core/src/main/java/org/ezkey/integration/service/ApiKeyService.java` (ligne 76: `MAX_ACTIVE_KEYS_PER_INTEGRATION = 5`)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/security/AdminOperationsRateLimitService.java` (rate limit: 5 créations/15min)
+- `docs/API_KEYS_IMPLEMENTATION.md` (documentation actuelle)
 
 ---
 
