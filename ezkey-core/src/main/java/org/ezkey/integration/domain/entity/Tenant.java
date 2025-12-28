@@ -114,6 +114,19 @@ public class Tenant {
   private Boolean active = true;
 
   /**
+   * Flag indicating whether this is the system tenant.
+   *
+   * <p>System tenant hosts global administrators and represents the organization hosting this Ezkey
+   * instance. Only one tenant should have this flag set to true. Application tenants (created by
+   * global administrators) should have this flag set to false.
+   *
+   * <p>This flag provides a robust way to distinguish system tenant from application tenants without
+   * relying on string comparisons or tenant IDs.
+   */
+  @Column(name = "is_system_tenant", nullable = false)
+  private Boolean isSystemTenant = false;
+
+  /**
    * List of administrators belonging to this tenant.
    *
    * <p>This relationship includes both tenant administrators and integration administrators for
@@ -262,6 +275,24 @@ public class Tenant {
    */
   public void setActive(Boolean active) {
     this.active = active;
+  }
+
+  /**
+   * Gets the system tenant flag.
+   *
+   * @return true if this is the system tenant
+   */
+  public Boolean getIsSystemTenant() {
+    return isSystemTenant;
+  }
+
+  /**
+   * Sets the system tenant flag.
+   *
+   * @param isSystemTenant true if this is the system tenant
+   */
+  public void setIsSystemTenant(Boolean isSystemTenant) {
+    this.isSystemTenant = isSystemTenant;
   }
 
   /**

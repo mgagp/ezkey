@@ -49,6 +49,7 @@ DROP TABLE IF EXISTS ezkey_admin_temp_tokens;
 -- ============================================================================
 
 -- System tenant represents the organization hosting this Ezkey instance
+-- Note: is_system_tenant flag will be added by migration V27
 INSERT INTO ezkey_tenant (tenant_name, tenant_description, created_at, active) 
 VALUES (
     'Ezkey System', 

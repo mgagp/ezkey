@@ -719,6 +719,155 @@ Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys succe
 
 ---
 
+## 4. Incohérence logique: TenantAdmin créé dans le System Tenant
+
+**Date**: 2025-12-26  
+**Observateur**: Utilisateur  
+**Endpoint concerné**: `POST /api/v1/admins/tenant`  
+**Statut**: 🔍 **OBSERVATION** - À analyser et corriger
+
+### Observation
+
+Lors de tests exploratoires, un GlobalAdmin a créé un TenantAdmin avec `tenantId = 1` (le System Tenant "Ezkey System"). Cela a créé une incohérence logique où le même tenant contient à la fois:
+- Des **GlobalAdmins** (cohérent - le System Tenant héberge les admins système)
+- Des **TenantAdmins** (incohérent - les TenantAdmins devraient être dans des tenants réels)
+
+**Scénario de test:**
+1. Création d'un GlobalAdmin (admin.docker) → OK
+2. Création de deux autres GlobalAdmins → OK
+3. Création d'un TenantAdmin avec `tenantId = 1` (System Tenant) → **Problème identifié**
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Incohérence logique identifiée**
+
+**Analyse du code:**
+
+1. **System Tenant (tenant_id = 1, "Ezkey System")**:
+   - Créé dans la migration V3
+   - Description: `"System tenant for global administrators"`
+   - Commentaire: `"System tenant (Ezkey System) hosts global administrators"`
+   - **Objectif**: Représenter l'organisation qui héberge l'instance Ezkey
+   - **Contenu attendu**: Uniquement des GlobalAdmins
+
+2. **TenantAdmins**:
+   - Devraient être dans des tenants réels (créés par des GlobalAdmins)
+   - Représentent des départements/divisions au sein de l'organisation
+   - **Ne devraient PAS** être dans le System Tenant
+
+3. **Validation actuelle dans `AdminProvisioningService.createTenantAdmin()`**:
+   - Vérifie que le tenant existe (ligne 291-294)
+   - Vérifie les autorisations (GlobalAdmin ou TenantAdmin de même tenant)
+   - **Ne vérifie PAS** si le tenant est le System Tenant
+   - **Problème**: Permet la création d'un TenantAdmin dans le System Tenant
+
+### Analyse de la nécessité
+
+**Problèmes identifiés:**
+
+1. **Incohérence conceptuelle**:
+   - Le System Tenant mélange deux concepts différents: admins système et admins de tenant
+   - Confusion sur le rôle et la portée du System Tenant
+   - Violation de la séparation des responsabilités
+
+2. **Impact sur la logique métier**:
+   - Un TenantAdmin dans le System Tenant pourrait avoir accès à des ressources système
+   - Confusion dans les requêtes qui filtrent par tenant_id
+   - Risque de contournement des restrictions de sécurité
+
+3. **Cohérence avec la documentation**:
+   - La migration V3 spécifie: "System tenant (Ezkey System) hosts global administrators"
+   - Le document `ADMIN_ZERO_OPTION_B_IMPLEMENTATION.md` indique:
+     - System Tenant = Organization hosting the instance
+     - Application Tenants = Departments/divisions within the organization
+
+### Recommandations
+
+**Solution: Ajouter un flag `is_system_tenant` pour identification robuste**
+
+**Problème identifié avec solution initiale:**
+- Comparaison de chaînes (`tenant_name = "Ezkey System"`) est fragile
+- Ne reflète pas un concept explicite dans le modèle de données
+- Risque d'erreur si le nom change ou est traduit
+
+**Solution robuste: Ajouter flag `is_system_tenant`**
+- Ajouter colonne `is_system_tenant BOOLEAN` à la table `ezkey_tenant`
+- Suivre le pattern existant dans `Integration` avec `is_system_integration`
+- Créer migration V27 pour ajouter la colonne et marquer le System Tenant existant
+- Validation utilisant `tenant.isSystemTenant()` au lieu de comparaison de chaînes
+
+**Avantages:**
+- ✅ Solution robuste et résiliente (pas de dépendance aux chaînes)
+- ✅ Concept explicite dans le modèle de données
+- ✅ Cohérent avec le pattern existant (`is_system_integration`)
+- ✅ Maintient la cohérence conceptuelle
+- ✅ Respecte la séparation des responsabilités
+- ✅ Aligné avec la documentation et la logique métier
+
+**Alternatives considérées:**
+- **Comparaison de chaînes**: Trop fragile, rejetée
+- **Contrainte DB sur tenant_id**: Moins flexible, nécessite migration
+- **Flag booléen**: ✅ Solution retenue - robuste et extensible
+
+### Solution implémentée
+
+**✅ Solution robuste implémentée** - Flag `is_system_tenant` dans le modèle de données
+
+**Implémentation:**
+
+1. **Migration V27** (`V27__add_system_tenant_flag.sql`):
+   - Ajoute colonne `is_system_tenant BOOLEAN DEFAULT FALSE NOT NULL` à `ezkey_tenant`
+   - Met à jour le System Tenant existant avec `is_system_tenant = TRUE`
+   - Crée index unique partiel pour garantir un seul System Tenant
+   - Ajoute commentaires de documentation
+
+2. **Entité Tenant** (`Tenant.java`):
+   - Ajoute champ `isSystemTenant` avec getter/setter
+   - Documentation complète du concept
+   - Valeur par défaut: `false`
+
+3. **Validation dans AdminProvisioningService** (`createTenantAdmin()`):
+   - Vérifie `tenant.isSystemTenant()` après récupération du tenant
+   - Rejette avec `IllegalArgumentException` si System Tenant
+   - Message: `"Cannot create TenantAdmin in System Tenant. TenantAdmins must be created in application tenants."`
+
+**Fichiers modifiés:**
+- `ezkey-core/src/main/resources/db/migration/V27__add_system_tenant_flag.sql` (nouveau)
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Tenant.java`
+  - Ajout champ `isSystemTenant` (ligne 116-125)
+  - Ajout getter/setter (ligne 264-275)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java`
+  - Ajout validation System Tenant (ligne 296-301)
+
+**Avantages de la solution:**
+- ✅ Robustesse: Pas de dépendance aux comparaisons de chaînes
+- ✅ Concept explicite: Flag dans le modèle de données
+- ✅ Cohérence: Pattern similaire à `is_system_integration`
+- ✅ Extensibilité: Facile à utiliser dans d'autres validations
+- ✅ Maintenabilité: Changement de nom ne casse pas la logique
+
+### Prochaines étapes
+
+- [x] Valider la solution avec l'équipe (solution robuste avec flag)
+- [x] Créer migration V27 pour ajouter flag `is_system_tenant`
+- [x] Mettre à jour entité Tenant avec champ `isSystemTenant`
+- [x] Implémenter la validation dans `AdminProvisioningService.createTenantAdmin()`
+- [ ] Ajouter les tests unitaires pour cette validation
+- [ ] Tester avec tenant_id = 1 (System Tenant, devrait être rejeté)
+- [ ] Tester avec tenant_id > 1 (Application Tenant, devrait fonctionner)
+- [ ] Documenter la règle dans la documentation API
+
+### Références
+
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java` (ligne 296-301 - validation System Tenant)
+- `ezkey-core/src/main/resources/db/migration/V27__add_system_tenant_flag.sql` (migration ajoutant le flag)
+- `ezkey-core/src/main/resources/db/migration/V3__create_system_tenant_and_admin_zero.sql` (création System Tenant)
+- `ezkey-admin-api/ADMIN_ZERO_OPTION_B_IMPLEMENTATION.md` (documentation System Tenant)
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Tenant.java` (entité Tenant avec `isSystemTenant`)
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Integration.java` (pattern similaire avec `isSystemIntegration`)
+
+---
+
 ## Notes
 
 *Ce document sera mis à jour au fur et à mesure que de nouvelles observations sont identifiées et analysées.*

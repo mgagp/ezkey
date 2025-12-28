@@ -293,6 +293,13 @@ public class AdminProvisioningService {
             .findById(tenantId)
             .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
 
+    // Validate that tenant is not the system tenant
+    // System tenant hosts global administrators only, not tenant administrators
+    if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
+      throw new IllegalArgumentException(
+          "Cannot create TenantAdmin in System Tenant. TenantAdmins must be created in application tenants.");
+    }
+
     // Validate authorization
     if (creatorPrincipal.isGlobalAdmin()) {
       // Global admins can create tenant admins for any tenant
