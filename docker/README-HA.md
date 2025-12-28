@@ -319,7 +319,7 @@ Query the ShedLock table directly:
 docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
   "SELECT name, locked_by, locked_at, lock_until, \
    CASE WHEN lock_until > NOW() THEN 'ACTIVE' ELSE 'EXPIRED' END as status \
-   FROM shedlock ORDER BY locked_at DESC;"
+   FROM ezkey_shedlock ORDER BY locked_at DESC;"
 ```
 
 Expected output:
@@ -382,7 +382,7 @@ Check which instances have held locks:
 ```bash
 docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
   "SELECT name, locked_by, COUNT(*) as times_held \
-   FROM shedlock \
+   FROM ezkey_shedlock \
    GROUP BY name, locked_by \
    ORDER BY name, times_held DESC;"
 ```
@@ -433,13 +433,13 @@ docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
 1. **Verify ShedLock table exists:**
    ```bash
    docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
-     "\d shedlock"
+     "\d ezkey_shedlock"
    ```
 
 2. **Check for locks:**
    ```bash
    docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
-     "SELECT * FROM shedlock;"
+     "SELECT * FROM ezkey_shedlock;"
    ```
 
 3. **Verify both instances can access database:**
@@ -464,13 +464,13 @@ If both instances are executing the same job simultaneously:
    - Verify `LockProvider` bean is configured
 
 2. **Check database connectivity:**
-   - Both instances must be able to write to `shedlock` table
+   - Both instances must be able to write to `ezkey_shedlock` table
    - Verify no database connection issues in logs
 
 3. **Check lock table:**
    ```bash
    docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
-     "SELECT name, locked_by, lock_until > NOW() as active FROM shedlock;"
+     "SELECT name, locked_by, lock_until > NOW() as active FROM ezkey_shedlock;"
    ```
 
 ## Differences from Standard Stack

@@ -73,10 +73,10 @@ public class ShedLockDistributedTest {
               + "Docker stack must be running for ShedLock tests.");
     }
 
-    // Verify shedlock table exists (ShedLock creates it automatically on first job execution)
+    // Verify ezkey_shedlock table exists (ShedLock creates it automatically on first job execution)
     if (!shedLockHelper.verifyShedLockTableExists()) {
       log.warn(
-          "shedlock table does not exist yet. "
+          "ezkey_shedlock table does not exist yet. "
               + "This is normal if no scheduled jobs have executed yet. "
               + "The table will be created automatically when the first job runs.");
     }
@@ -98,7 +98,7 @@ public class ShedLockDistributedTest {
    *
    * <ol>
    *   <li>Wait for a scheduled job to execute (KEY_PROMOTION runs every 5 seconds)
-   *   <li>Verify that only one active lock exists in the shedlock table
+   *   <li>Verify that only one active lock exists in the ezkey_shedlock table
    *   <li>Verify that the lock changes between instances over time (no instance affinity) - HA mode
    *       only
    * </ol>
@@ -190,7 +190,7 @@ public class ShedLockDistributedTest {
   /**
    * Test B: Vérification Locks dans DB
    *
-   * <p>Validates that locks are correctly created and updated in the PostgreSQL shedlock table.
+   * <p>Validates that locks are correctly created and updated in the PostgreSQL ezkey_shedlock table.
    * This verifies the database-level locking mechanism.
    *
    * <p><b>Test Steps:</b>

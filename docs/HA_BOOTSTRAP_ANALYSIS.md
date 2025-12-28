@@ -67,7 +67,7 @@ Lors de l'exécution du stack Docker en mode High Availability (HA) avec 2 insta
 1. Lire les logs des deux instances admin-api en mode HA
 2. Chercher le pattern "GLOBAL ADMIN PASSWORDLESS ENROLLMENT" dans les deux
 3. Utiliser les logs de l'instance qui contient ce pattern
-4. Alternative : Interroger la table `shedlock` pour identifier `locked_by` du lock `ADMIN_STARTUP_BOOTSTRAP`
+4. Alternative : Interroger la table `ezkey_shedlock` pour identifier `locked_by` du lock `ADMIN_STARTUP_BOOTSTRAP`
 
 ### 4. Vérification de la Protection ShedLock
 
@@ -133,7 +133,7 @@ Lors de l'exécution du stack Docker en mode High Availability (HA) avec 2 insta
 
 2. **Identifier l'instance qui a créé l'admin** :
    - Option A : Lire les logs des deux instances et trouver celle qui contient "GLOBAL ADMIN PASSWORDLESS ENROLLMENT"
-   - Option B : Interroger la table `shedlock` pour identifier `locked_by` du lock `ADMIN_STARTUP_BOOTSTRAP`
+   - Option B : Interroger la table `ezkey_shedlock` pour identifier `locked_by` du lock `ADMIN_STARTUP_BOOTSTRAP`
 
 3. **Lire les logs de la bonne instance** :
    - Utiliser le nom du conteneur identifié pour lire les logs
