@@ -30,6 +30,8 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -112,6 +114,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class EnrollmentService {
+
+  private static final Logger logger = LoggerFactory.getLogger(EnrollmentService.class);
 
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
@@ -305,6 +309,10 @@ public class EnrollmentService {
                         "Integration not found: " + request.getIntegrationId()));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      logger.warn(
+          "Attempt to create enrollment for system integration (ID: {}) blocked. "
+              + "System integrations are reserved for global admin authentication.",
+          request.getIntegrationId());
       throw new IllegalArgumentException(
           "Cannot create enrollment for system integration. System integrations are reserved for"
               + " global admin authentication and enrollments can only be created through the admin"

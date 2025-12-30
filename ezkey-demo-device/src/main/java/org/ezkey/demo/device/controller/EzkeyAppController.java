@@ -196,14 +196,25 @@ public class EzkeyAppController {
           model.addAttribute("enrollmentId", enrollmentId);
           return "phone/ezkey/verify_success";
         } else {
-          model.addAttribute("error", "Verification failed: Enrollment is not active");
+          // Verification failed - remove enrollment from store
+          storeService.delete(enrollmentId);
+          logger.info("Removed enrollment {} from store due to failed verification", enrollmentId);
+          model.addAttribute("enrollmentId", enrollmentId);
+          model.addAttribute("error", "Verification failed: Enrollment is not active. Please start over from the beginning.");
         }
       } else {
-        model.addAttribute("error", "Verification failed: No response from server");
+        // Verification failed - remove enrollment from store
+        storeService.delete(enrollmentId);
+        logger.info("Removed enrollment {} from store due to failed verification (no response)", enrollmentId);
+        model.addAttribute("enrollmentId", enrollmentId);
+        model.addAttribute("error", "Verification failed: No response from server. Please start over from the beginning.");
       }
     } catch (Exception e) {
-      logger.error("Verify failed for enrollment {}", enrollmentId, e);
-      model.addAttribute("error", "Verification failed: " + e.getMessage());
+      // Verification failed - remove enrollment from store
+      storeService.delete(enrollmentId);
+      logger.error("Verify failed for enrollment {} - removed from store", enrollmentId, e);
+      model.addAttribute("enrollmentId", enrollmentId);
+      model.addAttribute("error", "Verification failed: " + e.getMessage() + ". Please start over from the beginning.");
     }
     return "phone/ezkey/bind_enrollment";
   }

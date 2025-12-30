@@ -317,7 +317,10 @@ public class EnrollmentController {
               .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
               .build());
 
-      return ResponseEntity.badRequest().build();
+      // Let GlobalExceptionHandler handle the exception to return proper error response with
+      // message
+      // This ensures consistent error response format across all endpoints
+      throw e;
     } catch (DataIntegrityViolationException e) {
       // Handle database constraint violations (e.g., FK constraint for non-existent integration)
       // This should return 400 Bad Request, not 500 Internal Server Error
