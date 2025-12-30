@@ -929,6 +929,101 @@ Lors de tests exploratoires, un GlobalAdmin a créé un TenantAdmin avec `tenant
 
 ---
 
+## 5. Création d'enrollment pour intégration système via API normale
+
+**Date**: 2025-12-30  
+**Observateur**: Utilisateur  
+**Endpoint concerné**: `POST /api/v1/enrollments` (Admin API)  
+**Statut**: ✅ **RÉSOLU** - 2025-12-30
+
+### Observation
+
+Il est possible de créer un enrollment pour une intégration marquée comme "système" (type système) via l'API normale de création d'enrollment (`POST /api/v1/enrollments`). Cela est incohérent étant donné que :
+
+1. Les intégrations système sont réservées pour l'authentification des admins globaux
+2. Les endpoints pour séparer l'obtention de l'Enrollment Proof Token et des Recovery Codes ont été créés spécifiquement pour les admins (`GET /api/v1/admins/{id}/onboarding`)
+3. La création d'enrollments pour les intégrations système devrait être réservée aux API de création d'admin global (`POST /api/v1/admins/global`)
+
+### Validation de l'observation
+
+**✅ Observation confirmée - Problème de sécurité/cohérence**
+
+**Analyse du code:**
+
+1. **Endpoint `POST /api/v1/enrollments`** (Admin API):
+   - Existe dans `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/EnrollmentController.java`
+   - Permet à n'importe quel admin (GlobalAdmin ou TenantAdmin) de créer un enrollment pour n'importe quelle intégration accessible
+   - **Problème**: Aucune validation pour bloquer les intégrations système
+
+2. **Service `EnrollmentService.create()`**:
+   - Existe dans `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java`
+   - Crée un enrollment sans vérifier si l'intégration est une intégration système
+   - **Problème**: Pas de validation du flag `isSystemIntegration`
+
+3. **Intégrations système**:
+   - Marquées avec `is_system_integration = true` dans la table `ezkey_integration`
+   - Créées automatiquement lors du bootstrap pour l'authentification des admins globaux
+   - **Attendu**: Les enrollments pour ces intégrations ne devraient être créés que via `POST /api/v1/admins/global`
+
+### Analyse de la nécessité
+
+**Impact de sécurité:**
+- ⚠️ **Moyen**: Permet la création d'enrollments non autorisés pour les intégrations système
+- ⚠️ **Cohérence**: Contredit la séparation des responsabilités entre API normale et API d'admin provisioning
+
+**Risques:**
+1. Un admin pourrait créer des enrollments pour l'intégration système avec des noms arbitraires
+2. Cela pourrait créer de la confusion dans la gestion des enrollments d'admin
+3. Cela viole le principe de séparation des responsabilités établi avec les endpoints d'onboarding admin
+
+### Solution implémentée
+
+**Option choisie: Validation dans `EnrollmentService.create()`**
+
+**Implémentation:**
+
+1. **Ajout de `IntegrationRepository` dans `EnrollmentService`**:
+   - Injection du repository pour accéder aux informations d'intégration
+   - Permet de vérifier le flag `isSystemIntegration` avant la création
+
+2. **Validation dans `EnrollmentService.create()`**:
+   - Chargement de l'intégration depuis le repository
+   - Vérification du flag `isSystemIntegration`
+   - Levée d'une exception `IllegalArgumentException` avec message explicite si l'intégration est système
+
+**Code modifié:**
+
+- `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java`:
+  - Ajout de `IntegrationRepository` dans les dépendances (ligne 118)
+  - Ajout de la validation dans `create()` (lignes 295-310)
+  - Message d'erreur explicite: "Cannot create enrollment for system integration. System integrations are reserved for global admin authentication and enrollments can only be created through the admin provisioning API endpoints."
+
+**Avantages de la solution:**
+- ✅ **Sécurité**: Bloque la création d'enrollments non autorisés pour les intégrations système
+- ✅ **Cohérence**: Aligne le comportement avec la séparation des responsabilités API
+- ✅ **Clarté**: Message d'erreur explicite indiquant la raison du blocage
+- ✅ **Robustesse**: Validation au niveau service, indépendante du controller
+- ✅ **Maintenabilité**: Utilise le flag `isSystemIntegration` existant, pas de comparaison de chaînes
+
+### Prochaines étapes
+
+- [x] Valider la solution avec l'utilisateur (validation dans service)
+- [x] Ajouter `IntegrationRepository` dans `EnrollmentService`
+- [x] Implémenter la validation dans `EnrollmentService.create()`
+- [ ] Ajouter les tests unitaires pour cette validation
+- [ ] Tester avec integration_id système (devrait être rejeté avec message explicite)
+- [ ] Tester avec integration_id normale (devrait fonctionner normalement)
+- [ ] Documenter la règle dans la documentation API
+
+### Références
+
+- `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java` (lignes 278-310 - validation système integration)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/EnrollmentController.java` (endpoint POST /api/v1/enrollments)
+- `ezkey-core/src/main/java/org/ezkey/integration/domain/entity/Integration.java` (flag `isSystemIntegration`)
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminProvisioningController.java` (endpoints d'onboarding admin)
+
+---
+
 ## Notes
 
 *Ce document sera mis à jour au fur et à mesure que de nouvelles observations sont identifiées et analysées.*

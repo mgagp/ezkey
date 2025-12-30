@@ -27,6 +27,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.springframework.data.domain.Page;
@@ -115,6 +116,7 @@ public class EnrollmentService {
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
   private final EzkeyCoreProperties ezkeyCoreProperties;
+  private final IntegrationRepository integrationRepository;
 
   // Specialized services for specific operations
   private final EnrollmentBindService bindService;
@@ -126,6 +128,7 @@ public class EnrollmentService {
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param signatureService the cryptographic signature service
    * @param ezkeyCoreProperties the ezkey core configuration properties
+   * @param integrationRepository the JPA repository for integration operations
    * @param bindService the specialized service for binding operations
    * @param verifyService the specialized service for verification operations
    */
@@ -133,11 +136,13 @@ public class EnrollmentService {
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
       EzkeyCoreProperties ezkeyCoreProperties,
+      IntegrationRepository integrationRepository,
       EnrollmentBindService bindService,
       EnrollmentVerifyService verifyService) {
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
     this.ezkeyCoreProperties = ezkeyCoreProperties;
+    this.integrationRepository = integrationRepository;
     this.bindService = bindService;
     this.verifyService = verifyService;
   }
@@ -271,9 +276,14 @@ public class EnrollmentService {
    * from the cryptographic service, and returns the new response format. Ed25519 key generation
    * responsibility is delegated to {@link SignatureService} to centralize cryptographic operations.
    *
+   * <p><b>Security:</b> This method blocks enrollment creation for system integrations. System
+   * integrations are reserved for global admin authentication and enrollments can only be created
+   * through the admin provisioning API endpoints.
+   *
    * @param request the enrollment creation request
    * @return the created enrollment response
-   * @throws IllegalArgumentException if required fields are missing or invalid
+   * @throws IllegalArgumentException if required fields are missing or invalid, or if attempting to
+   *     create enrollment for a system integration
    */
   public EnrollmentCreateResponse create(EnrollmentCreateRequest request) {
     if (request.getIntegrationId() == null) {
@@ -281,6 +291,24 @@ public class EnrollmentService {
     }
     if (request.getName() == null || request.getName().trim().isEmpty()) {
       throw new IllegalArgumentException("Enrollment name is required");
+    }
+
+    // Security: Block enrollment creation for system integrations
+    // System integrations are reserved for global admin authentication and enrollments
+    // can only be created through the admin provisioning API endpoints
+    Integration integration =
+        integrationRepository
+            .findById(request.getIntegrationId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Integration not found: " + request.getIntegrationId()));
+
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new IllegalArgumentException(
+          "Cannot create enrollment for system integration. System integrations are reserved for"
+              + " global admin authentication and enrollments can only be created through the admin"
+              + " provisioning API endpoints.");
     }
     var enrollment = new Enrollment();
     enrollment.setIntegrationId(request.getIntegrationId());

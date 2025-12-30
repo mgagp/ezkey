@@ -13,6 +13,8 @@ package org.ezkey.admin;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
 
 /**
  * JPA configuration for admin API repository and entity scanning.
@@ -70,6 +72,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.audit.domain.entity",
       "org.ezkey.security.domain.entity"
     })
+@EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
 public class AdminJpaConfig {
   // Configuration for JPA repositories and entity scanning
 }

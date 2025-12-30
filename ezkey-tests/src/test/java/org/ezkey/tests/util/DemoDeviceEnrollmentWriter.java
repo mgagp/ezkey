@@ -328,15 +328,16 @@ public class DemoDeviceEnrollmentWriter {
   private void ensureDirectoryExists() {
     try {
       String containerName = detectDemoDeviceContainer();
-      
+
       // First, ensure parent directory /app/data exists and has correct ownership
       // This is needed because the volume may have been created with root ownership
       String fixParentPermissionsCommand =
           "mkdir -p /app/data && chown -R spring:spring /app/data && chmod 755 /app/data";
       ProcessBuilder fixParentBuilder =
-          new ProcessBuilder("docker", "exec", containerName, "sh", "-c", fixParentPermissionsCommand);
+          new ProcessBuilder(
+              "docker", "exec", containerName, "sh", "-c", fixParentPermissionsCommand);
       fixParentBuilder.redirectErrorStream(true);
-      
+
       Process fixParentProcess = fixParentBuilder.start();
       StringBuilder fixParentOutput = new StringBuilder();
       try (BufferedReader reader =
@@ -346,7 +347,7 @@ public class DemoDeviceEnrollmentWriter {
           fixParentOutput.append(line).append("\n");
         }
       }
-      
+
       int fixParentExitCode = fixParentProcess.waitFor();
       if (fixParentExitCode != 0) {
         log.warn(
@@ -357,7 +358,7 @@ public class DemoDeviceEnrollmentWriter {
       } else {
         log.debug("Parent directory permissions fixed successfully");
       }
-      
+
       // Now create the enrollments directory as spring user
       ProcessBuilder processBuilder =
           new ProcessBuilder(
@@ -393,7 +394,7 @@ public class DemoDeviceEnrollmentWriter {
                 + ", Output: "
                 + output);
       }
-      
+
       log.debug("Enrollments directory created successfully: {}", ENROLLMENTS_DIR);
     } catch (Exception e) {
       log.error("Failed to ensure directory exists: {}", e.getMessage(), e);
