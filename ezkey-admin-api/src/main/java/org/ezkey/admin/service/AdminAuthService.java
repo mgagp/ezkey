@@ -225,6 +225,12 @@ public class AdminAuthService {
             "❌ Passwordless auth invalid (signature/challenge failed) for admin: {}",
             admin.getUsername());
         throw new AuthenticationException("Authentication failed - invalid signature or challenge");
+      } else if ("EXPIRED".equals(status)) {
+        logger.warn(
+            "⏱️ Passwordless auth expired for admin: {} after {}s (superseded or expired)",
+            admin.getUsername(),
+            waitResp.getWaitDuration());
+        throw new AuthenticationException("Authentication expired - please try again");
       } else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
         logger.warn(
             "⏱️ Passwordless auth timeout for admin: {} after {}s",
@@ -307,6 +313,12 @@ public class AdminAuthService {
           "❌ Passwordless auth invalid (wrong challenge?) for admin: {}", admin.getUsername());
       throw new AuthenticationException(
           "Authentication failed - invalid signature or challenge code");
+    } else if ("EXPIRED".equals(status)) {
+      logger.warn(
+          "⏱️ Passwordless auth expired for admin: {} after {}s (superseded or expired)",
+          admin.getUsername(),
+          waitResp.getWaitDuration());
+      throw new AuthenticationException("Authentication expired - please try again");
     } else if (Boolean.TRUE.equals(waitResp.getTimeoutReached())) {
       logger.warn(
           "⏱️ Passwordless auth timeout for admin: {} after {}s",

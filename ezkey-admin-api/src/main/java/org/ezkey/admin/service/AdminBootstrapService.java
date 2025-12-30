@@ -277,10 +277,7 @@ public class AdminBootstrapService {
       Enrollment existingEnrollment =
           enrollmentRepository
               .findById(enrollmentId)
-              .orElseThrow(
-                  () ->
-                      new RuntimeException(
-                          "Enrollment not found: " + enrollmentId));
+              .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
       bootstrapCredentialsFileExporter.exportIfEnabled(
           existingEnrollment,
           existingEnrollment.getEnrollmentProofToken(),

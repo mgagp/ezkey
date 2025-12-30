@@ -10,7 +10,7 @@ The interaction model is **pull**: the mobile device fetches the request to vali
 
 ---
 
-## ðŸ“± User-Initiated Polling Model
+## 📱 User-Initiated Polling Model
 
 ### **Critical Design Principle: User Control**
 
@@ -30,18 +30,18 @@ The pending endpoint (`POST /api/v1/auth-attempts/pending`) follows a **user-ini
 
 ---
 
-## ðŸ” Token Security - Critical Design
+## 🔐 Token Security - Critical Design
 
 ### **Security Principle: One-Time Use Token**
 
 Ezkey uses a **one-time proof token** system to ensure the integrity and security of the authentication process.
 
-#### **ðŸ”‘ Two Types of Tokens**
+#### **🔑 Two Types of Tokens**
 
 1. **`enrollmentProofToken`**: Permanent enrollment token, used to bind the device
 2. **`authAttemptProofToken`**: Unique token per authentication attempt, **CRITICAL for security**
 
-#### **ðŸ›¡ï¸ Security Mechanism**
+#### **🛡️ Security Mechanism**
 
 **Step 1 - PENDING**:
 - The server generates a unique `authAttemptProofToken` for each attempt
@@ -54,17 +54,17 @@ Ezkey uses a **one-time proof token** system to ensure the integrity and securit
 - This signature proves that the device has received the original token
 - **Enhanced security**: impossible to replay an attempt without having the original token
 
-#### **âš ï¸ Critical Points for Developers**
+#### **⚠️ Critical Points for Developers**
 
 ```java
-// âŒ INCORRECT - Never sign enrollmentProofToken for RESPOND
+// ❌ INCORRECT - Never sign enrollmentProofToken for RESPOND
 String signature = signWithDeviceKey(enrollmentProofToken);
 
-// âœ… CORRECT - Always sign authAttemptProofToken for RESPOND  
+// ✅ CORRECT - Always sign authAttemptProofToken for RESPOND  
 String signature = signWithDeviceKey(authAttemptProofToken);
 ```
 
-#### **ðŸŽ¯ Why This Design?**
+#### **🎯 Why This Design?**
 
 1. **Anti-replay**: Each attempt has a unique token
 2. **Strong authentication**: Only the legitimate device can decrypt and sign
@@ -73,7 +73,7 @@ String signature = signWithDeviceKey(authAttemptProofToken);
 
 ---
 
-## ðŸ• Datetime Format - UTC Standard
+## 📅 Datetime Format - UTC Standard
 
 ### **Standard: All Timestamps in UTC**
 
@@ -501,7 +501,249 @@ Authorization: Bearer ezkey_abc123def456...
 
 ---
 
-## ðŸ”‘ API Keys Authentication (Machine-to-Machine)
+## 👥 Administrator Provisioning
+
+### **Overview**
+
+Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to create peer administrators with proper limits enforcement and secure onboarding credential management.
+
+**Security Pattern:**
+- Creation endpoints return only basic admin information (no sensitive credentials)
+- Sensitive credentials (enrollmentProofToken, enrollmentChallenge) are retrieved via separate GET endpoint
+- Follows the same security pattern as the enrollment API for consistency
+
+**Multi-Tenancy:**
+- **GlobalAdmin**: Can create GlobalAdmins and TenantAdmins for any tenant
+- **TenantAdmin**: Can only create TenantAdmins for their own tenant
+- **System Tenant**: Cannot create TenantAdmins in System Tenant (tenant_id=1)
+
+---
+
+### a) Create Global Administrator
+
+**POST /api/v1/admins/global**
+
+Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.
+
+**Request:**
+```http
+POST /api/v1/admins/global
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "username": "new.global.admin",
+  "email": "newglobal@example.com",
+  "firstName": "New",
+  "lastName": "GlobalAdmin"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "adminId": 2,
+  "username": "new.global.admin",
+  "email": "newglobal@example.com",
+  "firstName": "New",
+  "lastName": "GlobalAdmin",
+  "adminType": "GLOBAL_ADMIN",
+  "tenantId": null,
+  "enrollmentId": 123,
+  "createdAt": "2025-12-26T14:30:00Z"
+}
+```
+
+**Note:** Sensitive onboarding credentials are NOT returned in this response. Use GET /api/v1/admins/{id}/onboarding to retrieve them.
+
+**Status Codes:**
+- 201: Global administrator created successfully
+- 400: Invalid data, limit exceeded, username exists, or email exists
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not a GlobalAdmin
+- 500: Internal server error
+
+---
+
+### b) Create Tenant Administrator
+
+**POST /api/v1/admins/tenant**
+
+Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.
+
+**Request:**
+```http
+POST /api/v1/admins/tenant
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "username": "new.tenant.admin",
+  "email": "newtenant@example.com",
+  "firstName": "New",
+  "lastName": "TenantAdmin",
+  "tenantId": 2
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "adminId": 3,
+  "username": "new.tenant.admin",
+  "email": "newtenant@example.com",
+  "firstName": "New",
+  "lastName": "TenantAdmin",
+  "adminType": "TENANT_ADMIN",
+  "tenantId": 2,
+  "enrollmentId": 124,
+  "createdAt": "2025-12-26T14:35:00Z"
+}
+```
+
+**Note:** Sensitive onboarding credentials are NOT returned in this response. Use GET /api/v1/admins/{id}/onboarding to retrieve them.
+
+**Status Codes:**
+- 201: Tenant administrator created successfully
+- 400: Invalid data, limit exceeded, username exists, email exists, tenant not found, or System Tenant
+- 401: Unauthorized - admin token required
+- 403: Forbidden - TenantAdmin trying to create for different tenant
+- 500: Internal server error
+
+---
+
+### c) Retrieve Onboarding Credentials
+
+**GET /api/v1/admins/{id}/onboarding**
+
+Retrieves sensitive onboarding credentials for an administrator. These credentials are separated from the creation response for security reasons.
+
+**Permissions:**
+- **GlobalAdmin**: Can retrieve onboarding credentials for any admin
+- **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant
+
+**Request:**
+```http
+GET /api/v1/admins/2/onboarding
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "enrollmentId": 123,
+  "enrollmentProofToken": "EZK-ABC123-DEF456-GHI789-JKL012-MNO345-PQR678-STU901-VWX234",
+  "enrollmentChallenge": 654321,
+  "recoveryCodes": null
+}
+```
+
+**Note on Recovery Codes:**
+- Recovery codes are stored as BCrypt hashes and cannot be retrieved in plain text after initial provisioning
+- Recovery codes must be saved immediately during admin creation (they are returned in ProvisioningResult at service layer)
+- This endpoint returns `recoveryCodes: null` because they cannot be retrieved after initial provisioning
+
+**Status Codes:**
+- 200: Onboarding credentials retrieved successfully
+- 400: Bad request (e.g., admin does not have an enrollment)
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not authorized to access this admin's credentials
+- 404: Administrator or enrollment not found
+- 500: Internal server error
+
+---
+
+### d) Generate Onboarding QR Code
+
+**GET /api/v1/admins/{id}/onboarding/qrcode**
+
+Generates a PNG QR code image containing enrollment credentials for administrator onboarding. The QR code can be scanned by the mobile application for passwordless enrollment binding.
+
+**Permissions:**
+- **GlobalAdmin**: Can generate QR codes for any admin
+- **TenantAdmin**: Can only generate QR codes for admins in their tenant
+
+**Request:**
+```http
+GET /api/v1/admins/2/onboarding/qrcode
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response (200 OK):**
+- Content-Type: `image/png`
+- Body: PNG image bytes (300x300 pixels)
+- Content-Disposition: `inline; filename=admin-2-onboarding-qrcode.png`
+
+**QR Code Format:**
+The QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`
+
+Example: `123|EZK-ABC123-DEF456-GHI789-JKL012-MNO345-PQR678-STU901-VWX234`
+
+This allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.
+
+**Status Codes:**
+- 200: QR code generated successfully
+- 400: Bad request (e.g., enrollment missing proof token)
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not authorized to access this admin's credentials
+- 404: Administrator or enrollment not found
+- 500: Internal server error
+
+---
+
+### e) List Administrators
+
+**GET /api/v1/admins**
+
+Lists administrators with tenant-based filtering. GlobalAdmin sees all administrators across all tenants. TenantAdmin sees only administrators from their tenant.
+
+**Request:**
+```http
+GET /api/v1/admins?page=0&size=20&sort=createdAt,DESC
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Query Parameters:**
+- `page` (optional, default: 0): Page number (zero-based)
+- `size` (optional, default: 20): Number of items per page
+- `sort` (optional, default: createdAt,DESC): Sort field and direction
+- `active` (optional): Filter by active status
+- `adminType` (optional): Filter by admin type (GLOBAL_ADMIN, TENANT_ADMIN)
+
+**Success Response (200 OK):**
+```json
+{
+  "content": [
+    {
+      "adminId": 1,
+      "username": "admin.docker",
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "Docker",
+      "adminType": "GLOBAL_ADMIN",
+      "tenantId": null,
+      "active": true,
+      "createdAt": "2025-12-26T10:00:00Z"
+    }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "size": 20,
+  "number": 0,
+  "first": true,
+  "last": true
+}
+```
+
+**Status Codes:**
+- 200: List of administrators retrieved successfully
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not an administrator
+- 500: Internal server error
+
+---
+
+## 🔑 API Keys Authentication (Machine-to-Machine)
 
 ### **Overview**
 
@@ -802,458 +1044,7 @@ Authorization: Bearer ezkey_admin_token...
 **Security Considerations:**
 - Requires ADMIN role
 - All operations are audited
-- Key must be ENABLED (not PRIMARY or DISABLED)
-- Creates batches for all tables/columns encrypted with this key
+- May process large amounts of data - use with caution in production
+- Batches are processed immediately (no throttling limits)
 
 ---
-
-#### c) Create Re-encryption Batches Only
-
-**POST /api/v1/encryption-keys/reencrypt/create-batches**
-
-Creates re-encryption batches for all old keys without processing them. The batches will be processed by the scheduled job.
-
-**Use Cases:**
-- Preparing batches before scheduled processing
-- Testing batch creation logic
-- Creating batches during maintenance window for later processing
-
-**Request:**
-```http
-POST /api/v1/encryption-keys/reencrypt/create-batches
-Authorization: Bearer ezkey_admin_token...
-```
-
-**Response (200 OK):**
-```json
-{
-  "batchesCreated": 8,
-  "message": "Created 8 re-encryption batches"
-}
-```
-
-**Error Responses:**
-- **500 Internal Server Error**: Batch creation failed
-
-**Security Considerations:**
-- Requires ADMIN role
-- All operations are audited
-- Batches are created but not processed (will be processed by scheduled job)
-- Useful for preparing batches during low-traffic periods
-
----
-
-### Re-encryption Process Overview
-
-**Normal Flow (Scheduled):**
-1. Key rotation job creates new PRIMARY key
-2. Scheduled re-encryption job (daily at 3 AM) creates batches for old keys
-3. Scheduled job processes batches in batches (respects limits)
-4. Old keys are disabled after all data is re-encrypted
-
-**Manual Flow (Using Endpoints):**
-1. Admin triggers key rotation (or scheduled job does it)
-2. Admin can manually trigger re-encryption:
-   - **Full re-encryption**: Creates and processes all batches immediately
-   - **Key-specific**: Creates and processes batches for one key
-   - **Batch creation only**: Creates batches for scheduled job to process
-
-**Batch Status:**
-- **PENDING**: Batch created, not yet started
-- **IN_PROGRESS**: Batch is being processed
-- **COMPLETED**: Batch completed successfully
-- **FAILED**: Batch failed (can be resumed)
-- **PAUSED**: Batch paused (can be resumed)
-
-**Monitoring:**
-- Use `GET /api/v1/encryption-keys/reencryption-batches` to monitor progress
-- Check `progressPct` field for completion percentage
-- Review `recordsDone`, `recordsFailed`, `recordsSkipped` for statistics
-
----
-
-### a) Authentication request management
-
-**GET    /api/v1/auth-attempts**          // List all authentication requests
-**POST   /api/v1/auth-attempts**         // Create an authentication request
-**GET    /api/v1/auth-attempts/{id}**    // Read a request
-**GET    /api/v1/auth-attempts/{id}/wait** // Wait for authentication response (POLLING)
-**DELETE /api/v1/auth-attempts/{id}**    // Delete a request
-
-#### **New Endpoint: Authentication Response Waiting**
-
-**GET /api/v1/auth-attempts/{id}/wait**
-
-- **Description**: Allows applications to wait for the mobile device's response to an authentication request. Implements a polling mechanism with configurable timeout for synchronous behavior in the asynchronous MFA flow.
-
-**Query parameters:**
-- `timeout` (optional, default: 30s): Maximum wait duration in seconds (1-300)
-- `polling` (optional, default: 2s): Polling interval in seconds (1-60)
-
-**Request**
-```http
-GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
-```
-
-**Response**
-- 200 OK: Authentication completed
-```json
-{
-  "authAttempt": {
-    "authAttemptId": 123,
-    "enrollmentId": 456,
-    "authAttemptStatus": "ACCEPTED",
-    "authAttemptChallenge": 789012,
-    "authAttemptProofToken": "EZK-XYZ789-ABC123",
-    "createdAt": "2024-06-01T12:34:56Z",
-    "expiresAt": "2024-06-01T12:39:56Z"
-  },
-  "status": "ACCEPTED",
-  "completed": true,
-  "timeoutReached": false,
-  "waitDuration": 15,
-  "completedAt": "2024-06-01T12:35:11Z"
-}
-```
-
-- 408 Request Timeout: Timeout reached, authentication still pending
-- 404 Not Found: Auth attempt not found
-- 400 Bad Request: Invalid parameters
-
-**Status calculation rules (according to ENDPOINT.md):**
-1. `authAttemptRead` null or false: **PENDING**
-2. `authAttemptRead` true and `authAttemptResponded` null or false: **READ**
-3. `authAttemptValid` null or false: **INVALID**
-4. `authAttemptAccepted` null or false: **REJECTED** else **ACCEPTED**
-
-**âš ï¸ Supersession Rule:**
-When a newer authentication attempt is created for the same enrollment, older attempts are considered **EXPIRED** even if they haven't reached their timeout. This ensures that only the most recent authentication request for a person is valid.
-
-**GET Example**
-```json
-{
-  "authAttemptId": 49,
-  "enrollmentId": 61,
-  "authAttemptStatus": "PENDING",
-  "authAttemptChallenge": null,
-  "authAttemptProofToken": "KstrTWXbywp5Zi-ACI1kIzGrj9thTUkn_-lcOxQxYR0.1755796478548.1HGz9A4uEyYjqdxbYg9U7A",
-  "createdAt": "2025-08-21T13:14:38.548701",
-  "expiresAt": "2025-08-21T13:19:38.548701"
-}
-```
-
-To display a status associated with a request, the `authAttemptStatus` field provides the calculated status:
-- **PENDING**: Authentication request created, waiting for device response
-- **READ**: Device has read the request but not yet responded
-- **INVALID**: Authentication failed validation
-- **REJECTED**: User denied the authentication request
-- **ACCEPTED**: User approved the authentication request
-- **EXPIRED**: Superseded by a newer authentication attempt
-
-**Creation example**
-```http
-POST /api/v1/auth-attempts
-Content-Type: application/json
-
-{
-  "enrollmentId": 123,
-  "challengeRequested": false
-}
-```
-
-**Response**
-- 201 Created + created auth attempt details
-```json
-{
-  "authAttemptId": 11
-}
-```
-
-### b) Integration management (CRUD)
-
-**GET    /api/v1/integrations**           // Retrieve all integrations
-**GET    /api/v1/integrations/{id}**      // Retrieve an integration by ID
-**POST   /api/v1/integrations**          // Create a new integration
-**DELETE /api/v1/integrations/{id}**     // Delete an integration
-
-**Creating an integration**
-
-**Note**: Both `logo` and `i18n` fields are **optional**. The System Integration (used for global admin authentication) is created without logo or i18n data. Regular integrations typically include i18n for multi-language support in client applications.
-
-**Example with i18n (recommended for regular integrations):**
-```http
-POST /api/v1/integrations
-Content-Type: application/json
-
-{
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "ACME Corporation",
-      "description": "Secure authentication system for ACME applications"
-    },
-    {
-      "language": "fr",
-      "name": "Corporation ACME",
-      "description": "SystÃ¨me d'authentification sÃ©curisÃ© pour les applications ACME"
-    }
-  ]
-}
-```
-
-**Example without i18n (valid, used for System Integration):**
-```http
-POST /api/v1/integrations
-Content-Type: application/json
-
-{
-  "logo": "https://example.com/logo.png"
-}
-```
-
-**Response**
-- 201 Created + created integration details
-```json
-{
-  "id": 42
-}
-```
-
-**Retrieving an integration**
-```http
-GET /api/v1/integrations/42
-```
-
-**Response**
-- 200 OK + complete integration details
-```json
-{
-  "id": 42,
-  "logo": "https://example.com/logo.png",
-  "active": true,
-  "createdAt": "2024-06-01T12:34:56Z",
-  "i18n": [
-    {
-      "id": 1,
-      "language": "en",
-      "name": "ACME Corporation",
-      "description": "Secure authentication system for ACME applications"
-    }
-  ]
-}
-```
-
-### c) Enrollment management (CRUD)
-
-**GET    /api/v1/enrollments**           // Retrieve all enrollments
-**GET    /api/v1/enrollments/{id}**      // Retrieve an enrollment by ID
-**POST   /api/v1/enrollments**          // Create a new enrollment
-**DELETE /api/v1/enrollments/{id}**     // Delete an enrollment
-
-**Creating an enrollment**
-```http
-POST /api/v1/enrollments
-Content-Type: application/json
-
-{
-  "integrationId": 123,
-  "name": "My Mobile Device",
-  "authAttemptChallengeRequired": true
-}
-```
-
-**Response**
-- 201 Created + created enrollment details
-```json
-{
-  "enrollmentId": 456,
-  "enrollmentChallenge": 987654
-}
-```
-
-**Retrieving an enrollment**
-```http
-GET /api/v1/enrollments/456
-```
-
-**Response**
-- 200 OK + complete enrollment details
-```json
-{
-  "enrollmentId": 456,
-  "integrationId": 123,
-  "enrollmentName": "My Mobile Device",
-  "enrollmentStatus": "VERIFIED",
-  "enrollmentActive": true,
-  "enrollmentChallenge": 987654,
-  "enrollmentProofToken": "EZK-ABC123-DEF456",
-  "authAttemptChallengeRequired": true,
-  "integrationPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-}
-```
-
-**Retrieving all enrollments**
-```http
-GET /api/v1/enrollments
-```
-
-**Response**
-- 200 OK + list of all enrollments
-```json
-[
-  {
-    "enrollmentId": 456,
-    "integrationId": 123,
-    "enrollmentName": "My Mobile Device",
-    "enrollmentStatus": "VERIFIED",
-    "enrollmentActive": true,
-    "enrollmentChallenge": 987654,
-    "enrollmentProofToken": "EZK-ABC123-DEF456",
-    "authAttemptChallengeRequired": true,
-    "integrationPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-    "devicePublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-  }
-]
-```
-
-**Deleting an enrollment**
-```http
-DELETE /api/v1/enrollments/456
-```
-
-**Response**
-- 204 No Content (successful deletion)
-- 404 Not Found (enrollment not found)
-
----
-
-## 3. Design choices summary
-
-- **pending**: clearly expresses the pending request for a given enrollment.
-- **respond**: standard, explicit for response submission.
-- **wait**: clearly indicates the intention to wait for authentication response.
-- **POST for pending**: allows transmission of crypto signature in the body, strengthening security.
-- **GET for wait**: read operation without modification, with query parameters for configuration.
-- **Clear separation** between management (admin-api) and consumption (auth-api).
-- **Enrollment process**: clear separation between binding (GET) and verification (POST) for security.
-- **Enrollment CRUD**: classic administrative enrollment management operations.
-
----
-
-## 4. Additional notes
-
-- Always document return codes (200, 204, 400, 401, 403, 408, etc.).
-- Explain in the documentation that the model is pull (no push notification).
-## ðŸ” Cryptographic Key and Signature Formats
-
-### EC P-256 Key Format
-
-All cryptographic keys in Ezkey use **EC P-256 (secp256r1)** with **ECDSA-SHA256** for digital signatures.
-
-#### **Public Keys**
-- **Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded)
-- **Curve**: secp256r1 (NIST P-256)
-- **Encoding**: Base64 (standard encoding for REST APIs)
-- **Example**: `"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..."`
-- **Size**: ~91 bytes Base64 encoded
-- **Storage**: TEXT column in database
-- **Transmission**: Base64 string in JSON
-
-#### **Private Keys**
-- **Format**: PKCS#8 (ASN.1 DER encoded)
-- **Curve**: secp256r1 (NIST P-256)
-- **Encoding**: Base64 (standard encoding for REST APIs)
-- **Example**: `"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg..."`
-- **Size**: ~138 bytes Base64 encoded
-- **Storage**: Encrypted at rest in database
-- **Transmission**: Base64 string in JSON (when needed)
-
-**Note**: EC P-256 keys use standard PKCS#8 (private) and X.509 (public) formats for compatibility with native mobile hardware-backed keystores (Android Keystore, iOS Secure Enclave).
-
-### EC P-256 Signature Format (ECDSA-SHA256)
-
-#### **Signatures**
-- **Algorithm**: ECDSA with SHA-256
-- **Format**: ASN.1 DER encoded (variable length)
-- **Encoding**: Base64 (standard encoding for REST APIs)
-- **Size**: ~70 bytes Base64 encoded (variable due to ASN.1 DER encoding)
-- **Example**: `"MEQCI..."`
-- **Transmission**: Base64 string in JSON
-
-**Note**: ECDSA signatures are non-deterministic (different signatures for same data) but both are valid. The signature format is ASN.1 DER encoded (r, s) components.
-
-### Mutual Cryptographic Authentication
-
-Ezkey implements mutual cryptographic authentication:
-
-- **Backend → Mobile**: Backend signs `authAttemptProofToken` with `integration_private_key` (EC P-256, PKCS#8), mobile verifies with `integration_public_key` (EC P-256, X.509)
-- **Mobile → Backend**: Mobile signs responses with `device_private_key` (EC P-256, hardware-backed), backend verifies with `device_public_key` (EC P-256, X.509)
-
-This ensures both parties can cryptographically verify each other's authenticity.
-- The `/wait` endpoint enables synchronous behavior in the asynchronous MFA flow.
-
----
-
-**This file serves as a reference for the design and future documentation of Ezkey endpoints.**
-
----
-
-## 5. Authentication Attempt Supersession
-
-### **Business Rule: One Active Attempt Per Person**
-
-Ezkey implements a **supersession rule** to ensure that only the most recent authentication attempt for a person is valid. This prevents confusion and ensures a clear authentication flow.
-
-#### **ðŸ”„ How It Works**
-
-1. **New Attempt Creation**: When a new authentication attempt is created for an enrollment
-2. **Older Attempts Expired**: All previous attempts for the same enrollment are considered **EXPIRED**
-3. **Conceptual Expiration**: This happens regardless of the actual timeout of older attempts
-
-#### **ðŸ“‹ Implementation Details**
-
-**APIs Affected:**
-- **RESPOND**: Returns `EXPIRED` status if a newer attempt exists
-- **WAIT**: Returns `EXPIRED` status if a newer attempt exists
-
-**Database Impact:**
-- No data modification (older attempts remain in database)
-- Index on `(enrollment_id, created_at DESC)` for performance
-- Query checks for newer attempts by `created_at` timestamp
-
-#### **ðŸŽ¯ Use Cases**
-
-1. **User Double-Click**: User accidentally creates multiple requests
-2. **Network Issues**: User retries authentication after timeout
-3. **Mobile App Refresh**: App creates new request after state loss
-4. **Security**: Ensures only the latest request is processed
-
-#### **ðŸ“Š Example Scenario**
-
-```
-10:00:00 - User creates AuthAttempt A
-10:00:30 - User creates AuthAttempt B (A becomes expired)
-10:01:00 - Device tries to respond to A â†’ EXPIRED
-10:01:30 - Device responds to B â†’ ACCEPTED
-```
-
-#### **ðŸ”§ Technical Implementation**
-
-```sql
--- Check for newer attempts
-SELECT * FROM ezkey_auth_attempt 
-WHERE enrollment_id = ? AND created_at > ? 
-ORDER BY created_at DESC
-```
-
----
-
-## 6. Development rules
-
-### Testing and validation
-- **DO NOT perform tests with curl or other validation tools** during development
-- **The user will perform the tests** for endpoint validation themselves
-- **Focus on implementation** and documentation rather than manual testing
-- **Use unit tests and integration tests** for automatic code validation 

@@ -253,7 +253,8 @@ public class GlobalExceptionHandler {
       // Format examples:
       // - "duplicate key value violates unique constraint \"uq_admin_email\""
       // - "duplicate key value violates unique constraint \"ezkey_admin_username_key\""
-      // - "duplicate key value violates unique constraint \"uq_admin_email\"\n  Detail: Key (email)=(test@example.com) already exists."
+      // - "duplicate key value violates unique constraint \"uq_admin_email\"\n  Detail: Key
+      // (email)=(test@example.com) already exists."
 
       String constraintName = extractConstraintName(message);
       if (constraintName != null) {

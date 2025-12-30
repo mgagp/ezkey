@@ -18,22 +18,27 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
+import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
 import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
+import org.ezkey.admin.service.QrCodeGeneratorService;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,9 +73,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminProvisioningController {
 
   private final AdminProvisioningService provisioningService;
+  private final QrCodeGeneratorService qrCodeGeneratorService;
 
-  public AdminProvisioningController(AdminProvisioningService provisioningService) {
+  public AdminProvisioningController(
+      AdminProvisioningService provisioningService, QrCodeGeneratorService qrCodeGeneratorService) {
     this.provisioningService = provisioningService;
+    this.qrCodeGeneratorService = qrCodeGeneratorService;
   }
 
   /**
@@ -132,9 +140,6 @@ public class AdminProvisioningController {
             result.admin().getAdminType().name(),
             result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
             result.enrollment().getEnrollmentId(),
-            result.enrollmentProofToken(),
-            result.enrollmentChallenge(),
-            result.recoveryCodes(),
             result.admin().getCreatedAt());
 
     return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
@@ -200,9 +205,6 @@ public class AdminProvisioningController {
             result.admin().getAdminType().name(),
             result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
             result.enrollment().getEnrollmentId(),
-            result.enrollmentProofToken(),
-            result.enrollmentChallenge(),
-            result.recoveryCodes(),
             result.admin().getCreatedAt());
 
     return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
@@ -213,8 +215,8 @@ public class AdminProvisioningController {
    * Lists administrators with tenant-based filtering.
    *
    * <p>Retrieves a paginated list of administrators. GlobalAdmin sees all administrators across all
-   * tenants. TenantAdmin sees only administrators from their tenant. Results are ordered by creation
-   * date descending (newest first) by default.
+   * tenants. TenantAdmin sees only administrators from their tenant. Results are ordered by
+   * creation date descending (newest first) by default.
    *
    * <p><b>Tenant Filtering:</b>
    *
@@ -245,7 +247,9 @@ public class AdminProvisioningController {
           "Lists administrators with tenant-based filtering. GlobalAdmin sees all admins. "
               + "TenantAdmin sees only admins from their tenant. Supports pagination and sorting.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "List of administrators retrieved successfully"),
+    @ApiResponse(
+        responseCode = "200",
+        description = "List of administrators retrieved successfully"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not an administrator")
   })
   public ResponseEntity<Page<AdminResponseDto>> listAdmins(
@@ -273,6 +277,139 @@ public class AdminProvisioningController {
                     admin.getCreatedAt()));
 
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retrieves onboarding credentials for an administrator.
+   *
+   * <p>This endpoint returns sensitive onboarding credentials (enrollment proof token, challenge
+   * code) for an administrator. Recovery codes cannot be retrieved after initial provisioning as
+   * they are stored as BCrypt hashes.
+   *
+   * <p><b>Authorization:</b>
+   *
+   * <ul>
+   *   <li>GlobalAdmin can retrieve onboarding credentials for any admin
+   *   <li>TenantAdmin can only retrieve onboarding credentials for admins in their tenant
+   * </ul>
+   *
+   * <p><b>Security:</b> This endpoint follows the same pattern as the enrollment API, where
+   * sensitive credentials are separated from the creation response. This prevents credentials from
+   * appearing in logs and provides better control over credential access.
+   *
+   * @param id the administrator ID
+   * @param auth the authentication context
+   * @return ResponseEntity with onboarding credentials (200 OK) or 404 Not Found
+   */
+  @GetMapping("/{id}/onboarding")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Retrieve onboarding credentials",
+      description =
+          "Retrieves onboarding credentials (enrollment proof token, challenge code) for an"
+              + " administrator. Recovery codes cannot be retrieved after initial provisioning.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Onboarding credentials retrieved successfully"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found")
+  })
+  public ResponseEntity<AdminOnboardingResponseDto> getAdminOnboarding(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth) {
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      OnboardingCredentialsResult result = provisioningService.getAdminOnboarding(id, principal);
+
+      AdminOnboardingResponseDto response =
+          new AdminOnboardingResponseDto(
+              result.enrollmentId(),
+              result.enrollmentProofToken(),
+              result.enrollmentChallenge(),
+              result.recoveryCodes());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.notFound().build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+  }
+
+  /**
+   * Generates a QR code for administrator onboarding.
+   *
+   * <p>This endpoint generates a PNG QR code image containing enrollment credentials
+   * (enrollmentId|enrollmentProofToken) that can be scanned by the mobile application for
+   * passwordless enrollment binding.
+   *
+   * <p><b>Authorization:</b>
+   *
+   * <ul>
+   *   <li>GlobalAdmin can generate QR codes for any admin
+   *   <li>TenantAdmin can only generate QR codes for admins in their tenant
+   * </ul>
+   *
+   * <p><b>QR Code Format:</b> {@code enrollmentId|enrollmentProofToken}
+   *
+   * @param id the administrator ID
+   * @param auth the authentication context
+   * @return ResponseEntity containing PNG image bytes (200 OK) or 404 Not Found
+   */
+  @GetMapping("/{id}/onboarding/qrcode")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Generate QR code for onboarding",
+      description =
+          "Returns a PNG QR code image containing enrollment credentials"
+              + " (enrollmentId|enrollmentProofToken) for passwordless enrollment binding.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
+    @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found")
+  })
+  public ResponseEntity<byte[]> getAdminOnboardingQrCode(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth) {
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      OnboardingCredentialsResult result = provisioningService.getAdminOnboarding(id, principal);
+
+      // Validate enrollment has proof token
+      if (result.enrollmentProofToken() == null || result.enrollmentProofToken().isEmpty()) {
+        return ResponseEntity.badRequest().build();
+      }
+
+      // Format: enrollmentId|enrollmentProofToken
+      String qrContent = result.enrollmentId() + "|" + result.enrollmentProofToken();
+
+      // Generate QR code (300x300 pixels)
+      byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);
+
+      // Return as PNG image
+      HttpHeaders headers = new HttpHeaders();
+      headers.add("Content-Type", "image/png");
+      headers.add("Content-Disposition", "inline; filename=admin-" + id + "-onboarding-qrcode.png");
+
+      return ResponseEntity.ok().headers(headers).body(qrCodeImage);
+
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.notFound().build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
   }
 
   /**

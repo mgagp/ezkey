@@ -26,6 +26,7 @@ import java.util.List;
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -73,6 +74,8 @@ class AdminProvisioningControllerTest {
 
   @Mock private AdminProvisioningService provisioningService;
 
+  @Mock private QrCodeGeneratorService qrCodeGeneratorService;
+
   private AdminProvisioningController controller;
 
   private Tenant testTenant;
@@ -87,7 +90,7 @@ class AdminProvisioningControllerTest {
 
   @BeforeEach
   void setUp() {
-    controller = new AdminProvisioningController(provisioningService);
+    controller = new AdminProvisioningController(provisioningService, qrCodeGeneratorService);
 
     // Setup test tenant
     testTenant = new Tenant();
@@ -318,8 +321,7 @@ class AdminProvisioningControllerTest {
    */
   private void setupGlobalAdminAuthentication() {
     AdminPrincipal principal =
-        new AdminPrincipal(
-            1, AdminType.GLOBAL_ADMIN, null, null); // tenantId null for GlobalAdmin
+        new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null); // tenantId null for GlobalAdmin
 
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
@@ -340,8 +342,7 @@ class AdminProvisioningControllerTest {
    */
   private void setupTenantAdminAuthentication() {
     AdminPrincipal principal =
-        new AdminPrincipal(
-            2, AdminType.TENANT_ADMIN, 1, null); // tenantId=1 for TenantAdmin
+        new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null); // tenantId=1 for TenantAdmin
 
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(
@@ -354,4 +355,3 @@ class AdminProvisioningControllerTest {
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
 }
-

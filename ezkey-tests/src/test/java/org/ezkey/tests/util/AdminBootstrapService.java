@@ -144,19 +144,23 @@ public class AdminBootstrapService {
     }
 
     // Tier 2: Try to reuse device credentials to create new token
-    log.info("No cached token found, checking for device credentials...");
+    log.info("Tier 2: Checking for device credentials...");
     DeviceCredentials deviceCredentials = loadDeviceCredentials();
     if (deviceCredentials != null) {
       log.info("✅ Device credentials found, creating new admin token...");
+      log.info("   Enrollment ID from credentials: {}", deviceCredentials.enrollmentId());
       String token = createAdminToken(deviceCredentials);
       log.info("Saving token to file: {}", TOKEN_FILE_PATH);
       saveTokenToFile(token);
       log.info("✅ Admin token created successfully - Token saved to file");
       return token;
+    } else {
+      log.info("   No device credentials found");
     }
 
     // Tier 3: Perform initial bootstrap then create token
-    log.info("No device credentials found, performing initial bootstrap enrollment...");
+    log.info("Tier 3: No device credentials found, performing initial bootstrap enrollment...");
+    log.info("   This may trigger enrollment reset and rebind if admin enrollment is VERIFIED");
     deviceCredentials = performInitialBootstrap();
     log.info("Device credentials saved, creating admin token...");
     String token = createAdminToken(deviceCredentials);
@@ -279,12 +283,11 @@ public class AdminBootstrapService {
         log.info(
             "   ⚠️  Enrollment already VERIFIED - Checking for existing device credentials...");
         DeviceCredentials existingCredentials = loadDeviceCredentials();
-        
+
         // If not found locally, try loading from bootstrap volume (created by bootstrap-init)
         if (existingCredentials == null
             || !existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
-          log.info(
-              "   ⚠️  Device credentials not found locally - Checking bootstrap volume...");
+          log.info("   ⚠️  Device credentials not found locally - Checking bootstrap volume...");
           DeviceCredentials bootstrapCredentials =
               loadDeviceCredentialsFromBootstrapVolume(credentials.enrollmentId());
           if (bootstrapCredentials != null) {
@@ -295,7 +298,7 @@ public class AdminBootstrapService {
             existingCredentials = bootstrapCredentials;
           }
         }
-        
+
         if (existingCredentials != null
             && existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
           log.info("   ✅ Found existing device credentials - Reusing them");
@@ -306,10 +309,20 @@ public class AdminBootstrapService {
           log.info("   ⏭️  Skipping bind and verify steps - Using existing credentials");
         } else {
           log.warn("   ⚠️  Enrollment is VERIFIED but no matching device credentials found");
-          log.warn(
-              "   ⚠️  This can happen if bootstrap-init already verified the enrollment");
-          log.warn(
-              "   ⚠️  Resetting enrollment to allow clean bootstrap retry");
+          log.warn("   ⚠️  This can happen if bootstrap-init already verified the enrollment");
+
+          // For admin enrollments, reset and complete full rebind cycle
+          if (databaseHelper.isAdminEnrollment(credentials.enrollmentId())) {
+            log.warn(
+                "   ⚠️  Admin enrollment VERIFIED but device credentials not found - "
+                    + "Resetting and performing full rebind");
+            log.warn("   ⚠️  This will update DemoDevice enrollment file");
+            DeviceCredentials rebindCredentials = resetAdminEnrollmentAndRebind(credentials);
+            log.info("   ✅ Admin enrollment reset and rebind completed");
+            return rebindCredentials;
+          }
+
+          log.warn("   ⚠️  Resetting enrollment to allow clean bootstrap retry");
           databaseHelper.resetEnrollment(credentials.enrollmentId());
           log.info("   ✅ Enrollment reset to CREATED state - Retrying bootstrap...");
           // Retry bootstrap after reset (recursive call)
@@ -370,9 +383,24 @@ public class AdminBootstrapService {
       log.info("═══════════════════════════════════════════════════════════════");
       log.info("STEP 5: Writing enrollment file to demo-device container...");
       log.info("═══════════════════════════════════════════════════════════════");
+      log.info("   Enrollment ID: {}", credentials.enrollmentId());
+      log.info(
+          "   Device Public Key: {}...",
+          deviceCredentials
+              .publicKey()
+              .substring(0, Math.min(30, deviceCredentials.publicKey().length())));
+      log.info(
+          "   Proof Token: {}...",
+          credentials
+              .enrollmentProofToken()
+              .substring(0, Math.min(30, credentials.enrollmentProofToken().length())));
       try {
         // Create admin token temporarily to fetch enrollment details
+        log.info("   Creating temporary admin token for DemoDevice write...");
         String tempAdminToken = createAdminToken(deviceCredentials);
+        log.info("   ✅ Admin token created successfully");
+
+        log.info("   Writing enrollment file to DemoDevice container...");
         DemoDeviceEnrollmentWriter enrollmentWriter =
             new DemoDeviceEnrollmentWriter(dockerStackConfig);
         enrollmentWriter.writeEnrollmentFile(
@@ -382,8 +410,15 @@ public class AdminBootstrapService {
             credentials.enrollmentProofToken(),
             tempAdminToken);
         log.info("✅ Step 5 Complete - Enrollment file written to demo-device");
+        log.info("   DemoDevice is now synchronized with enrollment state");
       } catch (Exception e) {
-        log.error("❌ Failed to write enrollment file to demo-device", e);
+        log.error("❌ CRITICAL: Failed to write enrollment file to demo-device", e);
+        log.error("   Enrollment ID: {}", credentials.enrollmentId());
+        log.error("   Error type: {}", e.getClass().getSimpleName());
+        log.error("   Error message: {}", e.getMessage());
+        if (e.getCause() != null) {
+          log.error("   Caused by: {}", e.getCause().getMessage());
+        }
         throw new IllegalStateException(
             "Failed to write enrollment file to demo-device container: " + e.getMessage(), e);
       }
@@ -395,6 +430,175 @@ public class AdminBootstrapService {
     } catch (Exception e) {
       log.error("❌ INITIAL BOOTSTRAP FAILED at step", e);
       throw new IllegalStateException("Initial bootstrap failed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Resets admin enrollment and completes full rebind/verify cycle.
+   *
+   * <p>This method is used when admin enrollment is VERIFIED but device credentials are missing. It
+   * performs a complete reset and rebind cycle to restore functionality:
+   *
+   * <ol>
+   *   <li>Reset enrollment to CREATED state (clears device binding)
+   *   <li>Generate new device key pair
+   *   <li>Bind device with existing credentials (proof token and challenge remain valid)
+   *   <li>Verify enrollment
+   *   <li>Save device credentials
+   *   <li>Update DemoDevice JSON file
+   * </ol>
+   *
+   * <p><b>Note:</b> The enrollment proof token and challenge remain unchanged after reset, so we
+   * can reuse the existing credentials from BootstrapCredentialsExtractor.
+   *
+   * @param credentials Bootstrap credentials (enrollment ID, proof token, challenge)
+   * @return Device credentials after rebind
+   * @throws IllegalStateException if reset or rebind fails
+   */
+  private DeviceCredentials resetAdminEnrollmentAndRebind(
+      BootstrapCredentialsExtractor.BootstrapCredentials credentials) {
+    log.warn("═══════════════════════════════════════════════════════════════");
+    log.warn("🔄 RESETTING ADMIN ENROLLMENT AND PERFORMING FULL REBIND");
+    log.warn("═══════════════════════════════════════════════════════════════");
+    log.warn("   Enrollment ID: {}", credentials.enrollmentId());
+    log.warn(
+        "   Proof Token: {}...",
+        credentials
+            .enrollmentProofToken()
+            .substring(0, Math.min(30, credentials.enrollmentProofToken().length())));
+    log.warn("   Challenge Code: {}", credentials.enrollmentChallengeCode());
+
+    // Log current enrollment state before reset
+    String enrollmentStatusBefore = databaseHelper.getEnrollmentStatus(credentials.enrollmentId());
+    log.warn("   Enrollment status BEFORE reset: {}", enrollmentStatusBefore);
+    log.warn("   ⚠️  This operation will reset enrollment and update DemoDevice JSON");
+
+    try {
+      // Step 1: Reset enrollment
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 1: Resetting enrollment to CREATED state...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      databaseHelper.resetEnrollment(credentials.enrollmentId());
+      log.info("✅ Step 1 Complete - Enrollment reset to CREATED state");
+
+      // Step 2: Generate new device key pair
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 2: Generating new Ed25519 device key pair...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      CryptoApiClient.Ed25519KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+      log.info("✅ Step 2 Complete - New device key pair generated:");
+      log.info("   Key Size: 256 bits (Ed25519 - fixed size)");
+      log.info(
+          "   Public Key: {}...",
+          deviceKeyPair.publicKey().substring(0, Math.min(50, deviceKeyPair.publicKey().length())));
+
+      // Step 3: Bind device to enrollment (credentials remain valid after reset)
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 3: Binding device to enrollment...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      String bindProofToken =
+          bindDeviceOrSkip(credentials.enrollmentId(), credentials.enrollmentProofToken());
+      log.info("✅ Step 3 Complete - Device bound to enrollment:");
+      log.info(
+          "   Bind Proof Token: {}...",
+          bindProofToken.substring(0, Math.min(30, bindProofToken.length())));
+
+      // Step 4: Verify enrollment
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 4: Verifying enrollment...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      if ("SKIPPED_BIND_ALREADY_VERIFIED".equals(bindProofToken)) {
+        log.info("   ⏭️  Skipping verify - Enrollment already verified");
+      } else {
+        verifyEnrollment(
+            credentials.enrollmentId(),
+            deviceKeyPair,
+            bindProofToken,
+            credentials.enrollmentChallengeCode());
+        log.info("✅ Step 4 Complete - Enrollment verified and activated");
+      }
+
+      // Step 5: Save device credentials
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 5: Saving device credentials...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      DeviceCredentials deviceCredentials =
+          new DeviceCredentials(
+              credentials.enrollmentId(),
+              deviceKeyPair.privateKey(),
+              deviceKeyPair.publicKey(),
+              256); // Ed25519 is always 256 bits (32 bytes)
+      log.info("Saving device credentials to file: {}", DEVICE_CREDENTIALS_FILE_PATH);
+      saveDeviceCredentials(deviceCredentials);
+      log.info("✅ Step 5 Complete - Device credentials saved");
+
+      // Step 6: Update DemoDevice JSON file
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("STEP 6: Updating DemoDevice enrollment file...");
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("   Enrollment ID: {}", credentials.enrollmentId());
+      log.info(
+          "   Device Public Key: {}...",
+          deviceCredentials
+              .publicKey()
+              .substring(0, Math.min(30, deviceCredentials.publicKey().length())));
+      log.info(
+          "   Proof Token: {}...",
+          credentials
+              .enrollmentProofToken()
+              .substring(0, Math.min(30, credentials.enrollmentProofToken().length())));
+      try {
+        // Create admin token temporarily to fetch enrollment details
+        log.info("   Creating temporary admin token for DemoDevice update...");
+        String tempAdminToken = createAdminToken(deviceCredentials);
+        log.info("   ✅ Admin token created successfully");
+
+        log.info("   Writing enrollment file to DemoDevice container...");
+        DemoDeviceEnrollmentWriter enrollmentWriter =
+            new DemoDeviceEnrollmentWriter(dockerStackConfig);
+        enrollmentWriter.writeEnrollmentFile(
+            credentials.enrollmentId(),
+            deviceCredentials.publicKey(),
+            deviceCredentials.privateKey(),
+            credentials.enrollmentProofToken(),
+            tempAdminToken);
+        log.info("✅ Step 6 Complete - DemoDevice enrollment file updated successfully");
+        log.info("   DemoDevice should now be synchronized with enrollment state");
+      } catch (Exception e) {
+        log.error("❌ CRITICAL: Failed to update DemoDevice enrollment file", e);
+        log.error("   This will cause DemoDevice to be out of sync with enrollment!");
+        log.error("   Enrollment ID: {}", credentials.enrollmentId());
+        log.error(
+            "   Device Public Key: {}...",
+            deviceCredentials
+                .publicKey()
+                .substring(0, Math.min(30, deviceCredentials.publicKey().length())));
+        log.error("   Error type: {}", e.getClass().getSimpleName());
+        log.error("   Error message: {}", e.getMessage());
+        if (e.getCause() != null) {
+          log.error("   Caused by: {}", e.getCause().getMessage());
+        }
+        // Don't fail the whole operation - enrollment is functional even if DemoDevice file fails
+        log.warn("   ⚠️  Continuing despite DemoDevice file update failure");
+        log.warn("   ⚠️  WARNING: DemoDevice may not work until next successful update!");
+      }
+
+      // Verify final enrollment state
+      String enrollmentStatusAfter = databaseHelper.getEnrollmentStatus(credentials.enrollmentId());
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("🎉 ADMIN ENROLLMENT RESET AND REBIND COMPLETE!");
+      log.info("═══════════════════════════════════════════════════════════════");
+      log.info("   Enrollment status AFTER rebind: {}", enrollmentStatusAfter);
+      log.info("   Device credentials saved: {}", DEVICE_CREDENTIALS_FILE_PATH);
+      log.info(
+          "   DemoDevice JSON file updated: /app/data/enrollments/{}.json",
+          credentials.enrollmentId());
+      log.info("   ✅ DemoDevice should now be synchronized and functional");
+      return deviceCredentials;
+    } catch (Exception e) {
+      log.error("❌ ADMIN ENROLLMENT RESET AND REBIND FAILED", e);
+      throw new IllegalStateException(
+          "Failed to reset and rebind admin enrollment: " + e.getMessage(), e);
     }
   }
 
@@ -560,6 +764,12 @@ public class AdminBootstrapService {
           log.warn(
               "   ⚠️  Enrollment is BOUND but not VERIFIED - Resetting enrollment in database to"
                   + " allow clean retry");
+
+          // For admin enrollments, just reset and retry bind (credentials are still valid)
+          if (databaseHelper.isAdminEnrollment(enrollmentId)) {
+            log.info("   Admin enrollment detected - Resetting and retrying bind");
+          }
+
           databaseHelper.resetEnrollment(enrollmentId);
           log.info("   ✅ Enrollment reset to CREATED state - Retrying bind...");
           // Retry bind after reset
@@ -949,8 +1159,7 @@ public class AdminBootstrapService {
 
       StringBuilder output = new StringBuilder();
       try (java.io.BufferedReader reader =
-          new java.io.BufferedReader(
-              new java.io.InputStreamReader(process.getInputStream()))) {
+          new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
           output.append(line).append("\n");
@@ -987,8 +1196,7 @@ public class AdminBootstrapService {
       log.info("Device credentials loaded from bootstrap volume");
       return new DeviceCredentials(credsEnrollmentId, privateKey, publicKey, keySize);
     } catch (Exception e) {
-      log.debug(
-          "Failed to load device credentials from bootstrap volume: {}", e.getMessage());
+      log.debug("Failed to load device credentials from bootstrap volume: {}", e.getMessage());
       return null;
     }
   }

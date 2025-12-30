@@ -12,17 +12,18 @@ package org.ezkey.admin.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 /**
- * Response DTO for administrator provisioning with onboarding credentials.
+ * Response DTO for administrator provisioning (without sensitive credentials).
  *
- * <p>This DTO contains all information needed for the newly created administrator to complete
- * passwordless enrollment, including enrollment credentials and recovery codes. These credentials
- * are shown once and should be saved securely.
+ * <p>This DTO contains basic information about the newly created administrator. Sensitive
+ * onboarding credentials (enrollment proof token, challenge code, recovery codes) are NOT included
+ * in this response for security reasons. They must be retrieved separately via GET
+ * /api/v1/admins/{id}/onboarding endpoint.
  *
- * <p><b>Security Note:</b> Enrollment credentials and recovery codes are shown only once during
- * provisioning. They cannot be retrieved again without database access.
+ * <p><b>Security Note:</b> This follows the same pattern as the enrollment API, where sensitive
+ * credentials are separated from the creation response. This prevents credentials from appearing in
+ * logs and provides better control over credential access.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -35,18 +36,17 @@ import java.util.List;
  * @param lastName Last name
  * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)
  * @param tenantId Tenant ID (null for global admins)
- * @param enrollmentId Enrollment ID for passwordless authentication
- * @param enrollmentProofToken Enrollment proof token (shown once)
- * @param enrollmentChallenge Enrollment challenge code (6 digits, shown once)
- * @param recoveryCodes List of recovery codes (shown once, single-use)
+ * @param enrollmentId Enrollment ID for passwordless authentication (use this to retrieve
+ *     onboarding credentials)
  * @param createdAt Timestamp when the administrator was created
  * @author Ezkey contributors
  * @since 2025
  */
 @Schema(
     description =
-        "Response DTO containing administrator provisioning information with onboarding"
-            + " credentials")
+        "Response DTO containing administrator provisioning information (without sensitive"
+            + " credentials). Use GET /api/v1/admins/{id}/onboarding to retrieve onboarding"
+            + " credentials.")
 public record AdminProvisioningResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
@@ -59,20 +59,12 @@ public record AdminProvisioningResponseDto(
             allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN"})
         String adminType,
     @Schema(description = "Tenant ID (null for global admins)", example = "1") Integer tenantId,
-    @Schema(description = "Enrollment ID for passwordless authentication", example = "123")
+    @Schema(
+            description =
+                "Enrollment ID for passwordless authentication. Use this ID to retrieve onboarding"
+                    + " credentials via GET /api/v1/admins/{id}/onboarding",
+            example = "123")
         Integer enrollmentId,
-    @Schema(
-            description = "Enrollment proof token (shown once - save securely)",
-            example = "EZK-ABC123-DEF456")
-        String enrollmentProofToken,
-    @Schema(
-            description = "Enrollment challenge code (6 digits, shown once - save securely)",
-            example = "654321")
-        Integer enrollmentChallenge,
-    @Schema(
-            description = "List of recovery codes (shown once, single-use - save securely)",
-            example = "[\"1234-5678-9012-3456-7890-1234-5678-9012\"]")
-        List<String> recoveryCodes,
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")

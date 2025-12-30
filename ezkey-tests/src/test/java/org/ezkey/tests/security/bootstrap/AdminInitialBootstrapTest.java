@@ -78,12 +78,21 @@ public class AdminInitialBootstrapTest extends AbstractSecurityTest {
 
     // Reset enrollment in database to CREATED state to allow fresh bootstrap
     DatabaseHelper databaseHelper = new DatabaseHelper();
+
     String enrollmentStatus = databaseHelper.getEnrollmentStatus(enrollmentId);
     if ("VERIFIED".equals(enrollmentStatus) || "BOUND".equals(enrollmentStatus)) {
       log.info(
           "Enrollment {} is in {} state - Resetting to CREATED for fresh bootstrap",
           enrollmentId,
           enrollmentStatus);
+
+      // For admin enrollments, AdminBootstrapService will handle the full rebind cycle
+      // For other enrollments, just reset
+      if (databaseHelper.isAdminEnrollment(enrollmentId)) {
+        log.info(
+            "Admin enrollment detected - AdminBootstrapService will perform full rebind cycle");
+      }
+
       databaseHelper.resetEnrollment(enrollmentId);
       log.info("Enrollment {} reset to CREATED state", enrollmentId);
     }

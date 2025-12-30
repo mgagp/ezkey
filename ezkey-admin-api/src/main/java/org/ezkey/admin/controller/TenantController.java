@@ -120,7 +120,8 @@ public class TenantController {
   /**
    * Lists tenants.
    *
-   * <p>Global administrators can list all tenants. Tenant administrators can only see their own tenant.
+   * <p>Global administrators can list all tenants. Tenant administrators can only see their own
+   * tenant.
    *
    * @param auth the authentication context
    * @return ResponseEntity with list of tenants (200 OK)
@@ -180,7 +181,8 @@ public class TenantController {
   /**
    * Gets a tenant by ID.
    *
-   * <p>Global administrators can view any tenant. Tenant administrators can only view their own tenant.
+   * <p>Global administrators can view any tenant. Tenant administrators can only view their own
+   * tenant.
    *
    * @param id the tenant ID
    * @param auth the authentication context

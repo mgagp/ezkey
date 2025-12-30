@@ -250,6 +250,23 @@ public class DatabaseHelper {
   }
 
   /**
+   * Checks if an enrollment is linked to an admin account.
+   *
+   * <p>This is used to prevent resetting admin enrollments in tests, which would break
+   * authentication. Admin enrollments should persist across test runs for idempotence.
+   *
+   * @param enrollmentId Enrollment ID to check
+   * @return true if enrollment is linked to an admin, false otherwise
+   */
+  public boolean isAdminEnrollment(Integer enrollmentId) {
+    String sqlQuery =
+        String.format(
+            "SELECT COUNT(*) FROM ezkey_admin WHERE mfa_enrollment_id = %d;", enrollmentId);
+    String count = executeQuerySingleValue(sqlQuery);
+    return count != null && Integer.parseInt(count) > 0;
+  }
+
+  /**
    * Gets enrollment proof token hash from database.
    *
    * @param enrollmentId Enrollment ID to check

@@ -278,8 +278,8 @@ Ajouter la vérification d'unicité de l'email dans `AdminProvisioningService`:
 - [x] Améliorer le parsing dans `GlobalExceptionHandler.handleDataIntegrityViolationException()`
 - [x] Ajouter vérification d'unicité email dans `AdminProvisioningService`
 - [x] Ajouter méthode `existsByEmail()` au repository
-- [ ] Tester avec username dupliqué et email dupliqué (tests manuels recommandés)
-- [ ] Tester les race conditions (deux requêtes simultanées) - tests manuels recommandés
+- [x] Tester avec username dupliqué et email dupliqué (tests manuels réalisés avec succès)
+- [x] Tester les race conditions (deux requêtes simultanées) - tests manuels réalisés avec succès
 - [ ] Mettre à jour la documentation API avec les codes d'erreur spécifiques (si nécessaire)
 
 ### Références
@@ -295,7 +295,8 @@ Ajouter la vérification d'unicité de l'email dans `AdminProvisioningService`:
 
 **Date**: 2025-12-26  
 **Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/admins/global`, `POST /api/v1/admins/tenant`
+**Endpoint concerné**: `POST /api/v1/admins/global`, `POST /api/v1/admins/tenant`  
+**Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
 
@@ -421,17 +422,77 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 - Ne résout pas complètement le problème de sécurité
 - Pattern toujours incohérent avec enrollment
 
+### Solution implémentée
+
+**✅ Option 1 sélectionnée et implémentée** - Séparation complète alignée avec le pattern d'enrollment
+
+**Implémentation:**
+
+1. **Modification de POST /api/v1/admins/global et POST /api/v1/admins/tenant**:
+   - Retournent seulement `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, et `createdAt`
+   - Retiré `enrollmentProofToken`, `enrollmentChallenge`, et `recoveryCodes` de la réponse
+   - `AdminProvisioningResponseDto` modifié pour exclure les credentials sensibles
+
+2. **Création de GET /api/v1/admins/{id}/onboarding**:
+   - Retourne les credentials d'onboarding: `enrollmentProofToken`, `enrollmentChallenge`
+   - **Note sur recovery codes**: Les recovery codes sont stockés comme BCrypt hashés et ne peuvent pas être récupérés en clair après la création initiale (bonne pratique de sécurité)
+   - **Autorisation**: GlobalAdmin peut accéder à n'importe quel admin, TenantAdmin seulement pour les admins de son tenant
+   - Retourne `AdminOnboardingResponseDto` avec `recoveryCodes = null` (non récupérables)
+
+3. **Création de GET /api/v1/admins/{id}/onboarding/qrcode**:
+   - Génère un QR code PNG pour l'onboarding
+   - Format: `enrollmentId|enrollmentProofToken` (même format que enrollment QR code)
+   - **Sécurité**: Généré à la demande, pas stocké
+   - **Autorisation**: Même règles que GET /api/v1/admins/{id}/onboarding
+
+**Fichiers créés:**
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/dto/response/AdminOnboardingResponseDto.java`
+  - DTO pour les credentials d'onboarding (sans recovery codes récupérables)
+
+**Fichiers modifiés:**
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/dto/response/AdminProvisioningResponseDto.java`
+  - Retiré `enrollmentProofToken`, `enrollmentChallenge`, et `recoveryCodes`
+  - Ajouté documentation expliquant comment récupérer les credentials via GET /api/v1/admins/{id}/onboarding
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/controller/AdminProvisioningController.java`
+  - Modifié `createGlobalAdmin()` pour retourner seulement les champs non sensibles (ligne 125-135)
+  - Modifié `createTenantAdmin()` pour retourner seulement les champs non sensibles (ligne 190-200)
+  - Ajouté `getAdminOnboarding()` - GET /api/v1/admins/{id}/onboarding (ligne 272-339)
+  - Ajouté `getAdminOnboardingQrCode()` - GET /api/v1/admins/{id}/onboarding/qrcode (ligne 341-409)
+  - Ajouté dépendances: `QrCodeGeneratorService`
+- `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java`
+  - Ajouté méthode `getAdminOnboarding()` pour récupérer les credentials (ligne 500-561)
+  - Ajouté record `OnboardingCredentialsResult` pour encapsuler les résultats (ligne 563-570)
+
+**Note importante sur les recovery codes:**
+- Les recovery codes sont générés lors de la création et retournés dans le `ProvisioningResult` (en clair)
+- Ils sont immédiatement hashés avec BCrypt avant stockage dans la base de données
+- **Ils ne peuvent pas être récupérés en clair après la création initiale** (bonne pratique de sécurité)
+- L'endpoint GET /api/v1/admins/{id}/onboarding retourne `recoveryCodes = null` car ils ne sont pas récupérables
+- **Recommandation**: Les recovery codes doivent être sauvegardés immédiatement lors de la création de l'admin
+
+**Avantages de la solution:**
+- ✅ Uniformité avec le pattern d'enrollment API
+- ✅ Meilleure sécurité (credentials non exposés dans logs de création)
+- ✅ Flexibilité (récupération à la demande)
+- ✅ Contrôle d'accès aux credentials (autorisation requise)
+- ✅ Cohérence avec les valeurs du projet (simplicité, sécurité)
+
+**Breaking change:**
+- ⚠️ Les endpoints POST /api/v1/admins/global et POST /api/v1/admins/tenant ne retournent plus les credentials sensibles
+- Les clients doivent utiliser GET /api/v1/admins/{id}/onboarding pour récupérer les credentials
+- Les recovery codes doivent être sauvegardés immédiatement lors de la création (ils ne peuvent pas être récupérés plus tard)
+
 ### Prochaines étapes
 
-- [ ] Décider quelle option implémenter (recommandation: Option 1 pour uniformité et sécurité)
-- [ ] Créer `AdminOnboardingResponseDto` pour la réponse GET
-- [ ] Modifier `AdminProvisioningResponseDto` pour retirer les credentials sensibles
-- [ ] Implémenter `GET /api/v1/admins/{id}/onboarding`
-- [ ] Implémenter `GET /api/v1/admins/{id}/onboarding/qrcode`
+- [x] Décider quelle option implémenter (Option 1 sélectionnée)
+- [x] Créer `AdminOnboardingResponseDto` pour la réponse GET
+- [x] Modifier `AdminProvisioningResponseDto` pour retirer les credentials sensibles
+- [x] Implémenter `GET /api/v1/admins/{id}/onboarding`
+- [x] Implémenter `GET /api/v1/admins/{id}/onboarding/qrcode`
 - [ ] Ajouter les tests unitaires et d'intégration
-- [ ] Mettre à jour la documentation API
+- [ ] Mettre à jour la documentation API (ENDPOINT.md)
 - [ ] Ajouter une collection Postman pour tester
-- [ ] Documenter le breaking change si Option 1 choisie
+- [ ] Documenter le breaking change dans CHANGELOG.md ou migration guide
 
 ### Références
 

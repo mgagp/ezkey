@@ -19,15 +19,14 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
-import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.admin.config.AdminSecurityProperties;
-import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -217,8 +216,7 @@ class AdminProvisioningServiceTest {
       assertEquals(2, result.getTotalElements());
       assertEquals(tenantAdmins, result.getContent());
       // Verify that only admins from the specified tenant are returned
-      result.getContent().forEach(
-          admin -> assertEquals(tenantId, admin.getTenant().getTenantId()));
+      result.getContent().forEach(admin -> assertEquals(tenantId, admin.getTenant().getTenantId()));
       verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
     }
 
@@ -293,4 +291,3 @@ class AdminProvisioningServiceTest {
     }
   }
 }
-

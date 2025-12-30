@@ -245,6 +245,3 @@ The only minor concern (GlobalAdmin seeing all admins) is already handled in oth
 2. Add `listAdmins()` method to `AdminProvisioningService` with tenant filtering
 3. Add `GET /api/v1/admins` endpoint to `AdminProvisioningController`
 4. Implement mapper for `EzkeyAdmin` to `AdminResponseDto`
-5. Add unit tests for service layer
-6. Add integration tests for endpoint
-7. Update OpenAPI documentation

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
 		"name": "EZ Key Admin Provisioning admin",
-		"description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, TODO)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials\nWhen creating a new admin, the response includes:\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n- `recoveryCodes`: List of recovery codes (shown once, single-use - save securely!)\n\n**CRITICAL**: These credentials are shown ONLY ONCE and cannot be retrieved again. Save them immediately!\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin)\n2. Save onboarding credentials from response\n3. Use credentials to login via `/api/v1/admin/auth/login`\n4. Bind device during first login\n5. Resume normal passwordless authentication",
+		"description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Get Onboarding Credentials**: Retrieve onboarding credentials for an administrator\n- **Get Onboarding QR Code**: Generate QR code for administrator onboarding\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, TODO)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n- **Get Onboarding Credentials**:\n  - GlobalAdmin can retrieve credentials for any admin\n  - TenantAdmin can only retrieve credentials for admins in their tenant\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials (Security Pattern)\n\n**Creation Response (POST /api/v1/admins/global or /tenant):**\n- Returns only basic admin information: `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `createdAt`\n- **Does NOT return** sensitive credentials (enrollmentProofToken, enrollmentChallenge, recoveryCodes)\n\n**Retrieval (GET /api/v1/admins/{id}/onboarding):**\n- Returns sensitive onboarding credentials:\n  - `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n  - `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n  - `recoveryCodes`: null (cannot be retrieved after initial provisioning - BCrypt hashed)\n\n**Note on Recovery Codes:**\n- Recovery codes are generated during admin creation and returned in `ProvisioningResult` (service layer)\n- They are immediately BCrypt hashed before storage\n- **They cannot be retrieved in plain text after initial provisioning** (security best practice)\n- Recovery codes must be saved immediately during admin creation\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin) → Returns `adminId` and `enrollmentId`\n2. Retrieve onboarding credentials via GET /api/v1/admins/{id}/onboarding\n3. Save credentials securely (enrollmentProofToken, enrollmentChallenge)\n4. Use credentials to login via `/api/v1/admin/auth/login`\n5. Bind device during first login\n6. Resume normal passwordless authentication",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -21,25 +21,22 @@
 							"if (pm.response.code === 201) {",
 							"    var jsonData = pm.response.json();",
 							"    ",
-							"    // Extract and save all credentials",
+							"    // Extract and save admin ID and enrollment ID (credentials retrieved separately)",
 							"    pm.environment.set(\"adminId\", jsonData.adminId.toString());",
 							"    pm.environment.set(\"adminEnrollmentId\", jsonData.enrollmentId.toString());",
-							"    pm.environment.set(\"adminEnrollmentProofToken\", jsonData.enrollmentProofToken);",
-							"    pm.environment.set(\"adminEnrollmentChallenge\", jsonData.enrollmentChallenge.toString());",
-							"    ",
-							"    // Save recovery codes as JSON string",
-							"    if (jsonData.recoveryCodes && Array.isArray(jsonData.recoveryCodes)) {",
-							"        pm.environment.set(\"adminRecoveryCodes\", JSON.stringify(jsonData.recoveryCodes));",
-							"    }",
 							"    ",
 							"    pm.test(\"Response contains required fields\", function () {",
 							"        pm.expect(jsonData).to.have.property('adminId');",
 							"        pm.expect(jsonData).to.have.property('username');",
 							"        pm.expect(jsonData).to.have.property('adminType');",
 							"        pm.expect(jsonData).to.have.property('enrollmentId');",
-							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
-							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
-							"        pm.expect(jsonData).to.have.property('recoveryCodes');",
+							"        pm.expect(jsonData).to.have.property('createdAt');",
+							"    });",
+							"    ",
+							"    pm.test(\"Response does NOT contain sensitive credentials\", function () {",
+							"        pm.expect(jsonData).to.not.have.property('enrollmentProofToken');",
+							"        pm.expect(jsonData).to.not.have.property('enrollmentChallenge');",
+							"        pm.expect(jsonData).to.not.have.property('recoveryCodes');",
 							"    });",
 							"    ",
 							"    pm.test(\"Admin type is GLOBAL_ADMIN\", function () {",
@@ -48,11 +45,6 @@
 							"    ",
 							"    pm.test(\"Tenant ID is null for GlobalAdmin\", function () {",
 							"        pm.expect(jsonData.tenantId).to.be.null;",
-							"    });",
-							"    ",
-							"    pm.test(\"Recovery codes are provided\", function () {",
-							"        pm.expect(jsonData.recoveryCodes).to.be.an('array');",
-							"        pm.expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);",
 							"    });",
 							"}"
 						],
@@ -103,20 +95,13 @@
 							"if (pm.response.code === 201) {",
 							"    var jsonData = pm.response.json();",
 							"    ",
-							"    // Extract and save all credentials",
+							"    // Extract and save admin ID and enrollment ID (credentials retrieved separately)",
 							"    pm.environment.set(\"adminId\", jsonData.adminId.toString());",
 							"    pm.environment.set(\"adminEnrollmentId\", jsonData.enrollmentId.toString());",
-							"    pm.environment.set(\"adminEnrollmentProofToken\", jsonData.enrollmentProofToken);",
-							"    pm.environment.set(\"adminEnrollmentChallenge\", jsonData.enrollmentChallenge.toString());",
 							"    ",
 							"    // Save tenant ID if present",
 							"    if (jsonData.tenantId) {",
 							"        pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"    }",
-							"    ",
-							"    // Save recovery codes as JSON string",
-							"    if (jsonData.recoveryCodes && Array.isArray(jsonData.recoveryCodes)) {",
-							"        pm.environment.set(\"adminRecoveryCodes\", JSON.stringify(jsonData.recoveryCodes));",
 							"    }",
 							"    ",
 							"    pm.test(\"Response contains required fields\", function () {",
@@ -125,9 +110,13 @@
 							"        pm.expect(jsonData).to.have.property('adminType');",
 							"        pm.expect(jsonData).to.have.property('tenantId');",
 							"        pm.expect(jsonData).to.have.property('enrollmentId');",
-							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
-							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
-							"        pm.expect(jsonData).to.have.property('recoveryCodes');",
+							"        pm.expect(jsonData).to.have.property('createdAt');",
+							"    });",
+							"    ",
+							"    pm.test(\"Response does NOT contain sensitive credentials\", function () {",
+							"        pm.expect(jsonData).to.not.have.property('enrollmentProofToken');",
+							"        pm.expect(jsonData).to.not.have.property('enrollmentChallenge');",
+							"        pm.expect(jsonData).to.not.have.property('recoveryCodes');",
 							"    });",
 							"    ",
 							"    pm.test(\"Admin type is TENANT_ADMIN\", function () {",
@@ -136,11 +125,6 @@
 							"    ",
 							"    pm.test(\"Tenant ID is provided\", function () {",
 							"        pm.expect(jsonData.tenantId).to.not.be.null;",
-							"    });",
-							"    ",
-							"    pm.test(\"Recovery codes are provided\", function () {",
-							"        pm.expect(jsonData.recoveryCodes).to.be.an('array');",
-							"        pm.expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);",
 							"    });",
 							"} else if (pm.response.code === 403) {",
 							"    pm.test(\"Forbidden - TenantAdmin trying to create for different tenant\", function () {",
@@ -177,7 +161,7 @@
 						"tenant"
 					]
 				},
-				"description": "Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.\n\n**Permissions:**\n- **GlobalAdmin**: Can create TenantAdmins for any tenant\n- **TenantAdmin**: Can create TenantAdmins for their own tenant only\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (optional): Email address (recommended but not required for TenantAdmin)\n- `firstName` (optional): First name (recommended but not required for TenantAdmin)\n- `lastName` (optional): Last name (recommended but not required for TenantAdmin)\n- `tenantId` (required): Tenant ID for the TenantAdmin\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (if provided)\n- `firstName`: First name (if provided)\n- `lastName`: Last name (if provided)\n- `adminType`: \"TENANT_ADMIN\"\n- `tenantId`: Tenant ID for the TenantAdmin\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (**SHOWN ONCE - save securely!**)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (**SHOWN ONCE - save securely!**)\n- `recoveryCodes`: List of recovery codes (**SHOWN ONCE, single-use - save securely!**)\n- `createdAt`: Timestamp when the administrator was created\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Tenant administrator created successfully\n- 400: Invalid data, limit exceeded, username exists, or tenant not found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create for different tenant\n- 500: Internal server error\n\n**CRITICAL**: Save the onboarding credentials (enrollmentProofToken, enrollmentChallenge, recoveryCodes) immediately. They cannot be retrieved again!"
+				"description": "Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.\n\n**Permissions:**\n- **GlobalAdmin**: Can create TenantAdmins for any tenant\n- **TenantAdmin**: Can create TenantAdmins for their own tenant only\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n- **System Tenant**: Cannot create TenantAdmin in System Tenant (returns 400)\n\n**Limits:**\n- Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (optional): Email address (recommended but not required for TenantAdmin)\n- `firstName` (optional): First name (recommended but not required for TenantAdmin)\n- `lastName` (optional): Last name (recommended but not required for TenantAdmin)\n- `tenantId` (required): Tenant ID for the TenantAdmin (must NOT be System Tenant)\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (if provided)\n- `firstName`: First name (if provided)\n- `lastName`: Last name (if provided)\n- `adminType`: \"TENANT_ADMIN\"\n- `tenantId`: Tenant ID for the TenantAdmin\n- `enrollmentId`: Enrollment ID for passwordless authentication (use this to retrieve onboarding credentials)\n- `createdAt`: Timestamp when the administrator was created\n- Location header: `/api/v1/admins/{adminId}`\n\n**Note:** Sensitive onboarding credentials (enrollmentProofToken, enrollmentChallenge) are NOT returned in this response for security reasons. Use GET /api/v1/admins/{id}/onboarding to retrieve them.\n\n**Status Codes:**\n- 201: Tenant administrator created successfully\n- 400: Invalid data, limit exceeded, username exists, email exists, tenant not found, or System Tenant\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create for different tenant\n- 500: Internal server error\n\n**Next Steps:**\n1. Save the `adminId` and `enrollmentId` from this response\n2. Call GET /api/v1/admins/{id}/onboarding to retrieve onboarding credentials\n3. Save credentials securely (enrollmentProofToken, enrollmentChallenge)"
 			},
 			"response": []
 		},
@@ -261,6 +245,131 @@
 					]
 				},
 				"description": "Lists administrators with tenant-based filtering. GlobalAdmin sees all administrators across all tenants. TenantAdmin sees only administrators from their tenant.\n\n**Permissions:**\n- **GlobalAdmin**: Sees all administrators (all tenants)\n- **TenantAdmin**: Sees only administrators from their tenant (automatic filtering)\n\n**Tenant Filtering:**\n- The endpoint automatically filters by tenant based on the authenticated user\n- No tenantId parameter needed - filtering is automatic\n- GlobalAdmin: tenantId is null, returns all admins\n- TenantAdmin: tenantId is extracted from authentication, returns only their tenant's admins\n\n**Pagination Parameters:**\n- `page` (optional, default: 0): Page number (zero-based)\n- `size` (optional, default: 20): Number of items per page\n- `sort` (optional, default: createdAt,DESC): Sort field and direction (e.g., `adminId,asc`, `username,desc`)\n\n**Sortable Fields:**\n- `adminId`: Administrator ID\n- `username`: Username\n- `adminType`: Administrator type\n- `tenantId`: Tenant ID\n- `active`: Active status\n- `createdAt`: Creation timestamp\n\n**Response (200 OK):**\n- `content`: Array of AdminResponseDto objects\n- `totalElements`: Total number of administrators matching the filter\n- `totalPages`: Total number of pages\n- `size`: Page size\n- `number`: Current page number (zero-based)\n- `first`: Whether this is the first page\n- `last`: Whether this is the last page\n\n**AdminResponseDto Fields:**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (optional)\n- `firstName`: First name (optional)\n- `lastName`: Last name (optional)\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `tenantId`: Tenant ID (null for global admins)\n- `active`: Flag indicating if the administrator is currently active\n- `createdAt`: Timestamp when the administrator was created\n\n**Status Codes:**\n- 200: List of administrators retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not an administrator\n- 500: Internal server error\n\n**Example Usage:**\n- List all admins (GlobalAdmin): `GET /api/v1/admins`\n- List with pagination: `GET /api/v1/admins?page=0&size=10`\n- List sorted by username: `GET /api/v1/admins?sort=username,asc`\n- List second page: `GET /api/v1/admins?page=1&size=20`"
+			},
+			"response": []
+		},
+		{
+			"name": "get onboarding credentials",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, 403, or 404\", function () {",
+							"    pm.expect([200, 400, 403, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    // Extract and save onboarding credentials",
+							"    pm.environment.set(\"adminEnrollmentId\", jsonData.enrollmentId.toString());",
+							"    pm.environment.set(\"adminEnrollmentProofToken\", jsonData.enrollmentProofToken);",
+							"    pm.environment.set(\"adminEnrollmentChallenge\", jsonData.enrollmentChallenge.toString());",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
+							"    });",
+							"    ",
+							"    pm.test(\"Enrollment proof token is not empty\", function () {",
+							"        pm.expect(jsonData.enrollmentProofToken).to.be.a('string');",
+							"        pm.expect(jsonData.enrollmentProofToken.length).to.be.greaterThan(0);",
+							"    });",
+							"    ",
+							"    pm.test(\"Enrollment challenge is a number\", function () {",
+							"        pm.expect(jsonData.enrollmentChallenge).to.be.a('number');",
+							"    });",
+							"    ",
+							"    pm.test(\"Recovery codes are null (cannot be retrieved after initial provisioning)\", function () {",
+							"        pm.expect(jsonData.recoveryCodes).to.be.null;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admins/:id/onboarding",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admins",
+						":id",
+						"onboarding"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{adminId}}",
+							"description": "The administrator ID to retrieve onboarding credentials for"
+						}
+					]
+				},
+				"description": "Retrieves onboarding credentials for an administrator. Sensitive credentials (enrollmentProofToken, enrollmentChallenge) are separated from the creation response for security reasons.\n\n**Permissions:**\n- **GlobalAdmin**: Can retrieve onboarding credentials for any admin\n- **TenantAdmin**: Can only retrieve onboarding credentials for admins in their tenant\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n\n**Path Parameters:**\n- `id` (required): Administrator ID to retrieve onboarding credentials for\n\n**Response (200 OK):**\n- `enrollmentId`: Enrollment ID for passwordless authentication\n- `enrollmentProofToken`: Enrollment proof token (**SHOWN ONCE - save securely!**)\n- `enrollmentChallenge`: Enrollment challenge code, 6 digits (**SHOWN ONCE - save securely!**)\n- `recoveryCodes`: null (cannot be retrieved after initial provisioning - BCrypt hashed)\n\n**Status Codes:**\n- 200: Onboarding credentials retrieved successfully\n- 400: Bad request (e.g., admin does not have an enrollment)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not authorized to access this admin's credentials\n- 404: Administrator or enrollment not found\n- 500: Internal server error\n\n**Security Note:**\n- Recovery codes are stored as BCrypt hashes and cannot be retrieved in plain text after initial provisioning\n- Recovery codes must be saved immediately during admin creation (they are returned in ProvisioningResult at service layer)\n- This endpoint follows the same security pattern as the enrollment API (GET /api/v1/enrollments/{id})"
+			},
+			"response": []
+		},
+		{
+			"name": "get onboarding qrcode",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, 403, or 404\", function () {",
+							"    pm.expect([200, 400, 403, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    pm.test(\"Response is PNG image\", function () {",
+							"        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"image/png\");",
+							"    });",
+							"    ",
+							"    pm.test(\"Response has content\", function () {",
+							"        pm.expect(pm.response.responseSize).to.be.greaterThan(0);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/admins/:id/onboarding/qrcode",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"admins",
+						":id",
+						"onboarding",
+						"qrcode"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{adminId}}",
+							"description": "The administrator ID to generate QR code for"
+						}
+					]
+				},
+				"description": "Generates a PNG QR code image containing enrollment credentials for administrator onboarding. The QR code can be scanned by the mobile application for passwordless enrollment binding.\n\n**Permissions:**\n- **GlobalAdmin**: Can generate QR codes for any admin\n- **TenantAdmin**: Can only generate QR codes for admins in their tenant\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n\n**Path Parameters:**\n- `id` (required): Administrator ID to generate QR code for\n\n**QR Code Format:**\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.\n\n**Response (200 OK):**\n- Content-Type: `image/png`\n- Body: PNG image bytes (300x300 pixels)\n- Content-Disposition: `inline; filename=admin-{id}-onboarding-qrcode.png`\n\n**Status Codes:**\n- 200: QR code generated successfully\n- 400: Bad request (e.g., enrollment missing proof token)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not authorized to access this admin's credentials\n- 404: Administrator or enrollment not found\n- 500: Internal server error\n\n**Usage:**\n1. Call this endpoint after creating an admin\n2. Save or display the QR code image\n3. Scan with mobile app to automatically populate enrollment credentials\n4. Complete passwordless enrollment binding"
 			},
 			"response": []
 		},

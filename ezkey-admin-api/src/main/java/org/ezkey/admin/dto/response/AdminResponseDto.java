@@ -81,10 +81,11 @@ public record AdminResponseDto(
             allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN", "INTEGRATION_ADMIN"})
         String adminType,
     @Schema(description = "Tenant ID (null for global admins)", example = "1") Integer tenantId,
-    @Schema(description = "Flag indicating if the administrator is currently active", example = "true")
+    @Schema(
+            description = "Flag indicating if the administrator is currently active",
+            example = "true")
         Boolean active,
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")
         OffsetDateTime createdAt) {}
-

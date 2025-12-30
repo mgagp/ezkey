@@ -184,8 +184,8 @@ public class ShedLockTestHelper {
     String container = detectPostgresContainer();
     if (container == null) {
       log.warn(
-          "No PostgreSQL container found. "
-              + "Make sure Docker stack is running (standard: ./docker/start.sh or HA: ./docker/start-ha.sh)");
+          "No PostgreSQL container found. Make sure Docker stack is running (standard:"
+              + " ./docker/start.sh or HA: ./docker/start-ha.sh)");
       return false;
     }
 
@@ -224,17 +224,7 @@ public class ShedLockTestHelper {
     try {
       ProcessBuilder processBuilder =
           new ProcessBuilder(
-              "docker",
-              "exec",
-              container,
-              "psql",
-              "-U",
-              USER,
-              "-d",
-              DATABASE,
-              "-t",
-              "-A",
-              "-c",
+              "docker", "exec", container, "psql", "-U", USER, "-d", DATABASE, "-t", "-A", "-c",
               sqlQuery);
       processBuilder.redirectErrorStream(true);
 

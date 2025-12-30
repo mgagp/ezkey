@@ -297,7 +297,8 @@ public class AdminProvisioningService {
     // System tenant hosts global administrators only, not tenant administrators
     if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
       throw new IllegalArgumentException(
-          "Cannot create TenantAdmin in System Tenant. TenantAdmins must be created in application tenants.");
+          "Cannot create TenantAdmin in System Tenant. TenantAdmins must be created in application"
+              + " tenants.");
     }
 
     // Validate authorization
@@ -478,6 +479,107 @@ public class AdminProvisioningService {
       return adminRepository.findByTenantTenantId(tenantId, pageable);
     }
   }
+
+  /**
+   * Retrieves onboarding credentials for an administrator.
+   *
+   * <p>This method retrieves sensitive onboarding credentials (enrollment proof token, challenge
+   * code, recovery codes) for an administrator. Access is restricted to authorized administrators
+   * who have permission to view these credentials.
+   *
+   * <p><b>Authorization:</b>
+   *
+   * <ul>
+   *   <li>GlobalAdmin can retrieve onboarding credentials for any admin
+   *   <li>TenantAdmin can only retrieve onboarding credentials for admins in their tenant
+   * </ul>
+   *
+   * @param adminId the administrator ID
+   * @param requesterPrincipal the principal of the requesting administrator
+   * @return OnboardingCredentialsResult with enrollment credentials and recovery codes
+   * @throws ResourceNotFoundException if admin not found
+   * @throws IllegalArgumentException if requester doesn't have permission to access these
+   *     credentials
+   */
+  @Transactional(readOnly = true)
+  public OnboardingCredentialsResult getAdminOnboarding(
+      Integer adminId, AdminPrincipal requesterPrincipal) {
+    logger.info(
+        "Retrieving onboarding credentials for admin: {} (requester: {})",
+        adminId,
+        requesterPrincipal.adminId());
+
+    // Get admin
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Admin", adminId));
+
+    // Validate authorization
+    if (requesterPrincipal.isGlobalAdmin()) {
+      // GlobalAdmin can access any admin's credentials
+      logger.debug("GlobalAdmin retrieving onboarding credentials for admin: {}", adminId);
+    } else if (requesterPrincipal.isTenantAdmin()) {
+      // TenantAdmin can only access credentials for admins in their tenant
+      Integer requesterTenantId = requesterPrincipal.tenantId();
+      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+
+      if (!requesterTenantId.equals(adminTenantId)) {
+        throw new IllegalArgumentException(
+            "Tenant administrators can only access onboarding credentials for admins in their"
+                + " tenant");
+      }
+      logger.debug(
+          "TenantAdmin retrieving onboarding credentials for admin: {} in tenant: {}",
+          adminId,
+          requesterTenantId);
+    } else {
+      throw new IllegalArgumentException("Only administrators can retrieve onboarding credentials");
+    }
+
+    // Get enrollment
+    if (admin.getMfaEnrollment() == null) {
+      throw new IllegalArgumentException("Admin does not have an enrollment");
+    }
+
+    Enrollment enrollment = admin.getMfaEnrollment();
+
+    // Reload enrollment from repository to ensure session is active and all properties are loaded
+    Enrollment loadedEnrollment =
+        enrollmentRepository
+            .findById(enrollment.getEnrollmentId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Enrollment", enrollment.getEnrollmentId()));
+
+    // Recovery codes are stored as BCrypt hashes and cannot be retrieved in plain text
+    // They are only available during initial provisioning (stored in ProvisioningResult)
+    // Once the enrollment is bound, recovery codes cannot be retrieved for security reasons
+    // Return null for recovery codes - they must be saved during initial provisioning
+    logger.info(
+        "✅ Onboarding credentials retrieved for admin: {} (enrollmentId: {})",
+        adminId,
+        loadedEnrollment.getEnrollmentId());
+
+    return new OnboardingCredentialsResult(
+        loadedEnrollment.getEnrollmentId(),
+        loadedEnrollment.getEnrollmentProofToken(),
+        loadedEnrollment.getEnrollmentChallenge(),
+        null); // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+  }
+
+  /**
+   * Result containing onboarding credentials for an administrator.
+   *
+   * @param enrollmentId Enrollment ID
+   * @param enrollmentProofToken Enrollment proof token
+   * @param enrollmentChallenge Enrollment challenge code
+   * @param recoveryCodes Recovery codes (null if not available)
+   */
+  public record OnboardingCredentialsResult(
+      Integer enrollmentId,
+      String enrollmentProofToken,
+      Integer enrollmentChallenge,
+      java.util.List<String> recoveryCodes) {}
 
   /**
    * Extracts AdminPrincipal from authentication context.

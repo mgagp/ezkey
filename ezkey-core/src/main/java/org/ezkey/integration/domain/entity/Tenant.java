@@ -120,8 +120,8 @@ public class Tenant {
    * instance. Only one tenant should have this flag set to true. Application tenants (created by
    * global administrators) should have this flag set to false.
    *
-   * <p>This flag provides a robust way to distinguish system tenant from application tenants without
-   * relying on string comparisons or tenant IDs.
+   * <p>This flag provides a robust way to distinguish system tenant from application tenants
+   * without relying on string comparisons or tenant IDs.
    */
   @Column(name = "is_system_tenant", nullable = false)
   private Boolean isSystemTenant = false;

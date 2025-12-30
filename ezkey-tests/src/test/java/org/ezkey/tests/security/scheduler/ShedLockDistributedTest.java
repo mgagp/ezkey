@@ -66,8 +66,8 @@ public class ShedLockDistributedTest {
     // Verify PostgreSQL container is accessible
     if (!shedLockHelper.verifyContainerAccessible()) {
       log.error(
-          "PostgreSQL container is not accessible. "
-              + "Make sure the Docker stack is running (standard: ./docker/start.sh or HA: ./docker/start-ha.sh)");
+          "PostgreSQL container is not accessible. Make sure the Docker stack is running (standard:"
+              + " ./docker/start.sh or HA: ./docker/start-ha.sh)");
       throw new IllegalStateException(
           "PostgreSQL container is not accessible. "
               + "Docker stack must be running for ShedLock tests.");
@@ -99,7 +99,8 @@ public class ShedLockDistributedTest {
    * <ol>
    *   <li>Wait for a scheduled job to execute (KEY_PROMOTION runs every 5 seconds)
    *   <li>Verify that only one active lock exists in the shedlock table
-   *   <li>Verify that the lock changes between instances over time (no instance affinity) - HA mode only
+   *   <li>Verify that the lock changes between instances over time (no instance affinity) - HA mode
+   *       only
    * </ol>
    *
    * <p><b>Note:</b> In standard mode (single instance), this test verifies that locks are created

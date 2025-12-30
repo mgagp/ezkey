@@ -128,6 +128,17 @@ public class DemoDeviceEnrollmentWriter {
     log.info("Writing enrollment file to demo-device container...");
     log.info("═══════════════════════════════════════════════════════════════");
     log.info("   Enrollment ID: {}", enrollmentId);
+    log.info(
+        "   Device Public Key: {}...",
+        devicePublicKey != null && devicePublicKey.length() > 30
+            ? devicePublicKey.substring(0, 30) + "..."
+            : devicePublicKey);
+    log.info(
+        "   Proof Token: {}...",
+        enrollmentProofToken != null && enrollmentProofToken.length() > 30
+            ? enrollmentProofToken.substring(0, 30) + "..."
+            : enrollmentProofToken);
+    log.info("   Admin Token present: {}", adminToken != null && !adminToken.isEmpty());
 
     try {
       // Step 1: Get enrollment details from Admin API
@@ -245,19 +256,23 @@ public class DemoDeviceEnrollmentWriter {
       // Check if file already exists (idempotence - bootstrap-init may have already created it)
       if (fileExistsInContainer(filePath)) {
         log.info(
-            "   ⏭️  Enrollment file already exists (likely created by bootstrap-init) - Skipping");
-        log.info("   ✅ Enrollment file already present in demo-device container");
-        return;
+            "   ⏭️  Enrollment file already exists (likely created by bootstrap-init) -"
+                + " Overwriting");
+        log.info("   ⚠️  Overwriting existing file to ensure synchronization");
+        // Continue to overwrite - we want to ensure the file is up-to-date
       }
 
       // Ensure directory exists
       ensureDirectoryExists();
 
       // Write JSON file using docker exec
+      log.info("   Writing JSON content to file: {}", filePath);
+      log.debug("   JSON content length: {} bytes", jsonContent.length());
       writeFileToContainer(filePath, jsonContent);
 
       log.info("✅ Enrollment file written successfully to demo-device container");
       log.info("   File: {}", filePath);
+      log.info("   DemoDevice should now be able to authenticate with this enrollment");
     } catch (Exception e) {
       log.error("❌ Failed to write enrollment file to demo-device container", e);
       throw new IllegalStateException(
@@ -305,13 +320,45 @@ public class DemoDeviceEnrollmentWriter {
    * Ensures the enrollments directory exists in the demo-device container.
    *
    * <p>Creates directory with correct permissions (spring:spring user) to match the application
-   * runtime user.
+   * runtime user. Fixes permissions on parent directory if needed (volume may have been created
+   * with root ownership).
    *
    * @throws IllegalStateException if directory creation fails
    */
   private void ensureDirectoryExists() {
     try {
       String containerName = detectDemoDeviceContainer();
+      
+      // First, ensure parent directory /app/data exists and has correct ownership
+      // This is needed because the volume may have been created with root ownership
+      String fixParentPermissionsCommand =
+          "mkdir -p /app/data && chown -R spring:spring /app/data && chmod 755 /app/data";
+      ProcessBuilder fixParentBuilder =
+          new ProcessBuilder("docker", "exec", containerName, "sh", "-c", fixParentPermissionsCommand);
+      fixParentBuilder.redirectErrorStream(true);
+      
+      Process fixParentProcess = fixParentBuilder.start();
+      StringBuilder fixParentOutput = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(fixParentProcess.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          fixParentOutput.append(line).append("\n");
+        }
+      }
+      
+      int fixParentExitCode = fixParentProcess.waitFor();
+      if (fixParentExitCode != 0) {
+        log.warn(
+            "Failed to fix parent directory permissions (exit code: {}). Output: {}",
+            fixParentExitCode,
+            fixParentOutput);
+        // Continue anyway - might still work
+      } else {
+        log.debug("Parent directory permissions fixed successfully");
+      }
+      
+      // Now create the enrollments directory as spring user
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
@@ -335,15 +382,23 @@ public class DemoDeviceEnrollmentWriter {
 
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        log.warn(
-            "Directory creation command returned exit code: {} (container: {})",
+        log.error(
+            "Directory creation command returned exit code: {} (container: {}). Output: {}",
             exitCode,
-            containerName);
-        // Continue anyway - directory might already exist
+            containerName,
+            output);
+        throw new IllegalStateException(
+            "Failed to create enrollments directory. Exit code: "
+                + exitCode
+                + ", Output: "
+                + output);
       }
+      
+      log.debug("Enrollments directory created successfully: {}", ENROLLMENTS_DIR);
     } catch (Exception e) {
-      log.warn("Failed to ensure directory exists (may already exist): {}", e.getMessage());
-      // Continue anyway - directory might already exist
+      log.error("Failed to ensure directory exists: {}", e.getMessage(), e);
+      throw new IllegalStateException(
+          "Failed to ensure enrollments directory exists: " + e.getMessage(), e);
     }
   }
 
