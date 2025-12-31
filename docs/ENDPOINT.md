@@ -743,6 +743,68 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
+### f) Important: When to Use Admin Onboarding API vs Enrollment API
+
+**Two APIs can retrieve enrollment onboarding credentials. Here's when to use each:**
+
+#### **GET /api/v1/admins/{id}/onboarding** (Recommended for Admin Onboarding)
+
+**Use this API when:**
+- ✅ You have an **admin ID** (from `POST /api/v1/admins/global` or `/api/v1/admins/tenant`)
+- ✅ You want to retrieve onboarding credentials for a **specific administrator**
+- ✅ You're working in the **admin provisioning workflow**
+- ✅ You're a **TenantAdmin** accessing your own or peer admin credentials
+
+**Why this API:**
+- Validates access at the **admin tenant level** (correct for admin management)
+- Returns only onboarding credentials (minimal information)
+- Works correctly for **TenantAdmin** accessing their own enrollment
+- Semantic clarity: "Get onboarding credentials for admin X"
+
+**Example:**
+```http
+GET /api/v1/admins/2/onboarding
+Authorization: Bearer ezkey_admin_token...
+```
+
+#### **GET /api/v1/enrollments/{id}** (For General Enrollment Management)
+
+**Use this API when:**
+- ✅ You have an **enrollment ID** (from enrollment search or creation)
+- ✅ You want **comprehensive enrollment details** (not just onboarding credentials)
+- ✅ You're working in the **enrollment management workflow**
+- ✅ You're a **GlobalAdmin** (TenantAdmin may not have access to enrollments via this API)
+
+**Why this API:**
+- Validates access at the **integration tenant level** (correct for enrollment management)
+- Returns full enrollment details (status, keys, integration info, etc.)
+- Suitable for **enrollment monitoring and management**
+- Semantic clarity: "Get details of enrollment Y"
+
+**Important Note for TenantAdmin:**
+- ⚠️ **TenantAdmin cannot access their own enrollment via this API** (validation checks integration tenant, which is System Tenant)
+- ✅ **Use `/api/v1/admins/{id}/onboarding` instead** for TenantAdmin to access their own credentials
+
+**Example:**
+```http
+GET /api/v1/enrollments/123
+Authorization: Bearer ezkey_admin_token...
+```
+
+#### **Summary Table**
+
+| Scenario | Use This API | Why |
+|----------|--------------|-----|
+| Admin provisioning workflow | `/api/v1/admins/{id}/onboarding` | Validates admin tenant, returns minimal credentials |
+| TenantAdmin accessing own credentials | `/api/v1/admins/{id}/onboarding` | Only API that works for TenantAdmin |
+| Enrollment management workflow | `/api/v1/enrollments/{id}` | Validates integration tenant, returns full details |
+| GlobalAdmin monitoring enrollments | `/api/v1/enrollments/{id}` | Works for GlobalAdmin, comprehensive information |
+
+**Security Note:**
+Both APIs use different validation logic (admin tenant vs integration tenant), which is intentional and provides complementary security checks. The different validation approaches ensure proper access control for different use cases.
+
+---
+
 ## 🔑 API Keys Authentication (Machine-to-Machine)
 
 ### **Overview**
