@@ -124,8 +124,9 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
+EXPOSE 8081
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost:8081/actuator/health || exit 1
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================
