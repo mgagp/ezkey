@@ -1,5 +1,5 @@
 # Spring Profiles Configuration Verification Script (PowerShell)
-# 
+#
 # This script verifies that both Docker and Windows profiles are correctly configured
 # for the Ezkey encryption key paths.
 #
@@ -37,13 +37,13 @@ function Check-FileContains {
         [string]$Pattern,
         [string]$Description
     )
-    
+
     if (-not (Test-Path $FilePath)) {
         Write-Host "`e[31m✗ MISSING`e[0m: $FilePath"
         $global:Errors++
         return $false
     }
-    
+
     $Content = Get-Content $FilePath -Raw
     if ($Content -match $Pattern) {
         Write-Host "`e[32m✓`e[0m $Description"
@@ -61,13 +61,13 @@ function Check-FileNotContains {
         [string]$Pattern,
         [string]$Description
     )
-    
+
     if (-not (Test-Path $FilePath)) {
         Write-Host "`e[31m✗ MISSING`e[0m: $FilePath"
         $global:Errors++
         return $false
     }
-    
+
     $Content = Get-Content $FilePath -Raw
     if ($Content -notmatch $Pattern) {
         Write-Host "`e[32m✓`e[0m $Description"
@@ -166,28 +166,28 @@ if ($Profile -eq "all") {
     Write-Host ""
     Write-Host "📚 Documentation Files" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
-    
+
     Write-Host ""
     Write-Host "✓ Checking for migration and configuration guides:"
-    
+
     $SpringProfilesDoc = Join-Path $ProjectRoot "docs\SPRING_PROFILES_CONFIGURATION.md"
     $MigrationDoc = Join-Path $ProjectRoot "docs\MIGRATION_HARDCODED_PATHS_FIX.md"
     $FixSummary = Join-Path $ProjectRoot "FIX_SUMMARY_SPRING_PROFILES.md"
-    
+
     if (Test-Path $SpringProfilesDoc) {
         Write-Host "`e[32m✓`e[0m SPRING_PROFILES_CONFIGURATION.md exists"
     } else {
         Write-Host "`e[31m✗`e[0m SPRING_PROFILES_CONFIGURATION.md missing"
         $global:Errors++
     }
-    
+
     if (Test-Path $MigrationDoc) {
         Write-Host "`e[32m✓`e[0m MIGRATION_HARDCODED_PATHS_FIX.md exists"
     } else {
         Write-Host "`e[31m✗`e[0m MIGRATION_HARDCODED_PATHS_FIX.md missing"
         $global:Errors++
     }
-    
+
     if (Test-Path $FixSummary) {
         Write-Host "`e[32m✓`e[0m FIX_SUMMARY_SPRING_PROFILES.md exists"
     } else {
@@ -203,14 +203,14 @@ if ($Profile -eq "all") {
     Write-Host ""
     Write-Host "🔑 Master Key Generation Scripts" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
-    
+
     Write-Host ""
     Write-Host "✓ Checking for master key generation scripts:"
-    
+
     $LinuxKeygen = Join-Path $ProjectRoot "scripts\generate-master-key.sh"
     $WindowsKeygen = Join-Path $ProjectRoot "scripts\generate-master-key.ps1"
     $DockerKeygen = Join-Path $ProjectRoot "docker\generate-encryption-keys.sh"
-    
+
     if (Test-Path $LinuxKeygen) {
         Write-Host "`e[32m✓`e[0m scripts/generate-master-key.sh exists"
         Check-FileContains $LinuxKeygen "/etc/ezkey/secrets" `
@@ -219,14 +219,14 @@ if ($Profile -eq "all") {
         Write-Host "`e[31m✗`e[0m scripts/generate-master-key.sh missing"
         $global:Errors++
     }
-    
+
     if (Test-Path $WindowsKeygen) {
         Write-Host "`e[32m✓`e[0m scripts/generate-master-key.ps1 exists"
     } else {
         Write-Host "`e[31m✗`e[0m scripts/generate-master-key.ps1 missing"
         $global:Errors++
     }
-    
+
     if (Test-Path $DockerKeygen) {
         Write-Host "`e[32m✓`e[0m docker/generate-encryption-keys.sh exists"
         Check-FileContains $DockerKeygen "/etc/ezkey" `

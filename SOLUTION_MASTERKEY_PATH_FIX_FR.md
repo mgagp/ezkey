@@ -1,7 +1,7 @@
 # 🔧 Solution de Correction - Path Codé en Dur pour le MasterKey
 
-**Date:** 5 janvier 2026  
-**Problème:** L'application cherche le MasterKey à `/c/ProgramData/ezkey/` qui n'existait que sur Windows local, empêchant Docker et Clean Start de fonctionner.  
+**Date:** 5 janvier 2026
+**Problème:** L'application cherche le MasterKey à `/c/ProgramData/ezkey/` qui n'existait que sur Windows local, empêchant Docker et Clean Start de fonctionner.
 **Solution:** Implémentation de **Spring Profiles** pour séparer les configurations Docker et Windows.
 
 ---
@@ -193,27 +193,27 @@ Génère et trouve MasterKey au bon endroit
 
 ## 📞 Questions Fréquentes
 
-**Q: Qu'est-ce qui change pour moi?**  
+**Q: Qu'est-ce qui change pour moi?**
 R: Rien si vous utilisez Docker. Si vous utilisiez Windows natif avant, vous devez maintenant définir `SPRING_PROFILES_ACTIVE=windows` avant de lancer.
 
-**Q: Est-ce que mes données vont être perdues?**  
+**Q: Est-ce que mes données vont être perdues?**
 R: Clean Start supprime tout et recommence à zéro. Sauvegardez vos données avant si nécessaire.
 
-**Q: Pourquoi deux modes?**  
+**Q: Pourquoi deux modes?**
 R: Docker est production-like et utilisable en entreprise. Windows natif est utile pour le développement local.
 
-**Q: Et en production sur Linux?**  
+**Q: Et en production sur Linux?**
 R: Utilisez Docker (même profil que développement). Les clés vont dans `/etc/ezkey/` comme prévu.
 
 ---
 
 ## ✨ Avantages de la Correction
 
-✅ **Docker fonctionne correctement** (le gros problème est résolu)  
-✅ **Clean Start fonctionne** (déploiement en un seul script)  
-✅ **Windows natif toujours supporté** (avec profil explicite)  
-✅ **Code plus maintenable** (pas de paths codés en dur)  
-✅ **Prêt pour le cloud** (facile d'ajouter d'autres profils)  
+✅ **Docker fonctionne correctement** (le gros problème est résolu)
+✅ **Clean Start fonctionne** (déploiement en un seul script)
+✅ **Windows natif toujours supporté** (avec profil explicite)
+✅ **Code plus maintenable** (pas de paths codés en dur)
+✅ **Prêt pour le cloud** (facile d'ajouter d'autres profils)
 ✅ **Documentation complète** (guides pas à pas)
 
 ---

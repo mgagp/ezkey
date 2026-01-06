@@ -1,6 +1,6 @@
 #!/bin/bash
 # Spring Profiles Configuration Verification Script
-# 
+#
 # This script verifies that both Docker and Windows profiles are correctly configured
 # for the Ezkey encryption key paths.
 #
@@ -35,13 +35,13 @@ check_file_contains() {
     local file="$1"
     local pattern="$2"
     local description="$3"
-    
+
     if [ ! -f "$file" ]; then
         echo -e "${RED}✗ MISSING${NC}: $file"
         ((ERRORS++))
         return 1
     fi
-    
+
     if grep -q "$pattern" "$file"; then
         echo -e "${GREEN}✓${NC} $description"
         return 0
@@ -57,13 +57,13 @@ check_file_not_contains() {
     local file="$1"
     local pattern="$2"
     local description="$3"
-    
+
     if [ ! -f "$file" ]; then
         echo -e "${RED}✗ MISSING${NC}: $file"
         ((ERRORS++))
         return 1
     fi
-    
+
     if ! grep -q "$pattern" "$file"; then
         echo -e "${GREEN}✓${NC} $description"
         return 0
@@ -161,28 +161,28 @@ if [ "$PROFILE" = "all" ]; then
     echo ""
     echo "📚 Documentation Files"
     echo "=========================================="
-    
+
     echo ""
     echo "✓ Checking for migration and configuration guides:"
-    
+
     SPRING_PROFILES_DOC="${PROJECT_ROOT}/docs/SPRING_PROFILES_CONFIGURATION.md"
     MIGRATION_DOC="${PROJECT_ROOT}/docs/MIGRATION_HARDCODED_PATHS_FIX.md"
     FIX_SUMMARY="${PROJECT_ROOT}/FIX_SUMMARY_SPRING_PROFILES.md"
-    
+
     if [ -f "$SPRING_PROFILES_DOC" ]; then
         echo -e "${GREEN}✓${NC} SPRING_PROFILES_CONFIGURATION.md exists"
     else
         echo -e "${RED}✗${NC} SPRING_PROFILES_CONFIGURATION.md missing"
         ((ERRORS++))
     fi
-    
+
     if [ -f "$MIGRATION_DOC" ]; then
         echo -e "${GREEN}✓${NC} MIGRATION_HARDCODED_PATHS_FIX.md exists"
     else
         echo -e "${RED}✗${NC} MIGRATION_HARDCODED_PATHS_FIX.md missing"
         ((ERRORS++))
     fi
-    
+
     if [ -f "$FIX_SUMMARY" ]; then
         echo -e "${GREEN}✓${NC} FIX_SUMMARY_SPRING_PROFILES.md exists"
     else
@@ -198,14 +198,14 @@ if [ "$PROFILE" = "all" ]; then
     echo ""
     echo "🔑 Master Key Generation Scripts"
     echo "=========================================="
-    
+
     echo ""
     echo "✓ Checking for master key generation scripts:"
-    
+
     LINUX_KEYGEN="${PROJECT_ROOT}/scripts/generate-master-key.sh"
     WINDOWS_KEYGEN="${PROJECT_ROOT}/scripts/generate-master-key.ps1"
     DOCKER_KEYGEN="${PROJECT_ROOT}/docker/generate-encryption-keys.sh"
-    
+
     if [ -f "$LINUX_KEYGEN" ]; then
         echo -e "${GREEN}✓${NC} scripts/generate-master-key.sh exists"
         check_file_contains "$LINUX_KEYGEN" "/etc/ezkey/secrets" \
@@ -214,14 +214,14 @@ if [ "$PROFILE" = "all" ]; then
         echo -e "${RED}✗${NC} scripts/generate-master-key.sh missing"
         ((ERRORS++))
     fi
-    
+
     if [ -f "$WINDOWS_KEYGEN" ]; then
         echo -e "${GREEN}✓${NC} scripts/generate-master-key.ps1 exists"
     else
         echo -e "${RED}✗${NC} scripts/generate-master-key.ps1 missing"
         ((ERRORS++))
     fi
-    
+
     if [ -f "$DOCKER_KEYGEN" ]; then
         echo -e "${GREEN}✓${NC} docker/generate-encryption-keys.sh exists"
         check_file_contains "$DOCKER_KEYGEN" "/etc/ezkey" \
