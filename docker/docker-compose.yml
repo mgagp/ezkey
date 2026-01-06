@@ -65,6 +65,7 @@ services:
       EZKEY_ADMIN_INITIAL_EMAIL: admin@ezkey.local
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
+      MANAGEMENT_SERVER_PORT: 9081
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap
@@ -76,9 +77,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9081/actuator/health || exit 1"]
       interval: 30s
-      timeout: 3s
-      start_period: 40s
-      retries: 3
+      timeout: 5s
+      start_period: 90s
+      retries: 5
 
   auth-api:
     build:
@@ -96,6 +97,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ezkey
+      MANAGEMENT_SERVER_PORT: 8081
     volumes:
       - encryption-secrets:/etc/ezkey
     ports:
