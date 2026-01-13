@@ -33,49 +33,37 @@ import org.junit.jupiter.api.TestMethodOrder;
 /**
  * Tests cross-tenant isolation security.
  *
- * <p>
- * Validates that TenantAdmin from one tenant cannot access resources belonging
- * to another
+ * <p>Validates that TenantAdmin from one tenant cannot access resources belonging to another
  * tenant:
  *
  * <ul>
- * <li>TenantAdmin A cannot list/read/modify integrations of Tenant B
- * <li>TenantAdmin A cannot list/read/modify enrollments of Tenant B
- * <li>TenantAdmin A cannot list/read/modify API keys of Tenant B
- * <li>TenantAdmin A listings only show Tenant A resources
+ *   <li>TenantAdmin A cannot list/read/modify integrations of Tenant B
+ *   <li>TenantAdmin A cannot list/read/modify enrollments of Tenant B
+ *   <li>TenantAdmin A cannot list/read/modify API keys of Tenant B
+ *   <li>TenantAdmin A listings only show Tenant A resources
  * </ul>
  *
- * <p>
- * These are P0 tests - critical isolation boundaries that prevent data leakage
- * between tenants.
+ * <p>These are P0 tests - critical isolation boundaries that prevent data leakage between tenants.
  *
- * <p>
- * <b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for
- * complete context.
+ * <p><b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for complete context.
  *
  * <ul>
- * <li><b>Key Principle:</b> "No Impersonation" - TenantAdmin cannot access
- * other tenant resources
- * <li><b>Read Operations:</b> TenantAdmin sees ONLY own tenant (automatic
- * filtering)
- * <li><b>Write Operations:</b> TenantAdmin creates ONLY in own tenant
- * (automatic assignment)
- * <li><b>Cross-Tenant Access:</b> Returns 403 Forbidden or 404 Not Found
+ *   <li><b>Key Principle:</b> "No Impersonation" - TenantAdmin cannot access other tenant resources
+ *   <li><b>Read Operations:</b> TenantAdmin sees ONLY own tenant (automatic filtering)
+ *   <li><b>Write Operations:</b> TenantAdmin creates ONLY in own tenant (automatic assignment)
+ *   <li><b>Cross-Tenant Access:</b> Returns 403 Forbidden or 404 Not Found
  * </ul>
  *
- * <p>
- * <b>Test Strategy:</b>
+ * <p><b>Test Strategy:</b>
  *
  * <ul>
- * <li>Create two tenants (A and B) with separate TenantAdmins
- * <li>Create resources in each tenant (integrations, enrollments, API keys)
- * <li>Validate TenantAdmin A cannot access Tenant B resources
- * <li>Validate list endpoints filter automatically (TenantAdmin A sees only
- * Tenant A)
+ *   <li>Create two tenants (A and B) with separate TenantAdmins
+ *   <li>Create resources in each tenant (integrations, enrollments, API keys)
+ *   <li>Validate TenantAdmin A cannot access Tenant B resources
+ *   <li>Validate list endpoints filter automatically (TenantAdmin A sees only Tenant A)
  * </ul>
  *
- * <p>
- * <b>Expected Behavior:</b>
+ * <p><b>Expected Behavior:</b>
  *
  * <table>
  * <tr>
@@ -144,7 +132,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
       globalAdminToken = authTokenManager.getAdminToken();
 
       // Initialize TenantAdminTestHelper
-      tenantAdminTestHelper = new TenantAdminTestHelper(dockerStackConfig, testDataFactory, cryptoApiClient);
+      tenantAdminTestHelper =
+          new TenantAdminTestHelper(dockerStackConfig, testDataFactory, cryptoApiClient);
 
       // Create two tenants
       String uniqueSuffix = String.valueOf(System.currentTimeMillis());
@@ -152,25 +141,31 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
       tenantBId = testDataFactory.findOrCreateTenant("Tenant B " + uniqueSuffix, globalAdminToken);
 
       // Create TenantAdmins with device simulation and login
-      tenantAdminAToken = tenantAdminTestHelper.createAndLoginTenantAdmin(
-          "admin-a-" + uniqueSuffix, tenantAId, globalAdminToken);
-      tenantAdminBToken = tenantAdminTestHelper.createAndLoginTenantAdmin(
-          "admin-b-" + uniqueSuffix, tenantBId, globalAdminToken);
+      tenantAdminAToken =
+          tenantAdminTestHelper.createAndLoginTenantAdmin(
+              "admin-a-" + uniqueSuffix, tenantAId, globalAdminToken);
+      tenantAdminBToken =
+          tenantAdminTestHelper.createAndLoginTenantAdmin(
+              "admin-b-" + uniqueSuffix, tenantBId, globalAdminToken);
 
       // Create integrations for both tenants (using TenantAdmin tokens so
       // integrations are assigned to correct tenant)
-      integrationAId = testDataFactory.createIntegrationForTenant(
-          "Integration A " + uniqueSuffix, tenantAId, tenantAdminAToken);
-      integrationBId = testDataFactory.createIntegrationForTenant(
-          "Integration B " + uniqueSuffix, tenantBId, tenantAdminBToken);
+      integrationAId =
+          testDataFactory.createIntegrationForTenant(
+              "Integration A " + uniqueSuffix, tenantAId, tenantAdminAToken);
+      integrationBId =
+          testDataFactory.createIntegrationForTenant(
+              "Integration B " + uniqueSuffix, tenantBId, tenantAdminBToken);
 
       // Create enrollments for both integrations (using GlobalAdmin token)
       enrollmentAId = testDataFactory.createEnrollment(integrationAId);
       enrollmentBId = testDataFactory.createEnrollment(integrationBId);
 
       // Create API keys for both integrations (using GlobalAdmin token)
-      apiKeyACredentials = testDataFactory.createApiKeyForIntegration(integrationAId, globalAdminToken);
-      apiKeyBCredentials = testDataFactory.createApiKeyForIntegration(integrationBId, globalAdminToken);
+      apiKeyACredentials =
+          testDataFactory.createApiKeyForIntegration(integrationAId, globalAdminToken);
+      apiKeyBCredentials =
+          testDataFactory.createApiKeyForIntegration(integrationBId, globalAdminToken);
 
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
@@ -187,14 +182,15 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACanListOnlyOwnIntegrations() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .get("/integrations")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/integrations")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(200);
 
@@ -212,11 +208,13 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     }
 
     // Verify integration A is present
-    boolean hasIntegrationA = integrations.stream().anyMatch(i -> integrationAId.equals(i.get("id")));
+    boolean hasIntegrationA =
+        integrations.stream().anyMatch(i -> integrationAId.equals(i.get("id")));
     assertThat(hasIntegrationA).as("TenantAdmin A should see integration A").isTrue();
 
     // Verify integration B is NOT present (cross-tenant isolation)
-    boolean hasIntegrationB = integrations.stream().anyMatch(i -> integrationBId.equals(i.get("id")));
+    boolean hasIntegrationB =
+        integrations.stream().anyMatch(i -> integrationBId.equals(i.get("id")));
     assertThat(hasIntegrationB)
         .as("TenantAdmin A should NOT see integration B (belongs to tenant B)")
         .isFalse();
@@ -230,40 +228,31 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACannotGetTenantBIntegration() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .get("/integrations/" + integrationBId)
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/integrations/" + integrationBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isIn(403, 404);
   }
 
   /**
-   * Validates that TenantAdmin cannot delete integrations belonging to other
-   * tenants.
+   * Validates that TenantAdmin cannot delete integrations belonging to other tenants.
    *
-   * <p>
-   * This test ensures proper tenant isolation at the deletion boundary. When a
-   * TenantAdmin
-   * attempts to delete an integration from a different tenant, the API must
-   * reject the operation.
-   * The expected behavior is 404 (Not Found) to avoid leaking information about
-   * the existence of
+   * <p>This test ensures proper tenant isolation at the deletion boundary. When a TenantAdmin
+   * attempts to delete an integration from a different tenant, the API must reject the operation.
+   * The expected behavior is 404 (Not Found) to avoid leaking information about the existence of
    * resources in other tenants.
    *
-   * <p>
-   * <b>Security Invariant:</b> DELETE /integrations/{id} must validate tenant
-   * ownership before
-   * performing deletion. TenantAdmin can only delete integrations in their own
-   * tenant.
+   * <p><b>Security Invariant:</b> DELETE /integrations/{id} must validate tenant ownership before
+   * performing deletion. TenantAdmin can only delete integrations in their own tenant.
    *
-   * <p>
-   * <b>Test Setup:</b> Integration B was created by TenantAdmin B (in Tenant B).
-   * TenantAdmin A
+   * <p><b>Test Setup:</b> Integration B was created by TenantAdmin B (in Tenant B). TenantAdmin A
    * attempts to delete it using their token.
    *
    * @see org.ezkey.admin.controller.IntegrationController#delete(Integer)
@@ -274,26 +263,28 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACannotDeleteTenantBIntegration() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .delete("/integrations/" + integrationBId)
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .delete("/integrations/" + integrationBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(404);
 
     // Verify integration B still exists (using global admin)
-    Response verifyResponse = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + globalAdminToken)
-        .when()
-        .get("/integrations/" + integrationBId)
-        .then()
-        .extract()
-        .response();
+    Response verifyResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/integrations/" + integrationBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
   }
@@ -306,14 +297,15 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACanListOnlyOwnEnrollments() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .get("/enrollments")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/enrollments")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(200);
 
@@ -321,7 +313,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     assertThat(enrollments).isNotNull();
 
     // Verify enrollment B is not in the list
-    boolean hasEnrollmentB = enrollments.stream().anyMatch(e -> enrollmentBId.equals(e.get("enrollmentId")));
+    boolean hasEnrollmentB =
+        enrollments.stream().anyMatch(e -> enrollmentBId.equals(e.get("enrollmentId")));
     assertThat(hasEnrollmentB).as("TenantAdmin A should not see Tenant B enrollments").isFalse();
   }
 
@@ -331,14 +324,15 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACannotGetTenantBEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .get("/enrollments/" + enrollmentBId)
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/enrollments/" + enrollmentBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isIn(403, 404);
   }
@@ -354,15 +348,16 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     request.put("name", "Malicious Enrollment");
     request.put("authAttemptChallengeRequired", false);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .body(request)
-        .when()
-        .post("/enrollments")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .body(request)
+            .when()
+            .post("/enrollments")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isIn(400, 403);
   }
@@ -373,61 +368,50 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACannotDeleteTenantBEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .delete("/enrollments/" + enrollmentBId)
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .delete("/enrollments/" + enrollmentBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(404);
 
     // Verify enrollment B still exists (using global admin)
-    Response verifyResponse = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + globalAdminToken)
-        .when()
-        .get("/enrollments/" + enrollmentBId)
-        .then()
-        .extract()
-        .response();
+    Response verifyResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/enrollments/" + enrollmentBId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
   }
 
   /**
-   * Validates that TenantAdmin cannot delete enrollments belonging to other
-   * tenants.
+   * Validates that TenantAdmin cannot delete enrollments belonging to other tenants.
    *
-   * <p>
-   * This test ensures proper tenant isolation at the enrollment deletion
-   * boundary. When a
-   * TenantAdmin attempts to delete an enrollment that belongs to an integration
-   * from a different
-   * tenant, the API must reject the operation. The expected behavior is 404 (Not
-   * Found) to avoid
+   * <p>This test ensures proper tenant isolation at the enrollment deletion boundary. When a
+   * TenantAdmin attempts to delete an enrollment that belongs to an integration from a different
+   * tenant, the API must reject the operation. The expected behavior is 404 (Not Found) to avoid
    * leaking information about the existence of resources in other tenants.
    *
-   * <p>
-   * <b>Security Invariant:</b> DELETE /enrollments/{id} must validate tenant
-   * ownership before
-   * performing deletion. TenantAdmin can only delete enrollments belonging to
-   * integrations in their
-   * own tenant. This validation uses AccessControlService.canAccessEnrollment()
-   * which checks the
+   * <p><b>Security Invariant:</b> DELETE /enrollments/{id} must validate tenant ownership before
+   * performing deletion. TenantAdmin can only delete enrollments belonging to integrations in their
+   * own tenant. This validation uses AccessControlService.canAccessEnrollment() which checks the
    * tenant_id of the integration associated with the enrollment.
    *
-   * <p>
-   * <b>Test Setup:</b> Enrollment B was created for Integration B (owned by
-   * TenantAdmin B in
+   * <p><b>Test Setup:</b> Enrollment B was created for Integration B (owned by TenantAdmin B in
    * Tenant B). TenantAdmin A attempts to delete it using their token.
    *
-   * @see org.ezkey.admin.controller.EnrollmentController#delete(Integer,
-   *      HttpServletRequest)
-   * @see org.ezkey.admin.security.AccessControlService#canAccessEnrollment(Authentication,
-   *      Integer)
+   * @see org.ezkey.admin.controller.EnrollmentController#delete(Integer, HttpServletRequest)
+   * @see org.ezkey.admin.security.AccessControlService#canAccessEnrollment(Authentication, Integer)
    */
   // ========== API KEYS ISOLATION TESTS ==========
 
@@ -437,14 +421,15 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testTenantAdminACanListOnlyOwnApiKeys() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .when()
-        .get("/api-keys")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .when()
+            .get("/api-keys")
+            .then()
+            .extract()
+            .response();
 
     System.out.println("Response Status: " + response.getStatusCode());
     System.out.println("Response Body: " + response.getBody().asString());
@@ -475,15 +460,16 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     request.put("integrationId", integrationBId); // Tenant B integration
     request.put("description", "Malicious API Key");
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminAToken)
-        .body(request)
-        .when()
-        .post("/api-keys")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminAToken)
+            .body(request)
+            .when()
+            .post("/api-keys")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isIn(400, 403);
   }
@@ -497,26 +483,28 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     configureForAdminApi(dockerStackConfig);
 
     // Try to get Tenant A integration
-    Response integrationResponse = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminBToken)
-        .when()
-        .get("/integrations/" + integrationAId)
-        .then()
-        .extract()
-        .response();
+    Response integrationResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminBToken)
+            .when()
+            .get("/integrations/" + integrationAId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(integrationResponse.getStatusCode()).isIn(403, 404);
 
     // Try to get Tenant A enrollment
-    Response enrollmentResponse = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + tenantAdminBToken)
-        .when()
-        .get("/enrollments/" + enrollmentAId)
-        .then()
-        .extract()
-        .response();
+    Response enrollmentResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + tenantAdminBToken)
+            .when()
+            .get("/enrollments/" + enrollmentAId)
+            .then()
+            .extract()
+            .response();
 
     assertThat(enrollmentResponse.getStatusCode()).isIn(403, 404);
   }
@@ -557,21 +545,23 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testGlobalAdminCanListAllApiKeys() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + globalAdminToken)
-        .when()
-        .get("/api-keys")
-        .then()
-        .statusCode(200)
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/api-keys")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
 
     List<Map<String, Object>> apiKeys = response.jsonPath().getList("$");
     assertThat(apiKeys).isNotNull();
 
     // Extract integration IDs from API keys
-    List<Integer> integrationIds = apiKeys.stream().map(apiKey -> (Integer) apiKey.get("integrationId")).toList();
+    List<Integer> integrationIds =
+        apiKeys.stream().map(apiKey -> (Integer) apiKey.get("integrationId")).toList();
 
     // GlobalAdmin should see API keys from both tenants
     assertThat(integrationIds)
@@ -585,15 +575,16 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testGlobalAdminCanAccessTenantAEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + globalAdminToken)
-        .when()
-        .get("/enrollments/" + enrollmentAId)
-        .then()
-        .statusCode(200)
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/enrollments/" + enrollmentAId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
 
     Integer responseEnrollmentId = response.jsonPath().getInt("enrollmentId");
     assertThat(responseEnrollmentId).isEqualTo(enrollmentAId);
@@ -605,15 +596,16 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   public void testGlobalAdminCanAccessTenantBEnrollment() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + globalAdminToken)
-        .when()
-        .get("/enrollments/" + enrollmentBId)
-        .then()
-        .statusCode(200)
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/enrollments/" + enrollmentBId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
 
     Integer responseEnrollmentId = response.jsonPath().getInt("enrollmentId");
     assertThat(responseEnrollmentId).isEqualTo(enrollmentBId);
