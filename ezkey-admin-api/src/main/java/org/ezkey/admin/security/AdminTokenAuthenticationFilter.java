@@ -78,8 +78,11 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
           var admin = adminToken.getAdmin();
 
           // Extract scope information from token
-          Integer tenantId =
-              adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
+          // GlobalAdmin should have null tenantId for full cross-tenant visibility
+          Integer tenantId = null;
+          if (admin.getAdminType() == AdminType.TENANT_ADMIN) {
+            tenantId = adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
+          }
           Integer integrationId =
               adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
 

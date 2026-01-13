@@ -151,7 +151,8 @@ class EnrollmentServiceTest {
     // Setup EC P-256 key pair
     ecp256KeyPair = new ECP256KeyPair("private-key", "public-key");
 
-    // Setup integration repository mock - validates integration exists during enrollment creation
+    // Setup integration repository mock - validates integration exists during
+    // enrollment creation
     when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
   }
 

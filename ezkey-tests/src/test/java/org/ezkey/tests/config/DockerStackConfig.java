@@ -138,7 +138,8 @@ public class DockerStackConfig {
       String savedBasePath = RestAssured.basePath;
 
       try {
-        // Set baseURI and basePath before using RestAssured (required by RestAssured 5.x)
+        // Set baseURI and basePath before using RestAssured (required by RestAssured
+        // 5.x)
         RestAssured.baseURI = url;
         RestAssured.basePath = "";
 

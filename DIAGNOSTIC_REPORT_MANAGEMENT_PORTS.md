@@ -1,7 +1,7 @@
 # Diagnostic Report: Application vs Management Port Separation
 
-**Date**: January 13, 2026  
-**Issue**: GlobalAdmin tests failing on verification logic for stack mode detection  
+**Date**: January 13, 2026
+**Issue**: GlobalAdmin tests failing on verification logic for stack mode detection
 **Status**: Complete Analysis with Findings
 
 ---
@@ -34,17 +34,17 @@ admin-api:
   ports:
     - "9080:9080"           # ✅ Application port EXPOSED
     # ❌ 9081 NOT EXPOSED (management port stays internal)
-  
+
 auth-api:
   ports:
     - "8080:8080"           # ✅ Application port EXPOSED
     # ❌ 8081 NOT EXPOSED (management port stays internal)
-  
+
 crypto-api:
   ports:
     - "9090:9090"           # ✅ Application port EXPOSED
     # ❌ No separate management port
-  
+
 demo-device:
   ports:
     - "8083:8083"           # ✅ Application port EXPOSED
@@ -65,14 +65,14 @@ admin-api:
     test: ["CMD-SHELL", "curl -f http://localhost:9081/actuator/health || exit 1"]
     # ✅ This works inside container (localhost)
     # ✅ Uses internal management port
-  
+
 auth-api:
   healthcheck:
     test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
     # ✅ This works inside container (localhost)
 ```
 
-**FACT**: 
+**FACT**:
 - Health checks use management port (9081, 8081) - This works ✅
 - These checks run **inside the container**, not from host machine
 - Management ports are accessible **within the Docker network**, not from host
@@ -108,7 +108,7 @@ management.server.port=8081
 management.endpoints.web.base-path=/actuator
 ```
 
-**CONFIRMED**: 
+**CONFIRMED**:
 - Management ports are CONFIGURED in each service ✅
 - They are set via environment variable `MANAGEMENT_SERVER_PORT` in docker-compose.yml ✅
 - This is intentional separation per Spring Boot design ✅
@@ -134,7 +134,7 @@ String healthUrl = "http://localhost:9081/actuator/health";
 | Accessibility | Port 9081 blocked on host | Port 9081 is HAProxy |
 | Health check | Can't reach from test JVM | HAProxy accessible |
 
-**KEY INSIGHT**: 
+**KEY INSIGHT**:
 - In **Standard mode**: Management ports (9081, 8081) are NOT exposed to host
 - Management endpoints are ONLY accessible from inside the container network
 - Tests running on host machine CANNOT reach them
@@ -236,7 +236,7 @@ Instead of trying to use management ports from host:
 
 **Status**: Root cause fully identified and understood
 
-The separation of application and management ports is a **correct design decision**. 
+The separation of application and management ports is a **correct design decision**.
 The problem is that `DockerStackConfig.java` was written assuming management ports would be accessible from the test host, which they are not by design.
 
 The fix should **not try to make management ports accessible**, but instead **adapt the verification logic** to use only the ports that are actually exposed to the host.

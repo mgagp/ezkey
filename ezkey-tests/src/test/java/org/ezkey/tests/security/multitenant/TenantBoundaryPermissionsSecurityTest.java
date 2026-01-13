@@ -181,104 +181,110 @@ public class TenantBoundaryPermissionsSecurityTest extends AbstractSecurityTest 
   // Tenant update operations are not in the PRD scope
   // This test is disabled until tenant update endpoint is added
   /*
-  @Test
-  @Order(5)
-  @DisplayName("TenantAdmin cannot update tenant (403)")
-  public void testTenantAdminCannotUpdateTenant() {
-    configureForAdminApi(dockerStackConfig);
-
-    Map<String, Object> request = new HashMap<>();
-    request.put("tenantName", "Updated Tenant Name");
-    request.put("tenantDescription", "Updated description");
-
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminAToken)
-            .body(request)
-            .when()
-            .put("/tenants/" + tenantAId)
-            .then()
-            .extract()
-            .response();
-
-    assertThat(response.getStatusCode()).isEqualTo(403);
-  }
-  */
-
-  // NOTE: DELETE /tenants/{id} endpoint not implemented in Phase 1
-  // Tenant deletion operations are not in the PRD scope
-  // This test is disabled until tenant delete endpoint is added
-  /*
-  @Test
-  @Order(6)
-  @DisplayName("TenantAdmin cannot delete own tenant (403)")
-  public void testTenantAdminCannotDeleteOwnTenant() {
-    configureForAdminApi(dockerStackConfig);
-
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminAToken)
-            .when()
-            .delete("/tenants/" + tenantAId)
-            .then()
-            .extract()
-            .response();
-
-    assertThat(response.getStatusCode()).isEqualTo(403);
-
-    // Verify tenant still exists (using global admin)
-    Response verifyResponse =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + globalAdminToken)
-            .when()
-            .get("/tenants/" + tenantAId)
-            .then()
-            .extract()
-            .response();
-
-    assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
-  }
-  */
+   * @Test
+   *
+   * @Order(5)
+   *
+   * @DisplayName("TenantAdmin cannot update tenant (403)")
+   * public void testTenantAdminCannotUpdateTenant() {
+   * configureForAdminApi(dockerStackConfig);
+   *
+   * Map<String, Object> request = new HashMap<>();
+   * request.put("tenantName", "Updated Tenant Name");
+   * request.put("tenantDescription", "Updated description");
+   *
+   * Response response =
+   * given()
+   * .contentType(ContentType.JSON)
+   * .header("Authorization", "Bearer " + tenantAdminAToken)
+   * .body(request)
+   * .when()
+   * .put("/tenants/" + tenantAId)
+   * .then()
+   * .extract()
+   * .response();
+   *
+   * assertThat(response.getStatusCode()).isEqualTo(403);
+   * }
+   */
 
   // NOTE: DELETE /tenants/{id} endpoint not implemented in Phase 1
   // Tenant deletion operations are not in the PRD scope
   // This test is disabled until tenant delete endpoint is added
   /*
-  @Test
-  @Order(7)
-  @DisplayName("TenantAdmin cannot delete other tenant (403)")
-  public void testTenantAdminCannotDeleteOtherTenant() {
-    configureForAdminApi(dockerStackConfig);
+   * @Test
+   *
+   * @Order(6)
+   *
+   * @DisplayName("TenantAdmin cannot delete own tenant (403)")
+   * public void testTenantAdminCannotDeleteOwnTenant() {
+   * configureForAdminApi(dockerStackConfig);
+   *
+   * Response response =
+   * given()
+   * .contentType(ContentType.JSON)
+   * .header("Authorization", "Bearer " + tenantAdminAToken)
+   * .when()
+   * .delete("/tenants/" + tenantAId)
+   * .then()
+   * .extract()
+   * .response();
+   *
+   * assertThat(response.getStatusCode()).isEqualTo(403);
+   *
+   * // Verify tenant still exists (using global admin)
+   * Response verifyResponse =
+   * given()
+   * .contentType(ContentType.JSON)
+   * .header("Authorization", "Bearer " + globalAdminToken)
+   * .when()
+   * .get("/tenants/" + tenantAId)
+   * .then()
+   * .extract()
+   * .response();
+   *
+   * assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
+   * }
+   */
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminAToken)
-            .when()
-            .delete("/tenants/" + tenantBId)
-            .then()
-            .extract()
-            .response();
-
-    assertThat(response.getStatusCode()).isEqualTo(403);
-
-    // Verify tenant still exists (using global admin)
-    Response verifyResponse =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + globalAdminToken)
-            .when()
-            .get("/tenants/" + tenantBId)
-            .then()
-            .extract()
-            .response();
-
-    assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
-  }
-  */
+  // NOTE: DELETE /tenants/{id} endpoint not implemented in Phase 1
+  // Tenant deletion operations are not in the PRD scope
+  // This test is disabled until tenant delete endpoint is added
+  /*
+   * @Test
+   *
+   * @Order(7)
+   *
+   * @DisplayName("TenantAdmin cannot delete other tenant (403)")
+   * public void testTenantAdminCannotDeleteOtherTenant() {
+   * configureForAdminApi(dockerStackConfig);
+   *
+   * Response response =
+   * given()
+   * .contentType(ContentType.JSON)
+   * .header("Authorization", "Bearer " + tenantAdminAToken)
+   * .when()
+   * .delete("/tenants/" + tenantBId)
+   * .then()
+   * .extract()
+   * .response();
+   *
+   * assertThat(response.getStatusCode()).isEqualTo(403);
+   *
+   * // Verify tenant still exists (using global admin)
+   * Response verifyResponse =
+   * given()
+   * .contentType(ContentType.JSON)
+   * .header("Authorization", "Bearer " + globalAdminToken)
+   * .when()
+   * .get("/tenants/" + tenantBId)
+   * .then()
+   * .extract()
+   * .response();
+   *
+   * assertThat(verifyResponse.getStatusCode()).isEqualTo(200);
+   * }
+   */
 
   // ========== ADMIN MANAGEMENT BOUNDARY TESTS ==========
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Ezkey Tests - Clean Start Script
-# 
+#
 # Performs a clean startup of the Docker stack for testing:
 # 1. Stops Docker Compose stack including volumes
 # 2. Cleans test state files in .ezkey-test directory
