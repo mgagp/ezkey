@@ -34,6 +34,7 @@ import java.util.List;
  * <p><b>License:</b> MIT
  *
  * @param id Unique identifier for the integration (auto-generated primary key from the database)
+ * @param tenantId Tenant ID that owns this integration (for multi-tenant isolation verification)
  * @param logo URL or path to the integration logo image (used for displaying the integration brand
  *     in user interfaces)
  * @param active Integration status flag (indicates whether the integration is currently active and
@@ -51,6 +52,7 @@ import java.util.List;
 @Schema(description = "Response DTO containing complete integration details")
 public record IntegrationResponseDto(
     @Schema(description = "Unique identifier for the integration", example = "1") Integer id,
+    @Schema(description = "Tenant ID that owns this integration", example = "2") Integer tenantId,
     @Schema(
             description = "URL or path to the integration logo image",
             example = "https://example.com/logo.png")

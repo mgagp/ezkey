@@ -343,8 +343,20 @@ public class IntegrationController {
   public ResponseEntity<Void> delete(
       @Parameter(description = "Integration ID to delete", example = "1") @PathVariable("id")
           Integer id) {
-    // Check if integration exists before deleting
-    service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+
+    // Check if integration exists
+    Integration integration =
+        service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+
+    // Validate tenant access for TenantAdmin
+    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN) {
+      if (!integration.getTenant().getTenantId().equals(currentAdmin.getTenant().getTenantId())) {
+        // Return 404 to hide existence of cross-tenant resource
+        throw new ResourceNotFoundException("Integration", id);
+      }
+    }
+
     service.delete(id);
     return ResponseEntity.noContent().build();
   }

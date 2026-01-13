@@ -20,26 +20,35 @@ package org.ezkey.tests.tags;
  *
  * <h3>On Test Classes</h3>
  *
- * <pre>{@code
- * @Tag(TestTags.FAST)
- * @Tag(TestTags.ENCRYPTION)
- * public class KeyRotationBasicTest { }
- * }</pre>
+ * <pre>
+ * {
+ *   &#64;code
+ *   &#64;Tag(TestTags.FAST)
+ *   @Tag(TestTags.ENCRYPTION)
+ *   public class KeyRotationBasicTest {
+ *   }
+ * }
+ * </pre>
  *
  * <h3>On Test Methods (Override)</h3>
  *
- * <pre>{@code
- * @Tag(TestTags.SLOW)  // Class-level default
- * public class KeyRotationSyncWindowTest {
+ * <pre>
+ * {
+ *   &#64;code
+ *   &#64;Tag(TestTags.SLOW) // Class-level default
+ *   public class KeyRotationSyncWindowTest {
+ *
+ *     &#64;Test
+ *     void testSlowOperation() {
+ *     } // Inherits @Tag("slow")
  *
  *     @Test
- *     void testSlowOperation() { }  // Inherits @Tag("slow")
- *
- *     @Test
- *     @Tag(TestTags.FAST)  // Override for this specific test
- *     void testQuickValidation() { }
+ *     &#64;Tag(TestTags.FAST) // Override for this specific test
+ *     void testQuickValidation() {
+ *     }
+ *   }
  * }
- * }</pre>
+ * </pre>
  *
  * <h2>Maven Execution</h2>
  *
@@ -260,4 +269,32 @@ public final class TestTags {
    * </ul>
    */
   public static final String CROSS_INSTANCE = "cross-instance";
+
+  /**
+   * Tests related to multi-tenant isolation and permissions.
+   *
+   * <p>Includes:
+   *
+   * <ul>
+   *   <li>Cross-tenant isolation
+   *   <li>Tenant boundary permissions
+   *   <li>TenantAdmin scope restrictions
+   *   <li>Data leakage prevention
+   * </ul>
+   */
+  public static final String MULTI_TENANT = "multi-tenant";
+
+  /**
+   * Tests related to security and authorization.
+   *
+   * <p>Includes:
+   *
+   * <ul>
+   *   <li>Authentication failures (401)
+   *   <li>Authorization failures (403)
+   *   <li>Access control validation
+   *   <li>Security boundaries
+   * </ul>
+   */
+  public static final String SECURITY = "security";
 }

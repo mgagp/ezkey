@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "633c8fa1-be1d-47da-ba89-79304eb68eb2",
 		"name": "EZ Key API Keys admin",
-		"description": "Collection for API key management operations in the Admin API.\n\n## Endpoints\n\n- **Create API Key**: Create a new API key pair for machine-to-machine authentication\n- **List API Keys**: List all active API keys for a specific integration\n- **Get API Key**: Get details of a specific API key by ID\n- **Revoke API Key**: Immediately revoke an API key, making it unusable\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all API keys across all tenants\n- **TenantAdmin**: Can only access API keys for integrations within their tenant\n- **Access Validation**: API key creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create API key for integration from another tenant\n\n## Security Notes\n\n- Secret keys are shown **ONLY ONCE** during creation and cannot be retrieved later\n- Lost secret keys cannot be recovered - create a new key instead\n- API keys use HTTP Basic Authentication for machine-to-machine access\n- Rate limiting: 1000 requests per hour per integration key",
+		"description": "Collection for API key management operations in the Admin API.\n\n## Endpoints\n\n- **Create API Key**: Create a new API key pair for machine-to-machine authentication\n- **List All API Keys**: List all API keys visible to the current admin (tenant-filtered)\n- **List API Keys for Integration**: List all active API keys for a specific integration\n- **Get API Key**: Get details of a specific API key by ID\n- **Revoke API Key**: Immediately revoke an API key, making it unusable\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all API keys across all tenants\n- **TenantAdmin**: Can only access API keys for integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only their tenant's API keys)\n- **Access Validation**: API key creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create API key for integration from another tenant\n\n## Security Notes\n\n- Secret keys are shown **ONLY ONCE** during creation and cannot be retrieved later\n- Lost secret keys cannot be recovered - create a new key instead\n- API keys use HTTP Basic Authentication for machine-to-machine access\n- Rate limiting: 1000 requests per hour per integration key",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -62,6 +62,62 @@
 					]
 				},
 				"description": "Creates a new API key pair for an integration. The secret key is shown **ONLY ONCE** in the response and must be saved immediately.\n\n**Request Body:**\n- `integrationId` (required): Integration ID this API key belongs to\n- `description` (optional): Human-readable description\n- `expiresAt` (optional): Expiration date in UTC (ISO 8601 format)\n- `ipWhitelist` (optional): Array of IP addresses or CIDR ranges\n\n**Response (201 Created):**\n- `apiKeyId`: Database ID of the created API key\n- `integrationKey`: Public integration key (safe to display)\n- `secretKey`: Secret key (**SHOWN ONCE ONLY** - save immediately!)\n- `description`: Description provided in request\n- `createdAt`: Creation timestamp\n- `expiresAt`: Expiration date (null if no expiration)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `warning`: Security warning message\n\n**Status Codes:**\n- 201: API key created successfully\n- 400: Invalid request data\n- 401: Unauthorized - admin token required\n- 404: Integration not found or inactive\n- 409: Maximum active keys limit reached (5 keys per integration)"
+			},
+			"response": []
+		},
+		{
+			"name": "list all keys",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.length > 0) {",
+							"        pm.environment.set(\"apiKeyId\", jsonData[0].apiKeyId);",
+							"        pm.environment.set(\"integrationKey\", jsonData[0].integrationKey);",
+							"        ",
+							"        pm.test(\"API keys contain required fields\", function () {",
+							"            pm.expect(jsonData[0]).to.have.property('apiKeyId');",
+							"            pm.expect(jsonData[0]).to.have.property('integrationId');",
+							"            pm.expect(jsonData[0]).to.have.property('integrationKey');",
+							"            pm.expect(jsonData[0]).to.have.property('active');",
+							"            pm.expect(jsonData[0]).to.have.property('createdAt');",
+							"        });",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/api-keys",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"api-keys"
+					]
+				},
+				"description": "Lists all API keys visible to the current admin. Results are automatically filtered based on admin type and tenant assignment. Secret keys are **never** included in the response.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all API keys across all tenants\n- **TenantAdmin**: Sees only API keys for integrations within their tenant (automatic filtering)\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Response (200 OK):**\nArray of API key objects, each containing:\n- `apiKeyId`: Database ID of the API key\n- `integrationId`: Integration ID this key belongs to\n- `integrationKey`: Public integration key (safe to display)\n- `description`: Human-readable description\n- `active`: Whether the key is active (false if revoked)\n- `createdAt`: Creation timestamp (UTC with timezone)\n- `expiresAt`: Expiration date (null if no expiration)\n- `lastUsedAt`: Last successful authentication timestamp (null if never used)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `revokedAt`: Revocation timestamp (null if active)\n- `revokedByUsername`: Admin who revoked this key (null if active)\n\n**Use Cases:**\n- Dashboard view of all API keys for tenant\n- Audit and compliance reporting\n- Key rotation management\n- Security reviews\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
 			},
 			"response": []
 		},

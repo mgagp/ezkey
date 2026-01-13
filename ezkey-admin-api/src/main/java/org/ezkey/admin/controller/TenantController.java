@@ -120,14 +120,14 @@ public class TenantController {
   /**
    * Lists tenants.
    *
-   * <p>Global administrators can list all tenants. Tenant administrators can only see their own
-   * tenant.
+   * <p>Global administrators can list all tenants. Tenant administrators cannot access this
+   * endpoint.
    *
    * @param auth the authentication context
    * @return ResponseEntity with list of tenants (200 OK)
    */
   @GetMapping
-  @PreAuthorize("hasRole('ADMIN')")
+  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
   @Operation(
       summary = "List tenants",
       description =
@@ -181,15 +181,15 @@ public class TenantController {
   /**
    * Gets a tenant by ID.
    *
-   * <p>Global administrators can view any tenant. Tenant administrators can only view their own
-   * tenant.
+   * <p>Only global administrators can view tenants. Tenant administrators cannot access this
+   * endpoint.
    *
    * @param id the tenant ID
    * @param auth the authentication context
    * @return ResponseEntity with tenant (200 OK) or 404 Not Found
    */
   @GetMapping("/{id}")
-  @PreAuthorize("hasRole('ADMIN')")
+  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
   @Operation(
       summary = "Get tenant by ID",
       description =

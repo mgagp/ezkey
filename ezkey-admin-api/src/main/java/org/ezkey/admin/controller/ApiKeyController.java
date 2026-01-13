@@ -224,6 +224,74 @@ public class ApiKeyController {
   }
 
   /**
+   * Lists all API keys visible to the current admin.
+   *
+   * <p>This endpoint returns API keys based on admin type:
+   *
+   * <ul>
+   *   <li><b>GlobalAdmin:</b> Can see all API keys across all tenants
+   *   <li><b>TenantAdmin:</b> Can only see API keys for integrations in their own tenant
+   * </ul>
+   *
+   * <p>The secret keys are never included in the response for security.
+   *
+   * @return ResponseEntity containing list of API keys
+   */
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping
+  @Operation(
+      summary = "List all API keys for current admin",
+      description =
+          "Returns API keys filtered by admin type. GlobalAdmin sees all keys, "
+              + "TenantAdmin sees only keys for their tenant's integrations. Secret keys are never"
+              + " included.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of API keys",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiKeyResponseDto.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required")
+      })
+  public ResponseEntity<List<ApiKeyResponseDto>> listAllApiKeys() {
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+
+    logger.info(
+        "Listing API keys for admin: {} (type: {})",
+        currentAdmin.getUsername(),
+        currentAdmin.getAdminType());
+
+    List<ApiKey> apiKeys;
+
+    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      // GlobalAdmin can see all API keys
+      logger.debug("GlobalAdmin - fetching all API keys");
+      apiKeys = apiKeyService.findAll();
+    } else {
+      // TenantAdmin sees only keys for their tenant's integrations
+      Integer tenantId = currentAdmin.getTenant().getTenantId();
+      logger.debug("TenantAdmin - fetching API keys for tenant: {}", tenantId);
+      apiKeys = apiKeyService.listApiKeysByTenant(tenantId);
+    }
+
+    logger.debug("Found {} API keys before mapping", apiKeys.size());
+
+    List<ApiKeyResponseDto> response =
+        apiKeys.stream().map(this::mapToResponseDto).collect(Collectors.toList());
+
+    logger.info(
+        "Found {} API keys for admin: {} (type: {})",
+        response.size(),
+        currentAdmin.getUsername(),
+        currentAdmin.getAdminType());
+
+    return ResponseEntity.ok(response);
+  }
+
+  /**
    * Lists all active API keys for a specific integration.
    *
    * <p>This endpoint returns all active (non-revoked) API keys for the specified integration. The

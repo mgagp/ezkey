@@ -27,6 +27,9 @@ import org.slf4j.LoggerFactory;
  * etc.) through the Admin API and Auth API. These methods simplify test setup by encapsulating
  * common creation patterns.
  *
+ * <p>Supports opportunistic reuse: Some methods (findOrCreate*) will search for existing entities
+ * matching the criteria before creating new ones, reducing overhead in repeated test runs.
+ *
  * @since 2025
  */
 public class TestDataFactory {
@@ -185,5 +188,287 @@ public class TestDataFactory {
    */
   public Integer createAuthAttempt(Integer enrollmentId) {
     return createAuthAttempt(enrollmentId, false);
+  }
+
+  /**
+   * Creates a tenant via Admin API.
+   *
+   * <p>Creates a new tenant with a unique name to ensure idempotence across test runs.
+   *
+   * @param tenantName Tenant name
+   * @param adminToken Admin bearer token (must be GlobalAdmin)
+   * @return Tenant ID
+   */
+  public Integer createTenant(String tenantName, String adminToken) {
+    log.debug("Creating tenant: {}", tenantName);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("tenantName", tenantName);
+    request.put("tenantDescription", "Test tenant: " + tenantName);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(request)
+            .when()
+            .post("/tenants")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    Integer tenantId = response.jsonPath().getInt("tenantId");
+    log.debug("Created tenant with ID: {}", tenantId);
+
+    return tenantId;
+  }
+
+  /**
+   * Creates a tenant admin via Admin API (without full authentication).
+   *
+   * <p>Creates a new tenant admin record but does NOT complete the enrollment flow. The returned
+   * token is null - tests should use the globalAdminToken instead for operations that require
+   * authentication.
+   *
+   * <p>This simple approach avoids complex enrollment binding and device key generation during test
+   * setup while still creating the required admin records.
+   *
+   * @param username Admin username
+   * @param tenantId Tenant ID
+   * @param adminToken Admin bearer token (must be GlobalAdmin or TenantAdmin of same tenant)
+   * @return null - use globalAdminToken for authenticated API calls instead
+   */
+  public String createTenantAdmin(String username, Integer tenantId, String adminToken) {
+    log.debug("Creating tenant admin: {} for tenant: {}", username, tenantId);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("username", username);
+    request.put("email", username + "@example.com");
+    request.put("firstName", "Test");
+    request.put("lastName", "Admin");
+    request.put("tenantId", tenantId);
+
+    Response createResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(request)
+            .when()
+            .post("/admins/tenant")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    Integer adminId = createResponse.jsonPath().getInt("adminId");
+
+    log.debug("Created tenant admin with ID: {}", adminId);
+
+    // Return null - caller should use global admin token for authentication
+    // Full enrollment flow requires device keys which are handled separately
+    return null;
+  }
+
+  /**
+   * Creates an integration for a specific tenant via Admin API.
+   *
+   * <p>Creates a new integration assigned to the specified tenant.
+   *
+   * @param name Integration name
+   * @param tenantId Tenant ID
+   * @param adminToken Admin bearer token (must have access to tenant)
+   * @return Integration ID
+   */
+  public Integer createIntegrationForTenant(String name, Integer tenantId, String adminToken) {
+    log.debug("Creating integration: {} for tenant: {}", name, tenantId);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> i18n = new HashMap<>();
+    i18n.put("language", "en");
+    i18n.put("name", name);
+    i18n.put("description", "Test integration for tenant: " + tenantId);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("logo", "https://example.com/logo.png");
+    request.put("tenantId", tenantId);
+    request.put("i18n", new Object[] {i18n});
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(request)
+            .when()
+            .post("/integrations")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    Integer integrationId = response.jsonPath().getInt("id");
+    log.debug("Created integration with ID: {} for tenant: {}", integrationId, tenantId);
+
+    return integrationId;
+  }
+
+  /**
+   * Creates an API key for an integration via Admin API.
+   *
+   * <p>Creates a new API key with a unique description to ensure idempotence.
+   *
+   * @param integrationId Integration ID
+   * @param adminToken Admin bearer token
+   * @return API key credentials as "integrationKey:secretKey"
+   */
+  public String createApiKeyForIntegration(Integer integrationId, String adminToken) {
+    log.debug("Creating API key for integration: {}", integrationId);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+    Map<String, Object> request = new HashMap<>();
+    request.put("integrationId", integrationId);
+    request.put("description", "Test API Key " + uniqueSuffix);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(request)
+            .when()
+            .post("/api-keys")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    String integrationKey = response.jsonPath().getString("integrationKey");
+    String secretKey = response.jsonPath().getString("secretKey");
+
+    String credentials = integrationKey + ":" + secretKey;
+    log.debug("Created API key for integration: {}", integrationId);
+
+    return credentials;
+  }
+
+  /**
+   * Finds or creates a tenant by name.
+   *
+   * <p>Searches for existing tenant with matching name first. If found, returns its ID. Otherwise
+   * creates a new tenant.
+   *
+   * <p>This is useful for test idempotence - tests can reference tenants by name and reuse existing
+   * ones across runs.
+   *
+   * @param tenantName Tenant name
+   * @param adminToken Admin bearer token (must be GlobalAdmin)
+   * @return Tenant ID (existing or newly created)
+   */
+  public Integer findOrCreateTenant(String tenantName, String adminToken) {
+    log.debug("Finding or creating tenant: {}", tenantName);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    // Try to find existing tenant
+    Response listResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/tenants")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    // Check if tenant with this name exists
+    java.util.List<Map<String, Object>> tenants = listResponse.jsonPath().getList("content");
+    if (tenants != null) {
+      for (Map<String, Object> tenant : tenants) {
+        if (tenant != null && tenantName.equals(tenant.get("tenantName"))) {
+          Integer tenantId = (Integer) tenant.get("tenantId");
+          log.debug("Found existing tenant: {} with ID: {}", tenantName, tenantId);
+          return tenantId;
+        }
+      }
+    }
+
+    // Not found, create new tenant
+    log.debug("Tenant not found, creating new: {}", tenantName);
+    return createTenant(tenantName, adminToken);
+  }
+
+  /**
+   * Finds or creates an integration by name and tenant.
+   *
+   * <p>Searches for existing integration with matching name in the specified tenant. If found,
+   * returns its ID. Otherwise creates a new integration.
+   *
+   * <p>This is useful for test idempotence - tests can reference integrations by name and reuse
+   * existing ones across runs.
+   *
+   * @param name Integration name
+   * @param tenantId Tenant ID (null for system tenant)
+   * @param adminToken Admin bearer token
+   * @return Integration ID (existing or newly created)
+   */
+  public Integer findOrCreateIntegration(String name, Integer tenantId, String adminToken) {
+    log.debug("Finding or creating integration: {} for tenant: {}", name, tenantId);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    // Try to find existing integration
+    Response listResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/integrations")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    // Check if integration with this name exists for this tenant
+    java.util.List<Map<String, Object>> integrations = listResponse.jsonPath().getList("content");
+    if (integrations != null) {
+      for (Map<String, Object> integration : integrations) {
+        if (integration == null) {
+          continue;
+        }
+        // Get i18n array and extract name
+        java.util.List<Map<String, Object>> i18nList =
+            (java.util.List<Map<String, Object>>) integration.get("i18n");
+        if (i18nList != null && !i18nList.isEmpty()) {
+          String integrationName = (String) i18nList.get(0).get("name");
+          Integer integrationTenantId = (Integer) integration.get("tenantId");
+
+          // Match name and tenant
+          boolean tenantMatch =
+              (tenantId == null && integrationTenantId == null)
+                  || (tenantId != null && tenantId.equals(integrationTenantId));
+
+          if (name.equals(integrationName) && tenantMatch) {
+            Integer integrationId = (Integer) integration.get("id");
+            log.debug("Found existing integration: {} with ID: {}", name, integrationId);
+            return integrationId;
+          }
+        }
+      }
+    }
+
+    // Not found, create new integration
+    log.debug("Integration not found, creating new: {}", name);
+    if (tenantId != null) {
+      return createIntegrationForTenant(name, tenantId, adminToken);
+    } else {
+      return createIntegration(name, "Test integration", null);
+    }
   }
 }

@@ -284,6 +284,33 @@ public class ApiKeyService {
   }
 
   /**
+   * Lists all API keys for integrations belonging to a specific tenant.
+   *
+   * <p>This method is used for tenant-scoped admin operations to list all API keys (active and
+   * revoked) for integrations within a specific tenant.
+   *
+   * @param tenantId the tenant ID to filter by
+   * @return List of API keys for the tenant's integrations
+   */
+  @Transactional(readOnly = true)
+  public List<ApiKey> listApiKeysByTenant(Integer tenantId) {
+    return apiKeyRepository.findByIntegration_Tenant_TenantId(tenantId);
+  }
+
+  /**
+   * Lists all API keys across all integrations and tenants.
+   *
+   * <p>This method is used by GlobalAdmin to view all API keys in the system. Should be used with
+   * caution in production due to potential large result sets.
+   *
+   * @return List of all API keys in the system
+   */
+  @Transactional(readOnly = true)
+  public List<ApiKey> findAll() {
+    return apiKeyRepository.findAll();
+  }
+
+  /**
    * Lists all active API keys for an integration.
    *
    * <p>This method returns all active (non-revoked) API keys for a specific integration. Used for
@@ -376,7 +403,8 @@ public class ApiKeyService {
     for (ApiKey key : expiredKeys) {
       key.setActive(false);
       key.setRevokedAt(OffsetDateTime.now());
-      // Note: revoked_by_admin_id is null for automatic expiration (vs manual revocation)
+      // Note: revoked_by_admin_id is null for automatic expiration (vs manual
+      // revocation)
       apiKeyRepository.save(key);
 
       logger.info(

@@ -34,6 +34,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +89,8 @@ class EnrollmentServiceTest {
   @Mock private SignatureService signatureService;
 
   @Mock private EzkeyCoreProperties ezkeyCoreProperties;
+
+  @Mock private IntegrationRepository integrationRepository;
 
   @Mock private EnrollmentBindService bindService;
 
@@ -147,6 +150,9 @@ class EnrollmentServiceTest {
 
     // Setup EC P-256 key pair
     ecp256KeyPair = new ECP256KeyPair("private-key", "public-key");
+
+    // Setup integration repository mock - validates integration exists during enrollment creation
+    when(integrationRepository.findById(123)).thenReturn(Optional.of(integration));
   }
 
   // ===== CREATE ENDPOINT TESTS =====

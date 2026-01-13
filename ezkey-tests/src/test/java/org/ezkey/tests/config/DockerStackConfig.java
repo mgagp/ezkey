@@ -41,8 +41,6 @@ public class DockerStackConfig {
   private static final String DEFAULT_CRYPTO_API_URL = "http://localhost:9090";
   private static final String DEFAULT_ADMIN_ACTUATOR_URL = "http://localhost:9081";
   private static final String DEFAULT_AUTH_ACTUATOR_URL = "http://localhost:8081";
-  private static final String HAPROXY_ADMIN_STATS_URL = "http://localhost:9081/stats";
-  private static final String HAPROXY_AUTH_STATS_URL = "http://localhost:8081/stats";
 
   private final String adminApiUrl;
   private final String authApiUrl;
@@ -104,57 +102,22 @@ public class DockerStackConfig {
   /**
    * Verifies that all Docker stack services are healthy and accessible.
    *
-   * <p>Checks the health endpoint of each service. Admin API, Auth API, and Crypto API are
-   * required.
+   * <p>Checks the health endpoint of each service via their management ports (Actuator endpoints).
+   * Admin API, Auth API, and Crypto API are required.
+   *
+   * <p>Uses dedicated management ports (9081, 8081, 9090) for health verification. These ports are
+   * exposed in both standard and HA modes for consistent verification logic.
    *
    * @throws IllegalStateException if any service is not healthy
    */
   public void verifyServicesHealthy() {
     log.info("Verifying Docker stack services are healthy...");
 
-    verifyServiceHealthyWithFallback(
-        adminActuatorUrl, "Admin API", "Admin Actuator", HAPROXY_ADMIN_STATS_URL);
-    verifyServiceHealthyWithFallback(
-        authActuatorUrl, "Auth API", "Auth Actuator", HAPROXY_AUTH_STATS_URL);
+    verifyServiceHealthy(adminActuatorUrl, "Admin API");
+    verifyServiceHealthy(authActuatorUrl, "Auth API");
     verifyServiceHealthy(cryptoApiUrl, "Crypto API");
 
     log.info("All Docker stack services are healthy");
-  }
-
-  /**
-   * Verifies a service is healthy using its Actuator URL, with a fallback to HAProxy stats.
-   *
-   * <p>Rationale:
-   *
-   * <ul>
-   *   <li>In the standard Docker stack, Actuator runs on a dedicated management port (e.g., 9081,
-   *       8081) and may or may not be published depending on the compose mode.
-   *   <li>In the HA stack, ports 9081 and 8081 are used by HAProxy stats pages. Actuator is not
-   *       routed through HAProxy by default. In that case, the HAProxy stats endpoint is a
-   *       reasonable liveness signal for the load balancer (and indirectly for backend health).
-   * </ul>
-   *
-   * @param actuatorBaseUrl actuator base URL (no path)
-   * @param serviceName logical service name (for error messages)
-   * @param actuatorName actuator label (for logs)
-   * @param haproxyStatsUrl HAProxy stats URL (full path)
-   * @throws IllegalStateException if neither Actuator nor HAProxy stats are reachable
-   * @since 2025
-   */
-  private void verifyServiceHealthyWithFallback(
-      String actuatorBaseUrl, String serviceName, String actuatorName, String haproxyStatsUrl) {
-    try {
-      verifyServiceHealthy(actuatorBaseUrl, actuatorName);
-    } catch (Exception actuatorFailure) {
-      log.warn(
-          "{} at {} is not accessible ({}). Trying HAProxy stats fallback: {}",
-          actuatorName,
-          actuatorBaseUrl,
-          actuatorFailure.getMessage(),
-          haproxyStatsUrl);
-
-      verifyServiceHealthyUrl(haproxyStatsUrl, serviceName + " Load Balancer (stats)");
-    }
   }
 
   /**

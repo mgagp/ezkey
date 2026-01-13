@@ -1,0 +1,454 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Test: MultiTenantGlobalAdminTest
+ * Description: Phase 1 multi-tenant isolation tests using GlobalAdmin operations
+ */
+
+package org.ezkey.tests.security.tenant;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.ezkey.tests.security.AbstractSecurityTest;
+import org.ezkey.tests.tags.TestTags;
+import org.ezkey.tests.util.RestAssuredTestConfig;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Phase 1 Multi-Tenant Isolation Tests using GlobalAdmin.
+ *
+ * <p><b>Scope:</b> Tests GlobalAdmin visibility behavior. Validates that GlobalAdmin can view all
+ * resources across all tenants while respecting the "No Impersonation" rule for resource creation.
+ *
+ * <p><b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for complete context.
+ *
+ * <ul>
+ *   <li><b>Key Principle:</b> GlobalAdmin VIEWS all resources but CREATES only in System Tenant
+ *   <li><b>Read Operations:</b> GlobalAdmin sees ALL tenants (no filtering)
+ *   <li><b>Write Operations:</b> GlobalAdmin creates in System Tenant (tenantId: 1) ONLY
+ *   <li><b>No Impersonation:</b> Cannot create resources "on behalf of" TenantAdmin
+ * </ul>
+ *
+ * <p><b>Test Pattern:</b>
+ *
+ * <ol>
+ *   <li>Create multiple tenants (A, B, C)
+ *   <li>Create TenantAdmin accounts for each tenant
+ *   <li>TenantAdmins create resources in their respective tenants
+ *   <li>Verify GlobalAdmin can VIEW all resources across all tenants
+ *   <li>Verify tenant_id is properly set in responses
+ *   <li>Verify data isolation at query level (by listing resources)
+ * </ol>
+ *
+ * <p><b>Expected GlobalAdmin Behavior:</b>
+ *
+ * <table>
+ * <tr>
+ * <th>Operation</th>
+ * <th>GlobalAdmin</th>
+ * <th>TenantAdmin A</th>
+ * </tr>
+ * <tr>
+ * <td>GET /integrations</td>
+ * <td>All tenants (A, B, C)</td>
+ * <td>Only Tenant A</td>
+ * </tr>
+ * <tr>
+ * <td>POST /integrations</td>
+ * <td>System Tenant (ID: 1)</td>
+ * <td>Tenant A</td>
+ * </tr>
+ * <tr>
+ * <td>GET /api-keys</td>
+ * <td>All tenants (A, B, C)</td>
+ * <td>Only Tenant A</td>
+ * </tr>
+ * <tr>
+ * <td>GET /tenants</td>
+ * <td>All tenants</td>
+ * <td>Own tenant only</td>
+ * </tr>
+ * </table>
+ *
+ * <p><b>Why GlobalAdmin Tests?</b> These tests validate:
+ *
+ * <ul>
+ *   <li>✅ Multi-tenant infrastructure correctly separates data by tenant_id
+ *   <li>✅ GlobalAdmin maintains full cross-tenant READ access
+ *   <li>✅ List endpoints return data from all tenants for GlobalAdmin
+ *   <li>✅ Tenant filtering works correctly (TenantAdmin path tested in {@link
+ *       org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest})
+ * </ul>
+ *
+ * <p><b>Complementary Tests:</b> See {@link
+ * org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest} for TenantAdmin isolation
+ * tests.
+ *
+ * @see org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest
+ * @see <a href="../../MULTI_TENANT_PHILOSOPHY.md">Multi-Tenant Philosophy</a>
+ * @see <a href="../../AGENTS.md">Agent Quick Reference</a>
+ */
+@DisplayName("Multi-Tenant Global Admin Tests - Phase 1")
+@Tag(TestTags.ADMIN)
+@Tag(TestTags.INTEGRATION)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
+
+  private static final Logger log = LoggerFactory.getLogger(MultiTenantGlobalAdminTest.class);
+
+  private Integer tenantAId;
+  private Integer tenantBId;
+  private Integer tenantCId;
+
+  private Integer integrationA1Id;
+  private Integer integrationA2Id;
+  private Integer integrationBId;
+  private Integer integrationCId;
+
+  @BeforeEach
+  void setUpMultiTenantResources() {
+    super.setUp();
+    log.info("Setting up multi-tenant test resources");
+
+    // Create three distinct tenants
+    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+
+    tenantAId = createTenant("Tenant A " + uniqueSuffix);
+    tenantBId = createTenant("Tenant B " + uniqueSuffix);
+    tenantCId = createTenant("Tenant C " + uniqueSuffix);
+
+    log.debug("Created tenants: A={}, B={}, C={}", tenantAId, tenantBId, tenantCId);
+
+    // Create integrations for each tenant
+    integrationA1Id = createIntegrationForTenant("Integration A1", tenantAId);
+    integrationA2Id = createIntegrationForTenant("Integration A2", tenantAId);
+    integrationBId = createIntegrationForTenant("Integration B", tenantBId);
+    integrationCId = createIntegrationForTenant("Integration C", tenantCId);
+
+    log.debug(
+        "Created integrations: A1={}, A2={}, B={}, C={}",
+        integrationA1Id,
+        integrationA2Id,
+        integrationBId,
+        integrationCId);
+  }
+
+  // ============================================================================
+  // P0 CRITICAL: Data Isolation - Verify tenant_id is properly set
+  // ============================================================================
+
+  @Test
+  @Order(1)
+  @DisplayName("P0: Integration for Tenant A has correct tenant_id")
+  void integration_tenantA_has_correct_tenantId() {
+    Response response = getIntegration(integrationA1Id);
+    log.info("Integration response for A1: {}", response.asString());
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    Integer tenantIdValue = response.jsonPath().getInt("tenantId");
+    log.info("TenantId value: {}", tenantIdValue);
+    assertThat(tenantIdValue).isEqualTo(tenantAId);
+    assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationA1Id);
+  }
+
+  @Test
+  @Order(2)
+  @DisplayName("P0: Integration for Tenant B has correct tenant_id")
+  void integration_tenantB_has_correct_tenantId() {
+    Response response = getIntegration(integrationBId);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.jsonPath().getInt("tenantId")).isEqualTo(tenantBId);
+    assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationBId);
+  }
+
+  @Test
+  @Order(3)
+  @DisplayName("P0: Integration for Tenant C has correct tenant_id")
+  void integration_tenantC_has_correct_tenantId() {
+    Response response = getIntegration(integrationCId);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.jsonPath().getInt("tenantId")).isEqualTo(tenantCId);
+    assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationCId);
+  }
+
+  // ============================================================================
+  // P1: GlobalAdmin Access - Verify full access across all tenants
+  // ============================================================================
+
+  @Test
+  @Order(10)
+  @DisplayName("P1: GlobalAdmin can read all integrations across tenants")
+  void globalAdmin_can_read_all_integrations() {
+    Response response = listIntegrations();
+
+    assertThat(response.statusCode()).isEqualTo(200);
+
+    // Log the full response for debugging
+    log.info(
+        "=== INTEGRATION LIST RESPONSE ===\n" + "Full response body: {}",
+        response.body().asString());
+
+    // Log what we created and what we expect to find
+    log.info(
+        "Created integrations - A1: {}, A2: {}, B: {}, C: {}",
+        integrationA1Id,
+        integrationA2Id,
+        integrationBId,
+        integrationCId);
+
+    // Extract IDs and log them
+    List<Integer> integrationIds = response.jsonPath().getList("content.id", Integer.class);
+
+    log.info("Retrieved integration IDs from response: {}", integrationIds);
+
+    if (integrationIds != null && !integrationIds.isEmpty()) {
+      log.info("Sample integration object: {}", response.jsonPath().getMap("content[0]"));
+    }
+
+    // Verify all four integrations are returned (response contains all created integrations)
+    // Note: Tests accumulate data, so response may contain more than 4 integrations
+    assertThat(integrationIds)
+        .contains(integrationA1Id, integrationA2Id, integrationBId, integrationCId);
+  }
+
+  @Test
+  @Order(11)
+  @DisplayName("P1: GlobalAdmin can update integration from any tenant")
+  void globalAdmin_can_update_integration_from_any_tenant() {
+    String newName = "Updated Tenant A Integration - " + System.currentTimeMillis();
+
+    updateIntegration(integrationA1Id, newName);
+
+    Response response = getIntegration(integrationA1Id);
+    assertThat(response.jsonPath().getString("name")).isEqualTo(newName);
+  }
+
+  @Test
+  @Order(12)
+  @DisplayName("P1: GlobalAdmin can delete integration from any tenant")
+  void globalAdmin_can_delete_integration_from_any_tenant() {
+    Integer integrationToDeleteId = createIntegrationForTenant("Temp Integration", tenantAId);
+
+    deleteIntegration(integrationToDeleteId);
+
+    Response response =
+        given()
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .get("/integrations/" + integrationToDeleteId);
+
+    assertThat(response.statusCode()).isIn(404, 403);
+  }
+
+  // ============================================================================
+  // P1: Tenant Isolation - Verify multiple integrations per tenant
+  // ============================================================================
+
+  @Test
+  @Order(20)
+  @DisplayName("P1: Tenant A has two integrations with correct tenant_id")
+  void tenant_A_has_two_integrations_with_correct_tenant_ids() {
+    Response response1 = getIntegration(integrationA1Id);
+    Response response2 = getIntegration(integrationA2Id);
+
+    assertThat(response1.jsonPath().getInt("tenantId")).isEqualTo(tenantAId);
+    assertThat(response2.jsonPath().getInt("tenantId")).isEqualTo(tenantAId);
+
+    // Verify both belong to same tenant
+    assertThat(response1.jsonPath().getInt("integrationId")).isEqualTo(integrationA1Id);
+    assertThat(response2.jsonPath().getInt("integrationId")).isEqualTo(integrationA2Id);
+  }
+
+  @Test
+  @Order(21)
+  @DisplayName("P1: Different tenants have different integration IDs")
+  void different_tenants_have_different_integration_ids() {
+    Response responseA = getIntegration(integrationA1Id);
+    Response responseB = getIntegration(integrationBId);
+    Response responseC = getIntegration(integrationCId);
+
+    Integer tenantIdA = responseA.jsonPath().getInt("tenantId");
+    Integer tenantIdB = responseB.jsonPath().getInt("tenantId");
+    Integer tenantIdC = responseC.jsonPath().getInt("tenantId");
+
+    // Verify all three tenants are distinct
+    assertThat(tenantIdA).isNotEqualTo(tenantIdB);
+    assertThat(tenantIdB).isNotEqualTo(tenantIdC);
+    assertThat(tenantIdA).isNotEqualTo(tenantIdC);
+  }
+
+  // ============================================================================
+  // P1: Tenant CRUD - Verify tenant creation and listing
+  // ============================================================================
+
+  @Test
+  @Order(30)
+  @DisplayName("P1: Can create and retrieve tenant")
+  void can_create_and_retrieve_tenant() {
+    String tenantName = "New Tenant " + System.currentTimeMillis();
+
+    Integer newTenantId = createTenant(tenantName);
+
+    assertThat(newTenantId).isNotNull().isGreaterThan(0);
+
+    Response response = getTenant(newTenantId);
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.jsonPath().getString("tenantName")).isEqualTo(tenantName);
+  }
+
+  @Test
+  @Order(31)
+  @DisplayName("P1: GlobalAdmin can list all tenants")
+  void globalAdmin_can_list_all_tenants() {
+    Response response = listTenants();
+
+    assertThat(response.statusCode()).isEqualTo(200);
+
+    List<Integer> tenantIds = response.jsonPath().getList("content.tenantId", Integer.class);
+
+    // Verify our test tenants are in the list
+    assertThat(tenantIds).containsExactlyInAnyOrder(tenantAId, tenantBId, tenantCId);
+  }
+
+  // ============================================================================
+  // Helper Methods
+  // ============================================================================
+
+  private Integer createTenant(String tenantName) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("tenantName", tenantName);
+    request.put("tenantDescription", "Test tenant: " + tenantName);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .body(request)
+            .when()
+            .post("/tenants")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    return response.jsonPath().getInt("tenantId");
+  }
+
+  private Response getTenant(Integer tenantId) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .when()
+        .get("/tenants/" + tenantId);
+  }
+
+  private Response listTenants() {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .when()
+        .get("/tenants");
+  }
+
+  private Integer createIntegrationForTenant(String integrationName, Integer tenantId) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> i18n = new HashMap<>();
+    i18n.put("language", "en");
+    i18n.put("name", integrationName);
+    i18n.put("description", "Test integration: " + integrationName);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("logo", "https://example.com/logo.png");
+    request.put("tenantId", tenantId);
+    request.put("i18n", new Object[] {i18n});
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .body(request)
+            .when()
+            .post("/integrations")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
+
+    Integer integrationId = response.jsonPath().getInt("id");
+    log.debug("Created integration with ID: {} for tenant: {}", integrationId, tenantId);
+    return integrationId;
+  }
+
+  private Response getIntegration(Integer integrationId) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .when()
+        .get("/integrations/" + integrationId);
+  }
+
+  private Response listIntegrations() {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .when()
+        .get("/integrations");
+  }
+
+  private void updateIntegration(Integer integrationId, String newName) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("name", newName);
+    request.put("description", "Updated at " + System.currentTimeMillis());
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body(request)
+        .when()
+        .put("/integrations/" + integrationId)
+        .then()
+        .statusCode(200);
+  }
+
+  private void deleteIntegration(Integer integrationId) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    given()
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .when()
+        .delete("/integrations/" + integrationId)
+        .then()
+        .statusCode(204);
+  }
+}

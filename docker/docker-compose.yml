@@ -71,6 +71,7 @@ services:
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap
     ports:
       - "9080:9080"
+      - "9081:9081"
     networks:
       - ezkey-network
     restart: on-failure:3
@@ -102,6 +103,7 @@ services:
       - encryption-secrets:/etc/ezkey
     ports:
       - "8080:8080"
+      - "8081:8081"
     networks:
       - ezkey-network
     restart: on-failure:3

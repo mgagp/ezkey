@@ -40,6 +40,8 @@ class IntegrationResponseDtoTest {
 
   private static final Integer TEST_ID = 1;
 
+  private static final Integer TEST_TENANT_ID = 2;
+
   private static final String TEST_LOGO = "https://example.com/logo.png";
 
   private static final Boolean TEST_ACTIVE = true;
@@ -55,10 +57,11 @@ class IntegrationResponseDtoTest {
 
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
 
     // Assert
     assertThat(dto.id()).isEqualTo(TEST_ID);
+    assertThat(dto.tenantId()).isEqualTo(TEST_TENANT_ID);
     assertThat(dto.logo()).isEqualTo(TEST_LOGO);
     assertThat(dto.active()).isEqualTo(TEST_ACTIVE);
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
@@ -70,8 +73,7 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithEmptyI18nList() {
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(
-            TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
 
     // Assert
     assertThat(dto.id()).isEqualTo(TEST_ID);
@@ -83,7 +85,7 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithNullI18nList() {
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, null);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, null);
 
     // Assert
     assertThat(dto.id()).isEqualTo(TEST_ID);
@@ -95,8 +97,7 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithInactiveStatus() {
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(
-            TEST_ID, TEST_LOGO, false, TEST_CREATED_AT, Collections.emptyList());
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, false, TEST_CREATED_AT, Collections.emptyList());
 
     // Assert
     assertThat(dto.active()).isFalse();
@@ -107,8 +108,7 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithNullLogo() {
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(
-            TEST_ID, null, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, null, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
 
     // Assert
     assertThat(dto.logo()).isNull();
@@ -121,11 +121,11 @@ class IntegrationResponseDtoTest {
     // Arrange
     List<IntegrationI18nResponseDto> i18nList = createTestI18nList();
     IntegrationResponseDto dto1 =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
     IntegrationResponseDto dto2 =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
     IntegrationResponseDto dto3 =
-        new IntegrationResponseDto(2, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(2, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
 
     // Assert
     assertThat(dto1).isEqualTo(dto2);
@@ -139,7 +139,7 @@ class IntegrationResponseDtoTest {
     // Arrange
     List<IntegrationI18nResponseDto> i18nList = createTestI18nList();
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
 
     // Act
     String toString = dto.toString();
@@ -164,7 +164,7 @@ class IntegrationResponseDtoTest {
 
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
 
     // Assert
     assertThat(dto.i18n()).hasSize(4);
@@ -184,11 +184,11 @@ class IntegrationResponseDtoTest {
 
     // Act
     IntegrationResponseDto dtoUtc =
-        new IntegrationResponseDto(1, TEST_LOGO, TEST_ACTIVE, utcTime, Collections.emptyList());
+        new IntegrationResponseDto(1, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, utcTime, Collections.emptyList());
     IntegrationResponseDto dtoEst =
-        new IntegrationResponseDto(2, TEST_LOGO, TEST_ACTIVE, estTime, Collections.emptyList());
+        new IntegrationResponseDto(2, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, estTime, Collections.emptyList());
     IntegrationResponseDto dtoJst =
-        new IntegrationResponseDto(3, TEST_LOGO, TEST_ACTIVE, jstTime, Collections.emptyList());
+        new IntegrationResponseDto(3, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, jstTime, Collections.emptyList());
 
     // Assert
     assertThat(dtoUtc.createdAt().getOffset()).isEqualTo(ZoneOffset.UTC);
@@ -212,7 +212,7 @@ class IntegrationResponseDtoTest {
     for (int i = 0; i < logoUrls.length; i++) {
       IntegrationResponseDto dto =
           new IntegrationResponseDto(
-              i + 1, logoUrls[i], TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
+              i + 1, TEST_TENANT_ID, logoUrls[i], TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
       assertThat(dto.logo()).isEqualTo(logoUrls[i]);
     }
   }
@@ -223,7 +223,7 @@ class IntegrationResponseDtoTest {
     // Arrange
     List<IntegrationI18nResponseDto> i18nList = createTestI18nList();
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, i18nList);
 
     // Act
     List<IntegrationI18nResponseDto> retrievedList = dto.i18n();
@@ -243,7 +243,7 @@ class IntegrationResponseDtoTest {
     for (Integer id : ids) {
       IntegrationResponseDto dto =
           new IntegrationResponseDto(
-              id, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
+              id, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, TEST_CREATED_AT, Collections.emptyList());
       assertThat(dto.id()).isEqualTo(id);
     }
   }
@@ -253,7 +253,7 @@ class IntegrationResponseDtoTest {
   void shouldHandleNullCreatedAt() {
     // Act
     IntegrationResponseDto dto =
-        new IntegrationResponseDto(TEST_ID, TEST_LOGO, TEST_ACTIVE, null, Collections.emptyList());
+        new IntegrationResponseDto(TEST_ID, TEST_TENANT_ID, TEST_LOGO, TEST_ACTIVE, null, Collections.emptyList());
 
     // Assert
     assertThat(dto.createdAt()).isNull();
@@ -265,7 +265,7 @@ class IntegrationResponseDtoTest {
     // Act
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_LOGO, null, TEST_CREATED_AT, Collections.emptyList());
+            TEST_ID, TEST_TENANT_ID, TEST_LOGO, null, TEST_CREATED_AT, Collections.emptyList());
 
     // Assert
     assertThat(dto.active()).isNull();
@@ -279,3 +279,4 @@ class IntegrationResponseDtoTest {
             2, "fr", "Corporation ACME", "Système d'authentification sécurisé"));
   }
 }
+

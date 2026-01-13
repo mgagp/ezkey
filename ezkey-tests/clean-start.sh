@@ -161,7 +161,9 @@ if [ -d "${TEST_STATE_DIR}" ]; then
     rm -f "${TEST_STATE_DIR}/admin-token.json" 2>/dev/null || true
     rm -f "${TEST_STATE_DIR}/bootstrap-credentials.json" 2>/dev/null || true
     rm -f "${TEST_STATE_DIR}/device-credentials.json" 2>/dev/null || true
-    echo "  ✅ Test state files cleaned"
+    rm -f "${TEST_STATE_DIR}"/tenant-admin-*-device-credentials.json 2>/dev/null || true
+    rm -f "${TEST_STATE_DIR}"/tenant-admin-*-token.json 2>/dev/null || true
+    echo "  ✅ Test state files cleaned (including tenant admin credentials)"
 else
     echo "  Creating test state directory..."
     mkdir -p "${TEST_STATE_DIR}"

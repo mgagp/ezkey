@@ -317,12 +317,14 @@ public class EnrollmentController {
               .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
               .build());
 
-      // Let GlobalExceptionHandler handle the exception to return proper error response with
+      // Let GlobalExceptionHandler handle the exception to return proper error
+      // response with
       // message
       // This ensures consistent error response format across all endpoints
       throw e;
     } catch (DataIntegrityViolationException e) {
-      // Handle database constraint violations (e.g., FK constraint for non-existent integration)
+      // Handle database constraint violations (e.g., FK constraint for non-existent
+      // integration)
       // This should return 400 Bad Request, not 500 Internal Server Error
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -380,7 +382,14 @@ public class EnrollmentController {
     ClientContext context = ClientContext.from(httpRequest);
 
     try {
-      // Get enrollment details before deletion for audit
+      // Validate tenant access for enrollment
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      if (!accessControlService.canAccessEnrollment(authentication, id)) {
+        // Return 404 to hide existence of cross-tenant resource
+        throw new ResourceNotFoundException("Enrollment", id);
+      }
+
+      // Get enrollment details after access validation
       var enrollment = enrollmentService.getById(id);
 
       // Create audit log BEFORE deletion to avoid foreign key constraint violation
@@ -399,7 +408,8 @@ public class EnrollmentController {
 
       return ResponseEntity.noContent().build();
     } catch (ResourceNotFoundException e) {
-      // Audit not found - do not include enrollmentId as it doesn't exist (would violate FK
+      // Audit not found - do not include enrollmentId as it doesn't exist (would
+      // violate FK
       // constraint)
       auditLogService.log(
           AuditHelper.createAdminAudit(

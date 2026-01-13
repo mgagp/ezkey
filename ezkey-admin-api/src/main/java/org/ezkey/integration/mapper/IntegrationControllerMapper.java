@@ -151,6 +151,7 @@ public interface IntegrationControllerMapper {
    * @see Integration
    * @see IntegrationResponse
    */
+  @Mapping(source = "tenant.tenantId", target = "tenantId")
   IntegrationResponseDto toResponse(Integration integration);
 
   /**

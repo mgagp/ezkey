@@ -195,4 +195,20 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, Integer> {
           + " < :endTime ORDER BY a.expiresAt ASC")
   List<ApiKey> findKeysExpiringBetween(
       @Param("startTime") OffsetDateTime startTime, @Param("endTime") OffsetDateTime endTime);
+
+  /**
+   * Finds all API keys for integrations belonging to a specific tenant.
+   *
+   * <p>This method is used to list API keys filtered by tenant for tenant-scoped admin operations.
+   * GlobalAdmin can see all keys, TenantAdmin only sees keys for their tenant's integrations.
+   *
+   * <p><b>Performance:</b> Joins through integration table to access tenant_id
+   *
+   * @param tenantId the tenant ID to filter by
+   * @return List of API keys for the specified tenant's integrations
+   */
+  @Query(
+      "SELECT a FROM ApiKey a WHERE a.integration.tenant.tenantId = :tenantId ORDER BY"
+          + " a.createdAt DESC")
+  List<ApiKey> findByIntegration_Tenant_TenantId(@Param("tenantId") Integer tenantId);
 }
