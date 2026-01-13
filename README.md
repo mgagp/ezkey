@@ -9,6 +9,8 @@ Ezkey is a pragmatic, open-source alternative to complex passkey implementations
 ### Why Ezkey?
 
 ```mermaid
+
+Voir aussi: [docs/windows-power-shell.md](docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
 graph LR
     subgraph "Traditional MFA"
         A[Complex Setup]
@@ -450,7 +452,11 @@ The fastest way to get started is using Docker:
 ./docker/start.sh
 
 # Windows
-docker\start.bat
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
+# Or run directly from PowerShell:
+.\docker\start.ps1
 ```
 
 This will start the complete EZ Key stack including PostgreSQL, all APIs, and the demo device.
@@ -767,8 +773,11 @@ EZ Key provides a complete Docker setup for easy deployment, testing, and demons
 # Linux/Mac
 ./docker/start.sh
 
-# Windows
-docker\start.bat
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
+# Or run directly from PowerShell:
+.\docker\start.ps1
 ```
 
 **Complete Documentation:** See [docker/README.md](docker/README.md) for:

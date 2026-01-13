@@ -165,7 +165,7 @@ Comprehensive README in ezkey-tests/ covering:
 ## Running Tests
 
 ### Prerequisites
-1. Start Docker stack: `./docker/start.sh` (or `docker\start.bat` on Windows)
+1. Start Docker stack: `./docker/start.sh` (or run `./docker/start.ps1` in PowerShell)
 2. Extract bootstrap credentials: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
 3. Create admin token: `mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest`
 

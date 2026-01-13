@@ -10,9 +10,9 @@ echo.
 echo This script helps you verify that BuildKit cache is working.
 echo.
 echo To validate the cache:
-echo 1. Run a first build: docker\start.bat minimal
+echo 1. Run a first build: powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 minimal
 echo 2. Note the build time (especially dependency download time)
-echo 3. Run a second build: docker\start.bat minimal
+echo 3. Run a second build: powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 minimal
 echo 4. Compare the times - the second build should be MUCH faster
 echo.
 echo Expected behavior:
