@@ -33,12 +33,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Custom authentication filter for validating admin bearer tokens.
  *
- * <p>This filter intercepts requests with "Authorization: Bearer" headers, validates the token
- * against the database, and sets up the security context if the token is valid and not expired.
+ * <p>
+ * This filter intercepts requests with "Authorization: Bearer" headers,
+ * validates the token
+ * against the database, and sets up the security context if the token is valid
+ * and not expired.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -46,8 +51,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(AdminTokenAuthenticationFilter.class);
+  private static final Logger logger = LoggerFactory.getLogger(AdminTokenAuthenticationFilter.class);
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final AdminTokenValidationService tokenValidationService;
@@ -70,8 +74,7 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
       try {
         // Use the service for transaction-aware validation with relations loaded
-        Optional<AdminToken> tokenOptional =
-            tokenValidationService.validateTokenWithRelations(token);
+        Optional<AdminToken> tokenOptional = tokenValidationService.validateTokenWithRelations(token);
 
         if (tokenOptional.isPresent()) {
           AdminToken adminToken = tokenOptional.get();
@@ -83,12 +86,11 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
           if (admin.getAdminType() == AdminType.TENANT_ADMIN) {
             tenantId = adminToken.getTenant() != null ? adminToken.getTenant().getTenantId() : null;
           }
-          Integer integrationId =
-              adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
+          Integer integrationId = adminToken.getIntegration() != null ? adminToken.getIntegration().getId() : null;
 
           // Create AdminPrincipal with scope information
-          AdminPrincipal principal =
-              new AdminPrincipal(admin.getAdminId(), admin.getAdminType(), tenantId, integrationId);
+          AdminPrincipal principal = new AdminPrincipal(admin.getAdminId(), admin.getAdminType(), tenantId,
+              integrationId);
 
           // Build authorities: always ROLE_ADMIN, plus specific role based on admin type
           List<SimpleGrantedAuthority> authorities = new ArrayList<>();
@@ -100,11 +102,12 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
           } else if (adminType == AdminType.TENANT_ADMIN) {
             authorities.add(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN"));
           }
-          // Note: INTEGRATION_ADMIN is not activated in Phase 1, but we don't add a role for it
+          // Note: INTEGRATION_ADMIN is not activated in Phase 1, but we don't add a role
+          // for it
 
           // Create authentication object with AdminPrincipal
-          UsernamePasswordAuthenticationToken authentication =
-              new UsernamePasswordAuthenticationToken(principal, null, authorities);
+          UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(principal, null,
+              authorities);
 
           // Set authentication in security context
           SecurityContextHolder.getContext().setAuthentication(authentication);
