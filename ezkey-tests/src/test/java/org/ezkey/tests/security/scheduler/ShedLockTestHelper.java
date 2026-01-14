@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for querying ShedLock distributed locks table in PostgreSQL.
  *
- * <p>Provides methods to query the `shedlock` table directly via docker exec to verify distributed
+ * <p>Provides methods to query the `ezkey_shedlock` table directly via docker exec to verify distributed
  * locking behavior in HA deployments. This is suitable for functional E2E tests validating ShedLock
  * exclusion mutuelle.
  *
@@ -73,7 +73,7 @@ public class ShedLockTestHelper {
       boolean isActive) {}
 
   /**
-   * Verifies that the shedlock table exists in the database.
+   * Verifies that the ezkey_shedlock table exists in the database.
    *
    * @return true if table exists, false otherwise
    */
@@ -82,12 +82,12 @@ public class ShedLockTestHelper {
         "SELECT EXISTS ("
             + "SELECT FROM information_schema.tables "
             + "WHERE table_schema = 'public' "
-            + "AND table_name = 'shedlock'"
+            + "AND table_name = 'ezkey_shedlock'"
             + ");";
 
     List<String> results = executeQuery(sqlQuery);
     if (results.isEmpty()) {
-      log.warn("Could not verify if shedlock table exists (query returned no results)");
+      log.warn("Could not verify if ezkey_shedlock table exists (query returned no results)");
       return false;
     }
 
@@ -95,11 +95,11 @@ public class ShedLockTestHelper {
     boolean tableExists = "t".equals(exists) || "true".equalsIgnoreCase(exists);
     if (!tableExists) {
       log.warn(
-          "shedlock table does not exist in database. "
+          "ezkey_shedlock table does not exist in database. "
               + "ShedLock should create it automatically when the first scheduled job runs. "
               + "Make sure scheduled jobs are enabled and at least one job has executed.");
     } else {
-      log.debug("shedlock table exists in database");
+      log.debug("ezkey_shedlock table exists in database");
     }
 
     return tableExists;
@@ -274,7 +274,7 @@ public class ShedLockTestHelper {
   }
 
   /**
-   * Gets all active locks from the shedlock table.
+   * Gets all active locks from the ezkey_shedlock table.
    *
    * @return List of active lock entries (where lock_until > NOW())
    */
@@ -282,7 +282,7 @@ public class ShedLockTestHelper {
     String sqlQuery =
         "SELECT name, locked_by, locked_at, lock_until, "
             + "CASE WHEN lock_until > NOW() THEN 'true' ELSE 'false' END as is_active "
-            + "FROM shedlock "
+            + "FROM ezkey_shedlock "
             + "WHERE lock_until > NOW() "
             + "ORDER BY locked_at DESC;";
 
@@ -321,7 +321,7 @@ public class ShedLockTestHelper {
         String.format(
             "SELECT name, locked_by, locked_at, lock_until, "
                 + "CASE WHEN lock_until > NOW() THEN 'true' ELSE 'false' END as is_active "
-                + "FROM shedlock "
+                + "FROM ezkey_shedlock "
                 + "WHERE name = '%s' "
                 + "ORDER BY locked_at DESC "
                 + "LIMIT 1;",
@@ -352,7 +352,7 @@ public class ShedLockTestHelper {
   }
 
   /**
-   * Gets all locks (active and expired) from the shedlock table.
+   * Gets all locks (active and expired) from the ezkey_shedlock table.
    *
    * @return List of all lock entries
    */
@@ -360,7 +360,7 @@ public class ShedLockTestHelper {
     String sqlQuery =
         "SELECT name, locked_by, locked_at, lock_until, "
             + "CASE WHEN lock_until > NOW() THEN 'true' ELSE 'false' END as is_active "
-            + "FROM shedlock "
+            + "FROM ezkey_shedlock "
             + "ORDER BY locked_at DESC;";
 
     List<String> rows = executeQuery(sqlQuery);
@@ -395,7 +395,7 @@ public class ShedLockTestHelper {
   public int countActiveLocks(String lockName) {
     String sqlQuery =
         String.format(
-            "SELECT COUNT(*) FROM shedlock WHERE name = '%s' AND lock_until > NOW();",
+            "SELECT COUNT(*) FROM ezkey_shedlock WHERE name = '%s' AND lock_until > NOW();",
             lockName.replace("'", "''"));
 
     List<String> results = executeQuery(sqlQuery);
@@ -422,7 +422,7 @@ public class ShedLockTestHelper {
         String.format(
             "SELECT name, locked_by, locked_at, lock_until, "
                 + "CASE WHEN lock_until > NOW() THEN 'true' ELSE 'false' END as is_active "
-                + "FROM shedlock "
+                + "FROM ezkey_shedlock "
                 + "WHERE name = '%s' "
                 + "ORDER BY locked_at DESC;",
             lockName.replace("'", "''"));
@@ -555,7 +555,7 @@ public class ShedLockTestHelper {
   public Map<String, Integer> getLockDistribution() {
     String sqlQuery =
         "SELECT locked_by, COUNT(*) as lock_count "
-            + "FROM shedlock "
+            + "FROM ezkey_shedlock "
             + "WHERE lock_until > NOW() "
             + "GROUP BY locked_by "
             + "ORDER BY lock_count DESC;";

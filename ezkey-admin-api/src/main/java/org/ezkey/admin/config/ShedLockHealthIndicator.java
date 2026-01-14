@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 /**
  * Health indicator for ShedLock distributed locks visibility.
  *
- * <p>Provides operational visibility into active distributed locks by querying the shedlock table.
+ * <p>Provides operational visibility into active distributed locks by querying the ezkey_shedlock table.
  * This helps with monitoring and debugging in HA deployments.
  *
  * <p><b>Health Endpoint:</b> Accessible via Spring Boot Actuator health endpoint:
@@ -49,7 +49,7 @@ public class ShedLockHealthIndicator implements HealthIndicator {
   /**
    * Returns health status with current lock information.
    *
-   * <p>Queries the shedlock table to show active locks (where lock_until > NOW()). This provides
+   * <p>Queries the ezkey_shedlock table to show active locks (where lock_until > NOW()). This provides
    * visibility into which jobs are currently running and which instance is executing them.
    *
    * @return health status with lock details
@@ -61,7 +61,7 @@ public class ShedLockHealthIndicator implements HealthIndicator {
           jdbcTemplate.queryForList(
               "SELECT name, locked_by, locked_at, lock_until, "
                   + "CASE WHEN lock_until > NOW() THEN 'ACTIVE' ELSE 'EXPIRED' END as status "
-                  + "FROM shedlock "
+                  + "FROM ezkey_shedlock "
                   + "ORDER BY locked_at DESC");
 
       Health.Builder healthBuilder = Health.up().withDetail("locks", locks);

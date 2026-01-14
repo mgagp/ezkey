@@ -16,7 +16,7 @@
 -- - Query this table to audit job execution history
 -- ============================================================================
 
-CREATE TABLE shedlock (
+CREATE TABLE ezkey_shedlock (
     -- Unique job identifier (matches @SchedulerLock name)
     name VARCHAR(64) NOT NULL PRIMARY KEY,
     
@@ -31,13 +31,13 @@ CREATE TABLE shedlock (
 );
 
 -- Comments for documentation
-COMMENT ON TABLE shedlock IS 
+COMMENT ON TABLE ezkey_shedlock IS 
     'Distributed lock table for scheduled job coordination (ShedLock library)';
-COMMENT ON COLUMN shedlock.name IS 
+COMMENT ON COLUMN ezkey_shedlock.name IS 
     'Job identifier: KEY_PROMOTION, KEY_ROTATION, REENCRYPTION, AUDIT_CLEANUP, DB_PARTITION_CREATION, ADMIN_TOKEN_CLEANUP, ADMIN_STARTUP_BOOTSTRAP';
-COMMENT ON COLUMN shedlock.lock_until IS 
+COMMENT ON COLUMN ezkey_shedlock.lock_until IS 
     'Lock expiry timestamp - allows automatic failover if instance crashes';
-COMMENT ON COLUMN shedlock.locked_at IS 
+COMMENT ON COLUMN ezkey_shedlock.locked_at IS 
     'Lock acquisition timestamp - for SOC2 audit trail';
-COMMENT ON COLUMN shedlock.locked_by IS 
+COMMENT ON COLUMN ezkey_shedlock.locked_by IS 
     'Instance identifier that holds the lock - for SOC2 audit trail';

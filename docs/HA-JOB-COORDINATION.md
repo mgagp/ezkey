@@ -80,7 +80,7 @@ ShedLock's "lock per execution" model means:
 │       │ Acquire lock             │ Lock busy                │           │
 │       ▼                          ▼                          ▼           │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                      PostgreSQL: shedlock                        │   │
+│  │                   PostgreSQL: ezkey_shedlock                     │   │
 │  │  ┌─────────────────────────────────────────────────────────────┐│   │
 │  │  │ name              │ lock_until      │ locked_at     │locked_by│   │
 │  │  ├───────────────────┼─────────────────┼───────────────┼────────┤│   │
@@ -137,7 +137,7 @@ Create `V_XX__create_shedlock_table.sql`:
 -- - Query this table to audit job execution history
 -- ============================================================================
 
-CREATE TABLE shedlock (
+CREATE TABLE ezkey_shedlock (
     -- Unique job identifier (matches @SchedulerLock name)
     name VARCHAR(64) NOT NULL PRIMARY KEY,
     
@@ -152,15 +152,15 @@ CREATE TABLE shedlock (
 );
 
 -- Comments for documentation
-COMMENT ON TABLE shedlock IS 
+COMMENT ON TABLE ezkey_shedlock IS 
     'Distributed lock table for scheduled job coordination (ShedLock library)';
-COMMENT ON COLUMN shedlock.name IS 
+COMMENT ON COLUMN ezkey_shedlock.name IS 
     'Job identifier: KEY_PROMOTION, KEY_ROTATION, REENCRYPTION, AUDIT_CLEANUP';
-COMMENT ON COLUMN shedlock.lock_until IS 
+COMMENT ON COLUMN ezkey_shedlock.lock_until IS 
     'Lock expiry timestamp - allows automatic failover if instance crashes';
-COMMENT ON COLUMN shedlock.locked_at IS 
+COMMENT ON COLUMN ezkey_shedlock.locked_at IS 
     'Lock acquisition timestamp - for SOC2 audit trail';
-COMMENT ON COLUMN shedlock.locked_by IS 
+COMMENT ON COLUMN ezkey_shedlock.locked_by IS 
     'Instance identifier that holds the lock - for SOC2 audit trail';
 ```
 
@@ -361,12 +361,12 @@ Database time (`usingDbTime()`) ensures consistent lock expiry across instances.
 -- Current lock status (who is running what)
 SELECT name, locked_by, locked_at, lock_until, 
        CASE WHEN lock_until > NOW() THEN 'ACTIVE' ELSE 'EXPIRED' END as status
-FROM shedlock
+FROM ezkey_shedlock
 ORDER BY locked_at DESC;
 
 -- Job execution frequency by instance (SOC2 evidence)
 SELECT locked_by, name, COUNT(*) as executions
-FROM shedlock
+FROM ezkey_shedlock
 GROUP BY locked_by, name
 ORDER BY name, executions DESC;
 ```
@@ -392,7 +392,7 @@ public class ShedLockHealthIndicator implements HealthIndicator {
     public Health health() {
         try {
             List<Map<String, Object>> locks = jdbcTemplate.queryForList(
-                "SELECT name, locked_by, lock_until > NOW() as active FROM shedlock"
+                "SELECT name, locked_by, lock_until > NOW() as active FROM ezkey_shedlock"
             );
             return Health.up()
                 .withDetail("locks", locks)
@@ -435,7 +435,7 @@ The full design is preserved in [Appendix A](#appendix-a-custom-leader-election-
 ## Implementation Checklist
 
 - [ ] Add ShedLock dependencies to `ezkey-core/pom.xml`
-- [ ] Create database migration `V_XX__create_shedlock_table.sql`
+- [ ] Create database migration `V_XX__create_ezkey_shedlock_table.sql`
 - [ ] Create `ShedLockConfig.java` configuration class
 - [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndPromotePendingKeys()`
 - [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndRotate()`

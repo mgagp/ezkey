@@ -56,6 +56,7 @@ public class ShedLockConfiguration {
     return new JdbcTemplateLockProvider(
         JdbcTemplateLockProvider.Configuration.builder()
             .withJdbcTemplate(new JdbcTemplate(dataSource))
+            .withTableName("ezkey_shedlock") // Use ezkey_ prefix for consistency
             .usingDbTime() // Use database time for consistency across instances
             .build());
   }

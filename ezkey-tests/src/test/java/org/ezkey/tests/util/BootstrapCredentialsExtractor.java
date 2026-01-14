@@ -319,7 +319,7 @@ public class BootstrapCredentialsExtractor {
               "-t",
               "-A",
               "-c",
-              "SELECT locked_by FROM shedlock WHERE name = '"
+              "SELECT locked_by FROM ezkey_shedlock WHERE name = '"
                   + SHEDLOCK_LOCK_NAME
                   + "' ORDER BY locked_at DESC LIMIT 1;");
       processBuilder.redirectErrorStream(true);
