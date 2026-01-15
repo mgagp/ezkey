@@ -1200,7 +1200,7 @@ Valider le flow MFA complet avec Postman.
 
 **Fichier:** `postman/collections/Admin-MFA-Flow.postman_collection.json`
 
-**Contenu:** [Voir plan détaillé dans plan.md]
+**Contenu:** [Voir plan détaillé dans archives/plan.md] (archived)
 
 ### 3.2 Test Scenarios
 

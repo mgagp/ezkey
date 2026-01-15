@@ -7,8 +7,8 @@
 
 ## 📋 Fichiers de Plan Mis à Jour
 
-### 1. **`plan.md`** (Plan Principal)
-**Status:** ⚠️ Nécessite mises à jour manuelles
+### 1. **`archives/plan.md`** (Plan Principal - Archived)
+**Status:** ⚠️ Archived - Historical reference only
 
 **Modifications requises:**
 - Ligne 249-255: Remplacer `integrationId` par `enrollmentProofToken` dans `buildEnrollmentUrl()`
@@ -128,7 +128,7 @@ docs/plan/
 ├── ADMIN_MFA_SECURITY_WORKFLOW.md         # Workflow sécurité complet ⭐
 └── PLAN_UPDATES_SUMMARY.md                # Ce fichier
 
-plan.md                                     # Plan principal (racine)
+archives/plan.md                            # Plan principal (archived)
 ```
 
 ---

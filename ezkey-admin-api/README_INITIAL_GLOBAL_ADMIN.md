@@ -244,7 +244,7 @@ The initial global admin is secured with Ezkey's own MFA solution. This follows 
 
 ## See Also
 
-- [Admin API Security Plan](../plan.md)
+- [Admin API Security Plan](../docs/plan/archives/plan.md) (archived)
 - [Rate Limiting Documentation](README_RATE_LIMITING.md)
 - [Multi-Tenant Security](../docs/features/SECURITY_MULTI_TENANT.md)
 - [SOC 2 Preparation](../docs/SOC2_PREPARATION.md)

@@ -770,7 +770,7 @@ Based on this code review, suggested priorities:
 ### Immediate (Today)
 1. ✅ Fix test infrastructure (COMPLETED)
 2. Review TODO in EzkeyAdmin entity
-3. Update plan.md with new objectives
+3. Update docs/plan/archives/plan.md with new objectives (archived)
 
 ### Short Term (Next Week)
 1. Add metrics support (Micrometer)
