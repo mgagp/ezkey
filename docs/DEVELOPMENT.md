@@ -73,12 +73,12 @@ This section covers the complete OpenAPI (Swagger) documentation strategy for Ez
     }
 )
 public class OpenApiConfig {
-    
+
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
             .components(new Components()
-                .addSecuritySchemes("bearerAuth", 
+                .addSecuritySchemes("bearerAuth",
                     new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
@@ -127,7 +127,7 @@ public class IntegrationController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<IntegrationResponse> getById(
-        @Parameter(description = "Integration ID", example = "1") 
+        @Parameter(description = "Integration ID", example = "1")
         @PathVariable Integer id) { ... }
 
     @Operation(summary = "Create new integration")
@@ -156,11 +156,11 @@ Ezkey intentionally uses **both** Bean Validation annotations (e.g., `@NotNull`,
 ```java
 @Schema(description = "Request to create a new integration")
 public class IntegrationCreateRequest {
-    
+
     @Schema(description = "Unique integration code", example = "GOOGLE_AUTH", required = true)
     @NotBlank(message = "Code is required")
     private String code;
-    
+
     @Schema(description = "Integration logo URL", example = "https://example.com/logo.png")
     private String logo;
 }
@@ -170,16 +170,16 @@ public class IntegrationCreateRequest {
 ```java
 @Schema(description = "Response containing integration details")
 public class IntegrationResponse {
-    
+
     @Schema(description = "Unique integration ID", example = "1")
     private Integer id;
-    
+
     @Schema(description = "Unique integration code", example = "GOOGLE_AUTH")
     private String code;
-    
+
     @Schema(description = "Integration active status", example = "true")
     private Boolean active;
-    
+
     @Schema(description = "Creation date", example = "2025-01-15T10:30:00")
     private LocalDateTime createdAt;
 }
@@ -189,20 +189,30 @@ public class IntegrationResponse {
 ```java
 @Schema(description = "Standardized error response")
 public class ErrorResponse {
-    
+
     @Schema(description = "Error code", example = "RESOURCE_NOT_FOUND")
     private String code;
-    
+
     @Schema(description = "Error message", example = "Integration with ID 123 not found")
     private String message;
-    
+
     @Schema(description = "Error timestamp", example = "2025-01-15T10:30:00")
     private LocalDateTime timestamp;
-    
+
     @Schema(description = "Request path", example = "/api/v1/integrations/123")
     private String path;
 }
 ```
+
+#### Validation and constraint violations (HTTP 400)
+
+Validation failures must return **HTTP 400** (not 500). Apply defense in depth:
+
+- **DTO layer**: Use Bean Validation annotations (`@NotNull`, `@NotBlank`, etc.).
+- **Controller layer**: Use `@Valid` on `@RequestBody` (and nested DTOs) so validation happens before persistence.
+- **Exception mapping**: Ensure `GlobalExceptionHandler` maps:
+  - `MethodArgumentNotValidException` → 400 (field-level validation errors)
+  - `DataIntegrityViolationException` → 400 (database constraint violations as a safety net)
 
 ### OpenAPI Testing
 ```java
@@ -215,7 +225,7 @@ class OpenApiIntegrationTest {
     @Test
     void shouldGenerateOpenApiSpecification() {
         ResponseEntity<String> response = restTemplate.getForEntity("/api-docs", String.class);
-        
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("openapi");
         assertThat(response.getBody()).contains("Ezkey API");
@@ -224,7 +234,7 @@ class OpenApiIntegrationTest {
     @Test
     void shouldServeSwaggerUI() {
         ResponseEntity<String> response = restTemplate.getForEntity("/swagger-ui.html", String.class);
-        
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("Swagger UI");
     }
