@@ -13,10 +13,10 @@ package org.ezkey.tests.security.tenant;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.RestAssuredTestConfig;
@@ -31,33 +31,46 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+
 /**
  * Phase 1 Multi-Tenant Isolation Tests using GlobalAdmin.
  *
- * <p><b>Scope:</b> Tests GlobalAdmin visibility behavior. Validates that GlobalAdmin can view all
- * resources across all tenants while respecting the "No Impersonation" rule for resource creation.
+ * <p>
+ * <b>Scope:</b> Tests GlobalAdmin visibility behavior. Validates that
+ * GlobalAdmin can view all
+ * resources across all tenants while respecting the "No Impersonation" rule for
+ * resource creation.
  *
- * <p><b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for complete context.
+ * <p>
+ * <b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for
+ * complete context.
  *
  * <ul>
- *   <li><b>Key Principle:</b> GlobalAdmin VIEWS all resources but CREATES only in System Tenant
- *   <li><b>Read Operations:</b> GlobalAdmin sees ALL tenants (no filtering)
- *   <li><b>Write Operations:</b> GlobalAdmin creates in System Tenant (tenantId: 1) ONLY
- *   <li><b>No Impersonation:</b> Cannot create resources "on behalf of" TenantAdmin
+ * <li><b>Key Principle:</b> GlobalAdmin VIEWS all resources but CREATES only in
+ * System Tenant
+ * <li><b>Read Operations:</b> GlobalAdmin sees ALL tenants (no filtering)
+ * <li><b>Write Operations:</b> GlobalAdmin creates in System Tenant (tenantId:
+ * 1) ONLY
+ * <li><b>No Impersonation:</b> Cannot create resources "on behalf of"
+ * TenantAdmin
  * </ul>
  *
- * <p><b>Test Pattern:</b>
+ * <p>
+ * <b>Test Pattern:</b>
  *
  * <ol>
- *   <li>Create multiple tenants (A, B, C)
- *   <li>Create TenantAdmin accounts for each tenant
- *   <li>TenantAdmins create resources in their respective tenants
- *   <li>Verify GlobalAdmin can VIEW all resources across all tenants
- *   <li>Verify tenant_id is properly set in responses
- *   <li>Verify data isolation at query level (by listing resources)
+ * <li>Create multiple tenants (A, B, C)
+ * <li>Create TenantAdmin accounts for each tenant
+ * <li>TenantAdmins create resources in their respective tenants
+ * <li>Verify GlobalAdmin can VIEW all resources across all tenants
+ * <li>Verify tenant_id is properly set in responses
+ * <li>Verify data isolation at query level (by listing resources)
  * </ol>
  *
- * <p><b>Expected GlobalAdmin Behavior:</b>
+ * <p>
+ * <b>Expected GlobalAdmin Behavior:</b>
  *
  * <table>
  * <tr>
@@ -87,18 +100,21 @@ import org.slf4j.LoggerFactory;
  * </tr>
  * </table>
  *
- * <p><b>Why GlobalAdmin Tests?</b> These tests validate:
+ * <p>
+ * <b>Why GlobalAdmin Tests?</b> These tests validate:
  *
  * <ul>
- *   <li>✅ Multi-tenant infrastructure correctly separates data by tenant_id
- *   <li>✅ GlobalAdmin maintains full cross-tenant READ access
- *   <li>✅ List endpoints return data from all tenants for GlobalAdmin
- *   <li>✅ Tenant filtering works correctly (TenantAdmin path tested in {@link
- *       org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest})
+ * <li>✅ Multi-tenant infrastructure correctly separates data by tenant_id
+ * <li>✅ GlobalAdmin maintains full cross-tenant READ access
+ * <li>✅ List endpoints return data from all tenants for GlobalAdmin
+ * <li>✅ Tenant filtering works correctly (TenantAdmin path tested in {@link
+ * org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest})
  * </ul>
  *
- * <p><b>Complementary Tests:</b> See {@link
- * org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest} for TenantAdmin isolation
+ * <p>
+ * <b>Complementary Tests:</b> See {@link
+ * org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest} for
+ * TenantAdmin isolation
  * tests.
  *
  * @see org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest
@@ -113,6 +129,7 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
 
   private static final Logger log = LoggerFactory.getLogger(MultiTenantGlobalAdminTest.class);
 
+  private String uniqueSuffix;
   private Integer tenantAId;
   private Integer tenantBId;
   private Integer tenantCId;
@@ -132,7 +149,7 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     log.info("Setting up multi-tenant test resources");
 
     // Create three distinct tenants
-    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+    uniqueSuffix = String.valueOf(System.currentTimeMillis());
 
     tenantAId = createTenant("Tenant A " + uniqueSuffix);
     tenantBId = createTenant("Tenant B " + uniqueSuffix);
@@ -141,26 +158,23 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     log.debug("Created tenants: A={}, B={}, C={}", tenantAId, tenantBId, tenantCId);
 
     // Create TenantAdmins for each tenant and get their tokens
-    TenantAdminTestHelper tenantAdminHelper =
-        new TenantAdminTestHelper(dockerStackConfig, testDataFactory, cryptoApiClient);
+    TenantAdminTestHelper tenantAdminHelper = new TenantAdminTestHelper(dockerStackConfig, testDataFactory,
+        cryptoApiClient);
     String globalAdminToken = authTokenManager.getAdminToken();
-    tenantAdminAToken =
-        tenantAdminHelper.createAndLoginTenantAdmin(
-            "admin-a-" + uniqueSuffix, tenantAId, globalAdminToken);
-    tenantAdminBToken =
-        tenantAdminHelper.createAndLoginTenantAdmin(
-            "admin-b-" + uniqueSuffix, tenantBId, globalAdminToken);
-    tenantAdminCToken =
-        tenantAdminHelper.createAndLoginTenantAdmin(
-            "admin-c-" + uniqueSuffix, tenantCId, globalAdminToken);
+    tenantAdminAToken = tenantAdminHelper.createAndLoginTenantAdmin(
+        "admin-a-" + uniqueSuffix, tenantAId, globalAdminToken);
+    tenantAdminBToken = tenantAdminHelper.createAndLoginTenantAdmin(
+        "admin-b-" + uniqueSuffix, tenantBId, globalAdminToken);
+    tenantAdminCToken = tenantAdminHelper.createAndLoginTenantAdmin(
+        "admin-c-" + uniqueSuffix, tenantCId, globalAdminToken);
 
     log.debug("Created TenantAdmins with tokens for all three tenants");
 
     // Create integrations for each tenant using TenantAdmin tokens
-    integrationA1Id = createIntegrationForTenant("Integration A1", tenantAdminAToken);
-    integrationA2Id = createIntegrationForTenant("Integration A2", tenantAdminAToken);
-    integrationBId = createIntegrationForTenant("Integration B", tenantAdminBToken);
-    integrationCId = createIntegrationForTenant("Integration C", tenantAdminCToken);
+    integrationA1Id = createIntegrationForTenant("Integration A1 " + uniqueSuffix, tenantAdminAToken);
+    integrationA2Id = createIntegrationForTenant("Integration A2 " + uniqueSuffix, tenantAdminAToken);
+    integrationBId = createIntegrationForTenant("Integration B " + uniqueSuffix, tenantAdminBToken);
+    integrationCId = createIntegrationForTenant("Integration C " + uniqueSuffix, tenantAdminCToken);
 
     log.debug(
         "Created integrations: A1={}, A2={}, B={}, C={}",
@@ -214,44 +228,55 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
   // P1: GlobalAdmin Access - Verify full access across all tenants
   // ============================================================================
 
-  // NOTE: Pagination test - pagination/sorting needs better debugging/fixing
-  // @Test
-  // @Order(10)
-  // @DisplayName("P1: GlobalAdmin can read all integrations across tenants")
-  // void globalAdmin_can_read_all_integrations() {
-  // Response response = listIntegrations();
-  // assertThat(response.statusCode()).isEqualTo(200);
-  // List<Integer> integrationIds = response.jsonPath().getList("content.id",
-  // Integer.class);
-  // assertThat(integrationIds)
-  // .contains(integrationA1Id, integrationA2Id, integrationBId, integrationCId);
-  // }
+  @Test
+  @Order(10)
+  @DisplayName("P1: GlobalAdmin can read all integrations across tenants")
+  void globalAdmin_can_read_all_integrations() {
+    // Production-like tests accumulate data over time, so never rely on default
+    // pagination.
+    // Scope this query to this test run via the unique suffix embedded in
+    // integration names.
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
-  // NOTE: PUT /integrations endpoint not implemented in Phase 1
-  // @Test
-  // @Order(11)
-  // @DisplayName("P1: GlobalAdmin can update integration from any tenant")
-  // void globalAdmin_can_update_integration_from_any_tenant() {
-  // String newName = "Updated Tenant A Integration - " +
-  // System.currentTimeMillis();
-  // updateIntegration(integrationA1Id, newName);
-  // Response response = getIntegration(integrationA1Id);
-  // assertThat(response.jsonPath().getString("name")).isEqualTo(newName);
-  // }
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .queryParam("page", 0)
+        .queryParam("size", 100)
+        .queryParam("sort", "id,ASC")
+        .queryParam("integrationName", uniqueSuffix)
+        .when()
+        .get("/integrations")
+        .then()
+        .statusCode(200)
+        .extract()
+        .response();
+
+    List<Integer> integrationIds = response.jsonPath().getList("content.id", Integer.class);
+    assertThat(integrationIds).isNotNull();
+    assertThat(integrationIds)
+        .contains(integrationA1Id, integrationA2Id, integrationBId, integrationCId);
+
+    // Pagination contract sanity (exact shape may vary by JSON serializer).
+    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
+    if (totalElements == null) {
+      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
+    }
+    assertThat(totalElements).isNotNull();
+    assertThat(totalElements.longValue()).isGreaterThanOrEqualTo(4L);
+  }
 
   @Test
   @Order(12)
   @DisplayName("P1: GlobalAdmin can delete integration from any tenant")
   void globalAdmin_can_delete_integration_from_any_tenant() {
-    Integer integrationToDeleteId =
-        createIntegrationForTenant("Temp Integration", tenantAdminAToken);
+    Integer integrationToDeleteId = createIntegrationForTenant("Temp Integration", tenantAdminAToken);
 
     deleteIntegration(integrationToDeleteId);
 
-    Response response =
-        given()
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-            .get("/integrations/" + integrationToDeleteId);
+    Response response = given()
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .get("/integrations/" + integrationToDeleteId);
 
     assertThat(response.statusCode()).isIn(404, 403);
   }
@@ -313,16 +338,23 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
   }
 
   // NOTE: Pagination test - pagination/sorting needs better debugging/fixing
-  // @Test
-  // @Order(31)
-  // @DisplayName("P1: GlobalAdmin can list all tenants")
-  // void globalAdmin_can_list_all_tenants() {
-  // Response response = listTenants();
-  // assertThat(response.statusCode()).isEqualTo(200);
-  // List<Integer> tenantIds = response.jsonPath().getList("content.tenantId",
-  // Integer.class);
-  // assertThat(tenantIds).contains(tenantAId, tenantBId, tenantCId);
-  // }
+  @Test
+  @Order(31)
+  @DisplayName("P1: GlobalAdmin can list all tenants")
+  void globalAdmin_can_list_all_tenants() {
+    // Note: /tenants returns a JSON array (List<TenantResponseDto>), not a paged
+    // response.
+    Response response = listTenants();
+    assertThat(response.statusCode()).isEqualTo(200);
+
+    List<Integer> tenantIds = response.jsonPath().getList("tenantId", Integer.class);
+    if (tenantIds == null) {
+      // Defensive fallback if the JSONPath extraction expects an explicit root
+      // selector.
+      tenantIds = response.jsonPath().getList("$..tenantId", Integer.class);
+    }
+    assertThat(tenantIds).isNotNull().contains(tenantAId, tenantBId, tenantCId);
+  }
 
   // ============================================================================
   // Helper Methods
@@ -335,17 +367,16 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     request.put("tenantName", tenantName);
     request.put("tenantDescription", "Test tenant: " + tenantName);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-            .body(request)
-            .when()
-            .post("/tenants")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body(request)
+        .when()
+        .post("/tenants")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     return response.jsonPath().getInt("tenantId");
   }
@@ -381,19 +412,18 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
 
     Map<String, Object> request = new HashMap<>();
     request.put("logo", "https://example.com/logo.png");
-    request.put("i18n", new Object[] {i18n});
+    request.put("i18n", new Object[] { i18n });
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + tenantAdminToken)
-            .body(request)
-            .when()
-            .post("/integrations")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + tenantAdminToken)
+        .body(request)
+        .when()
+        .post("/integrations")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer integrationId = response.jsonPath().getInt("id");
     log.debug("Created integration with ID: {} using TenantAdmin token", integrationId);
@@ -410,6 +440,7 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
         .get("/integrations/" + integrationId);
   }
 
+  @SuppressWarnings("unused")
   private Response listIntegrations() {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
@@ -421,23 +452,6 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
         .queryParam("sort", "createdAt,DESC")
         .when()
         .get("/integrations");
-  }
-
-  private void updateIntegration(Integer integrationId, String newName) {
-    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
-
-    Map<String, Object> request = new HashMap<>();
-    request.put("name", newName);
-    request.put("description", "Updated at " + System.currentTimeMillis());
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-        .body(request)
-        .when()
-        .put("/integrations/" + integrationId)
-        .then()
-        .statusCode(200);
   }
 
   private void deleteIntegration(Integer integrationId) {

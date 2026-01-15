@@ -42,6 +42,12 @@ This file is UTF-8 without BOM.
 - Logging is already verbose around auth steps—keep it enabled when debugging.
 - Tests are independent/idempotent/opportunistic: assume a fresh docker stack from `./clean-start.sh` before runs; failed cases should be investigated directly via DB and logs without reusing state.
 
+### Test Values
+- **Data accumulation is a feature**: tests intentionally create new tenants/integrations/admins over time (production-like dataset). Avoid cleanup unless a test *must* reset state for correctness.
+- **Independence**: each test must pass regardless of existing data (use unique identifiers, avoid relying on ordering or “first page” defaults).
+- **Idempotence**: reruns should behave deterministically; prefer explicit pagination params (e.g., `size`, stable `sort`) and API filters that scope to the test’s unique suffix.
+- **Opportunistic verification**: when API responses are ambiguous (pagination/DTO gaps), use DB/logs for diagnosis—not to bypass the behavior being validated.
+
 ## Investigation Protocol
 - DB checks: use MCP Postgres access (or `docker exec ezkey-postgres psql -U postgres -d ezkey_db ...`) to verify entities (tenants, integrations, enrollments, api keys) when results look empty or unexpected.
 - Logs: use Docker CLI (`docker logs ezkey-admin-api`, `docker logs ezkey-auth-api`) to confirm auth-attempt flows, integration creation, and access control decisions.

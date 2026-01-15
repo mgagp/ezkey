@@ -14,13 +14,13 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
+import org.ezkey.tests.util.DatabaseHelper;
 import org.ezkey.tests.util.TenantAdminTestHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +29,10 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Tests cross-tenant isolation security.
@@ -111,6 +115,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   private TenantAdminTestHelper tenantAdminTestHelper;
   private String globalAdminToken;
+  private String uniqueSuffix;
+  private final DatabaseHelper databaseHelper = new DatabaseHelper();
   private Integer tenantAId;
   private Integer tenantBId;
   private String tenantAdminAToken;
@@ -119,7 +125,10 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   private Integer integrationBId;
   private Integer enrollmentAId;
   private Integer enrollmentBId;
+  @SuppressWarnings("unused")
   private String apiKeyACredentials;
+
+  @SuppressWarnings("unused")
   private String apiKeyBCredentials;
 
   @Override
@@ -136,7 +145,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
           new TenantAdminTestHelper(dockerStackConfig, testDataFactory, cryptoApiClient);
 
       // Create two tenants
-      String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+      uniqueSuffix = String.valueOf(System.currentTimeMillis());
       tenantAId = testDataFactory.findOrCreateTenant("Tenant A " + uniqueSuffix, globalAdminToken);
       tenantBId = testDataFactory.findOrCreateTenant("Tenant B " + uniqueSuffix, globalAdminToken);
 
@@ -511,33 +520,123 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
   // ========== GLOBALADMIN CROSS-TENANT ACCESS TESTS ==========
 
-  // NOTE: Uses integrationId field that doesn't exist in response - should be
-  // 'id'
-  // @Test
-  // @Order(20)
-  // @DisplayName("GlobalAdmin can access Tenant A integration (cross-tenant
-  // read)")
-  // public void testGlobalAdminCanAccessTenantAIntegration() {
-  // // Test disabled pending field name fix
-  // }
+  @Test
+  @Order(20)
+  @DisplayName("GlobalAdmin can access Tenant A integration (cross-tenant read)")
+  public void testGlobalAdminCanAccessTenantAIntegration() {
+    configureForAdminApi(dockerStackConfig);
 
-  // NOTE: Uses integrationId field that doesn't exist in response - should be
-  // 'id'
-  // @Test
-  // @Order(21)
-  // @DisplayName("GlobalAdmin can access Tenant B integration (cross-tenant
-  // read)")
-  // public void testGlobalAdminCanAccessTenantBIntegration() {
-  // // Test disabled pending field name fix
-  // }
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/integrations/" + integrationAId)
+            .then()
+            .extract()
+            .response();
 
-  // NOTE: Pagination issue - created integrations not returned in list
-  // @Test
-  // @Order(22)
-  // @DisplayName("GlobalAdmin can list all integrations (all tenants visible)")
-  // public void testGlobalAdminCanListAllIntegrations() {
-  // // Test disabled pending pagination/sorting fix
-  // }
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationAId);
+  }
+
+  @Test
+  @Order(21)
+  @DisplayName("GlobalAdmin can access Tenant B integration (cross-tenant read)")
+  public void testGlobalAdminCanAccessTenantBIntegration() {
+    configureForAdminApi(dockerStackConfig);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .when()
+            .get("/integrations/" + integrationBId)
+            .then()
+            .extract()
+            .response();
+
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationBId);
+  }
+
+  @Test
+  @Order(22)
+  @DisplayName("GlobalAdmin can list all integrations (all tenants visible)")
+  public void testGlobalAdminCanListAllIntegrations() {
+    configureForAdminApi(dockerStackConfig);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            // Explicit pagination/sorting to keep test resilient as data accumulates (production-like).
+            .queryParam("page", 0)
+            .queryParam("size", 100)
+            .queryParam("sort", "id,ASC")
+            // Scope to this test run's unique data (independence without cleanup).
+            .queryParam("integrationName", uniqueSuffix)
+            .when()
+            .get("/integrations")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    List<Map<String, Object>> integrations = response.jsonPath().getList("content");
+    assertThat(integrations).isNotNull();
+
+    // Validate Page<T> metadata (Spring Data pagination contract).
+    Integer pageNumber = response.jsonPath().getObject("number", Integer.class);
+    if (pageNumber == null) {
+      pageNumber = response.jsonPath().getObject("pageable.pageNumber", Integer.class);
+    }
+    if (pageNumber == null) {
+      pageNumber = response.jsonPath().getObject("page.number", Integer.class);
+    }
+    Integer pageSize = response.jsonPath().getObject("size", Integer.class);
+    if (pageSize == null) {
+      pageSize = response.jsonPath().getObject("pageable.pageSize", Integer.class);
+    }
+    if (pageSize == null) {
+      pageSize = response.jsonPath().getObject("page.size", Integer.class);
+    }
+    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
+    if (totalElements == null) {
+      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
+    }
+    Number totalPages = response.jsonPath().getObject("totalPages", Number.class);
+    if (totalPages == null) {
+      totalPages = response.jsonPath().getObject("page.totalPages", Number.class);
+    }
+
+    assertThat(pageNumber).as("Expected page number metadata").isEqualTo(0);
+    assertThat(pageSize).as("Expected page size metadata").isEqualTo(100);
+    assertThat(totalElements).as("Expected totalElements metadata").isNotNull();
+    assertThat(totalElements.longValue()).isGreaterThanOrEqualTo(2L);
+    assertThat(totalPages).as("Expected totalPages metadata").isNotNull();
+    assertThat(totalPages.longValue()).isGreaterThanOrEqualTo(1L);
+
+    log.info("GlobalAdmin received {} integrations", integrations.size());
+    log.info(
+        "Expected to see integrationAId: {} and integrationBId: {}",
+        integrationAId,
+        integrationBId);
+
+    for (Map<String, Object> integration : integrations) {
+      log.info(
+          "Found integration: id={}, tenantId={}", integration.get("id"), integration.get("tenantId"));
+    }
+
+    // Extract integration IDs from the list
+    List<Integer> integrationIds =
+        integrations.stream().map(i -> (Integer) i.get("id")).toList();
+
+    // GlobalAdmin should see integrations from both tenants
+    assertThat(integrationIds)
+        .as("GlobalAdmin should see integrations from all tenants")
+        .contains(integrationAId, integrationBId);
+  }
 
   @Test
   @Order(23)
@@ -611,11 +710,56 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     assertThat(responseEnrollmentId).isEqualTo(enrollmentBId);
   }
 
-  // NOTE: Requires enrollmentId field in response DTO - needs investigation
-  // @Test
-  // @Order(26)
-  // @DisplayName("GlobalAdmin can list enrollments from all tenants")
-  // public void testGlobalAdminCanListAllEnrollments() {
-  // // Test disabled pending enrollmentId field implementation
-  // }
+  /**
+   * Validates that GlobalAdmin can list enrollments across all tenants.
+   *
+   * <p><b>Strategy:</b> Request a single record (`size=1`) and validate the pagination
+   * <code>totalElements</code> matches the database count.
+   *
+   * <p><b>Important assumption / limitation:</b> This test assumes the Admin API list endpoint
+   * returns the same logical set as <code>SELECT COUNT(*) FROM ezkey_enrollment</code> for a
+   * GlobalAdmin (i.e., no implicit filtering such as soft-delete, inactive-only exclusion, or other
+   * visibility rules). If a future feature introduces such filtering, this test is expected to fail
+   * and should then be refined to compare against the correct DB subset (matching the API
+   * semantics).
+   */
+  @Test
+  @Order(26)
+  @DisplayName("GlobalAdmin can list enrollments from all tenants (totalElements matches DB)")
+  public void testGlobalAdminCanListAllEnrollments() {
+    configureForAdminApi(dockerStackConfig);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + globalAdminToken)
+            .queryParam("page", 0)
+            .queryParam("size", 1)
+            .queryParam("sort", "enrollmentId,ASC")
+            .when()
+            .get("/enrollments")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    // We create at least two enrollments in setup (A and B).
+    String dbCountRaw = databaseHelper.executeQuerySingleValue("SELECT COUNT(*) FROM ezkey_enrollment;");
+    assertThat(dbCountRaw).as("DB enrollment count should be available").isNotNull();
+    long dbCount = Long.parseLong(dbCountRaw.trim());
+    assertThat(dbCount).isGreaterThanOrEqualTo(2L);
+
+    // Support multiple common Page<> JSON shapes (Spring may nest pagination differently).
+    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
+    if (totalElements == null) {
+      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
+    }
+    assertThat(totalElements).as("Expected totalElements pagination metadata").isNotNull();
+    assertThat(totalElements.longValue()).isEqualTo(dbCount);
+
+    // Basic sanity: content list should exist and contain at most 1 record because size=1.
+    List<Map<String, Object>> content = response.jsonPath().getList("content");
+    assertThat(content).as("Expected 'content' array in paged response").isNotNull();
+    assertThat(content.size()).isLessThanOrEqualTo(1);
+  }
 }
