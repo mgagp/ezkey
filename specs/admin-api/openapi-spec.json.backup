@@ -2682,17 +2682,17 @@
       "PageableObject": {
         "type": "object",
         "properties": {
-          "pageNumber": {
+          "paged": {
+            "type": "boolean"
+          },
+          "pageSize": {
             "type": "integer",
             "format": "int32"
           },
           "unpaged": {
             "type": "boolean"
           },
-          "paged": {
-            "type": "boolean"
-          },
-          "pageSize": {
+          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
@@ -2708,10 +2708,10 @@
       "SortObject": {
         "type": "object",
         "properties": {
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           },
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           },
           "empty": {

@@ -58,8 +58,6 @@ flowchart TD
   demoDevice -->|reads enrollment file| demoVol
 ```
 
-
-
 ### Key design decisions
 
 - **No Docker socket mounts** (no `docker logs`, no `docker exec` from the init container).

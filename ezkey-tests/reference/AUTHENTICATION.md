@@ -227,7 +227,7 @@ For the complete step-by-step bootstrap/token flow including all API calls, cach
 
 **Error**: `Admin token not available`
 
-**Solution**: 
+**Solution**:
 1. Set environment variable: `export EZKEY_ADMIN_TOKEN=your-token-here`
 2. Or run the bootstrap service to generate tokens automatically
 3. Or run `AdminTokenCreationTest` to pre-warm the cache

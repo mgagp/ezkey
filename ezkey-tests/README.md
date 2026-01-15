@@ -389,10 +389,10 @@ All security tests extend `AbstractSecurityTest`:
 
 ```java
 public class MySecurityTest extends AbstractSecurityTest {
-  
+
   @Test
   public void testSomething() {
-    // dockerStackConfig, authTokenManager, cryptoApiClient, 
+    // dockerStackConfig, authTokenManager, cryptoApiClient,
     // and testDataFactory are available
   }
 }
@@ -548,7 +548,7 @@ String adminToken = bootstrapService.ensureAdminToken();
 
 **Problem**: `DockerStackConfig.verifyServicesHealthy()` throws exception
 
-**Solution**: 
+**Solution**:
 1. Ensure Docker stack is running: `docker ps`
 2. Check service health (management port): `curl http://localhost:9081/actuator/health`
 3. Review Docker logs: `./docker/manage.sh logs`

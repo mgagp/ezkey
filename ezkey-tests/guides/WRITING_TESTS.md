@@ -323,13 +323,13 @@ Independence is preserved via:
 @DisplayName("GlobalAdmin can list all integrations")
 void testGlobalAdminCanListAllIntegrations() {
     String uniqueSuffix = String.valueOf(System.currentTimeMillis());
-    
+
     // Create test data with unique suffix
     Integer integrationAId = testDataFactory.createIntegrationForTenant(
         "Integration A " + uniqueSuffix, tenantAId, globalAdminToken);
     Integer integrationBId = testDataFactory.createIntegrationForTenant(
         "Integration B " + uniqueSuffix, tenantBId, globalAdminToken);
-    
+
     // Use filter to scope to test data
     Response response = given()
         .header("Authorization", "Bearer " + globalAdminToken)
@@ -342,11 +342,11 @@ void testGlobalAdminCanListAllIntegrations() {
         .statusCode(200)
         .extract()
         .response();
-    
+
     // Validate pagination contract
     assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(2);
     assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(1);
-    
+
     // Validate test data is present
     List<Integer> integrationIds = response.jsonPath().getList("content.id");
     assertThat(integrationIds).contains(integrationAId, integrationBId);
@@ -381,10 +381,10 @@ void testGlobalAdminCanListAllIntegrations() {
 public void testIntegrationCreation() {
     // Check initial state
     int initialCount = databaseHelper.countIntegrations();
-    
+
     // Create integration via API
     Integer integrationId = testDataFactory.createIntegration("Test Integration", tenantId, adminToken);
-    
+
     // Verify via API (primary validation)
     Response response = given()
         .header("Authorization", "Bearer " + adminToken)
@@ -393,7 +393,7 @@ public void testIntegrationCreation() {
         .statusCode(200)
         .extract()
         .response();
-    
+
     // Optional: Cross-validate with DB for diagnostics
     assertThat(databaseHelper.countIntegrations()).isEqualTo(initialCount + 1);
 }
@@ -406,7 +406,7 @@ public void testIntegrationCreation() {
 public void testIntegrationList() {
     // Create test data
     Integer integrationId = testDataFactory.createIntegration("Test Integration", tenantId, adminToken);
-    
+
     // Test via API
     Response response = given()
         .header("Authorization", "Bearer " + adminToken)
@@ -414,14 +414,14 @@ public void testIntegrationList() {
         .then()
         .extract()
         .response();
-    
+
     // If test fails, use DB for diagnostics
     if (response.getStatusCode() != 200) {
         // Check if integration exists in DB
         boolean exists = databaseHelper.integrationExists(integrationId);
         logger.debug("Integration exists in DB: {}", exists);
     }
-    
+
     assertThat(response.getStatusCode()).isEqualTo(200);
 }
 ```

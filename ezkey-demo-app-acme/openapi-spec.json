@@ -39,6 +39,10 @@
       "description": "API key management for machine-to-machine (M2M) authentication"
     },
     {
+      "name": "Administrator Provisioning",
+      "description": "Administrator provisioning API"
+    },
+    {
       "name": "Enrollments",
       "description": "Enrollment management API"
     },
@@ -61,9 +65,135 @@
     {
       "name": "Audit Logs",
       "description": "Audit log query and reporting API for security monitoring and compliance"
+    },
+    {
+      "name": "Tenants",
+      "description": "Tenant management API"
     }
   ],
   "paths": {
+    "/api/v1/tenants": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "List tenants",
+        "description": "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.",
+        "operationId": "listTenants",
+        "responses": {
+          "200": {
+            "description": "List of tenants",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Create a new tenant",
+        "description": "Creates a new tenant. GlobalAdmin only.",
+        "operationId": "createTenant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Tenant created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or tenant name already exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not a global administrator",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Deactivate a tenant",
+        "description": "Deactivates a tenant. GlobalAdmin only. Required in Phase 1.",
+        "operationId": "deactivateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tenant deactivated successfully"
+          },
+          "404": {
+            "description": "Tenant not found"
+          },
+          "403": {
+            "description": "Forbidden - not a global administrator"
+          }
+        }
+      }
+    },
     "/api/v1/integrations": {
       "get": {
         "tags": [
@@ -155,7 +285,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageIntegrationResponseDto"
+                  "$ref": "#/components/schemas/PagedModelIntegrationResponseDto"
                 }
               }
             }
@@ -165,7 +295,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageIntegrationResponseDto"
+                  "$ref": "#/components/schemas/PagedModelIntegrationResponseDto"
                 }
               }
             }
@@ -349,7 +479,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
+                  "$ref": "#/components/schemas/PagedModelEnrollmentResponseDto"
                 }
               }
             }
@@ -359,7 +489,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
+                  "$ref": "#/components/schemas/PagedModelEnrollmentResponseDto"
                 }
               }
             }
@@ -369,7 +499,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageEnrollmentResponseDto"
+                  "$ref": "#/components/schemas/PagedModelEnrollmentResponseDto"
                 }
               }
             }
@@ -759,7 +889,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuthAttemptDto"
+                  "$ref": "#/components/schemas/PagedModelAuthAttemptDto"
                 }
               }
             }
@@ -769,7 +899,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuthAttemptDto"
+                  "$ref": "#/components/schemas/PagedModelAuthAttemptDto"
                 }
               }
             }
@@ -779,7 +909,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuthAttemptDto"
+                  "$ref": "#/components/schemas/PagedModelAuthAttemptDto"
                 }
               }
             }
@@ -838,6 +968,39 @@
       }
     },
     "/api/v1/api-keys": {
+      "get": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "List all API keys for current admin",
+        "description": "Returns API keys filtered by admin type. GlobalAdmin sees all keys, TenantAdmin sees only keys for their tenant's integrations. Secret keys are never included.",
+        "operationId": "listAllApiKeys",
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "API Keys"
@@ -902,6 +1065,147 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiKeyCreateResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admins/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Deactivate an administrator",
+        "description": "Deactivates an administrator. GlobalAdmin only. Enforces min limits and revokes tokens.",
+        "operationId": "deactivateAdmin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Administrator deactivated successfully"
+          },
+          "400": {
+            "description": "Cannot deactivate below minimum limit"
+          },
+          "404": {
+            "description": "Administrator not found"
+          },
+          "403": {
+            "description": "Forbidden - not a global administrator"
+          }
+        }
+      }
+    },
+    "/api/v1/admins/tenant": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Create a peer tenant administrator",
+        "description": "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin can create for same tenant only. Enforces max limit.",
+        "operationId": "createTenantAdmin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Tenant administrator created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, limit exceeded, username exists, or tenant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized or tenant admin trying to create for different tenant",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admins/global": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Create a peer global administrator",
+        "description": "Creates a new global administrator. GlobalAdmin only. Enforces max limit.",
+        "operationId": "createGlobalAdmin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Global administrator created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, limit exceeded, or username exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not a global administrator",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
                 }
               }
             }
@@ -1109,6 +1413,61 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{id}": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Get tenant by ID",
+        "description": "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access their own tenant.",
+        "operationId": "getTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
                 }
               }
             }
@@ -1870,7 +2229,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                  "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
                 }
               }
             }
@@ -1880,7 +2239,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                  "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
                 }
               }
             }
@@ -1890,7 +2249,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageAuditLogResponseDto"
+                  "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
                 }
               }
             }
@@ -2032,10 +2391,261 @@
           }
         }
       }
+    },
+    "/api/v1/admins": {
+      "get": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "List administrators",
+        "description": "Lists administrators with tenant-based filtering. GlobalAdmin sees all admins. TenantAdmin sees only admins from their tenant. Supports pagination and sorting.",
+        "operationId": "listAdmins",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of administrators retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAdminResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not an administrator",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAdminResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admins/{id}/onboarding": {
+      "get": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Retrieve onboarding credentials",
+        "description": "Retrieves onboarding credentials (enrollment proof token, challenge code) for an administrator. Recovery codes cannot be retrieved after initial provisioning.",
+        "operationId": "getAdminOnboarding",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Onboarding credentials retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator or enrollment not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admins/{id}/onboarding/qrcode": {
+      "get": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Generate QR code for onboarding",
+        "description": "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken) for passwordless enrollment binding.",
+        "operationId": "getAdminOnboardingQrCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code generated successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Enrollment missing proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator or enrollment not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "TenantCreateRequestDto": {
+        "type": "object",
+        "description": "Request DTO for creating a tenant",
+        "properties": {
+          "tenantName": {
+            "type": "string",
+            "description": "Unique name for the tenant",
+            "example": "Acme Corporation",
+            "maxLength": 100,
+            "minLength": 3
+          },
+          "tenantDescription": {
+            "type": "string",
+            "description": "Optional description of the tenant",
+            "example": "Acme Corp's Ezkey tenant for MFA authentication",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "tenantName"
+        ]
+      },
+      "TenantResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing tenant information",
+        "properties": {
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the tenant",
+            "example": 1
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Unique name of the tenant",
+            "example": "Acme Corporation"
+          },
+          "tenantDescription": {
+            "type": "string",
+            "description": "Optional description of the tenant",
+            "example": "Acme Corp's Ezkey tenant"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the tenant was created",
+            "example": "2025-10-15T14:30:00Z"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Flag indicating if the tenant is active",
+            "example": true
+          }
+        }
+      },
       "IntegrationCreateRequestDto": {
         "type": "object",
         "description": "Integration creation data",
@@ -2377,6 +2987,109 @@
           }
         }
       },
+      "AdminCreateRequestDto": {
+        "type": "object",
+        "description": "Request DTO for creating an administrator",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Unique username for the administrator",
+            "example": "john.doe",
+            "maxLength": 50,
+            "minLength": 3
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address (required for global admins, optional for tenant admins)",
+            "example": "john.doe@example.com",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name (required for global admins, optional for tenant admins)",
+            "example": "John",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name (required for global admins, optional for tenant admins)",
+            "example": "Doe",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (required for tenant admin creation, ignored for global admin)",
+            "example": 1
+          }
+        },
+        "required": [
+          "username"
+        ]
+      },
+      "AdminProvisioningResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing administrator provisioning information (without sensitive credentials). Use GET /api/v1/admins/{id}/onboarding to retrieve onboarding credentials.",
+        "properties": {
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the administrator",
+            "example": 1
+          },
+          "username": {
+            "type": "string",
+            "description": "Username for the administrator",
+            "example": "john.doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address",
+            "example": "john.doe@example.com"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name",
+            "example": "Doe"
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Type of administrator",
+            "enum": [
+              "GLOBAL_ADMIN",
+              "TENANT_ADMIN"
+            ],
+            "example": "GLOBAL_ADMIN"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (null for global admins)",
+            "example": 1
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID for passwordless authentication. Use this ID to retrieve onboarding credentials via GET /api/v1/admins/{id}/onboarding",
+            "example": 123
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the administrator was created",
+            "example": "2025-10-15T14:30:00Z"
+          }
+        }
+      },
       "EnrollmentResetRequestDto": {
         "type": "object",
         "properties": {
@@ -2608,6 +3321,12 @@
             "description": "Unique identifier for the integration",
             "example": 1
           },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID that owns this integration",
+            "example": 2
+          },
           "logo": {
             "type": "string",
             "description": "URL or path to the integration logo image",
@@ -2633,89 +3352,38 @@
           }
         }
       },
-      "PageIntegrationResponseDto": {
+      "PageMetadata": {
         "type": "object",
         "properties": {
-          "totalPages": {
+          "size": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
           },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "numberOfElements": {
+          "totalPages": {
             "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
+            "format": "int64"
+          }
+        }
+      },
+      "PagedModelIntegrationResponseDto": {
+        "type": "object",
+        "properties": {
           "content": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/IntegrationResponseDto"
             }
           },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
-          }
-        }
-      },
-      "PageableObject": {
-        "type": "object",
-        "properties": {
-          "paged": {
-            "type": "boolean"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "unpaged": {
-            "type": "boolean"
-          },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "offset": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          }
-        }
-      },
-      "SortObject": {
-        "type": "object",
-        "properties": {
-          "sorted": {
-            "type": "boolean"
-          },
-          "unsorted": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -2782,49 +3450,17 @@
           }
         }
       },
-      "PageEnrollmentResponseDto": {
+      "PagedModelEnrollmentResponseDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
           "content": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EnrollmentResponseDto"
             }
           },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -2983,49 +3619,17 @@
           }
         }
       },
-      "PageAuthAttemptDto": {
+      "PagedModelAuthAttemptDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
           "content": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AuthAttemptDto"
             }
           },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -3178,49 +3782,17 @@
           }
         }
       },
-      "PageAuditLogResponseDto": {
+      "PagedModelAuditLogResponseDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
           "content": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AuditLogResponseDto"
             }
           },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -3294,6 +3866,112 @@
             "type": "string",
             "description": "Admin who revoked this key (null if active)",
             "example": "admin"
+          }
+        }
+      },
+      "AdminResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing administrator information for listing purposes",
+        "properties": {
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the administrator",
+            "example": 1
+          },
+          "username": {
+            "type": "string",
+            "description": "Username for the administrator",
+            "example": "john.doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address",
+            "example": "john.doe@example.com"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name",
+            "example": "Doe"
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Type of administrator",
+            "enum": [
+              "GLOBAL_ADMIN",
+              "TENANT_ADMIN",
+              "INTEGRATION_ADMIN"
+            ],
+            "example": "TENANT_ADMIN"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (null for global admins)",
+            "example": 1
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Flag indicating if the administrator is currently active",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the administrator was created",
+            "example": "2025-10-15T14:30:00Z"
+          }
+        }
+      },
+      "PagedModelAdminResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "AdminOnboardingResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing administrator onboarding credentials for passwordless enrollment",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID for passwordless authentication",
+            "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token (shown once - save securely)",
+            "example": "EZK-ABC123-DEF456"
+          },
+          "enrollmentChallenge": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment challenge code (6 digits, shown once - save securely)",
+            "example": 654321
+          },
+          "recoveryCodes": {
+            "type": "array",
+            "description": "List of recovery codes (shown once, single-use - save securely)",
+            "example": [
+              "1234-5678-9012-3456-7890-1234-5678-9012"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
