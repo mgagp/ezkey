@@ -419,6 +419,29 @@ The test framework uses several cache files in `.ezkey-test/`:
 
 These files enable efficient test execution by avoiding repetitive bootstrap and authentication flows.
 
+## Docker bootstrap-init and demo-device volume / permissions pitfalls
+
+Functional tests interact with the `demo-device` container data volume (notably enrollments stored under `data/enrollments` inside the container, which resolves to `/app/data/enrollments`).
+
+### Key facts
+
+- **Same Docker volume, different mount paths still share the same files**: if `demo-device-data` is mounted as `/app/data` in one container and as `/demo-device-data` in another, they still see the same underlying volume content; only the *container path* differs.
+- **The real failure mode is usually permissions**:
+  - `bootstrap-init` often writes as `root`.
+  - `demo-device` runs as `spring:spring` and expects writable directories under `/app/data`.
+  - Test utilities that write files via `docker exec` as `spring:spring` can fail with **"Permission denied"** if the directory (or existing files) were created by `root` without compatible permissions.
+
+### Practical guidance (to keep tests idempotent)
+
+- Prefer a **single canonical mount point** across containers for the shared volume (typically `/app/data`) to avoid confusion and reduce accidental path drift.
+- When a test utility writes to the shared volume, it should be **idempotent**:
+  - if the target file already exists (created by bootstrap-init), skip writing or overwrite safely with correct ownership/permissions (depending on the intent of the test).
+- If you are diagnosing a failure, check both:
+  - **path consistency** (are we writing/reading the same logical location?), and
+  - **ownership/permissions** on the volume directories and files.
+
+For the full step-by-step bootstrap/token flow and the RestAssured reconfiguration points, see `BOOTSTRAP_FLOW_ANALYSIS.md`.
+
 ## Troubleshooting
 
 ### Token Not Available

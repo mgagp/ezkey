@@ -69,7 +69,9 @@ This file is UTF-8 without BOM.
 
 - **[MULTI_TENANT_PHILOSOPHY.md](MULTI_TENANT_PHILOSOPHY.md)** - Complete multi-tenant philosophy, matrices, and examples
 - **[FUNCTIONAL_TESTING_GUIDE.md](FUNCTIONAL_TESTING_GUIDE.md)** - General functional testing guide
+- **[FUNCTIONAL_TESTING_GUIDE.md](FUNCTIONAL_TESTING_GUIDE.md)** - See section "Docker bootstrap-init and demo-device volume / permissions pitfalls" (shared volume paths, root vs spring permissions, idempotence)
 - **[TEST_PHILOSOPHY.md](TEST_PHILOSOPHY.md)** - Overall test philosophy and conventions
+- **`BOOTSTRAP_FLOW_ANALYSIS.md`** - Deep-dive reference: full admin bootstrap + token creation flow and RestAssured configuration points
 - **`docs/testing/MULTI_TENANT_TEST_PLAN.md`** - Detailed multi-tenant test plan
 - **`docs/testing/TENANT_PERMISSIONS_TEST_STRATEGY.md`** - Permission matrices and test strategy
 
