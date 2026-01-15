@@ -144,6 +144,14 @@ public class IntegrationController {
 
 ### DTO Documentation
 
+#### Required fields: Bean Validation + `@Schema(required = true)`
+
+Ezkey intentionally uses **both** Bean Validation annotations (e.g., `@NotNull`, `@NotBlank`) and
+`@Schema(required = true)` on required DTO fields:
+
+- Springdoc infers “required” from Bean Validation automatically.
+- `@Schema(required = true)` is kept for **explicitness and consistency** across the codebase.
+
 #### Request DTOs
 ```java
 @Schema(description = "Request to create a new integration")
