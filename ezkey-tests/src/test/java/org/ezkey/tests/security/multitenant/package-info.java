@@ -24,7 +24,7 @@
  * <p><b>Key Documentation:</b>
  *
  * <ul>
- *   <li>{@code ../../../../MULTI_TENANT_PHILOSOPHY.md} - Complete philosophy and matrices
+ *   <li>{@code ../../../../reference/MULTI_TENANT.md} - Complete philosophy and matrices
  *   <li>{@code ../../../../AGENTS.md} - Quick reference for AI agents
  *   <li>{@code docs/testing/MULTI_TENANT_TEST_PLAN.md} - Detailed test plan
  *   <li>{@code docs/testing/TENANT_PERMISSIONS_TEST_STRATEGY.md} - Permission matrices

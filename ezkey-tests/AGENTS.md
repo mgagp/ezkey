@@ -4,7 +4,7 @@ This file is UTF-8 without BOM.
 
 ## 🎯 Multi-Tenant Critical Rules
 
-**⚠️ CRITICAL: Read [MULTI_TENANT_PHILOSOPHY.md](MULTI_TENANT_PHILOSOPHY.md) for complete context**
+**⚠️ CRITICAL: Read [reference/MULTI_TENANT.md](reference/MULTI_TENANT.md) for complete context**
 
 ### The "No Impersonation" Rule
 - ❌ **GlobalAdmin CANNOT create resources for other tenants**
@@ -67,11 +67,16 @@ This file is UTF-8 without BOM.
 
 ## 📚 Documentation References
 
-- **[MULTI_TENANT_PHILOSOPHY.md](MULTI_TENANT_PHILOSOPHY.md)** - Complete multi-tenant philosophy, matrices, and examples
-- **[FUNCTIONAL_TESTING_GUIDE.md](FUNCTIONAL_TESTING_GUIDE.md)** - General functional testing guide
-- **[FUNCTIONAL_TESTING_GUIDE.md](FUNCTIONAL_TESTING_GUIDE.md)** - See section "Docker bootstrap-init and demo-device volume / permissions pitfalls" (shared volume paths, root vs spring permissions, idempotence)
-- **[TEST_PHILOSOPHY.md](TEST_PHILOSOPHY.md)** - Overall test philosophy and conventions
-- **`BOOTSTRAP_FLOW_ANALYSIS.md`** - Deep-dive reference: full admin bootstrap + token creation flow and RestAssured configuration points
+### Guides (Practical How-To)
+- **[guides/WRITING_TESTS.md](guides/WRITING_TESTS.md)** - Complete guide on writing functional tests, including authentication, pagination, filtering, and best practices
+- **[guides/TEST_PHILOSOPHY.md](guides/TEST_PHILOSOPHY.md)** - Overall test philosophy and opportunistic E2E testing strategy
+
+### Reference (Technical Details)
+- **[reference/MULTI_TENANT.md](reference/MULTI_TENANT.md)** - Complete multi-tenant philosophy, matrices, and examples
+- **[reference/AUTHENTICATION.md](reference/AUTHENTICATION.md)** - Complete authentication reference: token acquisition, cache files, building block tests
+- **[reference/BOOTSTRAP_FLOW.md](reference/BOOTSTRAP_FLOW.md)** - Deep-dive reference: full admin bootstrap + token creation flow and RestAssured configuration points
+
+### External Documentation
 - **`docs/testing/MULTI_TENANT_TEST_PLAN.md`** - Detailed multi-tenant test plan
 - **`docs/testing/TENANT_PERMISSIONS_TEST_STRATEGY.md`** - Permission matrices and test strategy
 

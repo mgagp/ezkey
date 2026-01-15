@@ -315,6 +315,20 @@ $env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 
 **Note**: The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack.
 
+**Verification**:
+After starting the stack, verify the active profile:
+```bash
+# Check Admin API logs
+docker logs ezkey-admin-api | grep "The following profiles are active"
+
+# Check Auth API logs
+docker logs ezkey-auth-api | grep "The following profiles are active"
+```
+
+Expected output:
+- Production Mode: `docker`
+- Test Mode: `docker,docker-test`
+
 ## Configuration
 
 ### Environment Variables
@@ -615,6 +629,23 @@ For CI/CD integration:
 - [ ] Add API contract testing
 - [ ] Implement smoke test suite
 - [ ] CI/CD pipeline integration
+
+## Documentation
+
+### Guides (Practical How-To)
+
+- **[guides/WRITING_TESTS.md](guides/WRITING_TESTS.md)** - Complete guide on writing functional tests, including authentication, pagination, filtering, and best practices
+- **[guides/TEST_PHILOSOPHY.md](guides/TEST_PHILOSOPHY.md)** - Test philosophy and opportunistic E2E testing strategy
+
+### Reference (Technical Details)
+
+- **[reference/AUTHENTICATION.md](reference/AUTHENTICATION.md)** - Complete authentication reference: token acquisition, cache files, building block tests
+- **[reference/BOOTSTRAP_FLOW.md](reference/BOOTSTRAP_FLOW.md)** - Detailed step-by-step bootstrap and token creation flow with all API calls
+- **[reference/MULTI_TENANT.md](reference/MULTI_TENANT.md)** - Multi-tenant philosophy, permission matrices, and testing strategy
+
+### Quick Reference
+
+- **[AGENTS.md](AGENTS.md)** - Quick reference for agents with critical rules and links to detailed documentation
 
 ## References
 

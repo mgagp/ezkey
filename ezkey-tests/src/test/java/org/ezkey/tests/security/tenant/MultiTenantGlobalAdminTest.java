@@ -44,7 +44,7 @@ import io.restassured.response.Response;
  * resource creation.
  *
  * <p>
- * <b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for
+ * <b>Multi-Tenant Philosophy:</b> See {@code reference/MULTI_TENANT.md} for
  * complete context.
  *
  * <ul>
@@ -118,7 +118,7 @@ import io.restassured.response.Response;
  * tests.
  *
  * @see org.ezkey.tests.security.multitenant.TenantCrossIsolationSecurityTest
- * @see <a href="../../MULTI_TENANT_PHILOSOPHY.md">Multi-Tenant Philosophy</a>
+ * @see <a href="../../../reference/MULTI_TENANT.md">Multi-Tenant Philosophy</a>
  * @see <a href="../../AGENTS.md">Agent Quick Reference</a>
  */
 @DisplayName("Multi-Tenant Global Admin Tests - Phase 1")

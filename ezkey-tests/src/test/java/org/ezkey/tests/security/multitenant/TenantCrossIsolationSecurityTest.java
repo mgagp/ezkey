@@ -49,7 +49,7 @@ import jakarta.servlet.http.HttpServletRequest;
  *
  * <p>These are P0 tests - critical isolation boundaries that prevent data leakage between tenants.
  *
- * <p><b>Multi-Tenant Philosophy:</b> See {@code MULTI_TENANT_PHILOSOPHY.md} for complete context.
+ * <p><b>Multi-Tenant Philosophy:</b> See {@code reference/MULTI_TENANT.md} for complete context.
  *
  * <ul>
  *   <li><b>Key Principle:</b> "No Impersonation" - TenantAdmin cannot access other tenant resources
@@ -103,7 +103,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * </table>
  *
  * @see org.ezkey.tests.security.tenant.MultiTenantGlobalAdminTest
- * @see <a href="../../MULTI_TENANT_PHILOSOPHY.md">Multi-Tenant Philosophy</a>
+ * @see <a href="../../../reference/MULTI_TENANT.md">Multi-Tenant Philosophy</a>
  * @see <a href="../../AGENTS.md">Agent Quick Reference</a>
  * @since 2025
  */

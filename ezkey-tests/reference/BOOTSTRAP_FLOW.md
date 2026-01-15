@@ -536,4 +536,3 @@ The `AdminBootstrapService.ensureAdminToken()` method follows a three-tier strat
 - [ ] Deleting `admin-token.json` recreates token using device credentials (Tier 2)
 - [ ] Deleting both files performs full bootstrap (Tier 3)
 - [ ] After logout, token is automatically recreated for subsequent tests
-

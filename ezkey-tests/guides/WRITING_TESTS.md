@@ -1,8 +1,8 @@
-# Functional Testing Guide - Ezkey Project
+# Writing Functional Tests - Ezkey Project
 
 ## Overview
 
-This guide explains how to write functional tests for the Ezkey project, focusing on authentication, test independence, and multi-tenant isolation.
+This guide explains how to write functional tests for the Ezkey project, focusing on authentication, test independence, multi-tenant isolation, and REST API best practices.
 
 ## Authentication Mechanisms
 
@@ -14,11 +14,19 @@ Ezkey uses **one single login endpoint** for all admin types:
 POST /admin/auth/login
 ```
 
-The system automatically determines the admin type (GlobalAdmin, TenantAdmin, IntegrationAdmin) from the database and generates tokens with appropriate scope information via `AdminPrincipal`:
+The system automatically determines the admin type from the database and generates tokens with appropriate scope information via `AdminPrincipal`:
 
-- `adminType`: GLOBAL_ADMIN, TENANT_ADMIN, or INTEGRATION_ADMIN
+**Currently Implemented Admin Types:**
+- `GLOBAL_ADMIN`: System-wide administrator with full access
+- `TENANT_ADMIN`: Tenant-specific administrator with limited scope
+
+**Future (Not Yet Implemented):**
+- `INTEGRATION_ADMIN`: Integration-specific administrator (defined in schema but not activated in Phase 1)
+
+**AdminPrincipal Fields:**
+- `adminType`: GLOBAL_ADMIN or TENANT_ADMIN (currently)
 - `tenantId`: null for GlobalAdmin, tenant ID for TenantAdmin
-- `integrationId`: null except for IntegrationAdmin
+- `integrationId`: null (reserved for future INTEGRATION_ADMIN)
 
 ## Obtaining Admin Tokens
 
@@ -188,6 +196,233 @@ public void setUp() {
 @AfterEach
 public void tearDown() {
   RestAssuredTestConfig.reset();
+}
+```
+
+## REST API Best Practices
+
+### Pagination
+
+#### Make Pagination Explicit
+
+Always specify pagination parameters explicitly to avoid reliance on defaults:
+
+```java
+given()
+    .header("Authorization", "Bearer " + globalAdminToken)
+    .queryParam("page", 0)
+    .queryParam("size", 100)
+    .queryParam("sort", "id,ASC")
+    .get("/integrations");
+```
+
+**Benefits:**
+- Removes reliance on API defaults
+- Stable ordering improves reproducibility
+- Better resilience under data accumulation
+
+#### Validate Pagination Contract
+
+Always validate pagination metadata to ensure the API contract is correct:
+
+```java
+Response response = given()
+    .header("Authorization", "Bearer " + globalAdminToken)
+    .queryParam("page", 0)
+    .queryParam("size", 100)
+    .queryParam("sort", "id,ASC")
+    .get("/integrations")
+    .then()
+    .extract()
+    .response();
+
+// Validate pagination metadata
+assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(2);
+assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(1);
+assertThat(response.jsonPath().getInt("size")).isEqualTo(100);
+assertThat(response.jsonPath().getInt("number")).isEqualTo(0);
+```
+
+**Benefits:**
+- Ensures API pagination contract remains correct under load
+- Catches regressions earlier
+- Validates response structure consistency
+
+### Filtering
+
+#### Use Filters to Scope to Test Data
+
+When possible, use API filters to scope queries to test-specific data:
+
+```java
+String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+
+given()
+    .header("Authorization", "Bearer " + globalAdminToken)
+    .queryParam("integrationName", uniqueSuffix)
+    .queryParam("size", 100)
+    .get("/integrations");
+```
+
+**Benefits:**
+- Improved independence without cleanup
+- Faster and more deterministic assertions
+- Reduces dependency on global database state
+
+**Available Filters:**
+- `integrationName` (partial match, case-insensitive)
+- `active` (boolean)
+- `createdAfter` / `createdBefore` (date filters)
+
+### Response Structure Validation
+
+Validate the complete response structure, not just presence of expected data:
+
+```java
+Response response = given()
+    .header("Authorization", "Bearer " + adminToken)
+    .get("/integrations")
+    .then()
+    .extract()
+    .response();
+
+// Validate pagination structure
+assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(0);
+assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(0);
+assertThat(response.jsonPath().getList("content")).isNotNull();
+
+// Validate content coherence
+List<Map<String, Object>> integrations = response.jsonPath().getList("content");
+assertThat(integrations.size()).isLessThanOrEqualTo(response.jsonPath().getInt("size"));
+```
+
+## Data Accumulation Strategy
+
+### Intentional Feature, Not a Bug
+
+The multi-tenant test strategy is **intentional**: create new data as needed **without cleanup** to simulate a production-like environment. This is a **feature, not a bug**, and it improves the overall value of the functional test suite.
+
+**Benefits:**
+- Tests are more **production-like**
+- Better signal on **scalability** issues (pagination, queries)
+- Better signal on **performance** as data grows
+- Simpler test flows (less cleanup orchestration)
+
+### How to Keep Tests Independent Under Accumulation
+
+Independence is preserved via:
+- **Unique identifiers** for test-created entities (timestamps/UUIDs)
+- **Filters** that scope to test-run data
+- **Explicit pagination** to avoid "first page only" assumptions
+- Avoiding reliance on ordering and pre-existing data
+
+**Example:**
+
+```java
+@Test
+@DisplayName("GlobalAdmin can list all integrations")
+void testGlobalAdminCanListAllIntegrations() {
+    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+    
+    // Create test data with unique suffix
+    Integer integrationAId = testDataFactory.createIntegrationForTenant(
+        "Integration A " + uniqueSuffix, tenantAId, globalAdminToken);
+    Integer integrationBId = testDataFactory.createIntegrationForTenant(
+        "Integration B " + uniqueSuffix, tenantBId, globalAdminToken);
+    
+    // Use filter to scope to test data
+    Response response = given()
+        .header("Authorization", "Bearer " + globalAdminToken)
+        .queryParam("integrationName", uniqueSuffix)
+        .queryParam("page", 0)
+        .queryParam("size", 100)
+        .queryParam("sort", "id,ASC")
+        .get("/integrations")
+        .then()
+        .statusCode(200)
+        .extract()
+        .response();
+    
+    // Validate pagination contract
+    assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(2);
+    assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(1);
+    
+    // Validate test data is present
+    List<Integer> integrationIds = response.jsonPath().getList("content.id");
+    assertThat(integrationIds).contains(integrationAId, integrationBId);
+}
+```
+
+## Using DatabaseHelper
+
+### When to Use DatabaseHelper
+
+`DatabaseHelper` is a utility for direct database access in tests. Use it for:
+
+**Good Uses:**
+- Fast existence/status checks
+- Safe recovery from partially-completed bootstrap
+- Optional cleanup when a test *must* reset state for correctness
+- Diagnostics when API responses are ambiguous
+- Cross-validation of API vs DB state
+
+**Bad Uses:**
+- Replacing API assertions with DB checks for the core behavior being validated
+- Bypassing the API layer to test business logic
+
+**Principle:** The API should remain the primary validation surface; DB access is a supporting tool.
+
+### Examples
+
+#### Pre-test State Checks
+
+```java
+@Test
+public void testIntegrationCreation() {
+    // Check initial state
+    int initialCount = databaseHelper.countIntegrations();
+    
+    // Create integration via API
+    Integer integrationId = testDataFactory.createIntegration("Test Integration", tenantId, adminToken);
+    
+    // Verify via API (primary validation)
+    Response response = given()
+        .header("Authorization", "Bearer " + adminToken)
+        .get("/integrations/" + integrationId)
+        .then()
+        .statusCode(200)
+        .extract()
+        .response();
+    
+    // Optional: Cross-validate with DB for diagnostics
+    assertThat(databaseHelper.countIntegrations()).isEqualTo(initialCount + 1);
+}
+```
+
+#### Diagnostics
+
+```java
+@Test
+public void testIntegrationList() {
+    // Create test data
+    Integer integrationId = testDataFactory.createIntegration("Test Integration", tenantId, adminToken);
+    
+    // Test via API
+    Response response = given()
+        .header("Authorization", "Bearer " + adminToken)
+        .get("/integrations")
+        .then()
+        .extract()
+        .response();
+    
+    // If test fails, use DB for diagnostics
+    if (response.getStatusCode() != 200) {
+        // Check if integration exists in DB
+        boolean exists = databaseHelper.integrationExists(integrationId);
+        logger.debug("Integration exists in DB: {}", exists);
+    }
+    
+    assertThat(response.getStatusCode()).isEqualTo(200);
 }
 ```
 
@@ -409,6 +644,38 @@ public void testBidirectionalIsolation() {
 }
 ```
 
+### 7. Make Pagination Explicit
+
+Always specify `page`, `size`, and `sort` parameters explicitly:
+
+```java
+given()
+    .queryParam("page", 0)
+    .queryParam("size", 100)
+    .queryParam("sort", "id,ASC")
+    .get("/integrations");
+```
+
+### 8. Validate Pagination Metadata
+
+Always validate pagination contract:
+
+```java
+assertThat(response.jsonPath().getInt("totalElements")).isGreaterThanOrEqualTo(expectedCount);
+assertThat(response.jsonPath().getInt("totalPages")).isGreaterThanOrEqualTo(1);
+assertThat(response.jsonPath().getInt("size")).isEqualTo(100);
+```
+
+### 9. Use Filters When Available
+
+Scope queries to test data using filters:
+
+```java
+given()
+    .queryParam("integrationName", uniqueSuffix)
+    .get("/integrations");
+```
+
 ## Cache Files
 
 The test framework uses several cache files in `.ezkey-test/`:
@@ -448,7 +715,7 @@ Functional tests interact with the `demo-device` container data volume (notably 
 - Some tests may also write enrollment files; the test utilities should tolerate the file already existing (bootstrap-init may have created it).
 - If you have old Docker volumes from before path/permission fixes, prefer a clean start (`docker compose down -v` / `docker-compose down -v`) to avoid confusing mixed states.
 
-For the full step-by-step bootstrap/token flow and the RestAssured reconfiguration points, see `BOOTSTRAP_FLOW_ANALYSIS.md`.
+For the full step-by-step bootstrap/token flow and the RestAssured reconfiguration points, see `reference/BOOTSTRAP_FLOW.md`.
 
 ## Troubleshooting
 
@@ -480,6 +747,26 @@ Or run the bootstrap service to generate tokens automatically.
 4. Admin API is accessible
 
 Check container logs for errors.
+
+### Pagination Issues
+
+**Problem**: Test fails intermittently, especially after multiple runs
+
+**Solution**:
+1. Make pagination explicit (specify `page`, `size`, `sort`)
+2. Use filters to scope to test data
+3. Validate pagination metadata
+4. Use unique suffixes for test data
+
+### Data Accumulation Issues
+
+**Problem**: Test fails because expected data is not on first page
+
+**Solution**:
+1. Use filters to scope queries to test data
+2. Increase `size` parameter to ensure all test data is visible
+3. Use stable sort order (e.g., `id,ASC` instead of `createdAt,DESC`)
+4. Consider using `DatabaseHelper` for diagnostics
 
 ## Examples
 

@@ -17,7 +17,7 @@ Tests should opportunistically use available resources in the Docker clean room 
 
 ### 3. Real-World Validation
 - Tests run in production-like Docker environment
-- Security features remain enabled (no bypass)
+- Security features remain enabled (no bypass, special case for rate limit which could be turned off)
 - Tests validate actual behavior, not mocked behavior
 
 ## Resource Usage Guidelines
@@ -52,6 +52,7 @@ Need to check/create entity?
 - **AdminBootstrapService**: Uses files, DB, and APIs opportunistically
 - **BootstrapCredentialsExtractor**: Reads Docker logs and caches to files
 - **AuthTokenManager**: Uses cached tokens from files
+- **DatabaseHelper**: Utility for direct database access (state verification, cleanup, diagnostics)
 
 ### ⚠️ Could Be More Opportunistic
 - **TestDataFactory**: Always creates new entities via API (could check/reuse existing)
@@ -62,16 +63,15 @@ Need to check/create entity?
 
 ### High Priority
 1. **TestDataFactory Enhancement**: Add methods to find/reuse existing entities before creating new ones
-2. **Database Helper Utility**: Create a `DatabaseHelper` utility for common DB operations
-3. **Test Cleanup Strategy**: Add optional cleanup mechanisms using DB direct access
+2. **Test Cleanup Strategy**: Add optional cleanup mechanisms using DB direct access (via `DatabaseHelper`)
 
 ### Medium Priority
-4. **State Verification Helpers**: Add helpers that use DB for fast state checks
-5. **Entity Reuse Patterns**: Document patterns for reusing test entities
+3. **State Verification Helpers**: Expand `DatabaseHelper` with additional helpers for fast state checks
+4. **Entity Reuse Patterns**: Document patterns for reusing test entities
 
 ### Low Priority
-6. **Log Analysis Utilities**: Expand log reading capabilities for debugging
-7. **Performance Optimization**: Use DB for bulk operations instead of API loops
+5. **Log Analysis Utilities**: Expand log reading capabilities for debugging
+6. **Performance Optimization**: Use DB for bulk operations instead of API loops
 
 ## Philosophy alignment notes (consistency checklist)
 
@@ -92,9 +92,9 @@ When adding new utilities (or extending `TestDataFactory`), prefer the same appr
 - **Data accumulation is a feature** for functional E2E suites: tests must remain correct as datasets grow.
 - **Reuse is an optimization**, not a correctness requirement:
   - Prefer **unique suffixes + explicit filters/pagination** for correctness under accumulation.
-  - Use **find-or-create** patterns selectively when the goal is to avoid expensive setup (or when a test is explicitly designed as a “building block” / pre-warm).
+  - Use **find-or-create** patterns selectively when the goal is to avoid expensive setup (or when a test is explicitly designed as a "building block" / pre-warm).
 
-### 3. Avoid “file-only resets” that can desynchronize state
+### 3. Avoid "file-only resets" that can desynchronize state
 
 Deleting `.ezkey-test/*.json` (or deleting only `device-credentials.json`) can create confusing states where:
 
@@ -109,4 +109,3 @@ When you need a forced fresh bootstrap, prefer a dedicated building-block test (
 - **Bad uses**: replacing API assertions with DB checks for the core behavior being validated.
 
 The API should remain the primary validation surface; DB access is a supporting tool.
-
