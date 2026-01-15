@@ -54,11 +54,13 @@ public void setUp() {
 Use `TenantAdminTestHelper.createAndLoginTenantAdmin()` which performs complete device simulation:
 
 1. Creates TenantAdmin record via Admin API
-2. Retrieves onboarding credentials (enrollmentId, enrollmentProofToken, enrollmentChallenge)
+2. Retrieves onboarding credentials (enrollmentId, enrollmentProofToken, enrollmentChallenge) via `GET /api/v1/admins/{id}/onboarding`
 3. Generates device key pair via Crypto API
 4. Binds device to enrollment via Auth API
 5. Verifies enrollment with signature
 6. Performs login and returns token
+
+Note: the onboarding endpoint returns `recoveryCodes: null` by design (recovery codes cannot be retrieved in plain text after provisioning).
 
 The helper also follows a 3-tier strategy:
 1. **Tier 1**: Cached token from `.ezkey-test/tenant-admin-{tenantId}-token.json` (validated)
@@ -439,6 +441,12 @@ Functional tests interact with the `demo-device` container data volume (notably 
 - If you are diagnosing a failure, check both:
   - **path consistency** (are we writing/reading the same logical location?), and
   - **ownership/permissions** on the volume directories and files.
+
+### Current stack behavior (implementation note)
+
+- `bootstrap-init` mounts the shared demo-device volume at `/app/data` and writes enrollment files under `/app/data/enrollments`.
+- Some tests may also write enrollment files; the test utilities should tolerate the file already existing (bootstrap-init may have created it).
+- If you have old Docker volumes from before path/permission fixes, prefer a clean start (`docker compose down -v` / `docker-compose down -v`) to avoid confusing mixed states.
 
 For the full step-by-step bootstrap/token flow and the RestAssured reconfiguration points, see `BOOTSTRAP_FLOW_ANALYSIS.md`.
 
