@@ -52,8 +52,9 @@ bootstrap fails).
 
 - `README_INITIAL_GLOBAL_ADMIN.md`: initial global admin + passwordless bootstrap (SOC 2)
 - `README_RATE_LIMITING.md`: rate limiting strategy and configuration
-- `README_TOKEN_CLEANUP_ROTATION.md`: bearer token cleanup and rotation-on-login
 - `NATIVE_BUILD.md`: native build notes (if relevant for this module)
+
+Token cleanup + rotation are documented in `docs/ADMIN_API_SECURITY_GUIDE.md` (Token Management).
 
 ## Deprecated documents
 

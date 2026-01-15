@@ -399,7 +399,7 @@ Phase 6: ✅ COMPLETE (code review)
 - [x] `ezkey-core/CODE_REVIEW_2025-10-14.md` - Code review report
 - [x] `docs/features/ADMIN_PASSWORDLESS_LOGIN.md` - Passwordless analysis
 - [x] `ezkey-admin-api/README_RATE_LIMITING.md` - Rate limiting
-- [x] `ezkey-admin-api/README_TOKEN_CLEANUP_ROTATION.md` - Token management
+- [x] `docs/ADMIN_API_SECURITY_GUIDE.md` - Token management (cleanup + rotation)
 
 ---
 
