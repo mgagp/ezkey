@@ -57,7 +57,7 @@ todos:
     content: Créer docker-compose.native.yml pour le profil de compilation native avec images natives compilées.
     status: pending
   - id: update-docker-start-scripts
-    content: Mettre à jour docker/start.sh et docker/start.bat pour supporter le basculement entre profil classique et profil native.
+    content: Mettre à jour docker/start.sh et docker/start.ps1 pour supporter le basculement entre profil classique et profil native.
     status: pending
   - id: update-docker-documentation
     content: Mettre à jour la documentation Docker (docker/README.md) avec instructions pour utiliser les deux profils (classique et native).
@@ -235,7 +235,7 @@ Créer un système permettant de lancer facilement le stack Docker soit en mode 
 ### Implémentation
 
 - Créer un fichier `docker-compose.native.yml` ou utiliser des variables d'environnement
-- Modifier les scripts de démarrage (`start.sh`, `start.bat`) pour supporter les deux modes
+- Modifier les scripts de démarrage (`start.sh`, `start.ps1`) pour supporter les deux modes
 - Documenter l'utilisation des deux profils
 - S'assurer que les deux modes utilisent les mêmes configurations de base (ports, volumes, etc.)
 
@@ -243,7 +243,7 @@ Créer un système permettant de lancer facilement le stack Docker soit en mode 
 
 - `docker-compose.yml` (profil par défaut - Spring Boot classique)
 - `docker-compose.native.yml` (profil native - images compilées)
-- `docker/start.sh` et `docker/start.bat` (ajouter support pour profil native)
+- `docker/start.sh` et `docker/start.ps1` (ajouter support pour profil native)
 - Documentation Docker mise à jour
 
 ## Livrables

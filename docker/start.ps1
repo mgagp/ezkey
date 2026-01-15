@@ -32,14 +32,14 @@ if ($env:SPRING_PROFILES_ACTIVE) {
 $ComposeArgs = "-f `"$ComposeFile`""
 if ($env:SPRING_PROFILES_ACTIVE -and $env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and (Test-Path $DevOverrideFile)) {
     $ComposeArgs = "$ComposeArgs -f `"$DevOverrideFile`""
-    Write-Host "🔧 Docker diagnostics override enabled: docker-compose.docker-dev.yml"
+    Write-Host "Docker diagnostics override enabled: docker-compose.docker-dev.yml"
 }
 
 # Optional: enable JMX for VisualVM in local Docker diagnostics mode.
 # Enable by setting EZKEY_ENABLE_JMX=true (or 1).
 if (($env:EZKEY_ENABLE_JMX -eq "1" -or $env:EZKEY_ENABLE_JMX -eq "true") -and (Test-Path $JmxOverrideFile)) {
     $ComposeArgs = "$ComposeArgs -f `"$JmxOverrideFile`""
-    Write-Host "🔧 JMX override enabled: docker-compose.docker-dev.jmx.yml"
+    Write-Host "JMX override enabled: docker-compose.docker-dev.jmx.yml"
 }
 
 # Set build flags based on parameters
@@ -170,7 +170,7 @@ if ($DebugCache) {
 }
 
 Write-Host ""
-Write-Host "🚀 Starting services..."
+Write-Host "Starting services..."
 try {
     Invoke-Expression "$DockerCompose $ComposeArgs up -d"
     if ($LASTEXITCODE -ne 0) { throw "Start failed" }
@@ -180,7 +180,7 @@ try {
 }
 
 Write-Host ""
-Write-Host "⏳ Waiting for services to be healthy..."
+Write-Host "Waiting for services to be healthy..."
 
 # Wait for PostgreSQL to be ready
 Write-Host "  - Waiting for PostgreSQL..."
@@ -201,12 +201,12 @@ while ($true) {
     Start-Sleep -Seconds 2
     $elapsed += 2
 }
-Write-Host "  ✅ PostgreSQL is ready"
+Write-Host "  - PostgreSQL is ready"
 
 # Wait for migration to complete
 Write-Host "  - Waiting for database migrations..."
 Start-Sleep -Seconds 30
-Write-Host "  ✅ Database migrations completed"
+Write-Host "  - Database migrations completed"
 
 # Wait for APIs to be healthy
 Write-Host "  - Waiting for Admin API..."
@@ -226,7 +226,7 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Admin API is healthy"
+Write-Host "  - Admin API is healthy"
 
 Write-Host "  - Waiting for Auth API..."
 $timeout = 120
@@ -245,7 +245,7 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Auth API is healthy"
+Write-Host "  - Auth API is healthy"
 
 Write-Host "  - Waiting for Crypto API..."
 $timeout = 120
@@ -264,38 +264,38 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Crypto API is healthy"
+Write-Host "  - Crypto API is healthy"
 
 Write-Host ""
 Write-Host "=========================================="
-Write-Host "  ✅ EZ Key Stack is Ready!"
+Write-Host "  EZ Key Stack is Ready!"
 Write-Host "=========================================="
 Write-Host ""
-Write-Host "📋 Service URLs:"
+Write-Host "Service URLs:"
 Write-Host "  - Admin API:    http://localhost:9080"
 Write-Host "  - Auth API:     http://localhost:8080"
 Write-Host "  - Crypto API:   http://localhost:9090"
 Write-Host "  - Demo Device:  http://localhost:8083"
 Write-Host ""
-Write-Host "📚 API Documentation:"
+Write-Host "API Documentation:"
 Write-Host "  - Admin API:    http://localhost:9080/swagger-ui.html"
 Write-Host "  - Auth API:     http://localhost:8080/swagger-ui.html"
 Write-Host "  - Crypto API:   http://localhost:9090/swagger-ui.html"
 Write-Host ""
-Write-Host "💡 Useful commands:"
+Write-Host "Useful commands:"
 Write-Host "  - View logs:    .\manage.ps1 logs"
 Write-Host "  - Stop stack:   .\manage.ps1 stop"
 Write-Host "  - View status:  .\manage.ps1 status"
 Write-Host ""
-Write-Host "🔧 Test Mode (permissive rate limiting):"
+Write-Host "Test Mode (permissive rate limiting):"
 Write-Host "  - Start in test mode: `$env:SPRING_PROFILES_ACTIVE='docker,docker-test'; .\start.ps1"
 Write-Host "  - Default mode (production): .\start.ps1"
 Write-Host ""
-Write-Host "🎉 Bootstrap Complete:"
+Write-Host "Bootstrap Complete:"
 Write-Host "  - Demo-device is pre-seeded and ready for use"
 Write-Host "  - Login via POST /api/v1/admin/auth/login and approve on demo-device"
 Write-Host ""
-Write-Host "📋 Retrieve Bootstrap Artifacts (if needed):"
+Write-Host "Retrieve Bootstrap Artifacts (if needed):"
 Write-Host "  - Bootstrap credentials: docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/bootstrap-credentials.json"
 Write-Host "  - Device credentials: docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-credentials.json"
 Write-Host ""

@@ -17,17 +17,25 @@ This directory contains Docker configuration files and scripts to run the comple
 # Linux/Mac
 ./docker/start.sh
 
-# Windows
-docker\start.bat
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
+# Or run directly from PowerShell:
+.\docker\start.ps1
 ```
+
+Voir aussi: [docs/windows-power-shell.md](../docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
 
 **Native Mode (GraalVM Native Images):**
 ```bash
 # Linux/Mac
 ./docker/start.sh --native
 
-# Windows
-docker\start.bat --native
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 --native
+# Or run directly from PowerShell:
+.\docker\start.ps1 --native
 ```
 
 **Note**: Native mode requires pre-built native images. Build them first:
@@ -309,8 +317,11 @@ Once native images are built, start the stack with the `--native` flag:
 # Linux/Mac
 ./docker/start.sh --native
 
-# Windows
-docker\start.bat --native
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 --native
+# Or run directly from PowerShell:
+.\docker\start.ps1 --native
 ```
 
 This uses `docker-compose.native.yml` which references the pre-built native images instead of building from source.

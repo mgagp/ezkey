@@ -123,7 +123,7 @@ flowchart TD
 - Update:
 - [`docker/start.sh`](docker/start.sh)
 - [`docker/README.md`](docker/README.md)
-- Windows scripts equivalents (`docker/start.ps1`, `docker/start.bat`) if they mention “Next steps required: mvn test …”.
+- Windows scripts equivalent (`docker/start.ps1`) if they mention “Next steps required: mvn test …”.
 - Add a short “How to retrieve artifacts from volume” section, with commands like:
 - Print bootstrap creds: same pattern.
 

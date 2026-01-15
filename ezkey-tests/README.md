@@ -79,9 +79,14 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 # Linux/Mac
 ./docker/start.sh
 
-# Windows
-docker\start.bat
+# Windows (PowerShell)
+# From a PowerShell prompt in the repo root (recommended):
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
+# Or run directly from PowerShell:
+.\docker\start.ps1
 ```
+
+Voir aussi: [docs/windows-power-shell.md](../docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
 
 **Mode Test Libre** - Rate limiting disabled for unrestricted testing:
 ```bash
@@ -346,7 +351,7 @@ ezkey.admin.ratelimit.auth-attempt.wait.window-minutes=15
 
 ### Workflow
 
-1. **Developer starts Docker stack**: `./docker/start.sh` (or `docker\start.bat` on Windows)
+1. **Developer starts Docker stack**: `./docker/start.sh` (or `./docker/start.ps1` in PowerShell)
 2. **Developer verifies stack health** (optional but recommended)
 3. **Developer sets admin token** (optional, for authenticated tests)
 4. **Developer runs tests**: `mvn test -pl ezkey-tests`
