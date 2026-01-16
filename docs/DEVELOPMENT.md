@@ -244,7 +244,7 @@ class OpenApiIntegrationTest {
 ## Development Workflow
 
 ### Code Quality Standards
-- **Java 21+**: Use modern Java features
+- **Java 25+**: Use modern Java features
 - **Spring Boot 3.x**: Follow Spring Boot best practices
 - **Maven**: Use Maven for dependency management
 - **UTF-8**: All files in UTF-8 without BOM

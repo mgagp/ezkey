@@ -261,7 +261,7 @@ ezkey-flyway.bat --repair
 
 **Compilation error:**
 ```bash
-# Check that Java 21 is installed
+# Check that Java 25 is installed
 java -version
 
 # Clean and recompile manually
@@ -326,7 +326,7 @@ Applied migrations:
 
 ### Code Style
 
-- Follow Java 21 best practices
+- Follow Java 25 best practices
 - Use Spring Boot conventions
 - Implement comprehensive Javadoc documentation
 - Follow the established package structure
