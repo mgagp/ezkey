@@ -2,7 +2,7 @@
 # Multi-stage Dockerfile for EZ Key Services
 # ============================================
 # Stage 1: Build all modules with Maven
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /build
 
 # Copy all POMs first (for dependency caching)
@@ -59,7 +59,7 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
 # ============================================
 # Stage 2: Runtime image for migration service
 # ============================================
-FROM eclipse-temurin:21-jre-alpine AS migration
+FROM eclipse-temurin:25-jre-alpine AS migration
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 WORKDIR /app
@@ -69,7 +69,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 3: Runtime image for admin-api service
 # ============================================
-FROM eclipse-temurin:21-jre-alpine AS admin-api
+FROM eclipse-temurin:25-jre-alpine AS admin-api
 RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
@@ -102,7 +102,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 # ============================================
 # Stage 4: Runtime image for auth-api service
 # ============================================
-FROM eclipse-temurin:21-jre-alpine AS auth-api
+FROM eclipse-temurin:25-jre-alpine AS auth-api
 RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
@@ -132,7 +132,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 # ============================================
 # Stage 5: Runtime image for crypto-api service
 # ============================================
-FROM eclipse-temurin:21-jre-alpine AS crypto-api
+FROM eclipse-temurin:25-jre-alpine AS crypto-api
 RUN apk add --no-cache curl && \
     addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
@@ -147,7 +147,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # ============================================
 # Stage 6: Runtime image for demo-device service
 # ============================================
-FROM eclipse-temurin:21-jre-alpine AS demo-device
+FROM eclipse-temurin:25-jre-alpine AS demo-device
 RUN apk add --no-cache curl su-exec && \
     addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
