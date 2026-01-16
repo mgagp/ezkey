@@ -77,7 +77,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * @see AuthAttemptService
  * @see AuthAttemptMapper
  */
-@WebMvcTest(controllers = AuthAttemptController.class)
+@WebMvcTest(
+    controllers = AuthAttemptController.class,
+    excludeAutoConfiguration = {
+      org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration.class,
+      org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration.class
+    })
 @AutoConfigureMockMvc(addFilters = false)
 @Import({SecurityConfig.class, AuthAttemptControllerTest.TestConfig.class})
 @DisplayName("AuthAttempt Controller Critical Tests")

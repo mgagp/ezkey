@@ -74,7 +74,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * @see EnrollmentService
  * @see EnrollmentAuthMapper
  */
-@WebMvcTest(controllers = EnrollmentController.class)
+@WebMvcTest(
+    controllers = EnrollmentController.class,
+    excludeAutoConfiguration = {
+      org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration.class,
+      org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration.class
+    })
 @AutoConfigureMockMvc(addFilters = false)
 @Import({SecurityConfig.class, EnrollmentControllerTest.TestConfig.class})
 @DisplayName("Enrollment Controller Critical Tests")
