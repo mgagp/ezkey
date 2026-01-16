@@ -11,6 +11,7 @@
 package org.ezkey.auth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,10 +36,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -76,7 +79,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(controllers = AuthAttemptController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, AuthAttemptControllerTest.TestConfig.class})
 @DisplayName("AuthAttempt Controller Critical Tests")
 class AuthAttemptControllerTest {
 
@@ -86,11 +89,33 @@ class AuthAttemptControllerTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @MockBean private AuthAttemptService authAttemptService;
+  @Autowired private AuthAttemptService authAttemptService;
 
-  @MockBean private AuthAttemptMapper authAttemptMapper;
+  @Autowired private AuthAttemptMapper authAttemptMapper;
 
-  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+  @Autowired private org.ezkey.audit.service.AuditLogService auditLogService;
+
+  @TestConfiguration
+  static class TestConfig {
+
+    @Bean
+    @Primary
+    public AuthAttemptService authAttemptService() {
+      return mock(AuthAttemptService.class);
+    }
+
+    @Bean
+    @Primary
+    public AuthAttemptMapper authAttemptMapper() {
+      return mock(AuthAttemptMapper.class);
+    }
+
+    @Bean
+    @Primary
+    public org.ezkey.audit.service.AuditLogService auditLogService() {
+      return mock(org.ezkey.audit.service.AuditLogService.class);
+    }
+  }
 
   private AuthAttemptPendingRequestDto pendingRequestDto;
 

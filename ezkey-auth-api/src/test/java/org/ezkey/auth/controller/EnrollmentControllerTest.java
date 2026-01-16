@@ -11,6 +11,7 @@
 package org.ezkey.auth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,10 +34,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -73,7 +76,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(controllers = EnrollmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, EnrollmentControllerTest.TestConfig.class})
 @DisplayName("Enrollment Controller Critical Tests")
 class EnrollmentControllerTest {
 
@@ -83,11 +86,33 @@ class EnrollmentControllerTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @MockBean private EnrollmentService enrollmentService;
+  @Autowired private EnrollmentService enrollmentService;
 
-  @MockBean private EnrollmentAuthMapper enrollmentMapper;
+  @Autowired private EnrollmentAuthMapper enrollmentMapper;
 
-  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+  @Autowired private org.ezkey.audit.service.AuditLogService auditLogService;
+
+  @TestConfiguration
+  static class TestConfig {
+
+    @Bean
+    @Primary
+    public EnrollmentService enrollmentService() {
+      return mock(EnrollmentService.class);
+    }
+
+    @Bean
+    @Primary
+    public EnrollmentAuthMapper enrollmentAuthMapper() {
+      return mock(EnrollmentAuthMapper.class);
+    }
+
+    @Bean
+    @Primary
+    public org.ezkey.audit.service.AuditLogService auditLogService() {
+      return mock(org.ezkey.audit.service.AuditLogService.class);
+    }
+  }
 
   private EnrollmentBindRequestDto bindRequestDto;
 
