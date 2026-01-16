@@ -14,8 +14,7 @@ package org.ezkey.migration;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -90,25 +89,5 @@ public class EzkeyMigrationApp {
    */
   public static void main(String[] args) {
     SpringApplication.run(EzkeyMigrationApp.class, args);
-  }
-
-  /**
-   * Disables automatic Flyway migration on startup.
-   *
-   * <p>This bean override prevents Spring Boot's auto-configuration from running Flyway migrations
-   * automatically at startup. Instead, the {@link FlywayCommandRunner} takes full control of when
-   * and how Flyway operations are executed based on command-line arguments.
-   *
-   * <p>Without this, Spring Boot would validate/migrate the database before the CommandLineRunner
-   * executes, preventing operations like repair from working when there are validation errors.
-   *
-   * @param flyway the Flyway instance
-   * @return a no-op FlywayMigrationInitializer
-   */
-  @Bean
-  public FlywayMigrationInitializer flywayInitializer(org.flywaydb.core.Flyway flyway) {
-    // Return a custom initializer that does nothing
-    // This prevents automatic migration/validation at startup
-    return new FlywayMigrationInitializer(flyway, null);
   }
 }

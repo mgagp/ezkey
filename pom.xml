@@ -50,12 +50,12 @@
 	</modules>
 	
 	<properties>
-		<java.version>25</java.version>
-		<maven.compiler.source>25</maven.compiler.source>
-		<maven.compiler.target>25</maven.compiler.target>
+		<java.version>17</java.version>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring-boot.version>3.5.8</spring-boot.version>
+		<spring-boot.version>4.0.1</spring-boot.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<springdoc.version>2.8.13</springdoc.version>
 		<spotbugs.version>4.7.3</spotbugs.version>

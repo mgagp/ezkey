@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,7 +29,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,7 +67,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class KeyRotationServiceIntegrationTest {
 
-  @MockBean private TinkKeyManager tinkKeyManager;
+  @TestConfiguration
+  static class TestConfig {
+    @Bean
+    @Primary
+    public TinkKeyManager tinkKeyManager() {
+      return mock(TinkKeyManager.class);
+    }
+  }
+
+  @Autowired private TinkKeyManager tinkKeyManager;
 
   @Autowired private KeyRotationService keyRotationService;
 
