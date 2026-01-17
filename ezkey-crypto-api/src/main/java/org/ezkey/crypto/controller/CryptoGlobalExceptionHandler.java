@@ -31,12 +31,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class CryptoGlobalExceptionHandler {
 
+  private static final org.slf4j.Logger logger =
+      org.slf4j.LoggerFactory.getLogger(CryptoGlobalExceptionHandler.class);
+
   // Most specific handlers first - Spring will match the most specific one
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(
       HttpMessageNotReadableException e, HttpServletRequest request) {
     // Log the full exception for debugging
-    org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CryptoGlobalExceptionHandler.class);
     logger.error("JSON parsing error in crypto API endpoint: {}", request.getRequestURI(), e);
 
     String exceptionMessage = e.getMessage();
@@ -97,7 +99,6 @@ public class CryptoGlobalExceptionHandler {
     }
 
     // Log the full exception for debugging
-    org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CryptoGlobalExceptionHandler.class);
     logger.error("RuntimeException in crypto API endpoint: {}", path, e);
 
     var errorResponse =
@@ -117,7 +118,6 @@ public class CryptoGlobalExceptionHandler {
     }
 
     // Log the full exception for debugging
-    org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CryptoGlobalExceptionHandler.class);
     logger.error("Exception in crypto API endpoint: {}", path, e);
 
     String exceptionMessage = e.getMessage();

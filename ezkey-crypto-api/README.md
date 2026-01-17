@@ -8,6 +8,7 @@ Postman and similar testing tools cannot easily:
 - Generate RSA key pairs
 - Sign data with private keys
 - Validate digital signatures
+- Encrypt plaintext values for testing
 - Decrypt encrypted database column values for debugging
 
 This crypto API exposes these crypto primitives as REST endpoints, enabling complete end-to-end testing of the Ezkey authentication flows and debugging of encrypted database columns.
@@ -88,7 +89,70 @@ Validates a signature against original data using the provided public key.
 }
 ```
 
-### 5. Decrypt Encrypted Database Column Value
+### 5. Encrypt Plaintext Value
+**POST** `/api/v1/crypto/encrypt`
+
+Encrypts a plaintext value and returns it in the standard encrypted format (`ENC:keyID:Base64(ciphertext)`). This endpoint is designed for testing and debugging purposes, enabling generation of encrypted test data and verification of encryption/decryption round-trips.
+
+**Request:**
+```json
+{
+  "plaintext": "my-secret-value"
+}
+```
+
+**Response:**
+```json
+{
+  "encryptedValue": "ENC:2865054995:AarFRRPHitKf32X1m/o8j0lJY71IGc1IN9dd65kd/...",
+  "encryptionSuccessful": true,
+  "keyId": "2865054995",
+  "encryptedFormat": "ENC:keyID:Base64",
+  "errorMessage": null,
+  "encryptionAvailable": true
+}
+```
+
+**Response Fields:**
+- `encryptedValue`: Encrypted value in `ENC:keyID:Base64(ciphertext)` format, or original plaintext if encryption unavailable/failed
+- `encryptionSuccessful`: Boolean indicating if the encryption operation succeeded
+- `keyId`: Primary key ID used for encryption (null if encryption failed/unavailable)
+- `encryptedFormat`: Format of the output ("ENC:keyID:Base64", or "PLAINTEXT" if encryption unavailable)
+- `errorMessage`: Error message if encryption failed (null if successful)
+- `encryptionAvailable`: Boolean indicating if EncryptionService is initialized and available
+
+**Status Codes:**
+- 200: Encryption operation completed (check `encryptionSuccessful` field for actual result)
+- 400: Invalid request data (empty plaintext value)
+- 500: Internal server error
+
+**Usage Example - Testing Encryption/Decryption Round-trip:**
+
+1. **Encrypt a test value:**
+   ```bash
+   curl -X POST http://localhost:9090/api/v1/crypto/encrypt \
+     -H "Content-Type: application/json" \
+     -d '{
+       "plaintext": "test-secret-value"
+     }'
+   ```
+
+2. **Copy the `encryptedValue` from the response**
+
+3. **Decrypt to verify round-trip:**
+   ```bash
+   curl -X POST http://localhost:9090/api/v1/crypto/decrypt \
+     -H "Content-Type: application/json" \
+     -d '{
+       "encryptedValue": "ENC:2865054995:AarFRRPHitKf32X1m/..."
+     }'
+   ```
+
+4. **Verify the decrypted `plaintext` matches the original value**
+
+**Note**: If a value is already encrypted (has `ENC:` prefix), the endpoint will detect this and return an error message indicating the value is already encrypted, preventing double encryption.
+
+### 6. Decrypt Encrypted Database Column Value
 **POST** `/api/v1/crypto/decrypt`
 
 Decrypts an encrypted database column value for debugging purposes. This endpoint enables investigation of encrypted fields such as `enrollment_proof_token`, `auth_attempt_proof_token`, `device_proof_token`, and `integration_private_key`.

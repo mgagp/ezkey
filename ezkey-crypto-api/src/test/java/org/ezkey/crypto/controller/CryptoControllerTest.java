@@ -378,4 +378,160 @@ class CryptoControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
   }
+
+  @Test
+  void testEncryptEndpointSuccessful() throws Exception {
+    String plaintext = "my-secret-value";
+    String encryptedValue = "ENC:2865054995:YWJjZGVmZ2hpams=";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.encrypt(plaintext)).thenReturn(encryptedValue);
+    when(encryptionService.parseKeyIdFromPrefix(encryptedValue)).thenReturn(2865054995L);
+
+    String requestBody =
+        """
+        {
+          "plaintext": "my-secret-value"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.encryptedValue").value(encryptedValue))
+        .andExpect(jsonPath("$.encryptionSuccessful").value(true))
+        .andExpect(jsonPath("$.keyId").value("2865054995"))
+        .andExpect(jsonPath("$.encryptedFormat").value("ENC:keyID:Base64"))
+        .andExpect(jsonPath("$.errorMessage").isEmpty())
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testEncryptEndpointEncryptionServiceUnavailable() throws Exception {
+    String plaintext = "my-secret-value";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(false);
+
+    String requestBody =
+        """
+        {
+          "plaintext": "my-secret-value"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.encryptedValue").value(plaintext))
+        .andExpect(jsonPath("$.encryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").isEmpty())
+        .andExpect(jsonPath("$.encryptedFormat").value("PLAINTEXT"))
+        .andExpect(
+            jsonPath("$.errorMessage")
+                .value("Encryption service not available - returning plaintext."))
+        .andExpect(jsonPath("$.encryptionAvailable").value(false));
+  }
+
+  @Test
+  void testEncryptEndpointAlreadyEncryptedValue() throws Exception {
+    String alreadyEncrypted = "ENC:1234567890:YWJjZGVmZ2hpams=";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.encrypt(alreadyEncrypted)).thenReturn(alreadyEncrypted);
+    when(encryptionService.isEncrypted(alreadyEncrypted)).thenReturn(true);
+
+    String requestBody =
+        """
+        {
+          "plaintext": "ENC:1234567890:YWJjZGVmZ2hpams="
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.encryptedValue").value(alreadyEncrypted))
+        .andExpect(jsonPath("$.encryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").isEmpty())
+        .andExpect(jsonPath("$.encryptedFormat").value("PLAINTEXT"))
+        .andExpect(
+            jsonPath("$.errorMessage").value("Value is already encrypted - skipped re-encryption."))
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testEncryptEndpointEncryptionFailure() throws Exception {
+    String plaintext = "my-secret-value";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.encrypt(plaintext))
+        .thenThrow(new IllegalStateException("Encryption failed"));
+
+    String requestBody =
+        """
+        {
+          "plaintext": "my-secret-value"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.encryptedValue").value(plaintext))
+        .andExpect(jsonPath("$.encryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").isEmpty())
+        .andExpect(jsonPath("$.encryptedFormat").value("PLAINTEXT"))
+        .andExpect(jsonPath("$.errorMessage").value("Encryption failed: Encryption failed"))
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testEncryptEndpointEmptyValue() throws Exception {
+    String requestBody =
+        """
+        {
+          "plaintext": ""
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void testEncryptEndpointNullValue() throws Exception {
+    String requestBody =
+        """
+        {
+          "plaintext": null
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/encrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
 }
