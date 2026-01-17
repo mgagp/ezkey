@@ -241,6 +241,8 @@ When a key rotation occurs in the main application (admin-api or auth-api):
 - **File-based Only**: Crypto API uses FILE storage mode exclusively (no DATABASE or HYBRID mode support)
 - **Predictable State**: Restart guarantees that Crypto API uses the exact keyset that exists in the file at startup time
 
+**Note**: While `TinkKeyManager` has a mechanism to check for keyset file changes during runtime (`checkAndReloadKeysetIfNeeded()`), this automatic reload is not guaranteed. It only occurs when encryption operations are performed, is throttled (checks max every 5 seconds), and may fail silently. For a debugging tool, requiring a restart after key rotation is simpler, more predictable, and more reliable than depending on automatic reload behavior.
+
 ### Workflow After Key Rotation
 
 1. Key rotation occurs in the main application (admin-api or auth-api)

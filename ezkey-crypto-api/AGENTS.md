@@ -217,7 +217,6 @@ Crypto API can decrypt values encrypted with:
 - **[docs/ENDPOINT.md](../docs/ENDPOINT.md)** - Main API endpoint documentation
 
 ### Related Documentation
-- **[docs/analysis/CRYPTO_API_KEYSET_ROTATION_BEHAVIOR.md](../docs/analysis/CRYPTO_API_KEYSET_ROTATION_BEHAVIOR.md)** - Detailed keyset rotation behavior analysis
 - **[ezkey-core/README.md](../ezkey-core/README.md)** - Core encryption service documentation
 
 ## 🎯 Best Practices
