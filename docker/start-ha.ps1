@@ -27,7 +27,7 @@ if ($env:SPRING_PROFILES_ACTIVE) {
 $ComposeArgs = "-f `"$ComposeFile`""
 if ($env:SPRING_PROFILES_ACTIVE -and $env:SPRING_PROFILES_ACTIVE.Contains("docker-dev") -and (Test-Path $DevOverrideFile)) {
     $ComposeArgs = "$ComposeArgs -f `"$DevOverrideFile`""
-    Write-Host "🔧 HA Docker diagnostics override enabled: docker-compose.ha.docker-dev.yml"
+    Write-Host "HA Docker diagnostics override enabled: docker-compose.ha.docker-dev.yml"
 }
 
 # Set build flags based on parameters
@@ -44,7 +44,7 @@ Write-Host ""
 try {
     docker info | Out-Null
 } catch {
-    Write-Host "❌ Error: Docker is not running. Please start Docker and try again." -ForegroundColor Red
+    Write-Host "Error: Docker is not running. Please start Docker and try again." -ForegroundColor Red
     exit 1
 }
 
@@ -63,11 +63,11 @@ $env:COMPOSE_DOCKER_CLI_BUILD = "1"
 # Create Maven cache volume if it doesn't exist
 try {
     docker volume inspect maven-cache | Out-Null
-    Write-Host "  ✅ Using existing Maven cache volume"
+    Write-Host "  Using existing Maven cache volume"
 } catch {
-    Write-Host "📦 Creating Maven cache volume..."
+    Write-Host "Creating Maven cache volume..."
     docker volume create maven-cache
-    Write-Host "  ✅ Maven cache volume created"
+    Write-Host "  Maven cache volume created"
 }
 
 Write-Host ""
@@ -107,7 +107,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     }
 } catch {
-    Write-Host "❌ Error: Failed to build Docker images" -ForegroundColor Red
+    Write-Host "Error: Failed to build Docker images" -ForegroundColor Red
     exit 1
 }
 
@@ -118,17 +118,17 @@ Write-Host "Build completed at: $($BuildEnd.ToString('HH:mm:ss'))"
 Write-Host "========================================"
 
 Write-Host ""
-Write-Host "🚀 Starting HA services..."
+Write-Host "Starting HA services..."
 try {
     Invoke-Expression "$DockerCompose $ComposeArgs up -d"
     if ($LASTEXITCODE -ne 0) { throw "Start failed" }
 } catch {
-    Write-Host "❌ Error: Failed to start services" -ForegroundColor Red
+    Write-Host "Error: Failed to start services" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "⏳ Waiting for services to be healthy..."
+Write-Host "Waiting for services to be healthy..."
 
 # Wait for PostgreSQL
 Write-Host "  - Waiting for PostgreSQL..."
@@ -142,19 +142,19 @@ while ($true) {
         # Continue waiting
     }
     if ($elapsed -ge $timeout) {
-        Write-Host "❌ Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
+        Write-Host "Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
         Invoke-Expression "$DockerCompose $ComposeArgs logs postgres"
         exit 1
     }
     Start-Sleep -Seconds 2
     $elapsed += 2
 }
-Write-Host "  ✅ PostgreSQL is ready"
+Write-Host "  PostgreSQL is ready"
 
 # Wait for migration
 Write-Host "  - Waiting for database migrations..."
 Start-Sleep -Seconds 30
-Write-Host "  ✅ Database migrations completed"
+Write-Host "  Database migrations completed"
 
 # Wait for Admin API instances (direct instance Actuator on management port)
 Write-Host "  - Waiting for Admin API instances..."
@@ -166,7 +166,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Admin API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Admin API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api-1"
             exit 1
         }
@@ -174,7 +174,7 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Admin API Instance 1 is healthy"
+Write-Host "  Admin API Instance 1 is healthy"
 
 $elapsed = 0
 while ($true) {
@@ -183,7 +183,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Admin API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Admin API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api-2"
             exit 1
         }
@@ -191,7 +191,7 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Admin API Instance 2 is healthy"
+Write-Host "  Admin API Instance 2 is healthy"
 
 # Wait for Auth API instances (direct instance Actuator on management port)
 Write-Host "  - Waiting for Auth API instances..."
@@ -203,7 +203,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Auth API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Auth API Instance 1 did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api-1"
             exit 1
         }
@@ -211,7 +211,7 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Auth API Instance 1 is healthy"
+Write-Host "  Auth API Instance 1 is healthy"
 
 $elapsed = 0
 while ($true) {
@@ -220,7 +220,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Auth API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Auth API Instance 2 did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api-2"
             exit 1
         }
@@ -228,11 +228,11 @@ while ($true) {
         $elapsed += 2
     }
 }
-Write-Host "  ✅ Auth API Instance 2 is healthy"
+Write-Host "  Auth API Instance 2 is healthy"
 
 Write-Host ""
 Write-Host "=========================================="
-Write-Host "  ✅ EZ Key HA Stack is Ready!"
+Write-Host "  EZ Key HA Stack is Ready!"
 Write-Host "=========================================="
 Write-Host ""
 Write-Host "📋 Service URLs (via Load Balancers):"

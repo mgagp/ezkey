@@ -1,14 +1,16 @@
 # Ezkey Docker Start Script for PowerShell
 # This script builds Docker images and starts the EZ Key stack
-# Usage: .\start.ps1 [-Parallel] [-NoCache] [-DebugCache]
+# Usage: .\start.ps1 [-Parallel] [-NoCache] [-DebugCache] [-Native]
 #   -Parallel: Build images in parallel (default: sequential for easier log examination)
 #   -NoCache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   -DebugCache: Build only the first service (migration) and stop - for cache validation
+#   -Native: Use native compiled images instead of JVM images (requires pre-built native images)
 
 param(
     [switch]$Parallel,
     [switch]$NoCache,
-    [switch]$DebugCache
+    [switch]$DebugCache,
+    [switch]$Native
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +19,17 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $ScriptDir "docker-compose.yml"
 $DevOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.yml"
 $JmxOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.jmx.yml"
+
+if ($Native) {
+    $ComposeFile = Join-Path $ScriptDir "docker-compose.native.yml"
+    $DevOverrideFile = Join-Path $ScriptDir "docker-compose.native.docker-dev.yml"
+    Write-Host "Native mode: Using docker-compose.native.yml"
+    Write-Host "   Note: Native images must be built separately before using this mode"
+    Write-Host "   Build commands:"
+    Write-Host "     mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests"
+    Write-Host "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
+    Write-Host ""
+}
 
 # Ensure docker base profile is active when using docker-dev or docker-test.
 if ($env:SPRING_PROFILES_ACTIVE) {
@@ -57,7 +70,7 @@ Write-Host ""
 try {
     docker info | Out-Null
 } catch {
-    Write-Host "❌ Error: Docker is not running. Please start Docker and try again." -ForegroundColor Red
+    Write-Host "Error: Docker is not running. Please start Docker and try again." -ForegroundColor Red
     exit 1
 }
 
@@ -140,7 +153,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     }
 } catch {
-    Write-Host "❌ Error: Failed to build Docker images" -ForegroundColor Red
+    Write-Host "Error: Failed to build Docker images" -ForegroundColor Red
     exit 1
 }
 
@@ -175,7 +188,7 @@ try {
     Invoke-Expression "$DockerCompose $ComposeArgs up -d"
     if ($LASTEXITCODE -ne 0) { throw "Start failed" }
 } catch {
-    Write-Host "❌ Error: Failed to start services" -ForegroundColor Red
+    Write-Host "Error: Failed to start services" -ForegroundColor Red
     exit 1
 }
 
@@ -194,7 +207,7 @@ while ($true) {
         # Continue waiting
     }
     if ($elapsed -ge $timeout) {
-        Write-Host "❌ Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
+        Write-Host "Error: PostgreSQL did not become ready within $timeout seconds" -ForegroundColor Red
         Invoke-Expression "$DockerCompose $ComposeArgs logs postgres"
         exit 1
     }
@@ -218,7 +231,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Admin API did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Admin API did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs admin-api"
             exit 1
         }
@@ -237,7 +250,7 @@ while ($true) {
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Auth API did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Auth API did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs auth-api"
             exit 1
         }
@@ -256,7 +269,7 @@ while ($true) {
         if ($response.StatusCode -eq 200) { break }
     } catch {
         if ($elapsed -ge $timeout) {
-            Write-Host "❌ Error: Crypto API did not become healthy within $timeout seconds" -ForegroundColor Red
+            Write-Host "Error: Crypto API did not become healthy within $timeout seconds" -ForegroundColor Red
             Invoke-Expression "$DockerCompose $ComposeArgs logs crypto-api"
             exit 1
         }

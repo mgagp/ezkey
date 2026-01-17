@@ -556,6 +556,11 @@ String adminToken = bootstrapService.ensureAdminToken();
 
 `./clean-start.sh` is the recommended entrypoint for a deterministic local test stack.
 
+**PowerShell (Windows, PowerShell 5.1+; 7 recommended):**
+- `./clean-start.ps1`
+- `./clean-start.ps1 -ProdSafe`
+- `./clean-start.ps1 -ProdSafe -Jmx`
+
 **Common options:**
 - `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure)
 - `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)

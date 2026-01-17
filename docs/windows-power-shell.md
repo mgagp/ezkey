@@ -1,5 +1,7 @@
 ## Why we recommend PowerShell on Windows
 
+**Support policy:** PowerShell **5.1 is acceptable**, and **PowerShell 7+ is recommended** for the best experience.
+
 Project note: Choosing PowerShell for Windows scripts is a development and maintenance decision. This document explains the rationale briefly.
 
 - **Consistency & maintenance**: The Windows script maintained in the repository is `docker/start.ps1`. Documenting and referencing that script avoids duplication (`.ps1` vs `start.bat`) and reduces the risk of divergence.

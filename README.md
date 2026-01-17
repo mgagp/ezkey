@@ -452,7 +452,7 @@ The fastest way to get started is using Docker:
 ./docker/start.sh
 
 # Windows
-# Windows (PowerShell)
+# Windows (PowerShell 5.1+; 7 recommended)
 # From a PowerShell prompt in the repo root (recommended):
 powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
 # Or run directly from PowerShell:
