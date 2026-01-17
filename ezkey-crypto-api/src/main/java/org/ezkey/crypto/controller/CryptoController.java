@@ -10,6 +10,11 @@
 
 package org.ezkey.crypto.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.ezkey.crypto.dto.DecryptRequestDto;
 import org.ezkey.crypto.dto.DecryptResponseDto;
 import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
@@ -30,30 +35,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
-
 /**
  * REST controller for the Crypto API.
  *
- * <p>
- * This controller exposes endpoints for various cryptographic operations,
- * including:
+ * <p>This controller exposes endpoints for various cryptographic operations, including:
  *
  * <ul>
- * <li>Generating cryptographically secure proof tokens.
- * <li>Creating EC P-256 key pairs for device simulation.
- * <li>Signing data with a private key.
- * <li>Validating signatures with a public key.
- * <li>Decrypting encrypted database column values for debugging.
+ *   <li>Generating cryptographically secure proof tokens.
+ *   <li>Creating EC P-256 key pairs for device simulation.
+ *   <li>Signing data with a private key.
+ *   <li>Validating signatures with a public key.
+ *   <li>Decrypting encrypted database column values for debugging.
  * </ul>
  *
- * <p>
- * It is designed primarily for testing, development, and integration scenarios
- * where direct
+ * <p>It is designed primarily for testing, development, and integration scenarios where direct
  * access to cryptographic functions is required.
  *
  * @since 2025
@@ -71,81 +66,111 @@ public class CryptoController {
   /**
    * Create a new {@link CryptoController}.
    *
-   * @param signatureService  signature service used for EC P-256 operations
-   * @param encryptionService encryption service used for decrypting encrypted
-   *                          database values
+   * @param signatureService signature service used for EC P-256 operations
+   * @param encryptionService encryption service used for decrypting encrypted database values
    */
   public CryptoController(SignatureService signatureService, EncryptionService encryptionService) {
     this.signatureService = signatureService;
     this.encryptionService = encryptionService;
   }
 
-  @Operation(summary = "Generate proof token", description = "Generates a cryptographically secure proof token for use in authentication flows")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Proof token generated successfully"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
+  @Operation(
+      summary = "Generate proof token",
+      description =
+          "Generates a cryptographically secure proof token for use in authentication flows")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Proof token generated successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
   @GetMapping("/prooftoken")
   public ResponseEntity<ProofTokenResponseDto> prooftoken() {
     var response = new ProofTokenResponseDto(signatureService.generateProofToken());
     return ResponseEntity.ok(response);
   }
 
-  @Operation(summary = "Generate EC P-256 key pair", description = "Generates a new EC P-256 (secp256r1) key pair for use in device simulation. "
-      + "Private key is in PKCS#8 format and public key is in X.509 format.")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "EC P-256 key pair generated successfully"),
-      @ApiResponse(responseCode = "500", description = "Key generation failed")
-  })
+  @Operation(
+      summary = "Generate EC P-256 key pair",
+      description =
+          "Generates a new EC P-256 (secp256r1) key pair for use in device simulation. "
+              + "Private key is in PKCS#8 format and public key is in X.509 format.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "EC P-256 key pair generated successfully"),
+        @ApiResponse(responseCode = "500", description = "Key generation failed")
+      })
   @GetMapping("/keypair")
   public ResponseEntity<ECP256KeyPairResponseDto> generateKeyPair() {
     ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
-    var response = new ECP256KeyPairResponseDto(keyPair.base64PrivateKey(), keyPair.base64PublicKey());
+    var response =
+        new ECP256KeyPairResponseDto(keyPair.base64PrivateKey(), keyPair.base64PublicKey());
     return ResponseEntity.ok(response);
   }
 
-  @Operation(summary = "Sign data with private key", description = "Signs the provided data using EC P-256 ECDSA-SHA256 signature "
-      + "with the given private key")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Data signed successfully"),
-      @ApiResponse(responseCode = "400", description = "Invalid request data or malformed private key"),
-      @ApiResponse(responseCode = "500", description = "Signing operation failed")
-  })
+  @Operation(
+      summary = "Sign data with private key",
+      description =
+          "Signs the provided data using EC P-256 ECDSA-SHA256 signature "
+              + "with the given private key")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Data signed successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data or malformed private key"),
+        @ApiResponse(responseCode = "500", description = "Signing operation failed")
+      })
   @PostMapping("/sign")
   public ResponseEntity<SignDataResponseDto> signData(
       @Valid @RequestBody SignDataRequestDto request) {
-    String signature = signatureService.generateSignature(request.getData(), request.getPrivateKey());
+    String signature =
+        signatureService.generateSignature(request.getData(), request.getPrivateKey());
     var response = new SignDataResponseDto(signature, request.getData(), "EC_P256");
     return ResponseEntity.ok(response);
   }
 
-  @Operation(summary = "Validate signature", description = "Validates an EC P-256 ECDSA-SHA256 signature "
-      + "against the original data using the provided public key")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Signature validation completed"),
-      @ApiResponse(responseCode = "400", description = "Invalid request data, malformed signature or public key"),
-      @ApiResponse(responseCode = "500", description = "Validation operation failed")
-  })
+  @Operation(
+      summary = "Validate signature",
+      description =
+          "Validates an EC P-256 ECDSA-SHA256 signature "
+              + "against the original data using the provided public key")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Signature validation completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data, malformed signature or public key"),
+        @ApiResponse(responseCode = "500", description = "Validation operation failed")
+      })
   @PostMapping("/validate")
   public ResponseEntity<ValidateSignatureResponseDto> validateSignature(
       @Valid @RequestBody ValidateSignatureRequestDto request) {
-    boolean isValid = signatureService.validateSignature(
-        request.getData(), request.getSignature(), request.getPublicKey());
+    boolean isValid =
+        signatureService.validateSignature(
+            request.getData(), request.getSignature(), request.getPublicKey());
 
     String message = isValid ? "Signature is valid" : "Signature is invalid";
     var response = new ValidateSignatureResponseDto(isValid, message, "EC_P256");
     return ResponseEntity.ok(response);
   }
 
-  @Operation(summary = "Decrypt encrypted database column value", description = "Decrypts an encrypted database column value for debugging purposes. "
-      + "Accepts values in ENC:keyID:Base64(ciphertext) format and returns "
-      + "comprehensive debugging metadata including decrypted plaintext, validation "
-      + "information, and error details if decryption fails.")
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "Decryption operation completed"),
-      @ApiResponse(responseCode = "400", description = "Invalid request data (empty encrypted value)"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
+  @Operation(
+      summary = "Decrypt encrypted database column value",
+      description =
+          "Decrypts an encrypted database column value for debugging purposes. "
+              + "Accepts values in ENC:keyID:Base64(ciphertext) format and returns "
+              + "comprehensive debugging metadata including decrypted plaintext, validation "
+              + "information, and error details if decryption fails.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Decryption operation completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data (empty encrypted value)"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
   @PostMapping("/decrypt")
   public ResponseEntity<DecryptResponseDto> decrypt(@Valid @RequestBody DecryptRequestDto request) {
     String encryptedValue = request.getEncryptedValue();
@@ -206,8 +231,9 @@ public class CryptoController {
           } else {
             plaintext = null;
             decryptionSuccessful = false;
-            errorMessage = "Decryption failed: value returned unchanged (invalid key, corrupted data, or key not"
-                + " available).";
+            errorMessage =
+                "Decryption failed: value returned unchanged (invalid key, corrupted data, or key"
+                    + " not available).";
           }
         }
       }
@@ -236,14 +262,15 @@ public class CryptoController {
       }
     }
 
-    var response = new DecryptResponseDto(
-        plaintext,
-        isEncrypted,
-        decryptionSuccessful,
-        keyId,
-        encryptedFormat,
-        errorMessage,
-        encryptionAvailable);
+    var response =
+        new DecryptResponseDto(
+            plaintext,
+            isEncrypted,
+            decryptionSuccessful,
+            keyId,
+            encryptedFormat,
+            errorMessage,
+            encryptionAvailable);
     return ResponseEntity.ok(response);
   }
 }

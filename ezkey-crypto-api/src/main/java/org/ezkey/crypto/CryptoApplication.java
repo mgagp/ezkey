@@ -18,25 +18,27 @@ import org.springframework.context.annotation.FilterType;
 /**
  * Main Spring Boot application for Ezkey Crypto API.
  *
- * <p>
- * This application provides cryptographic endpoints for testing and
- * integration.
+ * <p>This application provides cryptographic endpoints for testing and integration.
  *
  * @since 2025
  */
 @SpringBootApplication
-@ComponentScan(basePackages = { //
-    "org.ezkey.crypto", //
-    "org.ezkey.exception", //
-    "org.ezkey.signature", //
-    "org.ezkey.config", //
-    "org.ezkey.security", //
-}, excludeFilters = {
-    @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
-        org.ezkey.security.KeyRotationService.class,
-        org.ezkey.security.ReencryptionService.class
+@ComponentScan(
+    basePackages = { //
+      "org.ezkey.crypto", //
+      "org.ezkey.exception", //
+      "org.ezkey.signature", //
+      "org.ezkey.config", //
+      "org.ezkey.security", //
+    },
+    excludeFilters = {
+      @ComponentScan.Filter(
+          type = FilterType.ASSIGNABLE_TYPE,
+          classes = {
+            org.ezkey.security.KeyRotationService.class,
+            org.ezkey.security.ReencryptionService.class
+          })
     })
-})
 public class CryptoApplication {
 
   /**
