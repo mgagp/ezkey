@@ -18,6 +18,8 @@ import jakarta.validation.Valid;
 import org.ezkey.crypto.dto.DecryptRequestDto;
 import org.ezkey.crypto.dto.DecryptResponseDto;
 import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
+import org.ezkey.crypto.dto.EncryptRequestDto;
+import org.ezkey.crypto.dto.EncryptResponseDto;
 import org.ezkey.crypto.dto.ProofTokenResponseDto;
 import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
@@ -45,6 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>Creating EC P-256 key pairs for device simulation.
  *   <li>Signing data with a private key.
  *   <li>Validating signatures with a public key.
+ *   <li>Encrypting plaintext values for testing and debugging.
  *   <li>Decrypting encrypted database column values for debugging.
  * </ul>
  *
@@ -153,6 +156,104 @@ public class CryptoController {
 
     String message = isValid ? "Signature is valid" : "Signature is invalid";
     var response = new ValidateSignatureResponseDto(isValid, message, "EC_P256");
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
+      summary = "Encrypt plaintext value",
+      description =
+          "Encrypts a plaintext value and returns it in the standard encrypted format "
+              + "(ENC:keyID:Base64(ciphertext)). This endpoint is designed for testing and "
+              + "debugging purposes, enabling generation of encrypted test data and verification "
+              + "of encryption/decryption round-trips.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Encryption operation completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data (empty plaintext value)"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PostMapping("/encrypt")
+  public ResponseEntity<EncryptResponseDto> encrypt(@Valid @RequestBody EncryptRequestDto request) {
+    String plaintext = request.getPlaintext();
+
+    String keyId = null;
+    String encryptedFormat = "PLAINTEXT";
+    String encryptedValue = null;
+    boolean encryptionSuccessful = false;
+    String errorMessage = null;
+    boolean encryptionAvailable = false;
+
+    try {
+      encryptionAvailable = encryptionService.isEncryptionAvailable();
+
+      if (!encryptionAvailable) {
+        // Encryption service not available, return plaintext
+        encryptedValue = plaintext;
+        encryptedFormat = "PLAINTEXT";
+        encryptionSuccessful = false;
+        errorMessage = "Encryption service not available - returning plaintext.";
+      } else {
+        // Encryption available: attempt encryption
+        try {
+          String encrypted = encryptionService.encrypt(plaintext);
+          
+          // Check if encryption was successful (result is different from input and has ENC: prefix)
+          if (encrypted != null && !encrypted.equals(plaintext) && encrypted.startsWith("ENC:")) {
+            encryptedValue = encrypted;
+            encryptedFormat = "ENC:keyID:Base64";
+            encryptionSuccessful = true;
+            
+            // Extract key ID from encrypted value
+            Long keyIdLong = encryptionService.parseKeyIdFromPrefix(encrypted);
+            if (keyIdLong != null) {
+              keyId = Long.toUnsignedString(keyIdLong);
+            }
+          } else {
+            // Encryption returned plaintext (e.g., already encrypted or failed)
+            encryptedValue = encrypted;
+            encryptedFormat = "PLAINTEXT";
+            encryptionSuccessful = false;
+            
+            // If input was already encrypted, explain that
+            if (plaintext.startsWith("ENC:") && encryptionService.isEncrypted(plaintext)) {
+              errorMessage = "Value is already encrypted - skipped re-encryption.";
+            } else {
+              errorMessage = "Encryption failed: value returned unchanged.";
+            }
+          }
+        } catch (IllegalStateException e) {
+          // Encryption failed with exception
+          logger.error("Encryption failed with exception", e);
+          encryptedValue = plaintext;
+          encryptedFormat = "PLAINTEXT";
+          encryptionSuccessful = false;
+          errorMessage = "Encryption failed: " + e.getMessage();
+        }
+      }
+    } catch (Exception e) {
+      // Log the full exception for debugging
+      logger.error("Exception during encryption operation", e);
+      // Catch any unexpected exceptions and return error information
+      String exceptionMessage = e.getMessage();
+      if (exceptionMessage == null) {
+        exceptionMessage = e.getClass().getSimpleName();
+      }
+      errorMessage = "Unexpected error during encryption: " + exceptionMessage;
+      encryptionSuccessful = false;
+      encryptedValue = plaintext;
+      encryptedFormat = "PLAINTEXT";
+    }
+
+    var response =
+        new EncryptResponseDto(
+            encryptedValue,
+            encryptionSuccessful,
+            keyId,
+            encryptedFormat,
+            errorMessage,
+            encryptionAvailable);
     return ResponseEntity.ok(response);
   }
 
