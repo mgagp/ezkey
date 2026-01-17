@@ -6,7 +6,7 @@ This file is UTF-8 without BOM.
 
 **Crypto API is a testing and debugging tool** that provides cryptographic primitives as REST endpoints. It enables:
 
-- **Testing**: Generate keys, sign data, and validate signatures for end-to-end testing flows
+- **Testing**: Generate keys, sign data, validate signatures, and encrypt/decrypt values for end-to-end testing flows
 - **Debugging**: Decrypt encrypted database columns to investigate issues during development
 - **Integration**: Support tools like Postman that don't have built-in cryptographic capabilities
 
@@ -63,7 +63,34 @@ Validates EC P-256 ECDSA-SHA256 signatures.
 
 **Use Case**: Verify signatures in test assertions or debugging scenarios.
 
-### 5. Decrypt Encrypted Database Column
+### 5. Encrypt Plaintext Value
+**POST** `/api/v1/crypto/encrypt`
+
+**⚠️ TESTING TOOL**: Encrypts plaintext values and returns them in the standard encrypted format (`ENC:keyID:Base64(ciphertext)`).
+
+**Use Case**:
+- Generate encrypted test data for testing flows
+- Verify encryption/decryption round-trips
+- Create test fixtures with encrypted values
+
+**Request Format**:
+```json
+{
+  "plaintext": "my-secret-value"
+}
+```
+
+**Response Includes**:
+- `encryptedValue`: Encrypted value (or original plaintext if encryption failed/unavailable)
+- `encryptionSuccessful`: Whether encryption succeeded
+- `keyId`: Primary key ID used for encryption
+- `encryptedFormat`: Output format (ENC:keyID:Base64 or PLAINTEXT)
+- `errorMessage`: Error details if encryption failed
+- `encryptionAvailable`: Whether EncryptionService is initialized
+
+**Note**: If input is already encrypted (has `ENC:` prefix), the endpoint detects this and skips re-encryption.
+
+### 6. Decrypt Encrypted Database Column
 **POST** `/api/v1/crypto/decrypt`
 
 **⚠️ DEBUGGING TOOL**: Decrypts encrypted database column values for investigation.
@@ -147,6 +174,26 @@ Crypto API can decrypt values encrypted with:
    ```
 
 4. **Use signature in enrollment request** to admin-api/auth-api
+
+### Testing Encryption/Decryption Round-trip
+
+1. **Encrypt a test value**:
+   ```bash
+   curl -X POST http://localhost:9090/api/v1/crypto/encrypt \
+     -H "Content-Type: application/json" \
+     -d '{"plaintext": "test-secret-value"}'
+   ```
+
+2. **Copy `encryptedValue`** from response
+
+3. **Decrypt to verify round-trip**:
+   ```bash
+   curl -X POST http://localhost:9090/api/v1/crypto/decrypt \
+     -H "Content-Type: application/json" \
+     -d '{"encryptedValue": "ENC:2865054995:AarFRRPHitKf32X1m/..."}'
+   ```
+
+4. **Verify `plaintext` matches original value**
 
 ### Debugging Encrypted Columns
 
