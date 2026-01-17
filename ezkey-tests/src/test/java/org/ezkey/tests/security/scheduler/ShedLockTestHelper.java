@@ -25,9 +25,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for querying ShedLock distributed locks table in PostgreSQL.
  *
- * <p>Provides methods to query the `ezkey_shedlock` table directly via docker exec to verify distributed
- * locking behavior in HA deployments. This is suitable for functional E2E tests validating ShedLock
- * exclusion mutuelle.
+ * <p>Provides methods to query the `ezkey_shedlock` table directly via docker exec to verify
+ * distributed locking behavior in HA deployments. This is suitable for functional E2E tests
+ * validating ShedLock exclusion mutuelle.
  *
  * <p><b>Usage Context:</b> Use for:
  *

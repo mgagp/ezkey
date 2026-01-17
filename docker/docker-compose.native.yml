@@ -150,6 +150,8 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+    volumes:
+      - encryption-secrets-native:/etc/ezkey
     ports:
       - "9090:9090"
     networks:

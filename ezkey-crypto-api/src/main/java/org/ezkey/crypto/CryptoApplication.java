@@ -12,6 +12,8 @@ package org.ezkey.crypto;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 
 /**
  * Main Spring Boot application for Ezkey Crypto API.
@@ -20,12 +22,22 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @since 2025
  */
-@SpringBootApplication(
-    scanBasePackages = { //
+@SpringBootApplication
+@ComponentScan(
+    basePackages = { //
       "org.ezkey.crypto", //
       "org.ezkey.exception", //
       "org.ezkey.signature", //
       "org.ezkey.config", //
+      "org.ezkey.security", //
+    },
+    excludeFilters = {
+      @ComponentScan.Filter(
+          type = FilterType.ASSIGNABLE_TYPE,
+          classes = {
+            org.ezkey.security.KeyRotationService.class,
+            org.ezkey.security.ReencryptionService.class
+          })
     })
 public class CryptoApplication {
 

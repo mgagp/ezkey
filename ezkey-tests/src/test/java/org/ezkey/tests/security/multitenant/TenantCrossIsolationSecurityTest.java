@@ -14,10 +14,12 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.DatabaseHelper;
@@ -29,10 +31,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Tests cross-tenant isolation security.
@@ -125,6 +123,7 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   private Integer integrationBId;
   private Integer enrollmentAId;
   private Integer enrollmentBId;
+
   @SuppressWarnings("unused")
   private String apiKeyACredentials;
 
@@ -570,7 +569,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + globalAdminToken)
-            // Explicit pagination/sorting to keep test resilient as data accumulates (production-like).
+            // Explicit pagination/sorting to keep test resilient as data accumulates
+            // (production-like).
             .queryParam("page", 0)
             .queryParam("size", 100)
             .queryParam("sort", "id,ASC")
@@ -625,12 +625,13 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
     for (Map<String, Object> integration : integrations) {
       log.info(
-          "Found integration: id={}, tenantId={}", integration.get("id"), integration.get("tenantId"));
+          "Found integration: id={}, tenantId={}",
+          integration.get("id"),
+          integration.get("tenantId"));
     }
 
     // Extract integration IDs from the list
-    List<Integer> integrationIds =
-        integrations.stream().map(i -> (Integer) i.get("id")).toList();
+    List<Integer> integrationIds = integrations.stream().map(i -> (Integer) i.get("id")).toList();
 
     // GlobalAdmin should see integrations from both tenants
     assertThat(integrationIds)
@@ -713,8 +714,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
   /**
    * Validates that GlobalAdmin can list enrollments across all tenants.
    *
-   * <p><b>Strategy:</b> Request a single record (`size=1`) and validate the pagination
-   * <code>totalElements</code> matches the database count.
+   * <p><b>Strategy:</b> Request a single record (`size=1`) and validate the pagination <code>
+   * totalElements</code> matches the database count.
    *
    * <p><b>Important assumption / limitation:</b> This test assumes the Admin API list endpoint
    * returns the same logical set as <code>SELECT COUNT(*) FROM ezkey_enrollment</code> for a
@@ -744,7 +745,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .response();
 
     // We create at least two enrollments in setup (A and B).
-    String dbCountRaw = databaseHelper.executeQuerySingleValue("SELECT COUNT(*) FROM ezkey_enrollment;");
+    String dbCountRaw =
+        databaseHelper.executeQuerySingleValue("SELECT COUNT(*) FROM ezkey_enrollment;");
     assertThat(dbCountRaw).as("DB enrollment count should be available").isNotNull();
     long dbCount = Long.parseLong(dbCountRaw.trim());
     assertThat(dbCount).isGreaterThanOrEqualTo(2L);

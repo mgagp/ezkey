@@ -1,15 +1,16 @@
 # Ezkey Crypto API
 
-The Ezkey Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities.
+The Ezkey Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.
 
 ## Purpose
 
 Postman and similar testing tools cannot easily:
 - Generate RSA key pairs
-- Sign data with private keys  
+- Sign data with private keys
 - Validate digital signatures
+- Decrypt encrypted database column values for debugging
 
-This crypto API exposes these crypto primitives as REST endpoints, enabling complete end-to-end testing of the Ezkey authentication flows.
+This crypto API exposes these crypto primitives as REST endpoints, enabling complete end-to-end testing of the Ezkey authentication flows and debugging of encrypted database columns.
 
 ## Endpoints
 
@@ -87,6 +88,71 @@ Validates a signature against original data using the provided public key.
 }
 ```
 
+### 5. Decrypt Encrypted Database Column Value
+**POST** `/api/v1/crypto/decrypt`
+
+Decrypts an encrypted database column value for debugging purposes. This endpoint enables investigation of encrypted fields such as `enrollment_proof_token`, `auth_attempt_proof_token`, `device_proof_token`, and `integration_private_key`.
+
+**Request:**
+```json
+{
+  "encryptedValue": "ENC:1234567890:YWJjZGVmZ2hpams="
+}
+```
+
+**Response:**
+```json
+{
+  "plaintext": "decrypted-plaintext-value",
+  "isEncrypted": true,
+  "decryptionSuccessful": true,
+  "keyId": "1234567890",
+  "encryptedFormat": "ENC:keyID:Base64",
+  "errorMessage": null,
+  "encryptionAvailable": true
+}
+```
+
+**Response Fields:**
+- `plaintext`: Decrypted plaintext value, original input if not encrypted, or null if decryption failed
+- `isEncrypted`: Boolean indicating if the input value had the ENC: prefix (was encrypted)
+- `decryptionSuccessful`: Boolean indicating if the decryption operation succeeded
+- `keyId`: Extracted key ID from encrypted value (null if not encrypted)
+- `encryptedFormat`: Detected format of the input value ("ENC:keyID:Base64", "ENC:INVALID", or "PLAINTEXT")
+- `errorMessage`: Error message if decryption failed (null if successful)
+- `encryptionAvailable`: Boolean indicating if EncryptionService is initialized and available
+
+**Status Codes:**
+- 200: Decryption operation completed (check `decryptionSuccessful` field for actual result)
+- 400: Invalid request data (empty encrypted value)
+- 500: Internal server error
+
+**Usage Example - Debugging Encrypted Columns:**
+
+1. **Query database to get encrypted value:**
+   ```sql
+   SELECT enrollment_proof_token FROM ezkey_enrollment WHERE enrollment_id = 123;
+   ```
+
+2. **Copy the encrypted value** (format: `ENC:1234567890:YWJjZGVmZ2hpams=`)
+
+3. **Decrypt using the API:**
+   ```bash
+   curl -X POST http://localhost:9090/api/v1/crypto/decrypt \
+     -H "Content-Type: application/json" \
+     -d '{
+       "encryptedValue": "ENC:1234567890:YWJjZGVmZ2hpams="
+     }'
+   ```
+
+4. **Compare decrypted plaintext** with trace logs or expected values to verify token matching
+
+**Debugging Workflow:**
+- Copy encrypted value from database column
+- Use this endpoint to decrypt
+- Compare `plaintext` result with trace logs
+- Use metadata fields (`keyId`, `encryptedFormat`, `errorMessage`) to troubleshoot encryption issues
+
 ## Usage Example: Complete Crypto Flow
 
 1. **Generate keys for your simulated device:**
@@ -117,7 +183,7 @@ Validates a signature against original data using the provided public key.
      -H "Content-Type: application/json" \
      -d '{
        "data": "your-data-here",
-       "signature": "your-signature-here", 
+       "signature": "your-signature-here",
        "publicKey": "your-public-key-here"
      }'
    ```
@@ -154,14 +220,56 @@ Common error codes:
 - `INTERNAL_ERROR`: Internal server error
 - `UNKNOWN_ERROR`: Unexpected error
 
+## Keyset Management and Key Rotation
+
+### Keyset Loading Behavior
+
+The Crypto API loads the encryption keyset from the configured keyset file (`ezkey.encryption.keyset-file`) **at application startup**. The keyset is loaded once during initialization and remains in memory for the duration of the application's lifecycle.
+
+### Key Rotation Impact
+
+When a key rotation occurs in the main application (admin-api or auth-api):
+
+1. **The keyset file is updated** with the new primary key
+2. **Crypto API continues using the keyset loaded at startup** (the old keyset)
+3. **To use the new keyset, Crypto API must be restarted**
+
+### Why Restart is Required
+
+- **Simplicity**: Crypto API is a debugging tool. Requiring a restart ensures predictable behavior and avoids complexity
+- **No Database Sync**: Crypto API does not have database access, so it cannot detect keyset changes via database synchronization
+- **File-based Only**: Crypto API uses FILE storage mode exclusively (no DATABASE or HYBRID mode support)
+- **Predictable State**: Restart guarantees that Crypto API uses the exact keyset that exists in the file at startup time
+
+### Workflow After Key Rotation
+
+1. Key rotation occurs in the main application (admin-api or auth-api)
+2. The keyset file is updated with the new primary key
+3. **Restart Crypto API** to load the new keyset:
+   ```bash
+   # Stop Crypto API
+   # Start Crypto API (it will load the updated keyset file)
+   ```
+4. Crypto API can now decrypt values encrypted with the new key
+
+### Decryption Capabilities
+
+Crypto API can decrypt values encrypted with:
+- **Current keyset**: Values encrypted with keys in the keyset loaded at startup
+- **Previous keysets**: Tink supports multiple keys in a keyset, so old keys remain available for decryption until they are removed from the keyset
+
+**Note**: If a value was encrypted with a key that is no longer in the keyset file, decryption will fail. In this case, ensure Crypto API is using a keyset file that contains the required key.
+
 ## Security Notes
 
-⚠️ **WARNING**: This API is intended for testing and simulation purposes only. 
+⚠️ **WARNING**: This API is intended for testing and simulation purposes only.
 
 - Private keys are transmitted in API requests
 - No authentication/authorization is implemented
 - Should never be used in production environments
 - Only use in secure, isolated testing environments
+- **Decrypt endpoint**: Returns sensitive plaintext values - use with extreme caution
+- **Debugging tool**: The decrypt endpoint is specifically for debugging encrypted database columns and should never be exposed in production
 
 ## Testing
 
