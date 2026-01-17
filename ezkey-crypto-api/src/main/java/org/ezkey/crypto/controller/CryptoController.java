@@ -198,13 +198,13 @@ public class CryptoController {
         // Encryption available: attempt encryption
         try {
           String encrypted = encryptionService.encrypt(plaintext);
-          
+
           // Check if encryption was successful (result is different from input and has ENC: prefix)
           if (encrypted != null && !encrypted.equals(plaintext) && encrypted.startsWith("ENC:")) {
             encryptedValue = encrypted;
             encryptedFormat = "ENC:keyID:Base64";
             encryptionSuccessful = true;
-            
+
             // Extract key ID from encrypted value
             Long keyIdLong = encryptionService.parseKeyIdFromPrefix(encrypted);
             if (keyIdLong != null) {
@@ -215,7 +215,7 @@ public class CryptoController {
             encryptedValue = encrypted;
             encryptedFormat = "PLAINTEXT";
             encryptionSuccessful = false;
-            
+
             // If input was already encrypted, explain that
             if (plaintext.startsWith("ENC:") && encryptionService.isEncrypted(plaintext)) {
               errorMessage = "Value is already encrypted - skipped re-encryption.";

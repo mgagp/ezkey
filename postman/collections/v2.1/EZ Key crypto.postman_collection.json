@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "43367c4d-84a5-4cda-a93a-42fa5cfb6d8b",
 		"name": "EZ Key Crypto",
-		"description": "Collection for cryptographic operations in the Crypto API.\n\n## Endpoints\n\n- **Generate Proof Token**: Generate cryptographically secure proof token\n- **Generate Key Pair**: Generate EC P-256 key pair for device simulation\n- **Sign Data**: Sign data with EC P-256 private key (ECDSA-SHA256)\n- **Validate Signature**: Validate EC P-256 signature against data and public key\n- **Decrypt**: Decrypt encrypted database column values for debugging\n\n## Purpose\n\nThis Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.\n\n## Cryptographic Standards\n\n- **Algorithm**: EC P-256 (secp256r1) with ECDSA-SHA256\n- **Private Key Format**: PKCS#8 (ASN.1 DER encoded, Base64)\n- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded, Base64)\n- **Signature Format**: ASN.1 DER encoded (variable length, Base64)\n\n## Usage Context\n\nThis API is designed primarily for:\n- Testing and development scenarios\n- Integration with tools that lack cryptographic capabilities\n- Device simulation in authentication flows\n- End-to-end testing of Ezkey authentication flows\n\n## Security Notes\n\n- **Testing Only**: This API is intended for testing and development, not production use\n- **Key Management**: Generated keys should be stored securely in test environments\n- **Proof Tokens**: Generated tokens are cryptographically secure but should not be reused",
+		"description": "Collection for cryptographic operations in the Crypto API.\n\n## Endpoints\n\n- **Generate Proof Token**: Generate cryptographically secure proof token\n- **Generate Key Pair**: Generate EC P-256 key pair for device simulation\n- **Sign Data**: Sign data with EC P-256 private key (ECDSA-SHA256)\n- **Validate Signature**: Validate EC P-256 signature against data and public key\n- **Encrypt**: Encrypt plaintext values for testing and debugging\n- **Decrypt**: Decrypt encrypted database column values for debugging\n\n## Purpose\n\nThis Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.\n\n## Cryptographic Standards\n\n- **Algorithm**: EC P-256 (secp256r1) with ECDSA-SHA256\n- **Private Key Format**: PKCS#8 (ASN.1 DER encoded, Base64)\n- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded, Base64)\n- **Signature Format**: ASN.1 DER encoded (variable length, Base64)\n\n## Usage Context\n\nThis API is designed primarily for:\n- Testing and development scenarios\n- Integration with tools that lack cryptographic capabilities\n- Device simulation in authentication flows\n- End-to-end testing of Ezkey authentication flows\n\n## Security Notes\n\n- **Testing Only**: This API is intended for testing and development, not production use\n- **Key Management**: Generated keys should be stored securely in test environments\n- **Proof Tokens**: Generated tokens are cryptographically secure but should not be reused",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -212,6 +212,70 @@
 					]
 				},
 				"description": "Validates an EC P-256 ECDSA-SHA256 signature against the original data using the provided public key.\n\n**Request Body:**\n- `data` (required): Original data that was signed\n- `signature` (required): Base64-encoded signature to validate (ASN.1 DER encoded)\n- `publicKey` (required): EC P-256 public key in X.509 SubjectPublicKeyInfo format (Base64 encoded)\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n- `message`: Validation message (\"Signature is valid\" or \"Signature is invalid\")\n- `algorithm`: Algorithm used for validation (\"EC_P256\")\n\n**Status Codes:**\n- 200: Signature validation completed\n- 400: Invalid request data, malformed signature or public key\n- 500: Validation operation failed\n\n**Usage:** Use this endpoint to verify that a signature was created with the corresponding private key and that the data has not been tampered with."
+			},
+			"response": []
+		},
+		{
+			"name": "encrypt",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 400\", function () {",
+							"    pm.expect([200, 400]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    if (jsonData.encryptionSuccessful && jsonData.encryptedValue) {",
+							"        pm.environment.set(\"encryptedValue\", jsonData.encryptedValue);",
+							"    }",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('encryptedValue');",
+							"        pm.expect(jsonData).to.have.property('encryptionSuccessful');",
+							"        pm.expect(jsonData).to.have.property('keyId');",
+							"        pm.expect(jsonData).to.have.property('encryptedFormat');",
+							"        pm.expect(jsonData).to.have.property('errorMessage');",
+							"        pm.expect(jsonData).to.have.property('encryptionAvailable');",
+							"        pm.expect(jsonData.encryptionSuccessful).to.be.a('boolean');",
+							"        pm.expect(jsonData.encryptedFormat).to.be.a('string');",
+							"        pm.expect(jsonData.encryptionAvailable).to.be.a('boolean');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"plaintext\": \"{{plaintext}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url_crypto_api}}/api/v1/crypto/encrypt",
+					"host": [
+						"{{base_url_crypto_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"crypto",
+						"encrypt"
+					]
+				},
+				"description": "Encrypts a plaintext value and returns it in the standard encrypted format (ENC:keyID:Base64(ciphertext)). This endpoint is designed for testing and debugging purposes, enabling generation of encrypted test data and verification of encryption/decryption round-trips.\n\n**Request Body:**\n- `plaintext` (required): Plaintext value to encrypt\n\n**Response (200 OK):**\n- `encryptedValue`: Encrypted value in ENC:keyID:Base64(ciphertext) format, or original plaintext if encryption unavailable/failed\n- `encryptionSuccessful`: Boolean indicating if the encryption operation succeeded\n- `keyId`: Primary key ID used for encryption (null if encryption failed/unavailable)\n- `encryptedFormat`: Format of the output (\"ENC:keyID:Base64\", or \"PLAINTEXT\" if encryption unavailable)\n- `errorMessage`: Error message if encryption failed (null if successful)\n- `encryptionAvailable`: Boolean indicating if EncryptionService is initialized and available\n\n**Status Codes:**\n- 200: Encryption operation completed (check `encryptionSuccessful` field for actual result)\n- 400: Invalid request data (empty plaintext value)\n- 500: Internal server error\n\n**Usage Context:**\n- **Testing**: Generate encrypted test data for integration testing\n- **Round-trip Verification**: Encrypt a value and then decrypt it to verify encryption/decryption consistency\n- **Debugging**: Create encrypted values that match the format used in database columns\n\n**Example Workflow:**\n1. Set `plaintext` environment variable in Postman (e.g., \"my-secret-value\")\n2. Call this endpoint to encrypt the value\n3. Use the `encryptedValue` in subsequent API calls or database insertions\n4. Verify the value can be decrypted using the `/decrypt` endpoint\n\n**Security Notes:**\n- **Testing Only**: This endpoint is intended for testing and debugging purposes\n- **Sensitive Data**: Encrypts plaintext values - use with caution in test environments only\n- **Never Expose in Production**: This API should never be exposed in production environments\n- **Access Control**: No authentication required (consistent with other crypto-api endpoints)"
 			},
 			"response": []
 		},
