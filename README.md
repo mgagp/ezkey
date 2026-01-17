@@ -55,6 +55,22 @@ graph LR
 | **Self-Hosting** | Rarely | No | Yes |
 | **Synchronous Integration** | Limited | No | Yes (Wait API) |
 
+## Table of Contents
+
+- [Features](#features)
+- [Security Design](#-security-design)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [API Overview](#api-overview)
+- [Command Line Interface](#command-line-interface)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [Monitoring and Operations](#monitoring-and-operations)
+- [License](#license)
+- [Security](#security)
+- [Support and Community](#support-and-community)
+
 ## Features
 
 - **Multi-Module Architecture**: Separated APIs for different use cases
@@ -923,28 +939,3 @@ For security best practices when deploying Ezkey, see [docs/OPERATIONAL.md](docs
 - **Documentation**: [Project Wiki](https://github.com/your-org/ezkey/wiki)
 - **Discussions**: [GitHub Discussions](https://github.com/your-org/ezkey/discussions)
 - **Security**: Report security issues privately to security@ezkey.org
-
-## Roadmap
-
-### Phase 1 ✅ (Completed)
-- [x] Multi-module architecture
-- [x] Core entities and services
-- [x] Admin and Auth APIs
-- [x] **Wait API for synchronous authentication**
-- [x] Mobile application
-- [x] Database migrations
-- [x] Development tooling
-
-### Phase 2 🔄 (In Progress)
-- [ ] Docker containerization
-- [ ] Kubernetes deployment manifests
-- [ ] API performance optimization
-- [ ] Enhanced mobile features
-- [ ] Comprehensive monitoring
-
-### Phase 3 📋 (Planned)
-- [ ] Microservices deployment
-- [ ] Advanced security features
-- [ ] Multi-tenant support
-- [ ] Performance benchmarking
-- [ ] Third-party integrations
