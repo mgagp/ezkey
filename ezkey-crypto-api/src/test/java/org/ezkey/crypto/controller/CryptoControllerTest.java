@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.crypto.config.SecurityConfig;
+import org.ezkey.security.EncryptionService;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.Test;
@@ -41,12 +42,19 @@ class CryptoControllerTest {
 
   @Autowired private SignatureService signatureService;
 
+  @Autowired private EncryptionService encryptionService;
+
   @TestConfiguration
   static class TestConfig {
 
     @Bean
     public SignatureService signatureService() {
       return mock(SignatureService.class);
+    }
+
+    @Bean
+    public EncryptionService encryptionService() {
+      return mock(EncryptionService.class);
     }
   }
 
@@ -167,5 +175,207 @@ class CryptoControllerTest {
         .andExpect(jsonPath("$.valid").value(false))
         .andExpect(jsonPath("$.message").value("Signature is invalid"))
         .andExpect(jsonPath("$.algorithm").value("EC_P256"));
+  }
+
+  @Test
+  void testDecryptEndpointSuccessful() throws Exception {
+    String encryptedValue = "ENC:1234567890:YWJjZGVmZ2hpams=";
+    String decryptedValue = "decrypted-plaintext-value";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.isEncrypted(encryptedValue)).thenReturn(true);
+    when(encryptionService.parseKeyIdFromPrefix(encryptedValue)).thenReturn(1234567890L);
+    when(encryptionService.decrypt(encryptedValue)).thenReturn(decryptedValue);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "ENC:1234567890:YWJjZGVmZ2hpams="
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").value(decryptedValue))
+        .andExpect(jsonPath("$.isEncrypted").value(true))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(true))
+        .andExpect(jsonPath("$.keyId").value("1234567890"))
+        .andExpect(jsonPath("$.encryptedFormat").value("ENC:keyID:Base64"))
+        .andExpect(jsonPath("$.errorMessage").isEmpty())
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testDecryptEndpointPlaintext() throws Exception {
+    String plaintextValue = "plaintext-value";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.isEncrypted(plaintextValue)).thenReturn(false);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "plaintext-value"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").value(plaintextValue))
+        .andExpect(jsonPath("$.isEncrypted").value(false))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(true))
+        .andExpect(jsonPath("$.keyId").isEmpty())
+        .andExpect(jsonPath("$.encryptedFormat").value("PLAINTEXT"))
+        .andExpect(jsonPath("$.errorMessage").isEmpty())
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testDecryptEndpointDecryptionFailure() throws Exception {
+    String encryptedValue = "ENC:1234567890:YWJjZGVmZ2hpams=";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.isEncrypted(encryptedValue)).thenReturn(true);
+    when(encryptionService.parseKeyIdFromPrefix(encryptedValue)).thenReturn(1234567890L);
+    // decrypt() returns original value on failure
+    when(encryptionService.decrypt(encryptedValue)).thenReturn(encryptedValue);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "ENC:1234567890:YWJjZGVmZ2hpams="
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").isEmpty())
+        .andExpect(jsonPath("$.isEncrypted").value(true))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").value("1234567890"))
+        .andExpect(jsonPath("$.encryptedFormat").value("ENC:keyID:Base64"))
+        .andExpect(jsonPath("$.errorMessage").isNotEmpty())
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testDecryptEndpointEncryptionServiceUnavailable() throws Exception {
+    String value = "some-value";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(false);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "some-value"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").value(value))
+        .andExpect(jsonPath("$.isEncrypted").value(false))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(true))
+        .andExpect(jsonPath("$.encryptedFormat").value("PLAINTEXT"))
+        .andExpect(jsonPath("$.encryptionAvailable").value(false))
+        .andExpect(jsonPath("$.errorMessage").isEmpty());
+  }
+
+  @Test
+  void testDecryptEndpointEncryptionServiceUnavailableEncryptedValue() throws Exception {
+    String encryptedValue = "ENC:1234567890:YWJjZGVmZ2hpams=";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(false);
+    when(encryptionService.isEncrypted(encryptedValue)).thenReturn(true);
+    when(encryptionService.parseKeyIdFromPrefix(encryptedValue)).thenReturn(1234567890L);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "ENC:1234567890:YWJjZGVmZ2hpams="
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").isEmpty())
+        .andExpect(jsonPath("$.isEncrypted").value(true))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").value("1234567890"))
+        .andExpect(jsonPath("$.encryptedFormat").value("ENC:keyID:Base64"))
+        .andExpect(
+            jsonPath("$.errorMessage")
+                .value("Encryption service not available - cannot decrypt encrypted value."))
+        .andExpect(jsonPath("$.encryptionAvailable").value(false));
+  }
+
+  @Test
+  void testDecryptEndpointInvalidEncryptedFormat() throws Exception {
+    String invalidEncryptedValue = "ENC:not-a-number:@@@";
+    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionService.isEncrypted(invalidEncryptedValue)).thenReturn(false);
+
+    String requestBody =
+        """
+        {
+          "encryptedValue": "ENC:not-a-number:@@@"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.plaintext").isEmpty())
+        .andExpect(jsonPath("$.isEncrypted").value(true))
+        .andExpect(jsonPath("$.decryptionSuccessful").value(false))
+        .andExpect(jsonPath("$.keyId").isEmpty())
+        .andExpect(jsonPath("$.encryptedFormat").value("ENC:INVALID"))
+        .andExpect(
+            jsonPath("$.errorMessage")
+                .value("Invalid encrypted format. Expected ENC:keyID:Base64(ciphertext)."))
+        .andExpect(jsonPath("$.encryptionAvailable").value(true));
+  }
+
+  @Test
+  void testDecryptEndpointEmptyValue() throws Exception {
+    String requestBody =
+        """
+        {
+          "encryptedValue": ""
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/decrypt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
   }
 }

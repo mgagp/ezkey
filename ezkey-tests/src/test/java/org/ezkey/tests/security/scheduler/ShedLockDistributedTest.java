@@ -190,8 +190,8 @@ public class ShedLockDistributedTest {
   /**
    * Test B: Vérification Locks dans DB
    *
-   * <p>Validates that locks are correctly created and updated in the PostgreSQL ezkey_shedlock table.
-   * This verifies the database-level locking mechanism.
+   * <p>Validates that locks are correctly created and updated in the PostgreSQL ezkey_shedlock
+   * table. This verifies the database-level locking mechanism.
    *
    * <p><b>Test Steps:</b>
    *
