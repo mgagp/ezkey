@@ -40,7 +40,8 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param enrollmentName The human-readable name for the enrollment
  * @param tenantId The tenant ID of the integration associated with this enrollment
  * @param tenantName The tenant display name of the integration associated with this enrollment
- * @param tenantDescription The tenant description of the integration associated with this enrollment
+ * @param tenantDescription The tenant description of the integration associated with this
+ *     enrollment
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentBindResponse

@@ -125,8 +125,8 @@ public class EnrollmentBindResponse {
   /**
    * The tenant display name of the integration associated with this enrollment.
    *
-   * <p>This value is intended for UI display and may change over time. Clients should prefer
-   * {@link #tenantId} as the grouping key when possible.
+   * <p>This value is intended for UI display and may change over time. Clients should prefer {@link
+   * #tenantId} as the grouping key when possible.
    */
   private String tenantName;
 

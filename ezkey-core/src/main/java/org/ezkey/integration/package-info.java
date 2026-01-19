@@ -8,9 +8,9 @@
 /**
  * Integration and tenant domain (multi-tenant administration boundaries).
  *
- * <p>This package and its subpackages model tenants, integrations, administrators, and API keys.
- * It contains the rules that define how administrators interact with resources in a multi-tenant
- * Ezkey deployment.
+ * <p>This package and its subpackages model tenants, integrations, administrators, and API keys. It
+ * contains the rules that define how administrators interact with resources in a multi-tenant Ezkey
+ * deployment.
  *
  * <h2>Multi-tenant contract</h2>
  *
@@ -18,9 +18,9 @@
  *   <li><b>Tenant scoping:</b> read/list operations may be scoped by tenant ID. When a tenant ID is
  *       provided, results must be restricted to that tenant. When omitted (nullable parameter),
  *       operations are considered global (e.g., GlobalAdmin visibility use-cases).
- *   <li><b>No impersonation:</b> administrators must not create resources for other tenants. Creation
- *       is restricted to the administrator's allowed scope (system tenant for GlobalAdmin, own
- *       tenant for TenantAdmin).
+ *   <li><b>No impersonation:</b> administrators must not create resources for other tenants.
+ *       Creation is restricted to the administrator's allowed scope (system tenant for GlobalAdmin,
+ *       own tenant for TenantAdmin).
  * </ul>
  *
  * <h2>Special system resources</h2>
@@ -52,4 +52,3 @@
  * @since 2025
  */
 package org.ezkey.integration;
-

@@ -460,8 +460,10 @@ public class EzkeyAppController {
     }
 
     Comparator<Record> enrollmentComparator =
-        Comparator.comparing(Record::integrationName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-            .thenComparing(Record::enrollmentName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+        Comparator.comparing(
+                Record::integrationName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(
+                Record::enrollmentName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
             .thenComparing(Record::enrollmentId, Comparator.nullsLast(Integer::compareTo));
 
     for (List<Record> groupItems : grouped.values()) {
@@ -472,7 +474,8 @@ public class EzkeyAppController {
         Comparator.comparing(
                 (TenantKey k) -> UNKNOWN_TENANT_NAME.equals(k.tenantName()) ? 1 : 0,
                 Integer::compareTo)
-            .thenComparing(TenantKey::tenantName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(
+                TenantKey::tenantName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
             .thenComparing(TenantKey::tenantId, Comparator.nullsLast(Integer::compareTo));
 
     return grouped.entrySet().stream()

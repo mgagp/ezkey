@@ -17,7 +17,6 @@ COPY ezkey-crypto-api/pom.xml ./ezkey-crypto-api/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
 COPY ezkey-demo-device/openapi-spec.json ./ezkey-demo-device/openapi-spec.json
 COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
-COPY ezkey-demo-app-acme/openapi-spec.json ./ezkey-demo-app-acme/openapi-spec.json
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 
 # Download all dependencies with shared Maven cache (shared across all parallel builds)
@@ -176,4 +175,18 @@ EXPOSE 8083
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8083/actuator/health || exit 1
 ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ============================================
+# Stage 7: Runtime image for demo-app-acme service
+# ============================================
+FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+WORKDIR /app
+COPY --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
+EXPOSE 8082
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8082/actuator/health || exit 1
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
