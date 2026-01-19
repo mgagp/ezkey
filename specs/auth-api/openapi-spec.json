@@ -422,6 +422,22 @@
             "type": "string",
             "description": "Human-readable name for the enrollment",
             "example": "John's iPhone"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID of the integration associated with this enrollment",
+            "example": 2
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name of the integration associated with this enrollment",
+            "example": "Acme Corp"
+          },
+          "tenantDescription": {
+            "type": "string",
+            "description": "Tenant description of the integration associated with this enrollment",
+            "example": "Acme Corp tenant workspace"
           }
         },
         "required": [

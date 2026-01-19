@@ -29,7 +29,7 @@ import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
-import org.ezkey.authattempt.mapper.AuthAttemptMapper;
+import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,7 +95,7 @@ public class AuthAttemptController {
   private final AuthAttemptService authAttemptService;
 
   /** Mapper for converting between domain entities and DTOs. */
-  private final AuthAttemptMapper authAttemptMapper;
+  private final AuthAttemptAuthApiMapper authAttemptMapper;
 
   /** Service for audit logging of security-critical operations. */
   private final AuditLogService auditLogService;
@@ -109,7 +109,7 @@ public class AuthAttemptController {
    */
   public AuthAttemptController(
       final AuthAttemptService authAttemptService,
-      final AuthAttemptMapper authAttemptMapper,
+      final AuthAttemptAuthApiMapper authAttemptMapper,
       final AuditLogService auditLogService) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;

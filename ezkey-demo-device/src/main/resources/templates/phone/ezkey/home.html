@@ -31,6 +31,10 @@
       text-decoration: none; 
     }
     .list { flex:1; overflow-y:auto; padding: 0 8px 12px 8px; }
+    .tenant-header { margin: 14px 8px 0 8px; padding: 0 6px; }
+    .tenant-name { font-size: .9rem; font-weight: 700; color: #f5f5f7; }
+    .tenant-description { margin-top: 2px; font-size: .8rem; color: rgba(255,255,255,.65); line-height: 1.2; }
+    .tenant-divider { height: 1px; margin: 10px 8px 0 8px; background: rgba(255,255,255,.08); }
     .item { display:block; text-decoration:none; color:#fff; padding: 12px 14px; margin: 8px; border-radius: 14px; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
     .item:hover { background: rgba(255,255,255,.12); }
     .empty { margin: 24px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.06); color:#ddd; }
@@ -56,28 +60,37 @@
         <div class="empty">No enrollments stored yet.</div>
       </div>
       <div class="list" th:if="${!#lists.isEmpty(enrollments)}">
-        <a class="item" th:each="e : ${enrollments}" th:href="@{'/phone/ezkey/enrollments/' + ${e.enrollmentId} + '/auth'}">
-          <div style="display: flex; align-items: center;">
-            <img th:if="${e.integrationLogo}" th:src="${e.integrationLogo}" alt="Integration Logo" 
-                 style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">
-            <div style="flex: 1;">
-              <div style="font-weight: 600; margin-bottom: 4px;">
-                <span th:if="${e.enrollmentName}" th:text="${e.enrollmentName}">Enrollment Name</span>
-                <span th:unless="${e.enrollmentName}">
-                  <span th:if="${e.integrationName}" th:text="${e.integrationName}">Integration Name</span>
-                  <span th:unless="${e.integrationName}">#<span th:text="${e.enrollmentId}">1</span></span>
-                </span>
-              </div>
-              <div th:if="${e.enrollmentName != null and e.integrationName != null}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
-                   th:text="${e.integrationName}">Integration Name</div>
-              <div th:if="${e.integrationDescription}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
-                   th:text="${e.integrationDescription}">Integration description</div>
-              <div th:unless="${e.integrationDescription != null or e.enrollmentName != null}" style="font-size: 0.8rem; color: #888;">
-                Enrollment #<span th:text="${e.enrollmentId}">1</span>
-              </div>
+        <div th:each="g : ${tenantGroups}">
+          <div class="tenant-header">
+            <div class="tenant-name" th:text="${g.tenantName}">Tenant</div>
+            <div class="tenant-description" th:if="${g.tenantDescription}" th:text="${g.tenantDescription}">
+              Tenant description
             </div>
           </div>
-        </a>
+          <div class="tenant-divider"></div>
+          <a class="item" th:each="e : ${g.enrollments}" th:href="@{'/phone/ezkey/enrollments/' + ${e.enrollmentId} + '/auth'}">
+            <div style="display: flex; align-items: center;">
+              <img th:if="${e.integrationLogo}" th:src="${e.integrationLogo}" alt="Integration Logo" 
+                   style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; margin-bottom: 4px;">
+                  <span th:if="${e.enrollmentName}" th:text="${e.enrollmentName}">Enrollment Name</span>
+                  <span th:unless="${e.enrollmentName}">
+                    <span th:if="${e.integrationName}" th:text="${e.integrationName}">Integration Name</span>
+                    <span th:unless="${e.integrationName}">#<span th:text="${e.enrollmentId}">1</span></span>
+                  </span>
+                </div>
+                <div th:if="${e.enrollmentName != null and e.integrationName != null}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
+                     th:text="${e.integrationName}">Integration Name</div>
+                <div th:if="${e.integrationDescription}" style="font-size: 0.8rem; color: #ccc; line-height: 1.2;" 
+                     th:text="${e.integrationDescription}">Integration description</div>
+                <div th:unless="${e.integrationDescription != null or e.enrollmentName != null}" style="font-size: 0.8rem; color: #888;">
+                  Enrollment #<span th:text="${e.enrollmentId}">1</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
     <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>

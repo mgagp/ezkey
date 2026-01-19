@@ -38,6 +38,9 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param integrationName The display name of the integration
  * @param integrationDescription The description of the integration
  * @param enrollmentName The human-readable name for the enrollment
+ * @param tenantId The tenant ID of the integration associated with this enrollment
+ * @param tenantName The tenant display name of the integration associated with this enrollment
+ * @param tenantDescription The tenant description of the integration associated with this enrollment
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentBindResponse
@@ -80,4 +83,19 @@ public record EnrollmentBindResponseDto(
             description = "Human-readable name for the enrollment",
             example = "John's iPhone",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String enrollmentName) {}
+        String enrollmentName,
+    @Schema(
+            description = "Tenant ID of the integration associated with this enrollment",
+            example = "2",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Integer tenantId,
+    @Schema(
+            description = "Tenant display name of the integration associated with this enrollment",
+            example = "Acme Corp",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String tenantName,
+    @Schema(
+            description = "Tenant description of the integration associated with this enrollment",
+            example = "Acme Corp tenant workspace",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String tenantDescription) {}
