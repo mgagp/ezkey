@@ -27,13 +27,13 @@
         <div class="container">
             <section class="challenge-section">
                 <div class="challenge-card">
-                    <h2 class="challenge-title">ENTER CHALLENGE CODE</h2>
-                    <p class="challenge-subtitle">On your EZKey device</p>
+                    <h2 class="challenge-title" th:text="${challengeCode != null ? 'ENTER CHALLENGE CODE' : 'AWAITING APPROVAL'}">AWAITING APPROVAL</h2>
+                    <p class="challenge-subtitle" th:text="${challengeCode != null ? 'On your EZKey device' : 'Approve on your EZKey device'}">Approve on your EZKey device</p>
                     
-                    <!-- Challenge Code Display -->
-                    <div class="challenge-code-display">
+                    <!-- Challenge Code Display (only shown if challenge is required) -->
+                    <div class="challenge-code-display" th:if="${challengeCode != null}">
                         <div class="challenge-label">CHALLENGE CODE</div>
-                        <div class="challenge-value" th:text="${challengeCode != null ? challengeCode : '00'}">00</div>
+                        <div class="challenge-value" th:text="${challengeCode}">00</div>
                         <p class="challenge-instruction">
                             Enter this <strong>2-digit code</strong> on your device, then approve the authentication request.
                         </p>
@@ -43,7 +43,8 @@
                     <div id="status-area" class="status-area">
                         <div class="spinner"></div>
                         <p class="status-text">Waiting for device approval...</p>
-                        <p class="status-hint">Make sure to enter the code above on your device</p>
+                        <p class="status-hint" th:if="${challengeCode != null}">Make sure to enter the code above on your device</p>
+                        <p class="status-hint" th:if="${challengeCode == null}">Check your device and approve the authentication request</p>
                     </div>
                     
                     <!-- Error Message (hidden by default) -->
@@ -56,16 +57,24 @@
                 <!-- Info Card -->
                 <div class="info-card">
                     <h3>HOW IT WORKS</h3>
-                    <ol class="steps-list">
+                    <ol class="steps-list" th:if="${challengeCode != null}">
                         <li>See the challenge code above</li>
                         <li>Open your EZKey device app</li>
                         <li>Enter the 2-digit code</li>
                         <li>Approve the authentication request</li>
                         <li>You'll be automatically logged in</li>
                     </ol>
-                    <p class="info-note">
+                    <ol class="steps-list" th:if="${challengeCode == null}">
+                        <li>Open your EZKey device app</li>
+                        <li>Approve the authentication request</li>
+                        <li>You'll be automatically logged in</li>
+                    </ol>
+                    <p class="info-note" th:if="${challengeCode != null}">
                         <strong>Security Note:</strong> The challenge code adds an extra layer of security. 
                         Even if someone has your device, they need to see this code to complete authentication.
+                    </p>
+                    <p class="info-note" th:if="${challengeCode == null}">
+                        <strong>Note:</strong> You'll be automatically redirected once you approve the request on your device.
                     </p>
                 </div>
             </section>
@@ -181,18 +190,18 @@
     <!-- Challenge Wait Styles -->
     <style>
         .challenge-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 600px;
             margin: 4rem auto;
             padding: 0 2rem;
         }
         
         @media (max-width: 768px) {
             .challenge-section {
-                grid-template-columns: 1fr;
-                gap: 2rem;
+                max-width: 100%;
+                gap: 1.5rem;
             }
         }
         
@@ -223,6 +232,11 @@
             background-color: var(--acme-gray);
             border: 4px solid var(--acme-dark);
             margin-bottom: 2rem;
+        }
+        
+        /* Hide challenge code display when not needed */
+        .challenge-code-display[style*="display: none"] {
+            display: none !important;
         }
         
         .challenge-label {

@@ -238,12 +238,27 @@ public class AuthAttemptRespondService {
    * challenge MUST be validated regardless of enrollment settings. This prevents bypassing
    * challenge verification when it was explicitly requested.
    *
+   * <p><b>Reject Handling:</b> Challenge validation is skipped if the user rejected the
+   * authentication request ({@code authAttemptAccepted = false}). Since the device signature is
+   * already validated, we can trust that a reject is legitimate and there's no security risk in
+   * skipping challenge validation for rejects. This ensures rejects are properly marked as REJECTED
+   * rather than INVALID.
+   *
    * @param request the authentication response request
    * @param authAttempt the authentication attempt
    * @param enrollment the enrollment containing challenge requirements
    */
   private void validateChallenge(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
+    // Skip challenge validation if user rejected - no need to validate challenge for rejects
+    // This ensures rejects are properly marked as REJECTED rather than INVALID
+    if (Boolean.FALSE.equals(request.getAuthAttemptAccepted())) {
+      logger.debug(
+          "Skipping challenge validation for rejected auth attempt: {}",
+          authAttempt.getAuthAttemptId());
+      return;
+    }
+
     // Validate challenge if this auth attempt has a challenge code
     // Challenge can be required at enrollment level OR per-request (authAttemptChallenge != null)
     boolean challengeRequired =

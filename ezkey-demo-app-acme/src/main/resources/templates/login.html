@@ -149,18 +149,18 @@
     <!-- Login Page Styles -->
     <style>
         .login-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 600px;
             margin: 4rem auto;
             padding: 0 2rem;
         }
         
         @media (max-width: 768px) {
             .login-section {
-                grid-template-columns: 1fr;
-                gap: 2rem;
+                max-width: 100%;
+                gap: 1.5rem;
             }
         }
         

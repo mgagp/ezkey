@@ -102,8 +102,10 @@ class AuthAttemptCreateResponseDtoTest {
   @DisplayName("Should verify basic record equality (guaranteed by Java)")
   void shouldVerifyBasicRecordEquality() {
     // Arrange
-    AuthAttemptCreateResponseDto dto1 = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null);
-    AuthAttemptCreateResponseDto dto2 = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null);
+    AuthAttemptCreateResponseDto dto1 =
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null);
+    AuthAttemptCreateResponseDto dto2 =
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null);
     AuthAttemptCreateResponseDto dto3 = new AuthAttemptCreateResponseDto(999, null);
     AuthAttemptCreateResponseDto dto4 = new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, 42);
 

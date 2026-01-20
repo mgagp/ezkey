@@ -96,6 +96,9 @@ public class EzkeyClientConfig {
   public RestTemplate ezkeyRestTemplate() {
     RestTemplate restTemplate = new RestTemplate();
 
+    // Add HTTP logging interceptor first (to log complete request/response)
+    restTemplate.getInterceptors().add(new HttpLoggingInterceptor());
+
     // Add interceptor to inject HTTP Basic Auth header with API Key credentials
     // Read directly from Environment to bypass @RefreshScope proxy issues
     restTemplate

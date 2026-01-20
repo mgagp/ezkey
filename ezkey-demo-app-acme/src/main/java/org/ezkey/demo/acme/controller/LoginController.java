@@ -108,47 +108,22 @@ public class LoginController {
               ? String.format("%02d", createResponse.authAttemptChallenge())
               : "none");
 
-      // Step 3: Handle challenge mode vs non-challenge mode
+      // Step 3: Store auth attempt info in session and redirect to wait page (unified for both modes)
+      session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
+      session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
+      session.setAttribute("pendingUsername", username);
+      session.setAttribute("pendingDisplayName", userEntry.displayName());
+      session.setAttribute("pendingEnrollmentId", userEntry.enrollmentId());
+
       if (challengeMode && createResponse.authAttemptChallenge() != null) {
-        // CHALLENGE MODE: Store auth attempt info in session and redirect to challenge page
-        session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
-        session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
-        session.setAttribute("pendingUsername", username);
-        session.setAttribute("pendingDisplayName", userEntry.displayName());
-        session.setAttribute("pendingEnrollmentId", userEntry.enrollmentId());
-
         logger.info(
-            "Challenge mode: redirecting to challenge page with code: {}",
+            "Challenge mode: redirecting to wait page with code: {}",
             createResponse.authAttemptChallenge());
-
-        return "redirect:/challenge-wait";
       } else {
-        // NO CHALLENGE MODE: Wait for device approval (blocking)
-        var waitResponse =
-            ezkeyAuthService.waitForAuthAttempt(createResponse.authAttemptId(), 60, 2);
-
-        if (!"ACCEPTED".equals(waitResponse.status())) {
-          logger.warn(
-              "Auth attempt not accepted: status={}, authAttemptId={}",
-              waitResponse.status(),
-              createResponse.authAttemptId());
-          redirectAttributes.addFlashAttribute(
-              "error", "Authentication failed: " + waitResponse.status());
-          return "redirect:/login?error=authfailed";
-        }
-
-        // Step 4: Create session
-        AuthenticatedUser authenticatedUser =
-            new AuthenticatedUser(
-                username,
-                userEntry.displayName() != null ? userEntry.displayName() : username,
-                userEntry.enrollmentId());
-
-        session.setAttribute("user", authenticatedUser);
-        logger.info("Login successful for username: {}", username);
-
-        return "redirect:/dashboard";
+        logger.info("Non-challenge mode: redirecting to wait page");
       }
+
+      return "redirect:/challenge-wait";
 
     } catch (EzkeyAuthService.EzkeyAuthException e) {
       logger.error("EZKey authentication error for username: {}", username, e);
@@ -175,6 +150,29 @@ public class LoginController {
 
     if (error != null) {
       model.addAttribute("hasError", true);
+      // Set specific error messages based on error type
+      switch (error) {
+        case "rejected":
+          model.addAttribute("error", "Authentication rejected by user. Please try again.");
+          break;
+        case "expired":
+          model.addAttribute("error", "Authentication request expired. Please try again.");
+          break;
+        case "invalid":
+          model.addAttribute("error", "Authentication invalid. Please try again.");
+          break;
+        case "authfailed":
+          model.addAttribute("error", "Authentication failed. Please try again.");
+          break;
+        case "sessionexpired":
+          model.addAttribute("error", "Session expired. Please try again.");
+          break;
+        case "notfound":
+          model.addAttribute("error", "User not found. Please check your username.");
+          break;
+        default:
+          model.addAttribute("error", "Authentication failed. Please try again.");
+      }
     }
     if (logout != null) {
       model.addAttribute("logoutMessage", "You have been logged out successfully.");
@@ -265,15 +263,18 @@ public class LoginController {
     Integer challengeCode = (Integer) session.getAttribute("pendingChallengeCode");
     String username = (String) session.getAttribute("pendingUsername");
 
-    if (authAttemptId == null || challengeCode == null || username == null) {
+    if (authAttemptId == null || username == null) {
       logger.warn("Challenge wait page accessed without pending auth attempt");
       return "redirect:/login?error=sessionexpired";
     }
 
-    // Format challenge code as zero-padded 2-digit string
-    String challengeCodeFormatted = String.format("%02d", challengeCode);
+    // Format challenge code as zero-padded 2-digit string if present
+    String challengeCodeFormatted = null;
+    if (challengeCode != null) {
+      challengeCodeFormatted = String.format("%02d", challengeCode);
+    }
 
-    model.addAttribute("pageTitle", "Enter Challenge Code - ACME Inc");
+    model.addAttribute("pageTitle", challengeCode != null ? "Enter Challenge Code - ACME Inc" : "Awaiting Approval - ACME Inc");
     model.addAttribute("challengeCode", challengeCodeFormatted);
     model.addAttribute("authAttemptId", authAttemptId);
     model.addAttribute("username", username);
@@ -292,6 +293,14 @@ public class LoginController {
    */
   @GetMapping("/api/auth-status")
   public ResponseEntity<AuthStatusResponse> checkAuthStatus(HttpSession session) {
+    // Check if user is already authenticated (prevents "expired" glitch after successful auth)
+    AuthenticatedUser authenticatedUser = (AuthenticatedUser) session.getAttribute("user");
+    if (authenticatedUser != null) {
+      // User is already authenticated, return success immediately
+      return ResponseEntity.ok(
+          new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
+    }
+
     Integer authAttemptId = (Integer) session.getAttribute("pendingAuthAttemptId");
     String username = (String) session.getAttribute("pendingUsername");
     String displayName = (String) session.getAttribute("pendingDisplayName");
@@ -308,49 +317,80 @@ public class LoginController {
       String status = waitResponse.status();
       boolean completed = Boolean.TRUE.equals(waitResponse.completed());
 
-      // Clear session attributes for all final states
-      if (completed || "ACCEPTED".equals(status) || "REJECTED".equals(status) 
-          || "EXPIRED".equals(status) || "INVALID".equals(status)) {
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
-      }
-
       if ("ACCEPTED".equals(status)) {
-        // Authentication successful - create session
+        // Authentication successful - create session FIRST, then clear pending attributes
         AuthenticatedUser authenticatedUser =
             new AuthenticatedUser(
                 username, displayName != null ? displayName : username, enrollmentId);
 
         session.setAttribute("user", authenticatedUser);
 
+        // Clear pending auth data AFTER creating user session
+        // This prevents "expired" glitch if another poll arrives before redirect
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+
         logger.info("Challenge authentication successful for username: {}", username);
         return ResponseEntity.ok(
             new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
       } else if ("REJECTED".equals(status)) {
         // Authentication rejected by user
+        // Clear pending attributes AFTER returning response to prevent "expired" glitch
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+
         logger.info("Challenge authentication rejected for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse("rejected", "/login?error=rejected", "Authentication rejected by user"));
+            new AuthStatusResponse(
+                "rejected", "/login?error=rejected", "Authentication rejected by user"));
       } else if ("EXPIRED".equals(status)) {
         // Authentication expired
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+
         logger.info("Challenge authentication expired for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse("expired", "/login?error=expired", "Authentication request expired"));
+            new AuthStatusResponse(
+                "expired", "/login?error=expired", "Authentication request expired"));
       } else if ("INVALID".equals(status)) {
         // Authentication invalid (wrong signature, challenge, etc.)
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+
         logger.info("Challenge authentication invalid for username: {}", username);
         return ResponseEntity.ok(
             new AuthStatusResponse("error", "/login?error=invalid", "Authentication invalid"));
       } else if (completed) {
         // Completed but unknown status
-        logger.warn("Challenge authentication completed with unknown status: {} for username: {}", status, username);
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+
+        logger.warn(
+            "Challenge authentication completed with unknown status: {} for username: {}",
+            status,
+            username);
         return ResponseEntity.ok(
-            new AuthStatusResponse("error", "/login?error=authfailed", "Authentication completed with unknown status: " + status));
+            new AuthStatusResponse(
+                "error",
+                "/login?error=authfailed",
+                "Authentication completed with unknown status: " + status));
       } else {
-        // Still pending (PENDING, READ, etc.)
+        // Still pending (PENDING, READ, etc.) - keep session attributes
         return ResponseEntity.ok(
             new AuthStatusResponse("pending", null, "Waiting for device approval..."));
       }
