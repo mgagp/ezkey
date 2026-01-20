@@ -180,8 +180,18 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      EZKEY_ADMIN_API_URL: http://localhost:9080
-      EZKEY_LOGIN_MODE: frontend
+      # External configuration location - must be set as environment variable to be loaded early enough
+      # Spring Boot automatically searches in ./config/ relative to working directory (/app/config/)
+      # But we explicitly set it to ensure it's loaded
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
+      EZKEY_ADMIN_API_URL: http://admin-api:9080
+      # EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY: Leave unset initially - configure via /app/config/application.properties after creating integration
+      # Format: Authorization: Basic base64(integrationKey:secretKey)
+      EZKEY_USERS_FILE: ${EZKEY_USERS_FILE:-data/acme-users.json}
+      EZKEY_USERS_CHECK_INTERVAL: ${EZKEY_USERS_CHECK_INTERVAL:-5}
+    volumes:
+      - demo-app-acme-data:/app/data
+      - demo-app-acme-config:/app/config
     ports:
       - "8082:8082"
     networks:
@@ -215,6 +225,7 @@ services:
     volumes:
       - bootstrap-artifacts:/bootstrap
       - demo-device-data:/app/data
+      - demo-app-acme-data:/app/acme-data
     networks:
       - ezkey-network
     restart: "no"
@@ -226,6 +237,8 @@ networks:
 volumes:
   postgres-data:
   demo-device-data:
+  demo-app-acme-data:
+  demo-app-acme-config:
   maven-cache:
   encryption-secrets:
   bootstrap-artifacts:

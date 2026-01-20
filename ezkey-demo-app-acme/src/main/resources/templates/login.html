@@ -30,8 +30,19 @@
                     <h2 class="login-title">SIGN IN</h2>
                     <p class="login-subtitle">Passwordless authentication with EZKey</p>
                     
+                    <!-- Error Message -->
+                    <div th:if="${hasError}" class="error-message">
+                        <p class="error-icon">!</p>
+                        <p class="error-text" th:text="${error ?: 'Authentication failed'}">Authentication failed</p>
+                    </div>
+                    
+                    <!-- Logout Message -->
+                    <div th:if="${logoutMessage}" class="logout-message">
+                        <p class="logout-text" th:text="${logoutMessage}">You have been logged out successfully.</p>
+                    </div>
+                    
                     <!-- Login Form -->
-                    <form id="login-form" class="login-form">
+                    <form method="post" action="/login" class="login-form">
                         <div class="form-group">
                             <label for="username">USERNAME</label>
                             <input type="text" id="username" name="username" 
@@ -42,7 +53,7 @@
                         
                         <div class="form-group checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" id="challengeRequested" name="challengeRequested">
+                                <input type="checkbox" id="challengeRequested" name="challengeRequested" value="true">
                                 <span class="checkbox-text">Require challenge code (2 digits)</span>
                             </label>
                             <small class="form-hint">Enable for additional verification on your device</small>
@@ -53,29 +64,20 @@
                         </button>
                     </form>
                     
-                    <!-- Status Area -->
-                    <div id="status-area" class="status-area hidden">
-                        <div id="status-pending" class="status-pending hidden">
-                            <div class="spinner"></div>
-                            <p class="status-text">Waiting for approval on your device...</p>
-                            <p id="challenge-display" class="challenge-code hidden">
-                                Challenge: <span id="challenge-value"></span>
-                            </p>
-                        </div>
-                        
-                        <div id="status-error" class="status-error hidden">
-                            <p class="error-icon">!</p>
-                            <p id="error-message" class="error-text">Authentication failed</p>
-                            <button type="button" class="neo-brutal-button secondary" onclick="resetForm()">
-                                TRY AGAIN
-                            </button>
-                        </div>
+                    <!-- Info Note -->
+                    <div class="info-note-inline">
+                        <p><strong>Note:</strong> After clicking "Login with EZKey", approve the request on your registered device.</p>
                     </div>
                 </div>
                 
                 <!-- Info Card -->
                 <div class="info-card">
-                    <h3>HOW IT WORKS</h3>
+                    <div class="info-card-header">
+                        <h3>HOW IT WORKS</h3>
+                        <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
+                            🔄 RELOAD CONFIG
+                        </button>
+                    </div>
                     <ol class="steps-list">
                         <li>Enter your username</li>
                         <li>Click "Login with EZKey"</li>
@@ -86,6 +88,7 @@
                         <strong>No password needed.</strong> EZKey uses cryptographic 
                         authentication via your registered device.
                     </p>
+                    <div id="reload-status" class="reload-status hidden"></div>
                 </div>
             </section>
         </div>
@@ -100,14 +103,48 @@
         </div>
     </footer>
 
-    <!-- Pass config to JavaScript -->
-    <script th:inline="javascript">
-        const EZKEY_CONFIG = {
-            adminApiUrl: /*[[${adminApiUrl}]]*/ 'http://localhost:9080',
-            loginMode: /*[[${loginMode}]]*/ 'frontend'
-        };
+    <!-- Reload Config Script -->
+    <script>
+        async function reloadConfig() {
+            const btn = document.getElementById('reload-config-btn');
+            const status = document.getElementById('reload-status');
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.textContent = '⏳ RELOADING...';
+            status.className = 'reload-status';
+            status.textContent = 'Reloading configuration...';
+            status.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/reload-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.className = 'reload-status success';
+                    status.textContent = '✅ ' + result.message;
+                    setTimeout(() => {
+                        status.style.display = 'none';
+                    }, 3000);
+                } else {
+                    status.className = 'reload-status error';
+                    status.textContent = '❌ ' + result.message;
+                }
+            } catch (error) {
+                status.className = 'reload-status error';
+                status.textContent = '❌ Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 RELOAD CONFIG';
+            }
+        }
     </script>
-    <script th:src="@{/js/ezkey-login.js}"></script>
     
     <!-- Login Page Styles -->
     <style>
@@ -272,23 +309,49 @@
             font-size: 2rem;
         }
         
-        .status-error {
-            padding: 2rem;
+        .error-message {
+            padding: 1.5rem;
             background-color: var(--acme-error);
             border: 3px solid var(--acme-dark);
             color: var(--acme-light);
+            margin-bottom: 1.5rem;
         }
         
         .error-icon {
-            font-size: 3rem;
+            font-size: 2rem;
             font-weight: 900;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
         
         .error-text {
             font-weight: 700;
             text-transform: uppercase;
-            margin-bottom: 1rem;
+        }
+        
+        .logout-message {
+            padding: 1.5rem;
+            background-color: var(--acme-success);
+            border: 3px solid var(--acme-dark);
+            color: var(--acme-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        .logout-text {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .info-note-inline {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--acme-accent);
+            border: 2px solid var(--acme-dark);
+            font-size: 0.9rem;
+        }
+        
+        .info-note-inline p {
+            margin: 0;
+            font-weight: 600;
         }
         
         /* Info Card */
@@ -347,6 +410,60 @@
             background-color: var(--acme-light);
             border: 2px solid var(--acme-dark);
             font-size: 0.9rem;
+        }
+        
+        /* Info Card Header */
+        .info-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-card-header h3 {
+            margin: 0;
+        }
+        
+        .reload-config-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            border: 3px solid var(--acme-dark);
+            box-shadow: 3px 3px 0 var(--acme-dark);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .reload-config-btn:hover:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 var(--acme-dark);
+        }
+        
+        .reload-config-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Reload Status */
+        .reload-status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid var(--acme-dark);
+        }
+        
+        .reload-status.success {
+            background-color: var(--acme-success);
+            color: var(--acme-dark);
+        }
+        
+        .reload-status.error {
+            background-color: var(--acme-error);
+            color: var(--acme-light);
         }
     </style>
 </body>

@@ -5,27 +5,27 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: HomeController
- * Description: Main controller for ACME demo application - login and dashboard.
+ * Description: Main controller for ACME demo application - dashboard and logout.
  */
 
 package org.ezkey.demo.acme.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Main controller for ACME demo application handling login and dashboard.
+ * Main controller for ACME demo application handling dashboard and logout.
  *
- * <p>This controller demonstrates EZKey passwordless login integration using a frontend-first
- * approach where JavaScript calls the Admin API directly from the browser.
+ * <p>This controller handles protected routes that require authentication. Login is handled by
+ * LoginController.
  *
  * <p><b>Routes:</b>
  *
  * <ul>
  *   <li>{@code /} - Redirects to login page
- *   <li>{@code /login} - Login page with username form
  *   <li>{@code /dashboard} - Post-login dashboard (requires valid session)
  *   <li>{@code /logout} - Clears session and redirects to login
  * </ul>
@@ -39,12 +39,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 
-  @Value("${ezkey.admin.api.url}")
-  private String adminApiUrl;
-
-  @Value("${ezkey.login.mode}")
-  private String loginMode;
-
   /**
    * Redirects root URL to login page.
    *
@@ -56,48 +50,37 @@ public class HomeController {
   }
 
   /**
-   * Displays the login page with EZKey passwordless authentication.
-   *
-   * <p>The login page contains a username field and optional challenge checkbox. JavaScript handles
-   * the API calls to Admin API for authentication.
-   *
-   * @param model the Spring MVC model for passing data to the view
-   * @return the name of the Thymeleaf template to render
-   */
-  @GetMapping("/login")
-  public String login(Model model) {
-    model.addAttribute("pageTitle", "Login - ACME Inc");
-    model.addAttribute("adminApiUrl", adminApiUrl);
-    model.addAttribute("loginMode", loginMode);
-    return "login";
-  }
-
-  /**
    * Displays the dashboard after successful login.
    *
    * <p>The dashboard shows user information and explains how EZKey login works. Authentication is
-   * validated client-side via sessionStorage token.
+   * validated server-side via HTTP session.
    *
+   * @param session the HTTP session
    * @param model the Spring MVC model for passing data to the view
-   * @return the name of the Thymeleaf template to render
+   * @return redirect to login if not authenticated, otherwise dashboard template
    */
   @GetMapping("/dashboard")
-  public String dashboard(Model model) {
+  public String dashboard(HttpSession session, Model model) {
+    AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("user");
+
+    if (user == null) {
+      return "redirect:/login";
+    }
+
     model.addAttribute("pageTitle", "Dashboard - ACME Inc");
-    model.addAttribute("adminApiUrl", adminApiUrl);
-    model.addAttribute("loginMode", loginMode);
+    model.addAttribute("user", user);
     return "dashboard";
   }
 
   /**
-   * Handles logout by redirecting to login page.
+   * Handles logout by invalidating session and redirecting to login page.
    *
-   * <p>Token cleanup is handled client-side by clearing sessionStorage before redirect.
-   *
+   * @param session the HTTP session
    * @return redirect to login page
    */
   @GetMapping("/logout")
-  public String logout() {
+  public String logout(HttpSession session) {
+    session.invalidate();
     return "redirect:/login?logout=true";
   }
 }
