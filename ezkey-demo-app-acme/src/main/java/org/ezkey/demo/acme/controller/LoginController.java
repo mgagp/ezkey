@@ -108,7 +108,8 @@ public class LoginController {
               ? String.format("%02d", createResponse.authAttemptChallenge())
               : "none");
 
-      // Step 3: Store auth attempt info in session and redirect to wait page (unified for both modes)
+      // Step 3: Store auth attempt info in session and redirect to wait page (unified for both
+      // modes)
       session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
       session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
       session.setAttribute("pendingUsername", username);
@@ -274,7 +275,9 @@ public class LoginController {
       challengeCodeFormatted = String.format("%02d", challengeCode);
     }
 
-    model.addAttribute("pageTitle", challengeCode != null ? "Enter Challenge Code - ACME Inc" : "Awaiting Approval - ACME Inc");
+    model.addAttribute(
+        "pageTitle",
+        challengeCode != null ? "Enter Challenge Code - ACME Inc" : "Awaiting Approval - ACME Inc");
     model.addAttribute("challengeCode", challengeCodeFormatted);
     model.addAttribute("authAttemptId", authAttemptId);
     model.addAttribute("username", username);
@@ -294,8 +297,8 @@ public class LoginController {
   @GetMapping("/api/auth-status")
   public ResponseEntity<AuthStatusResponse> checkAuthStatus(HttpSession session) {
     // Check if user is already authenticated (prevents "expired" glitch after successful auth)
-    AuthenticatedUser authenticatedUser = (AuthenticatedUser) session.getAttribute("user");
-    if (authenticatedUser != null) {
+    AuthenticatedUser existingUser = (AuthenticatedUser) session.getAttribute("user");
+    if (existingUser != null) {
       // User is already authenticated, return success immediately
       return ResponseEntity.ok(
           new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));

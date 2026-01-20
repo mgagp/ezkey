@@ -271,6 +271,7 @@ public class AuthAttemptWaitService {
    * specific order of priority.
    *
    * <p><b>Status Priority:</b>
+   *
    * <ol>
    *   <li>Final statuses (ACCEPTED, REJECTED, INVALID) take precedence - return immediately
    *   <li>For PENDING/READ statuses, check expiration
@@ -282,20 +283,21 @@ public class AuthAttemptWaitService {
    */
   private String calculateStatus(AuthAttempt authAttempt) {
     AuthAttemptStatus currentStatus = authAttempt.getAuthAttemptStatus();
-    
+
     // If status is already final (ACCEPTED, REJECTED, INVALID), return it directly
-    // Don't check expiration for final statuses - they represent user decisions or validation results
+    // Don't check expiration for final statuses - they represent user decisions or validation
+    // results
     if (currentStatus == AuthAttemptStatus.ACCEPTED
         || currentStatus == AuthAttemptStatus.REJECTED
         || currentStatus == AuthAttemptStatus.INVALID) {
       return currentStatus.name();
     }
-    
+
     // For PENDING or READ statuses, check if expired
     if (isAttemptExpired(authAttempt)) {
       return AuthAttemptStatus.EXPIRED.name();
     }
-    
+
     // Return the current status (PENDING or READ)
     return currentStatus.name();
   }
