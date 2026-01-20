@@ -26,6 +26,16 @@
 							"        pm.expect(jsonData).to.have.property('authAttemptId');",
 							"        pm.expect(jsonData.authAttemptId).to.be.a('number');",
 							"    });",
+							"    ",
+							"    pm.test(\"Response may contain authAttemptChallenge\", function () {",
+							"        if (jsonData.hasOwnProperty('authAttemptChallenge')) {",
+							"            if (jsonData.authAttemptChallenge !== null) {",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.a('number');",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.at.least(0);",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.at.most(99);",
+							"            }",
+							"        }",
+							"    });",
 							"}"
 						],
 						"type": "text/javascript",
@@ -56,7 +66,7 @@
 						"auth-attempts"
 					]
 				},
-				"description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
+				"description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -78,6 +88,16 @@
 							"    pm.test(\"Response contains authAttemptId\", function () {",
 							"        pm.expect(jsonData).to.have.property('authAttemptId');",
 							"        pm.expect(jsonData.authAttemptId).to.be.a('number');",
+							"    });",
+							"    ",
+							"    pm.test(\"Response may contain authAttemptChallenge\", function () {",
+							"        if (jsonData.hasOwnProperty('authAttemptChallenge')) {",
+							"            if (jsonData.authAttemptChallenge !== null) {",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.a('number');",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.at.least(0);",
+							"                pm.expect(jsonData.authAttemptChallenge).to.be.at.most(99);",
+							"            }",
+							"        }",
 							"    });",
 							"}"
 						],
@@ -125,7 +145,7 @@
 						"auth-attempts"
 					]
 				},
-				"description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
+				"description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
 			},
 			"response": []
 		},

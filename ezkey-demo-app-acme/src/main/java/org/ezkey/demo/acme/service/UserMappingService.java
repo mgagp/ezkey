@@ -29,7 +29,8 @@ import org.springframework.stereotype.Service;
  * Service for loading and hot-reloading user mapping from JSON file.
  *
  * <p>This service maintains a mapping of username to enrollmentId by reading from an external JSON
- * file. It supports hot-reload by checking the file timestamp periodically and reloading if changed.
+ * file. It supports hot-reload by checking the file timestamp periodically and reloading if
+ * changed.
  *
  * <p>This pattern aligns with demo-device's EnrollmentStoreService for consistency in Docker test
  * scenarios.
@@ -136,8 +137,7 @@ public class UserMappingService {
       }
 
       lastModified = Files.getLastModifiedTime(usersFile).toMillis();
-      logger.info(
-          "Loaded {} users from mapping file: {}", userMap.size(), usersFile);
+      logger.info("Loaded {} users from mapping file: {}", userMap.size(), usersFile);
 
     } catch (IOException e) {
       logger.error("Failed to load users file: {}", usersFile, e);

@@ -57,18 +57,22 @@ public class EzkeyClientConfig {
   public EzkeyClientConfig(AcmeProperties properties, Environment environment) {
     this.properties = properties;
     this.environment = environment;
-    
+
     // Log configuration status at startup
     // Read directly from Environment to bypass @RefreshScope proxy issues
     String integrationKey = environment.getProperty("ezkey.integration.key");
     String secretKey = environment.getProperty("ezkey.secret.key");
-    
-    if (integrationKey != null && !integrationKey.isBlank() 
-        && secretKey != null && !secretKey.isBlank()) {
-      logger.info("✅ API Key credentials configured - Integration Key: {}...", 
+
+    if (integrationKey != null
+        && !integrationKey.isBlank()
+        && secretKey != null
+        && !secretKey.isBlank()) {
+      logger.info(
+          "✅ API Key credentials configured - Integration Key: {}...",
           integrationKey.substring(0, Math.min(20, integrationKey.length())));
     } else {
-      logger.warn("⚠️  API Key credentials NOT configured - Integration Key: {}, Secret Key: {}", 
+      logger.warn(
+          "⚠️  API Key credentials NOT configured - Integration Key: {}, Secret Key: {}",
           integrationKey != null ? "present" : "missing",
           secretKey != null ? "present" : "missing");
       logger.warn("   Configure via /app/config/application.properties or environment variables");
@@ -97,29 +101,34 @@ public class EzkeyClientConfig {
     restTemplate
         .getInterceptors()
         .add(
-            (ClientHttpRequestInterceptor) (request, body, execution) -> {
-              // Read directly from Environment to ensure we get the latest values
-              // This bypasses potential @RefreshScope proxy issues
-              String integrationKey = environment.getProperty("ezkey.integration.key");
-              String secretKey = environment.getProperty("ezkey.secret.key");
+            (ClientHttpRequestInterceptor)
+                (request, body, execution) -> {
+                  // Read directly from Environment to ensure we get the latest values
+                  // This bypasses potential @RefreshScope proxy issues
+                  String integrationKey = environment.getProperty("ezkey.integration.key");
+                  String secretKey = environment.getProperty("ezkey.secret.key");
 
-              if (integrationKey != null
-                  && !integrationKey.isBlank()
-                  && secretKey != null
-                  && !secretKey.isBlank()) {
-                // Create HTTP Basic Auth: base64(integrationKey:secretKey)
-                String credentials = integrationKey + ":" + secretKey;
-                String encodedCredentials =
-                    Base64.getEncoder()
-                        .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-                request.getHeaders().set(HttpHeaders.AUTHORIZATION, "Basic " + encodedCredentials);
-                logger.debug("Added HTTP Basic Auth header for request to: {}", request.getURI());
-              } else {
-                logger.warn("Missing API Key credentials - request to {} will fail authentication", 
-                    request.getURI());
-              }
-              return execution.execute(request, body);
-            });
+                  if (integrationKey != null
+                      && !integrationKey.isBlank()
+                      && secretKey != null
+                      && !secretKey.isBlank()) {
+                    // Create HTTP Basic Auth: base64(integrationKey:secretKey)
+                    String credentials = integrationKey + ":" + secretKey;
+                    String encodedCredentials =
+                        Base64.getEncoder()
+                            .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+                    request
+                        .getHeaders()
+                        .set(HttpHeaders.AUTHORIZATION, "Basic " + encodedCredentials);
+                    logger.debug(
+                        "Added HTTP Basic Auth header for request to: {}", request.getURI());
+                  } else {
+                    logger.warn(
+                        "Missing API Key credentials - request to {} will fail authentication",
+                        request.getURI());
+                  }
+                  return execution.execute(request, body);
+                });
 
     return restTemplate;
   }

@@ -16,5 +16,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Response DTO containing created authentication attempt details.
  *
  * @param authAttemptId unique identifier of the created authentication attempt
+ * @param authAttemptChallenge optional challenge code (2 digits) if challenge was requested
  */
-public record AuthAttemptCreateResponse(@JsonProperty("authAttemptId") Integer authAttemptId) {}
+public record AuthAttemptCreateResponse(
+    @JsonProperty("authAttemptId") Integer authAttemptId,
+    @JsonProperty("authAttemptChallenge") Integer authAttemptChallenge) {}

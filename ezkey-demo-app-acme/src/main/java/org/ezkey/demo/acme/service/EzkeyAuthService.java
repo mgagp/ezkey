@@ -65,26 +65,30 @@ public class EzkeyAuthService {
           "Creating auth attempt for enrollmentId={}, challengeRequested={}",
           enrollmentId,
           challengeRequested);
-      logger.debug("Request body: enrollmentId={}, challengeRequested={}", 
-          request.enrollmentId(), request.challengeRequested());
+      logger.debug(
+          "Request body: enrollmentId={}, challengeRequested={}",
+          request.enrollmentId(),
+          request.challengeRequested());
 
       ResponseEntity<AuthAttemptCreateResponse> response =
           restTemplate.postForEntity(url, request, AuthAttemptCreateResponse.class);
 
       if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
+        var body = response.getBody();
         logger.info(
-            "Auth attempt created successfully: authAttemptId={}", response.getBody().authAttemptId());
-        return response.getBody();
+            "Auth attempt created successfully: authAttemptId={}, challenge={}",
+            body.authAttemptId(),
+            body.authAttemptChallenge() != null ? body.authAttemptChallenge() : "none");
+        return body;
       } else {
-        throw new EzkeyAuthException(
-            "Unexpected response status: " + response.getStatusCode());
+        throw new EzkeyAuthException("Unexpected response status: " + response.getStatusCode());
       }
 
     } catch (HttpClientErrorException e) {
       String responseBody = e.getResponseBodyAsString();
       logger.error(
           "Failed to create auth attempt: status={}, body={}", e.getStatusCode(), responseBody);
-      
+
       // Provide more helpful error messages
       if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
         logger.error("Authentication failed - possible causes:");
@@ -93,11 +97,12 @@ public class EzkeyAuthService {
         logger.error("  3. API key has expired");
         logger.error("  4. API key is inactive/revoked");
         throw new EzkeyAuthException(
-            "Authentication failed (401). Check API key credentials and IP whitelist. Response: " + responseBody, e);
+            "Authentication failed (401). Check API key credentials and IP whitelist. Response: "
+                + responseBody,
+            e);
       }
-      
-      throw new EzkeyAuthException(
-          "Failed to create auth attempt: " + e.getMessage(), e);
+
+      throw new EzkeyAuthException("Failed to create auth attempt: " + e.getMessage(), e);
     } catch (RestClientException e) {
       logger.error("Error calling Admin API: {}", url, e);
       throw new EzkeyAuthException("Error calling Admin API: " + e.getMessage(), e);
@@ -147,8 +152,7 @@ public class EzkeyAuthService {
 
         return waitResponse;
       } else {
-        throw new EzkeyAuthException(
-            "Unexpected response status: " + response.getStatusCode());
+        throw new EzkeyAuthException("Unexpected response status: " + response.getStatusCode());
       }
 
     } catch (HttpClientErrorException e) {
@@ -156,8 +160,7 @@ public class EzkeyAuthService {
           "Failed to wait for auth attempt: status={}, body={}",
           e.getStatusCode(),
           e.getResponseBodyAsString());
-      throw new EzkeyAuthException(
-          "Failed to wait for auth attempt: " + e.getMessage(), e);
+      throw new EzkeyAuthException("Failed to wait for auth attempt: " + e.getMessage(), e);
     } catch (RestClientException e) {
       logger.error("Error calling Admin API wait endpoint: {}", url, e);
       throw new EzkeyAuthException("Error calling Admin API: " + e.getMessage(), e);

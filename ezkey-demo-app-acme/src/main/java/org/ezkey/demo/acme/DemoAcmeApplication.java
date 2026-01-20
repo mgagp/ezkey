@@ -10,13 +10,13 @@
 
 package org.ezkey.demo.acme;
 
+import org.ezkey.demo.acme.config.AcmeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.ezkey.demo.acme.config.AcmeProperties;
 
 /**
  * Main Spring Boot application for ACME demo.
@@ -58,31 +58,43 @@ public class DemoAcmeApplication {
   public static void main(String[] args) {
     // Log Spring Boot config locations before startup
     String additionalLocation = System.getenv("SPRING_CONFIG_ADDITIONAL_LOCATION");
-    logger.info("SPRING_CONFIG_ADDITIONAL_LOCATION env var: {}", additionalLocation != null ? additionalLocation : "NOT SET");
+    logger.info(
+        "SPRING_CONFIG_ADDITIONAL_LOCATION env var: {}",
+        additionalLocation != null ? additionalLocation : "NOT SET");
     logger.info("Working directory: {}", System.getProperty("user.dir"));
-    logger.info("Config file exists: {}", 
+    logger.info(
+        "Config file exists: {}",
         java.nio.file.Files.exists(java.nio.file.Paths.get("/app/config/application.properties")));
-    
+
     var appContext = SpringApplication.run(DemoAcmeApplication.class, args);
-    
+
     // Log configuration status after startup
     AcmeProperties properties = appContext.getBean(AcmeProperties.class);
     logger.info("Configuration loaded - Admin API URL: {}", properties.getAdminApiUrl());
-    logger.info("Configuration loaded - Integration Key: {}", 
-        properties.getIntegrationKey() != null && !properties.getIntegrationKey().isBlank() 
-            ? properties.getIntegrationKey().substring(0, Math.min(20, properties.getIntegrationKey().length())) + "..." 
+    logger.info(
+        "Configuration loaded - Integration Key: {}",
+        properties.getIntegrationKey() != null && !properties.getIntegrationKey().isBlank()
+            ? properties
+                    .getIntegrationKey()
+                    .substring(0, Math.min(20, properties.getIntegrationKey().length()))
+                + "..."
             : "NOT SET");
-    logger.info("Configuration loaded - Secret Key: {}", 
-        properties.getSecretKey() != null && !properties.getSecretKey().isBlank() 
-            ? "SET (hidden)" 
+    logger.info(
+        "Configuration loaded - Secret Key: {}",
+        properties.getSecretKey() != null && !properties.getSecretKey().isBlank()
+            ? "SET (hidden)"
             : "NOT SET");
-    
+
     // Also check environment directly
     org.springframework.core.env.Environment env = appContext.getEnvironment();
-    logger.info("Environment property ezkey.integration.key: {}", 
+    logger.info(
+        "Environment property ezkey.integration.key: {}",
         env.getProperty("ezkey.integration.key", "NOT FOUND"));
-    logger.info("Environment property ezkey.secret.key: {}", 
-        env.getProperty("ezkey.secret.key", "NOT FOUND") != null && !env.getProperty("ezkey.secret.key", "").isBlank()
-            ? "SET (hidden)" : "NOT FOUND");
+    logger.info(
+        "Environment property ezkey.secret.key: {}",
+        env.getProperty("ezkey.secret.key", "NOT FOUND") != null
+                && !env.getProperty("ezkey.secret.key", "").isBlank()
+            ? "SET (hidden)"
+            : "NOT FOUND");
   }
 }

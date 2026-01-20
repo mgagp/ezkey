@@ -120,7 +120,7 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1));
+        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
@@ -212,7 +212,7 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1));
+        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 

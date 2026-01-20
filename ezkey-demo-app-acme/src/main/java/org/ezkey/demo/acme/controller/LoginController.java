@@ -11,11 +11,11 @@
 package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.config.AcmeProperties;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.dto.UserMapping;
 import org.ezkey.demo.acme.service.EzkeyAuthService;
 import org.ezkey.demo.acme.service.UserMappingService;
-import org.ezkey.demo.acme.config.AcmeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.context.refresh.ContextRefresher;
@@ -86,10 +86,7 @@ public class LoginController {
     logger.info("Login attempt for username: {}", username);
 
     // Step 1: Lookup user in mapping
-    UserMapping.UserEntry userEntry =
-        userMappingService
-            .findByUsername(username)
-            .orElse(null);
+    UserMapping.UserEntry userEntry = userMappingService.findByUsername(username).orElse(null);
 
     if (userEntry == null) {
       logger.warn("User not found in mapping: {}", username);
@@ -99,40 +96,59 @@ public class LoginController {
 
     // Step 2: Create auth attempt
     try {
+      boolean challengeMode = Boolean.TRUE.equals(challengeRequested);
       var createResponse =
-          ezkeyAuthService.createAuthAttempt(
-              userEntry.enrollmentId(), Boolean.TRUE.equals(challengeRequested));
+          ezkeyAuthService.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
 
       logger.info(
-          "Auth attempt created: authAttemptId={}, enrollmentId={}",
+          "Auth attempt created: authAttemptId={}, enrollmentId={}, challenge={}",
           createResponse.authAttemptId(),
-          userEntry.enrollmentId());
+          userEntry.enrollmentId(),
+          createResponse.authAttemptChallenge() != null
+              ? String.format("%02d", createResponse.authAttemptChallenge())
+              : "none");
 
-      // Step 3: Wait for device approval
-      var waitResponse =
-          ezkeyAuthService.waitForAuthAttempt(createResponse.authAttemptId(), 30, 2);
+      // Step 3: Handle challenge mode vs non-challenge mode
+      if (challengeMode && createResponse.authAttemptChallenge() != null) {
+        // CHALLENGE MODE: Store auth attempt info in session and redirect to challenge page
+        session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
+        session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
+        session.setAttribute("pendingUsername", username);
+        session.setAttribute("pendingDisplayName", userEntry.displayName());
+        session.setAttribute("pendingEnrollmentId", userEntry.enrollmentId());
 
-      if (!"ACCEPTED".equals(waitResponse.status())) {
-        logger.warn(
-            "Auth attempt not accepted: status={}, authAttemptId={}",
-            waitResponse.status(),
-            createResponse.authAttemptId());
-        redirectAttributes.addFlashAttribute(
-            "error", "Authentication failed: " + waitResponse.status());
-        return "redirect:/login?error=authfailed";
+        logger.info(
+            "Challenge mode: redirecting to challenge page with code: {}",
+            createResponse.authAttemptChallenge());
+
+        return "redirect:/challenge-wait";
+      } else {
+        // NO CHALLENGE MODE: Wait for device approval (blocking)
+        var waitResponse =
+            ezkeyAuthService.waitForAuthAttempt(createResponse.authAttemptId(), 60, 2);
+
+        if (!"ACCEPTED".equals(waitResponse.status())) {
+          logger.warn(
+              "Auth attempt not accepted: status={}, authAttemptId={}",
+              waitResponse.status(),
+              createResponse.authAttemptId());
+          redirectAttributes.addFlashAttribute(
+              "error", "Authentication failed: " + waitResponse.status());
+          return "redirect:/login?error=authfailed";
+        }
+
+        // Step 4: Create session
+        AuthenticatedUser authenticatedUser =
+            new AuthenticatedUser(
+                username,
+                userEntry.displayName() != null ? userEntry.displayName() : username,
+                userEntry.enrollmentId());
+
+        session.setAttribute("user", authenticatedUser);
+        logger.info("Login successful for username: {}", username);
+
+        return "redirect:/dashboard";
       }
-
-      // Step 4: Create session
-      AuthenticatedUser authenticatedUser =
-          new AuthenticatedUser(
-              username,
-              userEntry.displayName() != null ? userEntry.displayName() : username,
-              userEntry.enrollmentId());
-
-      session.setAttribute("user", authenticatedUser);
-      logger.info("Login successful for username: {}", username);
-
-      return "redirect:/dashboard";
 
     } catch (EzkeyAuthService.EzkeyAuthException e) {
       logger.error("EZKey authentication error for username: {}", username, e);
@@ -174,9 +190,9 @@ public class LoginController {
    *
    * <ol>
    *   <li><b>Application Properties Reload:</b> Triggers refresh of @RefreshScope beans (like
-   *       AcmeProperties), allowing external configuration changes in /app/config/application.properties
-   *       to be applied without restarting. This includes API key credentials (integrationKey,
-   *       secretKey).
+   *       AcmeProperties), allowing external configuration changes in
+   *       /app/config/application.properties to be applied without restarting. This includes API
+   *       key credentials (integrationKey, secretKey).
    *   <li><b>Users Mapping File Reload:</b> Manually triggers reload of acme-users.json file by
    *       calling UserMappingService.checkAndReload(). This complements the automatic @Scheduled
    *       reload, allowing immediate refresh on demand.
@@ -214,8 +230,12 @@ public class LoginController {
       // Build response message
       StringBuilder message = new StringBuilder();
       if (refreshedKeys != null && !refreshedKeys.isEmpty()) {
-        message.append("Application properties reloaded (").append(refreshedKeys.size())
-            .append(" keys refreshed: ").append(refreshedKeys).append("). ");
+        message
+            .append("Application properties reloaded (")
+            .append(refreshedKeys.size())
+            .append(" keys refreshed: ")
+            .append(refreshedKeys)
+            .append("). ");
       } else {
         message.append("Application properties reloaded (no changes detected). ");
       }
@@ -231,10 +251,136 @@ public class LoginController {
   }
 
   /**
+   * Displays the challenge wait page with the challenge code.
+   *
+   * <p>This page shows the challenge code to the user and polls for authentication completion.
+   *
+   * @param session the HTTP session
+   * @param model the Spring MVC model
+   * @return challenge-wait page template
+   */
+  @GetMapping("/challenge-wait")
+  public String challengeWaitPage(HttpSession session, Model model) {
+    Integer authAttemptId = (Integer) session.getAttribute("pendingAuthAttemptId");
+    Integer challengeCode = (Integer) session.getAttribute("pendingChallengeCode");
+    String username = (String) session.getAttribute("pendingUsername");
+
+    if (authAttemptId == null || challengeCode == null || username == null) {
+      logger.warn("Challenge wait page accessed without pending auth attempt");
+      return "redirect:/login?error=sessionexpired";
+    }
+
+    // Format challenge code as zero-padded 2-digit string
+    String challengeCodeFormatted = String.format("%02d", challengeCode);
+
+    model.addAttribute("pageTitle", "Enter Challenge Code - ACME Inc");
+    model.addAttribute("challengeCode", challengeCodeFormatted);
+    model.addAttribute("authAttemptId", authAttemptId);
+    model.addAttribute("username", username);
+
+    return "challenge-wait";
+  }
+
+  /**
+   * Checks the status of a pending authentication attempt (for polling).
+   *
+   * <p>This endpoint is called by the challenge-wait page to check if the authentication attempt
+   * has been approved.
+   *
+   * @param session the HTTP session
+   * @return JSON response with status and redirect URL if approved
+   */
+  @GetMapping("/api/auth-status")
+  public ResponseEntity<AuthStatusResponse> checkAuthStatus(HttpSession session) {
+    Integer authAttemptId = (Integer) session.getAttribute("pendingAuthAttemptId");
+    String username = (String) session.getAttribute("pendingUsername");
+    String displayName = (String) session.getAttribute("pendingDisplayName");
+    Integer enrollmentId = (Integer) session.getAttribute("pendingEnrollmentId");
+
+    if (authAttemptId == null || username == null) {
+      return ResponseEntity.ok(new AuthStatusResponse("expired", null, "Session expired"));
+    }
+
+    try {
+      // Check auth attempt status
+      var waitResponse = ezkeyAuthService.waitForAuthAttempt(authAttemptId, 30, 2);
+
+      String status = waitResponse.status();
+      boolean completed = Boolean.TRUE.equals(waitResponse.completed());
+
+      // Clear session attributes for all final states
+      if (completed || "ACCEPTED".equals(status) || "REJECTED".equals(status) 
+          || "EXPIRED".equals(status) || "INVALID".equals(status)) {
+        session.removeAttribute("pendingAuthAttemptId");
+        session.removeAttribute("pendingChallengeCode");
+        session.removeAttribute("pendingUsername");
+        session.removeAttribute("pendingDisplayName");
+        session.removeAttribute("pendingEnrollmentId");
+      }
+
+      if ("ACCEPTED".equals(status)) {
+        // Authentication successful - create session
+        AuthenticatedUser authenticatedUser =
+            new AuthenticatedUser(
+                username, displayName != null ? displayName : username, enrollmentId);
+
+        session.setAttribute("user", authenticatedUser);
+
+        logger.info("Challenge authentication successful for username: {}", username);
+        return ResponseEntity.ok(
+            new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
+      } else if ("REJECTED".equals(status)) {
+        // Authentication rejected by user
+        logger.info("Challenge authentication rejected for username: {}", username);
+        return ResponseEntity.ok(
+            new AuthStatusResponse("rejected", "/login?error=rejected", "Authentication rejected by user"));
+      } else if ("EXPIRED".equals(status)) {
+        // Authentication expired
+        logger.info("Challenge authentication expired for username: {}", username);
+        return ResponseEntity.ok(
+            new AuthStatusResponse("expired", "/login?error=expired", "Authentication request expired"));
+      } else if ("INVALID".equals(status)) {
+        // Authentication invalid (wrong signature, challenge, etc.)
+        logger.info("Challenge authentication invalid for username: {}", username);
+        return ResponseEntity.ok(
+            new AuthStatusResponse("error", "/login?error=invalid", "Authentication invalid"));
+      } else if (completed) {
+        // Completed but unknown status
+        logger.warn("Challenge authentication completed with unknown status: {} for username: {}", status, username);
+        return ResponseEntity.ok(
+            new AuthStatusResponse("error", "/login?error=authfailed", "Authentication completed with unknown status: " + status));
+      } else {
+        // Still pending (PENDING, READ, etc.)
+        return ResponseEntity.ok(
+            new AuthStatusResponse("pending", null, "Waiting for device approval..."));
+      }
+    } catch (EzkeyAuthService.EzkeyAuthException e) {
+      logger.error("Error checking auth status: {}", e.getMessage());
+      // Clear session on error
+      session.removeAttribute("pendingAuthAttemptId");
+      session.removeAttribute("pendingChallengeCode");
+      session.removeAttribute("pendingUsername");
+      session.removeAttribute("pendingDisplayName");
+      session.removeAttribute("pendingEnrollmentId");
+      return ResponseEntity.ok(
+          new AuthStatusResponse("error", "/login?error=authfailed", e.getMessage()));
+    }
+  }
+
+  /**
    * Response DTO for configuration reload operation.
    *
    * @param success whether the reload was successful
    * @param message status message
    */
   public record ReloadConfigResponse(boolean success, String message) {}
+
+  /**
+   * Response DTO for authentication status check.
+   *
+   * @param status current status (pending, accepted, rejected, expired, error)
+   * @param redirectUrl URL to redirect to if status is final
+   * @param message status message
+   */
+  public record AuthStatusResponse(String status, String redirectUrl, String message) {}
 }
