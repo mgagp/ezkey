@@ -127,7 +127,7 @@ class EnrollmentControllerTest {
 
     bindResponseDto =
         new EnrollmentBindResponseDto(
-            123, "test-public-key", "test-proof-token", null, null, null, null);
+            123, "test-public-key", "test-proof-token", null, null, null, null, null, null, null);
 
     // Setup verify request test data
     verifyRequestDto =

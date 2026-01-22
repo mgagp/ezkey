@@ -1,5 +1,10 @@
 package org.ezkey.demo.device.controller;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.DeviceCryptoService;
@@ -34,6 +39,8 @@ public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
+  private static final String UNKNOWN_TENANT_NAME = "Unknown tenant";
+
   private final AuthApiService authApiService;
 
   private final DeviceCryptoService cryptoService;
@@ -52,7 +59,9 @@ public class EzkeyAppController {
   @GetMapping
   public String appHome(Model model) {
     model.addAttribute("pageTitle", "Ezkey App");
-    model.addAttribute("enrollments", storeService.list());
+    List<Record> enrollments = storeService.list();
+    model.addAttribute("enrollments", enrollments);
+    model.addAttribute("tenantGroups", groupEnrollmentsByTenant(enrollments));
     return "phone/ezkey/home";
   }
 
@@ -88,16 +97,21 @@ public class EzkeyAppController {
         String integrationDescription = bindResponse.getIntegrationDescription();
         String integrationLogo = bindResponse.getIntegrationLogo();
         String enrollmentName = bindResponse.getEnrollmentName();
+        Integer tenantId = bindResponse.getTenantId();
+        String tenantName = bindResponse.getTenantName();
+        String tenantDescription = bindResponse.getTenantDescription();
 
         logger.info(
             "Using integration info for enrollment {} with language {}: name={}, description={},"
-                + " logo={}, enrollmentName={}",
+                + " logo={}, enrollmentName={}, tenantId={}, tenantName={}",
             enrollmentId,
             language,
             integrationName,
             integrationDescription,
             integrationLogo,
-            enrollmentName);
+            enrollmentName,
+            tenantId,
+            tenantName);
 
         // Save interim record before verify with integration information
         Record record =
@@ -115,7 +129,10 @@ public class EzkeyAppController {
                 null,
                 integrationName,
                 integrationDescription,
-                integrationLogo);
+                integrationLogo,
+                tenantId,
+                tenantName,
+                tenantDescription);
         storeService.save(record);
 
         model.addAttribute("enrollmentId", enrollmentId);
@@ -125,6 +142,9 @@ public class EzkeyAppController {
         model.addAttribute("integrationName", integrationName);
         model.addAttribute("integrationDescription", integrationDescription);
         model.addAttribute("integrationLogo", integrationLogo);
+        model.addAttribute("tenantId", tenantId);
+        model.addAttribute("tenantName", tenantName);
+        model.addAttribute("tenantDescription", tenantDescription);
         model.addAttribute("language", language);
         model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
       } else {
@@ -189,7 +209,10 @@ public class EzkeyAppController {
                   rec.createdAt(),
                   rec.integrationName(),
                   rec.integrationDescription(),
-                  rec.integrationLogo());
+                  rec.integrationLogo(),
+                  rec.tenantId(),
+                  rec.tenantName(),
+                  rec.tenantDescription());
           storeService.save(updatedRecord);
 
           model.addAttribute("success", "Enrollment verified successfully!");
@@ -423,4 +446,66 @@ public class EzkeyAppController {
     }
     return "phone/ezkey/auth_result";
   }
+
+  private static List<TenantGroupViewModel> groupEnrollmentsByTenant(List<Record> enrollments) {
+    Map<TenantKey, List<Record>> grouped = new HashMap<>();
+
+    for (Record enrollment : enrollments) {
+      Integer tenantId = enrollment.tenantId();
+      String tenantName = normalizeTenantName(enrollment.tenantName());
+      String tenantDescription = normalizeTenantDescription(enrollment.tenantDescription());
+
+      TenantKey key = new TenantKey(tenantId, tenantName, tenantDescription);
+      grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(enrollment);
+    }
+
+    Comparator<Record> enrollmentComparator =
+        Comparator.comparing(
+                Record::integrationName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(
+                Record::enrollmentName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(Record::enrollmentId, Comparator.nullsLast(Integer::compareTo));
+
+    for (List<Record> groupItems : grouped.values()) {
+      groupItems.sort(enrollmentComparator);
+    }
+
+    Comparator<TenantKey> tenantComparator =
+        Comparator.comparing(
+                (TenantKey k) -> UNKNOWN_TENANT_NAME.equals(k.tenantName()) ? 1 : 0,
+                Integer::compareTo)
+            .thenComparing(
+                TenantKey::tenantName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(TenantKey::tenantId, Comparator.nullsLast(Integer::compareTo));
+
+    return grouped.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey(tenantComparator))
+        .map(
+            e ->
+                new TenantGroupViewModel(
+                    e.getKey().tenantId(),
+                    e.getKey().tenantName(),
+                    e.getKey().tenantDescription(),
+                    e.getValue()))
+        .toList();
+  }
+
+  private static String normalizeTenantName(String tenantName) {
+    if (tenantName == null || tenantName.isBlank()) {
+      return UNKNOWN_TENANT_NAME;
+    }
+    return tenantName.trim();
+  }
+
+  private static String normalizeTenantDescription(String tenantDescription) {
+    if (tenantDescription == null || tenantDescription.isBlank()) {
+      return null;
+    }
+    return tenantDescription.trim();
+  }
+
+  private record TenantKey(Integer tenantId, String tenantName, String tenantDescription) {}
+
+  public record TenantGroupViewModel(
+      Integer tenantId, String tenantName, String tenantDescription, List<Record> enrollments) {}
 }

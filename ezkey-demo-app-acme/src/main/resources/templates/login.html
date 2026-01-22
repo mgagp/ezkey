@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Login - ACME Inc</title>
+    <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
+    <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
+</head>
+<body class="neo-brutal-body">
+    
+    <!-- Minimal Header -->
+    <header class="neo-brutal-header">
+        <nav class="neo-brutal-nav">
+            <div class="nav-brand">
+                <h1 class="brand-logo">ACME</h1>
+                <span class="brand-subtitle">INC</span>
+            </div>
+            <div class="nav-links">
+                <span class="nav-link" style="opacity: 0.5;">Demo Application</span>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Login Section -->
+    <main class="neo-brutal-main">
+        <div class="container">
+            <section class="login-section">
+                <div class="login-card">
+                    <h2 class="login-title">SIGN IN</h2>
+                    <p class="login-subtitle">Passwordless authentication with EZKey</p>
+                    
+                    <!-- Error Message -->
+                    <div th:if="${hasError}" class="error-message">
+                        <p class="error-icon">!</p>
+                        <p class="error-text" th:text="${error ?: 'Authentication failed'}">Authentication failed</p>
+                    </div>
+                    
+                    <!-- Logout Message -->
+                    <div th:if="${logoutMessage}" class="logout-message">
+                        <p class="logout-text" th:text="${logoutMessage}">You have been logged out successfully.</p>
+                    </div>
+                    
+                    <!-- Login Form -->
+                    <form method="post" action="/login" class="login-form">
+                        <div class="form-group">
+                            <label for="username">USERNAME</label>
+                            <input type="text" id="username" name="username" 
+                                   placeholder="Enter your username" 
+                                   required minlength="3" maxlength="50"
+                                   autocomplete="username">
+                        </div>
+                        
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="challengeRequested" name="challengeRequested" value="true">
+                                <span class="checkbox-text">Require challenge code (2 digits)</span>
+                            </label>
+                            <small class="form-hint">Enable for additional verification on your device</small>
+                        </div>
+                        
+                        <button type="submit" class="neo-brutal-button primary login-button">
+                            LOGIN WITH EZKEY
+                        </button>
+                    </form>
+                    
+                    <!-- Info Note -->
+                    <div class="info-note-inline">
+                        <p><strong>Note:</strong> After clicking "Login with EZKey", approve the request on your registered device.</p>
+                    </div>
+                </div>
+                
+                <!-- Info Card -->
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <h3>HOW IT WORKS</h3>
+                        <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
+                            🔄 RELOAD CONFIG
+                        </button>
+                    </div>
+                    <ol class="steps-list">
+                        <li>Enter your username</li>
+                        <li>Click "Login with EZKey"</li>
+                        <li>Approve on your EZKey device</li>
+                        <li>You're in!</li>
+                    </ol>
+                    <p class="info-note">
+                        <strong>No password needed.</strong> EZKey uses cryptographic 
+                        authentication via your registered device.
+                    </p>
+                    <div id="reload-status" class="reload-status hidden"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="neo-brutal-footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>ACME Inc Demo - Powered by EZKey Open Source MFA</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Reload Config Script -->
+    <script>
+        async function reloadConfig() {
+            const btn = document.getElementById('reload-config-btn');
+            const status = document.getElementById('reload-status');
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.textContent = '⏳ RELOADING...';
+            status.className = 'reload-status';
+            status.textContent = 'Reloading configuration...';
+            status.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/reload-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.className = 'reload-status success';
+                    status.textContent = '✅ ' + result.message;
+                    setTimeout(() => {
+                        status.style.display = 'none';
+                    }, 3000);
+                } else {
+                    status.className = 'reload-status error';
+                    status.textContent = '❌ ' + result.message;
+                }
+            } catch (error) {
+                status.className = 'reload-status error';
+                status.textContent = '❌ Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 RELOAD CONFIG';
+            }
+        }
+    </script>
+    
+    <!-- Login Page Styles -->
+    <style>
+        .login-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 600px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .login-section {
+                max-width: 100%;
+                gap: 1.5rem;
+            }
+        }
+        
+        .login-card {
+            background-color: var(--acme-light);
+            border: 4px solid var(--acme-dark);
+            padding: 2.5rem;
+            box-shadow: 8px 8px 0 var(--acme-dark);
+        }
+        
+        .login-title {
+            font-size: 2.5rem;
+            color: var(--acme-dark);
+            margin-bottom: 0.5rem;
+            text-shadow: 3px 3px 0 var(--acme-primary);
+        }
+        
+        .login-subtitle {
+            color: var(--acme-primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+        
+        .login-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .login-form label {
+            display: block;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            color: var(--acme-dark);
+        }
+        
+        .login-form input[type="text"] {
+            width: 100%;
+            padding: 1rem;
+            border: 3px solid var(--acme-dark);
+            font-size: 1rem;
+            font-weight: 700;
+            box-shadow: 3px 3px 0 var(--acme-dark);
+            transition: all 0.2s ease;
+        }
+        
+        .login-form input[type="text"]:focus {
+            outline: none;
+            border-color: var(--acme-primary);
+            box-shadow: 3px 3px 0 var(--acme-primary);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            font-weight: 700 !important;
+            text-transform: none !important;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--acme-dark);
+            cursor: pointer;
+        }
+        
+        .checkbox-text {
+            font-weight: 600;
+        }
+        
+        .form-hint {
+            color: var(--acme-primary);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .login-button {
+            width: 100%;
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            padding: 1.2rem 2rem;
+        }
+        
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Status Area */
+        .status-area {
+            margin-top: 2rem;
+            text-align: center;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .status-pending {
+            padding: 2rem;
+            background-color: var(--acme-gray);
+            border: 3px solid var(--acme-dark);
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--acme-gray);
+            border-top: 5px solid var(--acme-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-text {
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--acme-dark);
+        }
+        
+        .challenge-code {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: var(--acme-accent);
+            border: 3px solid var(--acme-dark);
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+        
+        #challenge-value {
+            color: var(--acme-primary);
+            font-size: 2rem;
+        }
+        
+        .error-message {
+            padding: 1.5rem;
+            background-color: var(--acme-error);
+            border: 3px solid var(--acme-dark);
+            color: var(--acme-light);
+            margin-bottom: 1.5rem;
+        }
+        
+        .error-icon {
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+        
+        .error-text {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .logout-message {
+            padding: 1.5rem;
+            background-color: var(--acme-success);
+            border: 3px solid var(--acme-dark);
+            color: var(--acme-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        .logout-text {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .info-note-inline {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--acme-accent);
+            border: 2px solid var(--acme-dark);
+            font-size: 0.9rem;
+        }
+        
+        .info-note-inline p {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        /* Info Card */
+        .info-card {
+            background-color: var(--acme-gray);
+            border: 4px solid var(--acme-dark);
+            padding: 2rem;
+            box-shadow: 6px 6px 0 var(--acme-secondary);
+        }
+        
+        .info-card h3 {
+            color: var(--acme-dark);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .steps-list {
+            list-style: none;
+            padding: 0;
+            counter-reset: step;
+        }
+        
+        .steps-list li {
+            counter-increment: step;
+            padding: 0.75rem 0;
+            padding-left: 3rem;
+            position: relative;
+            font-weight: 600;
+            border-bottom: 2px solid var(--acme-dark);
+        }
+        
+        .steps-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .steps-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2rem;
+            height: 2rem;
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--acme-dark);
+        }
+        
+        .info-note {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--acme-light);
+            border: 2px solid var(--acme-dark);
+            font-size: 0.9rem;
+        }
+        
+        /* Info Card Header */
+        .info-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-card-header h3 {
+            margin: 0;
+        }
+        
+        .reload-config-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            border: 3px solid var(--acme-dark);
+            box-shadow: 3px 3px 0 var(--acme-dark);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .reload-config-btn:hover:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 var(--acme-dark);
+        }
+        
+        .reload-config-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Reload Status */
+        .reload-status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid var(--acme-dark);
+        }
+        
+        .reload-status.success {
+            background-color: var(--acme-success);
+            color: var(--acme-dark);
+        }
+        
+        .reload-status.error {
+            background-color: var(--acme-error);
+            color: var(--acme-light);
+        }
+    </style>
+</body>
+</html>

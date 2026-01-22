@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Enter Challenge Code - ACME Inc</title>
+    <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
+    <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
+</head>
+<body class="neo-brutal-body">
+    
+    <!-- Minimal Header -->
+    <header class="neo-brutal-header">
+        <nav class="neo-brutal-nav">
+            <div class="nav-brand">
+                <h1 class="brand-logo">ACME</h1>
+                <span class="brand-subtitle">INC</span>
+            </div>
+            <div class="nav-links">
+                <span class="nav-link" style="opacity: 0.5;">Challenge Verification</span>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Challenge Section -->
+    <main class="neo-brutal-main">
+        <div class="container">
+            <section class="challenge-section">
+                <div class="challenge-card">
+                    <h2 class="challenge-title" th:text="${challengeCode != null ? 'ENTER CHALLENGE CODE' : 'AWAITING APPROVAL'}">AWAITING APPROVAL</h2>
+                    <p class="challenge-subtitle" th:text="${challengeCode != null ? 'On your EZKey device' : 'Approve on your EZKey device'}">Approve on your EZKey device</p>
+                    
+                    <!-- Challenge Code Display (only shown if challenge is required) -->
+                    <div class="challenge-code-display" th:if="${challengeCode != null}">
+                        <div class="challenge-label">CHALLENGE CODE</div>
+                        <div class="challenge-value" th:text="${challengeCode}">00</div>
+                        <p class="challenge-instruction">
+                            Enter this <strong>2-digit code</strong> on your device, then approve the authentication request.
+                        </p>
+                    </div>
+                    
+                    <!-- Status Area -->
+                    <div id="status-area" class="status-area">
+                        <div class="spinner"></div>
+                        <p class="status-text">Waiting for device approval...</p>
+                        <p class="status-hint" th:if="${challengeCode != null}">Make sure to enter the code above on your device</p>
+                        <p class="status-hint" th:if="${challengeCode == null}">Check your device and approve the authentication request</p>
+                    </div>
+                    
+                    <!-- Error Message (hidden by default) -->
+                    <div id="error-message" class="error-message hidden">
+                        <p class="error-icon">!</p>
+                        <p class="error-text" id="error-text">Authentication failed</p>
+                    </div>
+                </div>
+                
+                <!-- Info Card -->
+                <div class="info-card">
+                    <h3>HOW IT WORKS</h3>
+                    <ol class="steps-list" th:if="${challengeCode != null}">
+                        <li>See the challenge code above</li>
+                        <li>Open your EZKey device app</li>
+                        <li>Enter the 2-digit code</li>
+                        <li>Approve the authentication request</li>
+                        <li>You'll be automatically logged in</li>
+                    </ol>
+                    <ol class="steps-list" th:if="${challengeCode == null}">
+                        <li>Open your EZKey device app</li>
+                        <li>Approve the authentication request</li>
+                        <li>You'll be automatically logged in</li>
+                    </ol>
+                    <p class="info-note" th:if="${challengeCode != null}">
+                        <strong>Security Note:</strong> The challenge code adds an extra layer of security. 
+                        Even if someone has your device, they need to see this code to complete authentication.
+                    </p>
+                    <p class="info-note" th:if="${challengeCode == null}">
+                        <strong>Note:</strong> You'll be automatically redirected once you approve the request on your device.
+                    </p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="neo-brutal-footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>ACME Inc Demo - Powered by EZKey Open Source MFA</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Challenge Wait Script -->
+    <script>
+        let pollingInterval;
+        let pollCount = 0;
+        const MAX_POLLS = 300; // 10 minutes max (2 seconds * 300)
+        
+        function startPolling() {
+            pollingInterval = setInterval(checkAuthStatus, 2000); // Poll every 2 seconds
+        }
+        
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+        
+        async function checkAuthStatus() {
+            pollCount++;
+            
+            if (pollCount > MAX_POLLS) {
+                stopPolling();
+                showError('Authentication timeout - please try again');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth-status', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'accepted') {
+                    stopPolling();
+                    showSuccess('Authentication successful! Redirecting...');
+                    setTimeout(() => {
+                        window.location.href = result.redirectUrl || '/dashboard';
+                    }, 1000);
+                } else if (result.status === 'rejected') {
+                    stopPolling();
+                    showError('Authentication rejected by user. ' + (result.message || ''));
+                    setTimeout(() => {
+                        window.location.href = result.redirectUrl || '/login?error=rejected';
+                    }, 3000);
+                } else if (result.status === 'expired') {
+                    stopPolling();
+                    showError(result.message || 'Authentication request expired');
+                    setTimeout(() => {
+                        window.location.href = result.redirectUrl || '/login?error=expired';
+                    }, 3000);
+                } else if (result.status === 'error') {
+                    stopPolling();
+                    showError(result.message || 'Authentication error occurred');
+                    setTimeout(() => {
+                        window.location.href = result.redirectUrl || '/login?error=authfailed';
+                    }, 3000);
+                }
+                // else: status === 'pending', continue polling
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+                // Continue polling on network errors
+            }
+        }
+        
+        function showError(message) {
+            const statusArea = document.getElementById('status-area');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            
+            statusArea.style.display = 'none';
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+        
+        function showSuccess(message) {
+            const statusArea = document.getElementById('status-area');
+            statusArea.innerHTML = `
+                <div class="success-icon">✓</div>
+                <p class="status-text success-text">${message}</p>
+            `;
+        }
+        
+        // Start polling when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            startPolling();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopPolling();
+        });
+    </script>
+    
+    <!-- Challenge Wait Styles -->
+    <style>
+        .challenge-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 600px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .challenge-section {
+                max-width: 100%;
+                gap: 1.5rem;
+            }
+        }
+        
+        .challenge-card {
+            background-color: var(--acme-light);
+            border: 4px solid var(--acme-dark);
+            padding: 2.5rem;
+            box-shadow: 8px 8px 0 var(--acme-dark);
+        }
+        
+        .challenge-title {
+            font-size: 2rem;
+            color: var(--acme-dark);
+            margin-bottom: 0.5rem;
+            text-shadow: 3px 3px 0 var(--acme-primary);
+        }
+        
+        .challenge-subtitle {
+            color: var(--acme-primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+        
+        .challenge-code-display {
+            text-align: center;
+            padding: 2rem;
+            background-color: var(--acme-gray);
+            border: 4px solid var(--acme-dark);
+            margin-bottom: 2rem;
+        }
+        
+        /* Hide challenge code display when not needed */
+        .challenge-code-display[style*="display: none"] {
+            display: none !important;
+        }
+        
+        .challenge-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--acme-primary);
+            margin-bottom: 1rem;
+            letter-spacing: 0.1em;
+        }
+        
+        .challenge-value {
+            font-size: 4rem;
+            font-weight: 900;
+            color: var(--acme-dark);
+            text-shadow: 4px 4px 0 var(--acme-primary);
+            margin-bottom: 1rem;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .challenge-instruction {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--acme-dark);
+            margin-top: 1rem;
+        }
+        
+        .status-area {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--acme-gray);
+            border-top: 5px solid var(--acme-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-text {
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--acme-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-text.success-text {
+            color: var(--acme-success);
+        }
+        
+        .status-hint {
+            font-size: 0.85rem;
+            color: var(--acme-primary);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            color: var(--acme-success);
+            font-weight: 900;
+            margin-bottom: 1rem;
+        }
+        
+        .error-message {
+            padding: 1.5rem;
+            background-color: var(--acme-error);
+            border: 3px solid var(--acme-dark);
+            color: var(--acme-light);
+            margin-top: 1.5rem;
+        }
+        
+        .error-message.hidden {
+            display: none;
+        }
+        
+        .error-icon {
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+        
+        .error-text {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        /* Info Card (reuse from login.html) */
+        .info-card {
+            background-color: var(--acme-gray);
+            border: 4px solid var(--acme-dark);
+            padding: 2rem;
+            box-shadow: 6px 6px 0 var(--acme-secondary);
+        }
+        
+        .info-card h3 {
+            color: var(--acme-dark);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .steps-list {
+            list-style: none;
+            padding: 0;
+            counter-reset: step;
+        }
+        
+        .steps-list li {
+            counter-increment: step;
+            padding: 0.75rem 0;
+            padding-left: 3rem;
+            position: relative;
+            font-weight: 600;
+            border-bottom: 2px solid var(--acme-dark);
+        }
+        
+        .steps-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .steps-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2rem;
+            height: 2rem;
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--acme-dark);
+        }
+        
+        .info-note {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--acme-light);
+            border: 2px solid var(--acme-dark);
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html>

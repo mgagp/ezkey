@@ -26,7 +26,7 @@ import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
-import org.ezkey.authattempt.mapper.AuthAttemptMapper;
+import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -72,7 +72,7 @@ class AuthAttemptControllerOwnershipTest {
 
   @Mock private AuthAttemptService authAttemptService;
 
-  @Mock private AuthAttemptMapper authAttemptMapper;
+  @Mock private AuthAttemptAdminApiMapper authAttemptMapper;
 
   @Mock private AuditLogService auditLogService;
 
@@ -120,7 +120,7 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1));
+        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
@@ -212,7 +212,7 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1));
+        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 

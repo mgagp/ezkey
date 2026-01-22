@@ -72,7 +72,7 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptRespondResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
-public interface AuthAttemptMapper {
+public interface AuthAttemptAuthApiMapper {
 
   /**
    * Converts a pending request DTO to domain request for mobile authentication polling.

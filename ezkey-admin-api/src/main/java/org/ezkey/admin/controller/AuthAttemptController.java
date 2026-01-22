@@ -38,7 +38,7 @@ import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
-import org.ezkey.authattempt.mapper.AuthAttemptMapper;
+import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -108,7 +108,7 @@ public class AuthAttemptController {
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptController.class);
 
   private final AuthAttemptService authAttemptService;
-  private final AuthAttemptMapper authAttemptMapper;
+  private final AuthAttemptAdminApiMapper authAttemptMapper;
   private final AuditLogService auditLogService;
   private final RateLimitService rateLimitService;
   private final EnrollmentRepository enrollmentRepository;
@@ -126,7 +126,7 @@ public class AuthAttemptController {
    */
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
-      AuthAttemptMapper authAttemptMapper,
+      AuthAttemptAdminApiMapper authAttemptMapper,
       AuditLogService auditLogService,
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,

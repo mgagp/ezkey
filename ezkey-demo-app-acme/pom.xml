@@ -4,198 +4,84 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	
-	<parent>
-		<groupId>org.ezkey</groupId>
-		<artifactId>ezkey-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
-	
-	<artifactId>ezkey-demo-app-acme</artifactId>
-	<name>Ezkey Demo App - Acme Inc</name>
-	<description>Demo application simulating a protected application (Acme Inc) integrating with Ezkey MFA</description>
-	
-	<packaging>jar</packaging>
-	
-	<dependencies>
-		<!-- Spring Boot Starters -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
-		</dependency>
-		
-		<!-- WebJars for Frontend Dependencies -->
-		<dependency>
-			<groupId>org.webjars</groupId>
-			<artifactId>webjars-locator-core</artifactId>
-		</dependency>
-		
-		<!-- htmx for dynamic interactions -->
-		<dependency>
-			<groupId>org.webjars.npm</groupId>
-			<artifactId>htmx.org</artifactId>
-			<version>1.9.10</version>
-		</dependency>
-		
-		<!-- Alpine.js for lightweight reactivity -->
-		<dependency>
-			<groupId>org.webjars.npm</groupId>
-			<artifactId>alpinejs</artifactId>
-			<version>3.13.5</version>
-		</dependency>
-		
-		<!-- Bootstrap for base styling (will be customized for Neo Brutalism) -->
-		<dependency>
-			<groupId>org.webjars</groupId>
-			<artifactId>bootstrap</artifactId>
-			<version>5.3.2</version>
-		</dependency>
-		
-		<!-- HTTP Client for Ezkey API calls -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-		
-		<!-- Jackson for JSON processing (required for generated DTOs) -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-		</dependency>
-		
-		<!-- OpenAPI annotations for generated DTOs -->
-		<dependency>
-			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-annotations</artifactId>
-			<version>2.2.8</version>
-		</dependency>
-		
-		<!-- Validation API for generated DTOs -->
-		<dependency>
-			<groupId>jakarta.validation</groupId>
-			<artifactId>jakarta.validation-api</artifactId>
-		</dependency>
-		
-		<!-- JsonNullable library for OpenAPI generated DTOs -->
-		<dependency>
-			<groupId>org.openapitools</groupId>
-			<artifactId>jackson-databind-nullable</artifactId>
-			<version>0.2.6</version>
-		</dependency>
-		
-		<!-- Testing -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
-	
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.springframework.boot</groupId>
-							<artifactId>spring-boot-devtools</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-			
-			<!-- OpenAPI Generator Plugin -->
-			<plugin>
-				<groupId>org.openapitools</groupId>
-				<artifactId>openapi-generator-maven-plugin</artifactId>
-				<version>7.14.0</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>generate</goal>
-						</goals>
-						<configuration>
-							<inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
-							<generatorName>java</generatorName>
-							<configOptions>
-								<java8>false</java8>
-								<dateLibrary>java8</dateLibrary>
-								<modelDateTimeMapping>LocalDateTime</modelDateTimeMapping>
-								<modelFormatAnnotation>true</modelFormatAnnotation>
-								<modelFormatPattern>yyyy-MM-dd'T'HH:mm:ss.SSSSSS</modelFormatPattern>
-								<library>resttemplate</library>
-								<serializationLibrary>jackson</serializationLibrary>
-								<useJakartaEe>true</useJakartaEe>
-								<generateClientAsBean>false</generateClientAsBean>
-								<generateApis>false</generateApis>
-								<generateModels>true</generateModels>
-								<generateSupportingFiles>false</generateSupportingFiles>
-								<hideGenerationTimestamp>true</hideGenerationTimestamp>
-								<skipDefaultInterface>true</skipDefaultInterface>
-								<interfaceOnly>false</interfaceOnly>
-								<useBeanValidation>true</useBeanValidation>
-							</configOptions>
-							<typeMappings>
-                            	<typeMapping>string+localDateTime=LocalDateTime</typeMapping>
-                            	<typeMapping>string+localTime=LocalTime</typeMapping>
-                            	<typeMapping>string+date-time=LocalTime</typeMapping>
-                        	</typeMappings>
-                        	<importMappings>
-        						<importMapping>java.time.OffsetDateTime=java.time.LocalDateTime</importMapping>
-    						</importMappings>
-                        	<schemaMappings>
-                            	<mapping>LocalDateTime=java.time.LocalDateTime</mapping>
-                            	<mapping>LocalTime=java.time.LocalTime</mapping>                                
-	                        </schemaMappings>
-							<output>${project.build.directory}/generated-sources/openapi</output>
-							<modelPackage>org.ezkey.demo.acme.generated.dto</modelPackage>
-							<apiPackage>org.ezkey.demo.acme.generated.api</apiPackage>
-							<invokerPackage>org.ezkey.demo.acme.generated.client</invokerPackage>
-							<generateModelDocumentation>true</generateModelDocumentation>
-							<generateApiDocumentation>false</generateApiDocumentation>
-							<modelNameSuffix></modelNameSuffix>
-							<removeOperationIdPrefix>true</removeOperationIdPrefix>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			
-			<!-- Add generated sources to compilation -->
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.4.0</version>
-				<executions>
-					<execution>
-						<id>add-generated-source</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-source</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
-							</sources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
-	
+
+    <parent>
+        <groupId>org.ezkey</groupId>
+        <artifactId>ezkey-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>ezkey-demo-app-acme</artifactId>
+    <name>Ezkey Demo App - Acme Inc</name>
+    <description>Demo application showcasing EZKey passwordless login integration</description>
+
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Thymeleaf for templates -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Actuator for health checks and config refresh -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud Context for @RefreshScope (config hot-reload) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-context</artifactId>
+            <version>4.1.1</version>
+        </dependency>
+
+        <!-- DevTools for development -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <!--
+                  IMPORTANT:
+                  The parent POM configures spring-boot-maven-plugin with an <includes> list ("include nothing")
+                  that can result in a repackaged JAR missing BOOT-INF/lib dependencies.
+                  For demo-app-acme we must produce a proper fat Spring Boot JAR.
+                  combine.self="override" prevents Maven from merging the parent configuration into this module.
+                -->
+                <configuration combine.self="override"/>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

@@ -2890,6 +2890,12 @@
             "format": "int32",
             "description": "Unique identifier of the created authentication attempt",
             "example": 11
+          },
+          "authAttemptChallenge": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Optional challenge code (2 digits) that must be entered on the device if challenge was requested",
+            "example": 42
           }
         }
       },

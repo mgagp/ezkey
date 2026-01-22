@@ -114,6 +114,30 @@ public class EnrollmentBindResponse {
   private String enrollmentName;
 
   /**
+   * The tenant ID of the integration associated with this enrollment.
+   *
+   * <p>This value is a stable technical identifier and is recommended as the primary grouping key
+   * on clients that display enrollments grouped by tenant. It is derived from the integration's
+   * tenant relationship.
+   */
+  private Integer tenantId;
+
+  /**
+   * The tenant display name of the integration associated with this enrollment.
+   *
+   * <p>This value is intended for UI display and may change over time. Clients should prefer {@link
+   * #tenantId} as the grouping key when possible.
+   */
+  private String tenantName;
+
+  /**
+   * The tenant description of the integration associated with this enrollment.
+   *
+   * <p>This value is optional and is intended for UI display.
+   */
+  private String tenantDescription;
+
+  /**
    * Gets the enrollment ID.
    *
    * @return the enrollment ID
@@ -237,5 +261,59 @@ public class EnrollmentBindResponse {
    */
   public void setEnrollmentName(String enrollmentName) {
     this.enrollmentName = enrollmentName;
+  }
+
+  /**
+   * Gets the tenant ID.
+   *
+   * @return the tenant ID (may be null)
+   */
+  public Integer getTenantId() {
+    return tenantId;
+  }
+
+  /**
+   * Sets the tenant ID.
+   *
+   * @param tenantId the tenant ID to set
+   */
+  public void setTenantId(Integer tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  /**
+   * Gets the tenant name.
+   *
+   * @return the tenant name (may be null)
+   */
+  public String getTenantName() {
+    return tenantName;
+  }
+
+  /**
+   * Sets the tenant name.
+   *
+   * @param tenantName the tenant name to set
+   */
+  public void setTenantName(String tenantName) {
+    this.tenantName = tenantName;
+  }
+
+  /**
+   * Gets the tenant description.
+   *
+   * @return the tenant description (may be null)
+   */
+  public String getTenantDescription() {
+    return tenantDescription;
+  }
+
+  /**
+   * Sets the tenant description.
+   *
+   * @param tenantDescription the tenant description to set
+   */
+  public void setTenantDescription(String tenantDescription) {
+    this.tenantDescription = tenantDescription;
   }
 }

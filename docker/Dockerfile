@@ -17,7 +17,6 @@ COPY ezkey-crypto-api/pom.xml ./ezkey-crypto-api/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
 COPY ezkey-demo-device/openapi-spec.json ./ezkey-demo-device/openapi-spec.json
 COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
-COPY ezkey-demo-app-acme/openapi-spec.json ./ezkey-demo-app-acme/openapi-spec.json
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 
 # Download all dependencies with shared Maven cache (shared across all parallel builds)
@@ -43,6 +42,7 @@ COPY ezkey-crypto-api/src ./ezkey-crypto-api/src
 COPY ezkey-crypto-api/config ./ezkey-crypto-api/config
 COPY ezkey-demo-device/src ./ezkey-demo-device/src
 COPY ezkey-demo-app-acme/src ./ezkey-demo-app-acme/src
+COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 
 # Build all modules in one go (this creates all JARs)
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
@@ -175,5 +175,47 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
 EXPOSE 8083
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8083/actuator/health || exit 1
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ============================================
+# Stage 7: Runtime image for demo-app-acme service
+# ============================================
+FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
+RUN apk add --no-cache curl su-exec && \
+    addgroup -S spring && adduser -S spring -G spring
+WORKDIR /app
+COPY --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
+# Copy config template
+COPY ezkey-demo-app-acme/config/application.properties.example /app/config-template.properties
+# Create entrypoint script that initializes config directory
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo '# Initialize config directory if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
+    echo 'mkdir -p /app/config' >> /app/entrypoint.sh && \
+    echo '# Create application.properties from template if it does not exist' >> /app/entrypoint.sh && \
+    echo '# Note: If volume persists, existing file will NOT be overwritten' >> /app/entrypoint.sh && \
+    echo '# To reset: Delete /app/config/application.properties before starting container' >> /app/entrypoint.sh && \
+    echo 'if [ ! -f /app/config/application.properties ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Creating /app/config/application.properties from template..."' >> /app/entrypoint.sh && \
+    echo '  cp /app/config-template.properties /app/config/application.properties' >> /app/entrypoint.sh && \
+    echo '  chmod 644 /app/config/application.properties' >> /app/entrypoint.sh && \
+    echo 'else' >> /app/entrypoint.sh && \
+    echo '  echo "Config file exists, skipping template copy (volume persistence)"' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '# Initialize data directory if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
+    echo 'mkdir -p /app/data' >> /app/entrypoint.sh && \
+    echo '# Fix permissions' >> /app/entrypoint.sh && \
+    echo 'chown -R spring:spring /app/config /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'chmod 755 /app/config /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo '# Ensure we are in /app directory' >> /app/entrypoint.sh && \
+    echo 'cd /app' >> /app/entrypoint.sh && \
+    echo '# Debug: Log environment variable and working directory' >> /app/entrypoint.sh && \
+    echo 'echo "SPRING_CONFIG_ADDITIONAL_LOCATION=$SPRING_CONFIG_ADDITIONAL_LOCATION"' >> /app/entrypoint.sh && \
+    echo 'echo "Working directory: $(pwd)"' >> /app/entrypoint.sh && \
+    echo 'echo "Config file exists: $([ -f /app/config/application.properties ] && echo yes || echo no)"' >> /app/entrypoint.sh && \
+    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+EXPOSE 8082
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8082/actuator/health || exit 1
 ENTRYPOINT ["/app/entrypoint.sh"]
 

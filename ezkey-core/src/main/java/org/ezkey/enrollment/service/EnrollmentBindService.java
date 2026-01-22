@@ -16,7 +16,10 @@ import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.Tenant;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
@@ -62,17 +65,22 @@ public class EnrollmentBindService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
+  private final EzkeyAdminRepository ezkeyAdminRepository;
 
   /**
    * Constructs the bind service with required dependencies.
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param integrationRepository the JPA repository for integration operations
+   * @param ezkeyAdminRepository the JPA repository for admin lookup (admin MFA enrollments)
    */
   public EnrollmentBindService(
-      EnrollmentRepository enrollmentRepository, IntegrationRepository integrationRepository) {
+      EnrollmentRepository enrollmentRepository,
+      IntegrationRepository integrationRepository,
+      EzkeyAdminRepository ezkeyAdminRepository) {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.ezkeyAdminRepository = ezkeyAdminRepository;
   }
 
   /**
@@ -355,6 +363,25 @@ public class EnrollmentBindService {
     response.setIntegrationLogo(integration.getLogo());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
+
+    // Tenant resolution:
+    // - For regular (non-system) integrations, use the integration's tenant.
+    // - For system integrations (used by admin passwordless MFA), the integration belongs to the
+    //   system tenant, but the enrollment logically belongs to the admin's tenant (if any).
+    Tenant tenantToReturn = integration.getTenant();
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      Optional<EzkeyAdmin> adminOpt =
+          ezkeyAdminRepository.findByMfaEnrollmentEnrollmentId(enrollment.getEnrollmentId());
+      if (adminOpt.isPresent() && adminOpt.get().getTenant() != null) {
+        tenantToReturn = adminOpt.get().getTenant();
+      }
+    }
+
+    if (tenantToReturn != null) {
+      response.setTenantId(tenantToReturn.getTenantId());
+      response.setTenantName(tenantToReturn.getTenantName());
+      response.setTenantDescription(tenantToReturn.getTenantDescription());
+    }
 
     logger.info(
         "Enrollment bind process completed successfully for ID: {}", enrollment.getEnrollmentId());

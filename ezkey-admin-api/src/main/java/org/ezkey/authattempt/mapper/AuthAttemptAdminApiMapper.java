@@ -74,7 +74,7 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptWaitResponse
  */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
-public interface AuthAttemptMapper {
+public interface AuthAttemptAdminApiMapper {
 
   /**
    * Converts an EzkeyAuthAttempt entity to an EzkeyAuthAttemptDto.

@@ -5,33 +5,33 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: HomeController
- * Description: Main controller for ACME demo application home page and navigation.
+ * Description: Main controller for ACME demo application - dashboard and logout.
  */
 
 package org.ezkey.demo.acme.controller;
 
+import jakarta.servlet.http.HttpSession;
+import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Main controller for ACME demo application home page and navigation.
+ * Main controller for ACME demo application handling dashboard and logout.
  *
- * <p>This controller handles the primary user interface for the ACME demo application, providing
- * the home page and main navigation structure. It serves as the entry point for users to explore
- * Ezkey integration capabilities.
+ * <p>This controller handles protected routes that require authentication. Login is handled by
+ * LoginController.
  *
- * <p><b>Responsibilities:</b>
+ * <p><b>Routes:</b>
  *
  * <ul>
- *   <li>Serve the home page with ACME branding
- *   <li>Provide navigation to demo features
- *   <li>Display application status and information
+ *   <li>{@code /} - Redirects to login page
+ *   <li>{@code /dashboard} - Post-login dashboard (requires valid session)
+ *   <li>{@code /logout} - Clears session and redirects to login
  * </ul>
  *
  * <p><b>Design Philosophy:</b> Implements Neo Brutalism UI principles with bold typography, high
- * contrast colors, and geometric layouts to create a modern, professional appearance for the ACME
- * brand.
+ * contrast colors, and geometric layouts.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -40,37 +40,47 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
   /**
-   * Displays the home page of the ACME demo application.
+   * Redirects root URL to login page.
    *
-   * <p>Renders the main landing page featuring the ACME logo, company information, and introduction
-   * to Ezkey integration capabilities. This page serves as the starting point for the complete demo
-   * workflow.
-   *
-   * @param model the Spring MVC model for passing data to the view
-   * @return the name of the Thymeleaf template to render
+   * @return redirect to login page
    */
   @GetMapping("/")
-  public String home(Model model) {
-    model.addAttribute("pageTitle", "ACME Inc - Protected Application");
-    model.addAttribute("applicationName", "ACME Inc");
-    model.addAttribute("integrationStatus", "Ezkey MFA Integration Active");
-    model.addAttribute("version", "Demo v1.0");
-
-    return "index";
+  public String home() {
+    return "redirect:/login";
   }
 
   /**
-   * Displays the about page with information about the demo.
+   * Displays the dashboard after successful login.
    *
-   * <p>Provides detailed information about the ACME demo application, its purpose, and how it
-   * demonstrates Ezkey integration capabilities.
+   * <p>The dashboard shows user information and explains how EZKey login works. Authentication is
+   * validated server-side via HTTP session.
    *
+   * @param session the HTTP session
    * @param model the Spring MVC model for passing data to the view
-   * @return the name of the Thymeleaf template to render
+   * @return redirect to login if not authenticated, otherwise dashboard template
    */
-  @GetMapping("/about")
-  public String about(Model model) {
-    model.addAttribute("pageTitle", "About - ACME Inc Demo");
-    return "about";
+  @GetMapping("/dashboard")
+  public String dashboard(HttpSession session, Model model) {
+    AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("user");
+
+    if (user == null) {
+      return "redirect:/login";
+    }
+
+    model.addAttribute("pageTitle", "Dashboard - ACME Inc");
+    model.addAttribute("user", user);
+    return "dashboard";
+  }
+
+  /**
+   * Handles logout by invalidating session and redirecting to login page.
+   *
+   * @param session the HTTP session
+   * @return redirect to login page
+   */
+  @GetMapping("/logout")
+  public String logout(HttpSession session) {
+    session.invalidate();
+    return "redirect:/login?logout=true";
   }
 }

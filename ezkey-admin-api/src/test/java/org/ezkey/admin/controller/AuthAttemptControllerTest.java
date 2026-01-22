@@ -25,7 +25,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
-import org.ezkey.authattempt.mapper.AuthAttemptMapper;
+import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +55,7 @@ import org.springframework.http.ResponseEntity;
 class AuthAttemptControllerTest {
 
   @Mock private AuthAttemptService authAttemptService;
-  @Mock private AuthAttemptMapper authAttemptMapper;
+  @Mock private AuthAttemptAdminApiMapper authAttemptMapper;
   @Mock private AuditLogService auditLogService;
   @Mock private RateLimitService rateLimitService;
   @Mock private EnrollmentRepository enrollmentRepository;

@@ -28,7 +28,7 @@ import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
-import org.ezkey.authattempt.mapper.AuthAttemptMapper;
+import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,7 +72,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * @since 2025
  * @see AuthAttemptController
  * @see AuthAttemptService
- * @see AuthAttemptMapper
+ * @see AuthAttemptAuthApiMapper
  */
 @WebMvcTest(controllers = AuthAttemptController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -88,7 +88,7 @@ class AuthAttemptControllerTest {
 
   @MockBean private AuthAttemptService authAttemptService;
 
-  @MockBean private AuthAttemptMapper authAttemptMapper;
+  @MockBean private AuthAttemptAuthApiMapper authAttemptMapper;
 
   @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
 

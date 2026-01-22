@@ -57,7 +57,10 @@ public class EnrollmentStoreService {
                 Instant.now().toString(),
                 record.integrationName(),
                 record.integrationDescription(),
-                record.integrationLogo());
+                record.integrationLogo(),
+                record.tenantId(),
+                record.tenantName(),
+                record.tenantDescription());
       }
       Path file = rootDir.resolve(record.enrollmentId() + ".json");
       byte[] json = objectMapper.writeValueAsBytes(record);
@@ -131,6 +134,9 @@ public class EnrollmentStoreService {
    * @param integrationName integration name
    * @param integrationDescription integration description
    * @param integrationLogo integration logo
+   * @param tenantId tenant id
+   * @param tenantName tenant name
+   * @param tenantDescription tenant description
    */
   public record Record(
       Integer enrollmentId,
@@ -146,5 +152,8 @@ public class EnrollmentStoreService {
       String createdAt,
       String integrationName,
       String integrationDescription,
-      String integrationLogo) {}
+      String integrationLogo,
+      Integer tenantId,
+      String tenantName,
+      String tenantDescription) {}
 }
