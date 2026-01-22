@@ -85,6 +85,14 @@ public class LoginController {
 
     logger.info("Login attempt for username: {}", username);
 
+    // Clear any previous final status flag and pending attributes when starting a new login attempt
+    session.removeAttribute("authAttemptFinalStatus");
+    session.removeAttribute("pendingAuthAttemptId");
+    session.removeAttribute("pendingChallengeCode");
+    session.removeAttribute("pendingUsername");
+    session.removeAttribute("pendingDisplayName");
+    session.removeAttribute("pendingEnrollmentId");
+
     // Step 1: Lookup user in mapping
     UserMapping.UserEntry userEntry = userMappingService.findByUsername(username).orElse(null);
 
@@ -304,6 +312,31 @@ public class LoginController {
           new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
     }
 
+    // Check if a final status was already returned (prevents race condition)
+    // This handles the case where a poll arrives after we've already returned a final status
+    // and cleaned up session attributes, preventing "session expired" from being returned
+    String finalStatus = (String) session.getAttribute("authAttemptFinalStatus");
+    if (finalStatus != null) {
+      logger.info(
+          "Final status already returned: {}, returning same status to prevent race condition",
+          finalStatus);
+      // A final status was already returned, return the same status to prevent race condition
+      if ("REJECTED".equals(finalStatus)) {
+        return ResponseEntity.ok(
+            new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
+      } else if ("EXPIRED".equals(finalStatus)) {
+        return ResponseEntity.ok(
+            new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
+      } else if ("INVALID".equals(finalStatus)) {
+        return ResponseEntity.ok(
+            new AuthStatusResponse("error", "/login?error=invalid", "Invalid"));
+      } else if ("UNKNOWN".equals(finalStatus) || "ERROR".equals(finalStatus)) {
+        return ResponseEntity.ok(
+            new AuthStatusResponse(
+                "error", "/login?error=authfailed", "Authentication error occurred"));
+      }
+    }
+
     Integer authAttemptId = (Integer) session.getAttribute("pendingAuthAttemptId");
     String username = (String) session.getAttribute("pendingUsername");
     String displayName = (String) session.getAttribute("pendingDisplayName");
@@ -320,7 +353,44 @@ public class LoginController {
       String status = waitResponse.status();
       boolean completed = Boolean.TRUE.equals(waitResponse.completed());
 
-      if ("ACCEPTED".equals(status)) {
+      // Log received status for debugging
+      logger.info(
+          "Received auth attempt status: status='{}', completed={}, authAttemptId={}, username={}",
+          status,
+          completed,
+          authAttemptId,
+          username);
+
+      // Normalize status (trim and uppercase) to handle any whitespace or case issues
+      String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
+
+      // Handle null or empty status
+      if (normalizedStatus == null || normalizedStatus.isEmpty()) {
+        logger.warn(
+            "Received null or empty status for authAttemptId={}, username={}, completed={}",
+            authAttemptId,
+            username,
+            completed);
+        if (completed) {
+          // If completed but status is null/empty, treat as error
+          session.removeAttribute("pendingAuthAttemptId");
+          session.removeAttribute("pendingChallengeCode");
+          session.removeAttribute("pendingUsername");
+          session.removeAttribute("pendingDisplayName");
+          session.removeAttribute("pendingEnrollmentId");
+          return ResponseEntity.ok(
+              new AuthStatusResponse(
+                  "error",
+                  "/login?error=authfailed",
+                  "Authentication completed with invalid status"));
+        } else {
+          // Still pending
+          return ResponseEntity.ok(
+              new AuthStatusResponse("pending", null, "Waiting for device approval..."));
+        }
+      }
+
+      if ("ACCEPTED".equals(normalizedStatus)) {
         // Authentication successful - create session FIRST, then clear pending attributes
         AuthenticatedUser authenticatedUser =
             new AuthenticatedUser(
@@ -339,53 +409,41 @@ public class LoginController {
         logger.info("Challenge authentication successful for username: {}", username);
         return ResponseEntity.ok(
             new AuthStatusResponse("accepted", "/dashboard", "Authentication successful"));
-      } else if ("REJECTED".equals(status)) {
+      } else if ("REJECTED".equals(normalizedStatus)) {
         // Authentication rejected by user
-        // Clear pending attributes AFTER returning response to prevent "expired" glitch
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
+        // Mark as final status to prevent race condition with subsequent polls
+        // Don't clear session attributes immediately - let them be cleared on next request
+        // This prevents a race condition where a poll arrives after cleanup and returns "expired"
+        session.setAttribute("authAttemptFinalStatus", "REJECTED");
 
         logger.info("Challenge authentication rejected for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse(
-                "rejected", "/login?error=rejected", "Authentication rejected by user"));
-      } else if ("EXPIRED".equals(status)) {
+            new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
+      } else if ("EXPIRED".equals(normalizedStatus)) {
         // Authentication expired
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
+        // Mark as final status to prevent race condition with subsequent polls
+        session.setAttribute("authAttemptFinalStatus", "EXPIRED");
 
         logger.info("Challenge authentication expired for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse(
-                "expired", "/login?error=expired", "Authentication request expired"));
-      } else if ("INVALID".equals(status)) {
+            new AuthStatusResponse("expired", "/login?error=expired", "Expired"));
+      } else if ("INVALID".equals(normalizedStatus)) {
         // Authentication invalid (wrong signature, challenge, etc.)
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
+        // Mark as final status to prevent race condition with subsequent polls
+        session.setAttribute("authAttemptFinalStatus", "INVALID");
 
         logger.info("Challenge authentication invalid for username: {}", username);
         return ResponseEntity.ok(
-            new AuthStatusResponse("error", "/login?error=invalid", "Authentication invalid"));
+            new AuthStatusResponse("error", "/login?error=invalid", "Invalid"));
       } else if (completed) {
         // Completed but unknown status
-        session.removeAttribute("pendingAuthAttemptId");
-        session.removeAttribute("pendingChallengeCode");
-        session.removeAttribute("pendingUsername");
-        session.removeAttribute("pendingDisplayName");
-        session.removeAttribute("pendingEnrollmentId");
+        // Mark as final status to prevent race condition
+        session.setAttribute("authAttemptFinalStatus", "UNKNOWN");
 
         logger.warn(
-            "Challenge authentication completed with unknown status: {} for username: {}",
+            "Challenge authentication completed with unknown status: '{}' (normalized: '{}') for username: {}",
             status,
+            normalizedStatus,
             username);
         return ResponseEntity.ok(
             new AuthStatusResponse(
@@ -399,12 +457,8 @@ public class LoginController {
       }
     } catch (EzkeyAuthService.EzkeyAuthException e) {
       logger.error("Error checking auth status: {}", e.getMessage());
-      // Clear session on error
-      session.removeAttribute("pendingAuthAttemptId");
-      session.removeAttribute("pendingChallengeCode");
-      session.removeAttribute("pendingUsername");
-      session.removeAttribute("pendingDisplayName");
-      session.removeAttribute("pendingEnrollmentId");
+      // Mark as error to prevent race condition
+      session.setAttribute("authAttemptFinalStatus", "ERROR");
       return ResponseEntity.ok(
           new AuthStatusResponse("error", "/login?error=authfailed", e.getMessage()));
     }
