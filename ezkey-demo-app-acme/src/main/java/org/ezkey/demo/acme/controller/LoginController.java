@@ -441,7 +441,8 @@ public class LoginController {
         session.setAttribute("authAttemptFinalStatus", "UNKNOWN");
 
         logger.warn(
-            "Challenge authentication completed with unknown status: '{}' (normalized: '{}') for username: {}",
+            "Challenge authentication completed with unknown status: '{}' (normalized: '{}') for"
+                + " username: {}",
             status,
             normalizedStatus,
             username);
