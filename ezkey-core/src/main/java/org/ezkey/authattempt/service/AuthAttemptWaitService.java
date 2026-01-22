@@ -12,6 +12,7 @@ package org.ezkey.authattempt.service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
@@ -27,34 +28,49 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Specialized service for handling authentication wait operations and polling.
  *
- * <p>This service manages the synchronous polling mechanism for web applications awaiting
- * authentication responses from mobile devices. It implements efficient polling with configurable
+ * <p>
+ * This service manages the synchronous polling mechanism for web applications
+ * awaiting
+ * authentication responses from mobile devices. It implements efficient polling
+ * with configurable
  * timeouts and prevents long-running transactions.
  *
- * <p><b>Key Features:</b>
+ * <p>
+ * <b>Key Features:</b>
  *
  * <ul>
- *   <li><b>Configurable Timeouts:</b> Customizable timeout and polling intervals
- *   <li><b>Efficient Polling:</b> Short-lived transactions to prevent resource exhaustion
- *   <li><b>Status Calculation:</b> Intelligent status determination based on attempt state
- *   <li><b>Supersession Detection:</b> Handles newer authentication attempts appropriately
- *   <li><b>Expiration Handling:</b> Proper handling of expired authentication attempts
+ * <li><b>Configurable Timeouts:</b> Customizable timeout and polling intervals
+ * <li><b>Efficient Polling:</b> Short-lived transactions to prevent resource
+ * exhaustion
+ * <li><b>Status Calculation:</b> Intelligent status determination based on
+ * attempt state
+ * <li><b>Supersession Detection:</b> Handles newer authentication attempts
+ * appropriately
+ * <li><b>Expiration Handling:</b> Proper handling of expired authentication
+ * attempts
  * </ul>
  *
- * <p><b>Transaction Management:</b> This service uses NOT_SUPPORTED propagation to avoid holding
- * long-running transactions while maintaining data consistency through short-lived operations.
+ * <p>
+ * <b>Transaction Management:</b> This service uses NOT_SUPPORTED propagation to
+ * avoid holding
+ * long-running transactions while maintaining data consistency through
+ * short-lived operations.
  *
- * <p><b>Performance Considerations:</b>
+ * <p>
+ * <b>Performance Considerations:</b>
  *
  * <ul>
- *   <li><b>Short Transactions:</b> Each poll uses a brief transaction to prevent blocking
- *   <li><b>Efficient Queries:</b> Optimized database queries for status checking
- *   <li><b>Resource Management:</b> Proper cleanup and timeout handling
+ * <li><b>Short Transactions:</b> Each poll uses a brief transaction to prevent
+ * blocking
+ * <li><b>Efficient Queries:</b> Optimized database queries for status checking
+ * <li><b>Resource Management:</b> Proper cleanup and timeout handling
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -81,17 +97,22 @@ public class AuthAttemptWaitService {
   }
 
   /**
-   * Waits for authentication response completion with configurable timeout and polling.
+   * Waits for authentication response completion with configurable timeout and
+   * polling.
    *
-   * <p>This method implements efficient polling without holding long-running transactions. It
-   * checks the authentication attempt status at regular intervals until completion, timeout, or
+   * <p>
+   * This method implements efficient polling without holding long-running
+   * transactions. It
+   * checks the authentication attempt status at regular intervals until
+   * completion, timeout, or
    * supersession occurs.
    *
    * @param authAttemptId the ID of the authentication attempt to wait for
-   * @param request the wait request containing timeout and polling configuration
+   * @param request       the wait request containing timeout and polling
+   *                      configuration
    * @return the wait response with final status and metadata
    * @throws ResourceNotFoundException if the authentication attempt is not found
-   * @throws IllegalArgumentException if the wait request parameters are invalid
+   * @throws IllegalArgumentException  if the wait request parameters are invalid
    */
   public AuthAttemptWaitResponse waitForResponse(
       Integer authAttemptId, AuthAttemptWaitRequest request) {
@@ -110,16 +131,14 @@ public class AuthAttemptWaitService {
 
     while (true) {
       // Short-lived fetch (no long transaction held between iterations)
-      AuthAttempt authAttempt =
-          authAttemptRepository
-              .findById(authAttemptId)
-              .orElseThrow(
-                  () -> new ResourceNotFoundException("Authorization attempt", authAttemptId));
+      AuthAttempt authAttempt = authAttemptRepository
+          .findById(authAttemptId)
+          .orElseThrow(
+              () -> new ResourceNotFoundException("Authorization attempt", authAttemptId));
 
       // Check for supersession
-      Optional<AuthAttempt> newerAttempt =
-          authAttemptRepository.findNewerAttemptByEnrollmentId(
-              authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
+      Optional<AuthAttempt> newerAttempt = authAttemptRepository.findNewerAttemptByEnrollmentId(
+          authAttempt.getEnrollmentId(), authAttempt.getCreatedAt());
       if (newerAttempt.isPresent()) {
         int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
         logger.info(
@@ -143,8 +162,10 @@ public class AuthAttemptWaitService {
         return buildWaitResponse(authAttempt, false, waitDuration);
       }
 
-      // Check if expired (only for non-final statuses - final statuses are handled above)
-      // This ensures that REJECTED/ACCEPTED/INVALID statuses are not overridden by expiration
+      // Check if expired (only for non-final statuses - final statuses are handled
+      // above)
+      // This ensures that REJECTED/ACCEPTED/INVALID statuses are not overridden by
+      // expiration
       if (isAttemptExpired(authAttempt)) {
         int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
         logger.info(
@@ -183,7 +204,9 @@ public class AuthAttemptWaitService {
   /**
    * Validates the wait request parameters.
    *
-   * <p>Ensures that timeout and polling parameters are within acceptable ranges and that polling is
+   * <p>
+   * Ensures that timeout and polling parameters are within acceptable ranges and
+   * that polling is
    * not greater than timeout.
    *
    * @param request the wait request to validate
@@ -216,15 +239,19 @@ public class AuthAttemptWaitService {
   /**
    * Checks if the authentication attempt has expired.
    *
-   * <p>Note: This method does NOT check if the status is final. Final statuses (ACCEPTED, REJECTED,
-   * INVALID) should be handled by isAttemptCompleted() before calling this method. This ensures that
+   * <p>
+   * Note: This method does NOT check if the status is final. Final statuses
+   * (ACCEPTED, REJECTED,
+   * INVALID) should be handled by isAttemptCompleted() before calling this
+   * method. This ensures that
    * user decisions (REJECTED) are not overridden by expiration checks.
    *
    * @param authAttempt the authentication attempt to check
    * @return true if the attempt has expired (only for non-final statuses)
    */
   private boolean isAttemptExpired(AuthAttempt authAttempt) {
-    // Don't check expiration for final statuses - they represent user decisions or validation
+    // Don't check expiration for final statuses - they represent user decisions or
+    // validation
     // results that should not be overridden by expiration
     if (isAttemptCompleted(authAttempt)) {
       return false;
@@ -236,12 +263,14 @@ public class AuthAttemptWaitService {
   /**
    * Builds the wait response with calculated status and metadata.
    *
-   * <p>Creates a complete AuthAttemptWaitResponse with the authentication attempt data, calculated
+   * <p>
+   * Creates a complete AuthAttemptWaitResponse with the authentication attempt
+   * data, calculated
    * status, and wait operation metadata.
    *
-   * @param authAttempt the authentication attempt data
+   * @param authAttempt    the authentication attempt data
    * @param timeoutReached whether the wait operation timed out
-   * @param waitDuration the actual duration waited in seconds
+   * @param waitDuration   the actual duration waited in seconds
    * @return the complete AuthAttemptWaitResponse
    */
   private AuthAttemptWaitResponse buildWaitResponse(
@@ -256,13 +285,15 @@ public class AuthAttemptWaitService {
   /**
    * Builds the wait response with a specific status for special cases.
    *
-   * <p>Creates a complete AuthAttemptWaitResponse with a specific status for cases where the normal
+   * <p>
+   * Creates a complete AuthAttemptWaitResponse with a specific status for cases
+   * where the normal
    * status calculation doesn't apply (e.g., superseded attempts).
    *
-   * @param authAttempt the authentication attempt data
-   * @param status the specific status to use
+   * @param authAttempt    the authentication attempt data
+   * @param status         the specific status to use
    * @param timeoutReached whether the wait operation timed out
-   * @param waitDuration the actual duration waited in seconds
+   * @param waitDuration   the actual duration waited in seconds
    * @return the complete AuthAttemptWaitResponse
    */
   private AuthAttemptWaitResponse buildWaitResponse(
@@ -274,28 +305,36 @@ public class AuthAttemptWaitService {
   }
 
   /**
-   * Calculates the authentication status based on the rules defined in ENDPOINT.md.
+   * Calculates the authentication status based on the rules defined in
+   * ENDPOINT.md.
    *
-   * <p>This method implements the status calculation logic as specified in the project
-   * documentation. The status is determined by checking the authentication attempt flags in a
+   * <p>
+   * This method implements the status calculation logic as specified in the
+   * project
+   * documentation. The status is determined by checking the authentication
+   * attempt flags in a
    * specific order of priority.
    *
-   * <p><b>Status Priority:</b>
+   * <p>
+   * <b>Status Priority:</b>
    *
    * <ol>
-   *   <li>Final statuses (ACCEPTED, REJECTED, INVALID) take precedence - return immediately
-   *   <li>For PENDING/READ statuses, check expiration
-   *   <li>Otherwise return the current status
+   * <li>Final statuses (ACCEPTED, REJECTED, INVALID) take precedence - return
+   * immediately
+   * <li>For PENDING/READ statuses, check expiration
+   * <li>Otherwise return the current status
    * </ol>
    *
    * @param authAttempt the authentication attempt entity
-   * @return the calculated status string (PENDING, READ, INVALID, REJECTED, ACCEPTED, EXPIRED)
+   * @return the calculated status string (PENDING, READ, INVALID, REJECTED,
+   *         ACCEPTED, EXPIRED)
    */
   private String calculateStatus(AuthAttempt authAttempt) {
     AuthAttemptStatus currentStatus = authAttempt.getAuthAttemptStatus();
 
     // If status is already final (ACCEPTED, REJECTED, INVALID), return it directly
-    // Don't check expiration for final statuses - they represent user decisions or validation
+    // Don't check expiration for final statuses - they represent user decisions or
+    // validation
     // results
     if (currentStatus == AuthAttemptStatus.ACCEPTED
         || currentStatus == AuthAttemptStatus.REJECTED
