@@ -40,7 +40,7 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Access URLs:</b>
  *
  * <ul>
- *   <li><b>Swagger UI:</b> http://localhost:9080/swagger-ui.html
+ *   <li><b>Swagger UI:</b> http://localhost:9080/swagger-ui/index.html
  *   <li><b>OpenAPI JSON:</b> http://localhost:9080/api-docs
  *   <li><b>OpenAPI YAML:</b> http://localhost:9080/api-docs.yaml
  * </ul>
