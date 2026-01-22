@@ -543,8 +543,8 @@ cd ezkey_mobile
 - **Admin API**: http://localhost:9080/api/v1/
 - **Auth API**: http://localhost:8080/api/v1/
 - **API Documentation**:
-  - Admin: http://localhost:9080/swagger-ui.html
-  - Auth: http://localhost:8080/swagger-ui.html
+  - Admin: http://localhost:9080/swagger-ui/index.html
+  - Auth: http://localhost:8080/swagger-ui/index.html
 
 ## 📚 Documentation
 

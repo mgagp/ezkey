@@ -304,8 +304,8 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
    ```
 
 4. **Access the APIs**
-   - Admin API: http://localhost:9080/swagger-ui.html
-   - Auth API: http://localhost:8080/swagger-ui.html
+   - Admin API: http://localhost:9080/swagger-ui/index.html
+   - Auth API: http://localhost:8080/swagger-ui/index.html
 
 ### Next Steps
 - **Read the documentation**: Start with [ARCHITECTURE.md](ARCHITECTURE.md)

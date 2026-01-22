@@ -369,7 +369,7 @@ public class EzkeyHybridSecurityConfig {
                 .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
                 // Documentation API
-                .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui/index.html")
                     .permitAll()
                 // Gestion des tenants (Admin Global uniquement)
                 .requestMatchers("/api/v1/tenants/**")

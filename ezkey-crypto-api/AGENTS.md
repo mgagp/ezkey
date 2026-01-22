@@ -19,7 +19,7 @@ Crypto API is **included in the Docker stack** and starts automatically with `./
 - **Port**: `9090` (not 8081 - that's auth-api)
 - **Container**: `ezkey-crypto-api`
 - **Base URL**: `http://localhost:9090`
-- **Swagger UI**: `http://localhost:9090/swagger-ui.html`
+- **Swagger UI**: `http://localhost:9090/swagger-ui/index.html`
 
 **Quick Check**:
 ```bash
