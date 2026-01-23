@@ -92,6 +92,8 @@ public class LoginController {
     session.removeAttribute("pendingUsername");
     session.removeAttribute("pendingDisplayName");
     session.removeAttribute("pendingEnrollmentId");
+    session.removeAttribute("pendingTimeoutSeconds");
+    session.removeAttribute("pendingExpiresAt");
 
     // Step 1: Lookup user in mapping
     UserMapping.UserEntry userEntry = userMappingService.findByUsername(username).orElse(null);
@@ -123,6 +125,8 @@ public class LoginController {
       session.setAttribute("pendingUsername", username);
       session.setAttribute("pendingDisplayName", userEntry.displayName());
       session.setAttribute("pendingEnrollmentId", userEntry.enrollmentId());
+      session.setAttribute("pendingTimeoutSeconds", createResponse.timeoutSeconds());
+      session.setAttribute("pendingExpiresAt", createResponse.expiresAt());
 
       if (challengeMode && createResponse.authAttemptChallenge() != null) {
         logger.info(
@@ -271,6 +275,8 @@ public class LoginController {
     Integer authAttemptId = (Integer) session.getAttribute("pendingAuthAttemptId");
     Integer challengeCode = (Integer) session.getAttribute("pendingChallengeCode");
     String username = (String) session.getAttribute("pendingUsername");
+    Integer timeoutSeconds = (Integer) session.getAttribute("pendingTimeoutSeconds");
+    java.time.OffsetDateTime expiresAt = (java.time.OffsetDateTime) session.getAttribute("pendingExpiresAt");
 
     if (authAttemptId == null || username == null) {
       logger.warn("Challenge wait page accessed without pending auth attempt");
@@ -289,6 +295,8 @@ public class LoginController {
     model.addAttribute("challengeCode", challengeCodeFormatted);
     model.addAttribute("authAttemptId", authAttemptId);
     model.addAttribute("username", username);
+    model.addAttribute("timeoutSeconds", timeoutSeconds);
+    model.addAttribute("expiresAt", expiresAt != null ? expiresAt.toString() : null);
 
     return "challenge-wait";
   }
@@ -378,6 +386,8 @@ public class LoginController {
           session.removeAttribute("pendingUsername");
           session.removeAttribute("pendingDisplayName");
           session.removeAttribute("pendingEnrollmentId");
+          session.removeAttribute("pendingTimeoutSeconds");
+          session.removeAttribute("pendingExpiresAt");
           return ResponseEntity.ok(
               new AuthStatusResponse(
                   "error",
