@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a4d0f823-0ca4-4ea5-8e57-bff5be9282c1",
 		"name": "EZ Key Auth Attempts admin",
-		"description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Delete Auth Attempt**: Remove an authentication attempt from the system\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
+		"description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Cancel Auth Attempt**: Cancel a pending or read authentication attempt by marking it as expired\n- **Delete Auth Attempt**: Remove an authentication attempt from the system\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "4087"
 	},
@@ -36,6 +36,18 @@
 							"            }",
 							"        }",
 							"    });",
+							"    ",
+							"    pm.test(\"Response contains timeoutSeconds\", function () {",
+							"        pm.expect(jsonData).to.have.property('timeoutSeconds');",
+							"        pm.expect(jsonData.timeoutSeconds).to.be.a('number');",
+							"        pm.expect(jsonData.timeoutSeconds).to.equal(120);",
+							"    });",
+							"    ",
+							"    pm.test(\"Response contains expiresAt\", function () {",
+							"        pm.expect(jsonData).to.have.property('expiresAt');",
+							"        pm.expect(jsonData.expiresAt).to.be.a('string');",
+							"        pm.expect(jsonData.expiresAt).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$/);",
+							"    });",
 							"}"
 						],
 						"type": "text/javascript",
@@ -66,7 +78,7 @@
 						"auth-attempts"
 					]
 				},
-				"description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
+				"description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -98,6 +110,18 @@
 							"                pm.expect(jsonData.authAttemptChallenge).to.be.at.most(99);",
 							"            }",
 							"        }",
+							"    });",
+							"    ",
+							"    pm.test(\"Response contains timeoutSeconds\", function () {",
+							"        pm.expect(jsonData).to.have.property('timeoutSeconds');",
+							"        pm.expect(jsonData.timeoutSeconds).to.be.a('number');",
+							"        pm.expect(jsonData.timeoutSeconds).to.equal(120);",
+							"    });",
+							"    ",
+							"    pm.test(\"Response contains expiresAt\", function () {",
+							"        pm.expect(jsonData).to.have.property('expiresAt');",
+							"        pm.expect(jsonData.expiresAt).to.be.a('string');",
+							"        pm.expect(jsonData.expiresAt).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$/);",
 							"    });",
 							"}"
 						],
@@ -145,7 +169,7 @@
 						"auth-attempts"
 					]
 				},
-				"description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
+				"description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
 			},
 			"response": []
 		},
@@ -454,6 +478,142 @@
 					]
 				},
 				"description": "Waits for authentication response using API key authentication. Access control ensures API keys can only wait for attempts belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to wait for\n\n**Query Parameters:**\n- `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)\n- `polling` (optional, default: 2): Polling interval in seconds (1-60)\n\n**Response (200 OK):**\nSame structure as wait endpoint\n\n**Status Codes:**\n- 200: Authentication completed\n- 408: Timeout reached\n- 404: Auth attempt not found\n- 400: Invalid parameters\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (200 requests per hour per integration key)\n- 500: Internal server error"
+			},
+			"response": []
+		},
+		{
+			"name": "cancel",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, or 404\", function () {",
+							"    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttemptId');",
+							"        pm.expect(jsonData).to.have.property('authAttemptStatus');",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"    });",
+							"    ",
+							"    pm.test(\"Status is EXPIRED after cancellation\", function () {",
+							"        pm.expect(jsonData.authAttemptStatus).to.equal('EXPIRED');",
+							"    });",
+							"}",
+							"",
+							"if (pm.response.code === 400) {",
+							"    pm.test(\"Bad request for already completed attempt\", function () {",
+							"        pm.expect(pm.response.code).to.equal(400);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id/cancel",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						":id",
+						"cancel"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID to cancel"
+						}
+					]
+				},
+				"description": "Cancels a pending or read authentication attempt by marking it as expired. This endpoint allows client applications to proactively abort authentication requests that are still waiting for user response.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can cancel any auth attempt (any tenant)\n- **TenantAdmin**: Can only cancel auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessAuthAttempt()`\n- Returns 403 Forbidden if TenantAdmin tries to cancel auth attempt from another tenant\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to cancel\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier for the authentication attempt\n- `enrollmentId`: Enrollment identifier this attempt belongs to\n- `authAttemptStatus`: Status after cancellation (EXPIRED)\n- `createdAt`: Timestamp when the attempt was created\n- `expiresAt`: Timestamp when the attempt expires\n\n**Status Codes:**\n- 200: Authentication attempt cancelled successfully\n- 400: Bad Request - authentication attempt already in final state (cannot be cancelled)\n- 404: Not Found - authentication attempt not found\n- 401: Unauthorized - authentication required\n- 403: Forbidden - access denied to authentication attempt\n- 500: Internal server error\n\n**Notes:**\n- Only attempts in `PENDING` or `READ` status can be cancelled\n- Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled\n- Supports both Bearer token (admin) and API key (M2M) authentication\n- All cancellation operations are audited for security monitoring"
+			},
+			"response": []
+		},
+		{
+			"name": "cancel with api key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200, 400, or 404\", function () {",
+							"    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    ",
+							"    pm.test(\"Response contains required fields\", function () {",
+							"        pm.expect(jsonData).to.have.property('authAttemptId');",
+							"        pm.expect(jsonData).to.have.property('authAttemptStatus');",
+							"        pm.expect(jsonData).to.have.property('enrollmentId');",
+							"    });",
+							"    ",
+							"    pm.test(\"Status is EXPIRED after cancellation\", function () {",
+							"        pm.expect(jsonData.authAttemptStatus).to.equal('EXPIRED');",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "{{integrationKey}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{secretKey}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id/cancel",
+					"host": [
+						"{{base_url_admin_api}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth-attempts",
+						":id",
+						"cancel"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "{{authAttemptId}}",
+							"description": "The authentication attempt ID to cancel"
+						}
+					]
+				},
+				"description": "Cancels a pending or read authentication attempt using API key authentication. Access control ensures API keys can only cancel attempts belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to cancel\n\n**Response (200 OK):**\nSame structure as cancel endpoint\n\n**Status Codes:**\n- 200: Authentication attempt cancelled successfully\n- 400: Bad Request - authentication attempt already in final state\n- 404: Not Found - authentication attempt not found\n- 401: Unauthorized - invalid API key\n- 403: Forbidden - API key cannot cancel attempts from other integrations\n- 429: Rate limit exceeded (200 requests per hour per integration key)\n- 500: Internal server error"
 			},
 			"response": []
 		},

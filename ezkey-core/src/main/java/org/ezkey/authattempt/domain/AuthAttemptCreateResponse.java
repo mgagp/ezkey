@@ -66,6 +66,25 @@ public class AuthAttemptCreateResponse {
   private OffsetDateTime createdAt;
 
   /**
+   * Timeout duration in seconds for this authentication attempt.
+   *
+   * <p>Indicates the maximum time (in seconds) that the user has to respond to the authentication
+   * request on their mobile device. This value is returned to client applications so they can
+   * display appropriate timeout information to users and manage their wait operations accordingly.
+   */
+  private Integer timeoutSeconds;
+
+  /**
+   * Absolute expiration timestamp for this authentication attempt.
+   *
+   * <p>Indicates the exact moment when this authentication attempt will expire. This timestamp is
+   * calculated based on the creation time plus the timeout duration. Client applications can use
+   * this to display countdown timers or determine if an attempt has expired without needing to
+   * query the server.
+   */
+  private OffsetDateTime expiresAt;
+
+  /**
    * Gets the authentication attempt ID.
    *
    * @return the unique identifier of the created authentication attempt
@@ -117,5 +136,41 @@ public class AuthAttemptCreateResponse {
    */
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /**
+   * Gets the timeout duration in seconds.
+   *
+   * @return the timeout duration in seconds
+   */
+  public Integer getTimeoutSeconds() {
+    return timeoutSeconds;
+  }
+
+  /**
+   * Sets the timeout duration in seconds.
+   *
+   * @param timeoutSeconds the timeout duration in seconds to set
+   */
+  public void setTimeoutSeconds(Integer timeoutSeconds) {
+    this.timeoutSeconds = timeoutSeconds;
+  }
+
+  /**
+   * Gets the expiration timestamp.
+   *
+   * @return the expiration timestamp
+   */
+  public OffsetDateTime getExpiresAt() {
+    return expiresAt;
+  }
+
+  /**
+   * Sets the expiration timestamp.
+   *
+   * @param expiresAt the expiration timestamp to set
+   */
+  public void setExpiresAt(OffsetDateTime expiresAt) {
+    this.expiresAt = expiresAt;
   }
 }
