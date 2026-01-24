@@ -8,7 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
 </head>
 <body class="neo-brutal-body">
-    
+
     <!-- Navigation Header -->
     <header class="neo-brutal-header">
         <nav class="neo-brutal-nav">
@@ -18,7 +18,7 @@
             </div>
             <div class="nav-links">
                 <span class="nav-link active">Dashboard</span>
-                <a href="https://github.com/example/ezkey" target="_blank" class="nav-link">About EZKey</a>
+                <a href="https://ezkey.org" target="_blank" class="nav-link">About EZKey</a>
                 <a href="/logout" class="nav-link logout-link">
                     Logout: <span th:text="${user?.username}">-</span>
                 </a>
@@ -29,13 +29,13 @@
     <!-- Dashboard Content -->
     <main class="neo-brutal-main">
         <div class="container">
-            
+
             <!-- Welcome Section -->
             <section class="welcome-section">
                 <h1 class="welcome-title">WELCOME, <span th:text="${user?.displayName?.toUpperCase() ?: user?.username?.toUpperCase()}">USER</span>!</h1>
                 <p class="welcome-subtitle">You are now authenticated via EZKey passwordless login</p>
             </section>
-            
+
             <!-- Profile Card -->
             <section class="dashboard-grid">
                 <div class="profile-card">
@@ -55,31 +55,20 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- How It Works Widget -->
                 <div class="widget-card">
                     <h3>HOW THIS LOGIN WORKS</h3>
-                    
+
                     <div class="auth-explanation">
                         <p>
-                            This demo application uses <strong>backend-side authentication</strong>. 
-                            The server securely communicates with the EZKey Admin API using API Key 
-                            Machine-to-Machine (M2M) authentication. All authentication logic runs 
+                            This demo application uses <strong>backend-side authentication</strong>.
+                            The server securely communicates with the EZKey Admin API using API Key
+                            Machine-to-Machine (M2M) authentication. All authentication logic runs
                             server-side, ensuring tokens and credentials never reach the browser.
                         </p>
-                        
-                        <div class="auth-features">
-                            <h4>KEY FEATURES</h4>
-                            <ul>
-                                <li>Server-side authentication (secure)</li>
-                                <li>HTTP session management</li>
-                                <li>API Key M2M authentication</li>
-                                <li>No CORS configuration needed</li>
-                                <li>Traditional MVC approach</li>
-                            </ul>
-                        </div>
                     </div>
-                    
+
                     <div class="flow-diagram">
                         <h4>AUTHENTICATION FLOW</h4>
                         <div class="flow-steps">
@@ -105,19 +94,65 @@
                             <div class="flow-arrow">→</div>
                             <div class="flow-step">
                                 <span class="step-num">5</span>
-                                <span class="step-text">Create HTTP session</span>
+                                <span class="step-text">Issue authentication token/session</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <p class="widget-note">
-                        <strong>Security Note:</strong> All EZKey API communication happens server-side 
-                        using API Key credentials. The browser only receives session cookies, ensuring 
-                        that sensitive authentication tokens are never exposed to client-side code.
-                    </p>
+
+                    <!-- Integration Patterns Accordion -->
+                    <div class="integration-patterns">
+                        <button class="accordion-toggle" id="integration-patterns-toggle" onclick="toggleIntegrationPatterns()">
+                            <span>Integration Patterns</span>
+                            <span class="accordion-icon" id="accordion-icon">▼</span>
+                        </button>
+                        <div class="accordion-content" id="integration-patterns-content">
+                            <div class="pattern-section">
+                                <h4>MFA Complémentaire</h4>
+                                <p>
+                                    Use EZKey as a second authentication factor alongside your existing login system.
+                                    Perfect for applications that already have username/password authentication and want
+                                    to add an extra layer of security.
+                                </p>
+                                <div class="pattern-flow">
+                                    <div class="pattern-step">Traditional Login</div>
+                                    <span class="pattern-arrow">→</span>
+                                    <div class="pattern-step">EZKey MFA</div>
+                                    <span class="pattern-arrow">→</span>
+                                    <div class="pattern-step">Issue Token</div>
+                                </div>
+                                <p class="pattern-note">
+                                    <strong>Use case:</strong> Add MFA to existing applications (similar to TOTP or Duo)
+                                </p>
+                            </div>
+
+                            <div class="pattern-section">
+                                <h4>Authentification Principale</h4>
+                                <p>
+                                    Use EZKey as the primary authentication method, replacing traditional username/password.
+                                    The frontend sends the username, and the backend handles the EZKey authentication flow.
+                                </p>
+                                <div class="pattern-flow">
+                                    <div class="pattern-step">Username</div>
+                                    <span class="pattern-arrow">→</span>
+                                    <div class="pattern-step">EZKey Auth</div>
+                                    <span class="pattern-arrow">→</span>
+                                    <div class="pattern-step">Issue Token</div>
+                                </div>
+                                <p class="pattern-note">
+                                    <strong>Use case:</strong> New applications or passwordless-first approach
+                                </p>
+                            </div>
+
+                            <p class="pattern-summary">
+                                <strong>Note:</strong> After successful authentication, your application typically issues
+                                a token (OAuth2, JWT, etc.) for session management. The implementation shown in this demo
+                                uses HTTP sessions, but token-based authentication is the most common approach in production.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </section>
-            
+
         </div>
     </main>
 
@@ -130,48 +165,48 @@
         </div>
     </footer>
 
-    
+
     <!-- Dashboard Styles -->
     <style>
         .welcome-section {
             text-align: center;
             padding: 3rem 0;
         }
-        
+
         .welcome-title {
             font-size: 3rem;
             color: var(--acme-dark);
             text-shadow: 4px 4px 0 var(--acme-primary);
             margin-bottom: 0.5rem;
         }
-        
+
         .welcome-subtitle {
             font-size: 1.2rem;
             color: var(--acme-primary);
             font-weight: 700;
             text-transform: uppercase;
         }
-        
+
         .dashboard-grid {
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 2rem;
             margin: 2rem 0;
         }
-        
+
         @media (max-width: 900px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
         }
-        
+
         .profile-card, .widget-card {
             background-color: var(--acme-light);
             border: 4px solid var(--acme-dark);
             padding: 2rem;
             box-shadow: 6px 6px 0 var(--acme-dark);
         }
-        
+
         .profile-card h3, .widget-card h3 {
             color: var(--acme-dark);
             margin-bottom: 1.5rem;
@@ -179,14 +214,14 @@
             border-bottom: 3px solid var(--acme-primary);
             padding-bottom: 0.5rem;
         }
-        
+
         .profile-item {
             margin-bottom: 1rem;
             padding: 1rem;
             background-color: var(--acme-gray);
             border: 2px solid var(--acme-dark);
         }
-        
+
         .profile-label {
             display: block;
             font-size: 0.8rem;
@@ -194,17 +229,17 @@
             font-weight: 900;
             margin-bottom: 0.25rem;
         }
-        
+
         .profile-value {
             font-size: 1.1rem;
             font-weight: 700;
         }
-        
+
         /* Widget Styles */
         .auth-explanation {
             margin-bottom: 1.5rem;
         }
-        
+
         .auth-explanation p {
             font-size: 0.95rem;
             line-height: 1.6;
@@ -213,42 +248,7 @@
             background-color: var(--acme-gray);
             border: 2px solid var(--acme-dark);
         }
-        
-        .auth-features {
-            padding: 1rem;
-            background-color: var(--acme-gray);
-            border: 3px solid var(--acme-dark);
-        }
-        
-        .auth-features h4 {
-            font-size: 0.9rem;
-            margin-bottom: 0.75rem;
-            color: var(--acme-primary);
-            text-transform: uppercase;
-        }
-        
-        .auth-features ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .auth-features li {
-            font-size: 0.85rem;
-            padding: 0.3rem 0;
-            padding-left: 1.2rem;
-            position: relative;
-            font-weight: 600;
-        }
-        
-        .auth-features li::before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--acme-success);
-            font-weight: 900;
-        }
-        
+
         /* Flow Diagram */
         .flow-diagram {
             margin-top: 1.5rem;
@@ -256,20 +256,20 @@
             background-color: var(--acme-gray);
             border: 3px solid var(--acme-dark);
         }
-        
+
         .flow-diagram h4 {
             font-size: 0.9rem;
             margin-bottom: 1rem;
             color: var(--acme-primary);
         }
-        
+
         .flow-steps {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 0.5rem;
         }
-        
+
         .flow-step {
             display: flex;
             align-items: center;
@@ -278,7 +278,7 @@
             background-color: var(--acme-light);
             border: 2px solid var(--acme-dark);
         }
-        
+
         .step-num {
             width: 1.5rem;
             height: 1.5rem;
@@ -290,19 +290,142 @@
             font-weight: 900;
             font-size: 0.8rem;
         }
-        
+
         .step-text {
             font-size: 0.75rem;
             font-weight: 600;
         }
-        
+
         .flow-arrow {
             font-size: 1.2rem;
             font-weight: 900;
             color: var(--acme-primary);
         }
-        
-        .widget-note {
+
+
+        /* Logout link style */
+        .logout-link {
+            color: var(--acme-error) !important;
+        }
+
+        /* Integration Patterns Accordion */
+        .integration-patterns {
+            margin-top: 1.5rem;
+        }
+
+        .accordion-toggle {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--acme-gray);
+            border: 3px solid var(--acme-dark);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--acme-dark);
+            transition: all 0.2s ease;
+            box-shadow: 3px 3px 0 var(--acme-dark);
+        }
+
+        .accordion-toggle:hover {
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            box-shadow: 5px 5px 0 var(--acme-dark);
+        }
+
+        .accordion-toggle:active {
+            box-shadow: 2px 2px 0 var(--acme-dark);
+            transform: translate(1px, 1px);
+        }
+
+        .accordion-icon {
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        .accordion-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            background-color: var(--acme-light);
+            border-left: 3px solid var(--acme-dark);
+            border-right: 3px solid var(--acme-dark);
+            border-bottom: 3px solid var(--acme-dark);
+        }
+
+        .accordion-content.open {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+            padding: 1.5rem;
+        }
+
+        .pattern-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--acme-dark);
+        }
+
+        .pattern-section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 1rem;
+        }
+
+        .pattern-section h4 {
+            font-size: 1rem;
+            color: var(--acme-primary);
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            font-weight: 900;
+        }
+
+        .pattern-section p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: var(--acme-dark);
+        }
+
+        .pattern-flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: var(--acme-gray);
+            border: 2px solid var(--acme-dark);
+        }
+
+        .pattern-step {
+            padding: 0.5rem 1rem;
+            background-color: var(--acme-light);
+            border: 2px solid var(--acme-dark);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--acme-dark);
+        }
+
+        .pattern-arrow {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--acme-primary);
+        }
+
+        .pattern-note {
+            font-size: 0.85rem;
+            padding: 0.75rem;
+            background-color: var(--acme-gray);
+            border: 2px solid var(--acme-dark);
+            margin-top: 0.5rem;
+        }
+
+        .pattern-summary {
             margin-top: 1.5rem;
             padding: 1rem;
             background-color: var(--acme-accent);
@@ -310,18 +433,21 @@
             font-size: 0.9rem;
             font-weight: 400;
         }
-        
-        .widget-note code {
-            background-color: var(--acme-dark);
-            color: var(--acme-light);
-            padding: 0.1rem 0.4rem;
-            font-weight: 700;
-        }
-        
-        /* Logout link style */
-        .logout-link {
-            color: var(--acme-error) !important;
-        }
     </style>
+
+    <script>
+        function toggleIntegrationPatterns() {
+            const content = document.getElementById('integration-patterns-content');
+            const icon = document.getElementById('accordion-icon');
+
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                icon.classList.remove('rotated');
+            } else {
+                content.classList.add('open');
+                icon.classList.add('rotated');
+            }
+        }
+    </script>
 </body>
 </html>
