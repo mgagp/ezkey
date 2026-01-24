@@ -17,6 +17,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.security.AccessControlService;
@@ -120,7 +121,9 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
+        .thenReturn(
+            new AuthAttemptCreateResponseDto(
+                1, null, 120, OffsetDateTime.now().plusSeconds(120)));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
@@ -212,7 +215,9 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
         .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
-        .thenReturn(new AuthAttemptCreateResponseDto(1, null));
+        .thenReturn(
+            new AuthAttemptCreateResponseDto(
+                1, null, 120, OffsetDateTime.now().plusSeconds(120)));
 
     AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
 
@@ -260,6 +265,8 @@ class AuthAttemptControllerOwnershipTest {
     AuthAttemptCreateResponse response = new AuthAttemptCreateResponse();
     response.setAuthAttemptId(1);
     response.setAuthAttemptChallenge(null);
+    response.setTimeoutSeconds(120);
+    response.setExpiresAt(OffsetDateTime.now().plusSeconds(120));
     return response;
   }
 }

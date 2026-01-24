@@ -43,6 +43,14 @@
                     <div id="status-area" class="status-area">
                         <div class="spinner"></div>
                         <p class="status-text">Waiting for device approval...</p>
+                        <!-- Timeout Display -->
+                        <div id="timeout-display" class="timeout-display" th:if="${expiresAt != null}" th:data-expires-at="${expiresAt}">
+                            <p class="timeout-label">TIME REMAINING</p>
+                            <p class="timeout-value" id="timeout-value">--:--</p>
+                            <p class="timeout-info" th:if="${timeoutSeconds != null}">
+                                Total timeout: <span th:text="${timeoutSeconds}">120</span> seconds
+                            </p>
+                        </div>
                         <p class="status-hint" th:if="${challengeCode != null}">Make sure to enter the code above on your device</p>
                         <p class="status-hint" th:if="${challengeCode == null}">Check your device and approve the authentication request</p>
                     </div>
@@ -93,6 +101,7 @@
     <!-- Challenge Wait Script -->
     <script>
         let pollingInterval;
+        let countdownInterval;
         let pollCount = 0;
         const MAX_POLLS = 300; // 10 minutes max (2 seconds * 300)
         
@@ -100,11 +109,74 @@
             pollingInterval = setInterval(checkAuthStatus, 2000); // Poll every 2 seconds
         }
         
+        function startCountdown() {
+            // Get expiresAt from data attribute (after DOM is loaded)
+            const timeoutDisplay = document.getElementById('timeout-display');
+            if (!timeoutDisplay) {
+                return; // No timeout display element
+            }
+            
+            const expiresAtString = timeoutDisplay.getAttribute('data-expires-at');
+            if (!expiresAtString) {
+                return; // No expiration time available
+            }
+            
+            const expiresAt = new Date(expiresAtString);
+            if (isNaN(expiresAt.getTime())) {
+                console.error('Invalid expiration date:', expiresAtString);
+                return;
+            }
+            
+            function updateCountdown() {
+                const now = new Date();
+                const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000)); // Remaining seconds
+                
+                const timeoutValue = document.getElementById('timeout-value');
+                if (timeoutValue) {
+                    if (remaining <= 0) {
+                        timeoutValue.textContent = '00:00';
+                        timeoutValue.style.color = 'var(--acme-error)';
+                        if (countdownInterval) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                        }
+                    } else {
+                        const minutes = Math.floor(remaining / 60);
+                        const seconds = remaining % 60;
+                        timeoutValue.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                        
+                        // Change color when less than 30 seconds remaining
+                        if (remaining <= 30) {
+                            timeoutValue.style.color = 'var(--acme-error)';
+                        } else if (remaining <= 60) {
+                            timeoutValue.style.color = 'var(--acme-primary)';
+                        } else {
+                            timeoutValue.style.color = 'var(--acme-dark)';
+                        }
+                    }
+                }
+            }
+            
+            // Update immediately
+            updateCountdown();
+            
+            // Update every second
+            countdownInterval = setInterval(updateCountdown, 1000);
+        }
+        
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+        
         function stopPolling() {
             if (pollingInterval) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
             }
+            stopCountdown();
         }
         
         async function checkAuthStatus() {
@@ -176,9 +248,10 @@
             `;
         }
         
-        // Start polling when page loads
+        // Start polling and countdown when page loads
         window.addEventListener('DOMContentLoaded', () => {
             startPolling();
+            startCountdown();
         });
         
         // Cleanup on page unload
@@ -298,6 +371,40 @@
         .status-hint {
             font-size: 0.85rem;
             color: var(--acme-primary);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        
+        .timeout-display {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: var(--acme-gray);
+            border: 3px solid var(--acme-dark);
+            text-align: center;
+        }
+        
+        .timeout-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--acme-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+        
+        .timeout-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--acme-dark);
+            text-shadow: 3px 3px 0 var(--acme-primary);
+            margin: 0.5rem 0;
+            font-family: 'Courier New', monospace;
+            transition: color 0.3s ease;
+        }
+        
+        .timeout-info {
+            font-size: 0.8rem;
+            color: var(--acme-dark);
             font-weight: 600;
             margin-top: 0.5rem;
         }

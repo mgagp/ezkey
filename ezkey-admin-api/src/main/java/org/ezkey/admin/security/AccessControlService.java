@@ -225,7 +225,17 @@ public class AccessControlService {
 
       // Check if this matches the API key's integration
       boolean canAccess = canAccessOwnIntegration(auth, enrollmentIntegrationId);
-      logger.debug("API key access to auth attempt {}: {}", authAttemptId, canAccess);
+      if (!canAccess) {
+        Object principal = auth.getPrincipal();
+        Integer apiKeyIntegrationId = principal instanceof Integer ? (Integer) principal : null;
+        logger.warn(
+            "API key from integration {} attempted to access auth attempt {} belonging to integration {}",
+            apiKeyIntegrationId,
+            authAttemptId,
+            enrollmentIntegrationId);
+      } else {
+        logger.debug("API key access to auth attempt {}: {}", authAttemptId, canAccess);
+      }
       return canAccess;
     } catch (Exception e) {
       logger.error(

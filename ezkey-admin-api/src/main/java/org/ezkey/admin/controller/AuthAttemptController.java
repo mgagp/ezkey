@@ -405,6 +405,123 @@ public class AuthAttemptController {
   }
 
   /**
+   * Cancels a pending or read authentication attempt by marking it as expired.
+   *
+   * <p>This endpoint allows client applications to proactively cancel authentication requests that
+   * are still waiting for user response. Only attempts in PENDING or READ status can be cancelled;
+   * attempts that are already in a final state (ACCEPTED, REJECTED, INVALID, EXPIRED) cannot be
+   * cancelled.
+   *
+   * <p><b>Use Case:</b> When a user decides to abort the authentication flow (e.g., clicks "Cancel"
+   * or navigates away), the client application can call this endpoint to immediately mark the
+   * attempt as expired, allowing any waiting threads to terminate promptly.
+   *
+   * <p><b>Security:</b> This endpoint supports both Bearer token (admin) and API key (M2M)
+   * authentication. Access control ensures that users can only cancel attempts they have access to.
+   *
+   * @param id the authentication attempt ID to cancel
+   * @param httpRequest the HTTP request for audit logging
+   * @return ResponseEntity containing the updated authentication attempt DTO with HTTP 200 status,
+   *     or 400 if already completed, or 404 if not found
+   */
+  @Operation(
+      summary = "Cancel auth attempt",
+      description =
+          "Cancels a pending or read authentication attempt by marking it as expired. "
+              + "Allows client applications to proactively abort authentication requests.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Auth attempt cancelled successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Auth attempt already in final state (cannot be cancelled)"),
+        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("@accessControlService.canAccessAuthAttempt(authentication, #id)")
+  @PostMapping("/{id}/cancel")
+  public ResponseEntity<AuthAttemptDto> cancel(
+      @Parameter(description = "Auth attempt ID to cancel", example = "1") @PathVariable("id")
+          Integer id,
+      HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+
+    // Check rate limiting for API keys
+    String apiKeyId = extractApiKeyId(httpRequest);
+    if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
+      throw new RateLimitExceededException("CANCEL_AUTH_ATTEMPT", 200, 0, 15);
+    }
+
+    try {
+      AuthAttempt cancelledAttempt = authAttemptService.cancel(id);
+
+      // Record successful operation for rate limiting
+      if (apiKeyId != null) {
+        rateLimitService.recordWaitAuthAttempt(apiKeyId);
+      }
+
+      // Audit successful cancellation
+      String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLED)
+              .eventStatus(EventStatus.SUCCESS)
+              .authAttemptId(id)
+              .enrollmentId(cancelledAttempt.getEnrollmentId())
+              .eventDetails("Auth Type: " + authType + ", Status: EXPIRED")
+              .build());
+
+      AuthAttemptDto response = authAttemptMapper.toDto(cancelledAttempt);
+      return ResponseEntity.ok(response);
+
+    } catch (ResourceNotFoundException e) {
+      // Audit not found
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .authAttemptId(id)
+              .errorMessage("Authentication attempt not found")
+              .build());
+
+      return ResponseEntity.notFound().build();
+
+    } catch (IllegalArgumentException e) {
+      // Audit validation failure (already in final state)
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .authAttemptId(id)
+              .errorMessage(e.getMessage())
+              .build());
+
+      return ResponseEntity.badRequest().build();
+
+    } catch (Exception e) {
+      // Audit error
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+              .eventStatus(EventStatus.ERROR)
+              .authAttemptId(id)
+              .errorMessage(e.getMessage())
+              .build());
+
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+  }
+
+  /**
    * Waits for authentication response completion with configurable timeout and polling.
    *
    * <p>This endpoint allows applications to wait for mobile device responses to authentication

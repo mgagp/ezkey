@@ -367,6 +367,8 @@ public class AuthAttemptService {
     response.setAuthAttemptChallenge(
         savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
     response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
+    response.setTimeoutSeconds(120); // Current hardcoded TTL in seconds
+    response.setExpiresAt(savedAuthAttempt.getExpiresAt()); // Absolute expiration timestamp
 
     return response;
   }
@@ -394,6 +396,50 @@ public class AuthAttemptService {
       throw new ResourceNotFoundException("Authentication attempt", id);
     }
     authAttemptRepository.deleteById(id);
+  }
+
+  /**
+   * Cancels a pending or read authentication attempt by marking it as expired.
+   *
+   * <p>This method allows client applications to proactively cancel authentication requests that
+   * are still waiting for user response. Only attempts in PENDING or READ status can be cancelled;
+   * attempts that are already in a final state (ACCEPTED, REJECTED, INVALID, EXPIRED) cannot be
+   * cancelled.
+   *
+   * <p><b>Use Case:</b> When a user decides to abort the authentication flow (e.g., clicks "Cancel"
+   * or navigates away), the client application can call this endpoint to immediately mark the
+   * attempt as expired, allowing any waiting threads to terminate promptly.
+   *
+   * @param authAttemptId the authentication attempt ID to cancel
+   * @return the updated authentication attempt with EXPIRED status
+   * @throws ResourceNotFoundException if the authentication attempt is not found
+   * @throws IllegalArgumentException if the authentication attempt is already in a final state
+   */
+  @Transactional
+  public AuthAttempt cancel(Integer authAttemptId) {
+    AuthAttempt authAttempt =
+        authAttemptRepository
+            .findById(authAttemptId)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Authentication attempt", authAttemptId));
+
+    // Only allow cancellation of non-final states
+    if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING
+        && authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
+      throw new IllegalArgumentException(
+          "Cannot cancel authentication attempt with status: "
+              + authAttempt.getAuthAttemptStatus()
+              + ". Only PENDING or READ attempts can be cancelled.");
+    }
+
+    // Mark as expired
+    authAttempt.setAuthAttemptStatus(AuthAttemptStatus.EXPIRED);
+    AuthAttempt updatedAttempt = authAttemptRepository.save(authAttempt);
+
+    logger.info(
+        "Authentication attempt {} cancelled (marked as EXPIRED) by user request", authAttemptId);
+
+    return updatedAttempt;
   }
 
   /**

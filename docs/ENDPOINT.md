@@ -1011,6 +1011,136 @@ Content-Type: application/json
 
 ---
 
+## Authentication Attempts (Admin API)
+
+### a) Create Authentication Attempt
+
+**POST /api/v1/auth-attempts**
+
+Creates a new authentication attempt for MFA validation. This endpoint is used by integrating applications to initiate authentication requests.
+
+**Request:**
+```http
+POST /api/v1/auth-attempts
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "enrollmentId": 456,
+  "challengeRequested": false
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "authAttemptId": 123,
+  "authAttemptChallenge": 42,
+  "timeoutSeconds": 120,
+  "expiresAt": "2025-01-20T15:34:00.123456Z"
+}
+```
+
+**Response Fields:**
+- `authAttemptId`: Unique identifier of the created authentication attempt
+- `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
+- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
+- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
+
+**Status Codes:**
+- 201: Authentication attempt created successfully
+- 400: Invalid data (enrollment not found, etc.)
+- 401: Unauthorized - authentication required
+- 403: Forbidden - access denied to enrollment
+- 500: Internal server error
+
+---
+
+### b) Cancel Authentication Attempt
+
+**POST /api/v1/auth-attempts/{id}/cancel**
+
+Cancels a pending or read authentication attempt by marking it as expired. This endpoint allows client applications to proactively abort authentication requests that are still waiting for user response.
+
+**Use Case:** When a user decides to abort the authentication flow (e.g., clicks "Cancel" or navigates away), the client application can call this endpoint to immediately mark the attempt as expired, allowing any waiting threads to terminate promptly.
+
+**Request:**
+```http
+POST /api/v1/auth-attempts/123/cancel
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+{
+  "authAttemptId": 123,
+  "enrollmentId": 456,
+  "authAttemptStatus": "EXPIRED",
+  "createdAt": "2025-01-20T15:32:00.123456Z",
+  "expiresAt": "2025-01-20T15:34:00.123456Z"
+}
+```
+
+**Status Codes:**
+- 200: Authentication attempt cancelled successfully
+- 400: Bad Request - authentication attempt already in final state (cannot be cancelled)
+- 404: Not Found - authentication attempt not found
+- 401: Unauthorized - authentication required
+- 403: Forbidden - access denied to authentication attempt
+- 500: Internal server error
+
+**Notes:**
+- Only attempts in `PENDING` or `READ` status can be cancelled
+- Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
+- Supports both Bearer token (admin) and API key (M2M) authentication
+- All cancellation operations are audited for security monitoring
+
+---
+
+### c) Wait for Authentication Response
+
+**GET /api/v1/auth-attempts/{id}/wait**
+
+Waits for authentication response completion with configurable timeout and polling. This endpoint enables synchronous-like behavior in the asynchronous MFA authentication flow.
+
+**Request:**
+```http
+GET /api/v1/auth-attempts/123/wait?timeout=30&polling=2
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Query Parameters:**
+- `timeout` (optional, default: 30): Maximum wait duration in seconds (1-300)
+- `polling` (optional, default: 2): Polling interval in seconds (1-60)
+
+**Response (200 OK):**
+```json
+{
+  "authAttempt": {
+    "authAttemptId": 123,
+    "enrollmentId": 456,
+    "authAttemptStatus": "ACCEPTED",
+    "createdAt": "2025-01-20T15:32:00.123456Z",
+    "expiresAt": "2025-01-20T15:34:00.123456Z"
+  },
+  "status": "ACCEPTED",
+  "completed": true,
+  "timeoutReached": false,
+  "waitDuration": 5,
+  "completedAt": "2025-01-20T15:32:05.123456Z"
+}
+```
+
+**Status Codes:**
+- 200: Authentication completed (or timeout reached)
+- 404: Not Found - authentication attempt not found
+- 400: Bad Request - invalid parameters (timeout, polling)
+- 401: Unauthorized - authentication required
+- 403: Forbidden - access denied to authentication attempt
+- 500: Internal server error
+
+---
+
 ## Encryption Key Management and Re-encryption
 
 Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys are automatically rotated on a schedule, and data encrypted with old keys can be re-encrypted with new keys.

@@ -12,6 +12,7 @@ package org.ezkey.admin.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
@@ -67,10 +68,11 @@ public record ApiKeyCreateRequestDto(
             example = "Production Server API Key",
             maxLength = 255)
         String description,
-    @Schema(
+    @Future(message = "Expiration date must be in the future")
+        @Schema(
             description =
                 "Optional expiration date for automatic key rotation enforcement (null = no"
-                    + " expiration)",
+                    + " expiration). Must be in the future.",
             example = "2025-12-31T23:59:59Z")
         OffsetDateTime expiresAt,
     @Schema(

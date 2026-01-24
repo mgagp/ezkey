@@ -110,6 +110,12 @@ public final class AdminAuditConstants {
   /** Audit action for unexpected error during auth attempt creation. */
   public static final String AUTH_ATTEMPT_CREATION_ERROR = "auth_attempt_creation_error";
 
+  /** Audit action for successful auth attempt cancellation. */
+  public static final String AUTH_ATTEMPT_CANCELLED = "auth_attempt_cancelled";
+
+  /** Audit action for failed auth attempt cancellation (already completed or not found). */
+  public static final String AUTH_ATTEMPT_CANCELLATION_FAILED = "auth_attempt_cancellation_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Token Prefixes
   // ═══════════════════════════════════════════════════════════════════════════

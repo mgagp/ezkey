@@ -143,6 +143,17 @@ public class AuthAttemptWaitService {
         return buildWaitResponse(authAttempt, false, waitDuration);
       }
 
+      // Check if status is already EXPIRED (e.g., from cancel operation)
+      if (authAttempt.getAuthAttemptStatus() == AuthAttemptStatus.EXPIRED) {
+        int waitDuration = (int) ((System.currentTimeMillis() - startTime) / 1000);
+        logger.info(
+            "Auth attempt {} cancelled/expired with status EXPIRED after {}s ({} polls)",
+            authAttemptId,
+            waitDuration,
+            pollCount);
+        return buildWaitResponse(authAttempt, "EXPIRED", false, waitDuration);
+      }
+
       // Check if expired (only for non-final statuses - final statuses are handled
       // above)
       // This ensures that REJECTED/ACCEPTED/INVALID statuses are not overridden by
