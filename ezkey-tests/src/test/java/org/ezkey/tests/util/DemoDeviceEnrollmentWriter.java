@@ -59,7 +59,9 @@ public class DemoDeviceEnrollmentWriter {
    */
   public DemoDeviceEnrollmentWriter(DockerStackConfig dockerStackConfig) {
     this.dockerStackConfig = dockerStackConfig;
-    this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.writerWithDefaultPrettyPrinter();
+    this.objectMapper = mapper;
   }
 
   /**

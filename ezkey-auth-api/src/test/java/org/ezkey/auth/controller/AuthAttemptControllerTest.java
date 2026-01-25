@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;

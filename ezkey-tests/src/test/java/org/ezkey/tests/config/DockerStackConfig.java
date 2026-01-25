@@ -10,9 +10,11 @@
 
 package org.ezkey.tests.config;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,37 +135,31 @@ public class DockerStackConfig {
 
   private void verifyServiceHealthyUrl(String url, String serviceName) {
     try {
-      // Save current RestAssured settings to restore later
-      String savedBaseUri = RestAssured.baseURI;
-      String savedBasePath = RestAssured.basePath;
+      HttpClient client =
+          HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
-      try {
-        // Set baseURI and basePath before using RestAssured (required by RestAssured
-        // 5.x)
-        RestAssured.baseURI = url;
-        RestAssured.basePath = "";
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(url))
+              .timeout(Duration.ofSeconds(5))
+              .GET()
+              .build();
 
-        Response response =
-            RestAssured.given()
-                .contentType(ContentType.JSON)
-                .when()
-                .get()
-                .then()
-                .extract()
-                .response();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.getStatusCode() != 200) {
-          throw new IllegalStateException(
-              "%s at %s returned status %d. Expected 200. Is the Docker stack running?"
-                  .formatted(serviceName, url, response.getStatusCode()));
-        }
-
-        log.debug("{} is healthy", serviceName);
-      } finally {
-        // Restore original RestAssured settings
-        RestAssured.baseURI = savedBaseUri;
-        RestAssured.basePath = savedBasePath;
+      if (response == null) {
+        throw new IllegalStateException(
+            "%s at %s returned no response (null). Is the Docker stack running?"
+                .formatted(serviceName, url));
       }
+
+      if (response.statusCode() != 200) {
+        throw new IllegalStateException(
+            "%s at %s returned status %d. Expected 200. Is the Docker stack running?"
+                .formatted(serviceName, url, response.statusCode()));
+      }
+
+      log.debug("{} is healthy", serviceName);
     } catch (Exception e) {
       throw new IllegalStateException(
           "%s at %s is not accessible: %s. Is the Docker stack running?"

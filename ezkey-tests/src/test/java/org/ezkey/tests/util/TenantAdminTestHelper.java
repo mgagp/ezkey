@@ -484,7 +484,7 @@ public class TenantAdminTestHelper {
           jsonNode.get("enrollmentProofToken").asString(),
           jsonNode.get("privateKey").asString(),
           jsonNode.get("publicKey").asString());
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.warn("Failed to load device credentials: {}", e.getMessage());
       return null;
     }
@@ -536,7 +536,7 @@ public class TenantAdminTestHelper {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
       return jsonNode.get("token").asString();
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.warn("Failed to load token: {}", e.getMessage());
       return null;
     }

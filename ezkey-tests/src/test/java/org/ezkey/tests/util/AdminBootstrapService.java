@@ -1102,7 +1102,7 @@ public class AdminBootstrapService {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
       return jsonNode.get("token").asString();
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.warn("Failed to load token from file: {}", e.getMessage());
       return null;
     }
@@ -1223,7 +1223,7 @@ public class AdminBootstrapService {
 
       log.info("Device credentials loaded from file");
       return new DeviceCredentials(enrollmentId, privateKey, publicKey, keySize);
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.warn("Failed to load device credentials from file: {}", e.getMessage());
       return null;
     }
