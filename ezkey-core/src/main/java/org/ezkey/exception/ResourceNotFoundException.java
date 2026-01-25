@@ -10,6 +10,8 @@
 
 package org.ezkey.exception;
 
+import java.io.Serial;
+
 /**
  * Exception thrown when a requested resource cannot be found in the Ezkey system.
  *
@@ -46,6 +48,7 @@ package org.ezkey.exception;
  */
 public class ResourceNotFoundException extends RuntimeException {
 
+  @Serial
   private static final long serialVersionUID = 1L;
 
   /**
@@ -72,6 +75,6 @@ public class ResourceNotFoundException extends RuntimeException {
    * @throws IllegalArgumentException if resource is null or empty
    */
   public ResourceNotFoundException(String resource, Object id) {
-    super(String.format("%s with id %s not found", resource, id));
+    super("%s with id %s not found".formatted(resource, id));
   }
 }

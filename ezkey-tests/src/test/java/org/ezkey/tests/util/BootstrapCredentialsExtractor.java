@@ -10,20 +10,19 @@
 
 package org.ezkey.tests.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Utility class for extracting bootstrap credentials from Docker container logs.
@@ -141,7 +140,7 @@ public class BootstrapCredentialsExtractor {
    * @return BootstrapCredentials from file or logs
    */
   public BootstrapCredentials loadOrExtractCredentials() {
-    Path credentialsPath = Paths.get(CREDENTIALS_FILE_PATH);
+    Path credentialsPath = Path.of(CREDENTIALS_FILE_PATH);
 
     if (Files.exists(credentialsPath)) {
       try {
@@ -581,7 +580,7 @@ public class BootstrapCredentialsExtractor {
    * @throws IOException if file writing fails
    */
   private void saveCredentialsToFile(BootstrapCredentials credentials) throws IOException {
-    Path credentialsPath = Paths.get(CREDENTIALS_FILE_PATH);
+    Path credentialsPath = Path.of(CREDENTIALS_FILE_PATH);
     Path parentDir = credentialsPath.getParent();
 
     // Create directory if it doesn't exist
@@ -618,12 +617,12 @@ public class BootstrapCredentialsExtractor {
     ObjectNode jsonNode = (ObjectNode) mapper.readTree(credentialsPath.toFile());
 
     Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
-    String enrollmentProofToken = jsonNode.get("enrollmentProofToken").asText();
+    String enrollmentProofToken = jsonNode.get("enrollmentProofToken").asString();
     Integer enrollmentChallengeCode = jsonNode.get("enrollmentChallengeCode").asInt();
 
     List<String> recoveryCodes = new ArrayList<>();
     if (jsonNode.has("recoveryCodes")) {
-      jsonNode.get("recoveryCodes").forEach(code -> recoveryCodes.add(code.asText()));
+      jsonNode.get("recoveryCodes").forEach(code -> recoveryCodes.add(code.asString()));
     }
 
     return new BootstrapCredentials(

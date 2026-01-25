@@ -243,9 +243,8 @@ public class DatabaseHelper {
    */
   public String getEnrollmentStatus(Integer enrollmentId) {
     String sqlQuery =
-        String.format(
-            "SELECT enrollment_status FROM ezkey_enrollment WHERE enrollment_id = %d;",
-            enrollmentId);
+        "SELECT enrollment_status FROM ezkey_enrollment WHERE enrollment_id = %d;"
+            .formatted(enrollmentId);
     return executeQuerySingleValue(sqlQuery);
   }
 
@@ -260,8 +259,7 @@ public class DatabaseHelper {
    */
   public boolean isAdminEnrollment(Integer enrollmentId) {
     String sqlQuery =
-        String.format(
-            "SELECT COUNT(*) FROM ezkey_admin WHERE mfa_enrollment_id = %d;", enrollmentId);
+        "SELECT COUNT(*) FROM ezkey_admin WHERE mfa_enrollment_id = %d;".formatted(enrollmentId);
     String count = executeQuerySingleValue(sqlQuery);
     return count != null && Integer.parseInt(count) > 0;
   }
@@ -274,9 +272,8 @@ public class DatabaseHelper {
    */
   public String getEnrollmentProofTokenHash(Integer enrollmentId) {
     String sqlQuery =
-        String.format(
-            "SELECT enrollment_proof_token_hash FROM ezkey_enrollment WHERE enrollment_id = %d;",
-            enrollmentId);
+        "SELECT enrollment_proof_token_hash FROM ezkey_enrollment WHERE enrollment_id = %d;"
+            .formatted(enrollmentId);
     return executeQuerySingleValue(sqlQuery);
   }
 
@@ -335,7 +332,7 @@ public class DatabaseHelper {
    */
   public boolean deleteIntegration(Integer integrationId) {
     String sqlDelete =
-        String.format("DELETE FROM ezkey_integration WHERE integration_id = %d;", integrationId);
+        "DELETE FROM ezkey_integration WHERE integration_id = %d;".formatted(integrationId);
     return executeUpdate(sqlDelete);
   }
 }

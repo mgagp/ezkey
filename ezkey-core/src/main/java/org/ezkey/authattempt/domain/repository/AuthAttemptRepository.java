@@ -17,6 +17,7 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -110,17 +111,15 @@ public interface AuthAttemptRepository
    * @param enrollmentId the enrollment ID to search for
    * @return the most recent pending authorization attempt with row lock, or empty if none found
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_auth_attempt
-          WHERE enrollment_id = :enrollmentId
-            AND auth_attempt_status = :status
-          ORDER BY auth_attempt_id DESC
-          LIMIT 1
-          FOR NO KEY UPDATE
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_auth_attempt
+      WHERE enrollment_id = :enrollmentId
+        AND auth_attempt_status = :status
+      ORDER BY auth_attempt_id DESC
+      LIMIT 1
+      FOR NO KEY UPDATE
+      """)
   Optional<AuthAttempt> findAndLockMostRecentByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId, @Param("status") String status);
 
@@ -138,18 +137,16 @@ public interface AuthAttemptRepository
    * @return the most recent valid pending authorization attempt with row lock, or empty if none
    *     found
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_auth_attempt
-          WHERE enrollment_id = :enrollmentId
-            AND auth_attempt_status = :status
-            AND expires_at > :now
-          ORDER BY auth_attempt_id DESC
-          LIMIT 1
-          FOR NO KEY UPDATE
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_auth_attempt
+      WHERE enrollment_id = :enrollmentId
+        AND auth_attempt_status = :status
+        AND expires_at > :now
+      ORDER BY auth_attempt_id DESC
+      LIMIT 1
+      FOR NO KEY UPDATE
+      """)
   Optional<AuthAttempt> findAndLockMostRecentValidByEnrollmentIdAndStatus(
       @Param("enrollmentId") Integer enrollmentId,
       @Param("status") String status,
@@ -259,9 +256,8 @@ public interface AuthAttemptRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @return count of matching records
    */
-  @Query(
-      value = "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE auth_attempt_proof_token LIKE :prefix",
-      nativeQuery = true)
+  @NativeQuery(
+      "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE auth_attempt_proof_token LIKE :prefix")
   int countByEncryptedAuthAttemptProofTokenLike(@Param("prefix") String prefix);
 
   /**
@@ -272,9 +268,7 @@ public interface AuthAttemptRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @return count of matching records
    */
-  @Query(
-      value = "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE device_proof_token LIKE :prefix",
-      nativeQuery = true)
+  @NativeQuery("SELECT COUNT(*) FROM ezkey_auth_attempt WHERE device_proof_token LIKE :prefix")
   int countByEncryptedDeviceProofTokenLike(@Param("prefix") String prefix);
 
   /**
@@ -289,16 +283,14 @@ public interface AuthAttemptRepository
    * @param limit maximum number of records to return
    * @return list of matching auth attempts
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_auth_attempt
-          WHERE auth_attempt_proof_token LIKE :prefix
-            AND (:lastId IS NULL OR auth_attempt_id > :lastId)
-          ORDER BY auth_attempt_id ASC
-          LIMIT :limit
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_auth_attempt
+      WHERE auth_attempt_proof_token LIKE :prefix
+        AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+      ORDER BY auth_attempt_id ASC
+      LIMIT :limit
+      """)
   List<AuthAttempt> findEncryptedAuthAttemptProofTokenLike(
       @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 
@@ -314,16 +306,14 @@ public interface AuthAttemptRepository
    * @param limit maximum number of records to return
    * @return list of matching auth attempts
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_auth_attempt
-          WHERE device_proof_token LIKE :prefix
-            AND (:lastId IS NULL OR auth_attempt_id > :lastId)
-          ORDER BY auth_attempt_id ASC
-          LIMIT :limit
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_auth_attempt
+      WHERE device_proof_token LIKE :prefix
+        AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+      ORDER BY auth_attempt_id ASC
+      LIMIT :limit
+      """)
   List<AuthAttempt> findEncryptedDeviceProofTokenLike(
       @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }

@@ -41,8 +41,7 @@ public class RawRequestLoggingFilter implements Filter {
       chain.doFilter(request, response);
       return;
     }
-    if (request instanceof HttpServletRequest) {
-      HttpServletRequest req = (HttpServletRequest) request;
+    if (request instanceof HttpServletRequest req) {
       if ("POST".equalsIgnoreCase(req.getMethod())
           && req.getRequestURI().contains("/api/v1/auth-attempts/pending")) {
         StringBuilder body = new StringBuilder();

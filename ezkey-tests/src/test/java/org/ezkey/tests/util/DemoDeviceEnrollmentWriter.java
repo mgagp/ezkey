@@ -12,9 +12,6 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.BufferedReader;
@@ -25,6 +22,9 @@ import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Helper class for writing enrollment JSON files to the demo-device container.

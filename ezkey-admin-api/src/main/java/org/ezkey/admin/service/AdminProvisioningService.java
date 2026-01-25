@@ -197,9 +197,8 @@ public class AdminProvisioningService {
         adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
     if (currentGlobalAdminCount >= securityProperties.getMaxGlobalAdmins()) {
       throw new IllegalArgumentException(
-          String.format(
-              "Maximum global admins limit reached (%d). Cannot create more global admins.",
-              securityProperties.getMaxGlobalAdmins()));
+          "Maximum global admins limit reached (%d). Cannot create more global admins."
+              .formatted(securityProperties.getMaxGlobalAdmins()));
     }
 
     // Check if username already exists
@@ -410,8 +409,8 @@ public class AdminProvisioningService {
 
     // Create enrollment name
     String enrollmentName =
-        String.format(
-                "%s Admin MFA - %s %s",
+        "%s Admin MFA - %s %s"
+            .formatted(
                 admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
                 admin.getFirstName() != null ? admin.getFirstName() : "",
                 admin.getLastName() != null ? admin.getLastName() : "")

@@ -476,7 +476,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
   private Long getKeyIdFromEncryptedField(String tableName, String columnName, String whereClause) {
     String encryptedValue =
         databaseHelper.executeQuerySingleValue(
-            String.format("SELECT %s FROM %s WHERE %s", columnName, tableName, whereClause));
+            "SELECT %s FROM %s WHERE %s".formatted(columnName, tableName, whereClause));
 
     if (encryptedValue == null || encryptedValue.isEmpty()) {
       log.warn("Encrypted field not found: {}.{} WHERE {}", tableName, columnName, whereClause);

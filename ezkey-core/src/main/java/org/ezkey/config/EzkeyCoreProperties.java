@@ -10,6 +10,7 @@
 
 package org.ezkey.config;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -36,9 +37,11 @@ import org.springframework.validation.annotation.Validated;
 public class EzkeyCoreProperties {
 
   /** Cryptographic configuration properties. */
+  @Valid
   private final Crypto crypto = new Crypto();
 
   /** Authentication attempt configuration properties. */
+  @Valid
   private final AuthAttempt authAttempt = new AuthAttempt();
 
   /** Cryptographic configuration properties. */

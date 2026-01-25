@@ -35,11 +35,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -86,11 +86,11 @@ class AuthAttemptControllerTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @MockBean private AuthAttemptService authAttemptService;
+  @MockitoBean private AuthAttemptService authAttemptService;
 
-  @MockBean private AuthAttemptAuthApiMapper authAttemptMapper;
+  @MockitoBean private AuthAttemptAuthApiMapper authAttemptMapper;
 
-  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+  @MockitoBean private org.ezkey.audit.service.AuditLogService auditLogService;
 
   private AuthAttemptPendingRequestDto pendingRequestDto;
 

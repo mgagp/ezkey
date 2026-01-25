@@ -154,9 +154,8 @@ public class DockerStackConfig {
 
         if (response.getStatusCode() != 200) {
           throw new IllegalStateException(
-              String.format(
-                  "%s at %s returned status %d. Expected 200. Is the Docker stack running?",
-                  serviceName, url, response.getStatusCode()));
+              "%s at %s returned status %d. Expected 200. Is the Docker stack running?"
+                  .formatted(serviceName, url, response.getStatusCode()));
         }
 
         log.debug("{} is healthy", serviceName);
@@ -167,9 +166,8 @@ public class DockerStackConfig {
       }
     } catch (Exception e) {
       throw new IllegalStateException(
-          String.format(
-              "%s at %s is not accessible: %s. Is the Docker stack running?",
-              serviceName, url, e.getMessage()),
+          "%s at %s is not accessible: %s. Is the Docker stack running?"
+              .formatted(serviceName, url, e.getMessage()),
           e);
     }
   }

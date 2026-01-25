@@ -1,11 +1,8 @@
 package org.ezkey.demo.device.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +10,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Simple filesystem-backed store for enrollments for the demo device. Each enrollment is stored as
@@ -29,8 +27,10 @@ public class EnrollmentStoreService {
   private final Path rootDir;
 
   public EnrollmentStoreService() {
-    this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
-    this.rootDir = Paths.get("data", "enrollments");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.writerWithDefaultPrettyPrinter();
+    this.objectMapper = mapper;
+    this.rootDir = Path.of("data", "enrollments");
     try {
       Files.createDirectories(rootDir);
     } catch (IOException e) {

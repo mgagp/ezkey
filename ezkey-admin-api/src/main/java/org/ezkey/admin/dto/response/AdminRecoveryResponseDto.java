@@ -96,8 +96,7 @@ public record AdminRecoveryResponseDto(
    */
   @Override
   public String toString() {
-    return String.format(
-        "AdminRecoveryResponseDto[success=%s, recoveryToken=%s, codesRemaining=%s]",
-        success, recoveryToken != null ? "[PROTECTED]" : "null", codesRemaining);
+    return "AdminRecoveryResponseDto[success=%s, recoveryToken=%s, codesRemaining=%s]"
+        .formatted(success, recoveryToken != null ? "[PROTECTED]" : "null", codesRemaining);
   }
 }

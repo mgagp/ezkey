@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
 import java.util.Base64;
@@ -480,7 +479,7 @@ public class TinkKeyManager {
 
     // Normalize path (convert Unix-style /c/... to Windows C:\...)
     String normalizedPath = normalizePath(filePath);
-    Path path = Paths.get(normalizedPath);
+    Path path = Path.of(normalizedPath);
 
     // Verify file exists
     if (!Files.exists(path)) {
@@ -975,9 +974,8 @@ public class TinkKeyManager {
 
     if (!keyExists) {
       throw new GeneralSecurityException(
-          String.format(
-              "Key %s (unsigned: %s) not found in keyset. Cannot promote non-existent key.",
-              signedKeyIdInt, Long.toUnsignedString(keyId)));
+          "Key %s (unsigned: %s) not found in keyset. Cannot promote non-existent key."
+              .formatted(signedKeyIdInt, Long.toUnsignedString(keyId)));
     }
 
     // Promote the key to PRIMARY
@@ -988,9 +986,8 @@ public class TinkKeyManager {
     long newPrimaryKeyId = toUnsignedLong(promotedHandle.getKeysetInfo().getPrimaryKeyId());
     if (newPrimaryKeyId != keyId) {
       throw new GeneralSecurityException(
-          String.format(
-              "Key promotion failed. Expected primary: %s, actual: %s",
-              Long.toUnsignedString(keyId), Long.toUnsignedString(newPrimaryKeyId)));
+          "Key promotion failed. Expected primary: %s, actual: %s"
+              .formatted(Long.toUnsignedString(keyId), Long.toUnsignedString(newPrimaryKeyId)));
     }
 
     // Save keyset to disk

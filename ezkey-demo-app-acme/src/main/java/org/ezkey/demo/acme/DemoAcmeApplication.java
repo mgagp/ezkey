@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme;
 
+import java.nio.file.Path;
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,7 @@ public class DemoAcmeApplication {
     logger.info("Working directory: {}", System.getProperty("user.dir"));
     logger.info(
         "Config file exists: {}",
-        java.nio.file.Files.exists(java.nio.file.Paths.get("/app/config/application.properties")));
+        java.nio.file.Files.exists(Path.of("/app/config/application.properties")));
 
     var appContext = SpringApplication.run(DemoAcmeApplication.class, args);
 

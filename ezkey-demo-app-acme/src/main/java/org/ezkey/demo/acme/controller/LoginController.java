@@ -115,7 +115,7 @@ public class LoginController {
           createResponse.authAttemptId(),
           userEntry.enrollmentId(),
           createResponse.authAttemptChallenge() != null
-              ? String.format("%02d", createResponse.authAttemptChallenge())
+              ? "%02d".formatted(createResponse.authAttemptChallenge())
               : "none");
 
       // Step 3: Store auth attempt info in session and redirect to wait page (unified for both
@@ -286,7 +286,7 @@ public class LoginController {
     // Format challenge code as zero-padded 2-digit string if present
     String challengeCodeFormatted = null;
     if (challengeCode != null) {
-      challengeCodeFormatted = String.format("%02d", challengeCode);
+      challengeCodeFormatted = "%02d".formatted(challengeCode);
     }
 
     model.addAttribute(

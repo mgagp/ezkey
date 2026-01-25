@@ -668,8 +668,8 @@ public class AuthAttemptController {
             .anyMatch(a -> a.getAuthority().equals("ROLE_API_KEY"))) {
 
       Object principal = authentication.getPrincipal();
-      if (principal instanceof Integer) {
-        return (Integer) principal;
+      if (principal instanceof Integer integer) {
+        return integer;
       }
     }
 

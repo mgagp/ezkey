@@ -19,7 +19,6 @@ import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.AdminBootstrapService;
@@ -98,14 +97,14 @@ public class AdminInitialBootstrapTest extends AbstractSecurityTest {
     }
 
     // Delete existing device credentials to force fresh bootstrap
-    Path deviceCredentialsPath = Paths.get(".ezkey-test/device-credentials.json");
+    Path deviceCredentialsPath = Path.of(".ezkey-test/device-credentials.json");
     if (Files.exists(deviceCredentialsPath)) {
       Files.delete(deviceCredentialsPath);
       log.info("Deleted existing device credentials to force fresh bootstrap");
     }
 
     // Delete existing token to force fresh creation
-    Path tokenPath = Paths.get(".ezkey-test/admin-token.json");
+    Path tokenPath = Path.of(".ezkey-test/admin-token.json");
     if (Files.exists(tokenPath)) {
       Files.delete(tokenPath);
       log.info("Deleted existing admin token to force fresh creation");

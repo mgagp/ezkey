@@ -154,9 +154,8 @@ public class ApiKeyService {
     long activeKeyCount = apiKeyRepository.countByIntegration_IdAndActiveTrue(integrationId);
     if (activeKeyCount >= MAX_ACTIVE_KEYS_PER_INTEGRATION) {
       throw new IllegalStateException(
-          String.format(
-              "Maximum active keys limit (%d) reached for integration: %d",
-              MAX_ACTIVE_KEYS_PER_INTEGRATION, integrationId));
+          "Maximum active keys limit (%d) reached for integration: %d"
+              .formatted(MAX_ACTIVE_KEYS_PER_INTEGRATION, integrationId));
     }
 
     // Generate unique integration key

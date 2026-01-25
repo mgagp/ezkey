@@ -13,7 +13,7 @@ package org.ezkey.tests.security.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor;
 import org.ezkey.tests.util.BootstrapCredentialsExtractor.BootstrapCredentials;
@@ -58,7 +58,7 @@ public class BootstrapCredentialsExtractionTest {
   public void testExtractBootstrapCredentials() {
     // Check if credentials file already exists (bootstrap already done)
     String credentialsFilePath = ".ezkey-test/bootstrap-credentials.json";
-    boolean credentialsFileExists = Files.exists(Paths.get(credentialsFilePath));
+    boolean credentialsFileExists = Files.exists(Path.of(credentialsFilePath));
 
     // If credentials already exist, skip this test (bootstrap already completed)
     Assumptions.assumeTrue(
