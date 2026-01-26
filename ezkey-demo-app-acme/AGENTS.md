@@ -68,25 +68,22 @@ ezkey.users.file.check-interval=${EZKEY_USERS_CHECK_INTERVAL:5}
 
 The "Reload Config" button (or `/api/reload-config` endpoint) performs **two types of reload**:
 
-1. **Application Properties Reload** (via Spring Cloud ContextRefresher):
-   - Reloads `/app/config/application.properties` external configuration file
-   - Refreshes `@RefreshScope` beans (`AcmeProperties`, `RestTemplate`)
-   - Updates API key credentials (`ezkey.integration.key`, `ezkey.secret.key`)
-   - Updates Admin API URL (`ezkey.admin.api.url`)
-   - **Important**: The `RestTemplate` bean is recreated with new credentials, ensuring API calls use updated keys
+1. **Application Properties Reload** (requires container restart):
+   - Application properties (`/app/config/application.properties`) require container restart to take effect
+   - This includes API key credentials (`ezkey.integration.key`, `ezkey.secret.key`) and Admin API URL (`ezkey.admin.api.url`)
+   - **Note**: For simplicity and Spring Boot 4 compatibility, we removed Spring Cloud Context dependency
+   - Developers using Docker can easily restart the container: `docker restart ezkey-demo-app-acme`
 
-2. **Users Mapping File Reload** (manual trigger):
+2. **Users Mapping File Reload** (manual trigger via UI button):
    - Manually triggers reload of `acme-users.json` file
    - Complements the automatic `@Scheduled` reload (every 5 seconds by default)
    - Allows immediate refresh on demand without waiting for scheduled check
 
 **Usage:**
-1. Edit external config file: Modify `/app/config/application.properties` in Docker Desktop
-2. Edit users mapping: Modify `/app/data/acme-users.json` in Docker Desktop
-3. Click "Reload Config" button on login page OR call: `curl -X POST http://localhost:8082/api/reload-config`
-4. Both configuration files are reloaded immediately
+1. **Application Properties** (API keys, URLs): Edit `/app/config/application.properties` in Docker Desktop, then restart container: `docker restart ezkey-demo-app-acme`
+2. **Users Mapping File**: Edit `/app/data/acme-users.json` in Docker Desktop, then click "Reload Users" button in UI (or wait for automatic reload every 5 seconds)
 
-**Note**: The users file is also automatically reloaded every 5 seconds via `@Scheduled`, but the button allows immediate refresh.
+**Note**: The users file is automatically reloaded every 5 seconds via `@Scheduled`, but the button allows immediate refresh. Application properties require container restart for simplicity and Spring Boot 4 compatibility.
 
 ## Users Mapping File
 

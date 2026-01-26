@@ -31,18 +31,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * Ezkey - Open Source MFA/Passkey Alternative
  *
- * Copyright (c) 2025 Ezkey contributors
- * Licensed under the MIT License. See LICENSE file in the project root for full license
- * information.
+ * <p>Copyright (c) 2025 Ezkey contributors Licensed under the MIT License. See LICENSE file in the
+ * project root for full license information.
  *
- * Controller: EzkeyAppController
- * Description: Simulated Ezkey mobile app controller for enrollment and authentication flows.
+ * <p>Controller: EzkeyAppController Description: Simulated Ezkey mobile app controller for
+ * enrollment and authentication flows.
  */
 
 /**
  * Simulated Ezkey mobile app controller.
  *
  * <p>This controller simulates a mobile device running the Ezkey app. It handles:
+ *
  * <ul>
  *   <li>New enrollment initiation and binding
  *   <li>Enrollment verification with cryptographic signing
@@ -50,8 +50,8 @@ import org.springframework.web.bind.annotation.RequestParam;
  *   <li>Challenge-response validation when required
  * </ul>
  *
- * <p>The controller manages the mobile device's cryptographic state and communicates with the
- * Ezkey Auth API to complete the enrollment and authentication flows.
+ * <p>The controller manages the mobile device's cryptographic state and communicates with the Ezkey
+ * Auth API to complete the enrollment and authentication flows.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

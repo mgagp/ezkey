@@ -18,7 +18,6 @@ import org.ezkey.demo.acme.service.EzkeyAuthService;
 import org.ezkey.demo.acme.service.UserMappingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cloud.context.refresh.ContextRefresher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -43,17 +42,14 @@ public class LoginController {
 
   private final UserMappingService userMappingService;
   private final EzkeyAuthService ezkeyAuthService;
-  private final ContextRefresher contextRefresher;
   private final AcmeProperties acmeProperties;
 
   public LoginController(
       UserMappingService userMappingService,
       EzkeyAuthService ezkeyAuthService,
-      ContextRefresher contextRefresher,
       AcmeProperties acmeProperties) {
     this.userMappingService = userMappingService;
     this.ezkeyAuthService = ezkeyAuthService;
-    this.contextRefresher = contextRefresher;
     this.acmeProperties = acmeProperties;
   }
 
@@ -195,28 +191,14 @@ public class LoginController {
   }
 
   /**
-   * Reloads application configuration via Spring Cloud ContextRefresher.
+   * Reloads users mapping file (acme-users.json).
    *
-   * <p>This endpoint performs two types of reload:
+   * <p>This endpoint manually triggers reload of acme-users.json file by calling
+   * UserMappingService.checkAndReload(). This complements the automatic @Scheduled reload, allowing
+   * immediate refresh on demand.
    *
-   * <ol>
-   *   <li><b>Application Properties Reload:</b> Triggers refresh of @RefreshScope beans (like
-   *       AcmeProperties), allowing external configuration changes in
-   *       /app/config/application.properties to be applied without restarting. This includes API
-   *       key credentials (integrationKey, secretKey).
-   *   <li><b>Users Mapping File Reload:</b> Manually triggers reload of acme-users.json file by
-   *       calling UserMappingService.checkAndReload(). This complements the automatic @Scheduled
-   *       reload, allowing immediate refresh on demand.
-   * </ol>
-   *
-   * <p><b>What gets reloaded:</b>
-   *
-   * <ul>
-   *   <li>API Key credentials (ezkey.integration.key, ezkey.secret.key) - via @RefreshScope refresh
-   *   <li>Admin API URL (ezkey.admin.api.url) - via @RefreshScope refresh
-   *   <li>Users mapping file (acme-users.json) - via manual file reload
-   *   <li>RestTemplate bean - recreated with new credentials via @RefreshScope
-   * </ul>
+   * <p><b>Note:</b> Application properties (API keys, URLs) require container restart to take
+   * effect. Only the users mapping file can be reloaded without restart.
    *
    * @return JSON response indicating success or failure
    */
@@ -225,35 +207,23 @@ public class LoginController {
     try {
       logger.info("Configuration reload requested via /api/reload-config");
 
-      // Step 1: Reload application.properties (API keys, URLs, etc.)
-      // This refreshes @RefreshScope beans like AcmeProperties and RestTemplate
-      java.util.Set<String> refreshedKeys = contextRefresher.refresh();
-
-      // Step 2: Manually trigger users file reload (complements @Scheduled automatic reload)
-      // This allows immediate refresh of acme-users.json on demand
+      // Reload users mapping file (acme-users.json)
+      // Note: Application properties require container restart
       try {
         userMappingService.checkAndReload();
         logger.info("Users mapping file reload triggered");
       } catch (Exception e) {
         logger.warn("Error triggering users file reload: {}", e.getMessage());
+        return ResponseEntity.ok(
+            new ReloadConfigResponse(false, "Error reloading users file: " + e.getMessage()));
       }
 
-      // Build response message
-      StringBuilder message = new StringBuilder();
-      if (refreshedKeys != null && !refreshedKeys.isEmpty()) {
-        message
-            .append("Application properties reloaded (")
-            .append(refreshedKeys.size())
-            .append(" keys refreshed: ")
-            .append(refreshedKeys)
-            .append("). ");
-      } else {
-        message.append("Application properties reloaded (no changes detected). ");
-      }
-      message.append("Users mapping file reload triggered.");
+      String message =
+          "Users mapping file reloaded successfully. Note: Application properties (API keys, URLs)"
+              + " require container restart to take effect.";
 
       logger.info("Configuration reload completed successfully");
-      return ResponseEntity.ok(new ReloadConfigResponse(true, message.toString()));
+      return ResponseEntity.ok(new ReloadConfigResponse(true, message));
 
     } catch (Exception e) {
       logger.error("Error reloading configuration", e);

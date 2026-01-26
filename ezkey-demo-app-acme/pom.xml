@@ -41,12 +41,6 @@
 			<artifactId>spring-boot-starter-restclient</artifactId>
 		</dependency>
 
-        <!-- Spring Cloud Context for @RefreshScope (config hot-reload) -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-context</artifactId>
-            <version>4.3.1</version>
-        </dependency>
 
         <!-- DevTools for development -->
         <dependency>

@@ -75,7 +75,7 @@
                     <div class="info-card-header">
                         <h3>HOW IT WORKS</h3>
                         <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
-                            🔄 RELOAD CONFIG
+                            🔄 RELOAD USERS
                         </button>
                     </div>
                     <ol class="steps-list">
@@ -88,6 +88,12 @@
                         <strong>No password needed.</strong> EZKey uses cryptographic 
                         authentication via your registered device.
                     </p>
+                    <div class="info-note" style="margin-top: 1rem;">
+                        <p style="margin: 0; font-size: 0.85rem;">
+                            <strong>Configuration:</strong> To update API keys or URLs, restart the Docker container.
+                            The "Reload Users" button only refreshes the users mapping file.
+                        </p>
+                    </div>
                     <div id="reload-status" class="reload-status hidden"></div>
                 </div>
             </section>
@@ -113,7 +119,7 @@
             btn.disabled = true;
             btn.textContent = '⏳ RELOADING...';
             status.className = 'reload-status';
-            status.textContent = 'Reloading configuration...';
+            status.textContent = 'Reloading users mapping file...';
             status.style.display = 'block';
             
             try {
@@ -141,7 +147,7 @@
                 status.textContent = '❌ Error: ' + error.message;
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🔄 RELOAD CONFIG';
+                btn.textContent = '🔄 RELOAD USERS';
             }
         }
     </script>

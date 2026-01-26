@@ -37,12 +37,10 @@ import org.springframework.validation.annotation.Validated;
 public class EzkeyCoreProperties {
 
   /** Cryptographic configuration properties. */
-  @Valid
-  private final Crypto crypto = new Crypto();
+  @Valid private final Crypto crypto = new Crypto();
 
   /** Authentication attempt configuration properties. */
-  @Valid
-  private final AuthAttempt authAttempt = new AuthAttempt();
+  @Valid private final AuthAttempt authAttempt = new AuthAttempt();
 
   /** Cryptographic configuration properties. */
   public static class Crypto {

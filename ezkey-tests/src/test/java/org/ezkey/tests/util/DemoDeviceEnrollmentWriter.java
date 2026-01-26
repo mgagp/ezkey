@@ -23,7 +23,6 @@ import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
@@ -68,13 +67,31 @@ public class DemoDeviceEnrollmentWriter {
    * Detects which demo-device container to use (standard vs HA).
    *
    * @return demo-device container name
+   * @throws IllegalStateException if no running demo-device container is found
    */
   private String detectDemoDeviceContainer() {
-    if (containerExists(DEMO_DEVICE_CONTAINER_HA)) {
+    // Check HA mode first
+    if (containerIsRunning(DEMO_DEVICE_CONTAINER_HA)) {
       log.debug("HA mode detected: Using demo-device container {}", DEMO_DEVICE_CONTAINER_HA);
       return DEMO_DEVICE_CONTAINER_HA;
     }
-    return DEMO_DEVICE_CONTAINER_STANDARD;
+
+    // Check standard mode
+    if (containerIsRunning(DEMO_DEVICE_CONTAINER_STANDARD)) {
+      log.debug(
+          "Standard mode detected: Using demo-device container {}", DEMO_DEVICE_CONTAINER_STANDARD);
+      return DEMO_DEVICE_CONTAINER_STANDARD;
+    }
+
+    // Container exists but is not running, or doesn't exist
+    String errorMessage =
+        String.format(
+            "No running demo-device container found. "
+                + "Expected one of: %s or %s. "
+                + "Make sure the Docker stack is running and demo-device container is healthy.",
+            DEMO_DEVICE_CONTAINER_STANDARD, DEMO_DEVICE_CONTAINER_HA);
+    log.error(errorMessage);
+    throw new IllegalStateException(errorMessage);
   }
 
   /**
@@ -101,6 +118,47 @@ public class DemoDeviceEnrollmentWriter {
       return exitCode == 0;
     } catch (Exception e) {
       log.debug("Container {} does not exist: {}", containerName, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Checks if a Docker container is running (not just exists).
+   *
+   * @param containerName container name to check
+   * @return true if container exists and is running, false otherwise
+   */
+  private boolean containerIsRunning(String containerName) {
+    try {
+      ProcessBuilder processBuilder =
+          new ProcessBuilder("docker", "inspect", "--format", "{{.State.Running}}", containerName);
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line);
+        }
+      }
+
+      int exitCode = process.waitFor();
+      if (exitCode != 0) {
+        log.debug("Container {} does not exist or cannot be inspected", containerName);
+        return false;
+      }
+
+      String state = output.toString().trim();
+      boolean isRunning = "true".equals(state);
+      if (!isRunning) {
+        log.warn("Container {} exists but is not running. State: {}", containerName, state);
+      }
+      return isRunning;
+    } catch (Exception e) {
+      log.debug("Failed to check if container '{}' is running: {}", containerName, e.getMessage());
       return false;
     }
   }

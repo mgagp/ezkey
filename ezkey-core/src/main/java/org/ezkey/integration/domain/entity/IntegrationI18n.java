@@ -50,26 +50,26 @@ public class IntegrationI18n {
    * performance.
    */
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "integration_id")
+  @JoinColumn(name = "integration_id", nullable = false)
   private Integration integration;
 
   /**
    * Language code for this i18n entry. Should follow ISO 639-1 standard (e.g., "en", "fr", "es").
    */
-  @Column(name = "integration_i18n_lang")
+  @Column(name = "integration_i18n_lang", nullable = false)
   private String language;
 
   /**
    * Localized name of the integration. Displayed in the user interface for the specified language.
    */
-  @Column(name = "integration_i18n_name")
+  @Column(name = "integration_i18n_name", nullable = false)
   private String name;
 
   /**
    * Localized description of the integration. Provides additional information about the integration
    * in the specified language.
    */
-  @Column(name = "integration_i18n_description")
+  @Column(name = "integration_i18n_description", nullable = false)
   private String description;
 
   /**

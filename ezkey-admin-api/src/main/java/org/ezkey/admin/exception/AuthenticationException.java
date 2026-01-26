@@ -36,8 +36,7 @@ import java.io.Serial;
  */
 public class AuthenticationException extends RuntimeException {
 
-  @Serial
-  private static final long serialVersionUID = 1L;
+  @Serial private static final long serialVersionUID = 1L;
 
   /**
    * Constructs a new authentication exception with the specified detail message.

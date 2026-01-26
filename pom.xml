@@ -63,7 +63,7 @@
 		<pmd.version>3.21.2</pmd.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<zxing.version>3.5.3</zxing.version>
-		<spotless.version>2.43.0</spotless.version>
+		<spotless.version>3.2.0</spotless.version>
 		<bucket4j.version>8.15.0</bucket4j.version>
 		<caffeine.version>3.2.2</caffeine.version>
 		<license-maven-plugin.version>2.7.0</license-maven-plugin.version>
@@ -155,7 +155,7 @@
 							<removeUnusedImports/>
 							<trimTrailingWhitespace/>
 							<googleJavaFormat>
-								<version>1.31.0</version>
+								<version>1.33.0</version>
 								<style>GOOGLE</style>
 								<reflowLongStrings>true</reflowLongStrings>
 								<formatJavadoc>true</formatJavadoc>
@@ -181,7 +181,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>12.1.1</version> <!-- Override default -->
+      						<version>13.0.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>

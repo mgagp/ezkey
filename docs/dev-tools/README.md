@@ -44,14 +44,16 @@ All code formatting follows the [Google Java Style Guide](https://google.github.
 - **Line Length**: 100 characters maximum
 - **Encoding**: UTF-8 without BOM
 - **Line Endings**: LF (Unix style)
+- **Annotations**: Single parameterless annotations may appear on the same line as field/method declarations (aligned with Google Java Format behavior)
 
 ## Tools
 
 ### Spotless (Maven Plugin)
-Automatically formats code using Google Java Format 1.32.0:
+Automatically formats code using Google Java Format 1.33.0:
 - Formats `src/main/java/**/*.java`
 - Formats `src/test/java/**/*.java`
 - Runs automatically on build via `spotless:apply` goal
+- Checkstyle configuration is aligned with Google Java Format behavior
 
 **Usage:**
 ```bash
@@ -64,9 +66,10 @@ mvn spotless:check
 
 ### Checkstyle (Maven Plugin)
 Validates code style compliance:
-- Uses `docs/dev-tools/google_checks.xml`
+- Uses `checkstyle-config` module configuration (aligned with Google Java Format)
 - Validates both main and test sources
 - Fails build on violations
+- Configuration matches Google Java Format behavior (e.g., single parameterless annotations on same line)
 
 **Usage:**
 ```bash
@@ -98,7 +101,7 @@ To ensure your IDE formatter matches Spotless:
 - Run `mvn spotless:apply` to align code with build configuration
 
 ### Checkstyle violations after Spotless
-- Ensure `google_checks.xml` matches Google Java Format rules
+- Checkstyle configuration is aligned with Google Java Format
 - Run `mvn spotless:apply` first, then `mvn checkstyle:check`
-- Most violations should be resolved by Spotless formatting
+- Both tools use the same formatting rules - violations should be rare
 

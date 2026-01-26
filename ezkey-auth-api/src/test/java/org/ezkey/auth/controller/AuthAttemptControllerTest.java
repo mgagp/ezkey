@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import tools.jackson.databind.ObjectMapper;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
@@ -41,6 +40,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Critical unit tests for {@link AuthAttemptController} in auth-api.

@@ -26,8 +26,8 @@ public class RestAssuredTestConfig {
   /**
    * Configures RestAssured with default settings for API testing.
    *
-   * <p>Sets appropriate logging for REST API calls. RestAssured 6.0.0+ automatically
-   * detects and uses Jackson 3.x (tools.jackson) when available.
+   * <p>Sets appropriate logging for REST API calls. RestAssured 6.0.0+ automatically detects and
+   * uses Jackson 3.x (tools.jackson) when available.
    */
   public static void configureDefaults() {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();

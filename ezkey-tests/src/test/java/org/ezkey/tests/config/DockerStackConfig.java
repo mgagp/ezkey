@@ -135,8 +135,7 @@ public class DockerStackConfig {
 
   private void verifyServiceHealthyUrl(String url, String serviceName) {
     try {
-      HttpClient client =
-          HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
       HttpRequest request =
           HttpRequest.newBuilder()

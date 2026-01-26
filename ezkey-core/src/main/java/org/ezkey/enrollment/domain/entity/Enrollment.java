@@ -68,14 +68,14 @@ public class Enrollment implements Reencryptable {
    * Enrollment lifecycle status tracking. Indicates the current state of the enrollment process.
    */
   @Enumerated(EnumType.STRING)
-  @Column(name = "enrollment_status")
+  @Column(name = "enrollment_status", nullable = false)
   private EnrollmentStatus status;
 
   /**
    * Flag indicating if the enrollment is currently active. Used to enable/disable enrollment for
    * authentication operations.
    */
-  @Column(name = "enrollment_active")
+  @Column(name = "enrollment_active", nullable = false)
   private Boolean active;
 
   /**
@@ -91,7 +91,7 @@ public class Enrollment implements Reencryptable {
    * encrypted just before persistence by {@code EncryptionEntityListener}. The encrypted value uses
    * the "ENC:" prefix provided by {@link org.ezkey.security.EncryptionService}.
    */
-  @Column(name = "enrollment_proof_token", columnDefinition = "TEXT")
+  @Column(name = "enrollment_proof_token", columnDefinition = "TEXT", nullable = false)
   private String encryptedEnrollmentProofToken;
 
   /** SHA-256 hash of the enrollment proof token for secure lookup and uniqueness validation. */
@@ -105,7 +105,7 @@ public class Enrollment implements Reencryptable {
    * Flag indicating if authentication attempts require challenge. Used to configure authentication
    * behavior.
    */
-  @Column(name = "auth_attempt_challenge_required")
+  @Column(name = "auth_attempt_challenge_required", nullable = false)
   private Boolean authAttemptChallengeRequired;
 
   /**
@@ -115,7 +115,7 @@ public class Enrollment implements Reencryptable {
    * database. The value is automatically encrypted before persistence and decrypted when needed via
    * the transient field.
    */
-  @Column(name = "integration_private_key", columnDefinition = "TEXT")
+  @Column(name = "integration_private_key", columnDefinition = "TEXT", nullable = false)
   private String encryptedIntegrationPrivateKey;
 
   /**
@@ -131,7 +131,7 @@ public class Enrollment implements Reencryptable {
    * EC P-256 public key for integration communication (Base64 encoded, X.509 format). Used for
    * verifying messages from the integration.
    */
-  @Column(name = "integration_public_key", columnDefinition = "TEXT")
+  @Column(name = "integration_public_key", columnDefinition = "TEXT", nullable = false)
   private String integrationPublicKey;
 
   /**
@@ -159,7 +159,12 @@ public class Enrollment implements Reencryptable {
   private OffsetDateTime createdAt;
 
   // Default constructor
-  public Enrollment() {}
+  public Enrollment() {
+    // Initialize to match database NOT NULL DEFAULT constraints
+    this.status = EnrollmentStatus.CREATED;
+    this.active = false;
+    this.authAttemptChallengeRequired = false;
+  }
 
   // Constructor with required fields
   public Enrollment(Integer integrationId, String enrollmentName, String deviceProofToken) {
