@@ -276,11 +276,20 @@
         <!-- ADDITIONAL CHECKS                                                     -->
         <!-- ===================================================================== -->
 
-        <module name="AnnotationLocation">
+        <!-- AnnotationLocation: DISABLED to align with Google Java Format behavior.
+             Google Java Format allows single parameterless annotations on the same line
+             as field declarations (e.g., @Valid private final ..., @Serial private static ...).
+             Checkstyle's AnnotationLocation check conflicts with this behavior, requiring
+             annotations to be on separate lines. This is a known compatibility issue between
+             Checkstyle and Google Java Format (see: https://github.com/checkstyle/checkstyle/issues/6527).
+             
+             We disable this check entirely to allow Google Java Format's annotation placement,
+             which is the authoritative formatting standard for this project. -->
+        <!-- <module name="AnnotationLocation">
             <property name="allowSamelineMultipleAnnotations" value="false"/>
             <property name="allowSamelineSingleParameterlessAnnotation" value="true"/>
             <property name="allowSamelineParameterizedAnnotation" value="false"/>
-        </module>
+        </module> -->
         <module name="CommentsIndentation"/>
         <module name="Indentation">
             <property name="basicOffset" value="2"/>

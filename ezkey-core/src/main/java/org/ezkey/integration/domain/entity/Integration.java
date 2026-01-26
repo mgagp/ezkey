@@ -122,9 +122,11 @@ public class Integration {
    * null values for testing, while ensuring JPA persistence works correctly.
    *
    * <p>The values used match the database defaults:
+   *
    * <ul>
    *   <li>{@code active}: defaults to {@code true} (matches DB: {@code DEFAULT TRUE})
-   *   <li>{@code createdAt}: defaults to current timestamp (matches DB: {@code DEFAULT CURRENT_TIMESTAMP})
+   *   <li>{@code createdAt}: defaults to current timestamp (matches DB: {@code DEFAULT
+   *       CURRENT_TIMESTAMP})
    * </ul>
    */
   @PrePersist
