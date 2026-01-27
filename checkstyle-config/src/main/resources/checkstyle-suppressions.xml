@@ -20,19 +20,19 @@
     <!-- ===================================================================== -->
     <!-- GENERATED CODE SUPPRESSIONS                                           -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress all checks for generated classes -->
     <suppress checks=".*"
               files=".*[\\/]target[\\/]generated-sources[\\/].*"/>
-    
+
     <!-- Suppress all checks for MapStruct generated implementations -->
     <suppress checks=".*"
               files=".*MapperImpl\.java$"/>
-    
+
     <!-- ===================================================================== -->
     <!-- TEST CODE SUPPRESSIONS                                                -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress all checks for test classes (temporary during migration) -->
     <suppress checks=".*"
               files=".*[\\/]src[\\/]test[\\/].*"/>
@@ -40,140 +40,140 @@
     <!-- ===================================================================== -->
     <!-- IMPORT ORDER SUPPRESSIONS (TO BE FIXED GRADUALLY)                    -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress import order checks temporarily -->
     <suppress checks="ImportOrder"/>
-    
+
     <!-- Suppress unused imports temporarily -->
     <suppress checks="UnusedImports"/>
-    
+
     <!-- Suppress star imports temporarily -->
 <!--     <suppress checks="AvoidStarImport"/> -->
-    
+
     <!-- ===================================================================== -->
     <!-- JAVADOC SUPPRESSIONS (TO BE ADDED GRADUALLY)                         -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress Javadoc for DTOs and Request/Response classes -->
     <suppress checks="JavadocType|JavadocMethod|MissingJavadocType|MissingJavadocMethod"
               files=".*[\\/]dto[\\/].*\.java$"/>
-    
+
     <suppress checks="JavadocType|JavadocMethod|MissingJavadocType|MissingJavadocMethod"
               files=".*[\\/]domain[\\/](.*Request|.*Response)\.java$"/>
-    
+
     <!-- Suppress Javadoc for mappers (interfaces) -->
     <suppress checks="JavadocType|JavadocMethod|MissingJavadocType|MissingJavadocMethod"
               files=".*Mapper\.java$"/>
-    
+
     <!-- Suppress Javadoc for entities (focus on JPA annotations first) -->
     <suppress checks="JavadocType|JavadocMethod|MissingJavadocType|MissingJavadocMethod"
               files=".*[\\/]domain[\\/]entity[\\/].*\.java$"/>
-    
+
     <!-- Suppress Javadoc for configuration classes temporarily -->
     <suppress checks="JavadocType|JavadocMethod|MissingJavadocType|MissingJavadocMethod"
               files=".*[\\/]config[\\/].*\.java$"/>
-    
+
     <!-- Suppress missing @param, @return, @throws tags temporarily -->
     <suppress checks="JavadocMethod"/>
-    
+
     <!-- ===================================================================== -->
     <!-- NAMING CONVENTION SUPPRESSIONS                                        -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress ConstantName for logger fields (Google Java Style Guide compliant)
          Rationale: Per Google Style Guide 5.2.4, only primitives, Strings, and deeply
          immutable objects are constants. A Logger is mutable (state can change), so it
          should use camelCase 'logger', not UPPER_CASE 'LOGGER' or 'LOG'.
-         
+
          Google's own code (Guava, Error Prone) uses 'logger'.
          Spring Framework uses 'logger'.
-         
+
          Allowed: logger
          Not allowed: LOGGER, LOG (violate Google Style Guide)
     -->
     <suppress checks="ConstantName"
               message=".*'logger'.*"/>
-    
+
     <!-- Suppress MethodName for Spring Data JPA query methods with underscores -->
     <suppress checks="MethodName"
               files=".*Repository\.java$"
               message=".*findBy.*_.*"/>
-    
+
     <suppress checks="MethodName"
               files=".*Repository\.java$"
               message=".*countBy.*_.*"/>
-    
+
     <suppress checks="MethodName"
               files=".*Repository\.java$"
               message=".*existsBy.*_.*"/>
-    
+
     <suppress checks="MethodName"
               files=".*Repository\.java$"
               message=".*deleteBy.*_.*"/>
-    
+
     <!-- ===================================================================== -->
     <!-- CODE QUALITY SUPPRESSIONS (TO BE FIXED PRIORITY)                     -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress IllegalCatch temporarily (needs proper exception handling) -->
     <suppress checks="IllegalCatch"/>
-    
+
     <!-- Suppress MagicNumber for existing code -->
     <suppress checks="MagicNumber"/>
-    
+
     <!-- Suppress HiddenField for setter parameters -->
     <suppress checks="HiddenField"
               message=".*parameter.*"/>
-    
+
     <!-- ===================================================================== -->
     <!-- ENTITY AND JPA SUPPRESSIONS                                          -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress VisibilityModifier for JPA entities -->
     <suppress checks="VisibilityModifier"
               files=".*[\\/]domain[\\/]entity[\\/].*\.java$"/>
-    
+
     <!-- Suppress AnnotationLocation for JPA annotations -->
     <suppress checks="AnnotationLocation"
               files=".*[\\/]domain[\\/]entity[\\/].*\.java$"/>
-    
+
     <!-- ===================================================================== -->
     <!-- HEADER SUPPRESSIONS                                                   -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress RegexpHeader for files without proper license header -->
     <suppress checks="RegexpHeader"/>
-    
+
     <!-- ===================================================================== -->
     <!-- DESIGN PATTERN SUPPRESSIONS                                           -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress DesignForExtension for builder patterns -->
     <suppress checks="DesignForExtension"
               files=".*Builder\.java$"/>
-    
+
     <!-- Suppress HideUtilityClassConstructor for Spring configurations -->
     <suppress checks="HideUtilityClassConstructor"
               files=".*Configuration\.java$"/>
-    
+
     <!-- Suppress HideUtilityClassConstructor for Spring Boot application -->
     <suppress checks="HideUtilityClassConstructor"
               files=".*Application\.java$"/>
-    
+
     <!-- Suppress FinalClass for Spring beans and entities -->
     <suppress checks="FinalClass"
               files=".*[\\/](service|config|domain[\\/]entity)[\\/].*\.java$"/>
-    
+
     <!-- ===================================================================== -->
     <!-- STYLE SUPPRESSIONS                                                    -->
     <!-- ===================================================================== -->
-    
+
     <!-- Suppress TodoComment temporarily -->
     <suppress checks="TodoComment"/>
-    
+
     <!-- Suppress FinalParameters for all methods (too many violations) -->
     <suppress checks="FinalParameters"/>
-    
+
     <!-- ===================================================================== -->
     <!-- MIGRATION NOTES                                                       -->
     <!-- ===================================================================== -->
@@ -181,23 +181,23 @@
     PRIORITY 1 (Critical - Security & Bugs):
     - IllegalCatch: Replace with specific exceptions
     - HiddenField: Review setter/constructor conflicts
-    
+
     PRIORITY 2 (Code Quality):
     - MagicNumber: Extract constants
     - ConstantName: Rename logger to LOGGER
     - Javadoc: Add documentation for public APIs
-    
+
     PRIORITY 3 (Style):
     - NewlineAtEndOfFile: Bulk convert CRLF to LF
     - ImportOrder: Use IDE auto-format
     - LineLength: Refactor long lines
     - RegexpHeader: Add license headers
-    
+
     PRIORITY 4 (Nice to have):
     - TodoComment: Clean up TODOs
     - FinalParameters: Add final modifier
     -->
-    
+
     <!-- ===================================================================== -->
     <!-- TEMPORARY MODULE-SCOPED SUPPRESSIONS                                  -->
     <!-- ===================================================================== -->
@@ -207,7 +207,7 @@
     <suppress
         checks="LineLength|WhitespaceAfter|WhitespaceAround"
         files=".*[\\/]ezkey-admin-api[\\/]src[\\/]main[\\/]java[\\/]org[\\/]ezkey[\\/]admin[\\/]controller[\\/]AdminAuthController\.java$"/>
-    
+
     <!-- Suppress IllegalCatch for FlywayCommandRunner -->
     <suppress
         files="FlywayCommandRunner.java"

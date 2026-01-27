@@ -967,6 +967,71 @@
         }
       }
     },
+    "/api/v1/auth-attempts/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Cancel auth attempt",
+        "description": "Cancels a pending or read authentication attempt by marking it as expired. Allows client applications to proactively abort authentication requests.",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth attempt ID to cancel",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth attempt cancelled successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Auth attempt already in final state (cannot be cancelled)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/api-keys": {
       "get": {
         "tags": [
@@ -2117,6 +2182,7 @@
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
+                "AUTH_ATTEMPT_CANCELLED",
                 "API_KEY_CREATED",
                 "API_KEY_REVOKED",
                 "API_KEY_EXPIRED",
@@ -2896,6 +2962,72 @@
             "format": "int32",
             "description": "Optional challenge code (2 digits) that must be entered on the device if challenge was requested",
             "example": 42
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Maximum time in seconds the user has to respond to the authentication request",
+            "example": 120
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Absolute expiration timestamp when the authentication attempt will expire",
+            "example": "2025-01-20T15:34:00.123456Z"
+          }
+        }
+      },
+      "AuthAttemptDto": {
+        "type": "object",
+        "description": "Response DTO containing complete authentication attempt information for administrative purposes",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the authentication attempt",
+            "example": 456
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment identifier this authentication attempt belongs to",
+            "example": 123
+          },
+          "authAttemptStatus": {
+            "type": "string",
+            "description": "Current lifecycle status of the authentication attempt",
+            "enum": [
+              "PENDING",
+              "READ",
+              "INVALID",
+              "REJECTED",
+              "ACCEPTED",
+              "EXPIRED"
+            ],
+            "example": "PENDING"
+          },
+          "authAttemptChallenge": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Challenge value for the authentication attempt",
+            "example": 789012
+          },
+          "authAttemptProofToken": {
+            "type": "string",
+            "description": "Proof token for the authentication attempt",
+            "example": "EZK-XYZ789-ABC123"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the authentication attempt was created (with timezone)",
+            "example": "2025-01-27T10:30:00+01:00"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the authentication attempt expires (with timezone)",
+            "example": "2025-01-27T10:35:00+01:00"
           }
         }
       },
@@ -2919,7 +3051,7 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Optional expiration date for automatic key rotation enforcement (null = no expiration)",
+            "description": "Optional expiration date for automatic key rotation enforcement (null = no expiration). Must be in the future.",
             "example": "2025-12-31T23:59:59Z"
           },
           "ipWhitelist": {
@@ -3571,60 +3703,6 @@
           }
         }
       },
-      "AuthAttemptDto": {
-        "type": "object",
-        "description": "Response DTO containing complete authentication attempt information for administrative purposes",
-        "properties": {
-          "authAttemptId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the authentication attempt",
-            "example": 456
-          },
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment identifier this authentication attempt belongs to",
-            "example": 123
-          },
-          "authAttemptStatus": {
-            "type": "string",
-            "description": "Current lifecycle status of the authentication attempt",
-            "enum": [
-              "PENDING",
-              "READ",
-              "INVALID",
-              "REJECTED",
-              "ACCEPTED",
-              "EXPIRED"
-            ],
-            "example": "PENDING"
-          },
-          "authAttemptChallenge": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Challenge value for the authentication attempt",
-            "example": 789012
-          },
-          "authAttemptProofToken": {
-            "type": "string",
-            "description": "Proof token for the authentication attempt",
-            "example": "EZK-XYZ789-ABC123"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the authentication attempt was created (with timezone)",
-            "example": "2025-01-27T10:30:00+01:00"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the authentication attempt expires (with timezone)",
-            "example": "2025-01-27T10:35:00+01:00"
-          }
-        }
-      },
       "PagedModelAuthAttemptDto": {
         "type": "object",
         "properties": {
@@ -3712,6 +3790,7 @@
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
+              "AUTH_ATTEMPT_CANCELLED",
               "API_KEY_CREATED",
               "API_KEY_REVOKED",
               "API_KEY_EXPIRED",

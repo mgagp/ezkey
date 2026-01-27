@@ -2737,14 +2737,12 @@
           "language": {
             "type": "string",
             "description": "Language code for the localized content",
-            "example": "en",
-            "minLength": 1
+            "example": "en"
           },
           "name": {
             "type": "string",
             "description": "Localized name of the integration",
-            "example": "ACME Corporation",
-            "minLength": 1
+            "example": "ACME Corporation"
           },
           "description": {
             "type": "string",
@@ -2814,8 +2812,7 @@
           "name": {
             "type": "string",
             "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone",
-            "minLength": 1
+            "example": "John's iPhone"
           },
           "authAttemptChallengeRequired": {
             "type": "boolean",

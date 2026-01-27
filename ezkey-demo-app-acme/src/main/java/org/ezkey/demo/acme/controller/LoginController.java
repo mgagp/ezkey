@@ -246,7 +246,8 @@ public class LoginController {
     Integer challengeCode = (Integer) session.getAttribute("pendingChallengeCode");
     String username = (String) session.getAttribute("pendingUsername");
     Integer timeoutSeconds = (Integer) session.getAttribute("pendingTimeoutSeconds");
-    java.time.OffsetDateTime expiresAt = (java.time.OffsetDateTime) session.getAttribute("pendingExpiresAt");
+    java.time.OffsetDateTime expiresAt =
+        (java.time.OffsetDateTime) session.getAttribute("pendingExpiresAt");
 
     if (authAttemptId == null || username == null) {
       logger.warn("Challenge wait page accessed without pending auth attempt");
