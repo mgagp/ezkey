@@ -12,19 +12,18 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Manages authentication tokens and API keys for test execution.
@@ -126,7 +125,7 @@ public class AuthTokenManager {
         log.info("Cached token is invalid, will create new token");
         // Token is invalid, clear cache and continue to Priority 3
         setAdminToken(null);
-        Path tokenPath = Paths.get(TOKEN_FILE_PATH);
+        Path tokenPath = Path.of(TOKEN_FILE_PATH);
         try {
           if (Files.exists(tokenPath)) {
             Files.delete(tokenPath);
@@ -191,7 +190,7 @@ public class AuthTokenManager {
    * @return Admin token, or null if not found
    */
   private String loadTokenFromFile() {
-    Path tokenPath = Paths.get(TOKEN_FILE_PATH);
+    Path tokenPath = Path.of(TOKEN_FILE_PATH);
     if (!Files.exists(tokenPath)) {
       return null;
     }
@@ -199,8 +198,8 @@ public class AuthTokenManager {
     try {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
-      return jsonNode.get("token").asText();
-    } catch (IOException e) {
+      return jsonNode.get("token").asString();
+    } catch (Exception e) {
       log.warn("Failed to load token from file: {}", e.getMessage());
       return null;
     }

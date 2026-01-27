@@ -11,18 +11,16 @@
 package org.ezkey.demo.acme.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 /**
  * Type-safe configuration properties for ACME demo application.
  *
  * <p>Binds externalized configuration from application.properties with validation and type safety.
- * Supports hot-reload via Actuator /refresh endpoint when external config files change.
+ * Configuration changes require container restart to take effect.
  *
  * @author Ezkey contributors
  * @since 2025
  */
-@RefreshScope
 @ConfigurationProperties(prefix = "ezkey")
 public class AcmeProperties {
 

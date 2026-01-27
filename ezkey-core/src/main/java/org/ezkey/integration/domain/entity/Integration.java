@@ -20,6 +20,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -59,11 +60,11 @@ public class Integration {
    * Flag indicating whether the integration is active and available for use. Inactive integrations
    * cannot be used for authentication.
    */
-  @Column(name = "integration_active")
+  @Column(name = "integration_active", nullable = false)
   private Boolean active;
 
   /** Timestamp when the integration was created. Automatically set when the entity is persisted. */
-  @Column(name = "created_at")
+  @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
   /**
@@ -105,6 +106,40 @@ public class Integration {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "created_by_admin_id")
   private EzkeyAdmin createdByAdmin;
+
+  /** Default constructor for JPA. */
+  public Integration() {
+    // active and createdAt are set by the service layer when persisting, not in constructor
+    // to allow MapStruct mappers to create entities with null values for testing
+    // @PrePersist callback ensures these fields are initialized before JPA validation
+  }
+
+  /**
+   * JPA lifecycle callback to initialize required fields before persistence.
+   *
+   * <p>This method ensures that fields with {@code nullable = false} constraints are initialized
+   * before Hibernate validates the entity. This allows MapStruct mappers to create entities with
+   * null values for testing, while ensuring JPA persistence works correctly.
+   *
+   * <p>The values used match the database defaults:
+   *
+   * <ul>
+   *   <li>{@code active}: defaults to {@code true} (matches DB: {@code DEFAULT TRUE})
+   *   <li>{@code createdAt}: defaults to current timestamp (matches DB: {@code DEFAULT
+   *       CURRENT_TIMESTAMP})
+   * </ul>
+   */
+  @PrePersist
+  protected void prePersist() {
+    // Initialize active if null (matches database DEFAULT TRUE)
+    if (this.active == null) {
+      this.active = true;
+    }
+    // Initialize createdAt if null (matches database DEFAULT CURRENT_TIMESTAMP)
+    if (this.createdAt == null) {
+      this.createdAt = OffsetDateTime.now();
+    }
+  }
 
   /**
    * Gets the unique identifier of the integration.

@@ -28,8 +28,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -64,7 +64,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class ReencryptionServiceIntegrationTest {
 
-  @MockBean private TinkKeyManager tinkKeyManager;
+  @MockitoBean private TinkKeyManager tinkKeyManager;
 
   @Autowired private EncryptionKeyRepository keyRepository;
 

@@ -10,10 +10,10 @@
 
 package org.ezkey.audit.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Utility for building structured JSON for audit event_details.
@@ -296,7 +296,7 @@ public class AuditDetailsBuilder {
   public String toJson() {
     try {
       return AUDIT_DETAILS_OBJECT_MAPPER.writeValueAsString(details);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("Failed to serialize audit details to JSON", e);
     }
   }

@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.exception;
 
+import java.io.Serial;
+
 /**
  * Custom exception thrown when admin authentication fails.
  *
@@ -34,7 +36,7 @@ package org.ezkey.admin.exception;
  */
 public class AuthenticationException extends RuntimeException {
 
-  private static final long serialVersionUID = 1L;
+  @Serial private static final long serialVersionUID = 1L;
 
   /**
    * Constructs a new authentication exception with the specified detail message.

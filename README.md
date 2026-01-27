@@ -18,14 +18,14 @@ graph LR
         C[High Costs]
         D[Limited Control]
     end
-    
+
     subgraph "Passkeys"
         E[Browser Dependencies]
         F[Complex Integration]
         G[Limited Support]
         H[Steep Learning Curve]
     end
-    
+
     subgraph "Ezkey Approach"
         I[Simple REST APIs]
         J[Open Source]
@@ -33,7 +33,7 @@ graph LR
         L[Developer-Friendly]
         M[Synchronous Wait API]
     end
-    
+
     style I fill:#e8f5e8
     style J fill:#e8f5e8
     style K fill:#e8f5e8
@@ -88,7 +88,7 @@ sequenceDiagram
     participant Admin as Admin API
     participant Auth as Auth API
     participant Device as Mobile Device
-    
+
     App->>Admin: Create auth attempt
     Admin->>Auth: Generate unique authAttemptProofToken
     Device->>Auth: PENDING request (decrypts token)
@@ -123,7 +123,7 @@ ezkey/
 ├── ezkey-core/              # Shared core library (entities, services, repositories)
 ├── ezkey-migration/         # Database migration application (Flyway)
 ├── ezkey-admin-api/         # Administration API (port 9080)
-├── ezkey-auth-api/          # Authentication API (port 8080) 
+├── ezkey-auth-api/          # Authentication API (port 8080)
 ├── ezkey-crypto-api/        # Crypto API for testing and integration (port 8080)
 ├── ezkey-cli/               # Command Line Interface tool
 ├── ezkey_mobile/            # Mobile application
@@ -141,19 +141,19 @@ graph TB
         B[E-commerce Site]
         C[Banking App]
     end
-    
+
     subgraph "Ezkey System"
         D[Admin API<br/>Port 9080]
         E[Auth API<br/>Port 8080]
         F[Core Module]
         G[(Database)]
     end
-    
+
     subgraph "User Devices"
         H[Mobile App]
         I[Demo Device]
     end
-    
+
     A --> D
     B --> D
     C --> D
@@ -162,7 +162,7 @@ graph TB
     F --> G
     H --> E
     I --> E
-    
+
     D -.->|Wait API| A
     D -.->|Wait API| B
     D -.->|Wait API| C
@@ -212,7 +212,7 @@ sequenceDiagram
     participant Auth as Auth API
     participant Mobile as Mobile Device
     participant DB as Database
-    
+
     Note over App,Mobile: 1. Enrollment Process
     App->>Admin: Create Integration
     App->>Admin: Create Enrollment
@@ -221,7 +221,7 @@ sequenceDiagram
     Mobile->>Auth: Verify Enrollment (POST /api/v1/enrollments/verify)
     Auth->>DB: Store Enrollment
     Auth->>Mobile: Enrollment Complete
-    
+
     Note over App,Mobile: 2. Authentication Process
     App->>Admin: Create Auth Attempt
     Mobile->>Auth: Check Pending (POST /api/v1/auth-attempts/pending)
@@ -229,7 +229,7 @@ sequenceDiagram
     Mobile->>Auth: Respond (POST /api/v1/auth-attempts/respond)
     Auth->>DB: Update Auth Attempt
     Auth->>Mobile: Authentication Result
-    
+
     Note over App,Mobile: 3. Wait for Completion (Optional)
     App->>Admin: Wait for Response (GET /wait)
     Admin->>DB: Poll for completion
@@ -248,7 +248,7 @@ flowchart TD
     F --> G[Create Auth Attempts]
     G --> H[Wait for User Response]
     H --> I[View Authentication Results]
-    
+
     style A fill:#e1f5fe
     style B fill:#f3e5f5
     style G fill:#fff3e0
@@ -269,7 +269,7 @@ flowchart TD
     G --> H[Approve/Deny Access]
     H --> I[Enter Challenge if Required]
     I --> J[Authentication Complete]
-    
+
     style A fill:#e1f5fe
     style B fill:#f3e5f5
     style G fill:#fff3e0
@@ -284,11 +284,11 @@ sequenceDiagram
     participant Admin as Admin API
     participant Auth as Auth API
     participant Mobile as Mobile Device
-    
+
     Note over Client,Mobile: Integration Setup
     Client->>Admin: POST /integrations
     Admin-->>Client: Integration ID
-    
+
     Note over Client,Mobile: User Enrollment
     Client->>Admin: POST /enrollments
     Admin-->>Client: Enrollment ID + Proof Token
@@ -297,16 +297,16 @@ sequenceDiagram
     Auth-->>Mobile: Integration Info + Proof Token
     Mobile->>Auth: POST /api/v1/enrollments/verify
     Auth-->>Mobile: Enrollment Complete
-    
+
     Note over Client,Mobile: Authentication Request
     Client->>Admin: POST /auth-attempts
     Admin-->>Client: Auth Attempt ID
-    
+
     Note over Client,Mobile: Wait for Completion (Synchronous)
     Client->>Admin: GET /auth-attempts/{id}/wait
     Admin->>Admin: Poll for completion
     Admin-->>Client: Final authentication status
-    
+
     Note over Client,Mobile: Alternative: Check Status (Asynchronous)
     Client->>Admin: GET /auth-attempts/{id}
     Admin-->>Client: Current authentication status
@@ -321,7 +321,7 @@ graph TB
         B[Local Database]
         C[Demo Apps]
     end
-    
+
     subgraph "Production Environment"
         D[Load Balancer]
         E[Admin API Cluster]
@@ -329,12 +329,12 @@ graph TB
         G[Database Cluster]
         H[Mobile App Store]
     end
-    
+
     subgraph "User Devices"
         I[User Mobile Devices]
         J[Protected Applications]
     end
-    
+
     A --> B
     A --> C
     D --> E
@@ -394,7 +394,7 @@ sequenceDiagram
     participant Auth as Auth API
     participant Core as Core Service
     participant DB as Database
-    
+
     Note over Device,DB: Key Generation & Enrollment
     Device->>Device: Generate EC P-256 Key Pair
     Device->>Auth: Send Public Key + Enrollment Request
@@ -402,7 +402,7 @@ sequenceDiagram
     Core->>Core: Generate Proof Token
     Core->>DB: Store Enrollment
     Auth->>Device: Return Proof Token + Integration Info
-    
+
     Note over Device,DB: Authentication Flow
     Device->>Device: Generate Device Proof Token
     Device->>Auth: Send Signed Proof Token
@@ -420,19 +420,19 @@ flowchart TD
     B -->|Enrollment| C[Generate Device Keys]
     B -->|Authentication| D[Generate Proof Token]
     B -->|Wait for Completion| E[Poll Authentication Status]
-    
+
     C --> F[Sign Enrollment Data]
     D --> G[Sign Auth Response]
     E --> H[Check Database State]
-    
+
     F --> I[Send to Auth API]
     G --> I
     H --> J[Return Status]
-    
+
     I --> K[Validate Signature]
     K --> L[Process Request]
     L --> M[Store in Database]
-    
+
     style A fill:#e1f5fe
     style C fill:#fff3e0
     style D fill:#fff3e0
@@ -528,7 +528,7 @@ cd ezkey_mobile
 
 - **Admin API**: http://localhost:9080/api/v1/
 - **Auth API**: http://localhost:8080/api/v1/
-- **API Documentation**: 
+- **API Documentation**:
   - Admin: http://localhost:9080/swagger-ui.html
   - Auth: http://localhost:8080/swagger-ui.html
 
@@ -668,8 +668,8 @@ This project follows strict formatting and quality standards:
 - **Line Endings**: LF (Unix style)
 
 #### Development Tools
-- **Spotless**: Google Java Format 1.32.0 with strict 100-character line limit (covers `src/main/java` and `src/test/java`)
-- **Checkstyle**: Google Java Style Guide (`docs/dev-tools/google_checks.xml`) - validates formatting rules
+- **Spotless**: Google Java Format 1.33.0 - automatically formats code on build
+- **Checkstyle**: Aligned with Google Java Format - validates formatting rules (annotations, indentation, naming)
 - **Eclipse Formatter**: Import `docs/dev-tools/eclipse_format.xml` in Eclipse/IDE for consistent formatting
 - **EditorConfig**: Consistent formatting (`.editorconfig`)
 - **MapStruct**: Object mapping between DTOs and entities
@@ -687,7 +687,7 @@ src/main/java/org/ezkey/
 │   ├── service/             # Business logic
 │   ├── controller/          # REST endpoints (API modules)
 │   ├── dto/
-│   │   ├── request/         # Request DTOs  
+│   │   ├── request/         # Request DTOs
 │   │   ├── response/        # Response DTOs
 │   │   └── common/          # Shared DTOs
 │   ├── mapper/              # MapStruct mappers
@@ -841,7 +841,7 @@ Use the dedicated Flyway tool for production deployments:
 # Windows
 scripts\ezkey-flyway.bat --info
 
-# Linux/Mac  
+# Linux/Mac
 ./scripts/ezkey-flyway.sh --migrate
 ```
 

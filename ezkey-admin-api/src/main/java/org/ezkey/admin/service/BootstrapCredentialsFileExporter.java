@@ -10,17 +10,16 @@
 
 package org.ezkey.admin.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.ezkey.admin.config.BootstrapExportProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Service for exporting bootstrap credentials to a file.
@@ -69,7 +68,7 @@ public class BootstrapCredentialsFileExporter {
     }
 
     try {
-      Path filePath = Paths.get(exportProperties.getPath());
+      Path filePath = Path.of(exportProperties.getPath());
       Path parentDir = filePath.getParent();
 
       // Check if file already exists with same enrollmentId (idempotent check)

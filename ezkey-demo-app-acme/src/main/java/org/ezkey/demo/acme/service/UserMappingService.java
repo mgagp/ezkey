@@ -10,11 +10,9 @@
 
 package org.ezkey.demo.acme.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Service for loading and hot-reloading user mapping from JSON file.
@@ -52,7 +51,7 @@ public class UserMappingService {
   public UserMappingService(AcmeProperties properties) {
     this.properties = properties;
     this.objectMapper = new ObjectMapper();
-    this.usersFile = Paths.get(properties.getUsers().getFile());
+    this.usersFile = Path.of(properties.getUsers().getFile());
 
     // Initial load
     loadUsersFile();

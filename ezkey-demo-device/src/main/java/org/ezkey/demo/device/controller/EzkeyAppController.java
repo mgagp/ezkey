@@ -29,9 +29,39 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p>Copyright (c) 2025 Ezkey contributors Licensed under the MIT License. See LICENSE file in the
+ * project root for full license information.
+ *
+ * <p>Controller: EzkeyAppController Description: Simulated Ezkey mobile app controller for
+ * enrollment and authentication flows.
+ */
+
+/**
  * Simulated Ezkey mobile app controller.
  *
+ * <p>This controller simulates a mobile device running the Ezkey app. It handles:
+ *
+ * <ul>
+ *   <li>New enrollment initiation and binding
+ *   <li>Enrollment verification with cryptographic signing
+ *   <li>Authentication request polling and response submission
+ *   <li>Challenge-response validation when required
+ * </ul>
+ *
+ * <p>The controller manages the mobile device's cryptographic state and communicates with the Ezkey
+ * Auth API to complete the enrollment and authentication flows.
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * @author Ezkey contributors
  * @since 2025
+ * @see AuthApiService
+ * @see DeviceCryptoService
+ * @see EnrollmentStoreService
  */
 @Controller
 @RequestMapping("/phone/ezkey")
@@ -504,8 +534,32 @@ public class EzkeyAppController {
     return tenantDescription.trim();
   }
 
+  /**
+   * Internal record for grouping enrollments by tenant.
+   *
+   * <p>This record represents the key used to group enrollments by tenant information. It combines
+   * the tenant ID, name, and description to create a unique key for grouping operations.
+   *
+   * @param tenantId the unique identifier of the tenant, or null if unknown
+   * @param tenantName the display name of the tenant, or "Unknown tenant" if not available
+   * @param tenantDescription optional description of the tenant
+   * @since 2025
+   */
   private record TenantKey(Integer tenantId, String tenantName, String tenantDescription) {}
 
+  /**
+   * View model for tenant enrollment groups.
+   *
+   * <p>This record represents a group of enrollments associated with a specific tenant. It is used
+   * to structure the response for the home page, organizing enrollments hierarchically by tenant
+   * and providing tenant metadata for display purposes.
+   *
+   * @param tenantId the unique identifier of the tenant, or null if unknown
+   * @param tenantName the display name of the tenant for UI rendering
+   * @param tenantDescription optional description of the tenant for UI rendering
+   * @param enrollments the list of enrollment records belonging to this tenant group
+   * @since 2025
+   */
   public record TenantGroupViewModel(
       Integer tenantId, String tenantName, String tenantDescription, List<Record> enrollments) {}
 }

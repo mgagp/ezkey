@@ -17,6 +17,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -72,15 +73,13 @@ public interface EnrollmentRepository
    * @param enrollmentId the enrollment ID to find and lock
    * @return the CREATED enrollment with row lock, or empty if not found or already bound
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_enrollment
-          WHERE enrollment_id = :enrollmentId
-            AND enrollment_status = 'CREATED'
-          FOR NO KEY UPDATE
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_enrollment
+      WHERE enrollment_id = :enrollmentId
+        AND enrollment_status = 'CREATED'
+      FOR NO KEY UPDATE
+      """)
   Optional<Enrollment> findAndLockUnreadById(@Param("enrollmentId") Integer enrollmentId);
 
   /**
@@ -93,15 +92,13 @@ public interface EnrollmentRepository
    * @param enrollmentId the enrollment ID to find and lock
    * @return the BOUND enrollment with row lock, or empty if not found or already verified
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_enrollment
-          WHERE enrollment_id = :enrollmentId
-            AND enrollment_status = 'BOUND'
-          FOR NO KEY UPDATE
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_enrollment
+      WHERE enrollment_id = :enrollmentId
+        AND enrollment_status = 'BOUND'
+      FOR NO KEY UPDATE
+      """)
   Optional<Enrollment> findAndLockBoundById(@Param("enrollmentId") Integer enrollmentId);
 
   /**
@@ -227,9 +224,7 @@ public interface EnrollmentRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @return count of matching records
    */
-  @Query(
-      value = "SELECT COUNT(*) FROM ezkey_enrollment WHERE integration_private_key LIKE :prefix",
-      nativeQuery = true)
+  @NativeQuery("SELECT COUNT(*) FROM ezkey_enrollment WHERE integration_private_key LIKE :prefix")
   int countByEncryptedIntegrationPrivateKeyLike(@Param("prefix") String prefix);
 
   /**
@@ -240,9 +235,7 @@ public interface EnrollmentRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @return count of matching records
    */
-  @Query(
-      value = "SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_proof_token LIKE :prefix",
-      nativeQuery = true)
+  @NativeQuery("SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_proof_token LIKE :prefix")
   int countByEncryptedEnrollmentProofTokenLike(@Param("prefix") String prefix);
 
   /**
@@ -257,16 +250,14 @@ public interface EnrollmentRepository
    * @param limit maximum number of records to return
    * @return list of matching enrollments
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_enrollment
-          WHERE integration_private_key LIKE :prefix
-            AND (:lastId IS NULL OR enrollment_id > :lastId)
-          ORDER BY enrollment_id ASC
-          LIMIT :limit
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_enrollment
+      WHERE integration_private_key LIKE :prefix
+        AND (:lastId IS NULL OR enrollment_id > :lastId)
+      ORDER BY enrollment_id ASC
+      LIMIT :limit
+      """)
   List<Enrollment> findEncryptedIntegrationPrivateKeyLike(
       @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 
@@ -282,16 +273,14 @@ public interface EnrollmentRepository
    * @param limit maximum number of records to return
    * @return list of matching enrollments
    */
-  @Query(
-      value =
-          """
-          SELECT * FROM ezkey_enrollment
-          WHERE enrollment_proof_token LIKE :prefix
-            AND (:lastId IS NULL OR enrollment_id > :lastId)
-          ORDER BY enrollment_id ASC
-          LIMIT :limit
-          """,
-      nativeQuery = true)
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_enrollment
+      WHERE enrollment_proof_token LIKE :prefix
+        AND (:lastId IS NULL OR enrollment_id > :lastId)
+      ORDER BY enrollment_id ASC
+      LIMIT :limit
+      """)
   List<Enrollment> findEncryptedEnrollmentProofTokenLike(
       @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }

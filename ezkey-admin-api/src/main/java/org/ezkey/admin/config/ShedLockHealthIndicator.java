@@ -13,8 +13,12 @@ package org.ezkey.admin.config;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -38,10 +42,27 @@ import org.springframework.stereotype.Component;
  * @since 2025
  */
 @Component
+@DependsOnDatabaseInitialization
 public class ShedLockHealthIndicator implements HealthIndicator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ShedLockHealthIndicator.class);
+
+  private static final String LOCKS_QUERY =
+      """
+      SELECT name,
+             locked_by,
+             locked_at,
+             lock_until,
+             CASE WHEN lock_until > CURRENT_TIMESTAMP THEN 'ACTIVE'
+                  ELSE 'EXPIRED'
+             END AS status
+        FROM ezkey_shedlock
+       ORDER BY locked_at DESC
+      """;
 
   private final JdbcTemplate jdbcTemplate;
 
+  @Autowired
   public ShedLockHealthIndicator(DataSource dataSource) {
     this.jdbcTemplate = new JdbcTemplate(dataSource);
   }
@@ -57,23 +78,16 @@ public class ShedLockHealthIndicator implements HealthIndicator {
   @Override
   public Health health() {
     try {
-      List<Map<String, Object>> locks =
-          jdbcTemplate.queryForList(
-              "SELECT name, locked_by, locked_at, lock_until, "
-                  + "CASE WHEN lock_until > NOW() THEN 'ACTIVE' ELSE 'EXPIRED' END as status "
-                  + "FROM ezkey_shedlock "
-                  + "ORDER BY locked_at DESC");
-
-      Health.Builder healthBuilder = Health.up().withDetail("locks", locks);
-
-      // Count active locks
+      List<Map<String, Object>> locks = jdbcTemplate.queryForList(LOCKS_QUERY);
       long activeLocks = locks.stream().filter(lock -> "ACTIVE".equals(lock.get("status"))).count();
 
-      healthBuilder.withDetail("activeLockCount", activeLocks);
-      healthBuilder.withDetail("totalLockCount", locks.size());
-
-      return healthBuilder.build();
+      return Health.up()
+          .withDetail("locks", locks)
+          .withDetail("activeLockCount", activeLocks)
+          .withDetail("totalLockCount", locks.size())
+          .build();
     } catch (Exception e) {
+      LOG.warn("Failed to retrieve ShedLock health details", e);
       return Health.down().withException(e).build();
     }
   }

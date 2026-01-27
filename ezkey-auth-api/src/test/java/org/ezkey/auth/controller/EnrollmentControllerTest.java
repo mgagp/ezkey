@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -33,12 +32,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Critical unit tests for {@link EnrollmentController} in auth-api.
@@ -83,11 +83,11 @@ class EnrollmentControllerTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @MockBean private EnrollmentService enrollmentService;
+  @MockitoBean private EnrollmentService enrollmentService;
 
-  @MockBean private EnrollmentAuthMapper enrollmentMapper;
+  @MockitoBean private EnrollmentAuthMapper enrollmentMapper;
 
-  @MockBean private org.ezkey.audit.service.AuditLogService auditLogService;
+  @MockitoBean private org.ezkey.audit.service.AuditLogService auditLogService;
 
   private EnrollmentBindRequestDto bindRequestDto;
 

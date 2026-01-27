@@ -15,7 +15,6 @@ import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -59,7 +58,6 @@ public class EzkeyClientConfig {
     this.environment = environment;
 
     // Log configuration status at startup
-    // Read directly from Environment to bypass @RefreshScope proxy issues
     String integrationKey = environment.getProperty("ezkey.integration.key");
     String secretKey = environment.getProperty("ezkey.secret.key");
 
@@ -85,14 +83,11 @@ public class EzkeyClientConfig {
    * <p>Adds an interceptor that automatically adds the Authorization header with HTTP Basic Auth
    * (base64-encoded integrationKey:secretKey) for all requests to Admin API.
    *
-   * <p><b>RefreshScope:</b> This bean is marked with @RefreshScope to ensure it is recreated when
-   * configuration properties are refreshed via ContextRefresher, allowing API key credentials to be
-   * updated without restarting the application.
+   * <p><b>Note:</b> Configuration changes require container restart to take effect.
    *
    * @return configured RestTemplate instance
    */
   @Bean
-  @RefreshScope
   public RestTemplate ezkeyRestTemplate() {
     RestTemplate restTemplate = new RestTemplate();
 
@@ -100,14 +95,12 @@ public class EzkeyClientConfig {
     restTemplate.getInterceptors().add(new HttpLoggingInterceptor());
 
     // Add interceptor to inject HTTP Basic Auth header with API Key credentials
-    // Read directly from Environment to bypass @RefreshScope proxy issues
     restTemplate
         .getInterceptors()
         .add(
             (ClientHttpRequestInterceptor)
                 (request, body, execution) -> {
-                  // Read directly from Environment to ensure we get the latest values
-                  // This bypasses potential @RefreshScope proxy issues
+                  // Read directly from Environment to get current configuration values
                   String integrationKey = environment.getProperty("ezkey.integration.key");
                   String secretKey = environment.getProperty("ezkey.secret.key");
 

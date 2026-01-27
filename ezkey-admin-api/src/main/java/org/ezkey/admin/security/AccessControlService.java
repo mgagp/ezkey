@@ -229,7 +229,8 @@ public class AccessControlService {
         Object principal = auth.getPrincipal();
         Integer apiKeyIntegrationId = principal instanceof Integer ? (Integer) principal : null;
         logger.warn(
-            "API key from integration {} attempted to access auth attempt {} belonging to integration {}",
+            "API key from integration {} attempted to access auth attempt {} belonging to"
+                + " integration {}",
             apiKeyIntegrationId,
             authAttemptId,
             enrollmentIntegrationId);

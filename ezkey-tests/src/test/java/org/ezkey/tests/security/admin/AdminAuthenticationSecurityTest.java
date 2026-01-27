@@ -19,7 +19,6 @@ import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.DisplayName;
@@ -178,7 +177,7 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
       // This ensures test independence - other tests can still use a valid token
       // AuthTokenManager will automatically bootstrap a new token via Priority 3
       authTokenManager.setAdminToken(null);
-      Path tokenPath = Paths.get(".ezkey-test/admin-token.json");
+      Path tokenPath = Path.of(".ezkey-test/admin-token.json");
       if (Files.exists(tokenPath)) {
         try {
           Files.delete(tokenPath);

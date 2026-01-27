@@ -172,8 +172,7 @@ public record AdminLoginResponseDto(
 
   @Override
   public String toString() {
-    return String.format(
-        "AdminLoginResponseDto[success=%s, status=%s, username=%s, hasToken=%s]",
-        success, status, username, token != null ? "yes" : "no");
+    return "AdminLoginResponseDto[success=%s, status=%s, username=%s, hasToken=%s]"
+        .formatted(success, status, username, token != null ? "yes" : "no");
   }
 }

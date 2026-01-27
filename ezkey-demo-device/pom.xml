@@ -20,7 +20,7 @@
 		<!-- Spring Boot Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
 		<dependency>
@@ -38,7 +38,7 @@
 		<!-- WebJars for simple styling (optional) -->
 		<dependency>
 			<groupId>org.webjars</groupId>
-			<artifactId>webjars-locator-core</artifactId>
+			<artifactId>webjars-locator-lite</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.webjars</groupId>
@@ -52,17 +52,10 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 
-		<!-- Jackson for JSON processing (required for generated DTOs) -->
+		<!-- Jackson JSR310 for date/time deserialization (required for RFC3339InstantDeserializer) -->
 		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-		</dependency>
-
-		<!-- OpenAPI annotations (used by generated DTOs in some cases) -->
-		<dependency>
-			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-annotations</artifactId>
-			<version>2.2.8</version>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
 
 		<!-- Validation API for generated DTOs -->
@@ -105,6 +98,9 @@
 				  that can result in a repackaged JAR missing BOOT-INF/lib dependencies.
 				  For demo-device we must produce a proper fat Spring Boot JAR.
 				  combine.self="override" prevents Maven from merging the parent configuration into this module.
+				  
+				  Spring Boot automatically generates the classifier "original" when repackaging.
+				  This is required by ezkey-tests module which needs access to main classes for compilation.
 				-->
 				<configuration combine.self="override"/>
 				<executions>
@@ -120,7 +116,7 @@
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
-				<version>7.14.0</version>
+				<version>7.19.0</version>
 				<executions>
 					<execution>
 						<goals>
@@ -202,4 +198,4 @@
 			</plugin>
 		</plugins>
 	</build>
-</project> 
+</project>

@@ -394,9 +394,8 @@ public class ShedLockTestHelper {
    */
   public int countActiveLocks(String lockName) {
     String sqlQuery =
-        String.format(
-            "SELECT COUNT(*) FROM ezkey_shedlock WHERE name = '%s' AND lock_until > NOW();",
-            lockName.replace("'", "''"));
+        "SELECT COUNT(*) FROM ezkey_shedlock WHERE name = '%s' AND lock_until > NOW();"
+            .formatted(lockName.replace("'", "''"));
 
     List<String> results = executeQuery(sqlQuery);
     if (results.isEmpty()) {

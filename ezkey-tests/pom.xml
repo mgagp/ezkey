@@ -17,7 +17,7 @@
   <description>Real-world security end-to-end functional tests using RestAssured against Docker stack</description>
 
   <properties>
-    <rest-assured.version>5.4.0</rest-assured.version>
+    <rest-assured.version>6.0.0</rest-assured.version>
     <assertj.version>3.24.2</assertj.version>
   </properties>
 
@@ -80,9 +80,10 @@
 
     <!-- Jackson for JSON processing -->
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
+      <groupId>tools.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
+
     </dependency>
   </dependencies>
 
