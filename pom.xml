@@ -60,11 +60,11 @@
 		<springdoc.version>3.0.1</springdoc.version>
 		<spotbugs.version>4.7.3</spotbugs.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
-		<pmd.version>3.21.2</pmd.version>
+		<pmd.version>3.28.0</pmd.version>
 		<jacoco.version>0.8.14</jacoco.version>
-		<zxing.version>3.5.3</zxing.version>
+		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.2.0</spotless.version>
-		<bucket4j.version>8.15.0</bucket4j.version>
+		<bucket4j.version>8.16.0</bucket4j.version>
 		<caffeine.version>3.2.2</caffeine.version>
 		<license-maven-plugin.version>2.7.0</license-maven-plugin.version>
 	</properties>
@@ -322,7 +322,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
-					<version>3.3.1</version>
+					<version>3.4.0</version>
 					<configuration>
 						<nonFilteredFileExtensions>
 							<nonFilteredFileExtension>txt</nonFilteredFileExtension>
