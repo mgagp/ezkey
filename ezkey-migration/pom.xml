@@ -4,18 +4,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	
+
 	<parent>
 		<groupId>org.ezkey</groupId>
 		<artifactId>ezkey-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>${revision}${buildQualifier}${changelist}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
-	
+
 	<artifactId>ezkey-migration</artifactId>
 	<name>Ezkey Migration</name>
 	<description>Database migration application for Ezkey using Flyway</description>
-	
+
 	<properties>
     	<m2e.apt.activation>jdt_apt</m2e.apt.activation>
 	</properties>
@@ -46,7 +46,7 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-		
+
 		<!-- Spring Boot Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -66,7 +66,7 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		
+
 		<!-- Database -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -81,7 +81,7 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
-		
+
 		<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

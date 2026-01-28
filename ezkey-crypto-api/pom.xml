@@ -4,25 +4,25 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	
+
 	<parent>
 		<groupId>org.ezkey</groupId>
 		<artifactId>ezkey-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>${revision}${buildQualifier}${changelist}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
-	
+
 	<artifactId>ezkey-crypto-api</artifactId>
 	<name>Ezkey Crypto API</name>
 	<description>Crypto API exposing cryptographic functions for testing and integration</description>
-	
+
 	<dependencies>
 		<!-- Core module dependency -->
 		<dependency>
 			<groupId>org.ezkey</groupId>
 			<artifactId>ezkey-core</artifactId>
 		</dependency>
-		
+
 		<!-- Spring Boot Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -38,13 +38,13 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		
+
 		<!-- API Documentation -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 		</dependency>
-		
+
 		<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -93,4 +93,4 @@
 			</plugin>
 		</plugins>
 	</build>
-</project> 
+</project>

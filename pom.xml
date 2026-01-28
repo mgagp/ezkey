@@ -5,7 +5,7 @@
 
 	<groupId>org.ezkey</groupId>
 	<artifactId>ezkey-parent</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>${revision}${buildQualifier}${changelist}</version>
 	<packaging>pom</packaging>
 
 	<name>Ezkey Parent</name>
@@ -50,6 +50,11 @@
 	</modules>
 
 	<properties>
+		<!-- CI-friendly version properties -->
+		<revision>0.0.1</revision>
+		<changelist>-SNAPSHOT</changelist>
+		<!-- buildQualifier is injected by wrapper scripts or .mvn/maven.config (empty by default) -->
+		<buildQualifier></buildQualifier>
 		<java.version>25</java.version>
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>

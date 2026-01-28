@@ -4,22 +4,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	
+
 	<parent>
 		<groupId>org.ezkey</groupId>
 		<artifactId>ezkey-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>${revision}${buildQualifier}${changelist}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
-	
+
 	<artifactId>ezkey-core</artifactId>
 	<name>Ezkey Core</name>
 	<description>Core business logic, entities, and shared services for Ezkey</description>
-	
+
 	<properties>
     	<m2e.apt.activation>jdt_apt</m2e.apt.activation>
 	</properties>
-	
+
 	<dependencies>
 		<!-- Spring Boot Starters (Library Dependencies Only) -->
 		<dependency>
@@ -34,13 +34,13 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-		
+
 		<!-- Database Driver (for JPA entities) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 		</dependency>
-		
+
 		<!-- Object Mapping -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
@@ -51,7 +51,7 @@
 			<artifactId>mapstruct-processor</artifactId>
 			<scope>provided</scope>
 		</dependency>
-		
+
 		<!-- Cryptography: Google Tink for encryption-at-rest and key rotation -->
 		<!-- Repository: https://github.com/tink-crypto/tink-java -->
 		<!-- Latest Release: v1.19.0 (October 2025) -->
@@ -60,7 +60,7 @@
 			<artifactId>tink</artifactId>
 			<version>1.19.0</version>
 		</dependency>
-		
+
 		<!-- Cryptography: BouncyCastle for Ed25519 signatures -->
 		<!-- Repository: https://github.com/bcgit/bc-java -->
 		<!-- Latest Release: v1.78.1 -->
@@ -69,7 +69,7 @@
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.78.1</version>
 		</dependency>
-		
+
 	<!-- QR Code Generation -->
 	<dependency>
 		<groupId>com.google.zxing</groupId>
@@ -79,27 +79,27 @@
 		<groupId>com.google.zxing</groupId>
 		<artifactId>javase</artifactId>
 	</dependency>
-	
+
 	<!-- OpenAPI/Swagger Annotations for DTOs -->
 	<dependency>
 		<groupId>org.springdoc</groupId>
 		<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 	</dependency>
-	
+
 	<!-- API Key Dependencies -->
 	<!-- Apache Commons Codec for hexadecimal encoding in API key generation -->
 	<dependency>
 		<groupId>commons-codec</groupId>
 		<artifactId>commons-codec</artifactId>
 	</dependency>
-	
+
 	<!-- IPAddress library for IP whitelist validation with CIDR support -->
 	<dependency>
 		<groupId>com.github.seancfoley</groupId>
 		<artifactId>ipaddress</artifactId>
 		<version>5.4.1</version>
 	</dependency>
-	
+
 	<!-- ShedLock for distributed job locking -->
 	<dependency>
 		<groupId>net.javacrumbs.shedlock</groupId>
@@ -111,7 +111,7 @@
 		<artifactId>shedlock-provider-jdbc-template</artifactId>
 		<version>7.4.0</version>
 	</dependency>
-	
+
 	<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -130,7 +130,7 @@
 			<version>4.0.2</version>
 			<scope>test</scope>
 		</dependency>
-        
+
 	</dependencies>
 
 	<build>
@@ -154,7 +154,7 @@
 			</plugin>
 		</plugins>
 	</build>
-	
+
 	<profiles>
 		<profile>
 			<id>native</id>

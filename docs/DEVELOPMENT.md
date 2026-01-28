@@ -250,6 +250,79 @@ class OpenApiIntegrationTest {
 - **UTF-8**: All files in UTF-8 without BOM
 - **Javadoc**: Complete and detailed documentation
 
+### Maven Version Management and Branch Isolation
+
+Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to prevent artifact collisions when working on multiple branches locally.
+
+#### How It Works
+
+- **Root POM version**: `${revision}${buildQualifier}${changelist}`
+  - `revision`: Base version (default: `0.0.1`)
+  - `buildQualifier`: Branch-specific qualifier (empty on `main`, `-<branch-name>` on feature branches)
+  - `changelist`: Suffix (default: `-SNAPSHOT`)
+- **Default behavior**: `.mvn/maven.config` provides defaults, so `mvn clean install` works without wrappers
+- **Branch isolation**: Wrapper scripts inject `buildQualifier` based on git branch name, ensuring unique artifact coordinates per branch
+
+#### Building Without Collisions
+
+**Linux/macOS/WSL (Bash):**
+```bash
+./scripts/mvn-branch.sh clean install
+```
+
+**Windows (PowerShell 7.x):**
+```powershell
+pwsh -File .\scripts\mvn-branch.ps1 clean install
+```
+
+**Standard Maven (works, but no branch isolation):**
+```bash
+mvn clean install
+```
+
+#### How Branch Qualifiers Are Generated
+
+- **Feature branches**: `0.0.1-feature-login-SNAPSHOT` (branch name sanitized)
+- **Main/master**: `0.0.1-SNAPSHOT` (no qualifier)
+- **Detached HEAD**: `0.0.1-abc1234-SNAPSHOT` (fallback to git SHA)
+
+#### IDE Configuration
+
+For IntelliJ IDEA or other IDEs, you can configure Maven to use the wrapper:
+
+1. **IntelliJ IDEA**: Settings → Build, Execution, Deployment → Build Tools → Maven → Runner
+   - Add VM options: `-DbuildQualifier=-$(git rev-parse --abbrev-ref HEAD)` (bash) or use the wrapper script path
+
+2. **Alternative**: Use the wrapper script as your Maven executable path in IDE settings
+
+#### Release Process (Future)
+
+When preparing for Maven Central releases:
+
+**Release Workflow:**
+1. **Tag creation**: Create git tag `vX.Y.Z` (e.g., `v1.2.0`) on `main` branch
+2. **CI build**: GitHub Actions detects tag and builds with:
+   - `-Drevision=X.Y.Z`
+   - `-Dchangelist=` (empty, removes `-SNAPSHOT`)
+   - `-DbuildQualifier=` (empty)
+3. **Deployment**: Artifacts deployed to Maven Central with clean, resolved versions
+4. **Post-release**: `main` branch version bumped to next development line (e.g., `1.3.0-SNAPSHOT`)
+
+**Maven Central Requirements (to be implemented):**
+- GPG signing of artifacts
+- Sources and Javadoc JARs
+- Reproducible builds
+- Proper `scm`/`licenses`/`developers` metadata in POMs
+- Flatten plugin for deployed POMs (ensures no `${revision}` expressions in published artifacts)
+
+**Branch Conventions:**
+- **`main`**: Always `X.Y.Z-SNAPSHOT` (next development version)
+- **Feature branches**: Use branch-specific qualifiers locally (e.g., `0.0.1-feature-login-SNAPSHOT`)
+- **Release branches** (optional, for maintenance): `release/X.Y` for patch releases (`X.Y.(Z+1)`)
+- **No branch-specific published versions**: Feature branches do not publish to Maven Central
+
+See plan in `.cursor/plans/maven_pom_versioning_no_branch_collisions_3e7551eb.plan.md` for complete details.
+
 ### Git Workflow
 - **Conventional Commits**: Use conventional commit messages
 - **Atomic Commits**: Keep commits focused and atomic
