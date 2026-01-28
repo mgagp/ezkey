@@ -13,6 +13,7 @@ package org.ezkey.integration.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -156,10 +157,10 @@ class IntegrationServiceMapperTest {
     assertEquals(integrationCreateRequest.getLogo(), result.getLogo());
     assertEquals(integrationCreateRequest.getI18n().size(), result.getI18n().size());
 
-    // Verify ignored fields are null
+    // Verify ignored fields: id and createdAt remain null; active uses field default (true)
     assertNull(result.getId());
     assertNull(result.getCreatedAt());
-    assertNull(result.getActive());
+    assertTrue(result.getActive());
   }
 
   @Test
@@ -188,7 +189,7 @@ class IntegrationServiceMapperTest {
     assertNull(result.getI18n());
     assertNull(result.getId());
     assertNull(result.getCreatedAt());
-    assertNull(result.getActive());
+    assertTrue(result.getActive());
   }
 
   // ===== TO CREATE RESPONSE TESTS =====
@@ -236,10 +237,10 @@ class IntegrationServiceMapperTest {
     // Act
     Integration result = integrationServiceMapper.toEntity(integrationCreateRequest);
 
-    // Assert - Verify ignored fields are null
+    // Assert - id and createdAt ignored (null); active ignored but field default is true
     assertNull(result.getId());
     assertNull(result.getCreatedAt());
-    assertNull(result.getActive());
+    assertTrue(result.getActive());
   }
 
   @Test

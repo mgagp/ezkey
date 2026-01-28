@@ -22,26 +22,8 @@
   </properties>
 
   <dependencies>
-    <!-- Ezkey modules to test -->
-    <!-- Use original JARs (not fat JARs) for compilation access to main classes -->
-    <dependency>
-      <groupId>org.ezkey</groupId>
-      <artifactId>ezkey-admin-api</artifactId>
-      <version>${project.version}</version>
-      <classifier>original</classifier>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.ezkey</groupId>
-      <artifactId>ezkey-auth-api</artifactId>
-      <version>${project.version}</version>
-      <classifier>original</classifier>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.ezkey</groupId>
-      <artifactId>ezkey-core</artifactId>
-    </dependency>
+    <!-- Functional tests are independent and test APIs via HTTP only -->
+    <!-- No direct dependency on admin-api or auth-api implementations -->
 
     <!-- Spring Boot Test -->
     <dependency>
@@ -80,10 +62,9 @@
 
     <!-- Jackson for JSON processing -->
     <dependency>
-      <groupId>tools.jackson.core</groupId>
+      <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
-
     </dependency>
   </dependencies>
 

@@ -52,14 +52,16 @@ public interface IntegrationServiceMapper {
   IntegrationI18n map(IntegrationI18nCreate integrationI18nCreate);
 
   /**
-   * Maps a create request DTO to the EzkeyIntegration entity.
-   *
-   * @param dto the create request DTO
-   * @return the mapped EzkeyIntegration entity (id, createdAt, and active are ignored)
+   * Maps create request → entity. Ignores {@code id}, {@code createdAt}, {@code active}; those use
+   * field init / @PrePersist. {@code tenant}, {@code isSystemIntegration}, {@code createdByAdmin}
+   * set by service.
    */
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "active", ignore = true)
+  @Mapping(target = "tenant", ignore = true)
+  @Mapping(target = "isSystemIntegration", ignore = true)
+  @Mapping(target = "createdByAdmin", ignore = true)
   Integration toEntity(IntegrationCreateRequest dto);
 
   /**

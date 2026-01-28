@@ -16,7 +16,6 @@ import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

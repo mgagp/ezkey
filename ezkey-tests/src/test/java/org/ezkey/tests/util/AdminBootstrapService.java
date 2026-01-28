@@ -13,6 +13,8 @@ package org.ezkey.tests.util;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.IOException;
@@ -27,8 +29,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Service for bootstrapping admin enrollment and obtaining admin token.
@@ -1101,7 +1101,7 @@ public class AdminBootstrapService {
     try {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
-      return jsonNode.get("token").asString();
+      return jsonNode.get("token").asText();
     } catch (Exception e) {
       log.warn("Failed to load token from file: {}", e.getMessage());
       return null;
@@ -1187,8 +1187,8 @@ public class AdminBootstrapService {
         return null;
       }
 
-      String privateKey = jsonNode.get("privateKey").asString();
-      String publicKey = jsonNode.get("publicKey").asString();
+      String privateKey = jsonNode.get("privateKey").asText();
+      String publicKey = jsonNode.get("publicKey").asText();
       int keySize =
           jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
 
@@ -1216,8 +1216,8 @@ public class AdminBootstrapService {
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(credentialsPath.toFile());
 
       Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
-      String privateKey = jsonNode.get("privateKey").asString();
-      String publicKey = jsonNode.get("publicKey").asString();
+      String privateKey = jsonNode.get("privateKey").asText();
+      String publicKey = jsonNode.get("publicKey").asText();
       int keySize =
           jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
 

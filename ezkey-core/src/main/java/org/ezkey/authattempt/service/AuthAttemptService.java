@@ -298,15 +298,11 @@ public class AuthAttemptService {
   }
 
   /**
-   * Creates a new authentication attempt.
+   * Creates a new authentication attempt. TTL from {@code ezkey.core.auth-attempt.ttl-seconds}.
    *
-   * <p>This method creates a new authentication attempt with the provided data, validates the
-   * associated enrollment, and generates necessary codes and challenges.
-   *
-   * @param authRequest the authentication attempt creation request
-   * @return the created authentication attempt response
-   * @throws IllegalArgumentException if the enrollment is not found or validation fails
-   * @throws RuntimeException if the creation fails
+   * @param authRequest the creation request
+   * @return the create response
+   * @throws IllegalArgumentException if enrollment not found or validation fails
    */
   @Transactional
   public AuthAttemptCreateResponse create(AuthAttemptCreateRequest authRequest) {
@@ -355,8 +351,9 @@ public class AuthAttemptService {
       logger.debug("No challenge code generated for auth attempt");
     }
     authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
+    int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
     authAttempt.setCreatedAt(OffsetDateTime.now());
-    authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(120)); // TTL: 120 seconds
+    authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(ttlSeconds));
 
     // Save the authorization attempt
     AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
@@ -367,7 +364,7 @@ public class AuthAttemptService {
     response.setAuthAttemptChallenge(
         savedAuthAttempt.getAuthAttemptChallenge()); // Include challenge if generated
     response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
-    response.setTimeoutSeconds(120); // Current hardcoded TTL in seconds
+    response.setTimeoutSeconds(ttlSeconds);
     response.setExpiresAt(savedAuthAttempt.getExpiresAt()); // Absolute expiration timestamp
 
     return response;
