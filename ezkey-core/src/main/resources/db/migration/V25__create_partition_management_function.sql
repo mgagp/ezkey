@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_partition_name TEXT,
     p_start_date TIMESTAMPTZ,
     p_end_date TIMESTAMPTZ
-) RETURNS VOID
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER  -- Execute with owner privileges (not caller privileges)
 SET search_path = public  -- Prevent search_path injection attacks
@@ -52,7 +52,7 @@ BEGIN
         WHERE relname = p_partition_name AND relkind = 'r'
     ) THEN
         RAISE NOTICE 'Partition % already exists, skipping creation', p_partition_name;
-        RETURN;
+        RETURN false;
     END IF;
     
     -- Create partition using dynamic SQL
@@ -66,6 +66,7 @@ BEGIN
     );
     
     RAISE NOTICE 'Created partition: % for table: %', p_partition_name, p_table_name;
+    RETURN true;
 END;
 $$;
 
@@ -95,7 +96,8 @@ COMMENT ON FUNCTION create_monthly_partition IS
 'Executes with owner privileges via SECURITY DEFINER, allowing application role to create '
 'partitions without requiring CREATE TABLE privilege. This maintains security best practices '
 'by separating DDL privileges (owner role) from DML privileges (application role). '
-'Function is idempotent - safely skips creation if partition already exists.';
+'Function is idempotent - safely skips creation if partition already exists. '
+'Returns BOOLEAN: true if partition was created, false if partition already existed.';
 
 -- ============================================================================
 -- Migration Complete
@@ -120,5 +122,6 @@ COMMENT ON FUNCTION create_monthly_partition IS
 --     '2025-02-01 00:00:00+00'::TIMESTAMPTZ,
 --     '2025-03-01 00:00:00+00'::TIMESTAMPTZ
 -- );
+-- Returns: true if partition was created, false if it already existed
 -- ============================================================================
 

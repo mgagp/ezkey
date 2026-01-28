@@ -66,6 +66,7 @@ services:
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
+      EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap

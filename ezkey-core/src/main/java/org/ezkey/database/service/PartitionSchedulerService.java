@@ -44,6 +44,16 @@ import org.springframework.stereotype.Component;
  *   <li><b>Compliance:</b> Maintains SOC2 separation of duties (DDL vs DML privileges)
  * </ul>
  *
+ * <p><b>Function Return Value:</b>
+ *
+ * <p>The {@code create_monthly_partition} function returns a BOOLEAN indicating the operation
+ * result:
+ *
+ * <ul>
+ *   <li>{@code true} - Partition was created successfully
+ *   <li>{@code false} - Partition already existed (idempotent operation)
+ * </ul>
+ *
  * <p><b>Supported Tables:</b>
  *
  * <ul>
@@ -155,6 +165,13 @@ public class PartitionSchedulerService {
    * privileges on the application role. This maintains security best practices by separating DDL
    * privileges (owner role) from DML privileges (application role).
    *
+   * <p>The function returns a BOOLEAN indicating whether the partition was created:
+   *
+   * <ul>
+   *   <li>{@code true} - Partition was created successfully
+   *   <li>{@code false} - Partition already existed (idempotent operation)
+   * </ul>
+   *
    * @param tableName the name of the partitioned table
    * @param partitionName the name of the partition to create
    * @param startDate the start date for the partition (inclusive)
@@ -172,15 +189,22 @@ public class PartitionSchedulerService {
       String functionCall =
           "SELECT create_monthly_partition(:tableName, :partitionName, :startDate, :endDate)";
 
-      entityManager
-          .createNativeQuery(functionCall)
-          .setParameter("tableName", tableName)
-          .setParameter("partitionName", partitionName)
-          .setParameter("startDate", startDateTime)
-          .setParameter("endDate", endDateTime)
-          .executeUpdate();
+      Object result =
+          entityManager
+              .createNativeQuery(functionCall)
+              .setParameter("tableName", tableName)
+              .setParameter("partitionName", partitionName)
+              .setParameter("startDate", startDateTime)
+              .setParameter("endDate", endDateTime)
+              .getSingleResult();
 
-      logger.info("✅ Created partition: {} for table: {}", partitionName, tableName);
+      // Function returns BOOLEAN: true if created, false if already existed
+      Boolean wasCreated = (Boolean) result;
+      if (wasCreated) {
+        logger.info("✅ Created partition: {} for table: {}", partitionName, tableName);
+      } else {
+        logger.debug("ℹ️ Partition {} already exists for table: {}", partitionName, tableName);
+      }
 
     } catch (Exception e) {
       logger.error(
