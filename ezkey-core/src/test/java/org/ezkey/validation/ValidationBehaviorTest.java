@@ -26,8 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
 
 /**
  * Comprehensive validation behavior characterization tests.
@@ -56,13 +54,9 @@ import org.springframework.test.context.TestPropertySource;
  */
 // skip all these test
 @SuppressWarnings("ALL")
-@SpringBootTest
-@TestPropertySource(
-    properties = {
-      "spring.jpa.hibernate.ddl-auto=none",
-      "spring.datasource.url=jdbc:h2:mem:testdb",
-      "spring.flyway.enabled=false"
-    })
+// Note: This test only needs Bean Validation, not full Spring context
+// Removing @SpringBootTest to avoid loading unnecessary Spring beans (e.g.,
+// EnrollmentVerifyService)
 class ValidationBehaviorTest {
 
   private Validator validator;

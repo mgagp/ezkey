@@ -11,6 +11,7 @@
 package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.admin.config.AdminSecurityProperties;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -407,14 +408,59 @@ public class AdminProvisioningService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create enrollment name
+    // Create enrollment name (include username for uniqueness)
     String enrollmentName =
-        "%s Admin MFA - %s %s"
+        "%s Admin MFA - %s %s (%s)"
             .formatted(
                 admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
                 admin.getFirstName() != null ? admin.getFirstName() : "",
-                admin.getLastName() != null ? admin.getLastName() : "")
+                admin.getLastName() != null ? admin.getLastName() : "",
+                admin.getUsername())
             .trim();
+
+    // Security validation: Check for existing VERIFIED enrollment with same name
+    // This ensures idempotence and prevents conflicts when tests are re-executed
+    List<Enrollment> existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            systemIntegration.getId(), enrollmentName.trim(), EnrollmentStatus.VERIFIED);
+
+    if (!existingVerifiedEnrollments.isEmpty()) {
+      Enrollment existing = existingVerifiedEnrollments.get(0);
+
+      // If VERIFIED enrollment is active, reject creation
+      // This should not happen in normal flow since username is unique, but can occur
+      // if tests are re-executed and enrollment data persists
+      if (Boolean.TRUE.equals(existing.getActive())) {
+        logger.warn(
+            "Admin enrollment creation rejected: Active VERIFIED enrollment {} (ID: {}) already"
+                + " exists for integration {} and name '{}'. Admin username: {}. This can occur if"
+                + " tests are re-executed with persistent data. The existing enrollment should be"
+                + " reused or reset via recovery process.",
+            existing.getEnrollmentName(),
+            existing.getEnrollmentId(),
+            systemIntegration.getId(),
+            enrollmentName,
+            admin.getUsername());
+        throw new IllegalStateException(
+            "An active verified enrollment with the same name already exists for this integration. "
+                + "Enrollment name: "
+                + enrollmentName
+                + ", Existing enrollment ID: "
+                + existing.getEnrollmentId()
+                + ". This can occur when tests are re-executed with persistent enrollment data. To"
+                + " resolve, use the recovery process: POST /api/v1/admin/auth/recover with a"
+                + " recovery code, then POST /api/v1/admin/enrollments/reset to reset the existing"
+                + " enrollment.");
+      }
+
+      // If VERIFIED enrollment is inactive, allow creation (admin has deactivated it)
+      logger.info(
+          "Admin enrollment creation allowed: Inactive VERIFIED enrollment {} (ID: {}) exists. "
+              + "Creating new enrollment for replacement. Admin username: {}",
+          existing.getEnrollmentName(),
+          existing.getEnrollmentId(),
+          admin.getUsername());
+    }
 
     // Create enrollment
     Enrollment enrollment = new Enrollment();

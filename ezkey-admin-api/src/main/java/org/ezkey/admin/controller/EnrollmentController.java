@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -28,6 +29,8 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
@@ -95,6 +98,7 @@ public class EnrollmentController {
   private final AuditLogService auditLogService;
   private final QrCodeGeneratorService qrCodeGeneratorService;
   private final AccessControlService accessControlService;
+  private final EnrollmentRepository enrollmentRepository;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -104,18 +108,21 @@ public class EnrollmentController {
    * @param auditLogService the audit log service for security monitoring
    * @param qrCodeGeneratorService the QR code generator service
    * @param accessControlService the access control service for tenant scoping validation
+   * @param enrollmentRepository the enrollment repository for audit queries
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
       AuditLogService auditLogService,
       QrCodeGeneratorService qrCodeGeneratorService,
-      AccessControlService accessControlService) {
+      AccessControlService accessControlService,
+      EnrollmentRepository enrollmentRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.qrCodeGeneratorService = qrCodeGeneratorService;
     this.accessControlService = accessControlService;
+    this.enrollmentRepository = enrollmentRepository;
   }
 
   /**
@@ -292,30 +299,88 @@ public class EnrollmentController {
       EnrollmentCreateResponse response =
           enrollmentService.create(enrollmentMapper.toCreateRequest(request));
 
+      // Check if inactive VERIFIED enrollment exists for audit context
+      List<Enrollment> inactiveVerified =
+          enrollmentRepository
+              .findByIntegrationIdAndEnrollmentNameAndStatus(
+                  request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
+              .stream()
+              .filter(e -> Boolean.FALSE.equals(e.getActive()))
+              .toList();
+
       // Audit successful enrollment creation
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
-              .eventStatus(EventStatus.SUCCESS)
-              .enrollmentId(response.getEnrollmentId())
-              .integrationId(request.integrationId())
-              .eventDetails("Enrollment name: " + request.name())
-              .build());
+      if (!inactiveVerified.isEmpty()) {
+        // Enhance success audit log with context about replacing inactive enrollment
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                .eventStatus(EventStatus.SUCCESS)
+                .enrollmentId(response.getEnrollmentId())
+                .integrationId(request.integrationId())
+                .eventDetails(
+                    "Enrollment name: "
+                        + request.name()
+                        + ". Replacing inactive VERIFIED enrollment (ID: "
+                        + inactiveVerified.get(0).getEnrollmentId()
+                        + ")")
+                .build());
+      } else {
+        // Standard success logging
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                .eventStatus(EventStatus.SUCCESS)
+                .enrollmentId(response.getEnrollmentId())
+                .integrationId(request.integrationId())
+                .eventDetails("Enrollment name: " + request.name())
+                .build());
+      }
 
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(enrollmentMapper.toCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Audit validation failure - do not include integrationId as it may not exist
-      // (would violate FK constraint if integration doesn't exist)
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
-              .eventStatus(EventStatus.FAILURE)
-              // integrationId omitted - may not exist, would violate FK constraint
-              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
-              .build());
+      // Check if error is about existing VERIFIED enrollment
+      if (e.getMessage() != null && e.getMessage().contains("active verified enrollment")) {
+        // Query to find existing enrollment for audit purposes
+        Enrollment existing =
+            enrollmentRepository
+                .findByIntegrationIdAndEnrollmentNameAndStatus(
+                    request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
+                .stream()
+                .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
+                .findFirst()
+                .orElse(null);
+
+        // Audit validation failure with existing enrollment context
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_CREATED,
+                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                .eventStatus(EventStatus.FAILURE)
+                .integrationId(request.integrationId())
+                .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
+                .errorMessage(e.getMessage())
+                .eventDetails(
+                    "Enrollment creation rejected: Active VERIFIED enrollment exists. "
+                        + "Existing enrollment ID: "
+                        + (existing != null ? existing.getEnrollmentId() : "unknown")
+                        + ", Requested name: "
+                        + request.name())
+                .build());
+      } else {
+        // Standard validation failure logging - do not include integrationId as it may not exist
+        // (would violate FK constraint if integration doesn't exist)
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_CREATED,
+                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                .eventStatus(EventStatus.FAILURE)
+                // integrationId omitted - may not exist, would violate FK constraint
+                .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
+                .build());
+      }
 
       // Let GlobalExceptionHandler handle the exception to return proper error
       // response with

@@ -23,7 +23,10 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
@@ -95,20 +98,25 @@ public class EnrollmentController {
 
   private final AuditLogService auditLogService;
 
+  private final EnrollmentRepository enrollmentRepository;
+
   /**
    * Constructs the mobile enrollment controller with required dependencies.
    *
    * @param enrollmentService JPA-based enrollment service
    * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
    * @param auditLogService audit log service for security monitoring
+   * @param enrollmentRepository enrollment repository for audit queries
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAuthMapper enrollmentMapper,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EnrollmentRepository enrollmentRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
+    this.enrollmentRepository = enrollmentRepository;
   }
 
   /**
@@ -304,8 +312,69 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
+    } catch (IllegalStateException e) {
+      // Check if error is about existing VERIFIED enrollment
+      if (e.getMessage() != null
+          && e.getMessage().contains("verified enrollment with the same name")) {
+        // Query to find existing enrollment for audit purposes
+        // First, get the enrollment being verified to get integrationId and name
+        Enrollment attemptedEnrollment =
+            enrollmentRepository.findById(req.enrollmentId()).orElse(null);
+
+        Enrollment existing = null;
+        if (attemptedEnrollment != null) {
+          existing =
+              enrollmentRepository
+                  .findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
+                      attemptedEnrollment.getIntegrationId(),
+                      attemptedEnrollment.getEnrollmentName(),
+                      EnrollmentStatus.VERIFIED,
+                      req.enrollmentId())
+                  .stream()
+                  .findFirst()
+                  .orElse(null);
+        }
+
+        // Audit verification failure with existing enrollment context
+        auditLogService.log(
+            AuditLog.builder()
+                .eventType(EventType.ENROLLMENT_VERIFY)
+                .eventAction("enrollment_verify_failed")
+                .eventStatus(EventStatus.FAILURE)
+                .apiName(ApiName.AUTH_API)
+                .ipAddress(clientIp)
+                .userAgent(userAgent)
+                .enrollmentId(req.enrollmentId())
+                .errorMessage(e.getMessage())
+                .eventDetails(
+                    "Verification rejected: VERIFIED enrollment already exists. "
+                        + "Attempted enrollment ID: "
+                        + req.enrollmentId()
+                        + ", Existing enrollment ID: "
+                        + (existing != null ? existing.getEnrollmentId() : "unknown")
+                        + ", Enrollment name: "
+                        + (attemptedEnrollment != null
+                            ? attemptedEnrollment.getEnrollmentName()
+                            : "unknown"))
+                .build());
+      } else {
+        // Standard failure logging
+        auditLogService.log(
+            AuditLog.builder()
+                .eventType(EventType.ENROLLMENT_VERIFY)
+                .eventAction("enrollment_verify_failed")
+                .eventStatus(EventStatus.FAILURE)
+                .apiName(ApiName.AUTH_API)
+                .ipAddress(clientIp)
+                .userAgent(userAgent)
+                .enrollmentId(req.enrollmentId())
+                .errorMessage(e.getMessage())
+                .build());
+      }
+
+      throw e;
     } catch (Exception e) {
-      // Audit verification failure
+      // Audit verification failure for other exceptions
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_VERIFY)

@@ -319,9 +319,15 @@ public class AdminBootstrapService {
     // Generate enrollment challenge code (6 digits)
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
-    // Create Global Admin Enrollment with personalized name
+    // Create Global Admin Enrollment with personalized name (include username for uniqueness)
     String enrollmentName =
-        "Global Admin MFA - " + globalAdmin.getFirstName() + " " + globalAdmin.getLastName();
+        "Global Admin MFA - "
+            + globalAdmin.getFirstName()
+            + " "
+            + globalAdmin.getLastName()
+            + " ("
+            + globalAdmin.getUsername()
+            + ")";
     Enrollment globalAdminEnrollment = new Enrollment();
     globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
     globalAdminEnrollment.setEnrollmentName(enrollmentName);

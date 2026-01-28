@@ -318,6 +318,41 @@ public class EnrollmentService {
               + " global admin authentication and enrollments can only be created through the admin"
               + " provisioning API endpoints.");
     }
+
+    // Security validation: Check for existing VERIFIED enrollment
+    List<Enrollment> existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            request.getIntegrationId(), request.getName().trim(), EnrollmentStatus.VERIFIED);
+
+    if (!existingVerifiedEnrollments.isEmpty()) {
+      Enrollment existing = existingVerifiedEnrollments.get(0);
+
+      // If VERIFIED enrollment is active, reject creation
+      if (Boolean.TRUE.equals(existing.getActive())) {
+        logger.warn(
+            "Enrollment creation rejected: Active VERIFIED enrollment {} (ID: {}) already exists"
+                + " for integration {} and name '{}'. Use recovery process"
+                + " (/api/v1/admin/auth/recover + /api/v1/admin/enrollments/reset) to replace"
+                + " enrollment.",
+            existing.getEnrollmentName(),
+            existing.getEnrollmentId(),
+            request.getIntegrationId(),
+            request.getName());
+        throw new IllegalArgumentException(
+            "An active verified enrollment with the same name already exists for this integration."
+                + " To replace an enrollment, use the recovery process: POST"
+                + " /api/v1/admin/auth/recover with a recovery code, then POST"
+                + " /api/v1/admin/enrollments/reset to reset the existing enrollment.");
+      }
+
+      // If VERIFIED enrollment is inactive, allow creation (admin has deactivated it)
+      logger.info(
+          "Enrollment creation allowed: Inactive VERIFIED enrollment {} (ID: {}) exists. "
+              + "Creating new enrollment for replacement.",
+          existing.getEnrollmentName(),
+          existing.getEnrollmentId());
+    }
+
     var enrollment = new Enrollment();
     enrollment.setIntegrationId(request.getIntegrationId());
     enrollment.setEnrollmentName(request.getName().trim());

@@ -262,13 +262,85 @@ public class TenantAdminTestHelper {
     verifyRequest.put("devicePublicKey", keyPair.publicKey());
     verifyRequest.put("enrollmentProofTokenSigned", bindSignature);
 
-    given()
-        .contentType(ContentType.JSON)
-        .body(verifyRequest)
-        .when()
-        .post("/enrollments/verify")
-        .then()
-        .statusCode(200);
+    Response verifyResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(verifyRequest)
+            .when()
+            .post("/enrollments/verify")
+            .then()
+            .extract()
+            .response();
+
+    // Handle 409 CONFLICT - enrollment with same name already VERIFIED
+    // This can occur when tests are re-executed with persistent enrollment data (idempotence)
+    if (verifyResponse.getStatusCode() == 409) {
+      String responseBody = verifyResponse.getBody().asString();
+      if (responseBody != null
+          && (responseBody.contains("verified enrollment with the same name")
+              || responseBody.contains("recovery process"))) {
+        log.warn(
+            "Enrollment verification rejected (409): A VERIFIED enrollment with the same name"
+                + " already exists. This can occur when tests are re-executed with persistent"
+                + " enrollment data. Checking if current enrollment is already VERIFIED"
+                + " (idempotence check)...");
+
+        // Check if current enrollment is already VERIFIED
+        // This supports test idempotence: if enrollment is already verified, reuse it
+        org.ezkey.tests.util.DatabaseHelper databaseHelper =
+            new org.ezkey.tests.util.DatabaseHelper();
+        String enrollmentStatus = databaseHelper.getEnrollmentStatus(enrollmentId);
+        log.info("Current enrollment {} status: {}", enrollmentId, enrollmentStatus);
+
+        if ("VERIFIED".equals(enrollmentStatus)) {
+          log.info(
+              "Current enrollment {} is already VERIFIED - Reusing existing verified enrollment "
+                  + "(idempotence: test can be re-executed safely). Username: {}, TenantId: {}",
+              enrollmentId,
+              username,
+              tenantId);
+          // Enrollment is already verified, continue with saving credentials
+          // This supports test idempotence: tests can be re-executed with persistent data
+        } else {
+          log.error(
+              "Enrollment verification failed: A VERIFIED enrollment with the same name exists, but"
+                  + " current enrollment {} is in {} state. This indicates a duplicate enrollment"
+                  + " name conflict despite username uniqueness. Username: {}, TenantId: {}. This"
+                  + " should not occur if usernames are unique. Please check if enrollment name"
+                  + " generation includes username correctly.",
+              enrollmentId,
+              enrollmentStatus,
+              username,
+              tenantId);
+          throw new IllegalStateException(
+              "Enrollment verification failed: A VERIFIED enrollment with the same name already"
+                  + " exists, but current enrollment is not VERIFIED. This indicates a conflict."
+                  + " Enrollment ID: "
+                  + enrollmentId
+                  + ", Status: "
+                  + enrollmentStatus
+                  + ", Username: "
+                  + username
+                  + ". Please ensure each test uses a unique username.");
+        }
+      } else {
+        // Other 409 error (not related to uniqueness)
+        log.error(
+            "Enrollment verification failed with 409: {}", verifyResponse.getBody().asString());
+        throw new IllegalStateException(
+            "Enrollment verification failed: " + verifyResponse.getBody().asString());
+      }
+    } else if (verifyResponse.getStatusCode() != 200) {
+      log.error(
+          "Enrollment verification failed with status {}: {}",
+          verifyResponse.getStatusCode(),
+          verifyResponse.getBody().asString());
+      throw new IllegalStateException(
+          "Enrollment verification failed: "
+              + verifyResponse.getStatusCode()
+              + " - "
+              + verifyResponse.getBody().asString());
+    }
 
     log.info("Enrollment verified successfully");
 

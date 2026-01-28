@@ -283,4 +283,50 @@ public interface EnrollmentRepository
       """)
   List<Enrollment> findEncryptedEnrollmentProofTokenLike(
       @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+
+  /**
+   * Finds enrollments with the same integration, name, and status.
+   *
+   * <p>This method is used for validation during enrollment creation to check if a VERIFIED
+   * enrollment already exists with the same integration and name. It allows the system to enforce
+   * uniqueness constraints at the application level before database constraint violations occur.
+   *
+   * <p><b>Usage Context:</b> Called during enrollment creation to validate that no active VERIFIED
+   * enrollment exists with the same name for the same integration. This provides early feedback to
+   * users and prevents unnecessary enrollment creation attempts.
+   *
+   * @param integrationId the integration ID to search for
+   * @param enrollmentName the enrollment name to search for
+   * @param status the enrollment status to filter by
+   * @return list of enrollments matching the criteria
+   * @since 2025
+   */
+  List<Enrollment> findByIntegrationIdAndEnrollmentNameAndStatus(
+      Integer integrationId, String enrollmentName, EnrollmentStatus status);
+
+  /**
+   * Finds VERIFIED enrollments with the same integration and name, excluding a specific enrollment.
+   *
+   * <p>This method is used for validation during enrollment verification to check if another
+   * VERIFIED enrollment already exists with the same integration and name. It excludes the current
+   * enrollment being verified to allow checking for duplicates.
+   *
+   * <p><b>Usage Context:</b> Called during enrollment verification to ensure that only one VERIFIED
+   * enrollment can exist per (integration_id, enrollment_name) combination. This enforces the
+   * uniqueness constraint at the application level and provides clear error messages before
+   * database constraint violations occur.
+   *
+   * @param integrationId the integration ID to search for
+   * @param enrollmentName the enrollment name to search for
+   * @param status the enrollment status to filter by (typically VERIFIED)
+   * @param excludeEnrollmentId the enrollment ID to exclude from results (current enrollment being
+   *     verified)
+   * @return list of VERIFIED enrollments matching the criteria
+   * @since 2025
+   */
+  List<Enrollment> findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
+      Integer integrationId,
+      String enrollmentName,
+      EnrollmentStatus status,
+      Integer excludeEnrollmentId);
 }

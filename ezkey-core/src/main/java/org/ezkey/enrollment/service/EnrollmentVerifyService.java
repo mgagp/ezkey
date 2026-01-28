@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import java.util.List;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -111,7 +112,10 @@ public class EnrollmentVerifyService {
     // Step 5: Acquire lock and final validation
     Enrollment lockedEnrollment = acquireLockAndValidate(request, enrollment);
 
-    // Step 6: Mark as verified and activate
+    // Step 6: Validate uniqueness - check for existing VERIFIED enrollment
+    validateUniqueness(lockedEnrollment);
+
+    // Step 7: Mark as verified and activate
     markAsVerified(lockedEnrollment, request);
 
     // Step 7: Build and return response
@@ -316,6 +320,50 @@ public class EnrollmentVerifyService {
     logger.debug(
         "State consistency validation passed for enrollment ID: {}", request.getEnrollmentId());
     return enrollment;
+  }
+
+  /**
+   * Validates that no other VERIFIED enrollment exists with the same integration and name.
+   *
+   * <p>This method ensures uniqueness constraint at the application level before database
+   * constraint violations occur. It provides clear error messages directing users to the recovery
+   * process if a duplicate VERIFIED enrollment exists.
+   *
+   * @param enrollment the enrollment being verified
+   * @throws IllegalStateException if a VERIFIED enrollment already exists with the same integration
+   *     and name
+   */
+  private void validateUniqueness(Enrollment enrollment) {
+    logger.debug(
+        "Step 6: Validating uniqueness for enrollment ID: {}", enrollment.getEnrollmentId());
+
+    // Check for existing VERIFIED enrollments with same integration and name
+    List<Enrollment> existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
+            enrollment.getIntegrationId(),
+            enrollment.getEnrollmentName(),
+            EnrollmentStatus.VERIFIED,
+            enrollment.getEnrollmentId());
+
+    if (!existingVerifiedEnrollments.isEmpty()) {
+      Enrollment existing = existingVerifiedEnrollments.get(0);
+      logger.warn(
+          "Enrollment verification rejected: VERIFIED enrollment {} (ID: {}) already exists for"
+              + " integration {} and name '{}'. Use recovery process (/api/v1/admin/auth/recover +"
+              + " /api/v1/admin/enrollments/reset) to replace enrollment.",
+          existing.getEnrollmentName(),
+          existing.getEnrollmentId(),
+          enrollment.getIntegrationId(),
+          enrollment.getEnrollmentName());
+      throw new IllegalStateException(
+          "A verified enrollment with the same name already exists for this integration. To replace"
+              + " an enrollment, use the recovery process: POST /api/v1/admin/auth/recover with a"
+              + " recovery code, then POST /api/v1/admin/enrollments/reset to reset the existing"
+              + " enrollment.");
+    }
+
+    logger.debug(
+        "Uniqueness validation passed for enrollment ID: {}", enrollment.getEnrollmentId());
   }
 
   /**
