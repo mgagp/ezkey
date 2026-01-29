@@ -164,6 +164,33 @@ services:
       start_period: 40s
       retries: 3
 
+  cli-test:
+    build:
+      context: ..
+      dockerfile: docker/cli-test/Dockerfile
+    container_name: ezkey-cli-test-native
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
+      crypto-api:
+        condition: service_healthy
+    environment:
+      EZKEY_ADMIN_API_URL: http://admin-api:9080
+      EZKEY_AUTH_API_URL: http://auth-api:8080
+      EZKEY_CRYPTO_API_URL: http://crypto-api:9090
+    volumes:
+      - cli-config:/root/.ezkey
+      - cli-work:/work
+    working_dir: /work
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    networks:
+      - ezkey-network-native
+    restart: unless-stopped
+
 networks:
   ezkey-network-native:
     driver: bridge
@@ -173,3 +200,5 @@ volumes:
   demo-device-data-native:
   maven-cache:
   encryption-secrets-native:
+  cli-config:
+  cli-work:
