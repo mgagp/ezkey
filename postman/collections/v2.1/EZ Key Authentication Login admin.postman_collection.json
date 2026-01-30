@@ -1,389 +1,389 @@
 {
-	"info": {
-		"_postman_id": "78606f50-0b37-4a00-942b-b1b7c9df18ae",
-		"name": "EZ Key Authentication Login admin",
-		"description": "Collection for administrator passwordless authentication and recovery operations in the Admin API.\n\n## Endpoints\n\n- **Login**: Passwordless authentication for administrators (single-call or two-call flow)\n- **Passwordless Wait**: Wait for device approval in two-step authentication flow\n- **Recover**: Emergency access using single-use recovery code\n- **Enrollment Reset**: Reset enrollment after recovery (unbind old device, generate new credentials)\n- **Logout**: Invalidate bearer token and end session\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Login Response Fields\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)\n- `tenantId`: Tenant ID (null for GlobalAdmin, tenantId for TenantAdmin)\n- These fields are automatically extracted and saved to environment variables\n\n## Authentication Modes\n\n### Single-Call Mode (Convenient)\n- Set `challengeRequested: false` in login request\n- Endpoint blocks until device approves\n- Returns bearer token directly\n\n### Two-Call Mode (More Secure)\n- Set `challengeRequested: true` in login request\n- Returns `authAttemptId` and `challengeCode` immediately\n- User enters challenge code on device\n- Call `/passwordless-wait` to get bearer token\n\n## Recovery Flow\n\n1. Use recovery code via `/recover` endpoint\n2. Receive temporary recovery token (30 minutes validity)\n3. Use recovery token to reset enrollment via `/enrollments/reset`\n4. Bind new device with new enrollment credentials\n5. Resume normal passwordless login\n\n## Security Notes\n\n- **Passwordless-only**: No passwords stored or transmitted\n- **Rate limiting**: 5 requests per minute per IP address\n- **Recovery codes**: 10 single-use codes per admin, BCrypt hashed\n- **Recovery token**: 30 minutes validity, enrollment reset only\n- **Challenge code**: Prevents enumeration attacks in two-step flow",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "4087"
-	},
-	"item": [
-		{
-			"name": "login",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 400\", function () {",
-							"    pm.expect([200, 400]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    ",
-							"    if (jsonData.success === true) {",
-							"        // Single-call mode: token received immediately",
-							"        pm.environment.set(\"token\", jsonData.token);",
-							"        ",
-							"        // Extract multi-tenancy fields (Phase 1)",
-							"        if (jsonData.adminType) {",
-							"            pm.environment.set(\"adminType\", jsonData.adminType);",
-							"        }",
-							"        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
-							"            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"        }",
-							"        ",
-							"        pm.test(\"Response contains token\", function () {",
-							"            pm.expect(jsonData).to.have.property('token');",
-							"            pm.expect(jsonData.token).to.be.a('string');",
-							"        });",
-							"        ",
-							"        pm.test(\"Response contains adminType\", function () {",
-							"            pm.expect(jsonData).to.have.property('adminType');",
-							"            pm.expect(['GLOBAL_ADMIN', 'TENANT_ADMIN']).to.include(jsonData.adminType);",
-							"        });",
-							"    } else if (jsonData.status === 'pending') {",
-							"        // Two-call mode: challenge required",
-							"        pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
-							"        pm.environment.set(\"challengeCode\", jsonData.challengeCode);",
-							"        ",
-							"        // Extract multi-tenancy fields (Phase 1)",
-							"        if (jsonData.adminType) {",
-							"            pm.environment.set(\"adminType\", jsonData.adminType);",
-							"        }",
-							"        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
-							"            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"        }",
-							"        ",
-							"        pm.test(\"Response contains challenge info\", function () {",
-							"            pm.expect(jsonData).to.have.property('authAttemptId');",
-							"            pm.expect(jsonData).to.have.property('challengeCode');",
-							"        });",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"username\": \"admin.docker\",\r\n    \"challengeRequested\": false\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/login",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"admin",
-						"auth",
-						"login"
-					]
-				},
-				"description": "Passwordless authentication for administrators. Supports two authentication modes.\n\n**Request Body:**\n- `username` (required): Administrator username\n- `challengeRequested` (optional, default: false): Whether to use two-step flow with challenge code\n\n**Single-Call Mode (challengeRequested: false):**\n- Endpoint blocks until device approves authentication\n- Returns bearer token immediately on success\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Two-Call Mode (challengeRequested: true):**\n- Returns immediately with challenge info\n- Requires separate `/passwordless-wait` call\n\n**Response (200 OK) - Pending:**\n- `success`: false\n- `status`: \"pending\"\n- `authAttemptId`: Authentication attempt ID\n- `challengeCode`: 6-digit challenge code for device verification\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: When the auth attempt expires\n- `message`: Instruction message\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g., \"No device enrolled\", \"Authentication rejected\")\n\n**Status Codes:**\n- 200: Authentication successful or pending\n- 400: Authentication failed (invalid credentials, no device enrolled)\n- 429: Rate limit exceeded (5 requests per minute per IP)\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "passwordless-wait",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200, 403, or 400\", function () {",
-							"    pm.expect([200, 403, 400]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    ",
-							"    if (jsonData.success === true) {",
-							"        pm.environment.set(\"token\", jsonData.token);",
-							"        ",
-							"        // Extract multi-tenancy fields (Phase 1)",
-							"        if (jsonData.adminType) {",
-							"            pm.environment.set(\"adminType\", jsonData.adminType);",
-							"        }",
-							"        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
-							"            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"        }",
-							"        ",
-							"        pm.test(\"Response contains token\", function () {",
-							"            pm.expect(jsonData).to.have.property('token');",
-							"            pm.expect(jsonData.token).to.be.a('string');",
-							"        });",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"authAttemptId\": {{authAttemptId}},\r\n  \"challengeCode\": {{challengeCode}}\r\n}\r\n",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/passwordless-wait",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"admin",
-						"auth",
-						"passwordless-wait"
-					]
-				},
-				"description": "Waits for device approval in the two-step passwordless authentication flow. This endpoint blocks for up to 5 minutes waiting for the device response.\n\n**Security:** The challengeCode is required to prevent enumeration attacks on authAttemptId. Only clients that legitimately initiated the authentication and received the challenge can proceed.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n- `challengeCode` (required): 6-digit challenge code from login response\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: Error description (e.g., \"Authentication rejected\", \"Challenge code mismatch\")\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Invalid request (e.g., \"Invalid authAttemptId\")\n\n**Status Codes:**\n- 200: Authentication successful\n- 400: Invalid request\n- 403: Authentication failed (rejected, timeout, invalid challenge)\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "auth recover",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200, 403, or 400\", function () {",
-							"    pm.expect([200, 403, 400]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"recoveryToken\", jsonData.recoveryToken);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('success');",
-							"        pm.expect(jsonData).to.have.property('recoveryToken');",
-							"        pm.expect(jsonData).to.have.property('expiresAt');",
-							"        pm.expect(jsonData).to.have.property('codesRemaining');",
-							"    });",
-							"    ",
-							"    pm.test(\"Recovery successful\", function () {",
-							"        pm.expect(jsonData.success).to.be.true;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"username\": \"admin\",\r\n  \"recoveryCode\": \"4743-8097-0426-5914-7438-4180-8010-5825\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/recover",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"admin",
-						"auth",
-						"recover"
-					]
-				},
-				"description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged as critical security event\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: Invalid recovery code\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "enrollments reset",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 400\", function () {",
-							"    pm.expect([200, 400]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
-							"    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('success');",
-							"        pm.expect(jsonData).to.have.property('enrollmentId');",
-							"        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
-							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
-							"        pm.expect(jsonData).to.have.property('integrationId');",
-							"    });",
-							"    ",
-							"    pm.test(\"Reset successful\", function () {",
-							"        pm.expect(jsonData.success).to.be.true;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{recoveryToken}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"enrollmentId\": 1\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/admin/enrollments/reset",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"admin",
-						"enrollments",
-						"reset"
-					]
-				},
-				"description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to reset\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 401: Unauthorized - invalid or expired recovery token\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
-			},
-			"response": []
-		},
-		{
-			"name": "logout",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 401\", function () {",
-							"    pm.expect([200, 401]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    pm.test(\"Logout successful\", function () {",
-							"        pm.expect(pm.response.code).to.equal(200);",
-							"        // Logout returns 200 OK with no body",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "POST",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/admin/auth/logout",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"admin",
-						"auth",
-						"logout"
-					]
-				},
-				"description": "Invalidates the current bearer token, effectively logging out the administrator from the system.\n\n**Authentication:**\n- Requires valid bearer token in Authorization header\n\n**Response (200 OK):**\n- No response body\n- Token is immediately invalidated in database\n- Subsequent requests with same token will return 401\n\n**Status Codes:**\n- 200: Logout successful\n- 401: Unauthorized - invalid or expired token\n\n**Note:** Recommended to call on explicit logout or session timeout. The token cannot be reused after logout."
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "token",
-			"value": "",
-			"type": "default"
-		}
-	]
+  "info": {
+    "_postman_id": "0863688c-d169-4283-b0d1-0fc8912dc73d",
+    "name": "EZ Key Authentication Login admin",
+    "description": "Collection for administrator passwordless authentication and recovery operations in the Admin API.\n\n## Endpoints\n\n- **Login**: Passwordless authentication for administrators (single-call or two-call flow)\n- **Passwordless Wait**: Wait for device approval in two-step authentication flow\n- **Recover**: Emergency access using single-use recovery code\n- **Enrollment Reset**: Reset enrollment after recovery (unbind old device, generate new credentials)\n- **Logout**: Invalidate bearer token and end session\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Login Response Fields\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)\n- `tenantId`: Tenant ID (null for GlobalAdmin, tenantId for TenantAdmin)\n- These fields are automatically extracted and saved to environment variables\n\n## Authentication Modes\n\n### Single-Call Mode (Convenient)\n- Set `challengeRequested: false` in login request\n- Endpoint blocks until device approves\n- Returns bearer token directly\n\n### Two-Call Mode (More Secure)\n- Set `challengeRequested: true` in login request\n- Returns `authAttemptId` and `challengeCode` immediately\n- User enters challenge code on device\n- Call `/passwordless-wait` to get bearer token\n\n## Recovery Flow\n\n1. Use recovery code via `/recover` endpoint\n2. Receive temporary recovery token (30 minutes validity)\n3. Use recovery token to reset enrollment via `/enrollments/reset`\n4. Bind new device with new enrollment credentials\n5. Resume normal passwordless login\n\n## Security Notes\n\n- **Passwordless-only**: No passwords stored or transmitted\n- **Rate limiting**: 5 requests per minute per IP address\n- **Recovery codes**: 10 single-use codes per admin, BCrypt hashed\n- **Recovery token**: 30 minutes validity, enrollment reset only\n- **Challenge code**: Prevents enumeration attacks in two-step flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    if (jsonData.success === true) {",
+              "        // Single-call mode: token received immediately",
+              "        pm.environment.set(\"token\", jsonData.token);",
+              "        ",
+              "        // Extract multi-tenancy fields (Phase 1)",
+              "        if (jsonData.adminType) {",
+              "            pm.environment.set(\"adminType\", jsonData.adminType);",
+              "        }",
+              "        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
+              "            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "        }",
+              "        ",
+              "        pm.test(\"Response contains token\", function () {",
+              "            pm.expect(jsonData).to.have.property('token');",
+              "            pm.expect(jsonData.token).to.be.a('string');",
+              "        });",
+              "        ",
+              "        pm.test(\"Response contains adminType\", function () {",
+              "            pm.expect(jsonData).to.have.property('adminType');",
+              "            pm.expect(['GLOBAL_ADMIN', 'TENANT_ADMIN']).to.include(jsonData.adminType);",
+              "        });",
+              "    } else if (jsonData.status === 'pending') {",
+              "        // Two-call mode: challenge required",
+              "        pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+              "        pm.environment.set(\"challengeCode\", jsonData.challengeCode);",
+              "        ",
+              "        // Extract multi-tenancy fields (Phase 1)",
+              "        if (jsonData.adminType) {",
+              "            pm.environment.set(\"adminType\", jsonData.adminType);",
+              "        }",
+              "        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
+              "            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "        }",
+              "        ",
+              "        pm.test(\"Response contains challenge info\", function () {",
+              "            pm.expect(jsonData).to.have.property('authAttemptId');",
+              "            pm.expect(jsonData).to.have.property('challengeCode');",
+              "        });",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"username\": \"admin.docker\",\r\n    \"challengeRequested\": false\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/login",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Passwordless authentication for administrators. Supports two authentication modes.\n\n**Request Body:**\n- `username` (required): Administrator username\n- `challengeRequested` (optional, default: false): Whether to use two-step flow with challenge code\n\n**Single-Call Mode (challengeRequested: false):**\n- Endpoint blocks until device approves authentication\n- Returns bearer token immediately on success\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Two-Call Mode (challengeRequested: true):**\n- Returns immediately with challenge info\n- Requires separate `/passwordless-wait` call\n\n**Response (200 OK) - Pending:**\n- `success`: false\n- `status`: \"pending\"\n- `authAttemptId`: Authentication attempt ID\n- `challengeCode`: 6-digit challenge code for device verification\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: When the auth attempt expires\n- `message`: Instruction message\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g., \"No device enrolled\", \"Authentication rejected\")\n\n**Status Codes:**\n- 200: Authentication successful or pending\n- 400: Authentication failed (invalid credentials, no device enrolled)\n- 429: Rate limit exceeded (5 requests per minute per IP)\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "passwordless-wait",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 403, or 400\", function () {",
+              "    pm.expect([200, 403, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    if (jsonData.success === true) {",
+              "        pm.environment.set(\"token\", jsonData.token);",
+              "        ",
+              "        // Extract multi-tenancy fields (Phase 1)",
+              "        if (jsonData.adminType) {",
+              "            pm.environment.set(\"adminType\", jsonData.adminType);",
+              "        }",
+              "        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
+              "            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "        }",
+              "        ",
+              "        pm.test(\"Response contains token\", function () {",
+              "            pm.expect(jsonData).to.have.property('token');",
+              "            pm.expect(jsonData.token).to.be.a('string');",
+              "        });",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"authAttemptId\": {{authAttemptId}},\r\n  \"challengeCode\": {{challengeCode}}\r\n}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/passwordless-wait",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "passwordless-wait"
+          ]
+        },
+        "description": "Waits for device approval in the two-step passwordless authentication flow. This endpoint blocks for up to 5 minutes waiting for the device response.\n\n**Security:** The challengeCode is required to prevent enumeration attacks on authAttemptId. Only clients that legitimately initiated the authentication and received the challenge can proceed.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n- `challengeCode` (required): 6-digit challenge code from login response\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: Error description (e.g., \"Authentication rejected\", \"Challenge code mismatch\")\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Invalid request (e.g., \"Invalid authAttemptId\")\n\n**Status Codes:**\n- 200: Authentication successful\n- 400: Invalid request\n- 403: Authentication failed (rejected, timeout, invalid challenge)\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "auth recover",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 403, or 400\", function () {",
+              "    pm.expect([200, 403, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"recoveryToken\", jsonData.recoveryToken);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('success');",
+              "        pm.expect(jsonData).to.have.property('recoveryToken');",
+              "        pm.expect(jsonData).to.have.property('expiresAt');",
+              "        pm.expect(jsonData).to.have.property('codesRemaining');",
+              "    });",
+              "    ",
+              "    pm.test(\"Recovery successful\", function () {",
+              "        pm.expect(jsonData.success).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"username\": \"admin\",\r\n  \"recoveryCode\": \"4743-8097-0426-5914-7438-4180-8010-5825\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/recover",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "recover"
+          ]
+        },
+        "description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged as critical security event\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: Invalid recovery code\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "enrollments reset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
+              "    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('success');",
+              "        pm.expect(jsonData).to.have.property('enrollmentId');",
+              "        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+              "        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
+              "        pm.expect(jsonData).to.have.property('integrationId');",
+              "    });",
+              "    ",
+              "    pm.test(\"Reset successful\", function () {",
+              "        pm.expect(jsonData.success).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{recoveryToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"enrollmentId\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/enrollments/reset",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "enrollments",
+            "reset"
+          ]
+        },
+        "description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to reset\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 401: Unauthorized - invalid or expired recovery token\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
+      },
+      "response": []
+    },
+    {
+      "name": "logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 401\", function () {",
+              "    pm.expect([200, 401]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Logout successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(200);",
+              "        // Logout returns 200 OK with no body",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/logout",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "logout"
+          ]
+        },
+        "description": "Invalidates the current bearer token, effectively logging out the administrator from the system.\n\n**Authentication:**\n- Requires valid bearer token in Authorization header\n\n**Response (200 OK):**\n- No response body\n- Token is immediately invalidated in database\n- Subsequent requests with same token will return 401\n\n**Status Codes:**\n- 200: Logout successful\n- 401: Unauthorized - invalid or expired token\n\n**Note:** Recommended to call on explicit logout or session timeout. The token cannot be reused after logout."
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "default"
+    }
+  ]
 }

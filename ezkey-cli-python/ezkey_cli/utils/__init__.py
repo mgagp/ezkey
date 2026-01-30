@@ -11,5 +11,6 @@ Description: Utility modules for ezkey CLI
 from .http_client import HttpClient, ApiResponse
 from .json_utils import JsonUtils
 from .output_utils import OutputUtils
+from .device_storage import DeviceStorage
 
-__all__ = ["HttpClient", "ApiResponse", "JsonUtils", "OutputUtils"]
+__all__ = ["HttpClient", "ApiResponse", "JsonUtils", "OutputUtils", "DeviceStorage"]

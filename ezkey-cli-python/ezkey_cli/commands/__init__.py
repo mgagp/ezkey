@@ -14,5 +14,6 @@ from .configure import configure
 from .database import database, db
 from .openapi import openapi
 from .crypto import crypto
+from .device import device
 
-__all__ = ["admin", "auth", "configure", "database", "db", "openapi", "crypto"]
+__all__ = ["admin", "auth", "configure", "database", "db", "openapi", "crypto", "device"]

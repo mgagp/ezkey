@@ -11,7 +11,7 @@ Description: Main command line interface for ezkey
 import click
 
 from .config import ConfigManager
-from .commands import admin, auth, configure, database, db, openapi, crypto
+from .commands import admin, auth, configure, database, db, openapi, crypto, device
 
 
 @click.group(invoke_without_command=True)
@@ -71,6 +71,8 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
             "--accepted true --auth-attempt-proof-token-signed @signature.txt"
         )
         click.echo("  $ ezkey crypto keypair --key-size 2048")
+        click.echo("  $ ezkey device enroll --enrollment-id 456 --enrollment-proof-token EZK-ABC123 --challenge 123456")
+        click.echo("  $ ezkey device auth --enrollment-id 456")
         click.echo("  $ ezkey database migrate")
         click.echo("  $ ezkey openapi refresh --all")
         click.echo()
@@ -82,6 +84,7 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
 cli.add_command(admin)
 cli.add_command(auth)
 cli.add_command(crypto)
+cli.add_command(device)
 cli.add_command(database)
 cli.add_command(db)  # Alias for database
 cli.add_command(openapi)

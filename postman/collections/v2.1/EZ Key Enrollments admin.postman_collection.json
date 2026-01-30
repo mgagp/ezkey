@@ -1,366 +1,366 @@
 {
-	"info": {
-		"_postman_id": "140e4dcd-2ae6-4a72-90f2-a6a4e6de9843",
-		"name": "EZ Key Enrollments admin",
-		"description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **Search Enrollments**: Retrieve enrollments with filters and pagination\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all enrollments across all tenants\n- **TenantAdmin**: Can only access enrollments for integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only enrollments for their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessEnrollment()`\n- **Integration Access Check**: Enrollment creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API)\n4. **Verification**: Mobile device verifies enrollment (via auth API)\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "4087"
-	},
-	"item": [
-		{
-			"name": "search",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Response is paginated\", function () {",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.have.property('content');",
-							"    pm.expect(jsonData.content).to.be.an('array');",
-							"    pm.expect(jsonData).to.have.property('totalElements');",
-							"    pm.expect(jsonData).to.have.property('totalPages');",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    if (jsonData.content.length > 0) {",
-							"        pm.environment.set(\"enrollmentId\", jsonData.content[0].enrollmentId);",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments?page=0&size=20",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments"
-					],
-					"query": [
-						{
-							"key": "page",
-							"value": "0",
-							"description": "Page number (zero-based, default: 0)"
-						},
-						{
-							"key": "size",
-							"value": "20",
-							"description": "Page size (default: 20)"
-						},
-						{
-							"key": "sort",
-							"value": "createdAt,desc",
-							"description": "Sort field and direction (e.g., enrollmentId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status",
-							"disabled": true
-						},
-						{
-							"key": "status",
-							"value": "VERIFIED",
-							"description": "Filter by status (CREATED, BOUND, VERIFIED, INVALID)",
-							"disabled": true
-						},
-						{
-							"key": "integrationId",
-							"value": "",
-							"description": "Filter by integration ID",
-							"disabled": true
-						},
-						{
-							"key": "enrollmentName",
-							"value": "",
-							"description": "Filter by enrollment name (partial match, case-insensitive)",
-							"disabled": true
-						},
-						{
-							"key": "active",
-							"value": "true",
-							"description": "Filter by active flag (true/false)",
-							"disabled": true
-						},
-						{
-							"key": "createdAfter",
-							"value": "",
-							"description": "Filter by start date (ISO-8601)",
-							"disabled": true
-						},
-						{
-							"key": "createdBefore",
-							"value": "",
-							"description": "Filter by end date (ISO-8601)",
-							"disabled": true
-						}
-					]
-				},
-				"description": "Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `enrollmentId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `enrollmentId`, `enrollmentName`, `createdAt`, `integrationId`, `status`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `status`: Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)\n- `integrationId`: Filter by integration ID\n- `enrollmentName`: Filter by enrollment name (partial match, case-insensitive)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=enrollmentId,asc` - Sort by ID ascending\n- `?status=VERIFIED&active=true` - Filter verified and active enrollments\n- `?enrollmentName=John` - Search enrollments with 'John' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of enrollments) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Enrollment Fields:**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status\n- `enrollmentActive`: Flag indicating if the enrollment is active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag for challenge requirement\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "create",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 201\", function () {",
-							"    pm.response.to.have.status(201);",
-							"});",
-							"",
-							"if (pm.response.code === 201) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
-							"    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('enrollmentId');",
-							"        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
-							"        pm.expect(jsonData.enrollmentId).to.be.a('number');",
-							"        pm.expect(jsonData.enrollmentChallenge).to.be.a('number');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"John Smith\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments"
-					]
-				},
-				"description": "Creates a new enrollment that can later be bound to a mobile device. This generates an enrollment with credentials (proof token and challenge) that are used during the device binding process.\n\n**Request Body:**\n- `integrationId` (required): Integration ID this enrollment belongs to\n- `name` (required): Human-readable name for the enrollment (e.g., \"John's iPhone\")\n- `authAttemptChallengeRequired` (optional, default: false): Whether authentication attempts require challenge code verification\n\n**Response (201 Created):**\n- `enrollmentId`: Unique identifier of the created enrollment\n- `enrollmentChallenge`: Challenge number generated for enrollment verification\n\n**Status Codes:**\n- 201: Enrollment created successfully\n- 400: Invalid data (e.g., integration not found)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Usage:** After creation, use the enrollment ID and challenge to bind a mobile device via the auth API."
-			},
-			"response": []
-		},
-		{
-			"name": "get",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 404\", function () {",
-							"    pm.expect([200, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
-							"    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
-							"    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('enrollmentId');",
-							"        pm.expect(jsonData).to.have.property('integrationId');",
-							"        pm.expect(jsonData).to.have.property('enrollmentName');",
-							"        pm.expect(jsonData).to.have.property('enrollmentStatus');",
-							"        pm.expect(jsonData).to.have.property('enrollmentActive');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments",
-						":id"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{enrollmentId}}",
-							"description": "The enrollment ID"
-						}
-					]
-				},
-				"description": "Retrieves details of a specific enrollment by its ID for administrative purposes.\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to retrieve\n\n**Response (200 OK):**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)\n- `enrollmentActive`: Flag indicating if the enrollment is currently active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: Enrollment found\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "get qrcode",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200, 400, or 404\", function () {",
-							"    pm.expect([200, 400, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    pm.test(\"Response is PNG image\", function () {",
-							"        pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png');",
-							"    });",
-							"    ",
-							"    pm.test(\"Response has content\", function () {",
-							"        pm.expect(pm.response.body).to.not.be.empty;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/qrcode",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments",
-						":id",
-						"qrcode"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{enrollmentId}}",
-							"description": "The enrollment ID"
-						}
-					]
-				},
-				"description": "Generates a QR code image (PNG) containing enrollment credentials for easy mobile device binding.\n\n**QR Code Format:**\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\n**Example QR Content:** `4|abc123def456...`\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to generate QR code for\n\n**Response (200 OK):**\n- Content-Type: `image/png`\n- Body: PNG image bytes (300x300 pixels)\n- Content-Disposition: `inline; filename=enrollment-{id}-qrcode.png`\n\n**Status Codes:**\n- 200: QR code generated successfully\n- 400: Enrollment missing proof token\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error\n\n**Usage:**\n- The QR code can be scanned by the Ezkey mobile application to automatically populate enrollment credentials\n- Eliminates manual entry and reduces errors\n- Can be viewed directly in Postman or tested with online QR readers"
-			},
-			"response": []
-		},
-		{
-			"name": "delete",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 204 or 404\", function () {",
-							"    pm.expect([204, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 204) {",
-							"    pm.test(\"Deletion successful\", function () {",
-							"        pm.expect(pm.response.code).to.equal(204);",
-							"        // DELETE returns 204 No Content with no body",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"enrollments",
-						":id"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{enrollmentId}}",
-							"description": "The enrollment ID to delete"
-						}
-					]
-				},
-				"description": "Removes an enrollment from the system, effectively unlinking the device from the integration.\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Enrollment is removed from the system\n- Device can no longer authenticate using this enrollment\n\n**Status Codes:**\n- 204: Enrollment deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error\n\n**Note:** This operation is irreversible. The enrollment and all associated authentication attempts are removed from the system."
-			},
-			"response": []
-		}
-	],
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{token}}",
-				"type": "string"
-			}
-		]
-	},
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	]
+  "info": {
+    "_postman_id": "a27de4d0-ef4f-458a-997e-a4f67b89bd49",
+    "name": "EZ Key Enrollments admin",
+    "description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **Search Enrollments**: Retrieve enrollments with filters and pagination\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all enrollments across all tenants\n- **TenantAdmin**: Can only access enrollments for integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only enrollments for their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessEnrollment()`\n- **Integration Access Check**: Enrollment creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API)\n4. **Verification**: Mobile device verifies enrollment (via auth API)\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "search",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is paginated\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('totalElements');",
+              "    pm.expect(jsonData).to.have.property('totalPages');",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.content.length > 0) {",
+              "        pm.environment.set(\"enrollmentId\", jsonData.content[0].enrollmentId);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments?page=0&size=20",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Page number (zero-based, default: 0)"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size (default: 20)"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort field and direction (e.g., enrollmentId,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status",
+              "disabled": true
+            },
+            {
+              "key": "status",
+              "value": "VERIFIED",
+              "description": "Filter by status (CREATED, BOUND, VERIFIED, INVALID)",
+              "disabled": true
+            },
+            {
+              "key": "integrationId",
+              "value": "",
+              "description": "Filter by integration ID",
+              "disabled": true
+            },
+            {
+              "key": "enrollmentName",
+              "value": "",
+              "description": "Filter by enrollment name (partial match, case-insensitive)",
+              "disabled": true
+            },
+            {
+              "key": "active",
+              "value": "true",
+              "description": "Filter by active flag (true/false)",
+              "disabled": true
+            },
+            {
+              "key": "createdAfter",
+              "value": "",
+              "description": "Filter by start date (ISO-8601)",
+              "disabled": true
+            },
+            {
+              "key": "createdBefore",
+              "value": "",
+              "description": "Filter by end date (ISO-8601)",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Retrieves enrollments with optional filters and pagination for security monitoring, forensic analysis, and compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `enrollmentId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `enrollmentId`, `enrollmentName`, `createdAt`, `integrationId`, `status`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `status`: Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)\n- `integrationId`: Filter by integration ID\n- `enrollmentName`: Filter by enrollment name (partial match, case-insensitive)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=enrollmentId,asc` - Sort by ID ascending\n- `?status=VERIFIED&active=true` - Filter verified and active enrollments\n- `?enrollmentName=John` - Search enrollments with 'John' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of enrollments) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Enrollment Fields:**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status\n- `enrollmentActive`: Flag indicating if the enrollment is active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag for challenge requirement\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
+              "    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('enrollmentId');",
+              "        pm.expect(jsonData).to.have.property('enrollmentChallenge');",
+              "        pm.expect(jsonData.enrollmentId).to.be.a('number');",
+              "        pm.expect(jsonData.enrollmentChallenge).to.be.a('number');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"integrationId\": {{integrationId}},\r\n    \"name\": \"John Smith\",\r\n    \"authAttemptChallengeRequired\": false\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments"
+          ]
+        },
+        "description": "Creates a new enrollment that can later be bound to a mobile device. This generates an enrollment with credentials (proof token and challenge) that are used during the device binding process.\n\n**Request Body:**\n- `integrationId` (required): Integration ID this enrollment belongs to\n- `name` (required): Human-readable name for the enrollment (e.g., \"John's iPhone\")\n- `authAttemptChallengeRequired` (optional, default: false): Whether authentication attempts require challenge code verification\n\n**Response (201 Created):**\n- `enrollmentId`: Unique identifier of the created enrollment\n- `enrollmentChallenge`: Challenge number generated for enrollment verification\n\n**Status Codes:**\n- 201: Enrollment created successfully\n- 400: Invalid data (e.g., integration not found)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Usage:** After creation, use the enrollment ID and challenge to bind a mobile device via the auth API."
+      },
+      "response": []
+    },
+    {
+      "name": "get",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 404\", function () {",
+              "    pm.expect([200, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
+              "    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
+              "    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('enrollmentId');",
+              "        pm.expect(jsonData).to.have.property('integrationId');",
+              "        pm.expect(jsonData).to.have.property('enrollmentName');",
+              "        pm.expect(jsonData).to.have.property('enrollmentStatus');",
+              "        pm.expect(jsonData).to.have.property('enrollmentActive');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID"
+            }
+          ]
+        },
+        "description": "Retrieves details of a specific enrollment by its ID for administrative purposes.\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to retrieve\n\n**Response (200 OK):**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID)\n- `enrollmentActive`: Flag indicating if the enrollment is currently active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n\n**Status Codes:**\n- 200: Enrollment found\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "get qrcode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 400, or 404\", function () {",
+              "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Response is PNG image\", function () {",
+              "        pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png');",
+              "    });",
+              "    ",
+              "    pm.test(\"Response has content\", function () {",
+              "        pm.expect(pm.response.body).to.not.be.empty;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/qrcode",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id",
+            "qrcode"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID"
+            }
+          ]
+        },
+        "description": "Generates a QR code image (PNG) containing enrollment credentials for easy mobile device binding.\n\n**QR Code Format:**\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\n**Example QR Content:** `4|abc123def456...`\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to generate QR code for\n\n**Response (200 OK):**\n- Content-Type: `image/png`\n- Body: PNG image bytes (300x300 pixels)\n- Content-Disposition: `inline; filename=enrollment-{id}-qrcode.png`\n\n**Status Codes:**\n- 200: QR code generated successfully\n- 400: Enrollment missing proof token\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error\n\n**Usage:**\n- The QR code can be scanned by the Ezkey mobile application to automatically populate enrollment credentials\n- Eliminates manual entry and reduces errors\n- Can be viewed directly in Postman or tested with online QR readers"
+      },
+      "response": []
+    },
+    {
+      "name": "delete",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 or 404\", function () {",
+              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Deletion successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "        // DELETE returns 204 No Content with no body",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID to delete"
+            }
+          ]
+        },
+        "description": "Removes an enrollment from the system, effectively unlinking the device from the integration.\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Enrollment is removed from the system\n- Device can no longer authenticate using this enrollment\n\n**Status Codes:**\n- 204: Enrollment deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error\n\n**Note:** This operation is irreversible. The enrollment and all associated authentication attempts are removed from the system."
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
 }
