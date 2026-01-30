@@ -26,14 +26,14 @@ from .commands import admin, auth, configure, database, db, openapi, crypto, dev
 def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
     """
     Ezkey CLI - Command line interface for Ezkey MFA system.
-    
+
     The CLI follows the pattern: ezkey <api> <object> <action> [options]
-    
+
     Use 'ezkey <command> --help' for more information on a specific command.
     """
     # Initialize configuration
     config = ConfigManager()
-    
+
     # Override config with command line options
     overrides = {}
     if admin_url is not None:
@@ -46,15 +46,15 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
         overrides['timeout'] = timeout
     if no_pretty:
         overrides['prettyPrint'] = False
-    
+
     config.override(overrides)
-    
+
     # Set up context
     ctx.ensure_object(dict)
     ctx.obj['config'] = config
     ctx.obj['verbose'] = verbose
     ctx.obj['pretty_print'] = not no_pretty and config.get('prettyPrint', True)
-    
+
     # Show help if no subcommand is provided
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
