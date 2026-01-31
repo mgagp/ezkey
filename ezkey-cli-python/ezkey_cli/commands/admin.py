@@ -9,11 +9,19 @@ Description: Admin API commands for integrations, enrollments, and auth attempts
 """
 
 from typing import Any, Dict
+from pathlib import Path
 
 import click
 
 from ..config import ConfigManager
-from ..utils import HttpClient, JsonUtils, OutputUtils
+from ..utils import (
+    HttpClient,
+    JsonUtils,
+    OutputUtils,
+    build_pagination_params,
+    display_page_summary,
+    validate_pagination_options,
+)
 
 
 @click.group(name='admin')
@@ -32,29 +40,72 @@ def integration_group(ctx):
 
 
 @integration_group.command('list')
+@click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
+@click.option('--size', type=int, default=20, help='Results per page (default: 20)')
+@click.option('--sort', type=str, default='createdAt,desc',
+              help='Sort by field (field,asc|desc, default: createdAt,desc)')
+@click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_integrations(ctx):
+def list_integrations(ctx, page, size, sort, summary):
     """
-    List all integrations in the system.
-    
+    List all integrations with pagination support.
+
     Integrations represent applications or systems protected by Ezkey MFA.
     Each integration has its own cryptographic keys and enrollments.
+
+    Pagination: Results are returned in pages. Use --page to navigate.
+    Page numbers start at 0.
+
+    Sortable fields:
+      id              - Integration ID
+      createdAt       - Creation date (default sort field)
+      active          - Active status
+
+    Examples:
+      # First page (default)
+      $ ezkey admin integration list
+
+      # With pagination info
+      $ ezkey admin integration list --summary
+
+      # Second page, 10 per page, sorted by name
+      $ ezkey admin integration list --page 1 --size 10 --sort id,asc
+
+      # Sort by creation date ascending, show summary
+      $ ezkey admin integration list --sort createdAt,asc --summary
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
-    url = f"{admin_url}/api/v1/integrations"
-    OutputUtils.verbose(f"GET {url}", verbose)
-    
-    response = http_client.get(url)
-    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    try:
+        validate_pagination_options(page, size, sort, 'integration')
+
+        query_params = build_pagination_params(page, size, sort)
+
+        url = f"{admin_url}/api/v1/integrations"
+        OutputUtils.verbose(f"GET {url}", verbose)
+        OutputUtils.verbose(f"Params: {query_params}", verbose)
+
+        response = http_client.get(url, params=query_params)
+
+        if summary and response.success and response.data:
+            display_page_summary(response.data, verbose=verbose)
+
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    except ValueError as e:
+        OutputUtils.error(str(e))
+        ctx.exit(1)
+    except Exception as e:
+        OutputUtils.error(f"Failed to list integrations: {str(e)}")
+        ctx.exit(1)
 
 
 @integration_group.command('get')
@@ -63,7 +114,7 @@ def list_integrations(ctx):
 def get_integration(ctx, id):
     """
     Get detailed information about a specific integration.
-    
+
     Returns integration details including name, description, logo,
     public key, and active status for all configured languages.
     """
@@ -71,15 +122,15 @@ def get_integration(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/integrations/{id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -91,11 +142,11 @@ def get_integration(ctx, id):
 def create_integration(ctx, logo, data):
     """
     Create a new integration for MFA protection.
-    
+
     An integration represents an application or system that will be protected
     by Ezkey MFA. Each integration has its own cryptographic keys and can have
     multiple enrollments (users/devices).
-    
+
     Example JSON:
       {
         "logo": "https://example.com/logo.png",
@@ -112,12 +163,12 @@ def create_integration(ctx, logo, data):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Process data input
     if data:
         try:
@@ -127,20 +178,20 @@ def create_integration(ctx, logo, data):
             return
     else:
         json_data = {}
-    
+
     # Add logo if provided
     if logo:
         json_data['logo'] = logo
-    
+
     if not json_data:
         OutputUtils.error("No data provided. Use --data option or --logo")
         return
-    
+
     url = f"{admin_url}/api/v1/integrations"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(json_data)}", verbose)
-    
+
     response = http_client.post(url, json_data=json_data)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -152,7 +203,7 @@ def create_integration(ctx, logo, data):
 def delete_integration(ctx, id):
     """
     Delete an integration and all associated data.
-    
+
     WARNING: This will delete all enrollments, auth attempts, and API keys
     associated with this integration. This action cannot be undone.
     """
@@ -160,15 +211,15 @@ def delete_integration(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/integrations/{id}"
     OutputUtils.verbose(f"DELETE {url}", verbose)
-    
+
     response = http_client.delete(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -183,36 +234,93 @@ def enrollment_group(ctx):
 
 @enrollment_group.command('list')
 @click.option('--integration-id', type=int, help='Filter by integration ID')
+@click.option('--page', type=int, default=None,
+              help='Page number (0-based). Default: 0')
+@click.option('--size', type=int, default=None,
+              help='Page size (number of results per page). Default: 20')
+@click.option('--sort', type=str, default=None,
+              help='Sort criteria in format: field,direction (e.g., createdAt,desc). '
+                   'Valid fields: enrollmentId, enrollmentName, createdAt, integrationId, status')
+@click.option('--summary', is_flag=True, default=False,
+              help='Display pagination summary')
 @click.pass_context
-def list_enrollments(ctx, integration_id):
+def list_enrollments(ctx, integration_id, page, size, sort, summary):
     """
-    List all enrollments in the system.
-    
+    List all enrollments in the system with pagination and sorting support.
+
     Enrollments represent the association between a user/device and an integration.
     Each enrollment has cryptographic keys for secure authentication.
-    
-    Use --integration-id to filter by specific integration.
+
+    Filters:
+    - Use --integration-id to filter by specific integration
+
+    Pagination:
+    - Use --page and --size to navigate through results (e.g., --page 1 --size 50)
+    - Use --sort to order results (e.g., --sort enrollmentName,asc)
+    - Use --summary to display pagination metadata
+
+    Examples:
+    \b
+        # List first page with default size (20)
+        ezkey admin enrollment list
+
+        # List second page with 50 items per page
+        ezkey admin enrollment list --page 1 --size 50
+
+        # Sort by enrollment name (ascending)
+        ezkey admin enrollment list --sort enrollmentName,asc
+
+        # Filter by integration with pagination summary
+        ezkey admin enrollment list --integration-id 5 --summary
+
+        # Combine all options
+        ezkey admin enrollment list --integration-id 5 --page 0 --size 10 --sort createdAt,desc --summary
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
+    # Validate pagination options
+    try:
+        validate_pagination_options(page, size, sort, 'enrollment')
+    except click.BadParameter as e:
+        OutputUtils.error(str(e))
+        return
+
+    # Build query parameters
     url = f"{admin_url}/api/v1/enrollments"
     params = {}
+
+    # Add filter parameters
     if integration_id:
         params['integrationId'] = integration_id
-    
+
+    # Add pagination parameters
+    try:
+        pagination_params = build_pagination_params(page, size, sort)
+        params.update(pagination_params)
+    except ValueError as e:
+        OutputUtils.error(str(e))
+        return
+
     OutputUtils.verbose(f"GET {url}", verbose)
     if params:
         OutputUtils.verbose(f"Params: {params}", verbose)
-    
+
+    # Make API request
     response = http_client.get(url, params=params)
+
+    # Display pagination summary if requested
+    if summary and response.success and response.data:
+        display_page_summary(response.data, verbose=verbose)
+
+    # Output response
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
@@ -222,7 +330,7 @@ def list_enrollments(ctx, integration_id):
 def get_enrollment(ctx, id):
     """
     Get detailed information about a specific enrollment.
-    
+
     Returns enrollment details including status, proof token, challenge code,
     device public key, and associated integration information.
     """
@@ -230,15 +338,15 @@ def get_enrollment(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/enrollments/{id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -250,11 +358,11 @@ def get_enrollment(ctx, id):
 def create_enrollment(ctx, integration_id, data):
     """
     Create a new enrollment for device binding.
-    
+
     This generates enrollment credentials (proof token and challenge code)
     that can be used to bind a device to this integration. The device will
     use these credentials during the enrollment verification process.
-    
+
     Example JSON:
       {
         "name": "My Device",
@@ -265,12 +373,12 @@ def create_enrollment(ctx, integration_id, data):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Process data input
     if data:
         try:
@@ -280,15 +388,15 @@ def create_enrollment(ctx, integration_id, data):
             return
     else:
         json_data = {}
-    
+
     # Add integration ID
     json_data['integrationId'] = integration_id
-    
+
     url = f"{admin_url}/api/v1/enrollments"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(json_data)}", verbose)
-    
+
     response = http_client.post(url, json_data=json_data)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -300,7 +408,7 @@ def create_enrollment(ctx, integration_id, data):
 def delete_enrollment(ctx, id):
     """
     Delete an enrollment from the system.
-    
+
     WARNING: This will permanently remove the enrollment and all associated
     authentication attempts. This action cannot be undone.
     """
@@ -308,17 +416,17 @@ def delete_enrollment(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/enrollments/{id}"
     OutputUtils.verbose(f"DELETE {url}", verbose)
-    
+
     response = http_client.delete(url)
-    
+
     if response.success:
         OutputUtils.success(f"✅ Enrollment {id} deleted successfully")
     else:
@@ -332,45 +440,45 @@ def delete_enrollment(ctx, id):
 def get_enrollment_qrcode(ctx, id, output):
     """
     Generate QR code for enrollment credentials.
-    
+
     Returns a PNG QR code image containing enrollment credentials
     (enrollmentId|enrollmentProofToken) that can be scanned by a device
     to bind to this enrollment.
-    
+
     The QR code is saved to a file. If --output is not specified,
     it defaults to enrollment-{id}.png in the current directory.
     """
     config: ConfigManager = ctx.obj['config']
     verbose = ctx.obj.get('verbose', False)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Set up HTTP client with binary response support
     http_client = HttpClient(config)
     # Override Accept header to accept image/png
     original_accept = http_client.session.headers.get('Accept')
     http_client.session.headers['Accept'] = 'image/png,*/*'
-    
+
     url = f"{admin_url}/api/v1/enrollments/{id}/qrcode"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     try:
         response = http_client.session.get(url, timeout=http_client.timeout)
-        
+
         if response.ok:
             # Determine output filename
             if output:
                 output_file = output
             else:
                 output_file = f"enrollment-{id}.png"
-            
+
             # Save binary content to file
             with open(output_file, 'wb') as f:
                 f.write(response.content)
-            
+
             OutputUtils.success(f"✅ QR code saved to {output_file}")
             OutputUtils.info(f"File size: {len(response.content)} bytes")
         else:
@@ -381,7 +489,7 @@ def get_enrollment_qrcode(ctx, id, output):
                 OutputUtils.error(f"Failed to generate QR code: {error_msg}")
             except ValueError:
                 OutputUtils.error(f"Failed to generate QR code: HTTP {response.status_code}")
-            
+
             if response.status_code == 400:
                 OutputUtils.info("💡 Enrollment may be missing proof token")
             elif response.status_code == 404:
@@ -406,38 +514,76 @@ def auth_attempt_group(ctx):
 
 @auth_attempt_group.command('list')
 @click.option('--enrollment-id', type=int, help='Filter by enrollment ID')
+@click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
+@click.option('--size', type=int, default=20, help='Results per page (default: 20)')
+@click.option('--sort', type=str, default='createdAt,desc',
+              help='Sort by field (field,asc|desc, default: createdAt,desc)')
+@click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_auth_attempts(ctx, enrollment_id):
+def list_auth_attempts(ctx, enrollment_id, page, size, sort, summary):
     """
-    List all authentication attempts in the system.
-    
+    List all authentication attempts with pagination support.
+
     Authentication attempts represent MFA requests that devices must approve
     or reject. Each attempt has a unique proof token and tracks its status
     (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED).
-    
-    Use --enrollment-id to filter by specific enrollment.
+
+    Pagination: Results are returned in pages. Use --page to navigate.
+    Page numbers start at 0.
+
+    Sortable fields:
+      authAttemptId   - Auth attempt ID
+      createdAt       - Creation date (default sort field)
+      expiresAt       - Expiration date
+      enrollmentId    - Associated enrollment ID
+
+    Examples:
+      # First page (default)
+      $ ezkey admin auth-attempt list
+
+      # With pagination info
+      $ ezkey admin auth-attempt list --summary
+
+      # Filter by enrollment, show summary
+      $ ezkey admin auth-attempt list --enrollment-id 5 --summary
+
+      # Second page, 10 per page, sorted by enrollment ID
+      $ ezkey admin auth-attempt list --page 1 --size 10 --sort enrollmentId,asc --summary
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
-    url = f"{admin_url}/api/v1/auth-attempts"
-    params = {}
-    if enrollment_id:
-        params['enrollmentId'] = enrollment_id
-    
-    OutputUtils.verbose(f"GET {url}", verbose)
-    if params:
-        OutputUtils.verbose(f"Params: {params}", verbose)
-    
-    response = http_client.get(url, params=params)
-    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    try:
+        validate_pagination_options(page, size, sort, 'auth-attempt')
+
+        query_params = build_pagination_params(page, size, sort)
+        if enrollment_id:
+            query_params['enrollmentId'] = enrollment_id
+
+        url = f"{admin_url}/api/v1/auth-attempts"
+        OutputUtils.verbose(f"GET {url}", verbose)
+        OutputUtils.verbose(f"Params: {query_params}", verbose)
+
+        response = http_client.get(url, params=query_params)
+
+        if summary and response.success and response.data:
+            display_page_summary(response.data, verbose=verbose)
+
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    except ValueError as e:
+        OutputUtils.error(str(e))
+        ctx.exit(1)
+    except Exception as e:
+        OutputUtils.error(f"Failed to list auth attempts: {str(e)}")
+        ctx.exit(1)
 
 
 @auth_attempt_group.command('get')
@@ -446,7 +592,7 @@ def list_auth_attempts(ctx, enrollment_id):
 def get_auth_attempt(ctx, id):
     """
     Get detailed information about a specific authentication attempt.
-    
+
     Returns auth attempt details including status, proof token, challenge code,
     timestamps (created, expires, completed), and validation results.
     """
@@ -454,15 +600,15 @@ def get_auth_attempt(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/auth-attempts/{id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -475,11 +621,11 @@ def get_auth_attempt(ctx, id):
 def create_auth_attempt(ctx, enrollment_id, challenge_requested, data):
     """
     Create a new authentication attempt for MFA.
-    
+
     This initiates an MFA flow where the device will be notified to approve
     or reject the authentication. Use --challenge-requested to require a
     6-digit challenge code for enhanced security.
-    
+
     The device polls for pending attempts and responds with approval/rejection.
     Use 'ezkey admin auth-attempt wait' to wait for the device response.
     """
@@ -487,12 +633,12 @@ def create_auth_attempt(ctx, enrollment_id, challenge_requested, data):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Process data input
     if data:
         try:
@@ -502,17 +648,17 @@ def create_auth_attempt(ctx, enrollment_id, challenge_requested, data):
             return
     else:
         json_data = {}
-    
+
     # Add required fields
     json_data['enrollmentId'] = enrollment_id
     if challenge_requested:
         json_data['challengeRequested'] = True
-    
+
     url = f"{admin_url}/api/v1/auth-attempts"
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
         OutputUtils.verbose(f"Data: {JsonUtils.format_output(json_data)}", verbose)
-    
+
     response = http_client.post(url, json_data=json_data)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -525,36 +671,36 @@ def create_auth_attempt(ctx, enrollment_id, challenge_requested, data):
 def wait_for_auth_attempt(ctx, id, timeout, polling):
     """
     Wait for authentication attempt completion.
-    
+
     Polls the auth attempt until it reaches a terminal state:
     - APPROVED: User approved the authentication
     - REJECTED: User rejected the authentication
     - EXPIRED: Auth attempt expired or was superseded
-    
+
     Use this for synchronous authentication flows.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/auth-attempts/{id}/wait"
     params = {'timeout': timeout, 'polling': polling}
-    
+
     OutputUtils.info(
         f"Waiting for auth attempt {id} to complete "
         f"(timeout: {timeout}s, polling: {polling}s)..."
     )
     OutputUtils.verbose(f"GET {url}", verbose)
     OutputUtils.verbose(f"Params: {params}", verbose)
-    
+
     response = http_client.get(url, params=params)
-    
+
     if response.success:
         data = response.data or {}
         status_text = data.get('status')
@@ -572,7 +718,7 @@ def wait_for_auth_attempt(ctx, id, timeout, polling):
 def delete_auth_attempt(ctx, id):
     """
     Delete an authentication attempt from the system.
-    
+
     WARNING: This will permanently remove the authentication attempt.
     This action cannot be undone.
     """
@@ -580,17 +726,17 @@ def delete_auth_attempt(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/auth-attempts/{id}"
     OutputUtils.verbose(f"DELETE {url}", verbose)
-    
+
     response = http_client.delete(url)
-    
+
     if response.success:
         OutputUtils.success(f"✅ Auth attempt {id} deleted successfully")
     else:
@@ -611,85 +757,82 @@ def audit_log_group(ctx):
 @click.option('--api-name', help='Filter by API name (e.g., ADMIN_API)')
 @click.option('--enrollment-id', type=int, help='Filter by enrollment ID')
 @click.option('--admin-id', type=int, help='Filter by admin ID')
-@click.option('--page', default=0, type=int, show_default=True, help='Page number (zero-based)')
-@click.option('--size', default=20, type=int, show_default=True, help='Page size (max 100)')
+@click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
+@click.option('--size', type=int, default=20, help='Results per page (default: 20)')
+@click.option('--sort', type=str, default='createdAt,desc',
+              help='Sort by field (field,asc|desc, default: createdAt,desc)')
+@click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_audit_logs(ctx, event_type, event_status, api_name, enrollment_id, admin_id, page, size):
+def list_audit_logs(ctx, event_type, event_status, api_name, enrollment_id, admin_id, page, size, sort, summary):
     """
-    Query audit logs with optional filters.
-    
-    Results are returned with pagination (page/size) mirroring the Admin API contract.
+    List audit logs with pagination, sorting, and filtering.
+
+    Pagination: Results are returned in pages. Use --page to navigate.
+    Page numbers start at 0.
+
+    Sortable fields:
+      auditLogId      - Audit log ID
+      createdAt       - Creation date (default sort field)
+      eventType       - Event type (e.g., ADMIN_LOGIN)
+      eventStatus     - Event status (e.g., SUCCESS)
+      apiName         - API name (e.g., ADMIN_API)
+
+    Examples:
+      # First page (default)
+      $ ezkey admin audit-log list
+
+      # With pagination info
+      $ ezkey admin audit-log list --summary
+
+      # Filter by event type, show summary
+      $ ezkey admin audit-log list --event-type ADMIN_LOGIN --summary
+
+      # Second page, 10 per page, sorted by event type
+      $ ezkey admin audit-log list --page 1 --size 10 --sort eventType,asc --summary
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
-    params = {
-        'page': page,
-        'size': size,
-    }
-    if event_type:
-        params['eventType'] = event_type
-    if event_status:
-        params['eventStatus'] = event_status
-    if api_name:
-        params['apiName'] = api_name
-    if enrollment_id is not None:
-        params['enrollmentId'] = enrollment_id
-    if admin_id is not None:
-        params['adminId'] = admin_id
-    
-    url = f"{admin_url}/api/v1/audit-logs"
-    OutputUtils.verbose(f"GET {url}", verbose)
-    if verbose:
-        OutputUtils.verbose(f"Params: {params}", verbose)
-    
-    response = http_client.get(url, params=params)
-    
-    # Handle specific error cases with helpful messages
-    if not response.success and response.status == 400:
-        error_msg = response.error or ""
-        error_data = response.data if isinstance(response.data, dict) else {}
-        
-        # Check for server-side parameter binding issues
-        if "parameter name information not available" in error_msg or "not specified" in error_msg:
-            OutputUtils.error("Server configuration issue detected")
-            OutputUtils.info("")
-            OutputUtils.info("💡 This appears to be a server-side issue with parameter binding.")
-            OutputUtils.info("   The server may need to be recompiled with the '-parameters' flag.")
-            OutputUtils.info("")
-            OutputUtils.info("💡 As a workaround, try specifying filter parameters:")
-            OutputUtils.info("   ezkey admin audit-log list --page 0 --size 20")
-            OutputUtils.info("")
-            if verbose:
-                OutputUtils.verbose(f"Technical details: {error_msg}", verbose=True)
-                if error_data:
-                    OutputUtils.verbose(f"Response data: {JsonUtils.format_output(error_data)}", verbose=True)
-            return
-        
-        # Check for validation errors
-        if "Invalid" in error_msg or "validation" in error_msg.lower():
-            OutputUtils.error("Invalid parameters provided")
-            OutputUtils.info("")
-            OutputUtils.info("💡 Check your filter parameters:")
-            OutputUtils.info("   - event-type: Must be a valid EventType (e.g., ADMIN_LOGIN)")
-            OutputUtils.info("   - event-status: Must be a valid EventStatus (e.g., SUCCESS)")
-            OutputUtils.info("   - api-name: Must be a valid ApiName (e.g., ADMIN_API)")
-            OutputUtils.info("   - page: Must be >= 0")
-            OutputUtils.info("   - size: Must be between 1 and 100")
-            OutputUtils.info("")
-            if error_data:
-                OutputUtils.info("Server response:")
-                OutputUtils.output_json(error_data, pretty_print=pretty_print)
-            return
-    
-    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    try:
+        validate_pagination_options(page, size, sort, 'audit-log')
+
+        query_params = build_pagination_params(page, size, sort)
+        if event_type:
+            query_params['eventType'] = event_type
+        if event_status:
+            query_params['eventStatus'] = event_status
+        if api_name:
+            query_params['apiName'] = api_name
+        if enrollment_id is not None:
+            query_params['enrollmentId'] = enrollment_id
+        if admin_id is not None:
+            query_params['adminId'] = admin_id
+
+        url = f"{admin_url}/api/v1/audit-logs"
+        OutputUtils.verbose(f"GET {url}", verbose)
+        if verbose:
+            OutputUtils.verbose(f"Params: {query_params}", verbose)
+
+        response = http_client.get(url, params=query_params)
+
+        if summary and response.success and response.data:
+            display_page_summary(response.data, verbose=verbose)
+
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    except ValueError as e:
+        OutputUtils.error(str(e))
+        ctx.exit(1)
+    except Exception as e:
+        OutputUtils.error(f"Failed to list audit logs: {str(e)}")
+        ctx.exit(1)
 
 
 # Admin authentication commands
@@ -703,52 +846,59 @@ def auth_group(ctx):
 @auth_group.command('login')
 @click.option('--username', required=True, help='Admin username')
 @click.option('--challenge', is_flag=True, help='Request challenge code (two-step flow)')
-@click.option('--save-token', is_flag=True, default=True, help='Save bearer token to config')
+@click.option('--no-save-token', is_flag=True, default=False, help='Do NOT save bearer token to config (default: save token)')
 @click.pass_context
-def admin_login(ctx, username, challenge, save_token):
+def admin_login(ctx, username, challenge, no_save_token):
     """
     Authenticate admin user using passwordless login.
-    
+
     This command uses Ezkey's cryptographic authentication (no passwords).
     The admin must have a bound device enrollment to approve the login.
-    
+
     Two modes:
     - Single-call (default): Blocks until device approves/rejects
     - Two-call (--challenge): Returns challenge code, requires separate wait
+
+    By default, the bearer token is saved to the configuration file
+    (~/.ezkey/ezkey.json) so subsequent commands don't require re-authentication.
+    Use --no-save-token to skip saving the token.
     """
     config: ConfigManager = ctx.obj['config']
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
+    # save_token is True by default, False if --no-save-token is passed
+    save_token = not no_save_token
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # For login operations, use extended timeout (6 minutes) to allow device response
     # The server waits up to 5 minutes for device approval, so we need at least 6 minutes
     login_timeout_seconds = HttpClient.LOGIN_TIMEOUT_MS / 1000.0
     http_client = HttpClient(config, custom_timeout=login_timeout_seconds)
-    
+
     # Prepare request data
     json_data = {
         'username': username,
         'challengeRequested': challenge
     }
-    
+
     url = f"{admin_url}/api/v1/admin/auth/login"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.verbose(f"Timeout: {login_timeout_seconds}s (extended for login)", verbose)
     OutputUtils.info(f"Authenticating admin user: {username}")
-    
+
     if challenge:
         OutputUtils.info("Two-step mode: Challenge code will be displayed")
     else:
         OutputUtils.info("Single-call mode: Waiting for device approval...")
         OutputUtils.info("⏳ This may take up to 5 minutes. Please approve on your device.")
-    
+
     response = http_client.post(url, json_data=json_data)
-    
+
     # Handle timeout errors specifically
     if not response.success and response.error and 'timeout' in response.error.lower():
         OutputUtils.error("⏱️ Request timeout - the device may not have responded in time")
@@ -759,16 +909,16 @@ def admin_login(ctx, username, challenge, save_token):
         OutputUtils.info("")
         OutputUtils.info("Try again or use --challenge mode for two-step authentication")
         return
-    
+
     # Check if we have response data
     if response.data:
         data = response.data if isinstance(response.data, dict) else {}
-        
+
         # Challenge mode - pending with challenge code (now returns HTTP 200 from server)
         if data.get('status') == 'pending' and data.get('challengeCode') and data.get('authAttemptId'):
             auth_attempt_id = data['authAttemptId']
             challenge_code = data['challengeCode']
-            
+
             OutputUtils.info("")
             OutputUtils.warning("⏳ Authentication pending - Challenge verification required")
             OutputUtils.info("")
@@ -785,11 +935,11 @@ def admin_login(ctx, username, challenge, save_token):
             OutputUtils.info("   Or copy-paste this:")
             OutputUtils.info(f"   ezkey admin auth passwordless-wait --auth-attempt-id {auth_attempt_id} --challenge-code {challenge_code}")
             OutputUtils.info("")
-            
+
             if pretty_print:
                 OutputUtils.output_json(data)
             return
-        
+
         # Check if we got a token (single-call success)
         # The server returns success=true AND status="approved" AND token when successful
         if data.get('success') and data.get('token') and data.get('status') == 'approved':
@@ -797,22 +947,30 @@ def admin_login(ctx, username, challenge, save_token):
             OutputUtils.success(f"✅ Authentication successful!")
             OutputUtils.info(f"Admin type: {data.get('adminType')}")
             OutputUtils.info(f"Token expires: {data.get('expiresAt')}")
-            
+
             # Save token to config if requested
             if save_token:
                 config.set_bearer_token(token)
-                config.save(global_config=True)
-                OutputUtils.success("Bearer token saved to config")
-            
+                # Check if a local config file exists in current directory
+                # If yes, save there too (it has higher precedence)
+                # Otherwise, save to home directory
+                local_config_path = Path.cwd() / "ezkey.json"
+                if local_config_path.exists():
+                    config.save(global_config=False)  # Save locally
+                    OutputUtils.success("Bearer token saved to local config (./ezkey.json)")
+                else:
+                    config.save(global_config=True)   # Save to home
+                    OutputUtils.success("Bearer token saved to global config (~/.ezkey/ezkey.json)")
+
             if pretty_print:
                 OutputUtils.output_json(data)
             return
-        
+
         # Failed authentication
         if not response.success:
             error_msg = data.get('message', 'Unknown error')
             OutputUtils.error(f"❌ Authentication failed: {error_msg}")
-            
+
             # Provide helpful guidance for common errors
             if 'no device enrolled' in error_msg.lower() or 'no bound enrollment' in error_msg.lower():
                 OutputUtils.info("")
@@ -820,11 +978,11 @@ def admin_login(ctx, username, challenge, save_token):
                 OutputUtils.info("  1. Ensure your device is enrolled and bound")
                 OutputUtils.info("  2. Check enrollment status: ezkey admin enrollment list")
                 OutputUtils.info("  3. If needed, reset enrollment: ezkey admin enrollment reset --id <id>")
-            
+
             if pretty_print:
                 OutputUtils.output_json(data)
             return
-    
+
     # Handle HTTP errors (401, 403, etc.)
     if response.status == 401 or response.status == 403:
         OutputUtils.error("❌ Authentication failed")
@@ -839,27 +997,31 @@ def admin_login(ctx, username, challenge, save_token):
 @auth_group.command('passwordless-wait')
 @click.option('--auth-attempt-id', required=True, type=int, help='Auth attempt ID from login')
 @click.option('--challenge-code', type=int, help='Challenge code from login (optional, shown in login output)')
-@click.option('--save-token', is_flag=True, default=True, help='Save bearer token to config')
+@click.option('--no-save-token', is_flag=True, default=False, help='Do NOT save bearer token to config (default: save token)')
 @click.pass_context
-def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
+def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, no_save_token):
     """
     Wait for device approval in two-step passwordless authentication.
-    
+
     Use this after 'ezkey admin auth login --challenge' to complete authentication.
     The device must enter the matching challenge code before approval.
-    
-    The challenge-code is optional if you remember it from the login output.
-    It's required by the server for security (prevents enumeration attacks).
+
+    By default, the bearer token is saved to the configuration file
+    (~/.ezkey/ezkey.json) so subsequent commands don't require re-authentication.
+    Use --no-save-token to skip saving the token.
     """
+    # save_token is True by default, False if --no-save-token is passed
+    save_token = not no_save_token
+
     config: ConfigManager = ctx.obj['config']
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Challenge code is required by the server for security
     if not challenge_code:
         OutputUtils.error("❌ Challenge code is required")
@@ -868,24 +1030,24 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
         OutputUtils.info("   If you don't have it, run the login command again:")
         OutputUtils.info("   ezkey admin auth login --username admin --challenge")
         return
-    
+
     # For passwordless-wait, use extended timeout (6 minutes) to allow device response
     wait_timeout_seconds = HttpClient.LOGIN_TIMEOUT_MS / 1000.0
     http_client = HttpClient(config, custom_timeout=wait_timeout_seconds)
-    
+
     json_data = {
         'authAttemptId': auth_attempt_id,
         'challengeCode': challenge_code
     }
-    
+
     url = f"{admin_url}/api/v1/admin/auth/passwordless-wait"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.verbose(f"Timeout: {wait_timeout_seconds}s (extended for wait)", verbose)
     OutputUtils.info(f"Waiting for device approval (auth attempt {auth_attempt_id})...")
     OutputUtils.info("⏳ This may take up to 5 minutes. Please approve on your device.")
-    
+
     response = http_client.post(url, json_data=json_data)
-    
+
     # Handle timeout errors specifically
     if not response.success and response.error and 'timeout' in response.error.lower():
         OutputUtils.error("⏱️ Request timeout - the device may not have responded in time")
@@ -896,10 +1058,10 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
         OutputUtils.info("")
         OutputUtils.info("Try again with the correct challenge code")
         return
-    
+
     if response.success and response.data:
         data = response.data
-        
+
         # Check if we got a token (successful authentication)
         # The server returns success=true AND status="approved" AND token when successful
         if data.get('success') and data.get('token') and data.get('status') == 'approved':
@@ -907,19 +1069,27 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
             OutputUtils.success(f"✅ Authentication successful!")
             OutputUtils.info(f"Admin type: {data.get('adminType')}")
             OutputUtils.info(f"Token expires: {data.get('expiresAt')}")
-            
+
             # Save token to config if requested
             if save_token:
                 config.set_bearer_token(token)
-                config.save(global_config=True)
-                OutputUtils.success("Bearer token saved to config")
-            
+                # Check if a local config file exists in current directory
+                # If yes, save there too (it has higher precedence)
+                # Otherwise, save to home directory
+                local_config_path = Path.cwd() / "ezkey.json"
+                if local_config_path.exists():
+                    config.save(global_config=False)  # Save locally
+                    OutputUtils.success("Bearer token saved to local config (./ezkey.json)")
+                else:
+                    config.save(global_config=True)   # Save to home
+                    OutputUtils.success("Bearer token saved to global config (~/.ezkey/ezkey.json)")
+
             if pretty_print:
                 OutputUtils.output_json(data)
         else:
             error_msg = data.get('message', 'Unknown error')
             OutputUtils.error(f"❌ Authentication failed: {error_msg}")
-            
+
             # Provide helpful guidance for common errors
             if 'challenge' in error_msg.lower() or 'invalid' in error_msg.lower():
                 OutputUtils.info("")
@@ -927,7 +1097,7 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
                 OutputUtils.info("  - The challenge code matches what was displayed")
                 OutputUtils.info("  - The challenge code was entered on the device")
                 OutputUtils.info("  - The device approved the authentication")
-            
+
             if pretty_print:
                 OutputUtils.output_json(data)
     else:
@@ -945,36 +1115,43 @@ def admin_passwordless_wait(ctx, auth_attempt_id, challenge_code, save_token):
 @auth_group.command('recover')
 @click.option('--username', required=True, help='Admin username')
 @click.option('--recovery-code', required=True, help='Recovery code (32-digit format: XXXX-XXXX-...)')
-@click.option('--save-token', is_flag=True, default=True, help='Save recovery token to config')
+@click.option('--no-save-token', is_flag=True, default=False, help='Do NOT save bearer token to config (default: save token)')
 @click.pass_context
-def admin_recover(ctx, username, recovery_code, save_token):
+def admin_recover(ctx, username, recovery_code, no_save_token):
     """
     Authenticate using recovery code (emergency access when device is lost).
-    
+
     Recovery codes are 32-digit codes in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX
     Each code can only be used once. Token is valid for 30 minutes.
-    
+
     After recovery, use 'ezkey admin enrollment reset' to unbind the lost device.
+
+    By default, the bearer token is saved to the configuration file
+    (~/.ezkey/ezkey.json) so subsequent commands don't require re-authentication.
+    Use --no-save-token to skip saving the token.
     """
+    # save_token is True by default, False if --no-save-token is passed
+    save_token = not no_save_token
+
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     json_data = {
         'username': username,
         'recoveryCode': recovery_code
     }
-    
+
     url = f"{admin_url}/api/v1/admin/auth/recover"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info(f"Attempting recovery for user: {username}")
-    
+
     # Validate recovery code format before sending (client-side validation)
     # This provides immediate feedback without waiting for server response
     if recovery_code:
@@ -987,19 +1164,19 @@ def admin_recover(ctx, username, recovery_code, save_token):
             OutputUtils.info("")
             OutputUtils.info(f"   Your code: {recovery_code} (length: {len(cleaned_code)} digits)")
             return
-    
+
     response = http_client.post(url, json_data=json_data)
-    
+
     # Handle validation errors (now returns HTTP 400 with detailed message from backend)
     if not response.success and response.status == 400:
         error_msg = response.error or ""
         error_data = response.data if isinstance(response.data, dict) else {}
-        
+
         # Check if this is a validation error (backend now returns 400 with VALIDATION_ERROR)
         if isinstance(error_data, dict):
             error_type = error_data.get('error', '')
             error_message = error_data.get('message', '')
-            
+
             # Backend now returns validation errors as 400 with VALIDATION_ERROR type
             if 'VALIDATION_ERROR' in error_type or 'validation' in error_message.lower():
                 OutputUtils.error("Invalid recovery code format")
@@ -1013,13 +1190,13 @@ def admin_recover(ctx, username, recovery_code, save_token):
                 if verbose:
                     OutputUtils.verbose(f"Full error: {error_data}", verbose=True)
                 return
-    
+
     # Legacy workaround: Handle HTTP 500 errors (should not happen with fixed backend)
     # Keeping for backward compatibility with older backend versions
     if not response.success and response.status == 500:
         error_msg = response.error or ""
         error_data = response.data if isinstance(response.data, dict) else {}
-        
+
         # Check if this is actually a validation error (legacy backend issue)
         if "unexpected error" in error_msg.lower() or "internal" in error_msg.lower():
             # Even though server returned 500, this might be a validation error
@@ -1031,10 +1208,10 @@ def admin_recover(ctx, username, recovery_code, save_token):
             if verbose:
                 OutputUtils.verbose(f"Server response: {error_data.get('message', 'No details')}", verbose=True)
             return
-    
+
     if response.success and response.data:
         data = response.data
-        
+
         if data.get('success') and data.get('recoveryToken'):
             token = data['recoveryToken']
             OutputUtils.success(f"✅ Recovery successful!")
@@ -1047,14 +1224,14 @@ def admin_recover(ctx, username, recovery_code, save_token):
             OutputUtils.info("1. Use 'ezkey admin enrollment reset --id <enrollment-id>' to unbind lost device")
             OutputUtils.info("2. Bind new device with the new credentials")
             OutputUtils.info("3. After binding, use 'ezkey admin auth login' for full access")
-            
+
             # Save recovery token to config if requested (separate from bearer token)
             if save_token:
                 config.set_recovery_token(token)
                 config.save(global_config=True)
                 OutputUtils.success("Recovery token saved to config")
                 OutputUtils.warning("⚠️  Note: Recovery token has limited permissions")
-            
+
             if pretty_print:
                 OutputUtils.output_json(data)
         else:
@@ -1070,7 +1247,7 @@ def admin_recover(ctx, username, recovery_code, save_token):
 def admin_logout(ctx):
     """
     Logout and revoke current bearer token.
-    
+
     This invalidates the current session token in the server.
     The token is also removed from local config.
     """
@@ -1078,33 +1255,33 @@ def admin_logout(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Check if we have a token (bearer or recovery)
     has_bearer = config.get('bearerToken') is not None
     has_recovery = config.has_recovery_token()
-    
+
     if not has_bearer and not has_recovery:
         OutputUtils.warning("No authentication token found in config")
         return
-    
+
     url = f"{admin_url}/api/v1/admin/auth/logout"
     OutputUtils.verbose(f"POST {url}", verbose)
-    
+
     if has_recovery:
         OutputUtils.info("Logging out (recovery token)...")
     else:
         OutputUtils.info("Logging out...")
-    
+
     response = http_client.post(url)
-    
+
     if response.success:
         OutputUtils.success("✅ Logout successful")
-        
+
         # Clear tokens from config
         if has_bearer:
             config.clear_bearer_token()
@@ -1114,7 +1291,7 @@ def admin_logout(ctx):
         OutputUtils.success("Authentication token removed from config")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
-        
+
         # Still clear tokens from config even if logout failed
         if has_bearer:
             config.clear_bearer_token()
@@ -1137,7 +1314,7 @@ def encryption_key_group(ctx):
 def list_encryption_keys(ctx):
     """
     List all encryption keys in the system.
-    
+
     Returns all encryption keys with their status, algorithm, timestamps,
     and usage statistics (records encrypted, records reencrypted).
     """
@@ -1145,15 +1322,15 @@ def list_encryption_keys(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1164,7 +1341,7 @@ def list_encryption_keys(ctx):
 def get_encryption_key(ctx, key_id):
     """
     Get detailed information about a specific encryption key.
-    
+
     Returns key details including status, algorithm, timestamps,
     usage statistics, and metadata.
     """
@@ -1172,15 +1349,15 @@ def get_encryption_key(ctx, key_id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/{key_id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1190,7 +1367,7 @@ def get_encryption_key(ctx, key_id):
 def get_primary_encryption_key(ctx):
     """
     Get the current primary encryption key.
-    
+
     Returns the primary encryption key used for new encryption operations.
     This is the key that will be used when encrypting new data.
     """
@@ -1198,15 +1375,15 @@ def get_primary_encryption_key(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/primary"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1217,11 +1394,11 @@ def get_primary_encryption_key(ctx):
 def rotate_encryption_key(ctx):
     """
     Manually trigger encryption key rotation.
-    
+
     Immediately rotates the encryption key, creating a new primary key.
     The old primary key becomes a regular key and can be used for decryption
     of existing data. New data will be encrypted with the new primary key.
-    
+
     WARNING: This operation is critical and should be performed during
     maintenance windows. Re-encryption of existing data should follow.
     """
@@ -1229,18 +1406,18 @@ def rotate_encryption_key(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/rotate"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info("Rotating encryption key...")
-    
+
     response = http_client.post(url)
-    
+
     if response.success and response.data:
         data = response.data
         new_key_id = data.get('newPrimaryKeyId')
@@ -1268,13 +1445,13 @@ def reencrypt_group(ctx):
 def trigger_reencryption(ctx, key_id):
     """
     Trigger re-encryption process.
-    
+
     If --key-id is provided, creates and processes re-encryption batches
     for that specific old key (must not be PRIMARY).
-    
+
     If --key-id is omitted, triggers full re-encryption for all old keys,
     creating batches and processing them immediately.
-    
+
     This operation migrates data encrypted with old keys to the current
     primary key for improved security and key lifecycle management.
     """
@@ -1282,20 +1459,20 @@ def trigger_reencryption(ctx, key_id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     if key_id:
         # Trigger re-encryption for specific key
         url = f"{admin_url}/api/v1/encryption-keys/{key_id}/reencrypt"
         OutputUtils.verbose(f"POST {url}", verbose)
         OutputUtils.info(f"Triggering re-encryption for key {key_id}...")
-        
+
         response = http_client.post(url)
-        
+
         if response.success and response.data:
             data = response.data
             OutputUtils.success(f"✅ Re-encryption triggered successfully")
@@ -1311,9 +1488,9 @@ def trigger_reencryption(ctx, key_id):
         url = f"{admin_url}/api/v1/encryption-keys/reencrypt/trigger"
         OutputUtils.verbose(f"POST {url}", verbose)
         OutputUtils.info("Triggering full re-encryption for all old keys...")
-        
+
         response = http_client.post(url)
-        
+
         if response.success and response.data:
             data = response.data
             OutputUtils.success(f"✅ Full re-encryption triggered successfully")
@@ -1331,10 +1508,10 @@ def trigger_reencryption(ctx, key_id):
 def create_reencryption_batches(ctx):
     """
     Create re-encryption batches without processing them.
-    
+
     Creates re-encryption batches for all old keys without processing them.
     Batches will be processed by the scheduled job automatically.
-    
+
     Use this when you want to prepare batches for background processing
     rather than immediate execution.
     """
@@ -1342,18 +1519,18 @@ def create_reencryption_batches(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/reencrypt/create-batches"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info("Creating re-encryption batches...")
-    
+
     response = http_client.post(url)
-    
+
     if response.success and response.data:
         data = response.data
         OutputUtils.success(f"✅ Batches created successfully")
@@ -1370,7 +1547,7 @@ def create_reencryption_batches(ctx):
 def list_reencryption_batches(ctx):
     """
     List all re-encryption batches with their status and progress.
-    
+
     Returns all re-encryption batches showing:
     - Status (PENDING, PROCESSING, COMPLETED, FAILED, PAUSED)
     - Progress percentage
@@ -1382,15 +1559,15 @@ def list_reencryption_batches(ctx):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1401,28 +1578,28 @@ def list_reencryption_batches(ctx):
 def resume_reencryption_batch(ctx, batch_id):
     """
     Resume processing of a failed or paused re-encryption batch.
-    
+
     Resumes a batch that was previously paused or failed. The batch will
     continue processing from where it left off.
-    
+
     Use this to recover from transient failures or to resume paused batches.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches/{batch_id}/resume"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info(f"Resuming re-encryption batch {batch_id}...")
-    
+
     response = http_client.post(url)
-    
+
     if response.success and response.data:
         data = response.data
         OutputUtils.success(f"✅ Batch resumed successfully")
@@ -1450,10 +1627,10 @@ def api_key_group(ctx):
 def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, save_key):
     """
     Create a new API key for machine-to-machine authentication.
-    
+
     The secret key is shown ONLY ONCE and cannot be retrieved later.
     Save it immediately in a secure location.
-    
+
     Example:
       ezkey admin api-key create --integration-id 123 --description "Production Server" \\
         --expires-at "2025-12-31T23:59:59Z" --ip-whitelist "192.168.1.0/24"
@@ -1462,33 +1639,33 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Build request data
     json_data = {
         'integrationId': integration_id,
         'description': description
     }
-    
+
     if expires_at:
         json_data['expiresAt'] = expires_at
-    
+
     if ip_whitelist:
         json_data['ipWhitelist'] = list(ip_whitelist)
-    
+
     url = f"{admin_url}/api/v1/api-keys"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info(f"Creating API key for integration {integration_id}...")
-    
+
     response = http_client.post(url, json_data=json_data)
-    
+
     if response.success and response.data:
         data = response.data
-        
+
         OutputUtils.success("✅ API key created successfully!")
         OutputUtils.warning("⚠️  IMPORTANT: Save the secret key now. It will not be shown again.")
         OutputUtils.info("")
@@ -1501,13 +1678,13 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
             OutputUtils.info(f"Expires: {data.get('expiresAt')}")
         if data.get('ipWhitelist'):
             OutputUtils.info(f"IP Whitelist: {', '.join(data['ipWhitelist'])}")
-        
+
         # Save API key to config if requested
         if save_key:
             config.set_api_key(data['integrationKey'], data['secretKey'])
             config.save(global_config=True)
             OutputUtils.success("API key saved to config")
-        
+
         if pretty_print:
             OutputUtils.info("")
             OutputUtils.output_json(data)
@@ -1521,22 +1698,22 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
 def list_api_keys(ctx, integration_id):
     """
     List all API keys for a specific integration.
-    
+
     Secret keys are never included in the response for security.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/api-keys/integration/{integration_id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1547,22 +1724,22 @@ def list_api_keys(ctx, integration_id):
 def get_api_key(ctx, id):
     """
     Get details of a specific API key.
-    
+
     Secret key is never included in the response for security.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/api-keys/{id}"
     OutputUtils.verbose(f"GET {url}", verbose)
-    
+
     response = http_client.get(url)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1574,34 +1751,110 @@ def get_api_key(ctx, id):
 def revoke_api_key(ctx, id):
     """
     Revoke an API key (immediately unusable).
-    
+
     Use this for:
     - Compromised key security incidents
     - Key rotation cleanup after deploying new key
     - Decommissioning an application
-    
+
     The key is preserved for audit but cannot be used.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     url = f"{admin_url}/api/v1/api-keys/{id}"
     OutputUtils.verbose(f"DELETE {url}", verbose)
     OutputUtils.info(f"Revoking API key {id}...")
-    
+
     response = http_client.delete(url)
-    
+
     if response.success:
         OutputUtils.success(f"✅ API key {id} revoked successfully")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+# Admin provisioning commands
+@admin_group.group('provisioning')
+@click.pass_context
+def provisioning_group(ctx):
+    """Admin provisioning commands for managing admin users."""
+    pass
+
+
+@provisioning_group.command('list')
+@click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
+@click.option('--size', type=int, default=20, help='Results per page (default: 20)')
+@click.option('--sort', type=str, default='createdAt,desc',
+              help='Sort by field (field,asc|desc, default: createdAt,desc)')
+@click.option('--summary', is_flag=True, help='Show pagination metadata')
+@click.pass_context
+def list_admins(ctx, page, size, sort, summary):
+    """
+    List all provisioned admin users with pagination support.
+
+    Provisioning manages admin user accounts for the Ezkey system.
+    Each admin has MFA credentials and access control settings.
+
+    Pagination: Results are returned in pages. Use --page to navigate.
+    Page numbers start at 0.
+
+    Sortable fields:
+      id              - Admin ID
+      createdAt       - Creation date (default sort field)
+
+    Examples:
+      # First page (default)
+      $ ezkey admin provisioning list
+
+      # With pagination info
+      $ ezkey admin provisioning list --summary
+
+      # Second page, 10 per page
+      $ ezkey admin provisioning list --page 1 --size 10 --summary
+
+      # Sort by ID ascending
+      $ ezkey admin provisioning list --sort id,asc --summary
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    try:
+        validate_pagination_options(page, size, sort, 'admin')
+
+        query_params = build_pagination_params(page, size, sort)
+
+        url = f"{admin_url}/api/v1/admins"
+        OutputUtils.verbose(f"GET {url}", verbose)
+        OutputUtils.verbose(f"Params: {query_params}", verbose)
+
+        response = http_client.get(url, params=query_params)
+
+        if summary and response.success and response.data:
+            display_page_summary(response.data, verbose=verbose)
+
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    except ValueError as e:
+        OutputUtils.error(str(e))
+        ctx.exit(1)
+    except Exception as e:
+        OutputUtils.error(f"Failed to list admins: {str(e)}")
+        ctx.exit(1)
 
 
 # Admin enrollment reset command
@@ -1611,7 +1864,7 @@ def revoke_api_key(ctx, id):
 def reset_enrollment(ctx, id):
     """
     Reset enrollment after recovery (unbind lost device).
-    
+
     This requires a recovery token (obtained via 'ezkey admin auth recover').
     The old device is unbound and new enrollment credentials are generated.
     Use the new credentials to bind a new device.
@@ -1620,12 +1873,12 @@ def reset_enrollment(ctx, id):
     http_client = HttpClient(config)
     verbose = ctx.obj.get('verbose', False)
     pretty_print = ctx.obj.get('pretty_print', True)
-    
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
-    
+
     # Check if we have a recovery token
     if not config.has_recovery_token():
         OutputUtils.error("❌ Recovery token required for enrollment reset")
@@ -1634,20 +1887,20 @@ def reset_enrollment(ctx, id):
         OutputUtils.info("  1. Use recovery code: ezkey admin auth recover --username admin --recovery-code <code>")
         OutputUtils.info("  2. Then retry: ezkey admin enrollment reset --id <id>")
         return
-    
+
     json_data = {
         'enrollmentId': id
     }
-    
+
     url = f"{admin_url}/api/v1/admin/enrollments/reset"
     OutputUtils.verbose(f"POST {url}", verbose)
     OutputUtils.info(f"Resetting enrollment {id}...")
-    
+
     response = http_client.post(url, json_data=json_data)
-    
+
     if response.success and response.data:
         data = response.data
-        
+
         if data.get('success'):
             OutputUtils.success(f"✅ Enrollment reset successful!")
             OutputUtils.info(f"Enrollment ID: {data.get('enrollmentId')}")
@@ -1656,7 +1909,7 @@ def reset_enrollment(ctx, id):
             OutputUtils.info(f"Integration ID: {data.get('integrationId')}")
             OutputUtils.info("")
             OutputUtils.info("Use these credentials to bind a new device")
-            
+
             if pretty_print:
                 OutputUtils.output_json(data)
         else:
