@@ -150,10 +150,20 @@ class HomeScreen(Screen):
       if api_client:
         # Fetch stats
         stats = api_client.get_dashboard_stats()
+        if stats is None and api_client.last_auth_error:
+          log.warning("Dashboard auth error")
+          if hasattr(self.app, "handle_auth_error"):
+            self.app.handle_auth_error()
+          return
 
         # Update status panel
         status_panel = self.query_one("#status_panel", StatusPanel)
-        status_panel.update_stats(stats)
+        status_panel.update_stats(stats or {
+            "integrations": 0,
+            "enrollments": 0,
+            "auth_attempts_24h": 0,
+            "auth_failed_24h": 0
+        })
 
         log.debug(f"Dashboard stats loaded: {stats}")
       else:
@@ -175,7 +185,7 @@ class HomeScreen(Screen):
   def action_show_audit(self) -> None:
     """Switch to audit log screen."""
     log.debug("Switching to audit screen")
-    # TODO: Implement screen switching
+    self.app.push_screen("audit_logs")
 
   def action_refresh(self) -> None:
     """Manually refresh dashboard data."""

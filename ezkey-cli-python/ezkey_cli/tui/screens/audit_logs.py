@@ -4,8 +4,8 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Enrollments Screen
-Description: Screen for managing enrollments
+TUI Module: Audit Logs Screen
+Description: Screen for querying audit logs
 """
 
 from textual.screen import Screen
@@ -19,12 +19,11 @@ from textual.events import Key
 log = logging.getLogger(__name__)
 
 
-class EnrollmentsScreen(Screen):
-  """Enrollments management screen."""
+class AuditLogsScreen(Screen):
+  """Audit logs screen (read-only)."""
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
-      Binding("c", "create", "Create"),
       Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
@@ -55,55 +54,51 @@ class EnrollmentsScreen(Screen):
 
   #page_info {
       height: auto;
-      margin: 1 0;
+      margin: 1 0 0 0;
+  }
+
+  #status_label {
+      height: auto;
+      margin: 0 0 1 0;
+      color: $error;
   }
   """
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.current_page = 0
-    self.page_size = 25
+    self.page_size = 20
     self.page_size_mode = "auto"
     self.total_pages = 0
     self.total_elements = 0
     self.filters = {}
 
   def compose(self):
-    """Compose the enrollments screen."""
+    """Compose the audit logs screen."""
     yield Header(show_clock=True)
     with Vertical(id="content"):
-      yield Label("Enrollments", id="title")
+      yield Label("Audit Logs", id="title")
+      yield Label("", id="status_label")
       yield Label("", id="page_info")
       yield DataTable(id="table")
     yield Footer()
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
-    log.debug("EnrollmentsScreen mounted")
+    log.debug("AuditLogsScreen mounted")
     table = self.query_one("#table", DataTable)
-    table.add_columns("ID", "Name", "Status", "Active", "Integration", "Challenge")
+    table.add_columns(
+        "ID",
+        "Created",
+        "Type",
+        "Status",
+        "API",
+        "Admin",
+        "Enrollment"
+    )
     table.cursor_type = "row"
     self._apply_page_size(auto=True)
-    self._load_enrollments()
-
-  def on_resize(self) -> None:
-    """Auto-adjust page size to available space."""
-    if self.page_size_mode == "auto":
-      self._apply_page_size(auto=True)
-    else:
-      self._cap_page_size_to_viewport()
-
-  def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-    """Handle row selection (Enter key)."""
-    table = self.query_one("#table", DataTable)
-    row_key = event.row_key
-    row_data = table.get_row(row_key)
-
-    if row_data:
-      enrollment_id = int(row_data[0])
-      log.debug(f"Opening detail for enrollment {enrollment_id}")
-      from .enrollment_detail import EnrollmentDetailScreen
-      self.app.push_screen(EnrollmentDetailScreen(enrollment_id))
+    self._load_audit_logs()
 
   def on_key(self, event: Key) -> None:
     """Handle paging keys regardless of focus."""
@@ -121,28 +116,45 @@ class EnrollmentsScreen(Screen):
       self.action_last_page()
       event.stop()
 
-  def _load_enrollments(self) -> None:
-    """Load enrollments list from API."""
+  def on_resize(self) -> None:
+    """Auto-adjust page size to available space."""
+    if self.page_size_mode == "auto":
+      self._apply_page_size(auto=True)
+    else:
+      self._cap_page_size_to_viewport()
+
+  def _load_audit_logs(self) -> None:
+    """Load audit logs from API."""
     api_client = self.app.api_client
     if not api_client:
       log.warning("No API client available")
+      self._set_status("No API client available")
       return
 
-    response = api_client.get_enrollments(
+    response = api_client.get_audit_logs(
         page=self.current_page,
         size=self.page_size,
-        enrollment_name=self.filters.get("name"),
-        status=self.filters.get("status"),
-        integration_id=self.filters.get("integration_id"),
-        active=self.filters.get("active")
+        event_type=self.filters.get("event_type"),
+        event_status=self.filters.get("event_status"),
+        api_name=self.filters.get("api_name"),
+        enrollment_id=self.filters.get("enrollment_id"),
+        admin_id=self.filters.get("admin_id"),
+        sort=self.filters.get("sort")
     )
+
     if not response:
-      log.warning("No enrollments response")
+      log.warning("No audit logs response")
+      self._set_status("Failed to load audit logs")
+      table = self.query_one("#table", DataTable)
+      table.clear()
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
         self.app.handle_auth_error()
       return
 
+    self._set_status("")
+
     content = response.get("content", [])
+    content = self._apply_client_side_filters(content)
     page_info = response.get("page", {}) if isinstance(response.get("page"), dict) else {}
     self.total_elements = page_info.get("totalElements", 0)
     self.total_pages = page_info.get("totalPages", 0)
@@ -152,26 +164,56 @@ class EnrollmentsScreen(Screen):
     table.clear()
 
     for item in content:
+      audit_log_id = item.get("auditLogId", "")
+      created_at = item.get("createdAt", "")
+      event_type = item.get("eventType", "")
+      event_status = item.get("eventStatus", "")
+      api_name = item.get("apiName", "")
+      admin_id = item.get("adminId", "")
       enrollment_id = item.get("enrollmentId", "")
-      name = item.get("enrollmentName", "")
-      status = item.get("enrollmentStatus", "")
-      active = "✓" if item.get("enrollmentActive") else "✗"
-      integration_id = item.get("integrationId", "")
-      challenge = item.get("enrollmentChallenge", "")
 
       table.add_row(
-          str(enrollment_id),
-          name,
-          status,
-          active,
-          str(integration_id),
-          str(challenge)
+          str(audit_log_id),
+          str(created_at),
+          str(event_type),
+          str(event_status),
+          str(api_name),
+          str(admin_id),
+          str(enrollment_id)
       )
 
     page_label = self.query_one("#page_info", Label)
     page_label.update(
         f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
     )
+
+  def _apply_client_side_filters(self, content: list) -> list:
+    """Apply filters locally as a safety net."""
+    event_type = self.filters.get("event_type")
+    event_status = self.filters.get("event_status")
+    api_name = self.filters.get("api_name")
+    enrollment_id = self.filters.get("enrollment_id")
+    admin_id = self.filters.get("admin_id")
+
+    def matches(item: dict) -> bool:
+      if event_type and str(item.get("eventType", "")) != event_type:
+        return False
+      if event_status and str(item.get("eventStatus", "")) != event_status:
+        return False
+      if api_name and str(item.get("apiName", "")) != api_name:
+        return False
+      if enrollment_id is not None and item.get("enrollmentId") != enrollment_id:
+        return False
+      if admin_id is not None and item.get("adminId") != admin_id:
+        return False
+      return True
+
+    return [item for item in content if matches(item)]
+
+  def _set_status(self, message: str) -> None:
+    """Set status label text."""
+    status_label = self.query_one("#status_label", Label)
+    status_label.update(message)
 
   def _apply_page_size(self, auto: bool = False) -> None:
     """Apply page size from config or auto-size."""
@@ -237,7 +279,7 @@ class EnrollmentsScreen(Screen):
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_enrollments()
+    self._load_audit_logs()
 
   def action_decrease_page_size(self) -> None:
     """Decrease page size."""
@@ -245,67 +287,55 @@ class EnrollmentsScreen(Screen):
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_enrollments()
+    self._load_audit_logs()
 
   def action_show_home(self) -> None:
     """Switch to home screen."""
     log.debug("Switching to home screen")
     self.app.pop_screen()
 
-  def action_create(self) -> None:
-    """Create new enrollment."""
-    log.debug("Creating new enrollment")
-    from .enrollment_create import CreateEnrollmentModal
-
-    def on_create_result(created: bool) -> None:
-      if created:
-        log.info("Enrollment created, refreshing list")
-        self._load_enrollments()
-
-    self.app.push_screen(CreateEnrollmentModal(), on_create_result)
-
   def action_filter(self) -> None:
     """Open filter modal."""
-    log.debug("Opening enrollment filter modal")
-    from .enrollment_filter import EnrollmentFilterModal
+    log.debug("Opening audit log filter modal")
+    from .audit_log_filter import AuditLogFilterModal
 
     def on_filter_result(filters: dict) -> None:
       if filters is not None:
-        log.info(f"Enrollment filters applied: {filters}")
+        log.info(f"Audit log filters applied: {filters}")
         self.filters = filters
         self.current_page = 0
-        self._load_enrollments()
+        self._load_audit_logs()
 
-    self.app.push_screen(EnrollmentFilterModal(current_filters=self.filters), on_filter_result)
+    self.app.push_screen(AuditLogFilterModal(current_filters=self.filters), on_filter_result)
 
   def action_refresh(self) -> None:
-    """Refresh enrollments list."""
-    log.debug("Refreshing enrollments list")
-    self._load_enrollments()
+    """Refresh audit log list."""
+    log.debug("Refreshing audit logs")
+    self._load_audit_logs()
 
   def action_next_page(self) -> None:
     """Go to next page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page += 1
-      self._load_enrollments()
+      self._load_audit_logs()
 
   def action_prev_page(self) -> None:
     """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
-      self._load_enrollments()
+      self._load_audit_logs()
 
   def action_first_page(self) -> None:
     """Go to first page."""
     if self.current_page != 0:
       self.current_page = 0
-      self._load_enrollments()
+      self._load_audit_logs()
 
   def action_last_page(self) -> None:
     """Go to last page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page = self.total_pages - 1
-      self._load_enrollments()
+      self._load_audit_logs()
 
   def action_quit(self) -> None:
     """Quit the application."""

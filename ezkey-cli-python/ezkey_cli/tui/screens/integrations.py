@@ -13,7 +13,9 @@ from textual.widgets import Header, Footer, Static, DataTable, Label
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.coordinate import Coordinate
+from pathlib import Path
 import logging
+from textual.events import Key
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +30,12 @@ class IntegrationsScreen(Screen):
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
       Binding("p", "prev_page", "Prev"),
+      Binding("pageup", "prev_page", "Prev"),
+      Binding("pagedown", "next_page", "Next"),
+      Binding("home", "first_page", "First"),
+      Binding("end", "last_page", "Last"),
+      Binding("+", "increase_page_size", "More"),
+      Binding("-", "decrease_page_size", "Less"),
       Binding("q", "quit", "Quit"),
   ]
 
@@ -56,6 +64,7 @@ class IntegrationsScreen(Screen):
     super().__init__(*args, **kwargs)
     self.current_page = 0
     self.page_size = 25
+    self.page_size_mode = "auto"
     self.total_pages = 0
     self.total_elements = 0
     self.filters = {}  # Active filters
@@ -75,7 +84,15 @@ class IntegrationsScreen(Screen):
     table = self.query_one("#table", DataTable)
     table.add_columns("ID", "Name", "Active", "Tenant", "Created")
     table.cursor_type = "row"
+    self._apply_page_size(auto=True)
     self._load_integrations()
+
+  def on_resize(self) -> None:
+    """Auto-adjust page size to available space."""
+    if self.page_size_mode == "auto":
+      self._apply_page_size(auto=True)
+    else:
+      self._cap_page_size_to_viewport()
 
   def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
     """Handle row selection (Enter key)."""
@@ -88,6 +105,22 @@ class IntegrationsScreen(Screen):
       log.debug(f"Opening detail for integration {integration_id}")
       from .integration_detail import IntegrationDetailScreen
       self.app.push_screen(IntegrationDetailScreen(integration_id))
+
+  def on_key(self, event: Key) -> None:
+    """Handle paging keys regardless of focus."""
+    key = event.key.lower()
+    if key in ("pageup", "pgup"):
+      self.action_prev_page()
+      event.stop()
+    elif key in ("pagedown", "pgdn"):
+      self.action_next_page()
+      event.stop()
+    elif key == "home":
+      self.action_first_page()
+      event.stop()
+    elif key == "end":
+      self.action_last_page()
+      event.stop()
 
   def _load_integrations(self) -> None:
     """Load integrations list from API."""
@@ -105,6 +138,8 @@ class IntegrationsScreen(Screen):
     )
     if not response:
       log.warning("No integrations response")
+      if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
+        self.app.handle_auth_error()
       return
 
     content = response.get("content", [])
@@ -135,6 +170,80 @@ class IntegrationsScreen(Screen):
     page_label.update(
         f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
     )
+
+  def _apply_page_size(self, auto: bool = False) -> None:
+    """Apply page size from config or auto-size."""
+    config = getattr(self.app, "config", None)
+    if auto:
+      saved = self._get_saved_page_size(config)
+      if saved:
+        if self._is_table_ready():
+          self.page_size = min(saved, self._max_rows())
+        else:
+          self.page_size = saved
+        self.page_size_mode = "manual"
+        return
+
+      rows = self._max_rows()
+      if rows != self.page_size:
+        self.page_size = rows
+        self.page_size_mode = "auto"
+
+  def _max_rows(self) -> int:
+    """Maximum rows that fit in the current viewport."""
+    table = self.query_one("#table", DataTable)
+    if table.size.height <= 0:
+      return 0
+    return max(10, table.size.height - 2)
+
+  def _is_table_ready(self) -> bool:
+    """Check if table has a measured size."""
+    table = self.query_one("#table", DataTable)
+    return table.size.height > 0
+
+  def _cap_page_size_to_viewport(self) -> None:
+    """Clamp manual page size to viewport if needed."""
+    max_rows = self._max_rows()
+    if max_rows and self.page_size > max_rows:
+      self.page_size = max_rows
+
+  def _persist_page_size(self) -> None:
+    """Persist page size to config."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return
+    config.set("pageSize", self.page_size)
+    local_config_path = Path.cwd() / "ezkey.json"
+    if local_config_path.exists():
+      config.save(global_config=False)
+    config.save(global_config=True)
+
+  def _get_saved_page_size(self, config) -> int:
+    """Get saved page size from config, with type normalization."""
+    if not config:
+      return 0
+    saved = config.get("pageSize")
+    if isinstance(saved, int):
+      return saved if saved > 0 else 0
+    if isinstance(saved, str) and saved.isdigit():
+      return int(saved)
+    return 0
+
+  def action_increase_page_size(self) -> None:
+    """Increase page size."""
+    self.page_size = min(self.page_size + 5, self._max_rows())
+    self.page_size_mode = "manual"
+    self.current_page = 0
+    self._persist_page_size()
+    self._load_integrations()
+
+  def action_decrease_page_size(self) -> None:
+    """Decrease page size."""
+    self.page_size = max(self.page_size - 5, 5)
+    self.page_size_mode = "manual"
+    self.current_page = 0
+    self._persist_page_size()
+    self._load_integrations()
 
   def _extract_name(self, item: dict) -> str:
     """Extract a display name from the i18n list."""
@@ -195,6 +304,18 @@ class IntegrationsScreen(Screen):
     """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
+      self._load_integrations()
+
+  def action_first_page(self) -> None:
+    """Go to first page."""
+    if self.current_page != 0:
+      self.current_page = 0
+      self._load_integrations()
+
+  def action_last_page(self) -> None:
+    """Go to last page."""
+    if self.total_pages and self.current_page + 1 < self.total_pages:
+      self.current_page = self.total_pages - 1
       self._load_integrations()
 
   def action_quit(self) -> None:

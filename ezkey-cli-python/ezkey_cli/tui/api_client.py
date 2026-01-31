@@ -35,6 +35,9 @@ class ApiClient:
         "Authorization": f"Bearer {bearer_token}",
         "Content-Type": "application/json"
     }
+    self.last_auth_error = False
+    self.last_status_code = None
+    self.last_error_message = None
 
   def _get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
     """
@@ -48,6 +51,9 @@ class ApiClient:
         Response JSON or None on error
     """
     try:
+      self.last_auth_error = False
+      self.last_status_code = None
+      self.last_error_message = None
       url = f"{self.admin_url}{endpoint}"
       log.info(f"GET {url}")
 
@@ -76,6 +82,9 @@ class ApiClient:
 
       if response.status_code == 401 or response.status_code == 403:
         log.error(f"Authorization failed ({response.status_code}): {response.text}")
+        self.last_auth_error = True
+        self.last_status_code = response.status_code
+        self.last_error_message = response.text
         return None
 
       response.raise_for_status()
@@ -102,6 +111,9 @@ class ApiClient:
         Exception: With API error message if request fails
     """
     try:
+      self.last_auth_error = False
+      self.last_status_code = None
+      self.last_error_message = None
       url = f"{self.admin_url}{endpoint}"
       log.info(f"POST {url}")
       log.debug(f"Payload: {data}")
@@ -118,6 +130,9 @@ class ApiClient:
 
       if response.status_code == 401 or response.status_code == 403:
         log.error(f"Authorization failed ({response.status_code}): {response.text}")
+        self.last_auth_error = True
+        self.last_status_code = response.status_code
+        self.last_error_message = response.text
         raise Exception(f"Authorization failed ({response.status_code})")
 
       # Handle 4xx errors with API error response
@@ -158,6 +173,9 @@ class ApiClient:
         True if successful, False otherwise
     """
     try:
+      self.last_auth_error = False
+      self.last_status_code = None
+      self.last_error_message = None
       url = f"{self.admin_url}{endpoint}"
       log.info(f"DELETE {url}")
 
@@ -172,6 +190,9 @@ class ApiClient:
 
       if response.status_code == 401 or response.status_code == 403:
         log.error(f"Authorization failed ({response.status_code}): {response.text}")
+        self.last_auth_error = True
+        self.last_status_code = response.status_code
+        self.last_error_message = response.text
         return False
 
       if response.status_code in [200, 204]:
@@ -287,7 +308,40 @@ class ApiClient:
 
     return self._get("/api/v1/auth-attempts", params=params)
 
-  def get_dashboard_stats(self) -> Dict[str, int]:
+  def get_audit_logs(
+      self,
+      page: int = 0,
+      size: int = 20,
+      event_type: str = None,
+      event_status: str = None,
+      api_name: str = None,
+      enrollment_id: int = None,
+      admin_id: int = None,
+      sort: str = None
+  ) -> Optional[Dict[str, Any]]:
+    """
+    Get audit logs with pagination and filters.
+
+    Returns:
+        Response with 'content' array and 'page' metadata
+    """
+    params = {"page": page, "size": size}
+    if event_type:
+      params["eventType"] = event_type
+    if event_status:
+      params["eventStatus"] = event_status
+    if api_name:
+      params["apiName"] = api_name
+    if enrollment_id is not None:
+      params["enrollmentId"] = enrollment_id
+    if admin_id is not None:
+      params["adminId"] = admin_id
+    if sort:
+      params["sort"] = sort
+
+    return self._get("/api/v1/audit-logs", params=params)
+
+  def get_dashboard_stats(self) -> Optional[Dict[str, int]]:
     """
     Get dashboard statistics (counts for all resources).
 
@@ -303,16 +357,22 @@ class ApiClient:
 
     # Get integrations count
     integrations_resp = self.get_integrations(size=1)
+    if self.last_auth_error:
+      return None
     if integrations_resp:
       stats["integrations"] = self._extract_total_elements(integrations_resp)
 
     # Get enrollments count
     enrollments_resp = self.get_enrollments(size=1)
+    if self.last_auth_error:
+      return None
     if enrollments_resp:
       stats["enrollments"] = self._extract_total_elements(enrollments_resp)
 
     # Get auth attempts (24h)
     auth_attempts_resp = self.get_auth_attempts(size=1000, hours=24)
+    if self.last_auth_error:
+      return None
     if auth_attempts_resp:
       total = self._extract_total_elements(auth_attempts_resp)
       stats["auth_attempts_24h"] = total

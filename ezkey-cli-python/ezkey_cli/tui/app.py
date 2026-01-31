@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
-from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen
+from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen, AuditLogsScreen
 from .api_client import ApiClient
 
 log = logging.getLogger(__name__)
@@ -120,7 +120,8 @@ class EzkeyAdminTUI(App):
   SCREENS = {
       "home": HomeScreen,
       "integrations": IntegrationsScreen,
-      "enrollments": EnrollmentsScreen
+      "enrollments": EnrollmentsScreen,
+      "audit_logs": AuditLogsScreen
   }
 
   def __init__(self, config: ConfigManager, token: str, admin_url: str):
@@ -196,6 +197,12 @@ class EzkeyAdminTUI(App):
         self.config.save(global_config=False)
       self.config.save(global_config=True)
       self.exit()
+
+  def handle_auth_error(self) -> None:
+    """Handle authorization failures by prompting re-auth."""
+    log.warning("Authorization failed - prompting re-auth")
+    from .screens import ReAuthScreen
+    self.push_screen(ReAuthScreen(self.config, self.admin_url, self.api_client))
 
   def _is_token_expired(self) -> bool:
     """Check if token has expired based on tokenExpiresAt from API."""

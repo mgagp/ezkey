@@ -19,6 +19,8 @@ from .enrollments import EnrollmentsScreen
 from .enrollment_detail import EnrollmentDetailScreen
 from .enrollment_create import CreateEnrollmentModal
 from .enrollment_filter import EnrollmentFilterModal
+from .audit_logs import AuditLogsScreen
+from .audit_log_filter import AuditLogFilterModal
 from .reauth import ReAuthScreen
 from .quick_reauth import QuickReAuthScreen
 
@@ -34,6 +36,8 @@ __all__ = [
     "EnrollmentDetailScreen",
     "CreateEnrollmentModal",
     "EnrollmentFilterModal",
+    "AuditLogsScreen",
+    "AuditLogFilterModal",
     "ReAuthScreen",
     "QuickReAuthScreen",
 ]
