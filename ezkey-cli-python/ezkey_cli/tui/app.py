@@ -171,6 +171,8 @@ class EzkeyAdminTUI(App):
     self.bearer_token = token
     self.admin_url = admin_url
 
+    self._enable_mouse_best_effort()
+
     # Detect dev mode (localhost/docker) - disable SSL verification
     is_dev = any(x in admin_url.lower() for x in ['localhost', '127.0.0.1', 'docker'])
 
@@ -181,6 +183,22 @@ class EzkeyAdminTUI(App):
     crypto_url = self.config.get('cryptoUrl', 'http://localhost:9090')
     is_crypto_dev = any(x in crypto_url.lower() for x in ['localhost', '127.0.0.1', 'docker'])
     self.crypto_client = CryptoApiClient(crypto_url, verify_ssl=not is_crypto_dev)
+
+  def _enable_mouse_best_effort(self) -> None:
+    """Enable mouse support when available (no-op if unsupported)."""
+    try:
+      enable_attr = getattr(self, "enable_mouse", None)
+      if callable(enable_attr):
+        enable_attr()
+      else:
+        self.enable_mouse = True
+      if hasattr(self, "mouse_enabled"):
+        try:
+          self.mouse_enabled = True
+        except Exception:
+          pass
+    except Exception as e:
+      log.debug("Mouse enable not supported: %s", e)
 
   def on_mount(self) -> None:
     """Called when app is mounted - Smart Startup flow.
