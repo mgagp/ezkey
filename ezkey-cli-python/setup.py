@@ -40,6 +40,7 @@ setup(
         "requests>=2.25.0",
         "colorama>=0.4.4",
         "pyyaml>=6.0",
+        "textual>=0.30.0",
     ],
     entry_points={
         "console_scripts": [

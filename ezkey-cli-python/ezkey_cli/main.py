@@ -21,16 +21,26 @@ from .commands import admin, auth, configure, database, db, openapi, crypto, dev
 @click.option('--no-pretty', is_flag=True, help='Disable pretty printing of JSON output')
 @click.option('--timeout', type=int, help='Request timeout in milliseconds')
 @click.option('--verbose', is_flag=True, help='Enable verbose output')
+@click.option('--tui', is_flag=True, help='Start interactive admin console')
 @click.version_option(version='1.0.0', prog_name='ezkey')
 @click.pass_context
-def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose):
+def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
     """
     Ezkey CLI - Command line interface for Ezkey MFA system.
 
     The CLI follows the pattern: ezkey <api> <object> <action> [options]
 
     Use 'ezkey <command> --help' for more information on a specific command.
+
+    Use 'ezkey --tui' to start the interactive admin console.
     """
+    # Handle TUI mode
+    if tui:
+        from .tui import start_tui
+        config = ConfigManager()
+        start_tui(config)
+        return
+
     # Initialize configuration
     config = ConfigManager()
 
