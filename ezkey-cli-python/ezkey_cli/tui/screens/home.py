@@ -237,6 +237,7 @@ class HomeScreen(Screen):
       Binding("a", "show_audit", "Audit"),
       Binding("t", "show_auth_attempts", "Auth Attempts"),
       Binding("m", "show_admins", "Admins"),
+      Binding("k", "show_api_keys", "API Keys"),
       Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
       Binding("q", "quit", "Quit"),
@@ -498,6 +499,11 @@ class HomeScreen(Screen):
     """Switch to admins screen."""
     log.debug("Switching to admins screen")
     self.app.push_screen("admins")
+
+  def action_show_api_keys(self) -> None:
+    """Switch to API keys screen."""
+    log.debug("Switching to API keys screen")
+    self.app.push_screen("api_keys")
 
   def action_refresh(self) -> None:
     """Manually refresh dashboard data."""

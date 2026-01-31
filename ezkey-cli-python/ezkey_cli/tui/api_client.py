@@ -374,6 +374,26 @@ class ApiClient:
     """Get onboarding credentials for admin."""
     return self._get(f"/api/v1/admins/{admin_id}/onboarding")
 
+  def get_api_keys(self) -> Optional[List[Dict[str, Any]]]:
+    """List all API keys visible to the admin."""
+    return self._get("/api/v1/api-keys")
+
+  def get_api_keys_for_integration(self, integration_id: int) -> Optional[List[Dict[str, Any]]]:
+    """List API keys for a specific integration."""
+    return self._get(f"/api/v1/api-keys/integration/{integration_id}")
+
+  def get_api_key(self, key_id: int) -> Optional[Dict[str, Any]]:
+    """Get API key by ID."""
+    return self._get(f"/api/v1/api-keys/{key_id}")
+
+  def create_api_key(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Create API key."""
+    return self._post("/api/v1/api-keys", data=payload)
+
+  def revoke_api_key(self, key_id: int) -> bool:
+    """Revoke API key by ID."""
+    return self._delete(f"/api/v1/api-keys/{key_id}")
+
   def get_audit_logs(
       self,
       page: int = 0,
