@@ -25,9 +25,10 @@ class SidebarWidget(Static):
         "Dashboard",
         "Integrations",
         "Enrollments",
-      "Auth Attempts",
-      "Admins",
-      "API Keys",
+        "Auth Attempts",
+        "Admins",
+        "Encryption Keys",
+        "API Keys",
         "Audit Logs",
         "Settings",
     ]

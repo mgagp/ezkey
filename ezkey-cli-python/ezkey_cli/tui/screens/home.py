@@ -196,6 +196,7 @@ class QuickActionsPanel(Static):
         "I - Integrations\n"
         "E - Enrollments\n"
         "T - Auth Attempts\n"
+        "C - Crypto\n"
         "A - Audit Logs\n"
         "R - Refresh"
     )
@@ -238,6 +239,7 @@ class HomeScreen(Screen):
       Binding("t", "show_auth_attempts", "Auth Attempts"),
       Binding("m", "show_admins", "Admins"),
       Binding("k", "show_api_keys", "API Keys"),
+      Binding("c", "show_crypto", "Crypto"),
       Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
       Binding("q", "quit", "Quit"),
@@ -495,6 +497,11 @@ class HomeScreen(Screen):
     log.debug("Switching to auth attempts screen")
     self.app.push_screen("auth_attempts")
 
+  def action_show_crypto(self) -> None:
+    """Switch to crypto tools screen."""
+    log.debug("Switching to crypto tools screen")
+    self.app.push_screen("crypto_home")
+
   def action_show_admins(self) -> None:
     """Switch to admins screen."""
     log.debug("Switching to admins screen")
@@ -504,6 +511,11 @@ class HomeScreen(Screen):
     """Switch to API keys screen."""
     log.debug("Switching to API keys screen")
     self.app.push_screen("api_keys")
+
+  def action_show_encryption_keys(self) -> None:
+    """Switch to encryption keys screen."""
+    log.debug("Switching to encryption keys screen")
+    self.app.push_screen("encryption_keys")
 
   def action_refresh(self) -> None:
     """Manually refresh dashboard data."""

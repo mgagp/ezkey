@@ -23,7 +23,6 @@ class EnrollmentDetailScreen(Screen):
   BINDINGS = [
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
-      Binding("e", "edit", "Edit"),
       Binding("d", "delete", "Delete"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
@@ -129,10 +128,6 @@ class EnrollmentDetailScreen(Screen):
     """Refresh enrollment data."""
     log.debug("Refreshing enrollment detail")
     self._load_enrollment()
-
-  def action_edit(self) -> None:
-    """Edit enrollment."""
-    log.debug("Edit enrollment (TODO)")
 
   def action_delete(self) -> None:
     """Delete enrollment with confirmation."""

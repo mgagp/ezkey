@@ -32,8 +32,19 @@ from .api_key_filter import ApiKeyFilterModal
 from .api_key_detail import ApiKeyDetailScreen
 from .api_key_create import CreateApiKeyModal
 from .api_key_created import ApiKeyCreatedModal
+from .encryption_keys import EncryptionKeysScreen
+from .encryption_key_detail import EncryptionKeyDetailScreen
+from .reencryption_batches import ReencryptionBatchesScreen
+from .reencryption_batch_detail import ReencryptionBatchDetailScreen
 from .reauth import ReAuthScreen
 from .quick_reauth import QuickReAuthScreen
+from .crypto_home import CryptoHomeScreen
+from .crypto_proof_token import CryptoProofTokenScreen
+from .crypto_keypair import CryptoKeyPairScreen
+from .crypto_sign import CryptoSignScreen
+from .crypto_validate import CryptoValidateScreen
+from .crypto_encrypt import CryptoEncryptScreen
+from .crypto_decrypt import CryptoDecryptScreen
 
 __all__ = [
     "AuthScreen",
@@ -60,6 +71,17 @@ __all__ = [
     "ApiKeyDetailScreen",
     "CreateApiKeyModal",
     "ApiKeyCreatedModal",
+    "EncryptionKeysScreen",
+    "EncryptionKeyDetailScreen",
+    "ReencryptionBatchesScreen",
+    "ReencryptionBatchDetailScreen",
     "ReAuthScreen",
     "QuickReAuthScreen",
+    "CryptoHomeScreen",
+    "CryptoProofTokenScreen",
+    "CryptoKeyPairScreen",
+    "CryptoSignScreen",
+    "CryptoValidateScreen",
+    "CryptoEncryptScreen",
+    "CryptoDecryptScreen",
 ]

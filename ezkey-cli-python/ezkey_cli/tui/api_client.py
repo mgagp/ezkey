@@ -394,6 +394,45 @@ class ApiClient:
     """Revoke API key by ID."""
     return self._delete(f"/api/v1/api-keys/{key_id}")
 
+  def get_encryption_keys(self) -> Optional[List[Dict[str, Any]]]:
+    """List all encryption keys."""
+    return self._get("/api/v1/encryption-keys")
+
+  def get_primary_encryption_key(self) -> Optional[Dict[str, Any]]:
+    """Get current primary encryption key."""
+    return self._get("/api/v1/encryption-keys/primary")
+
+  def get_encryption_key(self, key_id: int) -> Optional[Dict[str, Any]]:
+    """Get encryption key by ID."""
+    return self._get(f"/api/v1/encryption-keys/{key_id}")
+
+  def rotate_encryption_key(self) -> Optional[Dict[str, Any]]:
+    """Trigger manual encryption key rotation."""
+    return self._post("/api/v1/encryption-keys/rotate", data={})
+
+  def get_reencryption_batches(self) -> Optional[List[Dict[str, Any]]]:
+    """List all re-encryption batches."""
+    return self._get("/api/v1/encryption-keys/reencryption-batches")
+
+  def resume_reencryption_batch(self, batch_id: int) -> Optional[Dict[str, Any]]:
+    """Resume a failed or paused re-encryption batch."""
+    return self._post(
+        f"/api/v1/encryption-keys/reencryption-batches/{batch_id}/resume",
+        data={}
+    )
+
+  def trigger_full_reencryption(self) -> Optional[Dict[str, Any]]:
+    """Trigger full re-encryption process."""
+    return self._post("/api/v1/encryption-keys/reencrypt/trigger", data={})
+
+  def trigger_reencryption_for_key(self, key_id: int) -> Optional[Dict[str, Any]]:
+    """Trigger re-encryption for a specific key."""
+    return self._post(f"/api/v1/encryption-keys/{key_id}/reencrypt", data={})
+
+  def create_reencryption_batches(self) -> Optional[Dict[str, Any]]:
+    """Create re-encryption batches without processing."""
+    return self._post("/api/v1/encryption-keys/reencrypt/create-batches", data={})
+
   def get_audit_logs(
       self,
       page: int = 0,

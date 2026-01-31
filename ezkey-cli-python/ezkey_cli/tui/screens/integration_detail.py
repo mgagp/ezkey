@@ -23,7 +23,6 @@ class IntegrationDetailScreen(Screen):
   BINDINGS = [
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
-      Binding("e", "edit", "Edit"),
       Binding("d", "delete", "Delete"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
@@ -138,11 +137,6 @@ class IntegrationDetailScreen(Screen):
     """Refresh integration data."""
     log.debug("Refreshing integration detail")
     self._load_integration()
-
-  def action_edit(self) -> None:
-    """Edit integration."""
-    log.debug("Edit integration (TODO)")
-    # TODO: Implement edit modal
 
   def action_delete(self) -> None:
     """Delete integration with confirmation."""

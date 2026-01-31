@@ -19,8 +19,27 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
-from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen, AuditLogsScreen, AuthAttemptsScreen, AdminProvisioningScreen, ApiKeysScreen
+from .screens import (
+  AuthScreen,
+  HomeScreen,
+  IntegrationsScreen,
+  EnrollmentsScreen,
+  AuditLogsScreen,
+  AuthAttemptsScreen,
+  AdminProvisioningScreen,
+  ApiKeysScreen,
+  EncryptionKeysScreen,
+  ReencryptionBatchesScreen,
+  CryptoHomeScreen,
+  CryptoProofTokenScreen,
+  CryptoKeyPairScreen,
+  CryptoSignScreen,
+  CryptoValidateScreen,
+  CryptoEncryptScreen,
+  CryptoDecryptScreen,
+)
 from .api_client import ApiClient
+from .crypto_client import CryptoApiClient
 
 log = logging.getLogger(__name__)
 
@@ -124,7 +143,16 @@ class EzkeyAdminTUI(App):
       "audit_logs": AuditLogsScreen,
       "auth_attempts": AuthAttemptsScreen,
       "admins": AdminProvisioningScreen,
-      "api_keys": ApiKeysScreen
+      "api_keys": ApiKeysScreen,
+      "encryption_keys": EncryptionKeysScreen,
+      "reencryption_batches": ReencryptionBatchesScreen,
+      "crypto_home": CryptoHomeScreen,
+      "crypto_proof_token": CryptoProofTokenScreen,
+      "crypto_keypair": CryptoKeyPairScreen,
+      "crypto_sign": CryptoSignScreen,
+      "crypto_validate": CryptoValidateScreen,
+      "crypto_encrypt": CryptoEncryptScreen,
+      "crypto_decrypt": CryptoDecryptScreen
   }
 
   def __init__(self, config: ConfigManager, token: str, admin_url: str):
@@ -146,6 +174,11 @@ class EzkeyAdminTUI(App):
 
     # Create API client
     self.api_client = ApiClient(admin_url, token, verify_ssl=not is_dev)
+
+    # Create Crypto API client
+    crypto_url = self.config.get('cryptoUrl', 'http://localhost:9090')
+    is_crypto_dev = any(x in crypto_url.lower() for x in ['localhost', '127.0.0.1', 'docker'])
+    self.crypto_client = CryptoApiClient(crypto_url, verify_ssl=not is_crypto_dev)
 
   def on_mount(self) -> None:
     """Called when app is mounted - Smart Startup flow.
