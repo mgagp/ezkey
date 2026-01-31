@@ -197,6 +197,7 @@ class QuickActionsPanel(Static):
         "E - Enrollments\n"
         "T - Auth Attempts\n"
         "C - Crypto\n"
+      "N - Tenants\n"
         "A - Audit Logs\n"
         "R - Refresh"
     )
@@ -239,6 +240,7 @@ class HomeScreen(Screen):
       Binding("t", "show_auth_attempts", "Auth Attempts"),
       Binding("m", "show_admins", "Admins"),
       Binding("k", "show_api_keys", "API Keys"),
+      Binding("n", "show_tenants", "Tenants"),
       Binding("c", "show_crypto", "Crypto"),
       Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
@@ -511,6 +513,11 @@ class HomeScreen(Screen):
     """Switch to API keys screen."""
     log.debug("Switching to API keys screen")
     self.app.push_screen("api_keys")
+
+  def action_show_tenants(self) -> None:
+    """Switch to tenants screen."""
+    log.debug("Switching to tenants screen")
+    self.app.push_screen("tenants")
 
   def action_show_encryption_keys(self) -> None:
     """Switch to encryption keys screen."""

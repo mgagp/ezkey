@@ -9,9 +9,9 @@ Description: Detail view for a single admin
 """
 
 from textual.screen import Screen
-from textual.widgets import Header, Footer, Static, Label
+from textual.widgets import Header, Footer, Static, Label, Button
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Vertical, Horizontal
 import logging
 
 log = logging.getLogger(__name__)
@@ -49,6 +49,20 @@ class AdminProvisioningDetailScreen(Screen):
   .label {
       color: $text-muted;
   }
+
+    #button_row {
+      margin: 1 0 0 0;
+      height: auto;
+    }
+
+    Button {
+      margin: 0 1;
+    }
+
+    #status_label {
+      margin: 1 0 0 0;
+      color: $warning;
+    }
   """
 
   def __init__(self, admin_data: dict, *args, **kwargs):
@@ -63,11 +77,26 @@ class AdminProvisioningDetailScreen(Screen):
     with Vertical(id="content"):
       yield Label(f"Admin #{self.admin_id}", id="title")
       yield Static("Loading...", id="detail_content", classes="section")
+      yield Label("", id="status_label")
+      with Horizontal(id="button_row"):
+        yield Button("Copy Enrollment ID", id="copy_enrollment_id")
+        yield Button("Copy Proof Token", id="copy_proof_token")
+        yield Button("Copy Challenge", id="copy_challenge")
     yield Footer()
+
+  def on_button_pressed(self, event: Button.Pressed) -> None:
+    """Handle copy buttons for onboarding credentials."""
+    if event.button.id == "copy_enrollment_id":
+      self._copy_onboarding_value("enrollmentId")
+    elif event.button.id == "copy_proof_token":
+      self._copy_onboarding_value("enrollmentProofToken")
+    elif event.button.id == "copy_challenge":
+      self._copy_onboarding_value("enrollmentChallenge")
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
     self._render_detail()
+    self._set_copy_buttons_visible(False)
 
   def _render_detail(self) -> None:
     """Render admin details."""
@@ -95,6 +124,54 @@ class AdminProvisioningDetailScreen(Screen):
     """Show error message."""
     detail_widget = self.query_one("#detail_content", Static)
     detail_widget.update(f"❌ Error: {message}")
+
+  def _copy_onboarding_value(self, key: str) -> None:
+    """Copy onboarding value to clipboard."""
+    status = self.query_one("#status_label", Label)
+    if not self.onboarding_data:
+      status.update("Onboarding credentials not loaded")
+      return
+    value = self.onboarding_data.get(key)
+    if value is None:
+      status.update("Value not available")
+      return
+    self._copy_to_clipboard(str(value))
+
+  def _copy_to_clipboard(self, text: str) -> None:
+    """Copy text to clipboard and show status."""
+    status = self.query_one("#status_label", Label)
+    if not text:
+      status.update("Nothing to copy")
+      return
+
+    try:
+      import pyperclip
+
+      pyperclip.copy(text)
+      status.update("Copied to clipboard")
+      return
+    except Exception as e:
+      log.warning(f"Clipboard copy failed (pyperclip): {e}")
+
+    try:
+      import tkinter as tk
+
+      root = tk.Tk()
+      root.withdraw()
+      root.clipboard_clear()
+      root.clipboard_append(text)
+      root.update()
+      root.destroy()
+      status.update("Copied to clipboard")
+    except Exception as e:
+      log.error(f"Clipboard copy failed (tkinter): {e}")
+      status.update("Copy failed: clipboard unavailable")
+
+  def _set_copy_buttons_visible(self, visible: bool) -> None:
+    """Show or hide onboarding copy buttons."""
+    self.query_one("#copy_enrollment_id", Button).display = visible
+    self.query_one("#copy_proof_token", Button).display = visible
+    self.query_one("#copy_challenge", Button).display = visible
 
   def action_back(self) -> None:
     """Go back to list."""
@@ -125,6 +202,7 @@ class AdminProvisioningDetailScreen(Screen):
 
     self.onboarding_data = response
     self._render_detail()
+    self._set_copy_buttons_visible(True)
 
   def action_quit(self) -> None:
     """Quit the application."""

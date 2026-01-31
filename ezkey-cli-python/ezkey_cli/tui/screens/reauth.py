@@ -281,7 +281,13 @@ class ReAuthScreen(ModalScreen):
           self.config.set_token_expires_at(expires_at)
           log.debug(f"Saved token expiration: {expires_at}")
 
-      self.config.save(global_config=True)
+      from pathlib import Path
+      local_config_path = Path.cwd() / "ezkey.json"
+      if local_config_path.exists():
+        self.config.save(global_config=False)
+      else:
+        # Create local config for TUI instance isolation
+        self.config.save(global_config=False)
 
       # Update API client
       self.api_client.bearer_token = token

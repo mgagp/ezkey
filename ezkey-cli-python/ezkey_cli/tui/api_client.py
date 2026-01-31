@@ -374,6 +374,23 @@ class ApiClient:
     """Get onboarding credentials for admin."""
     return self._get(f"/api/v1/admins/{admin_id}/onboarding")
 
+  def get_tenants(self) -> Optional[List[Dict[str, Any]]]:
+    """List tenants (GlobalAdmin only)."""
+    return self._get("/api/v1/tenants")
+
+  def get_tenant(self, tenant_id: int) -> Optional[Dict[str, Any]]:
+    """Get tenant by ID."""
+    return self._get(f"/api/v1/tenants/{tenant_id}")
+
+  def create_tenant(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Create a tenant."""
+    return self._post("/api/v1/tenants", data=payload)
+
+  def deactivate_tenant(self, tenant_id: int) -> bool:
+    """Deactivate a tenant by ID."""
+    response = self._post(f"/api/v1/tenants/{tenant_id}/deactivate", data={})
+    return response is not None
+
   def get_api_keys(self) -> Optional[List[Dict[str, Any]]]:
     """List all API keys visible to the admin."""
     return self._get("/api/v1/api-keys")

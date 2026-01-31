@@ -4,8 +4,8 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Admin Provisioning Screen
-Description: Screen for listing administrators
+TUI Module: Tenants Screen
+Description: Screen for listing tenants
 """
 
 from textual.screen import Screen
@@ -14,19 +14,20 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.events import Key
 from pathlib import Path
-import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
+import logging
 
 log = logging.getLogger(__name__)
 
 
-class AdminProvisioningScreen(Screen):
-  """Administrators list screen."""
+class TenantsScreen(Screen):
+  """Tenants list screen."""
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
       Binding("f", "filter", "Filter"),
+      Binding("c", "create", "Create"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
       Binding("p", "prev_page", "Prev"),
@@ -74,12 +75,13 @@ class AdminProvisioningScreen(Screen):
     self.total_pages = 0
     self.total_elements = 0
     self.filters = {}
+    self._all_tenants: List[Dict[str, Any]] = []
 
   def compose(self):
-    """Compose the admins screen."""
+    """Compose the tenants screen."""
     yield Header(show_clock=True)
     with Vertical(id="content"):
-      yield Label("Admins", id="title")
+      yield Label("Tenants", id="title")
       yield Label("", id="status_label")
       yield Label("", id="page_info")
       yield DataTable(id="table")
@@ -87,19 +89,16 @@ class AdminProvisioningScreen(Screen):
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
-    log.debug("AdminProvisioningScreen mounted")
     table = self.query_one("#table", DataTable)
     table.add_columns(
         "ID",
-        "Username",
-        "Type",
-        "Tenant",
+        "Name",
         "Active",
         "Created"
     )
     table.cursor_type = "row"
     self._apply_page_size(auto=True)
-    self._load_admins()
+    self._load_tenants()
 
   def on_key(self, event: Key) -> None:
     """Handle paging keys regardless of focus."""
@@ -125,110 +124,88 @@ class AdminProvisioningScreen(Screen):
       self._cap_page_size_to_viewport()
 
   def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-    """Handle row selection (Enter key)."""
     table = self.query_one("#table", DataTable)
     row_key = event.row_key
     row_data = table.get_row(row_key)
 
     if row_data:
-      admin_id = int(row_data[0])
-      from .admin_provisioning_detail import AdminProvisioningDetailScreen
-      detail_data = {
-          "adminId": admin_id,
-          "username": row_data[1],
-          "adminType": row_data[2],
-          "tenantId": row_data[3],
-          "active": row_data[4],
-          "createdAt": row_data[5],
-      }
-      self.app.push_screen(AdminProvisioningDetailScreen(detail_data))
+      tenant_id = int(row_data[0])
+      from .tenant_detail import TenantDetailScreen
+      self.app.push_screen(TenantDetailScreen(tenant_id))
 
-  def _load_admins(self) -> None:
-    """Load admins list from API."""
+  def _load_tenants(self) -> None:
     api_client = self.app.api_client
     if not api_client:
       self._set_status("No API client available")
       return
 
-    response = api_client.get_admins(
-        page=self.current_page,
-        size=self.page_size,
-        sort=self.filters.get("sort")
-    )
-
-    if not response:
-      log.warning("No admins response")
-      self._set_status("Failed to load admins")
+    response = api_client.get_tenants()
+    if response is None:
+      self._set_status("Failed to load tenants")
       table = self.query_one("#table", DataTable)
       table.clear()
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
         self.app.handle_auth_error()
       return
 
-    self._set_status("")
+    if not isinstance(response, list):
+      self._set_status("Unexpected tenants response")
+      return
 
-    content = response.get("content", [])
-    filtered = self._apply_client_side_filters(content)
-    page_info = self._extract_page_info(response)
-    self.total_elements = page_info.get("totalElements", 0)
-    self.total_pages = page_info.get("totalPages", 0)
-    self.current_page = page_info.get("number", self.current_page)
+    self._set_status("")
+    self._all_tenants = response
+
+    filtered = self._apply_client_side_filters(self._all_tenants)
+    sorted_tenants = self._apply_sort(filtered)
+
+    self.total_elements = len(sorted_tenants)
+    self.total_pages = max(1, (self.total_elements + self.page_size - 1) // self.page_size)
+    self.current_page = min(self.current_page, self.total_pages - 1)
+
+    start = self.current_page * self.page_size
+    end = start + self.page_size
+    page_items = sorted_tenants[start:end]
 
     table = self.query_one("#table", DataTable)
     table.clear()
 
-    for item in filtered:
-      admin_id = item.get("adminId", "")
-      username = item.get("username", "")
-      admin_type = item.get("adminType", "")
+    for item in page_items:
       tenant_id = item.get("tenantId", "")
+      name = item.get("tenantName", "")
       active = "✓" if item.get("active") else "✗"
       created_at = item.get("createdAt", "")
-
-      table.add_row(
-          str(admin_id),
-          str(username),
-          str(admin_type),
-          str(tenant_id),
-          str(active),
-          str(created_at)
-      )
+      table.add_row(str(tenant_id), str(name), str(active), str(created_at))
 
     page_label = self.query_one("#page_info", Label)
-    if self._has_client_side_filters():
+    if self._has_client_side_filters() or self.filters.get("sort"):
       page_label.update(
           "Page "
-          f"{self.current_page + 1} / {max(self.total_pages, 1)}"
-          f" · Showing {len(filtered)} of {self.total_elements}"
+          f"{self.current_page + 1} / {self.total_pages}"
+          f" · Showing {len(page_items)} of {self.total_elements}"
       )
     else:
       page_label.update(
-          f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
+          f"Page {self.current_page + 1} / {self.total_pages} · Total {self.total_elements}"
       )
 
   def _apply_client_side_filters(self, content: list) -> list:
-    """Apply client-side filters to admins list."""
     if not content:
       return []
 
-    username_filter = (self.filters.get("username") or "").strip().lower()
-    admin_type_filter = (self.filters.get("admin_type") or "").strip().upper()
+    name_filter = (self.filters.get("name") or "").strip().lower()
     tenant_id_filter = (self.filters.get("tenant_id") or "").strip()
     active_filter = (self.filters.get("active") or "").strip().lower()
     created_after = self._parse_datetime(self.filters.get("created_after"))
     created_before = self._parse_datetime(self.filters.get("created_before"))
 
     def matches(item: dict) -> bool:
-      if username_filter:
-        username = (item.get("username") or "").lower()
-        if username_filter not in username:
-          return False
-      if admin_type_filter:
-        if (item.get("adminType") or "").upper() != admin_type_filter:
+      if name_filter:
+        name = (item.get("tenantName") or "").lower()
+        if name_filter not in name:
           return False
       if tenant_id_filter:
-        item_tenant = item.get("tenantId")
-        if str(item_tenant) != tenant_id_filter:
+        item_id = item.get("tenantId")
+        if str(item_id) != tenant_id_filter:
           return False
       if active_filter in ("true", "false"):
         expected = active_filter == "true"
@@ -243,8 +220,31 @@ class AdminProvisioningScreen(Screen):
 
     return [item for item in content if matches(item)]
 
+  def _apply_sort(self, content: list) -> list:
+    sort_value = (self.filters.get("sort") or "createdAt,desc").strip()
+    parts = [p.strip() for p in sort_value.split(",")]
+    field = parts[0] if parts else "createdAt"
+    direction = parts[1].lower() if len(parts) > 1 else "desc"
+    reverse = direction == "desc"
+
+    def sort_key(item: dict):
+      if field == "tenantId":
+        return item.get("tenantId") or 0
+      if field == "tenantName":
+        return (item.get("tenantName") or "").lower()
+      if field == "active":
+        return 1 if item.get("active") else 0
+      if field == "createdAt":
+        parsed = self._parse_datetime(item.get("createdAt"))
+        return parsed or datetime.min
+      return item.get(field) or ""
+
+    try:
+      return sorted(content, key=sort_key, reverse=reverse)
+    except Exception:
+      return content
+
   def _parse_datetime(self, value: str) -> Optional[datetime]:
-    """Parse ISO-8601 datetime with optional Z suffix."""
     if not value or not isinstance(value, str):
       return None
     try:
@@ -255,31 +255,16 @@ class AdminProvisioningScreen(Screen):
       return None
 
   def _has_client_side_filters(self) -> bool:
-    """Check if any client-side filters are active."""
     return any(
-        self.filters.get(key)
-        for key in ("username", "admin_type", "tenant_id", "active", "created_after", "created_before")
+      self.filters.get(key)
+      for key in ("name", "tenant_id", "active", "created_after", "created_before")
     )
 
-  def _extract_page_info(self, response: dict) -> dict:
-    """Extract page info from response (supports Spring Page format)."""
-    if not isinstance(response, dict):
-      return {}
-    if isinstance(response.get("page"), dict):
-      return response.get("page")
-    return {
-        "totalElements": response.get("totalElements", 0),
-        "totalPages": response.get("totalPages", 0),
-        "number": response.get("number", self.current_page),
-    }
-
   def _set_status(self, message: str) -> None:
-    """Set status label text."""
     status_label = self.query_one("#status_label", Label)
     status_label.update(message)
 
   def _apply_page_size(self, auto: bool = False) -> None:
-    """Apply page size from config or auto-size."""
     config = getattr(self.app, "config", None)
     if auto:
       saved = self._get_saved_page_size(config)
@@ -297,7 +282,6 @@ class AdminProvisioningScreen(Screen):
         self.page_size_mode = "auto"
 
   def _persist_page_size(self) -> None:
-    """Persist page size to config."""
     config = getattr(self.app, "config", None)
     if not config:
       return
@@ -308,7 +292,6 @@ class AdminProvisioningScreen(Screen):
     config.save(global_config=True)
 
   def _get_saved_page_size(self, config) -> int:
-    """Get saved page size from config, with type normalization."""
     if not config:
       return 0
     saved = config.get("pageSize")
@@ -319,83 +302,79 @@ class AdminProvisioningScreen(Screen):
     return 0
 
   def _max_rows(self) -> int:
-    """Maximum rows that fit in the current viewport."""
     table = self.query_one("#table", DataTable)
     if table.size.height <= 0:
       return 0
     return max(10, table.size.height - 2)
 
   def _is_table_ready(self) -> bool:
-    """Check if table has a measured size."""
     table = self.query_one("#table", DataTable)
     return table.size.height > 0
 
   def _cap_page_size_to_viewport(self) -> None:
-    """Clamp manual page size to viewport if needed."""
     max_rows = self._max_rows()
     if max_rows and self.page_size > max_rows:
       self.page_size = max_rows
 
   def action_show_home(self) -> None:
-    """Switch to home screen."""
     self.app.pop_screen()
 
   def action_filter(self) -> None:
-    """Open filter modal."""
-    from .admin_provisioning_filter import AdminProvisioningFilterModal
+    from .tenant_filter import TenantFilterModal
 
     def on_filter_result(filters: dict) -> None:
       if filters is not None:
         self.filters = filters
         self.current_page = 0
-        self._load_admins()
+        self._load_tenants()
 
-    self.app.push_screen(AdminProvisioningFilterModal(current_filters=self.filters), on_filter_result)
+    self.app.push_screen(TenantFilterModal(current_filters=self.filters), on_filter_result)
+
+  def action_create(self) -> None:
+    from .tenant_create import CreateTenantModal
+
+    def on_created(result: bool) -> None:
+      if result:
+        self._load_tenants()
+
+    self.app.push_screen(CreateTenantModal(), on_created)
 
   def action_refresh(self) -> None:
-    """Refresh admin list."""
-    self._load_admins()
+    self._load_tenants()
 
   def action_next_page(self) -> None:
-    """Go to next page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page += 1
-      self._load_admins()
+      self._load_tenants()
 
   def action_prev_page(self) -> None:
-    """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
-      self._load_admins()
+      self._load_tenants()
 
   def action_first_page(self) -> None:
-    """Go to first page."""
     if self.current_page != 0:
       self.current_page = 0
-      self._load_admins()
+      self._load_tenants()
 
   def action_last_page(self) -> None:
-    """Go to last page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page = self.total_pages - 1
-      self._load_admins()
+      self._load_tenants()
 
   def action_increase_page_size(self) -> None:
-    """Increase page size."""
     self.page_size = min(self.page_size + 5, self._max_rows())
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_admins()
+    self._load_tenants()
 
   def action_decrease_page_size(self) -> None:
-    """Decrease page size."""
     self.page_size = max(self.page_size - 5, 5)
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_admins()
+    self._load_tenants()
 
   def action_quit(self) -> None:
-    """Quit the application."""
     self.app.exit()

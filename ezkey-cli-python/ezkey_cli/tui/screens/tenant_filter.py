@@ -4,23 +4,20 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Admin Provisioning Filter Modal
-Description: Modal for filtering and sorting admins list
+TUI Module: Tenant Filter Modal
+Description: Modal for filtering tenants list
 """
 
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 from textual.containers import Vertical, Horizontal, Container
-import logging
-
-log = logging.getLogger(__name__)
 
 
-class AdminProvisioningFilterModal(ModalScreen):
-  """Modal screen for filtering admins list."""
+class TenantFilterModal(ModalScreen):
+  """Modal screen for filtering tenants list."""
 
   CSS = """
-  AdminProvisioningFilterModal {
+  TenantFilterModal {
       align: center middle;
   }
 
@@ -64,22 +61,14 @@ class AdminProvisioningFilterModal(ModalScreen):
   def compose(self):
     """Compose the modal."""
     with Container(id="modal_container"):
-      yield Label("Filter Admins", id="title")
+      yield Label("Filter Tenants", id="title")
 
       with Vertical(classes="form_row"):
-        yield Label("Username contains:", classes="label")
+        yield Label("Name contains:", classes="label")
         yield Input(
-            value=self.current_filters.get("username", ""),
-            placeholder="e.g., admin",
-            id="filter_username"
-        )
-
-      with Vertical(classes="form_row"):
-        yield Label("Admin type:", classes="label")
-        yield Input(
-            value=self.current_filters.get("admin_type", ""),
-            placeholder="GLOBAL_ADMIN / TENANT_ADMIN",
-            id="filter_admin_type"
+            value=self.current_filters.get("name", ""),
+            placeholder="e.g., Acme",
+            id="filter_name"
         )
 
       with Vertical(classes="form_row"):
@@ -117,8 +106,8 @@ class AdminProvisioningFilterModal(ModalScreen):
       with Vertical(classes="form_row"):
         yield Label("Sort (field,dir):", classes="label")
         yield Input(
-            value=self.current_filters.get("sort", "createdAt,DESC"),
-            placeholder="e.g., username,asc",
+            value=self.current_filters.get("sort", "createdAt,desc"),
+            placeholder="e.g., tenantName,asc",
             id="filter_sort"
         )
 
@@ -139,20 +128,15 @@ class AdminProvisioningFilterModal(ModalScreen):
   def _apply_filters(self) -> None:
     """Gather and return filter values."""
     filters = {}
-    sort_value = self.query_one("#filter_sort", Input).value.strip()
-    username = self.query_one("#filter_username", Input).value.strip()
-    admin_type = self.query_one("#filter_admin_type", Input).value.strip()
+    name = self.query_one("#filter_name", Input).value.strip()
     tenant_id = self.query_one("#filter_tenant_id", Input).value.strip()
     active = self.query_one("#filter_active", Input).value.strip()
     created_after = self.query_one("#filter_created_after", Input).value.strip()
     created_before = self.query_one("#filter_created_before", Input).value.strip()
+    sort_value = self.query_one("#filter_sort", Input).value.strip()
 
-    if sort_value:
-      filters["sort"] = sort_value
-    if username:
-      filters["username"] = username
-    if admin_type:
-      filters["admin_type"] = admin_type
+    if name:
+      filters["name"] = name
     if tenant_id:
       filters["tenant_id"] = tenant_id
     if active:
@@ -161,5 +145,7 @@ class AdminProvisioningFilterModal(ModalScreen):
       filters["created_after"] = created_after
     if created_before:
       filters["created_before"] = created_before
+    if sort_value:
+      filters["sort"] = sort_value
 
     self.dismiss(filters)

@@ -40,13 +40,29 @@ def integration_group(ctx):
 
 
 @integration_group.command('list')
+@click.option('--integration-name', type=str, help='Filter by integration name')
+@click.option('--active', type=str, help='Filter by active flag (true or false)')
+@click.option('--created-after', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
+@click.option('--created-before', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
 @click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
 @click.option('--size', type=int, default=20, help='Results per page (default: 20)')
 @click.option('--sort', type=str, default='createdAt,desc',
               help='Sort by field (field,asc|desc, default: createdAt,desc)')
 @click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_integrations(ctx, page, size, sort, summary):
+def list_integrations(
+    ctx,
+    integration_name,
+    active,
+    created_after,
+    created_before,
+    page,
+    size,
+    sort,
+    summary
+):
     """
     List all integrations with pagination support.
 
@@ -55,6 +71,11 @@ def list_integrations(ctx, page, size, sort, summary):
 
     Pagination: Results are returned in pages. Use --page to navigate.
     Page numbers start at 0.
+
+    Filters:
+    - Use --integration-name to filter by name
+    - Use --active to filter by active flag
+    - Use --created-after / --created-before for created timestamp range
 
     Sortable fields:
       id              - Integration ID
@@ -88,6 +109,19 @@ def list_integrations(ctx, page, size, sort, summary):
         validate_pagination_options(page, size, sort, 'integration')
 
         query_params = build_pagination_params(page, size, sort)
+        if integration_name:
+            query_params['integrationName'] = integration_name
+        if active is not None:
+            active_value = str(active).strip().lower()
+            if active_value in ['true', 'false']:
+                query_params['active'] = active_value == 'true'
+            else:
+                OutputUtils.error("--active must be 'true' or 'false'")
+                ctx.exit(1)
+        if created_after:
+            query_params['createdAfter'] = created_after
+        if created_before:
+            query_params['createdBefore'] = created_before
 
         url = f"{admin_url}/api/v1/integrations"
         OutputUtils.verbose(f"GET {url}", verbose)
@@ -137,9 +171,12 @@ def get_integration(ctx, id):
 
 @integration_group.command('create')
 @click.option('--logo', help='Logo URL or path')
+@click.option('--name', type=str, help='Integration name (single language)')
+@click.option('--description', type=str, help='Integration description (single language)')
+@click.option('--language', type=str, default='en', help='Language code (default: en)')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def create_integration(ctx, logo, data):
+def create_integration(ctx, logo, name, description, language, data):
     """
     Create a new integration for MFA protection.
 
@@ -183,9 +220,18 @@ def create_integration(ctx, logo, data):
     if logo:
         json_data['logo'] = logo
 
-    if not json_data:
-        OutputUtils.error("No data provided. Use --data option or --logo")
-        return
+    if name or description:
+        i18n_entry = {
+            'language': language or 'en',
+            'name': name or '',
+            'description': description or ''
+        }
+        json_data.setdefault('i18n', [])
+        if isinstance(json_data.get('i18n'), list):
+            json_data['i18n'].append(i18n_entry)
+        else:
+            OutputUtils.error("Invalid i18n format in --data; expected a list")
+            return
 
     url = f"{admin_url}/api/v1/integrations"
     OutputUtils.verbose(f"POST {url}", verbose)
@@ -234,6 +280,15 @@ def enrollment_group(ctx):
 
 @enrollment_group.command('list')
 @click.option('--integration-id', type=int, help='Filter by integration ID')
+@click.option('--status', type=str,
+              help='Filter by status (CREATED, VERIFIED, BOUND, INVALID)')
+@click.option('--enrollment-name', type=str, help='Filter by enrollment name')
+@click.option('--active', type=str,
+              help='Filter by active flag (true or false)')
+@click.option('--created-after', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
+@click.option('--created-before', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
 @click.option('--page', type=int, default=None,
               help='Page number (0-based). Default: 0')
 @click.option('--size', type=int, default=None,
@@ -244,7 +299,19 @@ def enrollment_group(ctx):
 @click.option('--summary', is_flag=True, default=False,
               help='Display pagination summary')
 @click.pass_context
-def list_enrollments(ctx, integration_id, page, size, sort, summary):
+def list_enrollments(
+    ctx,
+    integration_id,
+    status,
+    enrollment_name,
+    active,
+    created_after,
+    created_before,
+    page,
+    size,
+    sort,
+    summary
+):
     """
     List all enrollments in the system with pagination and sorting support.
 
@@ -253,6 +320,10 @@ def list_enrollments(ctx, integration_id, page, size, sort, summary):
 
     Filters:
     - Use --integration-id to filter by specific integration
+    - Use --status to filter by enrollment status
+    - Use --enrollment-name to filter by name (partial match)
+    - Use --active to filter by active flag
+    - Use --created-after / --created-before for created timestamp range
 
     Pagination:
     - Use --page and --size to navigate through results (e.g., --page 1 --size 50)
@@ -300,6 +371,21 @@ def list_enrollments(ctx, integration_id, page, size, sort, summary):
     # Add filter parameters
     if integration_id:
         params['integrationId'] = integration_id
+    if status:
+        params['status'] = status
+    if enrollment_name:
+        params['enrollmentName'] = enrollment_name
+    if active is not None:
+        active_value = str(active).strip().lower()
+        if active_value in ['true', 'false']:
+            params['active'] = active_value == 'true'
+        else:
+            OutputUtils.error("--active must be 'true' or 'false'")
+            return
+    if created_after:
+        params['createdAfter'] = created_after
+    if created_before:
+        params['createdBefore'] = created_before
 
     # Add pagination parameters
     try:
@@ -353,9 +439,12 @@ def get_enrollment(ctx, id):
 
 @enrollment_group.command('create')
 @click.option('--integration-id', required=True, type=int, help='Integration ID')
+@click.option('--name', type=str, help='Enrollment name')
+@click.option('--challenge-required', is_flag=True,
+              help='Require challenge for auth attempts')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def create_enrollment(ctx, integration_id, data):
+def create_enrollment(ctx, integration_id, name, challenge_required, data):
     """
     Create a new enrollment for device binding.
 
@@ -363,11 +452,11 @@ def create_enrollment(ctx, integration_id, data):
     that can be used to bind a device to this integration. The device will
     use these credentials during the enrollment verification process.
 
-    Example JSON:
-      {
-        "name": "My Device",
-        "authAttemptChallengeRequired": true
-      }
+        Example JSON:
+            {
+                "name": "My Device",
+                "authAttemptChallengeRequired": true
+            }
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -391,6 +480,16 @@ def create_enrollment(ctx, integration_id, data):
 
     # Add integration ID
     json_data['integrationId'] = integration_id
+
+    if name:
+        json_data['name'] = name
+
+    if challenge_required:
+        json_data['authAttemptChallengeRequired'] = True
+
+    if not json_data.get('name'):
+        OutputUtils.error("Enrollment name is required. Use --name or provide it in --data.")
+        return
 
     url = f"{admin_url}/api/v1/enrollments"
     OutputUtils.verbose(f"POST {url}", verbose)
@@ -514,19 +613,43 @@ def auth_attempt_group(ctx):
 
 @auth_attempt_group.command('list')
 @click.option('--enrollment-id', type=int, help='Filter by enrollment ID')
+@click.option('--status', type=str,
+              help='Filter by status (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED)')
+@click.option('--integration-id', type=int, help='Filter by integration ID')
+@click.option('--created-after', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
+@click.option('--created-before', type=str,
+              help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
 @click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
 @click.option('--size', type=int, default=20, help='Results per page (default: 20)')
 @click.option('--sort', type=str, default='createdAt,desc',
               help='Sort by field (field,asc|desc, default: createdAt,desc)')
 @click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_auth_attempts(ctx, enrollment_id, page, size, sort, summary):
+def list_auth_attempts(
+    ctx,
+    enrollment_id,
+    status,
+    integration_id,
+    created_after,
+    created_before,
+    page,
+    size,
+    sort,
+    summary
+):
     """
     List all authentication attempts with pagination support.
 
     Authentication attempts represent MFA requests that devices must approve
     or reject. Each attempt has a unique proof token and tracks its status
     (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED).
+
+    Filters:
+    - Use --enrollment-id to filter by specific enrollment
+    - Use --status to filter by status
+    - Use --integration-id to filter by integration
+    - Use --created-after / --created-before for created timestamp range
 
     Pagination: Results are returned in pages. Use --page to navigate.
     Page numbers start at 0.
@@ -547,6 +670,9 @@ def list_auth_attempts(ctx, enrollment_id, page, size, sort, summary):
       # Filter by enrollment, show summary
       $ ezkey admin auth-attempt list --enrollment-id 5 --summary
 
+    # Filter by status and integration
+    $ ezkey admin auth-attempt list --status PENDING --integration-id 7
+
       # Second page, 10 per page, sorted by enrollment ID
       $ ezkey admin auth-attempt list --page 1 --size 10 --sort enrollmentId,asc --summary
     """
@@ -566,6 +692,14 @@ def list_auth_attempts(ctx, enrollment_id, page, size, sort, summary):
         query_params = build_pagination_params(page, size, sort)
         if enrollment_id:
             query_params['enrollmentId'] = enrollment_id
+        if status:
+            query_params['status'] = status
+        if integration_id:
+            query_params['integrationId'] = integration_id
+        if created_after:
+            query_params['createdAfter'] = created_after
+        if created_before:
+            query_params['createdBefore'] = created_before
 
         url = f"{admin_url}/api/v1/auth-attempts"
         OutputUtils.verbose(f"GET {url}", verbose)
@@ -689,6 +823,14 @@ def wait_for_auth_attempt(ctx, id, timeout, polling):
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
 
+    if timeout < 1 or timeout > 300:
+        OutputUtils.error("--timeout must be between 1 and 300 seconds")
+        ctx.exit(1)
+
+    if polling < 1 or polling > 60:
+        OutputUtils.error("--polling must be between 1 and 60 seconds")
+        ctx.exit(1)
+
     url = f"{admin_url}/api/v1/auth-attempts/{id}/wait"
     params = {'timeout': timeout, 'polling': polling}
 
@@ -739,6 +881,36 @@ def delete_auth_attempt(ctx, id):
 
     if response.success:
         OutputUtils.success(f"✅ Auth attempt {id} deleted successfully")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@auth_attempt_group.command('cancel')
+@click.option('--id', required=True, type=int, help='Auth attempt ID')
+@click.pass_context
+def cancel_auth_attempt(ctx, id):
+    """
+    Cancel an authentication attempt (marks it as expired).
+
+    This does not delete the record; it only ends the attempt early.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/auth-attempts/{id}/cancel"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data={})
+
+    if response.success:
+        OutputUtils.success(f"✅ Auth attempt {id} cancelled successfully")
     else:
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
@@ -1155,11 +1327,16 @@ def admin_recover(ctx, username, recovery_code, no_save_token):
     # Validate recovery code format before sending (client-side validation)
     # This provides immediate feedback without waiting for server response
     if recovery_code:
-        cleaned_code = recovery_code.replace('-', '')
-        if len(cleaned_code) != 32 or not cleaned_code.isdigit():
+        parts = recovery_code.split('-')
+        if (
+            len(parts) != 8
+            or any(len(part) != 4 for part in parts)
+            or not all(part.isdigit() for part in parts)
+        ):
+            cleaned_code = recovery_code.replace('-', '')
             OutputUtils.error("Invalid recovery code format")
             OutputUtils.info("")
-            OutputUtils.info("💡 Recovery code must be 32 digits in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
+            OutputUtils.info("💡 Recovery code must be in format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX")
             OutputUtils.info("   Example: 1234-5678-9012-3456-7890-1234-5678-9012")
             OutputUtils.info("")
             OutputUtils.info(f"   Your code: {recovery_code} (length: {len(cleaned_code)} digits)")
@@ -1619,7 +1796,7 @@ def api_key_group(ctx):
 
 @api_key_group.command('create')
 @click.option('--integration-id', required=True, type=int, help='Integration ID for the API key')
-@click.option('--description', required=True, help='Description of the API key (e.g., "Production Server")')
+@click.option('--description', help='Description of the API key (e.g., "Production Server")')
 @click.option('--expires-at', help='Expiration date in ISO 8601 format (e.g., "2025-12-31T23:59:59Z")')
 @click.option('--ip-whitelist', multiple=True, help='IP addresses or CIDR ranges (can be specified multiple times)')
 @click.option('--save-key', is_flag=True, help='Save API key credentials to config')
@@ -1647,9 +1824,11 @@ def create_api_key(ctx, integration_id, description, expires_at, ip_whitelist, s
 
     # Build request data
     json_data = {
-        'integrationId': integration_id,
-        'description': description
+        'integrationId': integration_id
     }
+
+    if description:
+        json_data['description'] = description
 
     if expires_at:
         json_data['expiresAt'] = expires_at
@@ -1712,6 +1891,31 @@ def list_api_keys(ctx, integration_id):
         return
 
     url = f"{admin_url}/api/v1/api-keys/integration/{integration_id}"
+    OutputUtils.verbose(f"GET {url}", verbose)
+
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@api_key_group.command('list-all')
+@click.pass_context
+def list_all_api_keys(ctx):
+    """
+    List all API keys visible to the current admin.
+
+    Secret keys are never included in the response for security.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/api-keys"
     OutputUtils.verbose(f"GET {url}", verbose)
 
     response = http_client.get(url)
@@ -1789,6 +1993,14 @@ def provisioning_group(ctx):
     pass
 
 
+# Tenant management commands
+@admin_group.group('tenant')
+@click.pass_context
+def tenant_group(ctx):
+    """Tenant management commands (GlobalAdmin only)."""
+    pass
+
+
 @provisioning_group.command('list')
 @click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
 @click.option('--size', type=int, default=20, help='Results per page (default: 20)')
@@ -1855,6 +2067,300 @@ def list_admins(ctx, page, size, sort, summary):
     except Exception as e:
         OutputUtils.error(f"Failed to list admins: {str(e)}")
         ctx.exit(1)
+
+
+@provisioning_group.command('create-global')
+@click.option('--username', required=True, help='Admin username (3-50 chars)')
+@click.option('--email', required=True, help='Email address (required for global admins)')
+@click.option('--first-name', required=True, help='First name (required for global admins)')
+@click.option('--last-name', required=True, help='Last name (required for global admins)')
+@click.pass_context
+def create_global_admin(ctx, username, email, first_name, last_name):
+    """
+    Create a peer global administrator (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    json_data = {
+        'username': username,
+        'email': email,
+        'firstName': first_name,
+        'lastName': last_name
+    }
+
+    url = f"{admin_url}/api/v1/admins/global"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data=json_data)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@provisioning_group.command('create-tenant')
+@click.option('--username', required=True, help='Admin username (3-50 chars)')
+@click.option('--tenant-id', required=True, type=int, help='Tenant ID')
+@click.option('--email', help='Email address (optional for tenant admins)')
+@click.option('--first-name', help='First name (optional for tenant admins)')
+@click.option('--last-name', help='Last name (optional for tenant admins)')
+@click.pass_context
+def create_tenant_admin(ctx, username, tenant_id, email, first_name, last_name):
+    """
+    Create a peer tenant administrator.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    json_data = {
+        'username': username,
+        'tenantId': tenant_id
+    }
+
+    if email:
+        json_data['email'] = email
+    if first_name:
+        json_data['firstName'] = first_name
+    if last_name:
+        json_data['lastName'] = last_name
+
+    url = f"{admin_url}/api/v1/admins/tenant"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data=json_data)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@provisioning_group.command('onboarding')
+@click.option('--id', required=True, type=int, help='Admin ID')
+@click.pass_context
+def get_admin_onboarding(ctx, id):
+    """
+    Retrieve onboarding credentials for an administrator.
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/admins/{id}/onboarding"
+    OutputUtils.verbose(f"GET {url}", verbose)
+
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@provisioning_group.command('qrcode')
+@click.option('--id', required=True, type=int, help='Admin ID')
+@click.option('--output', '-o', help='Output file path (default: admin-{id}-onboarding-qrcode.png)')
+@click.pass_context
+def get_admin_onboarding_qrcode(ctx, id, output):
+    """
+    Generate onboarding QR code for an administrator.
+
+    Returns a PNG QR code image containing enrollment credentials
+    (enrollmentId|enrollmentProofToken) for passwordless enrollment binding.
+    """
+    config: ConfigManager = ctx.obj['config']
+    verbose = ctx.obj.get('verbose', False)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    http_client = HttpClient(config)
+    original_accept = http_client.session.headers.get('Accept')
+    http_client.session.headers['Accept'] = 'image/png,*/*'
+
+    url = f"{admin_url}/api/v1/admins/{id}/onboarding/qrcode"
+    OutputUtils.verbose(f"GET {url}", verbose)
+
+    try:
+        response = http_client.session.get(url, timeout=http_client.timeout)
+
+        if response.ok:
+            if output:
+                output_file = output
+            else:
+                output_file = f"admin-{id}-onboarding-qrcode.png"
+
+            with open(output_file, 'wb') as f:
+                f.write(response.content)
+
+            OutputUtils.success(f"✅ QR code saved to {output_file}")
+            OutputUtils.info(f"File size: {len(response.content)} bytes")
+        else:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('message', error_data.get('error', 'Unknown error'))
+                OutputUtils.error(f"Failed to generate QR code: {error_msg}")
+            except ValueError:
+                OutputUtils.error(f"Failed to generate QR code: HTTP {response.status_code}")
+
+            if response.status_code == 400:
+                OutputUtils.info("💡 Enrollment may be missing proof token")
+            elif response.status_code == 404:
+                OutputUtils.info("💡 Administrator not found")
+    except Exception as e:
+        OutputUtils.error(f"Request failed: {str(e)}")
+    finally:
+        if original_accept:
+            http_client.session.headers['Accept'] = original_accept
+        else:
+            http_client.session.headers.pop('Accept', None)
+
+
+@provisioning_group.command('deactivate')
+@click.option('--id', required=True, type=int, help='Admin ID to deactivate')
+@click.confirmation_option(prompt='Are you sure you want to deactivate this admin?')
+@click.pass_context
+def deactivate_admin(ctx, id):
+    """
+    Deactivate an administrator (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/admins/{id}/deactivate"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data={})
+
+    if response.success:
+        OutputUtils.success(f"✅ Admin {id} deactivated successfully")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@tenant_group.command('create')
+@click.option('--name', required=True, help='Tenant name (3-100 chars)')
+@click.option('--description', help='Tenant description (max 500 chars)')
+@click.pass_context
+def create_tenant(ctx, name, description):
+    """
+    Create a tenant (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    json_data = {
+        'tenantName': name,
+        'tenantDescription': description
+    }
+
+    url = f"{admin_url}/api/v1/tenants"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data=json_data)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@tenant_group.command('list')
+@click.pass_context
+def list_tenants(ctx):
+    """
+    List all tenants (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/tenants"
+    OutputUtils.verbose(f"GET {url}", verbose)
+
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@tenant_group.command('get')
+@click.option('--id', required=True, type=int, help='Tenant ID')
+@click.pass_context
+def get_tenant(ctx, id):
+    """
+    Get tenant details by ID (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/tenants/{id}"
+    OutputUtils.verbose(f"GET {url}", verbose)
+
+    response = http_client.get(url)
+    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+
+@tenant_group.command('deactivate')
+@click.option('--id', required=True, type=int, help='Tenant ID to deactivate')
+@click.confirmation_option(prompt='Are you sure you want to deactivate this tenant?')
+@click.pass_context
+def deactivate_tenant(ctx, id):
+    """
+    Deactivate a tenant (GlobalAdmin only).
+    """
+    config: ConfigManager = ctx.obj['config']
+    http_client = HttpClient(config)
+    verbose = ctx.obj.get('verbose', False)
+    pretty_print = ctx.obj.get('pretty_print', True)
+
+    admin_url = config.get('adminUrl')
+    if not admin_url:
+        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
+        return
+
+    url = f"{admin_url}/api/v1/tenants/{id}/deactivate"
+    OutputUtils.verbose(f"POST {url}", verbose)
+
+    response = http_client.post(url, json_data={})
+
+    if response.success:
+        OutputUtils.success(f"✅ Tenant {id} deactivated successfully")
+    else:
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
 # Admin enrollment reset command
