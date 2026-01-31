@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+from datetime import datetime, timezone
 
 
 class ConfigManager:
@@ -112,6 +113,22 @@ class ConfigManager:
         """Set bearer token for authentication."""
         self._config['bearerToken'] = token
 
+    def set_token_expires_at(self, expires_at: str) -> None:
+        """Set token expiration timestamp (ISO 8601 format)."""
+        self._config['tokenExpiresAt'] = expires_at
+
+    def get_token_expires_at(self) -> Optional[str]:
+        """Get token expiration timestamp."""
+        return self._config.get('tokenExpiresAt')
+
+    def set_admin_type(self, admin_type: str) -> None:
+        """Set admin type (e.g., GLOBAL_ADMIN)."""
+        self._config['adminType'] = admin_type
+
+    def get_admin_type(self) -> Optional[str]:
+        """Get admin type."""
+        return self._config.get('adminType')
+
     def clear_bearer_token(self) -> None:
         """Clear bearer token."""
         if 'bearerToken' in self._config:
@@ -148,3 +165,67 @@ class ConfigManager:
             del self._config['integrationKey']
         if 'secretKey' in self._config:
             del self._config['secretKey']
+
+    def set_admin_username(self, username: str) -> None:
+        """Set the admin username (for TUI re-auth and CLI convenience)."""
+        self._config['adminUsername'] = username
+
+    def get_admin_username(self) -> Optional[str]:
+        """Get the stored admin username."""
+        return self._config.get('adminUsername')
+        return self._config.get('adminUsername')
+
+    def set_last_auth_time(self) -> None:
+        """Record the current time as last successful authentication."""
+        self._config['lastAuthTime'] = datetime.now(timezone.utc).isoformat()
+
+    def clear_last_auth_time(self) -> None:
+        """Clear last authentication time."""
+        if 'lastAuthTime' in self._config:
+            del self._config['lastAuthTime']
+
+    def clear_token_expires_at(self) -> None:
+        """Clear token expiration timestamp."""
+        if 'tokenExpiresAt' in self._config:
+            del self._config['tokenExpiresAt']
+
+    def clear_admin_type(self) -> None:
+        """Clear admin type."""
+        if 'adminType' in self._config:
+            del self._config['adminType']
+
+    def is_session_expired(self, timeout_minutes: int = 60) -> bool:
+        """
+        Check if session has expired based on token expiration or session timeout.
+
+        Args:
+            timeout_minutes: Session timeout in minutes (default 60 = 1 hour)
+
+        Returns:
+            True if token expired or session timeout exceeded, False if still valid
+        """
+        # First, check if token has a real expiration time from the API
+        expires_at = self._config.get('tokenExpiresAt')
+        if expires_at:
+            try:
+                expiry_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                if datetime.now(timezone.utc) >= expiry_time:
+                    log.debug(f"Token expired at {expires_at}")
+                    return True  # Token actually expired
+            except (ValueError, TypeError) as e:
+                log.warning(f"Could not parse tokenExpiresAt: {e}")
+
+        # Fallback to session timeout (if no real expiration or not expired yet)
+        last_auth = self._config.get('lastAuthTime')
+        if not last_auth:
+            # No previous auth time = first startup after migration or fresh token
+            # Initialize it now so next check works
+            self.set_last_auth_time()
+            return False  # Don't expire on first check
+
+        try:
+            last_time = datetime.fromisoformat(last_auth)
+            elapsed = (datetime.now(timezone.utc) - last_time).total_seconds()
+            return elapsed > (timeout_minutes * 60)
+        except (ValueError, TypeError):
+            return True  # Invalid format = expired

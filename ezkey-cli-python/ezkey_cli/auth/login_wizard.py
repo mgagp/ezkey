@@ -225,9 +225,9 @@ class LoginWizard:
 
       click.echo(click.style("✓ Authentication successful!", fg="green"))
 
-      # Save token
+      # Save token with metadata
       logger.debug(f"Attempting to save token...")
-      if self._save_bearer_token(token):
+      if self._save_bearer_token(token, login_response):  # Pass full response!
         return True
       else:
         click.echo(click.style("✗ Failed to save token", fg="red"))
@@ -276,7 +276,7 @@ class LoginWizard:
         return False
 
       token = challenge_response.get('token')
-      if token and self._save_bearer_token(token):
+      if token and self._save_bearer_token(token, challenge_response):  # Pass full response!
         click.echo()
         click.echo(click.style("✓ Authentication successful!", fg="green"))
         return True
@@ -288,18 +288,33 @@ class LoginWizard:
     click.echo(click.style("✗ Unexpected authentication response", fg="red"))
     return False
 
-  def _save_bearer_token(self, token: str) -> bool:
+  def _save_bearer_token(self, token: str, login_response: dict = None) -> bool:
     """
-    Save bearer token to config (shared with CLI).
+    Save bearer token, username, admin type and expiration to config.
 
     Args:
         token: Bearer token string
+        login_response: Full login response dict from API
 
     Returns:
         True if saved successfully
     """
     try:
       self.config.set_bearer_token(token)
+      self.config.set_admin_username(self.username)
+      self.config.set_last_auth_time()
+
+      # Save additional metadata from login response if available
+      if login_response:
+        admin_type = login_response.get('adminType')
+        if admin_type:
+          self.config.set_admin_type(admin_type)
+          log.debug(f"Saved admin type: {admin_type}")
+
+        expires_at = login_response.get('expiresAt')
+        if expires_at:
+          self.config.set_token_expires_at(expires_at)
+          log.debug(f"Saved token expiration: {expires_at}")
 
       local_config_path = Path.cwd() / "ezkey.json"
       if local_config_path.exists():

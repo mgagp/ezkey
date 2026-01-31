@@ -4,22 +4,21 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Integrations Screen
-Description: Screen for managing integrations
+TUI Module: Enrollments Screen
+Description: Screen for managing enrollments
 """
 
 from textual.screen import Screen
-from textual.widgets import Header, Footer, Static, DataTable, Label
+from textual.widgets import Header, Footer, DataTable, Label
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.coordinate import Coordinate
 import logging
 
 log = logging.getLogger(__name__)
 
 
-class IntegrationsScreen(Screen):
-  """Integrations management screen."""
+class EnrollmentsScreen(Screen):
+  """Enrollments management screen."""
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
@@ -58,24 +57,24 @@ class IntegrationsScreen(Screen):
     self.page_size = 25
     self.total_pages = 0
     self.total_elements = 0
-    self.filters = {}  # Active filters
+    self.filters = {}
 
   def compose(self):
-    """Compose the integrations screen."""
+    """Compose the enrollments screen."""
     yield Header(show_clock=True)
     with Vertical(id="content"):
-      yield Label("Integrations", id="title")
+      yield Label("Enrollments", id="title")
       yield Label("", id="page_info")
       yield DataTable(id="table")
     yield Footer()
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
-    log.debug("IntegrationsScreen mounted")
+    log.debug("EnrollmentsScreen mounted")
     table = self.query_one("#table", DataTable)
-    table.add_columns("ID", "Name", "Active", "Tenant", "Created")
+    table.add_columns("ID", "Name", "Status", "Active", "Integration", "Challenge")
     table.cursor_type = "row"
-    self._load_integrations()
+    self._load_enrollments()
 
   def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
     """Handle row selection (Enter key)."""
@@ -84,27 +83,28 @@ class IntegrationsScreen(Screen):
     row_data = table.get_row(row_key)
 
     if row_data:
-      integration_id = int(row_data[0])
-      log.debug(f"Opening detail for integration {integration_id}")
-      from .integration_detail import IntegrationDetailScreen
-      self.app.push_screen(IntegrationDetailScreen(integration_id))
+      enrollment_id = int(row_data[0])
+      log.debug(f"Opening detail for enrollment {enrollment_id}")
+      from .enrollment_detail import EnrollmentDetailScreen
+      self.app.push_screen(EnrollmentDetailScreen(enrollment_id))
 
-  def _load_integrations(self) -> None:
-    """Load integrations list from API."""
+  def _load_enrollments(self) -> None:
+    """Load enrollments list from API."""
     api_client = self.app.api_client
     if not api_client:
       log.warning("No API client available")
       return
 
-    # Build request params with active filters
-    response = api_client.get_integrations(
+    response = api_client.get_enrollments(
         page=self.current_page,
         size=self.page_size,
-        name=self.filters.get("name"),
+        enrollment_name=self.filters.get("name"),
+        status=self.filters.get("status"),
+        integration_id=self.filters.get("integration_id"),
         active=self.filters.get("active")
     )
     if not response:
-      log.warning("No integrations response")
+      log.warning("No enrollments response")
       return
 
     content = response.get("content", [])
@@ -117,18 +117,20 @@ class IntegrationsScreen(Screen):
     table.clear()
 
     for item in content:
-      integration_id = item.get("id", "")
-      tenant_id = item.get("tenantId", "")
-      active = "✓" if item.get("active") else "✗"
-      created_at = item.get("createdAt", "")
-      name = self._extract_name(item)
+      enrollment_id = item.get("enrollmentId", "")
+      name = item.get("enrollmentName", "")
+      status = item.get("enrollmentStatus", "")
+      active = "✓" if item.get("enrollmentActive") else "✗"
+      integration_id = item.get("integrationId", "")
+      challenge = item.get("enrollmentChallenge", "")
 
       table.add_row(
-          str(integration_id),
+          str(enrollment_id),
           name,
+          status,
           active,
-          str(tenant_id),
-          created_at
+          str(integration_id),
+          str(challenge)
       )
 
     page_label = self.query_one("#page_info", Label)
@@ -136,66 +138,53 @@ class IntegrationsScreen(Screen):
         f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
     )
 
-  def _extract_name(self, item: dict) -> str:
-    """Extract a display name from the i18n list."""
-    i18n = item.get("i18n", [])
-    if not isinstance(i18n, list) or not i18n:
-      return ""
-
-    for entry in i18n:
-      if entry.get("language") == "en" and entry.get("name"):
-        return entry.get("name")
-
-    first = i18n[0]
-    return first.get("name", "") if isinstance(first, dict) else ""
-
   def action_show_home(self) -> None:
     """Switch to home screen."""
     log.debug("Switching to home screen")
     self.app.pop_screen()
 
   def action_create(self) -> None:
-    """Create new integration."""
-    log.debug("Creating new integration")
-    from .integration_create import CreateIntegrationModal
+    """Create new enrollment."""
+    log.debug("Creating new enrollment")
+    from .enrollment_create import CreateEnrollmentModal
 
     def on_create_result(created: bool) -> None:
       if created:
-        log.info("Integration created, refreshing list")
-        self._load_integrations()
+        log.info("Enrollment created, refreshing list")
+        self._load_enrollments()
 
-    self.app.push_screen(CreateIntegrationModal(), on_create_result)
+    self.app.push_screen(CreateEnrollmentModal(), on_create_result)
 
   def action_filter(self) -> None:
     """Open filter modal."""
-    log.debug("Opening filter modal")
-    from .filter_modal import FilterModal
+    log.debug("Opening enrollment filter modal")
+    from .enrollment_filter import EnrollmentFilterModal
 
     def on_filter_result(filters: dict) -> None:
       if filters is not None:
-        log.info(f"Filters applied: {filters}")
+        log.info(f"Enrollment filters applied: {filters}")
         self.filters = filters
-        self.current_page = 0  # Reset to first page
-        self._load_integrations()
+        self.current_page = 0
+        self._load_enrollments()
 
-    self.app.push_screen(FilterModal(current_filters=self.filters), on_filter_result)
+    self.app.push_screen(EnrollmentFilterModal(current_filters=self.filters), on_filter_result)
 
   def action_refresh(self) -> None:
-    """Refresh integrations list."""
-    log.debug("Refreshing integrations list")
-    self._load_integrations()
+    """Refresh enrollments list."""
+    log.debug("Refreshing enrollments list")
+    self._load_enrollments()
 
   def action_next_page(self) -> None:
     """Go to next page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page += 1
-      self._load_integrations()
+      self._load_enrollments()
 
   def action_prev_page(self) -> None:
     """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
-      self._load_integrations()
+      self._load_enrollments()
 
   def action_quit(self) -> None:
     """Quit the application."""

@@ -19,8 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
-from ..auth.login_wizard import LoginWizard
-from .screens import AuthScreen, HomeScreen
+from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen
 from .api_client import ApiClient
 
 log = logging.getLogger(__name__)
@@ -51,11 +50,11 @@ class EzkeyAdminApp:
     token = self._load_bearer_token()
 
     if token:
-      # Token exists, start with home screen
+      # Token exists, start with token
       self._start_app_with_token(token)
     else:
-      # No token, run login wizard
-      self._run_login_wizard()
+      # No token, start app and show login screen
+      self._start_app_with_token("")
 
   def _load_bearer_token(self) -> Optional[str]:
     """
@@ -98,22 +97,6 @@ class EzkeyAdminApp:
       log.error("Failed to migrate legacy bearer-token: %s", e)
       return None
 
-  def _run_login_wizard(self) -> None:
-    """Run the interactive login wizard."""
-    wizard = LoginWizard()
-    success = wizard.run(config=self.config)
-
-    if success:
-      # Login successful, start app with token
-      token = self.token_manager.load_token()
-      if token:
-        self._start_app_with_token(token)
-    else:
-      # Login failed
-      import click
-      click.echo()
-      click.echo(click.style("Login cancelled.", fg="red"))
-
   def _start_app_with_token(self, token: str) -> None:
     """
     Start the main Textual app with a valid bearer token.
@@ -134,7 +117,11 @@ class EzkeyAdminApp:
 class EzkeyAdminTUI(App):
   """Textual UI application."""
 
-  SCREENS = {"home": HomeScreen}
+  SCREENS = {
+      "home": HomeScreen,
+      "integrations": IntegrationsScreen,
+      "enrollments": EnrollmentsScreen
+  }
 
   def __init__(self, config: ConfigManager, token: str, admin_url: str):
     """
@@ -157,8 +144,75 @@ class EzkeyAdminTUI(App):
     self.api_client = ApiClient(admin_url, token, verify_ssl=not is_dev)
 
   def on_mount(self) -> None:
-    """Called when app is mounted."""
+    """Called when app is mounted - Smart Startup flow.
+
+    Strategy:
+    1. Check token expiration via expiresAt from API
+    2. If expired + username saved -> QuickReAuthScreen (1-click)
+    3. If expired + no username -> ReAuthScreen (full)
+    4. If valid -> Dashboard (0-click)
+    """
+    if not self.bearer_token:
+      log.info("No token found - showing login screen")
+      from .screens import ReAuthScreen
+      self.push_screen(ReAuthScreen(
+          self.config,
+          self.admin_url,
+          self.api_client,
+          mode="login"
+      ))
+      return
+
+    if self._is_token_expired():
+      log.warning("Token is expired")
+      username = self.config.get_admin_username()
+
+      if username:
+        log.info("Showing quick re-auth for user: %s", username)
+        from .screens import QuickReAuthScreen
+        self.push_screen(QuickReAuthScreen(self.config, self.admin_url, self.api_client))
+      else:
+        log.info("Showing full re-auth (no username stored)")
+        from .screens import ReAuthScreen
+        self.push_screen(ReAuthScreen(self.config, self.admin_url, self.api_client))
+      return
+
+    log.debug("Token valid - showing home screen")
     self.push_screen("home")
+
+  def logout_and_exit(self) -> None:
+    """Logout, clear local auth data, and exit."""
+    try:
+      if self.api_client:
+        self.api_client.logout()
+    finally:
+      self.config.clear_bearer_token()
+      self.config.clear_recovery_token()
+      self.config.clear_token_expires_at()
+      self.config.clear_admin_type()
+      self.config.clear_last_auth_time()
+      local_config_path = Path.cwd() / "ezkey.json"
+      if local_config_path.exists():
+        self.config.save(global_config=False)
+      self.config.save(global_config=True)
+      self.exit()
+
+  def _is_token_expired(self) -> bool:
+    """Check if token has expired based on tokenExpiresAt from API."""
+    expires_at = self.config.get_token_expires_at()
+    if not expires_at:
+      log.warning("No token expiration stored - treating as valid")
+      return False
+
+    try:
+      from datetime import datetime, timezone
+      expiry_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+      is_expired = datetime.now(timezone.utc) >= expiry_time
+      log.debug("Token expiration check: %s, expired=%s", expires_at, is_expired)
+      return is_expired
+    except (ValueError, TypeError) as e:
+      log.error("Could not parse tokenExpiresAt '%s': %s", expires_at, e)
+      return False
 
 
 def start_tui(config: ConfigManager = None) -> None:

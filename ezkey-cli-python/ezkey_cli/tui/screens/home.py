@@ -47,10 +47,19 @@ class StatusPanel(Static):
 
   def update_stats(self, stats: dict) -> None:
     """Update statistics from API."""
-    self.integrations_count = stats.get("integrations", 0)
-    self.enrollments_count = stats.get("enrollments", 0)
-    self.auth_attempts_count = stats.get("auth_attempts_24h", 0)
-    self.auth_failed_count = stats.get("auth_failed_24h", 0)
+    if not stats or not isinstance(stats, dict):
+      # If stats is None or invalid, use defaults
+      stats = {
+          "integrations": 0,
+          "enrollments": 0,
+          "auth_attempts_24h": 0,
+          "auth_failed_24h": 0
+      }
+
+    self.integrations_count = stats.get("integrations", 0) or 0
+    self.enrollments_count = stats.get("enrollments", 0) or 0
+    self.auth_attempts_count = stats.get("auth_attempts_24h", 0) or 0
+    self.auth_failed_count = stats.get("auth_failed_24h", 0) or 0
 
 
 class ActivityPanel(Static):
@@ -77,6 +86,7 @@ class HomeScreen(Screen):
       Binding("i", "show_integrations", "Integrations"),
       Binding("e", "show_enrollments", "Enrollments"),
       Binding("a", "show_audit", "Audit"),
+      Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
       Binding("q", "quit", "Quit"),
   ]
@@ -125,6 +135,11 @@ class HomeScreen(Screen):
     """Called when screen is mounted - load data from API."""
     log.debug("HomeScreen mounted")
     self._load_dashboard_data()
+    self.set_interval(30, self._refresh_dashboard)
+
+  def _refresh_dashboard(self) -> None:
+    """Periodic refresh of dashboard data."""
+    self._load_dashboard_data()
 
   def _load_dashboard_data(self) -> None:
     """Load dashboard data from API."""
@@ -150,23 +165,31 @@ class HomeScreen(Screen):
   def action_show_integrations(self) -> None:
     """Switch to integrations screen."""
     log.debug("Switching to integrations screen")
-    # TODO: Implement screen switching
+    self.app.push_screen("integrations")
 
   def action_show_enrollments(self) -> None:
     """Switch to enrollments screen."""
     log.debug("Switching to enrollments screen")
-    # TODO: Implement screen switching
+    self.app.push_screen("enrollments")
 
   def action_show_audit(self) -> None:
     """Switch to audit log screen."""
     log.debug("Switching to audit screen")
     # TODO: Implement screen switching
 
+  def action_refresh(self) -> None:
+    """Manually refresh dashboard data."""
+    log.debug("Manual refresh triggered")
+    self._load_dashboard_data()
+
   def action_logout(self) -> None:
     """Logout and exit."""
     log.debug("Logging out")
-    self.exit()
+    if hasattr(self.app, "logout_and_exit"):
+      self.app.logout_and_exit()
+    else:
+      self.app.exit()
 
   def action_quit(self) -> None:
     """Quit the application."""
-    self.exit()
+    self.app.exit()
