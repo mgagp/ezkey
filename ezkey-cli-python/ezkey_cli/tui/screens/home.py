@@ -10,10 +10,12 @@ Description: Main dashboard showing status overview
 
 from textual.screen import Screen
 from textual.widgets import Header, Footer, Static, Label
-from textual.containers import Vertical, Horizontal, Container
+from textual.containers import Vertical, Horizontal
 from textual.binding import Binding
 from textual.reactive import reactive
 import logging
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 
@@ -22,10 +24,19 @@ class StatusPanel(Static):
   """Status overview panel."""
 
   # Reactive attributes for live updates
-  integrations_count = reactive(0)
-  enrollments_count = reactive(0)
-  auth_attempts_count = reactive(0)
-  auth_failed_count = reactive(0)
+  integrations_total = reactive(0)
+  integrations_active = reactive(0)
+  integrations_inactive = reactive(0)
+  enrollments_total = reactive(0)
+  enrollments_verified = reactive(0)
+  enrollments_bound = reactive(0)
+  enrollments_created = reactive(0)
+  enrollments_invalid = reactive(0)
+  auth_total_24h = reactive(0)
+  auth_accepted_24h = reactive(0)
+  auth_failed_24h = reactive(0)
+  auth_pending_24h = reactive(0)
+  auth_failure_rate = reactive(0.0)
 
   DEFAULT_CSS = """
   StatusPanel {
@@ -39,31 +50,78 @@ class StatusPanel(Static):
     """Render the status panel."""
     return (
         f"📊 Status Overview\n\n"
-        f"Integrations: {self.integrations_count}\n"
-        f"Enrollments: {self.enrollments_count}\n"
-        f"Auth Attempts (24h): {self.auth_attempts_count}\n"
-        f"Failed: {self.auth_failed_count}"
+        f"Integrations: {self.integrations_total}"
+        f"  (active {self.integrations_active} / inactive {self.integrations_inactive})\n"
+        f"Enrollments: {self.enrollments_total}"
+        f"  (VER {self.enrollments_verified} / BND {self.enrollments_bound}"
+        f" / CRT {self.enrollments_created} / INV {self.enrollments_invalid})\n"
+        f"Auth Attempts (24h): {self.auth_total_24h}"
+        f"  (ACC {self.auth_accepted_24h} / FAIL {self.auth_failed_24h}"
+        f" / PEND {self.auth_pending_24h})\n"
+        f"Failure rate: {self.auth_failure_rate:.1f}%"
     )
 
   def update_stats(self, stats: dict) -> None:
     """Update statistics from API."""
     if not stats or not isinstance(stats, dict):
       # If stats is None or invalid, use defaults
-      stats = {
-          "integrations": 0,
-          "enrollments": 0,
-          "auth_attempts_24h": 0,
-          "auth_failed_24h": 0
-      }
+      stats = {}
 
-    self.integrations_count = stats.get("integrations", 0) or 0
-    self.enrollments_count = stats.get("enrollments", 0) or 0
-    self.auth_attempts_count = stats.get("auth_attempts_24h", 0) or 0
-    self.auth_failed_count = stats.get("auth_failed_24h", 0) or 0
+    self.integrations_total = stats.get("integrations_total", 0) or 0
+    self.integrations_active = stats.get("integrations_active", 0) or 0
+    self.integrations_inactive = stats.get("integrations_inactive", 0) or 0
+    self.enrollments_total = stats.get("enrollments_total", 0) or 0
+    self.enrollments_verified = stats.get("enrollments_verified", 0) or 0
+    self.enrollments_bound = stats.get("enrollments_bound", 0) or 0
+    self.enrollments_created = stats.get("enrollments_created", 0) or 0
+    self.enrollments_invalid = stats.get("enrollments_invalid", 0) or 0
+    self.auth_total_24h = stats.get("auth_total_24h", 0) or 0
+    self.auth_accepted_24h = stats.get("auth_accepted_24h", 0) or 0
+    self.auth_failed_24h = stats.get("auth_failed_24h", 0) or 0
+    self.auth_pending_24h = stats.get("auth_pending_24h", 0) or 0
+    if self.auth_total_24h > 0:
+      self.auth_failure_rate = (self.auth_failed_24h / self.auth_total_24h) * 100
+    else:
+      self.auth_failure_rate = 0.0
+
+
+class ActionPanel(Static):
+  """Action required panel."""
+
+  pending_over_5m = reactive(0)
+  enrollments_created_over_24h = reactive(0)
+  api_keys_expiring_30d = reactive(0)
+
+  DEFAULT_CSS = """
+  ActionPanel {
+      border: solid $warning;
+      padding: 1 2;
+      height: auto;
+  }
+  """
+
+  def render(self) -> str:
+    """Render the action required panel."""
+    return (
+        f"🚨 Action Required\n\n"
+        f"Pending >5m: {self.pending_over_5m}\n"
+        f"Enrollments CREATED >24h: {self.enrollments_created_over_24h}\n"
+        f"API keys expiring <30d: {self.api_keys_expiring_30d}"
+    )
+
+  def update_actions(self, actions: Dict[str, Any]) -> None:
+    """Update action counts from API."""
+    if not actions or not isinstance(actions, dict):
+      actions = {}
+    self.pending_over_5m = actions.get("pending_over_5m", 0) or 0
+    self.enrollments_created_over_24h = actions.get("enrollments_created_over_24h", 0) or 0
+    self.api_keys_expiring_30d = actions.get("api_keys_expiring_30d", 0) or 0
 
 
 class ActivityPanel(Static):
   """Recent activity feed panel."""
+
+  activities = reactive([])
 
   DEFAULT_CSS = """
   ActivityPanel {
@@ -75,8 +133,99 @@ class ActivityPanel(Static):
 
   def render(self) -> str:
     """Render the activity panel."""
-    return "📋 Recent Activity\n\n" \
-           "• Admin console started (now)"
+    items = self.activities or ["No recent activity"]
+    body = "\n".join(f"• {item}" for item in items)
+    return f"📋 Recent Activity\n\n{body}"
+
+  def update_activity(self, activities: List[str]) -> None:
+    """Update recent activity items."""
+    if not activities or not isinstance(activities, list):
+      self.activities = ["No recent activity"]
+      return
+    self.activities = activities
+
+
+class SecurityPanel(Static):
+  """Security snapshot panel."""
+
+  login_failures_24h = reactive(0)
+  recoveries_7d = reactive(0)
+  keys_revoked_7d = reactive(0)
+
+  DEFAULT_CSS = """
+  SecurityPanel {
+      border: solid $error;
+      padding: 1 2;
+      height: auto;
+  }
+  """
+
+  def render(self) -> str:
+    """Render the security panel."""
+    return (
+        f"🔐 Security Snapshot\n\n"
+        f"Login failures (24h): {self.login_failures_24h}\n"
+        f"Recoveries (7d): {self.recoveries_7d}\n"
+        f"Keys revoked (7d): {self.keys_revoked_7d}"
+    )
+
+  def update_security(self, security: Dict[str, Any]) -> None:
+    """Update security metrics."""
+    if not security or not isinstance(security, dict):
+      security = {}
+    self.login_failures_24h = security.get("login_failures_24h", 0) or 0
+    self.recoveries_7d = security.get("recoveries_7d", 0) or 0
+    self.keys_revoked_7d = security.get("keys_revoked_7d", 0) or 0
+
+
+class QuickActionsPanel(Static):
+  """Quick actions panel."""
+
+  DEFAULT_CSS = """
+  QuickActionsPanel {
+      border: solid $primary;
+      padding: 1 2;
+      height: auto;
+  }
+  """
+
+  def render(self) -> str:
+    """Render quick actions."""
+    return (
+        "⚡ Quick Actions\n\n"
+        "I - Integrations\n"
+        "E - Enrollments\n"
+        "T - Auth Attempts\n"
+        "A - Audit Logs\n"
+        "R - Refresh"
+    )
+
+
+class InfoPanel(Static):
+  """Info panel for health, session, scope, and refresh."""
+
+  health_line = reactive("Admin API: unknown")
+  session_line = reactive("Session: unknown")
+  scope_line = reactive("Scope: unknown")
+  refresh_line = reactive("Last refresh: -")
+
+  DEFAULT_CSS = """
+  InfoPanel {
+      border: solid $accent;
+      padding: 1 2;
+      height: auto;
+  }
+  """
+
+  def render(self) -> str:
+    """Render info panel."""
+    return (
+        "ℹ️ Info\n\n"
+        f"{self.health_line}\n"
+        f"{self.session_line}\n"
+        f"{self.scope_line}\n"
+        f"{self.refresh_line}"
+    )
 
 
 class HomeScreen(Screen):
@@ -86,6 +235,8 @@ class HomeScreen(Screen):
       Binding("i", "show_integrations", "Integrations"),
       Binding("e", "show_enrollments", "Enrollments"),
       Binding("a", "show_audit", "Audit"),
+      Binding("t", "show_auth_attempts", "Auth Attempts"),
+      Binding("m", "show_admins", "Admins"),
       Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
       Binding("q", "quit", "Quit"),
@@ -102,22 +253,53 @@ class HomeScreen(Screen):
       height: 1fr;
   }
 
+    #row_top {
+      height: auto;
+    }
+
+    #row_mid {
+      height: 1fr;
+    }
+
+    #row_bottom {
+      height: auto;
+    }
+
   StatusPanel {
       width: 1fr;
       height: auto;
-      margin: 1 0;
+      margin: 1 1 1 0;
   }
 
-  ActivityPanel {
+    ActionPanel {
       width: 1fr;
       height: auto;
-      margin: 1 0;
+      margin: 1 0 1 1;
   }
 
-  Label {
+    ActivityPanel {
       width: 1fr;
+      height: 1fr;
       margin: 1 0;
-  }
+    }
+
+    SecurityPanel {
+      width: 1fr;
+      height: auto;
+      margin: 1 1 1 0;
+    }
+
+    QuickActionsPanel {
+      width: 1fr;
+      height: auto;
+      margin: 1 0 1 1;
+    }
+
+      InfoPanel {
+        width: 1fr;
+        height: auto;
+        margin: 1 0;
+      }
   """
 
   def compose(self):
@@ -126,8 +308,16 @@ class HomeScreen(Screen):
 
     with Vertical(id="main_container"):
       yield Label("Welcome to Ezkey Admin Console")
-      yield StatusPanel(id="status_panel")
-      yield ActivityPanel()
+      yield Label("", id="status_label")
+      yield InfoPanel(id="info_panel")
+      with Horizontal(id="row_top"):
+        yield StatusPanel(id="status_panel")
+        yield ActionPanel(id="action_panel")
+      with Horizontal(id="row_mid"):
+        yield ActivityPanel(id="activity_panel")
+      with Horizontal(id="row_bottom"):
+        yield SecurityPanel(id="security_panel")
+        yield QuickActionsPanel(id="quick_actions_panel")
 
     yield Footer()
 
@@ -135,7 +325,8 @@ class HomeScreen(Screen):
     """Called when screen is mounted - load data from API."""
     log.debug("HomeScreen mounted")
     self._load_dashboard_data()
-    self.set_interval(30, self._refresh_dashboard)
+    refresh_seconds = self._get_refresh_seconds()
+    self.set_interval(refresh_seconds, self._refresh_dashboard)
 
   def _refresh_dashboard(self) -> None:
     """Periodic refresh of dashboard data."""
@@ -147,30 +338,141 @@ class HomeScreen(Screen):
       # Get ApiClient from app
       api_client = self.app.api_client
 
-      if api_client:
-        # Fetch stats
-        stats = api_client.get_dashboard_stats()
-        if stats is None and api_client.last_auth_error:
-          log.warning("Dashboard auth error")
-          if hasattr(self.app, "handle_auth_error"):
-            self.app.handle_auth_error()
-          return
-
-        # Update status panel
-        status_panel = self.query_one("#status_panel", StatusPanel)
-        status_panel.update_stats(stats or {
-            "integrations": 0,
-            "enrollments": 0,
-            "auth_attempts_24h": 0,
-            "auth_failed_24h": 0
-        })
-
-        log.debug(f"Dashboard stats loaded: {stats}")
-      else:
+      if not api_client:
         log.warning("No API client available")
+        self._set_status("No API client available")
+        return
+
+      snapshot = api_client.get_dashboard_snapshot()
+      if snapshot is None and api_client.last_auth_error:
+        log.warning("Dashboard auth error")
+        if hasattr(self.app, "handle_auth_error"):
+          self.app.handle_auth_error()
+        return
+
+      if not snapshot:
+        self._set_status("Failed to load dashboard data")
+        return
+
+      self._set_status("")
+
+      status_panel = self.query_one("#status_panel", StatusPanel)
+      status_panel.update_stats(snapshot.get("status", {}))
+
+      action_panel = self.query_one("#action_panel", ActionPanel)
+      action_panel.update_actions(snapshot.get("actions", {}))
+
+      activity_panel = self.query_one("#activity_panel", ActivityPanel)
+      activity_panel.update_activity(snapshot.get("activity", []))
+
+      security_panel = self.query_one("#security_panel", SecurityPanel)
+      security_panel.update_security(snapshot.get("security", {}))
+
+      info_panel = self.query_one("#info_panel", InfoPanel)
+      info_panel.health_line = self._format_health(snapshot.get("meta", {}).get("health", {}))
+      info_panel.session_line = self._format_session_status()
+      info_panel.scope_line = self._format_scope_status()
+      last_refresh = snapshot.get("meta", {}).get("last_refresh", "")
+      info_panel.refresh_line = self._format_refresh_label(last_refresh)
+
+      log.debug("Dashboard snapshot loaded")
 
     except Exception as e:
       log.error(f"Failed to load dashboard data: {e}")
+      self._set_status("Failed to load dashboard data")
+
+  def _set_status(self, message: str) -> None:
+    """Set status label text."""
+    status_label = self.query_one("#status_label", Label)
+    status_label.update(message)
+
+  def _get_refresh_seconds(self) -> int:
+    """Get dashboard refresh interval from config."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return 30
+    value = config.get("dashboardRefreshSeconds", 30)
+    try:
+      seconds = int(value)
+      return max(10, min(seconds, 300))
+    except (TypeError, ValueError):
+      return 30
+
+  def _format_refresh_label(self, last_refresh: str) -> str:
+    """Format refresh label with age."""
+    if not last_refresh:
+      return "Last refresh: -"
+    parsed = self._parse_datetime(last_refresh)
+    if not parsed:
+      return f"Last refresh: {last_refresh}"
+    age_seconds = int((datetime.now(timezone.utc) - parsed).total_seconds())
+    age = self._format_duration(age_seconds)
+    return f"Last refresh: {parsed.isoformat()} ({age} ago)"
+
+  def _format_health(self, health: Dict[str, Any]) -> str:
+    """Format health status label."""
+    if not health:
+      return "Admin API: unknown"
+    ok = health.get("ok")
+    latency = health.get("latency_ms")
+    if ok:
+      suffix = f" ({latency} ms)" if isinstance(latency, int) else ""
+      return f"Admin API: OK{suffix}"
+    status_code = health.get("status_code")
+    code = f"HTTP {status_code}" if status_code else "unreachable"
+    return f"Admin API: {code}"
+
+  def _format_session_status(self) -> str:
+    """Format token/session expiry label."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return "Session: unknown"
+    expires_at = config.get_token_expires_at()
+    if not expires_at:
+      return "Session: no expiry info"
+    parsed = self._parse_datetime(expires_at)
+    if not parsed:
+      return f"Session: expires at {expires_at}"
+    remaining = int((parsed - datetime.now(timezone.utc)).total_seconds())
+    if remaining <= 0:
+      return "Session: expired"
+    return f"Session: expires in {self._format_duration(remaining)}"
+
+  def _format_scope_status(self) -> str:
+    """Format admin scope label."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return "Scope: unknown"
+    admin_type = config.get_admin_type() or "UNKNOWN"
+    if admin_type == "TENANT_ADMIN":
+      return "Scope: TENANT (tenant-scoped)"
+    if admin_type == "GLOBAL_ADMIN":
+      return "Scope: GLOBAL"
+    return f"Scope: {admin_type}"
+
+  def _parse_datetime(self, value: str) -> Optional[datetime]:
+    """Parse ISO-8601 datetime with optional Z suffix."""
+    if not value or not isinstance(value, str):
+      return None
+    try:
+      if value.endswith("Z"):
+        value = value.replace("Z", "+00:00")
+      return datetime.fromisoformat(value)
+    except Exception:
+      return None
+
+  def _format_duration(self, seconds: int) -> str:
+    """Format seconds into compact duration string."""
+    if seconds < 60:
+      return f"{seconds}s"
+    minutes, sec = divmod(seconds, 60)
+    if minutes < 60:
+      return f"{minutes}m"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+      return f"{hours}h {minutes}m"
+    days, hours = divmod(hours, 24)
+    return f"{days}d {hours}h"
 
   def action_show_integrations(self) -> None:
     """Switch to integrations screen."""
@@ -186,6 +488,16 @@ class HomeScreen(Screen):
     """Switch to audit log screen."""
     log.debug("Switching to audit screen")
     self.app.push_screen("audit_logs")
+
+  def action_show_auth_attempts(self) -> None:
+    """Switch to auth attempts screen."""
+    log.debug("Switching to auth attempts screen")
+    self.app.push_screen("auth_attempts")
+
+  def action_show_admins(self) -> None:
+    """Switch to admins screen."""
+    log.debug("Switching to admins screen")
+    self.app.push_screen("admins")
 
   def action_refresh(self) -> None:
     """Manually refresh dashboard data."""

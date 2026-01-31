@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import ConfigManager
-from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen, AuditLogsScreen
+from .screens import AuthScreen, HomeScreen, IntegrationsScreen, EnrollmentsScreen, AuditLogsScreen, AuthAttemptsScreen, AdminProvisioningScreen
 from .api_client import ApiClient
 
 log = logging.getLogger(__name__)
@@ -121,7 +121,9 @@ class EzkeyAdminTUI(App):
       "home": HomeScreen,
       "integrations": IntegrationsScreen,
       "enrollments": EnrollmentsScreen,
-      "audit_logs": AuditLogsScreen
+      "audit_logs": AuditLogsScreen,
+      "auth_attempts": AuthAttemptsScreen,
+      "admins": AdminProvisioningScreen
   }
 
   def __init__(self, config: ConfigManager, token: str, admin_url: str):

@@ -12,6 +12,7 @@ import requests
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
+import time
 
 log = logging.getLogger(__name__)
 
@@ -308,6 +309,71 @@ class ApiClient:
 
     return self._get("/api/v1/auth-attempts", params=params)
 
+  def get_auth_attempts_list(
+      self,
+      page: int = 0,
+      size: int = 20,
+      status: str = None,
+      enrollment_id: int = None,
+      integration_id: int = None,
+      created_after: str = None,
+      created_before: str = None,
+      sort: str = None
+  ) -> Optional[Dict[str, Any]]:
+    """
+    Get auth attempts with pagination and filters.
+
+    Returns:
+        Response with 'content' array and 'page' metadata
+    """
+    params = {"page": page, "size": size}
+    if status:
+      params["status"] = status
+    if enrollment_id is not None:
+      params["enrollmentId"] = enrollment_id
+    if integration_id is not None:
+      params["integrationId"] = integration_id
+    if created_after:
+      params["createdAfter"] = created_after
+    if created_before:
+      params["createdBefore"] = created_before
+    if sort:
+      params["sort"] = sort
+
+    return self._get("/api/v1/auth-attempts", params=params)
+
+  def get_auth_attempt_by_id(self, auth_attempt_id: int) -> Optional[Dict[str, Any]]:
+    """Get auth attempt by ID."""
+    return self._get(f"/api/v1/auth-attempts/{auth_attempt_id}")
+
+  def cancel_auth_attempt(self, auth_attempt_id: int) -> Optional[Dict[str, Any]]:
+    """Cancel auth attempt by ID."""
+    try:
+      return self._post(f"/api/v1/auth-attempts/{auth_attempt_id}/cancel", data={})
+    except Exception as e:
+      log.error(f"Cancel auth attempt failed: {e}")
+      return None
+
+  def delete_auth_attempt(self, auth_attempt_id: int) -> bool:
+    """Delete auth attempt by ID."""
+    return self._delete(f"/api/v1/auth-attempts/{auth_attempt_id}")
+
+  def get_admins(
+      self,
+      page: int = 0,
+      size: int = 20,
+      sort: str = None
+  ) -> Optional[Dict[str, Any]]:
+    """Get administrators list with pagination and sorting."""
+    params = {"page": page, "size": size}
+    if sort:
+      params["sort"] = sort
+    return self._get("/api/v1/admins", params=params)
+
+  def get_admin_onboarding(self, admin_id: int) -> Optional[Dict[str, Any]]:
+    """Get onboarding credentials for admin."""
+    return self._get(f"/api/v1/admins/{admin_id}/onboarding")
+
   def get_audit_logs(
       self,
       page: int = 0,
@@ -340,6 +406,40 @@ class ApiClient:
       params["sort"] = sort
 
     return self._get("/api/v1/audit-logs", params=params)
+
+  def get_api_keys(self) -> Optional[List[Dict[str, Any]]]:
+    """Get all API keys visible to the current admin."""
+    return self._get("/api/v1/api-keys")
+
+  def get_health(self) -> Dict[str, Any]:
+    """Check Admin API health and return status with latency."""
+    url = f"{self.admin_url}/api/v1/health"
+    start = time.perf_counter()
+    try:
+      response = requests.get(
+          url,
+          headers=self.headers,
+          timeout=5,
+          verify=self.verify_ssl
+      )
+      latency_ms = int((time.perf_counter() - start) * 1000)
+      ok = response.status_code == 200
+      data = response.json() if response.text else {}
+      return {
+          "ok": ok,
+          "status_code": response.status_code,
+          "latency_ms": latency_ms,
+          "data": data
+      }
+    except Exception as e:
+      latency_ms = int((time.perf_counter() - start) * 1000)
+      log.warning(f"Health check failed: {e}")
+      return {
+          "ok": False,
+          "status_code": None,
+          "latency_ms": latency_ms,
+          "data": {}
+      }
 
   def get_dashboard_stats(self) -> Optional[Dict[str, int]]:
     """
@@ -383,6 +483,275 @@ class ApiClient:
       stats["auth_failed_24h"] = failed
 
     return stats
+
+  def get_dashboard_snapshot(self) -> Optional[Dict[str, Any]]:
+    """
+    Get dashboard snapshot data for the home screen.
+
+    Returns:
+        Dict with keys: status, actions, activity, security, meta
+    """
+    now = datetime.now(timezone.utc)
+    created_after_24h = (now - timedelta(hours=24)).isoformat()
+    created_before_5m = (now - timedelta(minutes=5)).isoformat()
+    created_before_24h = now - timedelta(hours=24)
+
+    status = {
+        "integrations_total": 0,
+        "integrations_active": 0,
+        "integrations_inactive": 0,
+        "enrollments_total": 0,
+        "enrollments_created": 0,
+        "enrollments_bound": 0,
+        "enrollments_verified": 0,
+        "enrollments_invalid": 0,
+        "auth_total_24h": 0,
+        "auth_accepted_24h": 0,
+        "auth_failed_24h": 0,
+        "auth_pending_24h": 0
+    }
+
+    actions = {
+        "pending_over_5m": 0,
+        "enrollments_created_over_24h": 0,
+        "api_keys_expiring_30d": 0
+    }
+
+    activity = []
+    security = {
+        "login_failures_24h": 0,
+        "recoveries_7d": 0,
+        "keys_revoked_7d": 0
+    }
+
+    integrations_resp = self.get_integrations(size=1)
+    if self.last_auth_error:
+      return None
+    if integrations_resp:
+      status["integrations_total"] = self._extract_total_elements(integrations_resp)
+
+    integrations_active_resp = self.get_integrations(size=1, active=True)
+    if self.last_auth_error:
+      return None
+    if integrations_active_resp:
+      status["integrations_active"] = self._extract_total_elements(integrations_active_resp)
+
+    integrations_inactive_resp = self.get_integrations(size=1, active=False)
+    if self.last_auth_error:
+      return None
+    if integrations_inactive_resp:
+      status["integrations_inactive"] = self._extract_total_elements(integrations_inactive_resp)
+
+    enrollments_resp = self.get_enrollments(size=1)
+    if self.last_auth_error:
+      return None
+    if enrollments_resp:
+      status["enrollments_total"] = self._extract_total_elements(enrollments_resp)
+
+    for key, value in (
+        ("enrollments_created", "CREATED"),
+        ("enrollments_bound", "BOUND"),
+        ("enrollments_verified", "VERIFIED"),
+        ("enrollments_invalid", "INVALID")
+    ):
+      resp = self.get_enrollments(size=1, status=value)
+      if self.last_auth_error:
+        return None
+      if resp:
+        status[key] = self._extract_total_elements(resp)
+
+    auth_total_resp = self.get_auth_attempts_list(size=1, created_after=created_after_24h)
+    if self.last_auth_error:
+      return None
+    if auth_total_resp:
+      status["auth_total_24h"] = self._extract_total_elements(auth_total_resp)
+
+    auth_accepted_resp = self.get_auth_attempts_list(
+        size=1,
+        status="ACCEPTED",
+        created_after=created_after_24h
+    )
+    if self.last_auth_error:
+      return None
+    if auth_accepted_resp:
+      status["auth_accepted_24h"] = self._extract_total_elements(auth_accepted_resp)
+
+    auth_pending_resp = self.get_auth_attempts_list(
+        size=1,
+        status="PENDING",
+        created_after=created_after_24h
+    )
+    if self.last_auth_error:
+      return None
+    if auth_pending_resp:
+      status["auth_pending_24h"] = self._extract_total_elements(auth_pending_resp)
+
+    auth_rejected_resp = self.get_auth_attempts_list(
+        size=1,
+        status="REJECTED",
+        created_after=created_after_24h
+    )
+    if self.last_auth_error:
+      return None
+    auth_invalid_resp = self.get_auth_attempts_list(
+        size=1,
+        status="INVALID",
+        created_after=created_after_24h
+    )
+    if self.last_auth_error:
+      return None
+    auth_expired_resp = self.get_auth_attempts_list(
+        size=1,
+        status="EXPIRED",
+        created_after=created_after_24h
+    )
+    if self.last_auth_error:
+      return None
+
+    status["auth_failed_24h"] = (
+        self._extract_total_elements(auth_rejected_resp)
+        + self._extract_total_elements(auth_invalid_resp)
+        + self._extract_total_elements(auth_expired_resp)
+    )
+
+    pending_over_5m_resp = self.get_auth_attempts_list(
+        size=1,
+        status="PENDING",
+        created_after=created_after_24h,
+        created_before=created_before_5m
+    )
+    if self.last_auth_error:
+      return None
+    if pending_over_5m_resp:
+      actions["pending_over_5m"] = self._extract_total_elements(pending_over_5m_resp)
+
+    enrollments_old_resp = self.get_enrollments(
+      size=1,
+      status="CREATED",
+      created_before=created_before_24h
+    )
+    if self.last_auth_error:
+      return None
+    if enrollments_old_resp:
+      actions["enrollments_created_over_24h"] = self._extract_total_elements(enrollments_old_resp)
+
+    api_keys_resp = self.get_api_keys()
+    if self.last_auth_error:
+      return None
+    if isinstance(api_keys_resp, list):
+      actions["api_keys_expiring_30d"] = self._count_api_keys_expiring(api_keys_resp, now, 30)
+
+    audit_logs_resp = self.get_audit_logs(page=0, size=50, sort="createdAt,desc")
+    if self.last_auth_error:
+      return None
+    if audit_logs_resp:
+      audit_entries = audit_logs_resp.get("content", [])
+      activity = self._format_audit_activity(audit_entries, limit=10)
+      security = self._compute_security_snapshot(audit_entries, now)
+
+    health = self.get_health()
+
+    return {
+      "status": status,
+      "actions": actions,
+      "activity": activity,
+      "security": security,
+      "meta": {
+        "last_refresh": now.isoformat(),
+        "health": health
+      }
+    }
+
+  def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+    """Parse ISO-8601 datetime with optional Z suffix."""
+    if not value or not isinstance(value, str):
+      return None
+    try:
+      if value.endswith("Z"):
+        value = value.replace("Z", "+00:00")
+      return datetime.fromisoformat(value)
+    except Exception:
+      return None
+
+  def _count_api_keys_expiring(
+      self,
+      api_keys: List[Dict[str, Any]],
+      now: datetime,
+      days: int
+  ) -> int:
+    """Count active API keys expiring within the next N days."""
+    threshold = now + timedelta(days=days)
+    count = 0
+    for item in api_keys:
+      if not isinstance(item, dict):
+        continue
+      if item.get("active") is False:
+        continue
+      if item.get("revokedAt"):
+        continue
+      expires_at = self._parse_datetime(item.get("expiresAt"))
+      if expires_at and now <= expires_at <= threshold:
+        count += 1
+    return count
+
+  def _format_audit_activity(
+      self,
+      entries: List[Dict[str, Any]],
+      limit: int = 10
+  ) -> List[str]:
+    """Format recent audit entries for the activity panel."""
+    activity = []
+    for entry in entries[:limit]:
+      created_at = self._parse_datetime(entry.get("createdAt"))
+      time_str = created_at.strftime("%m-%d %H:%M") if created_at else "--:--"
+      event_type = entry.get("eventType", "") or "UNKNOWN"
+      event_status = entry.get("eventStatus", "") or "-"
+      admin_id = entry.get("adminId")
+      integration_id = entry.get("integrationId")
+      context_parts = []
+      if admin_id is not None:
+        context_parts.append(f"admin:{admin_id}")
+      if integration_id is not None:
+        context_parts.append(f"integ:{integration_id}")
+      context = f" {' '.join(context_parts)}" if context_parts else ""
+      activity.append(f"{time_str} {event_type} {event_status}{context}")
+    if not activity:
+      return ["No recent activity"]
+    return activity
+
+  def _compute_security_snapshot(
+      self,
+      entries: List[Dict[str, Any]],
+      now: datetime
+  ) -> Dict[str, int]:
+    """Compute security snapshot metrics from audit entries."""
+    snapshot = {
+        "login_failures_24h": 0,
+        "recoveries_7d": 0,
+        "keys_revoked_7d": 0
+    }
+
+    since_24h = now - timedelta(hours=24)
+    since_7d = now - timedelta(days=7)
+
+    for entry in entries:
+      created_at = self._parse_datetime(entry.get("createdAt"))
+      if not created_at:
+        continue
+      event_type = (entry.get("eventType") or "").upper()
+
+      if created_at >= since_24h and "LOGIN_FAILURE" in event_type:
+        snapshot["login_failures_24h"] += 1
+
+      if created_at >= since_7d and "RECOVER" in event_type:
+        snapshot["recoveries_7d"] += 1
+
+      if created_at >= since_7d and "API_KEY" in event_type and (
+          "REVOKE" in event_type or "REVOKED" in event_type
+      ):
+        snapshot["keys_revoked_7d"] += 1
+
+    return snapshot
 
   def _extract_total_elements(self, response: Dict[str, Any]) -> int:
     """

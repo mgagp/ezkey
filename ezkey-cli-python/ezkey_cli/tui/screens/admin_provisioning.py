@@ -4,28 +4,27 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Audit Logs Screen
-Description: Screen for querying audit logs
+TUI Module: Admin Provisioning Screen
+Description: Screen for listing administrators
 """
 
 from textual.screen import Screen
 from textual.widgets import Header, Footer, DataTable, Label
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.events import Key
 from pathlib import Path
 import logging
-from textual.events import Key
 
 log = logging.getLogger(__name__)
 
 
-class AuditLogsScreen(Screen):
-  """Audit logs screen (read-only)."""
+class AdminProvisioningScreen(Screen):
+  """Administrators list screen."""
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
       Binding("f", "filter", "Filter"),
-      Binding("shift+f", "toggle_follow", "Follow"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
       Binding("p", "prev_page", "Prev"),
@@ -73,37 +72,32 @@ class AuditLogsScreen(Screen):
     self.total_pages = 0
     self.total_elements = 0
     self.filters = {}
-    self.follow_enabled = False
-    self.follow_timer = None
 
   def compose(self):
-    """Compose the audit logs screen."""
+    """Compose the admins screen."""
     yield Header(show_clock=True)
     with Vertical(id="content"):
-      yield Label("Audit Logs", id="title")
+      yield Label("Admins", id="title")
       yield Label("", id="status_label")
-      yield Label("Follow: OFF", id="follow_status")
       yield Label("", id="page_info")
       yield DataTable(id="table")
     yield Footer()
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
-    log.debug("AuditLogsScreen mounted")
+    log.debug("AdminProvisioningScreen mounted")
     table = self.query_one("#table", DataTable)
     table.add_columns(
         "ID",
-        "Created",
+        "Username",
         "Type",
-        "Status",
-        "API",
-        "Admin",
-        "Enrollment"
+        "Tenant",
+        "Active",
+        "Created"
     )
     table.cursor_type = "row"
     self._apply_page_size(auto=True)
-    self._load_audit_logs()
-    self._update_follow_label()
+    self._load_admins()
 
   def on_key(self, event: Key) -> None:
     """Handle paging keys regardless of focus."""
@@ -128,32 +122,41 @@ class AuditLogsScreen(Screen):
     else:
       self._cap_page_size_to_viewport()
 
-  def on_unmount(self) -> None:
-    """Stop follow timer on unmount."""
-    self._stop_follow()
+  def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+    """Handle row selection (Enter key)."""
+    table = self.query_one("#table", DataTable)
+    row_key = event.row_key
+    row_data = table.get_row(row_key)
 
-  def _load_audit_logs(self) -> None:
-    """Load audit logs from API."""
+    if row_data:
+      admin_id = int(row_data[0])
+      from .admin_provisioning_detail import AdminProvisioningDetailScreen
+      detail_data = {
+          "adminId": admin_id,
+          "username": row_data[1],
+          "adminType": row_data[2],
+          "tenantId": row_data[3],
+          "active": row_data[4],
+          "createdAt": row_data[5],
+      }
+      self.app.push_screen(AdminProvisioningDetailScreen(detail_data))
+
+  def _load_admins(self) -> None:
+    """Load admins list from API."""
     api_client = self.app.api_client
     if not api_client:
-      log.warning("No API client available")
       self._set_status("No API client available")
       return
 
-    response = api_client.get_audit_logs(
+    response = api_client.get_admins(
         page=self.current_page,
         size=self.page_size,
-        event_type=self.filters.get("event_type"),
-        event_status=self.filters.get("event_status"),
-        api_name=self.filters.get("api_name"),
-        enrollment_id=self.filters.get("enrollment_id"),
-        admin_id=self.filters.get("admin_id"),
         sort=self.filters.get("sort")
     )
 
     if not response:
-      log.warning("No audit logs response")
-      self._set_status("Failed to load audit logs")
+      log.warning("No admins response")
+      self._set_status("Failed to load admins")
       table = self.query_one("#table", DataTable)
       table.clear()
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
@@ -163,8 +166,7 @@ class AuditLogsScreen(Screen):
     self._set_status("")
 
     content = response.get("content", [])
-    content = self._apply_client_side_filters(content)
-    page_info = response.get("page", {}) if isinstance(response.get("page"), dict) else {}
+    page_info = self._extract_page_info(response)
     self.total_elements = page_info.get("totalElements", 0)
     self.total_pages = page_info.get("totalPages", 0)
     self.current_page = page_info.get("number", self.current_page)
@@ -173,22 +175,20 @@ class AuditLogsScreen(Screen):
     table.clear()
 
     for item in content:
-      audit_log_id = item.get("auditLogId", "")
-      created_at = item.get("createdAt", "")
-      event_type = item.get("eventType", "")
-      event_status = item.get("eventStatus", "")
-      api_name = item.get("apiName", "")
       admin_id = item.get("adminId", "")
-      enrollment_id = item.get("enrollmentId", "")
+      username = item.get("username", "")
+      admin_type = item.get("adminType", "")
+      tenant_id = item.get("tenantId", "")
+      active = "✓" if item.get("active") else "✗"
+      created_at = item.get("createdAt", "")
 
       table.add_row(
-          str(audit_log_id),
-          str(created_at),
-          str(event_type),
-          str(event_status),
-          str(api_name),
           str(admin_id),
-          str(enrollment_id)
+          str(username),
+          str(admin_type),
+          str(tenant_id),
+          str(active),
+          str(created_at)
       )
 
     page_label = self.query_one("#page_info", Label)
@@ -196,50 +196,22 @@ class AuditLogsScreen(Screen):
         f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
     )
 
-  def _apply_client_side_filters(self, content: list) -> list:
-    """Apply filters locally as a safety net."""
-    event_type = self.filters.get("event_type")
-    event_status = self.filters.get("event_status")
-    api_name = self.filters.get("api_name")
-    enrollment_id = self.filters.get("enrollment_id")
-    admin_id = self.filters.get("admin_id")
-
-    def matches(item: dict) -> bool:
-      if event_type and str(item.get("eventType", "")) != event_type:
-        return False
-      if event_status and str(item.get("eventStatus", "")) != event_status:
-        return False
-      if api_name and str(item.get("apiName", "")) != api_name:
-        return False
-      if enrollment_id is not None and item.get("enrollmentId") != enrollment_id:
-        return False
-      if admin_id is not None and item.get("adminId") != admin_id:
-        return False
-      return True
-
-    return [item for item in content if matches(item)]
+  def _extract_page_info(self, response: dict) -> dict:
+    """Extract page info from response (supports Spring Page format)."""
+    if not isinstance(response, dict):
+      return {}
+    if isinstance(response.get("page"), dict):
+      return response.get("page")
+    return {
+        "totalElements": response.get("totalElements", 0),
+        "totalPages": response.get("totalPages", 0),
+        "number": response.get("number", self.current_page),
+    }
 
   def _set_status(self, message: str) -> None:
     """Set status label text."""
     status_label = self.query_one("#status_label", Label)
     status_label.update(message)
-
-  def _update_follow_label(self) -> None:
-    """Update follow status label."""
-    label = self.query_one("#follow_status", Label)
-    label.update("Follow: ON" if self.follow_enabled else "Follow: OFF")
-
-  def _start_follow(self) -> None:
-    """Start auto-refresh timer."""
-    if self.follow_timer:
-      self.follow_timer.stop()
-    self.follow_timer = self.set_interval(5.0, self._load_audit_logs)
-
-  def _stop_follow(self) -> None:
-    """Stop auto-refresh timer."""
-    if self.follow_timer:
-      self.follow_timer.stop()
-      self.follow_timer = None
 
   def _apply_page_size(self, auto: bool = False) -> None:
     """Apply page size from config or auto-size."""
@@ -258,24 +230,6 @@ class AuditLogsScreen(Screen):
       if rows != self.page_size:
         self.page_size = rows
         self.page_size_mode = "auto"
-
-  def _max_rows(self) -> int:
-    """Maximum rows that fit in the current viewport."""
-    table = self.query_one("#table", DataTable)
-    if table.size.height <= 0:
-      return 0
-    return max(10, table.size.height - 2)
-
-  def _is_table_ready(self) -> bool:
-    """Check if table has a measured size."""
-    table = self.query_one("#table", DataTable)
-    return table.size.height > 0
-
-  def _cap_page_size_to_viewport(self) -> None:
-    """Clamp manual page size to viewport if needed."""
-    max_rows = self._max_rows()
-    if max_rows and self.page_size > max_rows:
-      self.page_size = max_rows
 
   def _persist_page_size(self) -> None:
     """Persist page size to config."""
@@ -299,13 +253,75 @@ class AuditLogsScreen(Screen):
       return int(saved)
     return 0
 
+  def _max_rows(self) -> int:
+    """Maximum rows that fit in the current viewport."""
+    table = self.query_one("#table", DataTable)
+    if table.size.height <= 0:
+      return 0
+    return max(10, table.size.height - 2)
+
+  def _is_table_ready(self) -> bool:
+    """Check if table has a measured size."""
+    table = self.query_one("#table", DataTable)
+    return table.size.height > 0
+
+  def _cap_page_size_to_viewport(self) -> None:
+    """Clamp manual page size to viewport if needed."""
+    max_rows = self._max_rows()
+    if max_rows and self.page_size > max_rows:
+      self.page_size = max_rows
+
+  def action_show_home(self) -> None:
+    """Switch to home screen."""
+    self.app.pop_screen()
+
+  def action_filter(self) -> None:
+    """Open filter modal."""
+    from .admin_provisioning_filter import AdminProvisioningFilterModal
+
+    def on_filter_result(filters: dict) -> None:
+      if filters is not None:
+        self.filters = filters
+        self.current_page = 0
+        self._load_admins()
+
+    self.app.push_screen(AdminProvisioningFilterModal(current_filters=self.filters), on_filter_result)
+
+  def action_refresh(self) -> None:
+    """Refresh admin list."""
+    self._load_admins()
+
+  def action_next_page(self) -> None:
+    """Go to next page."""
+    if self.total_pages and self.current_page + 1 < self.total_pages:
+      self.current_page += 1
+      self._load_admins()
+
+  def action_prev_page(self) -> None:
+    """Go to previous page."""
+    if self.current_page > 0:
+      self.current_page -= 1
+      self._load_admins()
+
+  def action_first_page(self) -> None:
+    """Go to first page."""
+    if self.current_page != 0:
+      self.current_page = 0
+      self._load_admins()
+
+  def action_last_page(self) -> None:
+    """Go to last page."""
+    if self.total_pages and self.current_page + 1 < self.total_pages:
+      self.current_page = self.total_pages - 1
+      self._load_admins()
+
   def action_increase_page_size(self) -> None:
     """Increase page size."""
     self.page_size = min(self.page_size + 5, self._max_rows())
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_audit_logs()
+    self._load_admins()
 
   def action_decrease_page_size(self) -> None:
     """Decrease page size."""
@@ -313,64 +329,7 @@ class AuditLogsScreen(Screen):
     self.page_size_mode = "manual"
     self.current_page = 0
     self._persist_page_size()
-    self._load_audit_logs()
-
-  def action_show_home(self) -> None:
-    """Switch to home screen."""
-    log.debug("Switching to home screen")
-    self.app.pop_screen()
-
-  def action_filter(self) -> None:
-    """Open filter modal."""
-    log.debug("Opening audit log filter modal")
-    from .audit_log_filter import AuditLogFilterModal
-
-    def on_filter_result(filters: dict) -> None:
-      if filters is not None:
-        log.info(f"Audit log filters applied: {filters}")
-        self.filters = filters
-        self.current_page = 0
-        self._load_audit_logs()
-
-    self.app.push_screen(AuditLogFilterModal(current_filters=self.filters), on_filter_result)
-
-  def action_refresh(self) -> None:
-    """Refresh audit log list."""
-    log.debug("Refreshing audit logs")
-    self._load_audit_logs()
-
-  def action_toggle_follow(self) -> None:
-    """Toggle follow (auto-refresh)."""
-    self.follow_enabled = not self.follow_enabled
-    if self.follow_enabled:
-      self._start_follow()
-    else:
-      self._stop_follow()
-    self._update_follow_label()
-
-  def action_next_page(self) -> None:
-    """Go to next page."""
-    if self.total_pages and self.current_page + 1 < self.total_pages:
-      self.current_page += 1
-      self._load_audit_logs()
-
-  def action_prev_page(self) -> None:
-    """Go to previous page."""
-    if self.current_page > 0:
-      self.current_page -= 1
-      self._load_audit_logs()
-
-  def action_first_page(self) -> None:
-    """Go to first page."""
-    if self.current_page != 0:
-      self.current_page = 0
-      self._load_audit_logs()
-
-  def action_last_page(self) -> None:
-    """Go to last page."""
-    if self.total_pages and self.current_page + 1 < self.total_pages:
-      self.current_page = self.total_pages - 1
-      self._load_audit_logs()
+    self._load_admins()
 
   def action_quit(self) -> None:
     """Quit the application."""

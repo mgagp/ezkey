@@ -4,23 +4,23 @@ Ezkey - Open Source MFA/Passkey Alternative
 Copyright (c) 2025 Ezkey contributors
 Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-TUI Module: Audit Logs Screen
-Description: Screen for querying audit logs
+TUI Module: Auth Attempts Screen
+Description: Screen for querying authentication attempts
 """
 
 from textual.screen import Screen
 from textual.widgets import Header, Footer, DataTable, Label
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.events import Key
 from pathlib import Path
 import logging
-from textual.events import Key
 
 log = logging.getLogger(__name__)
 
 
-class AuditLogsScreen(Screen):
-  """Audit logs screen (read-only)."""
+class AuthAttemptsScreen(Screen):
+  """Authentication attempts screen (read-only list)."""
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
@@ -77,10 +77,10 @@ class AuditLogsScreen(Screen):
     self.follow_timer = None
 
   def compose(self):
-    """Compose the audit logs screen."""
+    """Compose the auth attempts screen."""
     yield Header(show_clock=True)
     with Vertical(id="content"):
-      yield Label("Audit Logs", id="title")
+      yield Label("Auth Attempts", id="title")
       yield Label("", id="status_label")
       yield Label("Follow: OFF", id="follow_status")
       yield Label("", id="page_info")
@@ -89,20 +89,19 @@ class AuditLogsScreen(Screen):
 
   def on_mount(self) -> None:
     """Called when screen is mounted."""
-    log.debug("AuditLogsScreen mounted")
+    log.debug("AuthAttemptsScreen mounted")
     table = self.query_one("#table", DataTable)
     table.add_columns(
         "ID",
-        "Created",
-        "Type",
         "Status",
-        "API",
-        "Admin",
-        "Enrollment"
+        "Enrollment",
+        "Integration",
+        "Created",
+        "Expires"
     )
     table.cursor_type = "row"
     self._apply_page_size(auto=True)
-    self._load_audit_logs()
+    self._load_auth_attempts()
     self._update_follow_label()
 
   def on_key(self, event: Key) -> None:
@@ -132,28 +131,40 @@ class AuditLogsScreen(Screen):
     """Stop follow timer on unmount."""
     self._stop_follow()
 
-  def _load_audit_logs(self) -> None:
-    """Load audit logs from API."""
+  def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+    """Handle row selection (Enter key)."""
+    table = self.query_one("#table", DataTable)
+    row_key = event.row_key
+    row_data = table.get_row(row_key)
+
+    if row_data:
+      auth_attempt_id = int(row_data[0])
+      log.debug(f"Opening detail for auth attempt {auth_attempt_id}")
+      from .auth_attempt_detail import AuthAttemptDetailScreen
+      self.app.push_screen(AuthAttemptDetailScreen(auth_attempt_id))
+
+  def _load_auth_attempts(self) -> None:
+    """Load auth attempts from API."""
     api_client = self.app.api_client
     if not api_client:
       log.warning("No API client available")
       self._set_status("No API client available")
       return
 
-    response = api_client.get_audit_logs(
+    response = api_client.get_auth_attempts_list(
         page=self.current_page,
         size=self.page_size,
-        event_type=self.filters.get("event_type"),
-        event_status=self.filters.get("event_status"),
-        api_name=self.filters.get("api_name"),
+        status=self.filters.get("status"),
         enrollment_id=self.filters.get("enrollment_id"),
-        admin_id=self.filters.get("admin_id"),
+        integration_id=self.filters.get("integration_id"),
+        created_after=self.filters.get("created_after"),
+        created_before=self.filters.get("created_before"),
         sort=self.filters.get("sort")
     )
 
     if not response:
-      log.warning("No audit logs response")
-      self._set_status("Failed to load audit logs")
+      log.warning("No auth attempts response")
+      self._set_status("Failed to load auth attempts")
       table = self.query_one("#table", DataTable)
       table.clear()
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
@@ -173,22 +184,20 @@ class AuditLogsScreen(Screen):
     table.clear()
 
     for item in content:
-      audit_log_id = item.get("auditLogId", "")
-      created_at = item.get("createdAt", "")
-      event_type = item.get("eventType", "")
-      event_status = item.get("eventStatus", "")
-      api_name = item.get("apiName", "")
-      admin_id = item.get("adminId", "")
+      auth_attempt_id = item.get("authAttemptId", "")
+      status = item.get("authAttemptStatus") or item.get("status", "")
       enrollment_id = item.get("enrollmentId", "")
+      integration_id = item.get("integrationId", "")
+      created_at = item.get("createdAt", "")
+      expires_at = item.get("expiresAt", "")
 
       table.add_row(
-          str(audit_log_id),
+          str(auth_attempt_id),
+          str(status),
+          str(enrollment_id),
+          str(integration_id),
           str(created_at),
-          str(event_type),
-          str(event_status),
-          str(api_name),
-          str(admin_id),
-          str(enrollment_id)
+          str(expires_at)
       )
 
     page_label = self.query_one("#page_info", Label)
@@ -198,22 +207,17 @@ class AuditLogsScreen(Screen):
 
   def _apply_client_side_filters(self, content: list) -> list:
     """Apply filters locally as a safety net."""
-    event_type = self.filters.get("event_type")
-    event_status = self.filters.get("event_status")
-    api_name = self.filters.get("api_name")
+    status = self.filters.get("status")
     enrollment_id = self.filters.get("enrollment_id")
-    admin_id = self.filters.get("admin_id")
+    integration_id = self.filters.get("integration_id")
 
     def matches(item: dict) -> bool:
-      if event_type and str(item.get("eventType", "")) != event_type:
-        return False
-      if event_status and str(item.get("eventStatus", "")) != event_status:
-        return False
-      if api_name and str(item.get("apiName", "")) != api_name:
+      current_status = item.get("authAttemptStatus") or item.get("status")
+      if status and str(current_status) != status:
         return False
       if enrollment_id is not None and item.get("enrollmentId") != enrollment_id:
         return False
-      if admin_id is not None and item.get("adminId") != admin_id:
+      if integration_id is not None and item.get("integrationId") != integration_id:
         return False
       return True
 
@@ -233,7 +237,7 @@ class AuditLogsScreen(Screen):
     """Start auto-refresh timer."""
     if self.follow_timer:
       self.follow_timer.stop()
-    self.follow_timer = self.set_interval(5.0, self._load_audit_logs)
+    self.follow_timer = self.set_interval(5.0, self._load_auth_attempts)
 
   def _stop_follow(self) -> None:
     """Stop auto-refresh timer."""
@@ -259,24 +263,6 @@ class AuditLogsScreen(Screen):
         self.page_size = rows
         self.page_size_mode = "auto"
 
-  def _max_rows(self) -> int:
-    """Maximum rows that fit in the current viewport."""
-    table = self.query_one("#table", DataTable)
-    if table.size.height <= 0:
-      return 0
-    return max(10, table.size.height - 2)
-
-  def _is_table_ready(self) -> bool:
-    """Check if table has a measured size."""
-    table = self.query_one("#table", DataTable)
-    return table.size.height > 0
-
-  def _cap_page_size_to_viewport(self) -> None:
-    """Clamp manual page size to viewport if needed."""
-    max_rows = self._max_rows()
-    if max_rows and self.page_size > max_rows:
-      self.page_size = max_rows
-
   def _persist_page_size(self) -> None:
     """Persist page size to config."""
     config = getattr(self.app, "config", None)
@@ -299,21 +285,23 @@ class AuditLogsScreen(Screen):
       return int(saved)
     return 0
 
-  def action_increase_page_size(self) -> None:
-    """Increase page size."""
-    self.page_size = min(self.page_size + 5, self._max_rows())
-    self.page_size_mode = "manual"
-    self.current_page = 0
-    self._persist_page_size()
-    self._load_audit_logs()
+  def _max_rows(self) -> int:
+    """Maximum rows that fit in the current viewport."""
+    table = self.query_one("#table", DataTable)
+    if table.size.height <= 0:
+      return 0
+    return max(10, table.size.height - 2)
 
-  def action_decrease_page_size(self) -> None:
-    """Decrease page size."""
-    self.page_size = max(self.page_size - 5, 5)
-    self.page_size_mode = "manual"
-    self.current_page = 0
-    self._persist_page_size()
-    self._load_audit_logs()
+  def _is_table_ready(self) -> bool:
+    """Check if table has a measured size."""
+    table = self.query_one("#table", DataTable)
+    return table.size.height > 0
+
+  def _cap_page_size_to_viewport(self) -> None:
+    """Clamp manual page size to viewport if needed."""
+    max_rows = self._max_rows()
+    if max_rows and self.page_size > max_rows:
+      self.page_size = max_rows
 
   def action_show_home(self) -> None:
     """Switch to home screen."""
@@ -322,22 +310,22 @@ class AuditLogsScreen(Screen):
 
   def action_filter(self) -> None:
     """Open filter modal."""
-    log.debug("Opening audit log filter modal")
-    from .audit_log_filter import AuditLogFilterModal
+    log.debug("Opening auth attempt filter modal")
+    from .auth_attempt_filter import AuthAttemptFilterModal
 
     def on_filter_result(filters: dict) -> None:
       if filters is not None:
-        log.info(f"Audit log filters applied: {filters}")
+        log.info(f"Auth attempt filters applied: {filters}")
         self.filters = filters
         self.current_page = 0
-        self._load_audit_logs()
+        self._load_auth_attempts()
 
-    self.app.push_screen(AuditLogFilterModal(current_filters=self.filters), on_filter_result)
+    self.app.push_screen(AuthAttemptFilterModal(current_filters=self.filters), on_filter_result)
 
   def action_refresh(self) -> None:
-    """Refresh audit log list."""
-    log.debug("Refreshing audit logs")
-    self._load_audit_logs()
+    """Refresh auth attempts list."""
+    log.debug("Refreshing auth attempts")
+    self._load_auth_attempts()
 
   def action_toggle_follow(self) -> None:
     """Toggle follow (auto-refresh)."""
@@ -352,25 +340,41 @@ class AuditLogsScreen(Screen):
     """Go to next page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page += 1
-      self._load_audit_logs()
+      self._load_auth_attempts()
 
   def action_prev_page(self) -> None:
     """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
-      self._load_audit_logs()
+      self._load_auth_attempts()
 
   def action_first_page(self) -> None:
     """Go to first page."""
     if self.current_page != 0:
       self.current_page = 0
-      self._load_audit_logs()
+      self._load_auth_attempts()
 
   def action_last_page(self) -> None:
     """Go to last page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page = self.total_pages - 1
-      self._load_audit_logs()
+      self._load_auth_attempts()
+
+  def action_increase_page_size(self) -> None:
+    """Increase page size."""
+    self.page_size = min(self.page_size + 5, self._max_rows())
+    self.page_size_mode = "manual"
+    self.current_page = 0
+    self._persist_page_size()
+    self._load_auth_attempts()
+
+  def action_decrease_page_size(self) -> None:
+    """Decrease page size."""
+    self.page_size = max(self.page_size - 5, 5)
+    self.page_size_mode = "manual"
+    self.current_page = 0
+    self._persist_page_size()
+    self._load_auth_attempts()
 
   def action_quit(self) -> None:
     """Quit the application."""

@@ -25,6 +25,8 @@ class SidebarWidget(Static):
         "Dashboard",
         "Integrations",
         "Enrollments",
+      "Auth Attempts",
+      "Admins",
         "Audit Logs",
         "Settings",
     ]

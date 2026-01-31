@@ -39,7 +39,8 @@ class ConfigManager:
             "authUrl": "http://localhost:8080",
             "cryptoUrl": "http://localhost:9090",
             "prettyPrint": True,
-            "timeout": 30000
+            "timeout": 30000,
+            "dashboardRefreshSeconds": 30
         }
 
         # Load from home directory config
@@ -106,7 +107,8 @@ class ConfigManager:
             "authUrl": "http://localhost:8080",
             "cryptoUrl": "http://localhost:9090",
             "prettyPrint": True,
-            "timeout": 30000
+            "timeout": 30000,
+            "dashboardRefreshSeconds": 30
         }
 
     def set_bearer_token(self, token: str) -> None:
