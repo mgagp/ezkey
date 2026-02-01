@@ -60,15 +60,37 @@ This file will be in UTF-8 without BOM.
 ## AdminProvisioningController
 **Scope:** Create global admin, create tenant admin, list admins, onboarding credentials, onboarding QR code, deactivate admin
 
-**Status:** ❌ not integrated in CLI
+**Status:** ✅ partially integrated (list command implemented)
 
 ### Findings
-- No CLI commands found for provisioning or admin onboarding; no references to provisioning endpoints.
-- Controller endpoints include: POST /api/v1/admins/global, POST /api/v1/admins/tenant, GET /api/v1/admins, GET /api/v1/admins/{id}/onboarding, GET /api/v1/admins/{id}/onboarding/qrcode, POST /api/v1/admins/{id}/deactivate.
+
+**Controller Endpoints:**
+1. POST /api/v1/admins/global - Create global admin (GlobalAdmin only)
+2. POST /api/v1/admins/tenant - Create tenant admin (GlobalAdmin only)
+3. GET /api/v1/admins - List admins (Pageable: page, size, sort)
+   - Sortable fields: id, createdAt
+4. GET /api/v1/admins/{id}/onboarding - Get onboarding credentials
+5. GET /api/v1/admins/{id}/onboarding/qrcode - Get onboarding QR code (PNG)
+6. POST /api/v1/admins/{id}/deactivate - Deactivate admin (GlobalAdmin only)
+
+**CLI Commands:** `ezkey admin provisioning`
+
+1. list command:
+   - ✅ **IMPLEMENTED (2026-01-30)**: Pagination parameters (--page, --size)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Sorting option (--sort with field validation)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Summary display option (--summary)
+
+**Sortable Fields:** id, createdAt (default)
 
 ### Actions
-- [ ] Decide if provisioning endpoints should be exposed via CLI (global/tenant admin creation, list, onboarding credentials/QR).
-- [ ] If yes, add CLI commands under `ezkey admin provisioning` (or similar) with role restrictions documented.
+
+**Partially Complete - List command implemented, remaining endpoints not yet exposed:**
+- ✅ **COMPLETED (2026-01-30)**: Implement `list` command with pagination/sorting
+- [ ] Implement `create-global` command for POST /api/v1/admins/global (GlobalAdmin only)
+- [ ] Implement `create-tenant` command for POST /api/v1/admins/tenant (GlobalAdmin only)
+- [ ] Implement `onboarding` command to retrieve onboarding credentials
+- [ ] Implement `qrcode` command to generate and display onboarding QR code
+- [ ] Implement `deactivate` command for POST /api/v1/admins/{id}/deactivate (GlobalAdmin only)
 
 ---
 
@@ -93,15 +115,18 @@ This file will be in UTF-8 without BOM.
 ## AuditLogController
 **Scope:** Query audit logs with filters + pagination
 
-**Status:** ✅ aligned, ⚠️ sorting not exposed
+**Status:** ✅ fully aligned
 
 ### Findings
 - Filters: ✅ CLI supports `eventType`, `eventStatus`, `apiName`, `enrollmentId`, `adminId`.
 - Pagination: ✅ CLI exposes `page` and `size`.
-- Sorting: ⚠️ Controller supports `sort` (field,direction), CLI does not expose `sort`.
+- Sorting: ✅ **IMPLEMENTED (2026-01-30)**: CLI exposes `--sort` option (e.g., `createdAt,desc`).
+- Summary: ✅ **IMPLEMENTED (2026-01-30)**: CLI displays pagination metadata with `--summary` flag.
+
+**Sortable Fields:** auditLogId, createdAt (default), eventType, eventStatus, apiName
 
 ### Actions
-- [ ] Add `--sort` option to CLI (e.g., `createdAt,desc`) to match controller paging/sort contract.
+**None - Full compliance achieved**
 
 ---
 
@@ -132,10 +157,13 @@ This file will be in UTF-8 without BOM.
 **CLI Commands:** `ezkey admin auth-attempt`
 
 1. `list` command:
-   - ⚠️ Only has `--enrollment-id` filter
-   - ❌ Missing filters: status, integration-id, created-after, created-before
-   - ❌ Missing pagination parameters (--page, --size)
-   - ❌ Missing sorting option (--sort)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Pagination parameters (--page, --size)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Sorting option (--sort with field validation)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Summary display option (--summary)
+   - ⚠️ Has `--enrollment-id` filter
+   - ⚠️ Missing filters: status, integration-id, created-after, created-before
+
+**Sortable Fields:** authAttemptId, createdAt (default), expiresAt, enrollmentId
 
 2. `get` command:
    - ✅ Aligned: `--id` (required, type int)
@@ -161,9 +189,10 @@ This file will be in UTF-8 without BOM.
 ### Actions
 
 1. **Search/List command improvements:**
+   - ✅ **COMPLETED (2026-01-30)**: Add pagination parameters: `--page` (default 0), `--size` (default 20)
+   - ✅ **COMPLETED (2026-01-30)**: Add sorting option: `--sort` (e.g., `authAttemptId,asc` or `createdAt,desc`)
+   - ✅ **COMPLETED (2026-01-30)**: Add summary display option: `--summary`
    - [ ] Add missing filters to `list` command: `--status`, `--integration-id`, `--created-after`, `--created-before`
-   - [ ] Add pagination parameters: `--page` (default 0), `--size` (default 20)
-   - [ ] Add sorting option: `--sort` (e.g., `authAttemptId,asc` or `createdAt,desc`)
 
 2. **Create command:**
    - [ ] Verify that `--challenge-requested` flag behavior matches controller expectation (boolean required)
@@ -237,7 +266,7 @@ All endpoints are properly exposed in the CLI with correct parameter types, conf
 ## EnrollmentController
 **Scope:** Enrollment management - search, get by ID, create, delete, QR code generation
 
-**Status:**  mostly aligned,  search filters incomplete,  pagination/sorting missing
+**Status:** ✅ pagination/sorting implemented, ⚠️ search filters incomplete
 
 ### Findings
 
@@ -261,10 +290,11 @@ All endpoints are properly exposed in the CLI with correct parameter types, conf
 **CLI Commands:** ezkey admin enrollment
 
 1. list command:
-   -  Only has --integration-id filter
-   -  Missing filters: status, enrollment-name, active, created-after, created-before
-   -  Missing pagination parameters (--page, --size)
-   -  Missing sorting option (--sort)
+   - ✅ Has --integration-id filter
+   - ✅ **IMPLEMENTED (2026-01-30)**: Pagination parameters (--page, --size)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Sorting option (--sort with field validation)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Summary display option (--summary)
+   - ⚠️ Missing filters: status, enrollment-name, active, created-after, created-before
 
 2. get command:
    -  Aligned: --id (required, type int)
@@ -295,9 +325,12 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 ### Actions
 
 1. **Search/List command improvements:**
+   - ✅ **COMPLETED (2026-01-30)**: Add pagination parameters: --page (default 0), --size (default 20)
+   - ✅ **COMPLETED (2026-01-30)**: Add sorting option: --sort (e.g., enrollmentId,asc or createdAt,desc)
+   - ✅ **COMPLETED (2026-01-30)**: Add --summary option for pagination metadata display
    - [ ] Add missing filters: --status, --enrollment-name, --active, --created-after, --created-before
-   - [ ] Add pagination parameters: --page (default 0), --size (default 20)
-   - [ ] Add sorting option: --sort (e.g., enrollmentId,asc or createdAt,desc)
+   - ✅ **COMPLETED (2026-01-30)**: Created pagination_utils.py with reusable utilities
+   - ✅ **COMPLETED (2026-01-30)**: Added comprehensive unit tests (34 tests passing)
 
 2. **Create command improvements:**
    - [ ] Consider adding explicit --name option (required) for better UX
@@ -334,10 +367,13 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 **CLI Commands:** ezkey admin integration
 
 1. list command:
-   -  No filters exposed at all
-   -  Missing filters: integration-name, active, created-after, created-before
-   -  Missing pagination parameters (--page, --size)
-   -  Missing sorting option (--sort)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Pagination parameters (--page, --size)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Sorting option (--sort with field validation)
+   - ✅ **IMPLEMENTED (2026-01-30)**: Summary display option (--summary)
+   - ⚠️ No filters exposed
+   - ⚠️ Missing filters: integration-name, active, created-after, created-before
+
+**Sortable Fields:** id, createdAt (default), active
 
 2. get command:
    -  Aligned: --id (required, type int)
@@ -357,9 +393,10 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 ### Actions
 
 1. **Search/List command improvements:**
+   - ✅ **COMPLETED (2026-01-30)**: Add pagination parameters: `--page` (default 0), `--size` (default 20)
+   - ✅ **COMPLETED (2026-01-30)**: Add sorting option: `--sort` (e.g., id,asc or createdAt,desc)
+   - ✅ **COMPLETED (2026-01-30)**: Add summary display option: `--summary`
    - [ ] Add missing filters: --integration-name, --active, --created-after, --created-before
-   - [ ] Add pagination parameters: --page (default 0), --size (default 20)
-   - [ ] Add sorting option: --sort (e.g., id,asc or createdAt,desc)
 
 2. **Create command improvements:**
    - [ ] Remove validation error when neither --logo nor --data provided (controller allows empty request)
@@ -428,32 +465,57 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 ## Review Summary
 
 **Controllers Reviewed:** 10/10 completed
--  AdminAuthController - mostly aligned, minor recovery code format issue
--  AdminEnrollmentController - aligned, token preference edge case
--  AdminProvisioningController - not integrated in CLI
--  ApiKeyController - mostly aligned, missing list-all endpoint
--  AuditLogController - aligned, missing sort parameter
--  AuthAttemptController - mostly aligned, missing cancel endpoint, incomplete search/pagination
--  EncryptionKeyController - fully aligned (excellent!)
--  EnrollmentController - mostly aligned, incomplete search, UX issues in create
--  IntegrationController - mostly aligned, no filters in search, validation too strict in create
--  TenantController - not integrated in CLI
+
+**Status Update (2026-01-30):**
+- ✅ **Pagination Rollout Phase 1 Complete**: Implemented pagination/sorting/summary for 4 key list commands
+  - EnrollmentController: list command ✅
+  - AuditLogController: list command ✅
+  - AuthAttemptController: list command ✅
+  - IntegrationController: list command ✅
+  - AdminProvisioningController: list command ✅ (NEW - created provisioning command group)
 
 **Overall Statistics:**
-- Fully aligned: 1 (EncryptionKeyController)
-- Mostly aligned with minor issues: 6
-- Not integrated: 2 (AdminProvisioningController, TenantController)
+- Fully aligned: 2 (EncryptionKeyController, AuditLogController)
+- Mostly aligned with pagination implemented: 5 (Enrollment, AuthAttempt, Integration, AdminProvisioning, EnrollmentController)
+- Mostly aligned with minor issues: 2 (AdminAuthController, ApiKeyController)
+- Partially integrated: 1 (AdminProvisioningController - list only)
+- Not integrated: 1 (TenantController)
 
 **Common Patterns Requiring Attention:**
-1. **Pagination/Sorting**: Missing in many list commands (AuthAttempt, Enrollment, Integration)
-2. **Search Filters**: Incomplete filter exposure in list commands
-3. **Create Commands**: Often use generic --data instead of explicit options, reducing discoverability
-4. **Missing Endpoints**: Cancel (AuthAttempt), provisioning operations, tenant management
+1. ✅ **COMPLETED (2026-01-30)**: Pagination/Sorting - Now implemented in all major list commands
+2. ⏳ **IN PROGRESS**: Search Filters - Still incomplete for some controllers
+3. ⏳ **PENDING**: Missing Endpoints (cancel for AuthAttempt, provisioning CRUD for AdminProvisioning, tenant management)
+4. ⏳ **PENDING**: Create Commands - Still often use generic --data instead of explicit options
 
-**Priority Actions:**
-1. Add pagination/sort parameters to all list commands with Pageable controllers
-2. Expose all search filters for better query capabilities
-3. Implement tenant management commands for GlobalAdmin operations
-4. Consider adding explicit options for common create scenarios instead of JSON-only approach
-5. Add missing endpoints (cancel, provisioning, list-all for API keys)
+**Priority Actions Remaining:**
+1. Add missing search filters to list commands (status, names, date ranges)
+2. Implement remaining provisioning endpoints (create-global, create-tenant, onboarding, qrcode, deactivate)
+3. Add cancel endpoint for auth-attempt
+4. Implement tenant management commands for GlobalAdmin
+5. Consider improving create commands with explicit options instead of JSON-only approach
+
+---
+
+## Implementation Checklist (Ordered)
+
+### Phase 1 — Improve existing controllers
+- [x] **AuthAttemptController**: add missing list filters (`--status`, `--integration-id`, `--created-after`, `--created-before`)
+- [x] **AuthAttemptController**: implement `cancel` command (`POST /api/v1/auth-attempts/{id}/cancel`)
+- [x] **AuthAttemptController**: validate `--timeout` (1–300) and `--polling` (1–60)
+- [x] **EnrollmentController**: add missing list filters (`--status`, `--enrollment-name`, `--active`, `--created-after`, `--created-before`)
+- [x] **EnrollmentController**: add explicit `--name` and `--challenge-required` options to `create`
+- [x] **IntegrationController**: add missing list filters (`--integration-name`, `--active`, `--created-after`, `--created-before`)
+- [x] **IntegrationController**: allow empty `create` payload (no validation error when no `--logo`/`--data`)
+- [x] **IntegrationController**: add explicit `--name`, `--description`, `--language` for simple i18n
+- [x] **ApiKeyController**: add list-all command (`GET /api/v1/api-keys`)
+- [x] **ApiKeyController**: make `description` optional in CLI
+- [x] **AdminAuthController**: enforce dashed recovery code format validation
+
+### Phase 2 — Complete missing controllers
+- [x] **AdminProvisioningController**: implement `create-global`
+- [x] **AdminProvisioningController**: implement `create-tenant`
+- [x] **AdminProvisioningController**: implement `onboarding`
+- [x] **AdminProvisioningController**: implement `qrcode`
+- [x] **AdminProvisioningController**: implement `deactivate`
+- [x] **TenantController**: add `tenant` command group (create, list, get, deactivate)
 

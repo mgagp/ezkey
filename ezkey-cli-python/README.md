@@ -1,12 +1,18 @@
 # Ezkey CLI (Python)
 
-Command line interface for Ezkey - Open Source MFA/Passkey Alternative
+**Command line interface for Ezkey - Open Source MFA/Passkey Alternative**
 
 ## Overview
 
-The Ezkey CLI provides a unified command-line interface for interacting with all Ezkey APIs and managing the Ezkey system. It follows AWS CLI patterns with hierarchical commands and supports configuration management, JSON file input, and comprehensive error handling.
+The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. It follows AWS CLI patterns with hierarchical commands, supports both traditional CLI mode and an interactive TUI (Text User Interface) admin console.
 
-This is the Python implementation of the ezkey CLI, providing the same functionality as the TypeScript version but with improved performance.
+**Key Features:**
+- Passwordless admin authentication
+- API key management for machine-to-machine integrations
+- Interactive TUI admin console (`ezkey --tui`)
+- Configuration management
+- JSON file input support
+- Comprehensive error handling
 
 ## Installation
 
@@ -17,34 +23,37 @@ cd ezkey-cli-python
 pip install -e .
 ```
 
-### Using the CLI
+### Verify Installation
 
 ```bash
-# After installation, the CLI is available as 'ezkey'
+ezkey --version
 ezkey --help
 ```
 
 ## Quick Start
 
-### 1. Configure the CLI
+### CLI Mode
 
 ```bash
-# Interactive configuration
-ezkey configure interactive
-
-# Or set individual values
+# 1. Configure the CLI
 ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
+
+# 2. Authenticate as admin
+ezkey admin auth login --username admin
+
+# 3. List integrations
+ezkey admin integration list
 ```
 
-### 2. Test API connectivity
+### TUI Mode (Interactive Admin Console)
 
 ```bash
-# List integrations
-ezkey admin integration list
-
-# Generate a test keypair
-ezkey crypto keypair --key-size 2048
+# Launch interactive admin console
+ezkey --tui
 ```
+
+**First run:** Interactive setup wizard (Admin URL, username, organization, passwordless auth)  
+**Subsequent runs:** Session loads automatically, token refreshed silently
 
 ## Command Structure
 
@@ -60,98 +69,53 @@ The CLI follows the pattern: `ezkey <api> <object> <action> [options]`
 - **database** - Database migration commands
 - **openapi** - OpenAPI specification management
 
-## New Features (Version 2.0)
+## Authentication Methods
 
-### Admin Authentication (Passwordless)
+The CLI supports three authentication methods:
 
-Ezkey CLI now supports passwordless admin authentication using Ezkey's own cryptographic authentication system.
+### 1. Bearer Token (Admin Users)
 
-#### Single-Call Mode (Recommended)
+Passwordless authentication using Ezkey's own cryptographic authentication system.
+
 ```bash
-# Login and wait for device approval in one command
+# Single-call mode (recommended)
 ezkey admin auth login --username admin
 
-# Token is automatically saved to config for future use
-```
-
-#### Two-Call Mode (With Challenge Code)
-```bash
-# Step 1: Request authentication with challenge
+# Two-call mode with challenge code
 ezkey admin auth login --username admin --challenge
-
-# Step 2: Enter challenge code on device, then wait
 ezkey admin auth passwordless-wait --auth-attempt-id 123 --challenge-code 654321
-```
 
-#### Recovery Access (Emergency)
-```bash
-# Use recovery code when device is lost
-ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+# Emergency recovery
+ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-..."
 
-# Reset enrollment to unbind lost device
-ezkey admin enrollment reset --id 1
-
-# Bind new device with new credentials
-```
-
-#### Logout
-```bash
-# Revoke current session token
+# Logout
 ezkey admin auth logout
 ```
 
-### API Keys (Machine-to-Machine)
+### 2. API Keys (Machine-to-Machine)
 
-API keys provide authentication for server-to-server integrations without requiring interactive login.
+API keys provide authentication for server-to-server integrations without interactive login.
 
-#### Create API Key
 ```bash
-# Create an API key for an integration
+# Create API key
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
   --expires-at "2025-12-31T23:59:59Z" \
-  --ip-whitelist "192.168.1.0/24" \
   --save-key
 
 # ⚠️ IMPORTANT: Save the secret key immediately - it's shown only once!
-```
 
-#### List API Keys
-```bash
-# List all API keys for an integration
+# List API keys
 ezkey admin api-key list --integration-id 123
-```
 
-#### Get API Key Details
-```bash
-# Get details of a specific API key
-ezkey admin api-key get --id 42
-```
-
-#### Revoke API Key
-```bash
-# Revoke an API key (for security incidents or key rotation)
+# Revoke API key
 ezkey admin api-key revoke --id 42
 ```
 
-### Authentication Methods
+### 3. No Authentication
 
-The CLI supports three authentication methods:
-
-1. **Bearer Token** (for admin users)
-   - Obtained via `ezkey admin auth login`
-   - Stored in `~/.ezkey/ezkey.json` automatically
-   - Valid for 24 hours (configurable)
-
-2. **API Key** (for applications)
-   - Obtained via `ezkey admin api-key create`
-   - Uses HTTP Basic Auth (integration key:secret key)
-   - Can be saved to config with `--save-key`
-
-3. **No Authentication** (for public endpoints)
-   - Some endpoints don't require authentication
-   - Used for initial setup and testing
+Some commands don't require authentication (public endpoints).
 
 ## Configuration Management
 
@@ -168,13 +132,26 @@ The CLI uses hierarchical configuration with the following precedence:
 {
   "adminUrl": "http://localhost:9080",
   "authUrl": "http://localhost:8080",
-  "cryptoUrl": "http://localhost:8080",
-  "javaPath": "java",
-  "ezkeyCorePath": "/path/to/ezkey-core.jar",
+  "cryptoUrl": "http://localhost:9090",
+  "bearerToken": "eyJhbG...",
+  "integrationKey": "ezkey_ikey_...",
+  "secretKey": "ezkey_skey_...",
   "prettyPrint": true,
   "timeout": 30000
 }
 ```
+
+## Global Options
+
+All commands support these global options:
+
+- `--admin-url <url>` - Override admin API URL
+- `--auth-url <url>` - Override auth API URL  
+- `--crypto-url <url>` - Override crypto API URL
+- `--no-pretty` - Disable pretty printing of JSON output
+- `--timeout <ms>` - Set request timeout in milliseconds
+- `--verbose` - Enable verbose output
+- `--tui` - Start interactive admin console
 
 ## JSON Input Support
 
@@ -192,29 +169,6 @@ ezkey crypto sign --data "text" --private-key @private.pem
 # Pass JSON directly
 ezkey admin integration create --data '{"logo":"logo.png","i18n":[{"language":"en","name":"Test"}]}'
 ```
-
-## Global Options
-
-All commands support these global options:
-
-- `--admin-url <url>` - Override admin API URL
-- `--auth-url <url>` - Override auth API URL  
-- `--crypto-url <url>` - Override crypto API URL
-- `--no-pretty` - Disable pretty printing of JSON output
-- `--timeout <ms>` - Set request timeout in milliseconds
-- `--verbose` - Enable verbose output
-
-## Error Handling
-
-The CLI provides detailed error messages and appropriate exit codes:
-
-- **0** - Success
-- **1** - General error (network, API, validation)
-
-Error responses include:
-- HTTP status codes
-- Error messages from APIs
-- Request/response context when available
 
 ## Datetime Format
 
@@ -235,172 +189,44 @@ All Ezkey APIs return datetime fields in **UTC with Z suffix** for consistency a
 - **Timezone independence**: Works globally without regional assumptions
 - **Client responsibility**: Convert to local timezone for display if needed
 
-**Example: Convert to Local Time (Python)**
-```python
-from datetime import datetime
-
-# Parse UTC datetime from API
-created_at = datetime.fromisoformat("2025-10-16T11:55:55.925512Z")
-
-# Convert to local timezone
-local_time = created_at.astimezone()
-print(local_time)  # Displays in your local timezone
-```
-
-## Updating the CLI
-
-### From Source (Development)
-
-```bash
-cd ezkey-cli-python
-git pull origin main
-pip install -e . --upgrade
-```
-
-### Verify Version
-
-```bash
-ezkey --version
-```
-
-### Configuration After Update
-
-After updating, check your configuration is still valid:
-
-```bash
-# View current configuration
-ezkey configure get
-
-# Get specific value
-ezkey configure get --key adminUrl
-
-# Update if needed
-ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
-```
-
 ## Command Reference
 
-### Admin Commands
+For detailed command reference, see [USAGE_GUIDE.md](USAGE_GUIDE.md)
 
-#### Integrations
-- `ezkey admin integration list` - List all integrations
-- `ezkey admin integration get --id <id>` - Get integration details
-- `ezkey admin integration create --data @file.json` - Create integration
-- `ezkey admin integration delete --id <id>` - Delete integration
+### Quick Reference
 
-#### Enrollments
-- `ezkey admin enrollment list` - List all enrollments
-- `ezkey admin enrollment get --id <id>` - Get enrollment details
-- `ezkey admin enrollment create --integration-id <id> --data @file.json` - Create enrollment
-- `ezkey admin enrollment reset --id <id>` - Reset enrollment (after recovery)
+**Admin Commands:**
+- `ezkey admin integration list|get|create|delete`
+- `ezkey admin enrollment list|get|create|reset`
+- `ezkey admin auth-attempt list|get|create|wait`
+- `ezkey admin audit-log list`
+- `ezkey admin auth login|logout|recover|passwordless-wait`
+- `ezkey admin api-key create|list|get|revoke`
 
-#### Auth Attempts
-- `ezkey admin auth-attempt list` - List auth attempts
-- `ezkey admin auth-attempt get --id <id>` - Get auth attempt details
-- `ezkey admin auth-attempt create --enrollment-id <id>` - Create auth attempt
-- `ezkey admin auth-attempt wait --id <id> --timeout 30 --polling 2` - Wait for completion via wait endpoint
+**Auth Commands:**
+- `ezkey auth enrollment bind|verify`
+- `ezkey auth auth-attempt pending|respond`
 
-#### Audit Logs
-- `ezkey admin audit-log list` - Query audit logs (supports pagination)
-- `ezkey admin audit-log list --event-type <type> --event-status <status>` - Filter audit logs by event metadata
-- `ezkey admin audit-log list --api-name <api> --page 1 --size 50` - Fetch specific page of audit results
+**Crypto Commands:**
+- `ezkey crypto prooftoken|keypair|sign|validate`
 
-#### Authentication
-- `ezkey admin auth login --username <user>` - Passwordless login
-- `ezkey admin auth login --username <user> --challenge` - Login with challenge code
-- `ezkey admin auth passwordless-wait --auth-attempt-id <id> --challenge-code <code>` - Wait for challenge approval
-- `ezkey admin auth recover --username <user> --recovery-code <code>` - Emergency recovery
-- `ezkey admin auth logout` - Logout and revoke token
+**Configuration:**
+- `ezkey configure interactive|show|set|get|reset`
 
-#### API Keys
-- `ezkey admin api-key create --integration-id <id> --description "..."` - Create API key
-- `ezkey admin api-key list --integration-id <id>` - List API keys
-- `ezkey admin api-key get --id <id>` - Get API key details
-- `ezkey admin api-key revoke --id <id>` - Revoke API key
+**Database:**
+- `ezkey database migrate|info`
 
-### Auth Commands
+## Error Handling
 
-- `ezkey auth enrollment bind --enrollment-id <id> --enrollment-proof-token <token> [--language en]` - Bind enrollment to device using proof token authentication
-- `ezkey auth enrollment verify --enrollment-id <id> --challenge-response <code> --device-public-key <pem> --enrollment-proof-token-signed <signature>` - Verify enrollment completion
-- `ezkey auth auth-attempt pending --enrollment-id <id> --enrollment-proof-token <token> --device-proof-token <jwt> --device-proof-token-signed <signature>` - Check for pending authentication attempts
-- `ezkey auth auth-attempt respond --auth-attempt-id <id> --accepted true --auth-attempt-proof-token-signed <signature> [--challenge-response <code>]` - Respond to authentication attempt
+The CLI provides detailed error messages and appropriate exit codes:
 
-### Crypto Commands
+- **0** - Success
+- **1** - General error (network, API, validation)
 
-- `ezkey crypto prooftoken` - Generate a cryptographically secure proof token
-- `ezkey crypto keypair --key-size <size>` - Generate RSA key pair (key size: 1024-4096 bits)
-- `ezkey crypto sign --data <data> --private-key <key>` - Sign data with RSA private key
-- `ezkey crypto validate --data <data> --signature <sig> --public-key <key>` - Validate RSA signature
-
-### Configuration Commands
-
-- `ezkey configure interactive` - Interactive configuration
-- `ezkey configure show` - Show current configuration
-- `ezkey configure set --admin-url <url> --auth-url <url>` - Set configuration values
-
-### Database Commands
-
-- `ezkey database migrate` - Run database migrations
-- `ezkey database info` - Show migration info
-- `ezkey db migrate` - Alias for database migrate
-
-### OpenAPI Commands
-
-- `ezkey openapi refresh --all` - Refresh OpenAPI specs
-- `ezkey openapi generate` - Generate client code
-
-## Troubleshooting
-
-### Authentication Issues
-
-**Problem:** "Admin URL not configured"
-```bash
-# Solution: Configure the admin URL
-ezkey configure set --admin-url http://localhost:9080
-```
-
-**Problem:** "No bearer token found"
-```bash
-# Solution: Login first
-ezkey admin auth login --username admin
-```
-
-**Problem:** "Authentication failed: No device enrolled"
-```bash
-# Solution: Enroll a device first or use recovery code
-ezkey admin auth recover --username admin --recovery-code "..."
-```
-
-### API Key Issues
-
-**Problem:** "Invalid API key"
-```bash
-# Solution: Check that the key is active and not expired
-ezkey admin api-key get --id <key-id>
-
-# If expired, create a new key
-ezkey admin api-key create --integration-id <id> --description "New Key"
-```
-
-**Problem:** "Lost secret key"
-```bash
-# Solution: Secret keys cannot be recovered - create a new key
-ezkey admin api-key create --integration-id <id> --description "Replacement Key"
-
-# After deploying the new key, revoke the old one
-ezkey admin api-key revoke --id <old-key-id>
-```
-
-### Network Issues
-
-**Problem:** "Connection timeout"
-```bash
-# Solution: Increase timeout
-ezkey --timeout 60000 admin integration list
-
-# Or set globally
-ezkey configure set --timeout 60000
-```
+Error responses include:
+- HTTP status codes
+- Error messages from APIs
+- Request/response context when available
 
 ## Best Practices
 
@@ -424,67 +250,54 @@ ezkey configure set --timeout 60000
 4. Monitor usage (check `lastUsedAt` field)
 5. Revoke old key after migration complete
 
-## Examples
+## Documentation
 
-### Complete Workflow: Admin Login and Create Integration
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete CLI usage guide with workflows and examples
+- **[TUI_GUIDE.md](TUI_GUIDE.md)** - TUI admin console guide (architecture, development, patterns)
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Testing strategy and implementation
+
+## Updating the CLI
 
 ```bash
-# 1. Configure CLI
-ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
+cd ezkey-cli-python
+git pull origin main
+pip install -e . --upgrade
 
-# 2. Login as admin
-ezkey admin auth login --username admin
+# Verify version
+ezkey --version
 
-# 3. Create integration
-ezkey admin integration create --data '{
-  "logo": "https://example.com/logo.png",
-  "i18n": [
-    {
-      "language": "en",
-      "name": "My App",
-      "description": "My application"
-    }
-  ]
-}'
-
-# 4. List integrations
-ezkey admin integration list
+# Check configuration
+ezkey configure get
 ```
 
-### Complete Workflow: Create API Key for Production Server
+## Troubleshooting
 
+### Authentication Issues
+
+**"Admin URL not configured"**
 ```bash
-# 1. Login as admin
-ezkey admin auth login --username admin
-
-# 2. Create API key
-ezkey admin api-key create \
-  --integration-id 123 \
-  --description "Production Server" \
-  --expires-at "2026-12-31T23:59:59Z" \
-  --ip-whitelist "10.0.0.0/8" \
-  --save-key
-
-# 3. Test API key (saved to config automatically)
-ezkey admin integration get --id 123
-
-# 4. List all keys for the integration
-ezkey admin api-key list --integration-id 123
+ezkey configure set --admin-url http://localhost:9080
 ```
 
-### Complete Workflow: Emergency Recovery
-
+**"No bearer token found"**
 ```bash
-# 1. Use recovery code to login
-ezkey admin auth recover \
-  --username admin \
-  --recovery-code "1234-5678-9012-3456-7890-1234-5678-9012"
+ezkey admin auth login --username admin
+```
 
-# 2. Reset enrollment to unbind lost device
-ezkey admin enrollment reset --id 1
+**"Authentication failed: No device enrolled"**
+```bash
+ezkey admin auth recover --username admin --recovery-code "..."
+```
 
-# 3. Note: Use the new credentials to bind a new device
-# The output will show: enrollmentProofToken, enrollmentChallenge
+### Network Issues
+
+**Connection timeout**
+```bash
+# Increase timeout
+ezkey --timeout 60000 admin integration list
+
+# Or set globally
+ezkey configure set --timeout 60000
 ```
 
 ## License
