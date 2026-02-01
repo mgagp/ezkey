@@ -26,6 +26,9 @@ RUN python -m pip install --upgrade pip \
 RUN mkdir -p /work /root/.ezkey \
     && chmod -R 0775 /work /root/.ezkey
 
+COPY docker/cli-test/entrypoint.sh /usr/local/bin/ezkey-cli-entrypoint.sh
+RUN chmod +x /usr/local/bin/ezkey-cli-entrypoint.sh
+
 # Configure bash for better interactive experience
 RUN echo 'set -o emacs' >> /root/.bashrc \
     && echo 'set -o history' >> /root/.bashrc \
@@ -36,4 +39,5 @@ RUN echo 'set -o emacs' >> /root/.bashrc \
 
 WORKDIR /work
 
+ENTRYPOINT ["/usr/local/bin/ezkey-cli-entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]
