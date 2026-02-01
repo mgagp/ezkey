@@ -36,6 +36,7 @@ class ConfigManager:
         # Start with default configuration
         self._config = {
             "adminUrl": os.getenv("EZKEY_ADMIN_API_URL", "http://localhost:9080"),
+            "adminHealthUrl": os.getenv("EZKEY_ADMIN_HEALTH_URL"),
             "authUrl": os.getenv("EZKEY_AUTH_API_URL", "http://localhost:8080"),
             "cryptoUrl": os.getenv("EZKEY_CRYPTO_API_URL", "http://localhost:9090"),
             "prettyPrint": True,
@@ -104,6 +105,7 @@ class ConfigManager:
         """Reset configuration to default values."""
         self._config = {
             "adminUrl": os.getenv("EZKEY_ADMIN_API_URL", "http://localhost:9080"),
+            "adminHealthUrl": os.getenv("EZKEY_ADMIN_HEALTH_URL"),
             "authUrl": os.getenv("EZKEY_AUTH_API_URL", "http://localhost:8080"),
             "cryptoUrl": os.getenv("EZKEY_CRYPTO_API_URL", "http://localhost:9090"),
             "prettyPrint": True,

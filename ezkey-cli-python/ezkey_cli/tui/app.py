@@ -176,8 +176,15 @@ class EzkeyAdminTUI(App):
     # Detect dev mode (localhost/docker) - disable SSL verification
     is_dev = any(x in admin_url.lower() for x in ['localhost', '127.0.0.1', 'docker'])
 
+    admin_health_url = self.config.get('adminHealthUrl')
+
     # Create API client
-    self.api_client = ApiClient(admin_url, token, verify_ssl=not is_dev)
+    self.api_client = ApiClient(
+      admin_url,
+      token,
+      verify_ssl=not is_dev,
+      admin_health_url=admin_health_url
+    )
 
     # Create Crypto API client
     crypto_url = self.config.get('cryptoUrl', 'http://localhost:9090')

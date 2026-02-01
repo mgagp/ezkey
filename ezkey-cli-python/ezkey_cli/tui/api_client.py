@@ -20,7 +20,13 @@ log = logging.getLogger(__name__)
 class ApiClient:
   """HTTP client for Ezkey Admin API with bearer token auth."""
 
-  def __init__(self, admin_url: str, bearer_token: str, verify_ssl: bool = True):
+  def __init__(
+      self,
+      admin_url: str,
+      bearer_token: str,
+      verify_ssl: bool = True,
+      admin_health_url: Optional[str] = None
+  ):
     """
     Initialize API client.
 
@@ -28,8 +34,10 @@ class ApiClient:
         admin_url: Base URL for Admin API (e.g., http://localhost:9080)
         bearer_token: Bearer token for authentication
         verify_ssl: Whether to verify SSL certificates
+        admin_health_url: Base URL for Admin API Actuator (e.g., http://localhost:9081)
     """
     self.admin_url = admin_url.rstrip('/')
+    self.admin_health_url = admin_health_url.rstrip('/') if admin_health_url else None
     self.bearer_token = bearer_token
     self.verify_ssl = verify_ssl
     self.headers = {
@@ -489,7 +497,8 @@ class ApiClient:
 
   def get_health(self) -> Dict[str, Any]:
     """Check Admin API health and return status with latency."""
-    url = f"{self.admin_url}/api/v1/health"
+    base_url = self.admin_health_url or self.admin_url
+    url = f"{base_url}/actuator/health"
     start = time.perf_counter()
     try:
       response = requests.get(

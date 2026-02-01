@@ -219,6 +219,7 @@ services:
         condition: service_healthy
     environment:
       EZKEY_ADMIN_API_URL: http://admin-api:9080
+      EZKEY_ADMIN_HEALTH_URL: http://admin-api:9081
       EZKEY_AUTH_API_URL: http://auth-api:8080
       EZKEY_CRYPTO_API_URL: http://crypto-api:9090
     volumes:
