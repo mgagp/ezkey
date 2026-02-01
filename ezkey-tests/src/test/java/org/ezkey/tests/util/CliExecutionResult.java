@@ -15,12 +15,11 @@ package org.ezkey.tests.util;
 /**
  * Result wrapper for CLI command execution.
  *
- * <p>
- * Captures exit code, stdout, and stderr for assertions and diagnostics.
+ * <p>Captures exit code, stdout, and stderr for assertions and diagnostics.
  *
  * @param exitCode process exit code
- * @param stdout   standard output
- * @param stderr   standard error
+ * @param stdout standard output
+ * @param stderr standard error
  * @since 2025
  */
 public record CliExecutionResult(int exitCode, String stdout, String stderr) {
