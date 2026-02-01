@@ -870,6 +870,52 @@ class ApiClient:
 
     return 0
 
+  def create_global_admin(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Create a global administrator (peer admin).
+
+    Only GlobalAdmin can create other GlobalAdmins.
+
+    Args:
+        payload: Dict with keys:
+            - username (required): Unique username (3-50 chars)
+            - email (required): Email address for SOC 2 compliance
+            - firstName (required): First name
+            - lastName (required): Last name
+
+    Returns:
+        Response with adminId, enrollmentId, and onboarding credentials
+        or None on error
+
+    Raises:
+        Exception: With API error message if creation fails
+    """
+    return self._post("/api/v1/admins/global", data=payload)
+
+  def create_tenant_admin(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Create a tenant administrator (peer admin).
+
+    GlobalAdmin can create TenantAdmins for any tenant.
+    TenantAdmin can create TenantAdmins for their own tenant only.
+
+    Args:
+        payload: Dict with keys:
+            - username (required): Unique username (3-50 chars)
+            - email (optional): Email address (recommended)
+            - firstName (optional): First name
+            - lastName (optional): Last name
+            - tenantId (required): Tenant ID (not System Tenant)
+
+    Returns:
+        Response with adminId, enrollmentId, and admin info
+        or None on error
+
+    Raises:
+        Exception: With API error message if creation fails
+    """
+    return self._post("/api/v1/admins/tenant", data=payload)
+
   def validate_token(self) -> bool:
     """
     Validate if bearer token is still valid.

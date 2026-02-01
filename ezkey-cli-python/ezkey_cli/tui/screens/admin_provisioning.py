@@ -26,6 +26,7 @@ class AdminProvisioningScreen(Screen):
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
+      Binding("c", "create_admin", "Create"),
       Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
@@ -351,6 +352,23 @@ class AdminProvisioningScreen(Screen):
         self._load_admins()
 
     self.app.push_screen(AdminProvisioningFilterModal(current_filters=self.filters), on_filter_result)
+
+  def action_create_admin(self) -> None:
+    """Open create admin modal."""
+    from .admin_provisioning_create import CreateAdminModal
+
+    def on_create_result(result: dict | bool) -> None:
+      if result and isinstance(result, dict):
+        # Admin created successfully, refresh the list
+        log.info(f"Admin created: {result.get('admin_id')}")
+        self.current_page = 0
+        self._load_admins()
+      elif result:
+        # Generic success, refresh list
+        self.current_page = 0
+        self._load_admins()
+
+    self.app.push_screen(CreateAdminModal(), on_create_result)
 
   def action_refresh(self) -> None:
     """Refresh admin list."""
