@@ -12,6 +12,7 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
@@ -35,24 +36,33 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service for passwordless administrator authentication.
  *
- * <p>This service handles passwordless authentication of administrators using Ezkey's cryptographic
- * authentication system ("eating our own dogfood"). It eliminates passwords entirely, providing
+ * <p>
+ * This service handles passwordless authentication of administrators using
+ * Ezkey's cryptographic
+ * authentication system ("eating our own dogfood"). It eliminates passwords
+ * entirely, providing
  * superior security through device-bound credentials.
  *
- * <p><b>Authentication Modes:</b>
+ * <p>
+ * <b>Authentication Modes:</b>
  *
  * <ul>
- *   <li><b>Single-call (no challenge):</b> Blocking wait for device approval
- *   <li><b>Two-call (with challenge):</b> Return challenge code, wait separately
+ * <li><b>Single-call (no challenge):</b> Blocking wait for device approval
+ * <li><b>Two-call (with challenge):</b> Return challenge code, wait separately
  * </ul>
  *
- * <p><b>Token Rotation:</b> When token rotation on login is enabled, this service deactivates all
- * existing active tokens for an administrator when they log in, ensuring only one active token
+ * <p>
+ * <b>Token Rotation:</b> When token rotation on login is enabled, this service
+ * deactivates all
+ * existing active tokens for an administrator when they log in, ensuring only
+ * one active token
  * exists at any time.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -88,10 +98,13 @@ public class AdminAuthService {
   /**
    * Authenticate administrator using passwordless Ezkey authentication.
    *
-   * <p>This is the only authentication method - passwords are not supported. Delegates to {@link
+   * <p>
+   * This is the only authentication method - passwords are not supported.
+   * Delegates to {@link
    * #authenticatePasswordless(AdminLoginRequestDto)} internally.
    *
-   * @param request the login request containing username and optional challenge flag
+   * @param request the login request containing username and optional challenge
+   *                flag
    * @return AdminLoginResponseDto with authentication result
    */
   public AdminLoginResponseDto authenticate(AdminLoginRequestDto request) {
@@ -106,39 +119,56 @@ public class AdminAuthService {
   }
 
   /**
-   * Authenticate administrator using passwordless Ezkey cryptographic authentication.
+   * Authenticate administrator using passwordless Ezkey cryptographic
+   * authentication.
    *
-   * <p>This method implements "eat your own dogfood" by using Ezkey's MFA system for admin
+   * <p>
+   * This method implements "eat your own dogfood" by using Ezkey's MFA system for
+   * admin
    * authentication without passwords. The flow:
    *
    * <ol>
-   *   <li>Validate username and passwordless eligibility
-   *   <li>Create auth attempt internally
-   *   <li>Either wait for device approval (no challenge) or return challenge (2-step)
-   *   <li>Issue bearer token on approval
+   * <li>Validate username and passwordless eligibility
+   * <li>Create auth attempt internally
+   * <li>Branch based on challenge requirement and nonBlocking flag:
+   * <ul>
+   * <li><b>Challenge required (any mode):</b> Return immediately with challenge
+   * code
+   * (non-blocking)
+   * <li><b>No challenge + nonBlocking=true:</b> Return immediately with
+   * authAttemptId for
+   * client polling (enables countdown timer in TUI)
+   * <li><b>No challenge + nonBlocking=false/null:</b> Block and wait for device
+   * response
+   * (backward compatible)
+   * </ul>
+   * <li>Issue bearer token on approval
    * </ol>
    *
-   * <p><b>Security:</b> This provides superior security compared to passwords:
+   * <p>
+   * <b>Security:</b> This provides superior security compared to passwords:
    *
    * <ul>
-   *   <li>No password to steal or guess
-   *   <li>Phishing resistant (cryptographic signatures)
-   *   <li>Device-bound credentials
-   *   <li>Biometric verification on device
+   * <li>No password to steal or guess
+   * <li>Phishing resistant (cryptographic signatures)
+   * <li>Device-bound credentials
+   * <li>Biometric verification on device
    * </ul>
    *
-   * @param request the login request with username and optional challenge flag
-   * @return AdminLoginResponseDto with bearer token or challenge info
+   * @param request the login request with username, optional challenge flag, and
+   *                optional
+   *                nonBlocking flag
+   * @return AdminLoginResponseDto with bearer token or challenge/pending info
    * @throws AuthenticationException if passwordless auth fails
+   * @since 2025
    */
   private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto request) {
     logger.info("🔐 Passwordless authentication initiated for user: {}", request.username());
 
     // 1. Validate username and passwordless eligibility
-    EzkeyAdmin admin =
-        adminRepository
-            .findByUsernameWithEnrollment(request.username())
-            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
+    EzkeyAdmin admin = adminRepository
+        .findByUsernameWithEnrollment(request.username())
+        .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
 
     if (!admin.getActive()) {
       throw new AuthenticationException("Account is inactive");
@@ -152,10 +182,9 @@ public class AdminAuthService {
     }
 
     // 2. Create auth attempt in separate transaction that commits immediately
-    Boolean challengeRequested =
-        request.challengeRequested() != null
-            ? request.challengeRequested()
-            : admin.getChallengeRequired();
+    // Apply OR logic: challenge required if BD demands it OR client requests it
+    // This ensures DB policy (admin.getChallengeRequired) always takes precedence
+    Boolean challengeRequested = admin.getChallengeRequired() || Boolean.TRUE.equals(request.challengeRequested());
 
     AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();
     attemptReq.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
@@ -168,7 +197,11 @@ public class AdminAuthService {
         attemptResponse.getAuthAttemptId(),
         challengeRequested);
 
-    // 3. Branch based on challenge requirement
+    // 3. Branch based on challenge requirement and nonBlocking flag
+    // Challenge mode is always non-blocking (immediate return with challenge code)
+    // Non-challenge mode can be:
+    // - blocking (wait for response) or
+    // - non-blocking (return with authAttemptId) if nonBlocking=true
     if (challengeRequested) {
       // CHALLENGE MODE: Return immediately with challenge info (non-blocking)
       Integer challengeCode = attemptResponse.getAuthAttemptChallenge();
@@ -184,10 +217,9 @@ public class AdminAuthService {
           "📋 Passwordless with challenge: returning auth attempt info (challenge: {})",
           challengeCode);
 
-      String message =
-          "Challenge verification required. Enter code "
-              + challengeCode
-              + " on your device, then call /passwordless-wait.";
+      String message = "Challenge verification required. Enter code "
+          + challengeCode
+          + " on your device, then call /passwordless-wait.";
 
       return AdminLoginResponseDto.pendingPasswordless(
           attemptResponse.getAuthAttemptId(),
@@ -196,13 +228,32 @@ public class AdminAuthService {
           admin.getAdminType().name(),
           message,
           OffsetDateTime.now().plusMinutes(5));
+    } else if (Boolean.TRUE.equals(request.nonBlocking())) {
+      // NO CHALLENGE + NON-BLOCKING MODE: Return immediately with authAttemptId
+      // Client will poll /passwordless-wait and display countdown based on expiresAt
+      logger.info(
+          "📋 Passwordless (no challenge, non-blocking): returning auth attempt info"
+              + " for polling");
+
+      String message = "Waiting for device response. Poll /passwordless-wait with authAttemptId"
+          + " to complete authentication.";
+
+      return AdminLoginResponseDto.pendingPasswordless(
+          attemptResponse.getAuthAttemptId(),
+          null, // No challenge code in non-challenge mode
+          admin.getUsername(),
+          admin.getAdminType().name(),
+          message,
+          OffsetDateTime.now().plusMinutes(5));
     } else {
-      // NO CHALLENGE MODE: Block and wait (single-call convenience)
+      // NO CHALLENGE + BLOCKING MODE: Block and wait (original behavior, backward
+      // compatible)
       logger.info("⏳ Passwordless (no challenge): waiting for device response...");
 
-      AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
-      AuthAttemptWaitResponse waitResp =
-          authAttemptService.waitForResponse(attemptResponse.getAuthAttemptId(), waitReq);
+      // 5 min timeout, 2s polling interval
+      AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2);
+      AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(attemptResponse.getAuthAttemptId(),
+          waitReq);
 
       String status = waitResp.getStatus();
 
@@ -247,45 +298,87 @@ public class AdminAuthService {
   /**
    * Wait for passwordless authentication completion with challenge verification.
    *
-   * <p>This method is used in the two-step passwordless flow when challenge verification is
-   * required. It validates the challengeCode to prevent enumeration attacks, then waits for device
+   * <p>
+   * This method is used in the two-step passwordless flow when challenge
+   * verification is
+   * required. It validates the challengeCode to prevent enumeration attacks, then
+   * waits for device
    * approval.
    *
-   * <p><b>Security:</b> The challengeCode must match the auth attempt's challenge to prevent
-   * attackers from enumerating authAttemptId values and hijacking authentication attempts.
+   * <p>
+   * <b>Security:</b> The challengeCode must match the auth attempt's challenge to
+   * prevent
+   * attackers from enumerating authAttemptId values and hijacking authentication
+   * attempts.
    *
    * @param authAttemptId the auth attempt ID from the login response
-   * @param challengeCode the challenge code from the login response (proof of legitimacy)
+   * @param challengeCode the challenge code from the login response (proof of
+   *                      legitimacy)
    * @return AdminLoginResponseDto with bearer token if accepted
    * @throws IllegalArgumentException if auth attempt is invalid
-   * @throws AuthenticationException if authentication fails or challenge is incorrect
+   * @throws AuthenticationException  if authentication fails or challenge is
+   *                                  incorrect
+   */
+  /**
+   * Waits for passwordless authentication completion.
+   *
+   * <p>
+   * Supports two flows:
+   *
+   * <ul>
+   * <li><b>Challenge Flow:</b> When challengeCode is provided (non-null),
+   * verifies the code
+   * against stored challenge to prevent enumeration attacks, then waits for
+   * device response.
+   * <li><b>Non-Blocking Flow:</b> When challengeCode is null, skips challenge
+   * verification
+   * (already skipped in login response) and waits for device response using
+   * polling.
+   * </ul>
+   *
+   * <p>
+   * This method handles both asynchronous authentication modes transparently
+   * using the same
+   * endpoint.
+   *
+   * @param authAttemptId the authentication attempt ID
+   * @param challengeCode the challenge code (optional - null for non-blocking
+   *                      flow, required for
+   *                      challenge flow)
+   * @return authentication response with token on success
    */
   public AdminLoginResponseDto waitForPasswordlessAuth(
       Integer authAttemptId, Integer challengeCode) {
-    logger.info("⏳ Waiting for passwordless auth completion (authAttemptId: {})", authAttemptId);
+    logger.info(
+        "⏳ Waiting for passwordless auth completion (authAttemptId: {}, hasChallenge: {})",
+        authAttemptId,
+        challengeCode != null);
 
     // 1. Fetch auth attempt
-    AuthAttempt authAttempt =
-        authAttemptRepository
-            .findById(authAttemptId)
-            .orElseThrow(() -> new IllegalArgumentException("Auth attempt not found"));
+    AuthAttempt authAttempt = authAttemptRepository
+        .findById(authAttemptId)
+        .orElseThrow(() -> new IllegalArgumentException("Auth attempt not found"));
 
-    // 2. SECURITY: Verify challenge code to prevent enumeration attacks
-    if (!challengeCode.equals(authAttempt.getAuthAttemptChallenge())) {
-      logger.warn(
-          "❌ Invalid challenge code for authAttemptId: {} (enumeration attack detected)",
-          authAttemptId);
-      throw new AuthenticationException("Invalid challenge code - authentication failed");
+    // 2. SECURITY: Verify challenge code only if provided (challenge flow)
+    // If challengeCode is null, we're in non-blocking flow (challenge already
+    // verified in login)
+    if (challengeCode != null) {
+      if (!challengeCode.equals(authAttempt.getAuthAttemptChallenge())) {
+        logger.warn(
+            "❌ Invalid challenge code for authAttemptId: {} (enumeration attack detected)",
+            authAttemptId);
+        throw new AuthenticationException("Invalid challenge code - authentication failed");
+      }
+      logger.debug("✅ Challenge code verified for authAttemptId: {}", authAttemptId);
+    } else {
+      logger.debug("ℹ️ No challenge code (non-blocking flow) for authAttemptId: {}", authAttemptId);
     }
 
-    logger.debug("✅ Challenge code verified for authAttemptId: {}", authAttemptId);
-
     // 3. Get admin from enrollment
-    EzkeyAdmin admin =
-        adminRepository
-            .findByMfaEnrollmentEnrollmentId(authAttempt.getEnrollmentId())
-            .orElseThrow(
-                () -> new IllegalArgumentException("Admin not found for this auth attempt"));
+    EzkeyAdmin admin = adminRepository
+        .findByMfaEnrollmentEnrollmentId(authAttempt.getEnrollmentId())
+        .orElseThrow(
+            () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
     // 4. Wait for device response
     AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
@@ -299,8 +392,10 @@ public class AdminAuthService {
       AdminToken token = generateAndPersistToken(admin);
       updateLastLogin(admin);
 
+      String flowType = challengeCode != null ? "challenge" : "non-blocking";
       logger.info(
-          "✅ Passwordless auth (with challenge) successful for admin: {} after {}s",
+          "✅ Passwordless auth ({} flow) successful for admin: {} after {}s",
+          flowType,
           admin.getUsername(),
           waitResp.getWaitDuration());
 
@@ -310,7 +405,7 @@ public class AdminAuthService {
       throw new AuthenticationException("Authentication rejected by device");
     } else if ("INVALID".equals(status)) {
       logger.warn(
-          "❌ Passwordless auth invalid (wrong challenge?) for admin: {}", admin.getUsername());
+          "❌ Passwordless auth invalid for admin: {}", admin.getUsername());
       throw new AuthenticationException(
           "Authentication failed - invalid signature or challenge code");
     } else if ("EXPIRED".equals(status)) {
@@ -334,7 +429,9 @@ public class AdminAuthService {
   /**
    * Issue a bearer token after successful MFA validation.
    *
-   * <p>Used by recovery flow after device re-enrollment. Rotates tokens if configured, generates a
+   * <p>
+   * Used by recovery flow after device re-enrollment. Rotates tokens if
+   * configured, generates a
    * new bearer token, updates last login.
    *
    * @param admin authenticated admin (MFA already satisfied)
@@ -350,7 +447,9 @@ public class AdminAuthService {
   /**
    * Rotate tokens on login if enabled in configuration.
    *
-   * <p>Deactivates all existing active tokens for this admin to enforce the "one active token per
+   * <p>
+   * Deactivates all existing active tokens for this admin to enforce the "one
+   * active token per
    * admin" security policy.
    *
    * @param admin the administrator whose tokens should be rotated
@@ -396,7 +495,8 @@ public class AdminAuthService {
   /**
    * Generate a secure bearer token string.
    *
-   * <p>Format: ezkey_[UUID without hyphens]
+   * <p>
+   * Format: ezkey_[UUID without hyphens]
    *
    * @return the generated bearer token string
    */
@@ -444,7 +544,9 @@ public class AdminAuthService {
   /**
    * Validate bearer token.
    *
-   * <p>This method validates a bearer token and returns the associated administrator information if
+   * <p>
+   * This method validates a bearer token and returns the associated administrator
+   * information if
    * the token is valid and not expired.
    *
    * @param bearerToken the bearer token to validate
@@ -478,7 +580,9 @@ public class AdminAuthService {
   /**
    * Logout administrator by invalidating token.
    *
-   * <p>This method invalidates the bearer token, effectively logging out the administrator from the
+   * <p>
+   * This method invalidates the bearer token, effectively logging out the
+   * administrator from the
    * system.
    *
    * @param bearerToken the bearer token to invalidate

@@ -10,13 +10,8 @@
 
 package org.ezkey.admin.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
@@ -41,25 +36,34 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
 /**
  * REST controller for administrator authentication.
  *
- * <p>This controller provides endpoints for administrator authentication including login and logout
- * functionality. It handles the generation and validation of bearer tokens for API access.
+ * <p>
+ * This controller provides endpoints for administrator authentication including
+ * login and logout
+ * functionality. It handles the generation and validation of bearer tokens for
+ * API access.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
  */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
-@Tag(
-    name = "Admin Authentication",
-    description =
-        "Administrator authentication and session management for passwordless login and recovery")
+@Tag(name = "Admin Authentication", description = "Administrator authentication and session management for passwordless login and recovery")
 public class AdminAuthController {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
@@ -90,41 +94,39 @@ public class AdminAuthController {
   /**
    * Authenticate administrator with username and password.
    *
-   * <p>This endpoint allows administrators to authenticate using their credentials and receive a
-   * bearer token for subsequent API calls. Rate limiting is applied to prevent brute force attacks.
+   * <p>
+   * This endpoint allows administrators to authenticate using their credentials
+   * and receive a
+   * bearer token for subsequent API calls. Rate limiting is applied to prevent
+   * brute force attacks.
    *
-   * <p>Supports two authentication flows:
+   * <p>
+   * Supports two authentication flows:
    *
    * <ul>
-   *   <li><b>Single-call mode:</b> Returns bearer token immediately after device approval (HTTP
-   *       200)
-   *   <li><b>Two-call mode (with challenge):</b> Returns authAttemptId and challengeCode with
-   *       status "pending" (HTTP 200), requires separate /passwordless-wait call
+   * <li><b>Single-call mode:</b> Returns bearer token immediately after device
+   * approval (HTTP
+   * 200)
+   * <li><b>Two-call mode (with challenge):</b> Returns authAttemptId and
+   * challengeCode with
+   * status "pending" (HTTP 200), requires separate /passwordless-wait call
    * </ul>
    *
-   * @param request the login request containing username and optional challenge flag
+   * @param request     the login request containing username and optional
+   *                    challenge flag
    * @param httpRequest the HTTP servlet request for IP extraction
-   * @return ResponseEntity containing authentication response with bearer token or challenge info
+   * @return ResponseEntity containing authentication response with bearer token
+   *         or challenge info
    */
-  @Operation(
-      summary = "Authenticate administrator",
-      description =
-          "Passwordless authentication for administrators. Returns bearer token on success, or "
-              + "challenge info for two-step flow. Rate limiting applied.")
-  @ApiResponses(
-      value = {
-        @ApiResponse(
-            responseCode = "200",
-            description =
-                "Authentication successful or pending. If status='approved', token is present. "
-                    + "If status='pending', authAttemptId and challengeCode are present."),
-        @ApiResponse(
-            responseCode = "400",
-            description =
-                "Authentication failed (invalid credentials, no device enrolled) or validation"
-                    + " error"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Authenticate administrator", description = "Passwordless authentication for administrators. Returns bearer token on success, or "
+      + "challenge info for two-step flow. Rate limiting applied.")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Authentication successful or pending. If status='approved', token is present. "
+          + "If status='pending', authAttemptId and challengeCode are present."),
+      @ApiResponse(responseCode = "400", description = "Authentication failed (invalid credentials, no device enrolled) or validation"
+          + " error"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PostMapping("/login")
   public ResponseEntity<AdminLoginResponseDto> login(
       @Valid @RequestBody AdminLoginRequestDto request, HttpServletRequest httpRequest) {
@@ -175,7 +177,8 @@ public class AdminAuthController {
               AdminAuditConstants.LOGIN_PENDING,
               "Username: " + request.username() + ", Challenge required"));
 
-      // Return HTTP 200 for pending state (correct semantics - request was processed successfully)
+      // Return HTTP 200 for pending state (correct semantics - request was processed
+      // successfully)
       return ResponseEntity.ok(response);
     } else {
       // Actual failure (invalid credentials, no device, etc.)
@@ -204,11 +207,13 @@ public class AdminAuthController {
   /**
    * Logout administrator and invalidate token.
    *
-   * <p>This endpoint invalidates the current bearer token, effectively logging out the
+   * <p>
+   * This endpoint invalidates the current bearer token, effectively logging out
+   * the
    * administrator from the system.
    *
    * @param authorization the authorization header containing the bearer token
-   * @param httpRequest the HTTP servlet request for audit logging
+   * @param httpRequest   the HTTP servlet request for audit logging
    * @return ResponseEntity confirming logout
    */
   @PostMapping("/logout")
@@ -236,17 +241,38 @@ public class AdminAuthController {
   /**
    * Wait for passwordless authentication completion.
    *
-   * <p>This endpoint is used in the two-step passwordless flow when challenge verification is
-   * required. After receiving authAttemptId and challengeCode from the /login endpoint, the client
-   * displays the challenge to the user then calls this endpoint to wait for device approval.
+   * <p>
+   * Supports two authentication flows:
    *
-   * <p>This endpoint blocks for up to 5 minutes waiting for the device response.
+   * <ul>
+   * <li><b>Challenge Flow:</b> Used when challengeRequested=true in login. After
+   * receiving
+   * authAttemptId and challengeCode from the /login endpoint, the client displays
+   * the
+   * challenge code to the user, then calls this endpoint with both values to wait
+   * for
+   * device approval.
+   * <li><b>Non-Blocking Flow:</b> Used when nonBlocking=true in login. After
+   * receiving only
+   * authAttemptId from the /login endpoint, the client calls this endpoint with
+   * only
+   * authAttemptId (no challengeCode) to poll for device response.
+   * </ul>
    *
-   * <p><b>Security:</b> The challengeCode is required to prevent enumeration attacks on
-   * authAttemptId. Only clients that legitimately initiated the authentication and received the
-   * challenge can proceed.
+   * <p>
+   * This endpoint blocks for up to 5 minutes waiting for the device response.
    *
-   * @param request the wait request containing auth attempt ID and challenge code
+   * <p>
+   * <b>Security (Challenge Flow):</b> The challengeCode is required to prevent
+   * enumeration
+   * attacks on authAttemptId. Only clients that legitimately initiated the
+   * authentication and
+   * received the challenge can proceed. When challengeCode is null (non-blocking
+   * flow), challenge
+   * verification is skipped (already verified in login).
+   *
+   * @param request the wait request containing auth attempt ID and optional
+   *                challenge code
    * @return ResponseEntity with bearer token on success, error on failure
    */
   @PostMapping("/passwordless-wait")
@@ -256,8 +282,8 @@ public class AdminAuthController {
     try {
       logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
-      AdminLoginResponseDto response =
-          authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
+      AdminLoginResponseDto response = authService.waitForPasswordlessAuth(request.authAttemptId(),
+          request.challengeCode());
 
       logger.info("✅ Passwordless authentication successful");
       return ResponseEntity.ok(response);
@@ -282,43 +308,36 @@ public class AdminAuthController {
   /**
    * Recover admin access using a recovery code.
    *
-   * <p>This endpoint allows administrators who have lost access to their enrolled device to regain
-   * access using one of their single-use recovery codes. The recovery code grants a temporary token
+   * <p>
+   * This endpoint allows administrators who have lost access to their enrolled
+   * device to regain
+   * access using one of their single-use recovery codes. The recovery code grants
+   * a temporary token
    * (30 minutes validity) with limited permissions to re-bind enrollment only.
    *
-   * <p><b>Security Features:</b>
+   * <p>
+   * <b>Security Features:</b>
    *
    * <ul>
-   *   <li>Single-use recovery codes (removed from array after use)
-   *   <li>BCrypt hashed storage
-   *   <li>Limited token (30 min validity, enrollment binding only)
-   *   <li>Rate limited to prevent brute force
-   *   <li>Audit logged as critical security event
+   * <li>Single-use recovery codes (removed from array after use)
+   * <li>BCrypt hashed storage
+   * <li>Limited token (30 min validity, enrollment binding only)
+   * <li>Rate limited to prevent brute force
+   * <li>Audit logged as critical security event
    * </ul>
    *
-   * @param request the recovery request containing username and recovery code
+   * @param request     the recovery request containing username and recovery code
    * @param httpRequest the HTTP servlet request for IP extraction
    * @return ResponseEntity containing recovery token or error
    */
-  @Operation(
-      summary = "Recover admin access with recovery code",
-      description =
-          "Emergency access using single-use recovery code. Returns temporary token (30 min) with "
-              + "limited permissions (enrollment reset only).")
-  @ApiResponses(
-      value = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Recovery successful, temporary token issued"),
-        @ApiResponse(
-            responseCode = "400",
-            description =
-                "Validation error (invalid recovery code format) or invalid request data"),
-        @ApiResponse(
-            responseCode = "403",
-            description = "Recovery failed (invalid or expired recovery code)"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Recover admin access with recovery code", description = "Emergency access using single-use recovery code. Returns temporary token (30 min) with "
+      + "limited permissions (enrollment reset only).")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Recovery successful, temporary token issued"),
+      @ApiResponse(responseCode = "400", description = "Validation error (invalid recovery code format) or invalid request data"),
+      @ApiResponse(responseCode = "403", description = "Recovery failed (invalid or expired recovery code)"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PostMapping("/recover")
   public ResponseEntity<AdminRecoveryResponseDto> recover(
       @Valid @RequestBody AdminRecoveryRequestDto request, HttpServletRequest httpRequest) {
@@ -329,20 +348,18 @@ public class AdminAuthController {
       logger.warn(
           "🔑 Recovery attempt for admin: {} from IP: {}", request.username(), context.clientIp());
 
-      String recoveryToken =
-          recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
+      String recoveryToken = recoveryService.validateRecoveryCode(request.username(), request.recoveryCode());
 
       // Get admin to determine codes remaining
-      // Note: Use validateRecoveryToken (not validateToken) since it's a temp token, not bearer
+      // Note: Use validateRecoveryToken (not validateToken) since it's a temp token,
+      // not bearer
       EzkeyAdmin admin = recoveryService.validateRecoveryToken(recoveryToken);
-      int codesRemaining =
-          admin != null && admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;
+      int codesRemaining = admin != null && admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;
 
-      AdminRecoveryResponseDto response =
-          new AdminRecoveryResponseDto(
-              recoveryToken,
-              OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes()),
-              codesRemaining);
+      AdminRecoveryResponseDto response = new AdminRecoveryResponseDto(
+          recoveryToken,
+          OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes()),
+          codesRemaining);
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",
@@ -355,7 +372,7 @@ public class AdminAuthController {
       // Audit successful recovery
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
+              context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(

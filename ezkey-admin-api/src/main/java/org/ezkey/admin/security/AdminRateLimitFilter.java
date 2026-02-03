@@ -10,8 +10,19 @@
 
 package org.ezkey.admin.security;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.ezkey.admin.config.AdminRateLimitProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -22,46 +33,46 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.ezkey.admin.config.AdminRateLimitProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 
 /**
  * HTTP filter for applying rate limiting to admin authentication endpoints.
  *
- * <p>This filter intercepts HTTP requests and applies configurable rate limiting to the admin login
- * endpoint to prevent brute force attacks. Uses Bucket4j token bucket algorithm for efficient rate
+ * <p>
+ * This filter intercepts HTTP requests and applies configurable rate limiting
+ * to the admin login
+ * endpoint to prevent brute force attacks. Uses Bucket4j token bucket algorithm
+ * for efficient rate
  * limiting.
  *
- * <p><b>Targeted Endpoints:</b>
+ * <p>
+ * <b>Targeted Endpoints:</b>
  *
  * <ul>
- *   <li>POST /api/v1/admin/auth/login
+ * <li>POST /api/v1/admin/auth/login
  * </ul>
  *
- * <p><b>Rate Limiting Strategy:</b>
+ * <p>
+ * <b>Rate Limiting Strategy:</b>
  *
  * <ul>
- *   <li>Login: By client IP (configurable)
- *   <li>Blocking: After configurable number of failures
+ * <li>Login: By client IP (configurable)
+ * <li>Blocking: After configurable number of failures
  * </ul>
  *
- * <p><b>Response Behavior:</b>
+ * <p>
+ * <b>Response Behavior:</b>
  *
  * <ul>
- *   <li>HTTP 429 Too Many Requests when limit exceeded
- *   <li>Retry-After header with seconds to wait
- *   <li>Pass-through for non-targeted endpoints
+ * <li>HTTP 429 Too Many Requests when limit exceeded
+ * <li>Retry-After header with seconds to wait
+ * <li>Pass-through for non-targeted endpoints
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -82,7 +93,7 @@ public class AdminRateLimitFilter implements Filter {
   /**
    * Constructs the rate limiting filter with configuration properties.
    *
-   * @param properties the rate limiting configuration properties
+   * @param properties    the rate limiting configuration properties
    * @param meterRegistry the metrics registry for monitoring
    */
   public AdminRateLimitFilter(AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
@@ -90,8 +101,7 @@ public class AdminRateLimitFilter implements Filter {
     this.meterRegistry = meterRegistry;
 
     // Cache buckets for 1 hour with maximum 1000 entries
-    this.bucketCache =
-        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+    this.bucketCache = Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
 
     // Track failure counts and blocked IPs
     this.failureCountMap = new ConcurrentHashMap<>();
@@ -106,6 +116,12 @@ public class AdminRateLimitFilter implements Filter {
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
+
+    // Skip rate limiting if disabled at runtime
+    if (!properties.isEnabled()) {
+      chain.doFilter(request, response);
+      return;
+    }
 
     HttpServletRequest req = (HttpServletRequest) request;
     HttpServletResponse res = (HttpServletResponse) response;
@@ -161,7 +177,7 @@ public class AdminRateLimitFilter implements Filter {
   /**
    * Determines if rate limiting should be applied to the given request.
    *
-   * @param requestUri the request URI
+   * @param requestUri    the request URI
    * @param requestMethod the HTTP method
    * @return true if rate limiting should be applied
    */
@@ -197,13 +213,14 @@ public class AdminRateLimitFilter implements Filter {
   /**
    * Extracts client identifier for rate limiting.
    *
-   * <p>Priority order:
+   * <p>
+   * Priority order:
    *
    * <ol>
-   *   <li>CF-Connecting-IP (Cloudflare header)
-   *   <li>X-Forwarded-For (standard proxy header)
-   *   <li>X-Real-IP (nginx proxy header)
-   *   <li>Fallback: Direct connection IP
+   * <li>CF-Connecting-IP (Cloudflare header)
+   * <li>X-Forwarded-For (standard proxy header)
+   * <li>X-Real-IP (nginx proxy header)
+   * <li>Fallback: Direct connection IP
    * </ol>
    *
    * @param request the HTTP request
@@ -251,8 +268,7 @@ public class AdminRateLimitFilter implements Filter {
     }
 
     // Simple validation for IPv4 and IPv6
-    String ipv4Pattern =
-        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
+    String ipv4Pattern = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
     String ipv6Pattern = "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$";
 
     return ip.matches(ipv4Pattern)
@@ -269,11 +285,10 @@ public class AdminRateLimitFilter implements Filter {
   private Bucket createBucket() {
     AdminRateLimitProperties.LoginConfig config = properties.getLogin();
 
-    Bandwidth limit =
-        Bandwidth.builder()
-            .capacity(config.getRequests())
-            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
-            .build();
+    Bandwidth limit = Bandwidth.builder()
+        .capacity(config.getRequests())
+        .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+        .build();
 
     return Bucket.builder().addLimit(limit).build();
   }
@@ -303,7 +318,8 @@ public class AdminRateLimitFilter implements Filter {
   }
 
   /**
-   * Records a failed authentication attempt for a client. May trigger IP blocking if threshold is
+   * Records a failed authentication attempt for a client. May trigger IP blocking
+   * if threshold is
    * exceeded.
    *
    * @param clientId the client identifier
@@ -316,16 +332,14 @@ public class AdminRateLimitFilter implements Filter {
       return;
     }
 
-    AtomicInteger failureCount =
-        failureCountMap.computeIfAbsent(clientId, k -> new AtomicInteger(0));
+    AtomicInteger failureCount = failureCountMap.computeIfAbsent(clientId, k -> new AtomicInteger(0));
     int failures = failureCount.incrementAndGet();
 
     logger.debug("Failed login attempt {} for IP: {}", failures, clientId);
 
     // Block if threshold exceeded
     if (failures >= blockAfterFailures) {
-      long blockDuration =
-          Duration.ofMinutes(properties.getLogin().getBlockDurationMinutes()).toMillis();
+      long blockDuration = Duration.ofMinutes(properties.getLogin().getBlockDurationMinutes()).toMillis();
       long blockedUntil = System.currentTimeMillis() + blockDuration;
 
       blockedUntilMap.put(clientId, blockedUntil);
@@ -339,7 +353,8 @@ public class AdminRateLimitFilter implements Filter {
   }
 
   /**
-   * Records a successful authentication attempt for a client. Clears failure count and any blocks.
+   * Records a successful authentication attempt for a client. Clears failure
+   * count and any blocks.
    *
    * @param clientId the client identifier
    */

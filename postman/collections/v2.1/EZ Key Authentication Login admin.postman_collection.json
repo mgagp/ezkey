@@ -73,7 +73,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"username\": \"admin.docker\",\r\n    \"challengeRequested\": false\r\n}",
+          "raw": "{\r\n    \"username\": \"admin.docker\",\r\n    \"challengeRequested\": false,\r\n    \"nonBlocking\": false\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -93,7 +93,7 @@
             "login"
           ]
         },
-        "description": "Passwordless authentication for administrators. Supports two authentication modes.\n\n**Request Body:**\n- `username` (required): Administrator username\n- `challengeRequested` (optional, default: false): Whether to use two-step flow with challenge code\n\n**Single-Call Mode (challengeRequested: false):**\n- Endpoint blocks until device approves authentication\n- Returns bearer token immediately on success\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Two-Call Mode (challengeRequested: true):**\n- Returns immediately with challenge info\n- Requires separate `/passwordless-wait` call\n\n**Response (200 OK) - Pending:**\n- `success`: false\n- `status`: \"pending\"\n- `authAttemptId`: Authentication attempt ID\n- `challengeCode`: 6-digit challenge code for device verification\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: When the auth attempt expires\n- `message`: Instruction message\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g., \"No device enrolled\", \"Authentication rejected\")\n\n**Status Codes:**\n- 200: Authentication successful or pending\n- 400: Authentication failed (invalid credentials, no device enrolled)\n- 429: Rate limit exceeded (5 requests per minute per IP)\n- 500: Internal server error"
+        "description": "Passwordless authentication for administrators. Supports multiple authentication modes and flow types.\n\n**Request Body:**\n- `username` (required): Administrator username\n- `challengeRequested` (optional, default: false): Whether to use two-step flow with challenge code (6-digit verification)\n- `nonBlocking` (optional, default: false): Request immediate response with authAttemptId instead of blocking wait. Allows client to display countdown timer and poll /passwordless-wait endpoint. When false (default), blocking wait is used when no challenge is required (backward compatible). This flag has no effect when challenge is required (challenge flow is always non-blocking).\n\n**Authentication Modes:**\n\n### Mode 1: Single-Call Blocking (challengeRequested: false, nonBlocking: false)\n- Default mode for backward compatibility\n- Endpoint blocks until device approves authentication (up to 5 minutes)\n- Returns bearer token immediately on success\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n### Mode 2: Single-Call Non-Blocking (challengeRequested: false, nonBlocking: true)\n- Returns immediately with authAttemptId and expiresAt for polling\n- Client displays countdown timer based on expiresAt\n- Client polls /passwordless-wait endpoint to complete authentication\n\n**Response (200 OK) - Pending:**\n- `success`: false\n- `status`: \"pending\"\n- `authAttemptId`: Authentication attempt ID for polling\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: When the auth attempt expires\n- `message`: \"Waiting for device response. Poll /passwordless-wait with authAttemptId to complete authentication.\"\n\n### Mode 3: Two-Call Challenge (challengeRequested: true, nonBlocking: any)\n- Returns immediately with challenge info (nonBlocking flag is ignored)\n- User enters 6-digit challenge code on device\n- Call /passwordless-wait to get bearer token\n\n**Response (200 OK) - Pending:**\n- `success`: false\n- `status`: \"pending\"\n- `authAttemptId`: Authentication attempt ID\n- `challengeCode`: 6-digit challenge code for device verification\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: When the auth attempt expires\n- `message`: Instruction message\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g., \"No device enrolled\", \"Authentication rejected\")\n\n**Status Codes:**\n- 200: Authentication successful or pending\n- 400: Authentication failed (invalid credentials, no device enrolled)\n- 429: Rate limit exceeded (5 requests per minute per IP)\n- 500: Internal server error"
       },
       "response": []
     },
@@ -160,7 +160,74 @@
             "passwordless-wait"
           ]
         },
-        "description": "Waits for device approval in the two-step passwordless authentication flow. This endpoint blocks for up to 5 minutes waiting for the device response.\n\n**Security:** The challengeCode is required to prevent enumeration attacks on authAttemptId. Only clients that legitimately initiated the authentication and received the challenge can proceed.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n- `challengeCode` (required): 6-digit challenge code from login response\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: Error description (e.g., \"Authentication rejected\", \"Challenge code mismatch\")\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Invalid request (e.g., \"Invalid authAttemptId\")\n\n**Status Codes:**\n- 200: Authentication successful\n- 400: Invalid request\n- 403: Authentication failed (rejected, timeout, invalid challenge)\n- 500: Internal server error"
+        "description": "Waits for device approval in the passwordless authentication flow. Supports two authentication flows:\n\n**Challenge Flow (challengeRequested=true in login):**\n- Provides both authAttemptId and challengeCode from login response\n- Endpoint verifies challengeCode to prevent enumeration attacks\n- Blocks for up to 5 minutes waiting for device response\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n- `challengeCode` (required): 6-digit challenge code from login response\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Non-Blocking Flow (nonBlocking=true in login):**\n- Provides only authAttemptId from login response\n- Challenge code verification is skipped (no challenge in this flow)\n- Blocks for up to 5 minutes waiting for device response (polling mode)\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n- `challengeCode` (optional): Omit this field for non-blocking flow\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: Error description (e.g., \"Authentication rejected\", \"Challenge code mismatch\")\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Invalid request (e.g., \"Invalid authAttemptId\")\n\n**Status Codes:**\n- 200: Authentication successful\n- 400: Invalid request\n- 403: Authentication failed (rejected, timeout, invalid challenge)\n- 500: Internal server error\n\n**Security Notes:**\n- Challenge Flow: The challengeCode acts as proof of legitimacy, preventing enumeration attacks\n- Non-Blocking Flow: Already verified challenge in login, skip verification here"
+      },
+      "response": []
+    },
+    {
+      "name": "passwordless-wait (non-blocking)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 403, or 400\", function () {",
+              "    pm.expect([200, 403, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    if (jsonData.success === true) {",
+              "        pm.environment.set(\"token\", jsonData.token);",
+              "        ",
+              "        // Extract multi-tenancy fields (Phase 1)",
+              "        if (jsonData.adminType) {",
+              "            pm.environment.set(\"adminType\", jsonData.adminType);",
+              "        }",
+              "        if (jsonData.tenantId !== undefined && jsonData.tenantId !== null) {",
+              "            pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "        }",
+              "        ",
+              "        pm.test(\"Response contains token\", function () {",
+              "            pm.expect(jsonData).to.have.property('token');",
+              "            pm.expect(jsonData.token).to.be.a('string');",
+              "        });",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"authAttemptId\": {{authAttemptId}}\r\n}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/passwordless-wait",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "passwordless-wait"
+          ]
+        },
+        "description": "Waits for device approval in the non-blocking passwordless authentication flow.\n\n**Usage:** This request is used when the login call has nonBlocking=true. The /login endpoint returns only authAttemptId (no challengeCode), and this endpoint completes the authentication by waiting for the device response.\n\n**Key Differences from Challenge Flow:**\n- No challengeCode in request (omit the field entirely)\n- No challenge verification on server side\n- Used for responsive UI patterns where client shows countdown timer and polls for completion\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID from login response\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `token`: Bearer token for authenticated API requests\n- `adminType`: Type of administrator\n- `username`: Administrator username\n- `expiresAt`: Token expiration timestamp\n- `message`: \"Authentication successful\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: Error description (e.g., \"Authentication rejected\", \"Device timeout\")\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Invalid request (e.g., \"Invalid authAttemptId\")\n\n**Status Codes:**\n- 200: Authentication successful or failure (check success field)\n- 400: Invalid request\n- 403: Authentication failed\n- 500: Internal server error\n\n**Polling Example:**\nAfter login with nonBlocking=true:\n```\n1. Client receives authAttemptId and expiresAt from /login\n2. Client calculates timeout based on expiresAt\n3. Client displays countdown timer to user\n4. Client polls this endpoint every 1-2 seconds\n5. When success=true, authentication complete and token received\n```"
       },
       "response": []
     },
