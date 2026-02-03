@@ -29,27 +29,50 @@ class ReAuthScreen(ModalScreen):
       width: 75;
       height: auto;
       border: solid $primary;
-      padding: 1 2;
+      padding: 0 1;
       background: $surface;
   }
 
   #title {
       color: $warning;
       margin: 0 0 1 0;
+      height: 1;
       text-align: center;
       width: 1fr;
   }
 
   #message {
       margin: 0 0 1 0;
+      height: auto;
       text-align: center;
       width: 1fr;
   }
 
+  Label {
+      height: 1;
+      margin: 0;
+  }
+
+  #username_input {
+      height: 3;
+      margin: 0 0 1 0;
+  }
+
   #challenge_section {
-      margin: 1 0;
+      margin: 1 0 0 0;
       display: none;
       width: 1fr;
+      height: auto;
+  }
+
+  #challenge_code {
+      height: 1;
+      margin: 0 0 1 0;
+  }
+
+  #challenge_status {
+      height: 1;
+      margin: 0;
   }
 
   #button_row {
@@ -66,6 +89,7 @@ class ReAuthScreen(ModalScreen):
       text-align: center;
       color: $error;
       width: 1fr;
+      height: 1;
   }
 
   .success {
@@ -77,7 +101,7 @@ class ReAuthScreen(ModalScreen):
   }
   """
 
-  current_step = reactive("username")  # username, waiting, failed
+  current_step = reactive("username")
 
   def __init__(self, config, admin_url: str, api_client, mode: str = "reauth"):
     """
@@ -97,6 +121,7 @@ class ReAuthScreen(ModalScreen):
     self.username = ""
     self.auth_manager = None
     self.auth_attempt_id = None
+    self.challenge_code = None
 
   def compose(self):
     """Compose the re-auth screen."""
@@ -112,25 +137,28 @@ class ReAuthScreen(ModalScreen):
       yield Label(title, id="title")
       yield Label(message, id="message")
 
-      # Username input (step 1)
+      # Username input
       yield Label("Username:", classes="label")
       yield Input(placeholder="Enter admin username", id="username_input")
 
-      # Challenge section (step 2)
+      # Challenge section
       with Vertical(id="challenge_section"):
         yield Label("", id="challenge_code", classes="label")
-        yield Label("Waiting for device approval...", id="challenge_status")
+        yield Label("Confirm on device", id="challenge_status")
 
       yield Label("", id="status_label")
 
       with Horizontal(id="button_row"):
-        yield Button("Re-authenticate", variant="primary", id="reauth_btn")
+        yield Button("Verify in Ezkey App", variant="primary", id="reauth_btn")
+        yield Button("Fetch confirmation from device", variant="primary", id="wait_btn", disabled=True)
         yield Button("Quit", variant="default", id="quit_btn")
 
   def on_button_pressed(self, event: Button.Pressed) -> None:
     """Handle button press."""
     if event.button.id == "reauth_btn":
       self.action_reauthenticate()
+    elif event.button.id == "wait_btn":
+      self._do_wait_for_device()
     elif event.button.id == "quit_btn":
       self.app.exit()
 
@@ -138,13 +166,10 @@ class ReAuthScreen(ModalScreen):
     """Focus username input on mount and pre-fill if available."""
     username_input = self.query_one("#username_input", Input)
 
-    # Pre-fill username from config if available
     saved_username = self.config.get_admin_username()
     if saved_username:
       username_input.value = saved_username
       log.debug(f"Username pre-filled from config: {saved_username}")
-    else:
-      log.debug("No saved username in config - user will need to enter it")
 
     username_input.focus()
 
@@ -162,114 +187,155 @@ class ReAuthScreen(ModalScreen):
     self._start_authentication()
 
   def _start_authentication(self) -> None:
-    """Start the authentication process via AuthManager."""
+    """Call login API and display challenge code or wait for device based on config."""
     try:
       from ezkey_cli.auth.auth_manager import AuthManager
 
-      log.debug(f"Starting authentication for user: {self.username}")
-
       self.auth_manager = AuthManager(
           self.admin_url,
-          verify_ssl=False  # Dev mode
+          verify_ssl=False
       )
 
-      # Call login endpoint
+      # Determine login mode from config
+      login_blocking = self.config.is_login_blocking()
+      log.info(f"Login mode: {'blocking' if login_blocking else 'non-blocking'}")
+
+      # Call login
       login_response = self.auth_manager.login(
           username=self.username,
           challenge=False,
+          non_blocking=True,
           timeout=360
       )
 
+      log.info(f"Login response: {login_response}")
+
       if not login_response:
-        self._show_error("Authentication initiation failed")
+        self._show_error("Login failed")
         return
 
-      log.debug(f"Login response: {login_response}")
+      # Get fields from response
+      auth_attempt_id = login_response.get('authAttemptId')
+      ch_code = login_response.get('challengeCode')
 
-      # Check if authentication failed
-      if login_response.get('success') == False:
-        error_msg = login_response.get('message', 'Authentication failed')
-        self._show_error(error_msg)
-        return
+      # Save for non-blocking mode
+      self.auth_attempt_id = auth_attempt_id
+      self.challenge_code = ch_code
 
-      # Check if single-call succeeded
-      if login_response.get('success') and login_response.get('token'):
-        token = login_response.get('token')
-        self._save_token(token, login_response)  # Pass full response
-        return
+      # Hide username input
+      self.query_one("#username_input", Input).display = False
+      self.query_one("#reauth_btn", Button).disabled = True
 
-      # Check if challenge mode
-      if (login_response.get('status') == 'pending' and
-          login_response.get('authAttemptId')):
+      # Show challenge section and display the code
+      self.query_one("#challenge_section").display = True
+      if ch_code:
+        self.query_one("#challenge_code", Label).update(f"📱 Challenge Code: {ch_code}")
+        log.info(f"Displayed challenge code: {ch_code}")
+      else:
+        self.query_one("#challenge_code", Label).update("Waiting for device approval...")
+        log.info("No challenge code in response")
 
-        self.auth_attempt_id = login_response.get('authAttemptId')
-        challenge_code = login_response.get('challengeCode')
-
-        # Show challenge UI
-        self._show_challenge(challenge_code)
-
-        # Wait for challenge completion
-        self._wait_for_challenge()
-        return
-
-      self._show_error("Unexpected authentication response")
+      # Handle two modes
+      if login_blocking:
+        # BLOCKING MODE: Immediately wait for device approval
+        log.info("Entering blocking wait mode...")
+        self._do_wait_for_device_blocking()
+      else:
+        # NON-BLOCKING MODE: Show button and wait for user to click
+        self.query_one("#wait_btn", Button).disabled = False
+        log.info("Waiting for user to click wait button...")
 
     except Exception as e:
-      log.error(f"Authentication error: {e}", exc_info=True)
+      log.error(f"Error: {e}", exc_info=True)
       self._show_error(f"Error: {str(e)[:50]}")
 
-  def _show_challenge(self, challenge_code: str) -> None:
-    """Show challenge code and waiting message."""
-    # Hide username input
-    self.query_one("#username_input", Input).display = False
-
-    # Show challenge section
-    challenge_section = self.query_one("#challenge_section")
-    challenge_section.display = True
-
-    code_label = self.query_one("#challenge_code", Label)
-    code_label.update(f"📱 Challenge Code: {challenge_code}")
-
-    status_label = self.query_one("#status_label", Label)
-    status_label.update("⏳ Waiting for device approval...")
-    status_label.set_class(True, "waiting")
-
-  def _wait_for_challenge(self) -> None:
-    """Poll for challenge completion."""
-    if not self.auth_attempt_id or not self.auth_manager:
-      self._show_error("Challenge session lost")
-      return
-
+  def _do_wait_for_device_blocking(self) -> None:
+    """Wait for device approval synchronously (blocking mode)."""
     try:
-      # Poll for up to 5 minutes
-      for attempt in range(30):
-        challenge_response = self.auth_manager.wait_for_challenge(
-            auth_attempt_id=self.auth_attempt_id,
-            challenge_code=self.query_one("#challenge_code", Label).renderable.split(": ")[1] if ": " in str(self.query_one("#challenge_code", Label).renderable) else "",
-            timeout=10
-        )
+      if not self.auth_attempt_id:
+        self._show_error("No auth attempt ID")
+        return
 
-        if challenge_response and challenge_response.get('success'):
-          token = challenge_response.get('token')
-          if token:
-            self._save_token(token, challenge_response)  # Pass full response
-            return
+      log.info(f"Waiting for device approval... (authAttemptId={self.auth_attempt_id})")
 
-      # Timeout
-      self._show_error("Challenge timeout - please try again")
+      wait_response = self.auth_manager.wait_for_challenge(
+          auth_attempt_id=self.auth_attempt_id,
+          challenge_code=self.challenge_code,
+          timeout=360
+      )
+
+      log.info(f"Device response: {wait_response}")
+
+      # Check if device approved
+      if wait_response and wait_response.get('success') and wait_response.get('token'):
+        token = wait_response.get('token')
+        log.info("Device approved! Saving token...")
+        self._save_token(token, wait_response)
+        return
+
+      # Device rejected or error
+      if wait_response and not wait_response.get('success'):
+        msg = wait_response.get('message', 'Device rejected')
+        log.error(f"Device rejected: {msg}")
+        self._show_error(f"❌ {msg}")
+        return
+
+      log.error("Unexpected wait response")
+      self._show_error("No response from device")
 
     except Exception as e:
-      log.error(f"Challenge wait error: {e}", exc_info=True)
+      log.error(f"Device wait error: {e}", exc_info=True)
       self._show_error(f"Error: {str(e)[:50]}")
+
+  def _do_wait_for_device(self) -> None:
+    """Wait for device approval (called when user clicks the wait button)."""
+    try:
+      if not self.auth_attempt_id:
+        self._show_error("No auth attempt ID")
+        return
+
+      log.info(f"Waiting for device approval... (authAttemptId={self.auth_attempt_id})")
+      self.query_one("#wait_btn", Button).disabled = True
+
+      wait_response = self.auth_manager.wait_for_challenge(
+          auth_attempt_id=self.auth_attempt_id,
+          challenge_code=self.challenge_code,
+          timeout=360
+      )
+
+      log.info(f"Device response: {wait_response}")
+
+      # Check if device approved
+      if wait_response and wait_response.get('success') and wait_response.get('token'):
+        token = wait_response.get('token')
+        log.info("Device approved! Saving token...")
+        self._save_token(token, wait_response)
+        return
+
+      # Device rejected or error
+      if wait_response and not wait_response.get('success'):
+        msg = wait_response.get('message', 'Device rejected')
+        log.error(f"Device rejected: {msg}")
+        self._show_error(f"❌ {msg}")
+        self.query_one("#wait_btn", Button).disabled = False
+        return
+
+      log.error("Unexpected wait response")
+      self._show_error("No response from device")
+      self.query_one("#wait_btn", Button).disabled = False
+
+    except Exception as e:
+      log.error(f"Device wait error: {e}", exc_info=True)
+      self._show_error(f"Error: {str(e)[:50]}")
+      self.query_one("#wait_btn", Button).disabled = False
 
   def _save_token(self, token: str, login_response: dict = None) -> None:
     """Save token and show success."""
     try:
       self.config.set_bearer_token(token)
-      self.config.set_admin_username(self.username)  # Also save username
-      self.config.set_last_auth_time()  # Reset session timeout
+      self.config.set_admin_username(self.username)
+      self.config.set_last_auth_time()
 
-      # Save metadata from login response if available
       if login_response:
         admin_type = login_response.get('adminType')
         if admin_type:
@@ -286,22 +352,18 @@ class ReAuthScreen(ModalScreen):
       if local_config_path.exists():
         self.config.save(global_config=False)
       else:
-        # Create local config for TUI instance isolation
         self.config.save(global_config=False)
 
-      # Update API client
       self.api_client.bearer_token = token
       self.api_client.headers["Authorization"] = f"Bearer {token}"
 
       log.info("Token and username saved, ApiClient updated")
 
-      # Show success
       status_label = self.query_one("#status_label", Label)
       status_label.update("✓ Re-authentication successful!")
       status_label.set_class(False, "waiting")
       status_label.set_class(True, "success")
 
-      # Close modal and show dashboard
       self.app.pop_screen()
       self.app.push_screen("home")
 
@@ -316,9 +378,7 @@ class ReAuthScreen(ModalScreen):
     status_label.set_class(False, "waiting")
     status_label.set_class(True, "error")
 
-    # Reset UI
     self.current_step = "failed"
     self.query_one("#username_input", Input).display = True
     self.query_one("#challenge_section").display = False
     self.query_one("#reauth_btn", Button).disabled = False
-

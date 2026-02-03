@@ -34,15 +34,14 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
 
     Use 'ezkey --tui' to start the interactive admin console.
     """
-    # Handle TUI mode
-    if tui:
+    # Initialize configuration first
+    config = ConfigManager()
+
+    # Handle TUI mode - check explicit flag or default config
+    if tui or config.is_default_tui():
         from .tui import start_tui
-        config = ConfigManager()
         start_tui(config)
         return
-
-    # Initialize configuration
-    config = ConfigManager()
 
     # Override config with command line options
     overrides = {}

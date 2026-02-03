@@ -37,6 +37,7 @@ class AuthManager:
       self,
       username: str,
       challenge: bool = False,
+      non_blocking: bool = False,
       timeout: int = 360
   ) -> Optional[Dict[str, Any]]:
     """
@@ -47,6 +48,7 @@ class AuthManager:
     Args:
         username: Admin username
         challenge: If True, use two-step mode (returns challenge code, requires separate wait)
+        non_blocking: If True, return immediately with authAttemptId instead of blocking wait
         timeout: Timeout in seconds (default 6 minutes for device approval window)
 
     Returns:
@@ -57,7 +59,8 @@ class AuthManager:
       url = f"{self.admin_url}/api/v1/admin/auth/login"
       payload = {
           "username": username,
-          "challengeRequested": challenge
+          "challengeRequested": challenge,
+          "nonBlocking": non_blocking
       }
 
       response = requests.post(
@@ -81,13 +84,15 @@ class AuthManager:
       timeout: int = 360
   ) -> Optional[Dict[str, Any]]:
     """
-    Wait for device to approve challenge (two-step auth).
+    Wait for device to approve authentication (two-step or non-blocking flow).
 
-    Used after login() returns challengeCode in two-step mode.
+    Used after login() returns authAttemptId when either:
+    - Challenge mode: challengeRequested=true (returns challengeCode)
+    - Non-blocking mode: nonBlocking=true (returns authAttemptId)
 
     Args:
-        auth_attempt_id: Auth attempt ID from challenge response
-        challenge_code: Challenge code (optional)
+        auth_attempt_id: Auth attempt ID from login response
+        challenge_code: Challenge code from login response (required for challenge flow)
         timeout: Timeout in seconds
 
     Returns:
@@ -95,17 +100,16 @@ class AuthManager:
     """
     try:
       url = f"{self.admin_url}/api/v1/admin/auth/passwordless-wait"
-      params = {
-          "authAttemptId": auth_attempt_id,
-          "timeout": timeout
+      payload = {
+          "authAttemptId": auth_attempt_id
       }
 
       if challenge_code is not None:
-        params["challengeCode"] = challenge_code
+        payload["challengeCode"] = challenge_code
 
-      response = requests.get(
+      response = requests.post(
           url,
-          params=params,
+          json=payload,
           timeout=timeout + 5,
           verify=self.verify_ssl
       )

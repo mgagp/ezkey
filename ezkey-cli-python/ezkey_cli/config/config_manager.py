@@ -41,7 +41,9 @@ class ConfigManager:
             "cryptoUrl": os.getenv("EZKEY_CRYPTO_API_URL", "http://localhost:9090"),
             "prettyPrint": True,
             "timeout": 30000,
-            "dashboardRefreshSeconds": 30
+            "dashboardRefreshSeconds": 30,
+            "loginBlocking": True,
+            "defaultTUI": False
         }
 
         # Load from home directory config
@@ -110,7 +112,9 @@ class ConfigManager:
             "cryptoUrl": os.getenv("EZKEY_CRYPTO_API_URL", "http://localhost:9090"),
             "prettyPrint": True,
             "timeout": 30000,
-            "dashboardRefreshSeconds": 30
+            "dashboardRefreshSeconds": 30,
+            "loginBlocking": True,
+            "defaultTUI": False
         }
 
     def set_bearer_token(self, token: str) -> None:
@@ -177,7 +181,22 @@ class ConfigManager:
     def get_admin_username(self) -> Optional[str]:
         """Get the stored admin username."""
         return self._config.get('adminUsername')
-        return self._config.get('adminUsername')
+
+    def is_login_blocking(self) -> bool:
+        """Check if login should be blocking (wait for device approval immediately)."""
+        return self._config.get('loginBlocking', True)
+
+    def set_login_blocking(self, blocking: bool) -> None:
+        """Set login blocking mode."""
+        self._config['loginBlocking'] = blocking
+
+    def is_default_tui(self) -> bool:
+        """Check if TUI should be launched by default."""
+        return self._config.get('defaultTUI', False)
+
+    def set_default_tui(self, enabled: bool) -> None:
+        """Set whether to launch TUI by default."""
+        self._config['defaultTUI'] = enabled
 
     def set_last_auth_time(self) -> None:
         """Record the current time as last successful authentication."""
