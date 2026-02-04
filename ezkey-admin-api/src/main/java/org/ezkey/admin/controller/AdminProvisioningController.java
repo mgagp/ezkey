@@ -442,9 +442,18 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    // TODO: Implement deactivation logic with min limit enforcement and token revocation
-    // This will be implemented in the deactivation-revocation todo
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    try {
+      provisioningService.deactivateAdmin(id, principal);
+      return ResponseEntity.noContent().build();
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.notFound().build();
+    } catch (IllegalArgumentException e) {
+      // Cannot deactivate yourself
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    } catch (IllegalStateException e) {
+      // Would violate minimum limits
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
   }
 
   /**

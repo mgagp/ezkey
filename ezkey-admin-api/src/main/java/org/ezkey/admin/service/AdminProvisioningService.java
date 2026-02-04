@@ -22,6 +22,7 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
+import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
@@ -81,6 +82,7 @@ public class AdminProvisioningService {
   private final AdminRecoveryService recoveryService;
   private final SignatureService signatureService;
   private final AdminSecurityProperties securityProperties;
+  private final AdminTokenRepository tokenRepository;
 
   public AdminProvisioningService(
       TenantRepository tenantRepository,
@@ -89,7 +91,8 @@ public class AdminProvisioningService {
       EnrollmentRepository enrollmentRepository,
       AdminRecoveryService recoveryService,
       SignatureService signatureService,
-      AdminSecurityProperties securityProperties) {
+      AdminSecurityProperties securityProperties,
+      AdminTokenRepository tokenRepository) {
     this.tenantRepository = tenantRepository;
     this.adminRepository = adminRepository;
     this.integrationRepository = integrationRepository;
@@ -97,6 +100,7 @@ public class AdminProvisioningService {
     this.recoveryService = recoveryService;
     this.signatureService = signatureService;
     this.securityProperties = securityProperties;
+    this.tokenRepository = tokenRepository;
   }
 
   /**
@@ -610,6 +614,84 @@ public class AdminProvisioningService {
         loadedEnrollment.getEnrollmentProofToken(),
         loadedEnrollment.getEnrollmentChallenge(),
         null); // Recovery codes cannot be retrieved after initial provisioning (BCrypt hashed)
+  }
+
+  /**
+   * Deactivates an administrator account.
+   *
+   * <p>This method deactivates an administrator based on the following rules:
+   *
+   * <ul>
+   *   <li>A global admin can deactivate another global admin (but not themselves)
+   *   <li>A global admin can deactivate any tenant admin
+   *   <li>Cannot deactivate if it would violate minimum admin limits
+   *   <li>All active tokens for the admin are revoked upon deactivation
+   * </ul>
+   *
+   * <p><b>NOTE:</b> Unlike tenant admin minimum limits, global admin deactivation is allowed even
+   * if the tenant admin is the only admin for their tenant. This is intentional to avoid preventing
+   * global admins from deactivating tenant admins.
+   *
+   * @param adminId the ID of the administrator to deactivate
+   * @param principal the admin principal performing the deactivation
+   * @throws ResourceNotFoundException if the administrator to deactivate is not found
+   * @throws IllegalArgumentException if the admin tries to deactivate themselves
+   * @throws IllegalStateException if deactivation would violate minimum limits
+   */
+  @Transactional
+  public void deactivateAdmin(Integer adminId, AdminPrincipal principal) {
+    // Load the admin to deactivate
+    EzkeyAdmin adminToDeactivate =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    // Rule 1: Cannot deactivate yourself
+    if (principal.adminId().equals(adminId)) {
+      logger.warn(
+          "Admin {} attempted to deactivate themselves", adminToDeactivate.getUsername());
+      throw new IllegalArgumentException("Cannot deactivate your own account");
+    }
+
+    // Rule 2: Check if admin is already inactive
+    if (!adminToDeactivate.getActive()) {
+      logger.info("Admin {} is already inactive", adminId);
+      return; // Idempotent - nothing to do
+    }
+
+    // Rule 3: Enforce minimum limits for global admins
+    if (adminToDeactivate.getAdminType() == AdminType.GLOBAL_ADMIN) {
+      long activeGlobalAdmins =
+          adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
+      int minGlobalAdmins = securityProperties.getMinGlobalAdmins();
+
+      if (activeGlobalAdmins <= minGlobalAdmins) {
+        logger.warn(
+            "Cannot deactivate global admin {} - would violate minimum limit "
+                + "(current: {}, min: {})",
+            adminId,
+            activeGlobalAdmins,
+            minGlobalAdmins);
+        throw new IllegalStateException(
+            "Cannot deactivate global admin - would violate minimum limit of " + minGlobalAdmins);
+      }
+    }
+
+    // Rule 4: For tenant admins, minimum limits are NOT enforced per issue requirements
+    // Global admins can deactivate tenant admins even if they're the only admin for their tenant
+
+    // Deactivate the admin
+    adminToDeactivate.setActive(false);
+    adminRepository.save(adminToDeactivate);
+
+    // Revoke all active tokens for this admin
+    int tokensRevoked = tokenRepository.deactivateAllTokensForAdmin(adminId);
+
+    logger.info(
+        "✅ Admin {} deactivated by admin {} ({} tokens revoked)",
+        adminToDeactivate.getUsername(),
+        principal.adminId(),
+        tokensRevoked);
   }
 
   /**
