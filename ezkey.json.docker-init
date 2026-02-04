@@ -1,0 +1,13 @@
+{
+  "adminUrl": "http://admin-api:9080",
+  "adminHealthUrl": "http://admin-api:9081",
+  "authUrl": "http://auth-api:8080",
+  "cryptoUrl": "http://crypto-api:9090",
+  "prettyPrint": true,
+  "timeout": 30000,
+  "dashboardRefreshSeconds": 30,
+  "loginBlocking": true,
+  "defaultTUI": true,
+  "adminUsername": "admin.docker",
+  "adminType": "GLOBAL_ADMIN"
+}

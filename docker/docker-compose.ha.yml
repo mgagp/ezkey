@@ -314,6 +314,8 @@ services:
     volumes:
       - cli-config:/root/.ezkey
       - cli-work:/work
+      - cli-bash-history:/root
+      - ../ezkey.json.docker-init:/tmp/ezkey.json.docker-init:ro
     working_dir: /work
     command: tail -f /dev/null
     stdin_open: true

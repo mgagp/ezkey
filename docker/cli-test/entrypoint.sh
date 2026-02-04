@@ -23,7 +23,11 @@ if [ ! -f "${CONFIG_FILE}" ]; then
   "cryptoUrl": "${CRYPTO_URL}",
   "prettyPrint": true,
   "timeout": 30000,
-  "dashboardRefreshSeconds": 30
+  "dashboardRefreshSeconds": 30,
+  "loginBlocking": true,
+  "defaultTUI": true,
+  "adminUsername": "admin.docker",
+  "adminType": "GLOBAL_ADMIN"
 }
 EOF
 fi
