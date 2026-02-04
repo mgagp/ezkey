@@ -115,7 +115,7 @@ Once started, you can access:
 ## Services
 
 ### PostgreSQL (postgres)
-- **Image**: `postgres:17-alpine`
+- **Image**: `postgres:18-alpine`
 - **Port**: `5432` (internal only)
 - **Database**: `ezkey_db`
 - **Username**: `postgres`

@@ -8,7 +8,7 @@ x-buildkit: &buildkit
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: ezkey-postgres-native
     environment:
       POSTGRES_DB: ezkey_db

@@ -75,7 +75,7 @@ docker run -d --name ezkey-postgres-test \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=ezkey \
     -p 5433:5432 \
-    postgres:17-alpine
+    postgres:18-alpine
 ```
 
 **Attendre que PostgreSQL soit prêt**:
@@ -115,7 +115,7 @@ sleep 10
 curl http://localhost:8080/actuator/health
 ```
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - Démarrage rapide (~2-5 secondes)
 - Health endpoint retourne `{"status":"UP"}` ou similaire
 - Pas d'erreurs dans les logs
@@ -202,7 +202,7 @@ sleep 15
 curl http://localhost:9080/actuator/health
 ```
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - Démarrage rapide (~3-5 secondes)
 - Health endpoint retourne `{"status":"UP"}` ou similaire
 - Pas d'erreurs dans les logs
@@ -300,7 +300,7 @@ mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
 - ✅ La compilation GraalVM se termine avec succès
 - ✅ L'image Docker `ezkey-auth-api-native-nojson:latest` est créée
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - **Si succès**: Les fichiers JSON sont redondants ✅
 - **Si échec**: Noter les erreurs pour identifier ce qui manque
 
@@ -355,7 +355,7 @@ curl -X POST http://localhost:8081/api/v1/enrollments/bind \
     -d '{"enrollmentId":1,"enrollmentProofToken":"test"}'
 ```
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - **Si succès**: Les fichiers JSON sont redondants, on peut les supprimer définitivement ✅
 - **Si échec**: Noter les erreurs précises pour identifier ce qui manque dans AuthNativeConfiguration.java
 
@@ -421,7 +421,7 @@ mvn spring-boot:build-image -pl ezkey-admin-api -Pnative \
 - ✅ La compilation GraalVM se termine avec succès
 - ✅ L'image Docker `ezkey-admin-api-native-nojson:latest` est créée
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - **Si succès**: Les fichiers JSON sont redondants ✅
 - **Si échec**: Noter les erreurs pour identifier ce qui manque
 
@@ -474,7 +474,7 @@ curl http://localhost:9081/actuator/health
 curl http://localhost:9081/api/v1/integrations
 ```
 
-**Résultat attendu**: 
+**Résultat attendu**:
 - **Si succès**: Les fichiers JSON sont redondants, on peut les supprimer définitivement ✅
 - **Si échec**: Noter les erreurs précises pour identifier ce qui manque dans AdminNativeConfiguration.java
 

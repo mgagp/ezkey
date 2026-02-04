@@ -479,7 +479,7 @@ This will start the complete EZ Key stack including PostgreSQL, all APIs, and th
 docker run --name ezkey-postgres \
   -e POSTGRES_PASSWORD=ezkey \
   -e POSTGRES_DB=ezkey_db \
-  -p 5432:5432 -d postgres:17
+  -p 5432:5432 -d postgres:18
 ```
 
 2. **Run Database Migrations**:

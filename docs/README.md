@@ -293,7 +293,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
      -e POSTGRES_DB=ezkey_db \
      -e POSTGRES_USER=postgres \
      -e POSTGRES_PASSWORD=ezkey \
-     -p 5432:5432 postgres:17
+     -p 5432:5432 postgres:18
    ```
 
 3. **Build and run the core services**
