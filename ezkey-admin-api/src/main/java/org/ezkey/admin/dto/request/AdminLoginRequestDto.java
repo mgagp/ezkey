@@ -27,6 +27,7 @@ import jakarta.validation.constraints.Size;
  *
  * @param username Administrator username for passwordless authentication
  * @param challengeRequested Request challenge verification on device (6-digit code)
+ * @param nonBlocking Request immediate response with authAttemptId instead of blocking wait
  * @author Ezkey contributors
  * @since 2025
  */
@@ -45,4 +46,15 @@ public record AdminLoginRequestDto(
                     + " authAttemptId and challengeCode for two-step flow",
             example = "false",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        Boolean challengeRequested) {}
+        Boolean challengeRequested,
+    @Schema(
+            description =
+                "Request immediate response with authAttemptId and expiresAt instead of"
+                    + " blocking until device responds. Allows client to display countdown"
+                    + " timer and poll /passwordless-wait endpoint. When false (default),"
+                    + " blocking wait is used when no challenge is required (backward"
+                    + " compatible). This flag has no effect when challenge is required"
+                    + " (challenge flow is always non-blocking).",
+            example = "false",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Boolean nonBlocking) {}

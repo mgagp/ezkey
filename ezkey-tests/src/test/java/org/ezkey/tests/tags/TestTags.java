@@ -189,6 +189,19 @@ public final class TestTags {
   public static final String ENROLLMENT = "enrollment";
 
   /**
+   * Tests related to the Ezkey CLI (command-line interface).
+   *
+   * <p>Includes:
+   *
+   * <ul>
+   *   <li>CLI command execution
+   *   <li>Configuration handling
+   *   <li>CLI integration with Docker stack
+   * </ul>
+   */
+  public static final String CLI = "cli";
+
+  /**
    * Tests related to authentication flow.
    *
    * <p>Includes:

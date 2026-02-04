@@ -1,378 +1,378 @@
 {
-	"info": {
-		"_postman_id": "8a99ab9b-c378-44dc-99cc-23569f7d7f59",
-		"name": "EZ Key Auth Attempts auth",
-		"description": "Collection for mobile device authentication operations in the Auth API.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond**: Submit user's response (approve/deny) to authentication request\n\n## Crypto Operations\n\nThis collection includes helper endpoints from the Crypto API:\n- **Generate Proof Token**: Generate device proof token for authentication\n- **Sign**: Cryptographically sign data with device private key\n- **Validate**: Validate cryptographic signatures\n\n## Authentication Flow\n\n1. Generate device proof token and sign it\n2. Check for pending authentication attempts\n3. Validate integration's signature on auth attempt proof token\n4. Sign auth attempt proof token with device private key\n5. Submit response (approve/deny) with signatures\n\n## Security Notes\n\n- Uses enrollment proof token in request body (not URL) to prevent enumeration attacks\n- All cryptographic operations use EC P-256 (ECDSA-SHA256)\n- Device proof token provides authentication for pending requests\n- Auth attempt proof token signed by integration proves request authenticity\n- Auth attempt proof token signed by device proves device received the request\n\n## Rate Limiting\n\n- Pending endpoint: Rate limited to prevent abuse (normal user behavior expected)\n- User-initiated polling model (no automatic background polling)",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "4087"
-	},
-	"item": [
-		{
-			"name": "1 crypto generate device proof token",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"device_proofToken\", jsonData.proofToken);",
-							"    ",
-							"    pm.test(\"Response contains proofToken\", function () {",
-							"        pm.expect(jsonData).to.have.property('proofToken');",
-							"        pm.expect(jsonData.proofToken).to.be.a('string');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_crypto_api}}/api/v1/crypto/prooftoken",
-					"host": [
-						"{{base_url_crypto_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"crypto",
-						"prooftoken"
-					]
-				},
-				"description": "Generates a unique proof token for device authentication. This token is used to prove the device's authenticity when checking for pending authentication attempts.\n\n**Response (200 OK):**\n- `proofToken`: Unique proof token string\n\n**Usage:** This token must be signed with the device's private key and included in the pending request."
-			},
-			"response": []
-		},
-		{
-			"name": "2 crypto device prooftoken signature",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"device_prooftoken_signature\", jsonData.signature);",
-							"    ",
-							"    pm.test(\"Response contains signature\", function () {",
-							"        pm.expect(jsonData).to.have.property('signature');",
-							"        pm.expect(jsonData.signature).to.be.a('string');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"data\": \"{{device_proofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
-					"host": [
-						"{{base_url_crypto_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"crypto",
-						"sign"
-					]
-				},
-				"description": "Signs the device proof token with the device's private key. This signature proves the device's authenticity when checking for pending authentication attempts.\n\n**Request Body:**\n- `data`: The device proof token to sign\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Usage:** The signature is included in the pending request as `deviceProofTokenSigned`."
-			},
-			"response": []
-		},
-		{
-			"name": "3 pending",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 204\", function () {",
-							"    pm.expect([200, 204]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
-							"    pm.environment.set(\"authAttemptProofToken\", jsonData.authAttemptProofToken);",
-							"    pm.environment.set(\"authAttemptProofTokenSignedByIntegration\", jsonData.authAttemptProofTokenSignedByIntegration);",
-							"    pm.environment.set(\"authAttemptChallengeRequired\", jsonData.authAttemptChallengeRequired);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('authAttemptId');",
-							"        pm.expect(jsonData).to.have.property('authAttemptProofToken');",
-							"        pm.expect(jsonData).to.have.property('authAttemptProofTokenSignedByIntegration');",
-							"        pm.expect(jsonData).to.have.property('authAttemptChallengeRequired');",
-							"    });",
-							"} else if (pm.response.code === 204) {",
-							"    pm.test(\"No pending requests\", function () {",
-							"        pm.expect(pm.response.code).to.equal(204);",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"enrollmentProofToken\": \"{{enrollmentProofToken}}\",\r\n    \"deviceProofToken\": \"{{device_proofToken}}\",\r\n    \"deviceProofTokenSigned\": \"{{device_prooftoken_signature}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url}}/api/v1/auth-attempts/pending",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"auth-attempts",
-						"pending"
-					]
-				},
-				"description": "Checks for pending authentication requests for the device's enrollment. This endpoint uses a **user-initiated polling model** - the mobile app polls only when the user explicitly requests to check for pending attempts.\n\n**Security Enhancement:** Uses `enrollmentProofToken` in the request body (not URL path) to prevent enumeration attacks.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to check for pending attempts\n- `enrollmentProofToken` (required): Cryptographic proof token that authenticates the enrollment\n- `deviceProofToken` (required): Device proof token generated in step 1\n- `deviceProofTokenSigned` (required): Cryptographic signature of device proof token\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier of the authentication attempt\n- `authAttemptProofToken`: Authentication proof token containing challenge data\n- `authAttemptProofTokenSignedByIntegration`: Integration-signed proof token for integrity verification\n- `authAttemptChallengeRequired`: Whether additional challenge validation is required\n\n**Response (204 No Content):**\nNo pending authentication attempts found. This is a normal operational state, not an error.\n\n**Status Codes:**\n- 200: Pending authentication attempt found\n- 204: No pending authentication attempts\n- 400: Invalid request or enrollment proof token\n- 429: Rate limit exceeded\n\n**Note:** The mobile app should verify the integration's signature on `authAttemptProofToken` before proceeding."
-			},
-			"response": []
-		},
-		{
-			"name": "5 crypto validate auth prooftoken by integration",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"valid\", jsonData.valid);",
-							"    ",
-							"    pm.test(\"Response contains valid field\", function () {",
-							"        pm.expect(jsonData).to.have.property('valid');",
-							"        pm.expect(jsonData.valid).to.be.a('boolean');",
-							"    });",
-							"    ",
-							"    pm.test(\"Signature is valid\", function () {",
-							"        pm.expect(jsonData.valid).to.be.true;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
-					"host": [
-						"{{base_url_crypto_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"crypto",
-						"validate"
-					]
-				},
-				"description": "Validates the integration's signature on the authentication proof token. This ensures the authentication request is authentic and has not been tampered with.\n\n**Request Body:**\n- `data`: The authentication proof token to validate\n- `signature`: Integration's signature on the proof token\n- `publicKey`: Integration's public key (EC P-256, X.509 format, Base64 encoded)\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
-			},
-			"response": []
-		},
-		{
-			"name": "6 crypto sign authAttempt prooftoken by device",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"authAttemptProofTokenSignedByDevice\", jsonData.signature);",
-							"    ",
-							"    pm.test(\"Response contains signature\", function () {",
-							"        pm.expect(jsonData).to.have.property('signature');",
-							"        pm.expect(jsonData.signature).to.be.a('string');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
-					"host": [
-						"{{base_url_crypto_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"crypto",
-						"sign"
-					]
-				},
-				"description": "Signs the authentication proof token with the device's private key. This signature proves that the device has received the original authentication request and is responding to it.\n\n**Request Body:**\n- `data`: The authentication proof token (from pending response)\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Security Note:** This signature is included in the respond request as `authAttemptProofTokenSignedByDevice`. It proves the device received the original token and prevents replay attacks."
-			},
-			"response": []
-		},
-		{
-			"name": "6 respond",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('result');",
-							"        pm.expect(jsonData).to.have.property('message');",
-							"    });",
-							"    ",
-							"    pm.test(\"Result is valid\", function () {",
-							"        var validResults = ['APPROVED', 'DENIED', 'FAILED', 'EXPIRED'];",
-							"        pm.expect(validResults).to.include(jsonData.result);",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": true,\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url}}/api/v1/auth-attempts/respond",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"auth-attempts",
-						"respond"
-					]
-				},
-				"description": "Submits the mobile device's response to an authentication request. This endpoint completes the MFA authentication flow by submitting the user's decision (approve/deny) along with cryptographic proofs.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID to respond to\n- `authAttemptAccepted` (required): User's decision (true = approve, false = deny)\n- `authAttemptProofTokenSignedByDevice` (required): Device's signature on the authentication proof token\n- `authAttemptChallengeResponse` (required): Response to challenge (0 if no challenge required, or challenge code if required)\n\n**Response (200 OK):**\n- `result`: Authentication result (APPROVED, DENIED, FAILED, EXPIRED)\n- `message`: Success confirmation or error details for user feedback\n\n**Status Codes:**\n- 200: Authentication response submitted successfully\n- 400: Invalid response data or validation failed\n- 409: Authentication attempt state conflict (e.g., already responded or expired)\n- 500: Internal server error\n\n**Security Note:** The `authAttemptProofTokenSignedByDevice` must sign the `authAttemptProofToken` (not the enrollment proof token) to prove the device received the original authentication request."
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "authAttemptChallengeResponse",
-			"value": "0",
-			"description": "Challenge response (0 if no challenge required, or challenge code if required)"
-		}
-	]
+  "info": {
+    "_postman_id": "ee4f0c3e-66f8-4ea8-a990-e37ddfc4598e",
+    "name": "EZ Key Auth Attempts auth",
+    "description": "Collection for mobile device authentication operations in the Auth API.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond**: Submit user's response (approve/deny) to authentication request\n\n## Crypto Operations\n\nThis collection includes helper endpoints from the Crypto API:\n- **Generate Proof Token**: Generate device proof token for authentication\n- **Sign**: Cryptographically sign data with device private key\n- **Validate**: Validate cryptographic signatures\n\n## Authentication Flow\n\n1. Generate device proof token and sign it\n2. Check for pending authentication attempts\n3. Validate integration's signature on auth attempt proof token\n4. Sign auth attempt proof token with device private key\n5. Submit response (approve/deny) with signatures\n\n## Security Notes\n\n- Uses enrollment proof token in request body (not URL) to prevent enumeration attacks\n- All cryptographic operations use EC P-256 (ECDSA-SHA256)\n- Device proof token provides authentication for pending requests\n- Auth attempt proof token signed by integration proves request authenticity\n- Auth attempt proof token signed by device proves device received the request\n\n## Rate Limiting\n\n- Pending endpoint: Rate limited to prevent abuse (normal user behavior expected)\n- User-initiated polling model (no automatic background polling)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "1 crypto generate device proof token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"device_proofToken\", jsonData.proofToken);",
+              "    ",
+              "    pm.test(\"Response contains proofToken\", function () {",
+              "        pm.expect(jsonData).to.have.property('proofToken');",
+              "        pm.expect(jsonData.proofToken).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/prooftoken",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "prooftoken"
+          ]
+        },
+        "description": "Generates a unique proof token for device authentication. This token is used to prove the device's authenticity when checking for pending authentication attempts.\n\n**Response (200 OK):**\n- `proofToken`: Unique proof token string\n\n**Usage:** This token must be signed with the device's private key and included in the pending request."
+      },
+      "response": []
+    },
+    {
+      "name": "2 crypto device prooftoken signature",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"device_prooftoken_signature\", jsonData.signature);",
+              "    ",
+              "    pm.test(\"Response contains signature\", function () {",
+              "        pm.expect(jsonData).to.have.property('signature');",
+              "        pm.expect(jsonData.signature).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{device_proofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "sign"
+          ]
+        },
+        "description": "Signs the device proof token with the device's private key. This signature proves the device's authenticity when checking for pending authentication attempts.\n\n**Request Body:**\n- `data`: The device proof token to sign\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Usage:** The signature is included in the pending request as `deviceProofTokenSigned`."
+      },
+      "response": []
+    },
+    {
+      "name": "3 pending",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 204\", function () {",
+              "    pm.expect([200, 204]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+              "    pm.environment.set(\"authAttemptProofToken\", jsonData.authAttemptProofToken);",
+              "    pm.environment.set(\"authAttemptProofTokenSignedByIntegration\", jsonData.authAttemptProofTokenSignedByIntegration);",
+              "    pm.environment.set(\"authAttemptChallengeRequired\", jsonData.authAttemptChallengeRequired);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('authAttemptId');",
+              "        pm.expect(jsonData).to.have.property('authAttemptProofToken');",
+              "        pm.expect(jsonData).to.have.property('authAttemptProofTokenSignedByIntegration');",
+              "        pm.expect(jsonData).to.have.property('authAttemptChallengeRequired');",
+              "    });",
+              "} else if (pm.response.code === 204) {",
+              "    pm.test(\"No pending requests\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"enrollmentProofToken\": \"{{enrollmentProofToken}}\",\r\n    \"deviceProofToken\": \"{{device_proofToken}}\",\r\n    \"deviceProofTokenSigned\": \"{{device_prooftoken_signature}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth-attempts/pending",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth-attempts",
+            "pending"
+          ]
+        },
+        "description": "Checks for pending authentication requests for the device's enrollment. This endpoint uses a **user-initiated polling model** - the mobile app polls only when the user explicitly requests to check for pending attempts.\n\n**Security Enhancement:** Uses `enrollmentProofToken` in the request body (not URL path) to prevent enumeration attacks.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to check for pending attempts\n- `enrollmentProofToken` (required): Cryptographic proof token that authenticates the enrollment\n- `deviceProofToken` (required): Device proof token generated in step 1\n- `deviceProofTokenSigned` (required): Cryptographic signature of device proof token\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier of the authentication attempt\n- `authAttemptProofToken`: Authentication proof token containing challenge data\n- `authAttemptProofTokenSignedByIntegration`: Integration-signed proof token for integrity verification\n- `authAttemptChallengeRequired`: Whether additional challenge validation is required\n\n**Response (204 No Content):**\nNo pending authentication attempts found. This is a normal operational state, not an error.\n\n**Status Codes:**\n- 200: Pending authentication attempt found\n- 204: No pending authentication attempts\n- 400: Invalid request or enrollment proof token\n- 429: Rate limit exceeded\n\n**Note:** The mobile app should verify the integration's signature on `authAttemptProofToken` before proceeding."
+      },
+      "response": []
+    },
+    {
+      "name": "4 crypto validate auth prooftoken by integration",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"valid\", jsonData.valid);",
+              "    ",
+              "    pm.test(\"Response contains valid field\", function () {",
+              "        pm.expect(jsonData).to.have.property('valid');",
+              "        pm.expect(jsonData.valid).to.be.a('boolean');",
+              "    });",
+              "    ",
+              "    pm.test(\"Signature is valid\", function () {",
+              "        pm.expect(jsonData.valid).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "validate"
+          ]
+        },
+        "description": "Validates the integration's signature on the authentication proof token. This ensures the authentication request is authentic and has not been tampered with.\n\n**Request Body:**\n- `data`: The authentication proof token to validate\n- `signature`: Integration's signature on the proof token\n- `publicKey`: Integration's public key (EC P-256, X.509 format, Base64 encoded)\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
+      },
+      "response": []
+    },
+    {
+      "name": "5 crypto sign authAttempt prooftoken by device",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"authAttemptProofTokenSignedByDevice\", jsonData.signature);",
+              "    ",
+              "    pm.test(\"Response contains signature\", function () {",
+              "        pm.expect(jsonData).to.have.property('signature');",
+              "        pm.expect(jsonData.signature).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/sign",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "sign"
+          ]
+        },
+        "description": "Signs the authentication proof token with the device's private key. This signature proves that the device has received the original authentication request and is responding to it.\n\n**Request Body:**\n- `data`: The authentication proof token (from pending response)\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Security Note:** This signature is included in the respond request as `authAttemptProofTokenSignedByDevice`. It proves the device received the original token and prevents replay attacks."
+      },
+      "response": []
+    },
+    {
+      "name": "6 respond",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('result');",
+              "        pm.expect(jsonData).to.have.property('message');",
+              "    });",
+              "    ",
+              "    pm.test(\"Result is valid\", function () {",
+              "        var validResults = ['APPROVED', 'DENIED', 'FAILED', 'EXPIRED'];",
+              "        pm.expect(validResults).to.include(jsonData.result);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": true,\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth-attempts/respond",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth-attempts",
+            "respond"
+          ]
+        },
+        "description": "Submits the mobile device's response to an authentication request. This endpoint completes the MFA authentication flow by submitting the user's decision (approve/deny) along with cryptographic proofs.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID to respond to\n- `authAttemptAccepted` (required): User's decision (true = approve, false = deny)\n- `authAttemptProofTokenSignedByDevice` (required): Device's signature on the authentication proof token\n- `authAttemptChallengeResponse` (required): Response to challenge (0 if no challenge required, or challenge code if required)\n\n**Response (200 OK):**\n- `result`: Authentication result (APPROVED, DENIED, FAILED, EXPIRED)\n- `message`: Success confirmation or error details for user feedback\n\n**Status Codes:**\n- 200: Authentication response submitted successfully\n- 400: Invalid response data or validation failed\n- 409: Authentication attempt state conflict (e.g., already responded or expired)\n- 500: Internal server error\n\n**Security Note:** The `authAttemptProofTokenSignedByDevice` must sign the `authAttemptProofToken` (not the enrollment proof token) to prove the device received the original authentication request."
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "authAttemptChallengeResponse",
+      "value": "0",
+      "description": "Challenge response (0 if no challenge required, or challenge code if required)"
+    }
+  ]
 }

@@ -156,6 +156,23 @@ Once started, you can access:
 - **Health Check**: http://localhost:8083/actuator/health
 - **Bootstrap**: Pre-seeded with global admin enrollment on first startup
 
+### CLI Test Container (cli-test)
+- **Container**: `ezkey-cli-test`
+- **Purpose**: Interactive Ezkey CLI in a container for QA, demos, and functional tests
+- **Depends on**: Admin API, Auth API, Crypto API (healthy)
+- **Config Volume**: `/root/.ezkey` (persisted)
+- **Working Dir**: `/work` (persisted)
+
+**Quick Usage:**
+
+```bash
+# Run CLI commands
+docker compose exec cli-test ezkey --help
+
+# Open an interactive shell in the CLI container
+docker compose exec cli-test bash
+```
+
 ### Bootstrap Init (bootstrap-init)
 - **Type**: One-time job
 - **Purpose**: Automatically performs enrollment bind+verify and seeds demo-device
@@ -577,7 +594,7 @@ All services run on a bridge network named `ezkey-network`. Services can communi
    ```bash
    # Linux/Mac
    lsof -i :9080 -i :8080 -i :9090 -i :8083 -i :5432
-   
+
    # Windows
    netstat -ano | findstr "9080 8080 9090 8083 5432"
    ```

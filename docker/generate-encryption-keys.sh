@@ -1,6 +1,6 @@
 #!/bin/bash
 # Ezkey Encryption Keys Generator for Docker
-# 
+#
 # Generates master key file in Docker volume for Tink encryption.
 # This script should be run before first startup or when master key is missing.
 #
@@ -14,6 +14,7 @@ set -e
 
 NATIVE_MODE=""
 HA_MODE=""
+FORCE_MODE=""
 VOLUME_NAME="ezkey_encryption-secrets"
 
 # Parse flags
@@ -27,9 +28,12 @@ for arg in "$@"; do
             HA_MODE="1"
             VOLUME_NAME="ezkey-ha_encryption-secrets-ha"
             ;;
+        --force)
+            FORCE_MODE="1"
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha]"
+            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha] [--force]"
             exit 1
             ;;
     esac
@@ -80,12 +84,16 @@ echo "🔐 Generating master key in Docker volume..."
 # Generate master key using temporary container
 # Note: Check if master key already exists to avoid overwriting
 if docker run --rm -v "$VOLUME_NAME:/etc/ezkey" "$TEMP_IMAGE" test -f /etc/ezkey/secrets/master.key 2>/dev/null; then
-    echo "⚠️  Warning: Master key already exists in volume"
-    read -p "   Do you want to overwrite it? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "   Skipping master key generation (using existing key)"
-        exit 0
+    if [ -z "$FORCE_MODE" ]; then
+        echo "⚠️  Warning: Master key already exists in volume"
+        read -p "   Do you want to overwrite it? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "   Skipping master key generation (using existing key)"
+            exit 0
+        fi
+    else
+        echo "ℹ️  Master key exists - overwriting (--force mode)"
     fi
 fi
 
@@ -99,45 +107,45 @@ if ! docker run --rm \
         set -e
         # Install openssl (required for key generation)
         apk add --no-cache openssl > /dev/null 2>&1
-        
+
         # Create spring user/group to match runtime container (UID 100, GID 101)
         addgroup -g 101 -S spring 2>/dev/null || true
         adduser -u 100 -G spring -S spring 2>/dev/null || true
-        
+
         # Create directory structure
         mkdir -p /etc/ezkey/secrets
         mkdir -p /etc/ezkey/keysets
-        
+
         # Generate 32 bytes (256 bits) of cryptographically secure random data
         MASTER_KEY=\$(openssl rand -base64 32)
-        
+
         # Verify key was generated (should be 44 characters for base64-encoded 32 bytes)
         if [ -z \"\$MASTER_KEY\" ] || [ \${#MASTER_KEY} -lt 40 ]; then
             echo \"❌ Error: Failed to generate master key\" >&2
             exit 1
         fi
-        
+
         # Save master key
         echo \"\$MASTER_KEY\" > /etc/ezkey/secrets/master.key
-        
+
         # Verify file was created and has content
         if [ ! -f /etc/ezkey/secrets/master.key ] || [ ! -s /etc/ezkey/secrets/master.key ]; then
             echo \"❌ Error: Failed to save master key\" >&2
             exit 1
         fi
-        
+
         # Set secure permissions (600 = owner read/write only)
         chmod 600 /etc/ezkey/secrets/master.key
-        
+
         # Change ownership to spring user (matches runtime container user)
         chown spring:spring /etc/ezkey/secrets/master.key
-        
+
         # Set directory permissions and ownership
         chmod 700 /etc/ezkey/secrets
         chmod 755 /etc/ezkey/keysets
         chown spring:spring /etc/ezkey/secrets
         chown spring:spring /etc/ezkey/keysets
-        
+
         echo \"✅ Master key generated successfully\"
         echo \"📁 Location: /etc/ezkey/secrets/master.key\"
         echo \"👤 Owner: spring:spring (UID 100, GID 101)\"
