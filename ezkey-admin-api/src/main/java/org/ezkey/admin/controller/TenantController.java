@@ -235,17 +235,28 @@ public class TenantController {
    * <p>Only global administrators can deactivate tenants. Deactivation prevents further operations
    * for that tenant while preserving data for audit purposes.
    *
+   * <p><b>Important:</b> System tenants cannot be deactivated. The system tenant hosts global
+   * administrators and must remain active to ensure system integrity. Attempting to deactivate a
+   * system tenant will result in HTTP 400 Bad Request.
+   *
    * @param id the tenant ID
    * @param auth the authentication context
    * @return ResponseEntity with no content (204 No Content) or 404 Not Found
+   * @throws org.ezkey.admin.exception.SystemTenantDeactivationException if attempting to deactivate
+   *     the system tenant
    */
   @PostMapping("/{id}/deactivate")
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
   @Operation(
       summary = "Deactivate a tenant",
-      description = "Deactivates a tenant. GlobalAdmin only. Required in Phase 1.")
+      description =
+          "Deactivates a tenant. GlobalAdmin only. System tenant cannot be deactivated. Required in"
+              + " Phase 1.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Tenant deactivated successfully"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Bad request - cannot deactivate system tenant"),
     @ApiResponse(responseCode = "404", description = "Tenant not found"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
@@ -261,6 +272,10 @@ public class TenantController {
         .findById(id)
         .map(
             tenant -> {
+              // Prevent deactivation of system tenant
+              if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
+                throw new org.ezkey.admin.exception.SystemTenantDeactivationException();
+              }
               tenant.setActive(false);
               tenantRepository.save(tenant);
               return ResponseEntity.noContent().<Void>build();

@@ -134,6 +134,28 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles SystemTenantDeactivationException and returns HTTP 400.
+   *
+   * <p>This method catches SystemTenantDeactivationException instances thrown when attempting to
+   * deactivate a system tenant and converts them into standardized HTTP 400 Bad Request responses.
+   *
+   * @param ex the SystemTenantDeactivationException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   */
+  @ExceptionHandler(org.ezkey.admin.exception.SystemTenantDeactivationException.class)
+  public ResponseEntity<ErrorResponseDto> handleSystemTenantDeactivationException(
+      org.ezkey.admin.exception.SystemTenantDeactivationException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "SYSTEM_TENANT_DEACTIVATION_NOT_ALLOWED",
+            ex.getMessage(),
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
    * Handles IllegalArgumentException and returns HTTP 400.
    *
    * <p>This method catches IllegalArgumentException instances and converts them into standardized
