@@ -1,54 +1,80 @@
 # Ezkey CLI Usage Guide
 
 ## Table of Contents
-1. [Installation](#installation)
-2. [Quick Start](#quick-start)
+1. [Quick Start](#quick-start)
+2. [Installation](#installation)
 3. [Authentication](#authentication)
 4. [Command Categories](#command-categories)
 5. [Common Workflows](#common-workflows)
-6. [Troubleshooting](#troubleshooting)
+6. [TUI Admin Console](#tui-admin-console)
+7. [Troubleshooting](#troubleshooting)
+8. [Best Practices](#best-practices)
+
+---
+
+## Quick Start
+
+### First Steps
+
+```bash
+# 1. Configure the CLI
+ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
+
+# 2. Login as admin
+ezkey admin auth login --username admin
+
+# 3. Test API connectivity
+ezkey admin integration list
+
+# 4. Generate a test keypair
+ezkey crypto keypair --key-size 2048
+```
+
+### Launch Interactive Admin Console
+
+```bash
+ezkey --tui
+```
+
+**First run:** Interactive setup wizard guides you through:
+1. Admin API URL (defaults to `http://localhost:9080`)
+2. Admin username
+3. Organization name
+4. Passwordless authentication (challenge code → approve on device)
+5. Session is saved and dashboard loads
+
+**Subsequent runs:** Session loads automatically, no login prompt needed.
+
+---
 
 ## Installation
 
 ### From Source (Development)
+
 ```bash
 cd ezkey-cli-python
 pip install -e .
 ```
 
 ### Verify Installation
+
 ```bash
 ezkey --version
 ezkey --help
 ```
 
-## Quick Start
+### Check TUI is Available
 
-### 1. Configure the CLI
 ```bash
-# Interactive configuration (recommended for first-time setup)
-ezkey configure interactive
-
-# Or set values directly
-ezkey configure set --admin-url http://localhost:9080 --auth-url http://localhost:8080
+ezkey --help
 ```
 
-### 2. View Current Configuration
-```bash
-# Show all configuration
-ezkey configure get
-
-# Get specific value
-ezkey configure get --key adminUrl
+Should show:
+```
+--tui                          Start interactive admin console
 ```
 
-### 3. Authenticate as Admin
-```bash
-# Passwordless login (single-call mode)
-ezkey admin auth login --username admin
-
-# Token is automatically saved for future commands
-```
+---
 
 ## Authentication
 
@@ -56,22 +82,27 @@ Ezkey CLI supports three authentication methods:
 
 ### 1. Bearer Token (Admin Users)
 
-**Login:**
+**Single-Call Mode (Recommended):**
+
 ```bash
-# Single-call mode (recommended)
+# Login and wait for device approval in one command
 ezkey admin auth login --username admin
 
-# Two-call mode with challenge
-ezkey admin auth login --username admin --challenge
-# Then wait: ezkey admin auth passwordless-wait --auth-attempt-id <id> --challenge-code <code>
+# Token is automatically saved to config for future use
 ```
 
-**Logout:**
+**Two-Call Mode (With Challenge Code):**
+
 ```bash
-ezkey admin auth logout
+# Step 1: Request authentication with challenge
+ezkey admin auth login --username admin --challenge
+
+# Step 2: Wait for device approval
+ezkey admin auth passwordless-wait --auth-attempt-id <id> --challenge-code <code>
 ```
 
 **Emergency Recovery:**
+
 ```bash
 # When device is lost
 ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-..."
@@ -80,37 +111,56 @@ ezkey admin auth recover --username admin --recovery-code "XXXX-XXXX-..."
 ezkey admin enrollment reset --id 1
 ```
 
+**Logout:**
+
+```bash
+ezkey admin auth logout
+```
+
 ### 2. API Key (Machine-to-Machine)
 
 **Create API Key:**
+
 ```bash
 ezkey admin api-key create \
   --integration-id 123 \
   --description "Production Server" \
   --expires-at "2025-12-31T23:59:59Z" \
+  --ip-whitelist "192.168.1.0/24" \
   --save-key
+
+# ⚠️ IMPORTANT: Save the secret key displayed - it's shown only once!
 ```
 
 **Use API Key:**
+
 ```bash
 # Automatically used when saved to config
-# Or configure manually:
-# Edit ~/.ezkey/ezkey.json and add:
+# Or configure manually in ~/.ezkey/ezkey.json:
 # {
 #   "integrationKey": "ezkey_ikey_...",
 #   "secretKey": "ezkey_skey_..."
 # }
 ```
 
+**Revoke API Key:**
+
+```bash
+ezkey admin api-key revoke --id 42
+```
+
 ### 3. No Authentication
 
 Some commands don't require authentication (public endpoints).
+
+---
 
 ## Command Categories
 
 ### Admin Commands
 
 #### Integrations
+
 ```bash
 # List all integrations
 ezkey admin integration list
@@ -126,6 +176,7 @@ ezkey admin integration delete --id 1
 ```
 
 #### Enrollments
+
 ```bash
 # List all enrollments
 ezkey admin enrollment list
@@ -144,6 +195,7 @@ ezkey admin enrollment reset --id 1
 ```
 
 #### Auth Attempts
+
 ```bash
 # List auth attempts
 ezkey admin auth-attempt list
@@ -165,6 +217,7 @@ ezkey admin auth-attempt wait --id 1 --timeout 30 --polling 2
 ```
 
 #### Audit Logs
+
 ```bash
 # Query audit logs with default pagination
 ezkey admin audit-log list
@@ -177,6 +230,7 @@ ezkey admin audit-log list --api-name AUTH_API --page 1 --size 50
 ```
 
 #### Authentication
+
 ```bash
 # Login (passwordless)
 ezkey admin auth login --username admin
@@ -195,6 +249,7 @@ ezkey admin auth logout
 ```
 
 #### API Keys
+
 ```bash
 # Create API key
 ezkey admin api-key create \
@@ -317,6 +372,8 @@ ezkey openapi refresh --all
 ezkey openapi generate
 ```
 
+---
+
 ## Common Workflows
 
 ### Workflow 1: Admin Login and Create Integration
@@ -428,6 +485,77 @@ ezkey admin api-key get --id <new-key-id>
 ezkey admin api-key revoke --id <old-key-id>
 ```
 
+---
+
+## TUI Admin Console
+
+### Launch TUI
+
+```bash
+ezkey --tui
+```
+
+### First Run Setup
+
+1. Enter Admin API URL (defaults to `http://localhost:9080` for Docker)
+2. Enter admin username
+3. Enter organization name
+4. A challenge code appears → Approve on your enrolled device
+5. Session is saved and dashboard loads
+
+### Subsequent Launches
+
+```bash
+ezkey --tui  # Just works! Session loads automatically
+```
+
+### Development Mode (Docker)
+
+The TUI automatically detects localhost and Docker hostnames:
+
+```bash
+# All these work automatically without SSL issues
+ezkey --tui
+# Enter: http://localhost:9080
+# OR: http://host.docker.internal:9080
+# OR: http://docker.for.mac.localhost:9080
+```
+
+**Development mode features:**
+- ✅ HTTP connections accepted (no HTTPS required)
+- ✅ SSL verification disabled
+- ✅ Helpful error messages
+- ✅ Can continue setup even if health check fails
+
+### TUI Features
+
+**Phase 1 (Current):**
+- ✅ Session encryption & persistence
+- ✅ Passwordless authentication wizard
+- ✅ Token refresh logic
+- ✅ Basic screens (auth, home, integrations)
+- ✅ Reusable widgets (header, sidebar)
+
+**Phase 2 (Coming):**
+- 🔄 Full Textual app with screen switching
+- 🔄 Home dashboard with real Admin API data
+- 🔄 Integration management screen
+- 🔄 Enrollment and auth attempt tracking
+
+### File Locations
+
+- **Session data**: `~/.ezkey/admin/session` (encrypted)
+- **Encryption key**: `~/.ezkey/admin/.key` (secure)
+
+### Terminal Requirements
+
+- **Minimum**: 80x24 characters, ANSI/VT100 support, UTF-8 encoding
+- **Recommended**: 256 colors, Unicode glyphs, Truecolor support
+
+For complete TUI documentation, see [TUI_GUIDE.md](TUI_GUIDE.md)
+
+---
+
 ## Troubleshooting
 
 ### Authentication Issues
@@ -516,9 +644,40 @@ cat ~/.ezkey/ezkey.json
 ezkey configure reset --global
 ```
 
+### TUI Issues
+
+**Problem: "ModuleNotFoundError: No module named 'textual'"**
+```bash
+# Solution: Install dependencies
+pip install textual>=0.30.0
+```
+
+**Problem: "Permission denied ~/.ezkey/admin/session"**
+```bash
+# Solution: Check permissions
+ls -la ~/.ezkey/admin/
+# Should be 0o600 (user read/write only)
+```
+
+**Problem: "Failed to connect to Admin API"**
+```bash
+# Solution: Verify Admin API URL and that it's running
+curl http://localhost:9080/api/v1/health
+```
+
+**Problem: "Session expired"**
+```bash
+# Solution: Delete session and re-authenticate
+rm ~/.ezkey/admin/session
+ezkey --tui
+```
+
+---
+
 ## Best Practices
 
 ### Security
+
 1. **Never commit tokens or API keys** to version control
 2. **Use environment variables** for sensitive data in scripts
 3. **Rotate API keys regularly** using key expiration
@@ -526,12 +685,14 @@ ezkey configure reset --global
 5. **Save recovery codes securely** when first generated
 
 ### Authentication
+
 1. **Use passwordless login** for interactive sessions
 2. **Use API keys** for automated scripts and server integrations
 3. **Store tokens in home directory** (`~/.ezkey/`) for global access
 4. **Store tokens in project directory** (`./ezkey.json`) for project-specific configs
 
 ### API Key Management
+
 1. Create new API key with expiration date
 2. Update application configuration with new key
 3. Test application with new key
@@ -539,10 +700,13 @@ ezkey configure reset --global
 5. Revoke old key after migration complete
 
 ### Datetime Handling
+
 All datetime fields are in UTC with Z suffix:
 - Format: `yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'`
 - Example: `"2025-10-16T11:55:55.925512Z"`
 - Convert to local timezone in your application if needed
+
+---
 
 ## Examples with JSON Data
 
@@ -587,6 +751,8 @@ ezkey admin integration create --data @integration.json
 ezkey admin enrollment create --integration-id 123 --data @enrollment.json
 ```
 
+---
+
 ## Global Options
 
 All commands support these global options:
@@ -597,20 +763,25 @@ All commands support these global options:
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
 - `--verbose` - Enable verbose output
+- `--tui` - Start interactive admin console
 
 **Example:**
 ```bash
 ezkey --verbose --timeout 60000 admin integration list
 ```
 
+---
+
 ## Getting Help
 
 ### General Help
+
 ```bash
 ezkey --help
 ```
 
 ### Command Group Help
+
 ```bash
 ezkey admin --help
 ezkey admin auth --help
@@ -618,17 +789,22 @@ ezkey admin api-key --help
 ```
 
 ### Specific Command Help
+
 ```bash
 ezkey admin auth login --help
 ezkey admin api-key create --help
 ezkey admin integration create --help
 ```
 
+---
+
 ## Version Information
 
 ```bash
 ezkey --version
 ```
+
+---
 
 ## License
 

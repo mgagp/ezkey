@@ -293,6 +293,35 @@ services:
       start_period: 40s
       retries: 3
 
+  # CLI Test Container
+  cli-test:
+    build:
+      context: ..
+      dockerfile: docker/cli-test/Dockerfile
+    container_name: ezkey-cli-test-ha
+    depends_on:
+      haproxy-admin:
+        condition: service_healthy
+      haproxy-auth:
+        condition: service_healthy
+      crypto-api:
+        condition: service_healthy
+    environment:
+      EZKEY_ADMIN_API_URL: http://haproxy-admin:9080
+        EZKEY_ADMIN_HEALTH_URL: http://haproxy-admin:9081
+      EZKEY_AUTH_API_URL: http://haproxy-auth:8080
+      EZKEY_CRYPTO_API_URL: http://crypto-api:9090
+    volumes:
+      - cli-config:/root/.ezkey
+      - cli-work:/work
+    working_dir: /work
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    networks:
+      - ezkey-network-ha
+    restart: unless-stopped
+
   # Bootstrap Init (runs after all services are healthy)
   bootstrap-init:
     build:
@@ -328,3 +357,5 @@ volumes:
   encryption-secrets-ha:
   demo-device-data-ha:
   bootstrap-artifacts-ha:
+  cli-config:
+  cli-work:

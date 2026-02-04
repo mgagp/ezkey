@@ -1,259 +1,258 @@
 {
-	"info": {
-		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "EZ Key Tenants admin",
-		"description": "Collection for tenant management operations in the Admin API.\n\n## Endpoints\n\n- **Create Tenant**: Create a new tenant (GlobalAdmin only)\n- **List Tenants**: List all tenants (GlobalAdmin only)\n- **Get Tenant**: Get details of a specific tenant by ID (GlobalAdmin only)\n- **Deactivate Tenant**: Deactivate a tenant (GlobalAdmin only)\n\n## Authentication\n\nAll endpoints require GlobalAdmin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Permissions\n- **GlobalAdmin only**: All tenant management operations require GlobalAdmin role\n- **TenantAdmin**: Cannot access tenant management endpoints (returns 403 Forbidden)\n\n### Tenant Lifecycle\n1. **Create**: GlobalAdmin creates a new tenant\n2. **Active**: Tenant is active and can be used for resource creation\n3. **Deactivate**: Tenant can be deactivated (preserves data for audit)\n\n### Tenant Deactivation\n- Sets `active = false` on the tenant\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n## Usage\n\nTenants represent organizational boundaries in the multi-tenant Ezkey system. Each tenant can have:\n- Multiple TenantAdmins\n- Multiple Integrations\n- Multiple Enrollments and API Keys\n- Complete data isolation from other tenants",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "4087"
-	},
-	"item": [
-		{
-			"name": "create",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 201\", function () {",
-							"    pm.response.to.have.status(201);",
-							"});",
-							"",
-							"if (pm.response.code === 201) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"    pm.environment.set(\"tenantName\", jsonData.tenantName);",
-							"    if (jsonData.tenantDescription) {",
-							"        pm.environment.set(\"tenantDescription\", jsonData.tenantDescription);",
-							"    }",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('tenantId');",
-							"        pm.expect(jsonData).to.have.property('tenantName');",
-							"        pm.expect(jsonData).to.have.property('active');",
-							"        pm.expect(jsonData).to.have.property('createdAt');",
-							"    });",
-							"    ",
-							"    pm.test(\"Tenant is active by default\", function () {",
-							"        pm.expect(jsonData.active).to.be.true;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"tenantName\": \"ACME Corporation\",\n    \"tenantDescription\": \"ACME Corp's Ezkey tenant for MFA authentication\"\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/tenants",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"tenants"
-					]
-				},
-				"description": "Creates a new tenant in the multi-tenant Ezkey system. Only GlobalAdmin can create tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can create tenants\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Request Body:**\n- `tenantName` (required): Unique name for the tenant (3-100 characters)\n- `tenantDescription` (optional): Description of the tenant (max 500 characters)\n\n**Response (201 Created):**\n- `tenantId`: Unique identifier for the newly created tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active (true by default)\n- Location header: `/api/v1/tenants/{tenantId}`\n\n**Status Codes:**\n- 201: Tenant created successfully\n- 400: Invalid data (validation errors, tenant name already exists)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "list",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Response is an array\", function () {",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.be.an('array');",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    if (jsonData.length > 0) {",
-							"        pm.environment.set(\"tenantId\", jsonData[0].tenantId.toString());",
-							"        pm.environment.set(\"tenantName\", jsonData[0].tenantName);",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/tenants",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"tenants"
-					]
-				},
-				"description": "Lists all tenants in the system. Only GlobalAdmin can list tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can list all tenants\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Response (200 OK):**\nArray of tenant objects, each containing:\n- `tenantId`: Unique identifier for the tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "get by ID",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 404\", function () {",
-							"    pm.expect([200, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
-							"    pm.environment.set(\"tenantName\", jsonData.tenantName);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('tenantId');",
-							"        pm.expect(jsonData).to.have.property('tenantName');",
-							"        pm.expect(jsonData).to.have.property('active');",
-							"        pm.expect(jsonData).to.have.property('createdAt');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/tenants/:id",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"tenants",
-						":id"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{tenantId}}",
-							"description": "The tenant ID"
-						}
-					]
-				},
-				"description": "Retrieves details of a specific tenant by its unique identifier. Only GlobalAdmin can view tenant details.\n\n**Permissions:**\n- **GlobalAdmin**: Can view any tenant\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Path Parameters:**\n- `id` (required): Tenant ID to retrieve\n\n**Response (200 OK):**\n- `tenantId`: Unique identifier for the tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active\n\n**Status Codes:**\n- 200: Tenant found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Tenant not found\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "deactivate",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 204 or 404\", function () {",
-							"    pm.expect([204, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 204) {",
-							"    pm.test(\"Deactivation successful\", function () {",
-							"        pm.expect(pm.response.code).to.equal(204);",
-							"        // DELETE returns 204 No Content with no body",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/tenants/:id/deactivate",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"tenants",
-						":id",
-						"deactivate"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{tenantId}}",
-							"description": "The tenant ID to deactivate"
-						}
-					]
-				},
-				"description": "Deactivates a tenant, preventing further operations for that tenant while preserving data for audit purposes. Only GlobalAdmin can deactivate tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate any tenant\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Effects of Deactivation:**\n- Sets `active = false` on the tenant\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n**Path Parameters:**\n- `id` (required): Tenant ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Tenant is deactivated\n- All admin tokens for that tenant are revoked\n\n**Status Codes:**\n- 204: Tenant deactivated successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Tenant not found\n- 500: Internal server error"
-			},
-			"response": []
-		}
-	],
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{token}}",
-				"type": "string"
-			}
-		]
-	},
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	]
+  "info": {
+    "_postman_id": "10b98cba-3317-4291-b1a5-fb8af399a77f",
+    "name": "EZ Key Tenants admin",
+    "description": "Collection for tenant management operations in the Admin API.\n\n## Endpoints\n\n- **Create Tenant**: Create a new tenant (GlobalAdmin only)\n- **List Tenants**: List all tenants (GlobalAdmin only)\n- **Get Tenant**: Get details of a specific tenant by ID (GlobalAdmin only)\n- **Deactivate Tenant**: Deactivate a tenant (GlobalAdmin only)\n\n## Authentication\n\nAll endpoints require GlobalAdmin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Permissions\n- **GlobalAdmin only**: All tenant management operations require GlobalAdmin role\n- **TenantAdmin**: Cannot access tenant management endpoints (returns 403 Forbidden)\n\n### Tenant Lifecycle\n1. **Create**: GlobalAdmin creates a new tenant\n2. **Active**: Tenant is active and can be used for resource creation\n3. **Deactivate**: Tenant can be deactivated (preserves data for audit)\n\n### Tenant Deactivation\n- Sets `active = false` on the tenant\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n## Usage\n\nTenants represent organizational boundaries in the multi-tenant Ezkey system. Each tenant can have:\n- Multiple TenantAdmins\n- Multiple Integrations\n- Multiple Enrollments and API Keys\n- Complete data isolation from other tenants",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "    pm.environment.set(\"tenantName\", jsonData.tenantName);",
+              "    if (jsonData.tenantDescription) {",
+              "        pm.environment.set(\"tenantDescription\", jsonData.tenantDescription);",
+              "    }",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('tenantId');",
+              "        pm.expect(jsonData).to.have.property('tenantName');",
+              "        pm.expect(jsonData).to.have.property('active');",
+              "        pm.expect(jsonData).to.have.property('createdAt');",
+              "    });",
+              "    ",
+              "    pm.test(\"Tenant is active by default\", function () {",
+              "        pm.expect(jsonData.active).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"tenantName\": \"ACME Corporation\",\n    \"tenantDescription\": \"ACME Corp's Ezkey tenant for MFA authentication\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/tenants",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants"
+          ]
+        },
+        "description": "Creates a new tenant in the multi-tenant Ezkey system. Only GlobalAdmin can create tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can create tenants\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Request Body:**\n- `tenantName` (required): Unique name for the tenant (3-100 characters)\n- `tenantDescription` (optional): Description of the tenant (max 500 characters)\n\n**Response (201 Created):**\n- `tenantId`: Unique identifier for the newly created tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active (true by default)\n- Location header: `/api/v1/tenants/{tenantId}`\n\n**Status Codes:**\n- 201: Tenant created successfully\n- 400: Invalid data (validation errors, tenant name already exists)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "list",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is an array\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an('array');",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.length > 0) {",
+              "        pm.environment.set(\"tenantId\", jsonData[0].tenantId.toString());",
+              "        pm.environment.set(\"tenantName\", jsonData[0].tenantName);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/tenants",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants"
+          ]
+        },
+        "description": "Lists all tenants in the system. Only GlobalAdmin can list tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can list all tenants\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Response (200 OK):**\nArray of tenant objects, each containing:\n- `tenantId`: Unique identifier for the tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "get by ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 404\", function () {",
+              "    pm.expect([200, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"tenantId\", jsonData.tenantId.toString());",
+              "    pm.environment.set(\"tenantName\", jsonData.tenantName);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('tenantId');",
+              "        pm.expect(jsonData).to.have.property('tenantName');",
+              "        pm.expect(jsonData).to.have.property('active');",
+              "        pm.expect(jsonData).to.have.property('createdAt');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/tenants/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{tenantId}}",
+              "description": "The tenant ID"
+            }
+          ]
+        },
+        "description": "Retrieves details of a specific tenant by its unique identifier. Only GlobalAdmin can view tenant details.\n\n**Permissions:**\n- **GlobalAdmin**: Can view any tenant\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Path Parameters:**\n- `id` (required): Tenant ID to retrieve\n\n**Response (200 OK):**\n- `tenantId`: Unique identifier for the tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `active`: Flag indicating if the tenant is active\n\n**Status Codes:**\n- 200: Tenant found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Tenant not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "deactivate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 or 404\", function () {",
+              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Deactivation successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "        // DELETE returns 204 No Content with no body",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/tenants/:id/deactivate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            ":id",
+            "deactivate"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{tenantId}}",
+              "description": "The tenant ID to deactivate"
+            }
+          ]
+        },
+        "description": "Deactivates a tenant, preventing further operations for that tenant while preserving data for audit purposes. Only GlobalAdmin can deactivate tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate any tenant\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Effects of Deactivation:**\n- Sets `active = false` on the tenant\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n**Path Parameters:**\n- `id` (required): Tenant ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Tenant is deactivated\n- All admin tokens for that tenant are revoked\n\n**Status Codes:**\n- 204: Tenant deactivated successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Tenant not found\n- 500: Internal server error"
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
 }
-

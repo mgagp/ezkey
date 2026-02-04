@@ -104,6 +104,23 @@ $env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 
 Wait for all services to be healthy (check logs or health endpoints).
 
+### 1.1 CLI Container (Docker-Only)
+
+The Docker stack includes a dedicated CLI container (`cli-test`) to run the Ezkey CLI in a
+consistent, Linux-only environment. This container is part of the developer experience and the
+functional CLI test strategy.
+
+If you run the native or HA stacks, set `EZKEY_CLI_CONTAINER_NAME` so tests can locate the CLI
+container (e.g., `ezkey-cli-test-native` or `ezkey-cli-test-ha`).
+
+```bash
+# Run CLI commands inside the container
+docker compose exec cli-test ezkey --help
+
+# Open a shell in the CLI container
+docker compose exec cli-test bash
+```
+
 ### 2. Extract Bootstrap Credentials (First Time Only)
 
 After the first Docker stack startup, extract bootstrap credentials from logs:
@@ -159,6 +176,9 @@ mvn test -pl ezkey-tests -X
 # Run specific test class
 mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
 mvn test -pl ezkey-tests -Dtest=AdminAuthenticationSecurityTest
+
+# Run CLI tests (CLI tag + slow tests)
+mvn test -pl ezkey-tests -P slow-tests -Dgroups="cli"
 ```
 
 ## Test Structure

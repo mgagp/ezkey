@@ -185,11 +185,11 @@ cd "${PROJECT_ROOT}"
 if [ -f "${DOCKER_DIR}/generate-encryption-keys.sh" ]; then
     if [ -n "$HA_MODE" ]; then
         # For HA mode, use HA volume name (shared between instances)
-        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --ha
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --ha --force
     elif [ -n "$NATIVE_MODE" ]; then
-        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --native
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --native --force
     else
-        bash "${DOCKER_DIR}/generate-encryption-keys.sh"
+        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --force
     fi
     echo "  ✅ Master key generated"
 else

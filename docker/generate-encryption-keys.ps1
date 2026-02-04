@@ -75,36 +75,49 @@ if ($KeyExists) {
 
 $DockerScript = @'
 set -e
+
+# Install openssl (required for key generation)
 apk add --no-cache openssl > /dev/null 2>&1
 
+# Create spring user/group to match runtime container (UID 100, GID 101)
 addgroup -g 101 -S spring 2>/dev/null || true
 adduser -u 100 -G spring -S spring 2>/dev/null || true
 
+# Create directory structure
 mkdir -p /etc/ezkey/secrets
 mkdir -p /etc/ezkey/keysets
 
+# Generate 32 bytes (256 bits) of cryptographically secure random data
 MASTER_KEY=$(openssl rand -base64 32)
 
+# Verify key was generated (should be 44 characters for base64-encoded 32 bytes)
 if [ -z "$MASTER_KEY" ] || [ ${#MASTER_KEY} -lt 40 ]; then
     echo "Error: Failed to generate master key" >&2
     exit 1
 fi
 
+# Save master key
 echo "$MASTER_KEY" > /etc/ezkey/secrets/master.key
 
+# Verify file was created and has content
 if [ ! -f /etc/ezkey/secrets/master.key ] || [ ! -s /etc/ezkey/secrets/master.key ]; then
     echo "Error: Failed to save master key" >&2
     exit 1
 fi
 
+# Set secure permissions (600 = owner read/write only)
 chmod 600 /etc/ezkey/secrets/master.key
+
+# Change ownership to spring user (matches runtime container user)
 chown spring:spring /etc/ezkey/secrets/master.key
 
+# Set directory permissions and ownership
 chmod 700 /etc/ezkey/secrets
 chmod 755 /etc/ezkey/keysets
 chown spring:spring /etc/ezkey/secrets
 chown spring:spring /etc/ezkey/keysets
 
+# Confirm successful generation
 echo "Master key generated successfully"
 echo "Location: /etc/ezkey/secrets/master.key"
 echo "Owner: spring:spring (UID 100, GID 101)"
@@ -112,7 +125,7 @@ echo "Permissions: 600 (owner read/write only)"
 '@
 
 try {
-    & docker run --rm --name $ContainerName -v "${VolumeName}:/etc/ezkey" $TempImage sh -c $DockerScript
+    $DockerScript | & docker run --rm --name $ContainerName -v "${VolumeName}:/etc/ezkey" $TempImage sh
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to generate master key"
     }

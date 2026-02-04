@@ -1,310 +1,310 @@
 {
-	"info": {
-		"_postman_id": "a0da518a-b849-4528-a8f5-c39c88f51435",
-		"name": "EZ Key Integrations admin",
-		"description": "Collection for integration management operations in the Admin API.\n\n## Endpoints\n\n- **Search Integrations**: Retrieve integrations with filters and pagination\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration with i18n support\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all integrations across all tenants\n- **TenantAdmin**: Can only access integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService`\n\n### Automatic Tenant Assignment\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration can have:\n- Multiple language support (i18n) for names and descriptions\n- Logo for branding\n- Active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n- Tenant association (automatically assigned based on admin type)\n\n## Internationalization (i18n)\n\nIntegrations support multiple languages through the `i18n` array. Each entry contains:\n- `language`: Language code (e.g., \"en\", \"fr\")\n- `name`: Localized integration name\n- `description`: Localized integration description",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "4087"
-	},
-	"item": [
-		{
-			"name": "search",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Response is paginated\", function () {",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData).to.have.property('content');",
-							"    pm.expect(jsonData.content).to.be.an('array');",
-							"    pm.expect(jsonData).to.have.property('totalElements');",
-							"    pm.expect(jsonData).to.have.property('totalPages');",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    if (jsonData.content.length > 0) {",
-							"        pm.environment.set(\"integrationId\", jsonData.content[0].id);",
-							"    }",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/integrations?page=0&size=20",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"integrations"
-					],
-					"query": [
-						{
-							"key": "page",
-							"value": "0",
-							"description": "Page number (zero-based, default: 0)"
-						},
-						{
-							"key": "size",
-							"value": "20",
-							"description": "Page size (default: 20)"
-						},
-						{
-							"key": "sort",
-							"value": "createdAt,desc",
-							"description": "Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, active",
-							"disabled": true
-						},
-						{
-							"key": "integrationName",
-							"value": "",
-							"description": "Filter by integration name (partial match, case-insensitive, searches i18n names)",
-							"disabled": true
-						},
-						{
-							"key": "active",
-							"value": "true",
-							"description": "Filter by active flag (true/false)",
-							"disabled": true
-						},
-						{
-							"key": "createdAfter",
-							"value": "",
-							"description": "Filter by start date (ISO-8601)",
-							"disabled": true
-						},
-						{
-							"key": "createdBefore",
-							"value": "",
-							"description": "Filter by end date (ISO-8601)",
-							"disabled": true
-						}
-					]
-				},
-				"description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all integrations across all tenants\n- **TenantAdmin**: Sees only integrations within their tenant (automatic filtering)\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `id`, `createdAt`, `active`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `integrationName`: Filter by integration name (partial match, case-insensitive, searches i18n names)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=id,asc` - Sort by ID ascending\n- `?active=true` - Filter active integrations only\n- `?integrationName=Acme` - Search integrations with 'Acme' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Integration Fields:**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects\n\n**Note:** System integrations are automatically excluded from the listing.\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "get by ID",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200 or 404\", function () {",
-							"    pm.expect([200, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 200) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"integrationId\", jsonData.id);",
-							"    ",
-							"    pm.test(\"Response contains required fields\", function () {",
-							"        pm.expect(jsonData).to.have.property('id');",
-							"        pm.expect(jsonData).to.have.property('active');",
-							"        pm.expect(jsonData).to.have.property('createdAt');",
-							"        pm.expect(jsonData).to.have.property('i18n');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/integrations/:id",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"integrations",
-						":id"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{integrationId}}",
-							"description": "The integration ID"
-						}
-					]
-				},
-				"description": "Retrieves details of a specific integration by its unique identifier for administrative purposes.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can access any integration (any tenant)\n- **TenantAdmin**: Can only access integrations within their tenant\n- Access is validated via `AccessControlService.canAccessIntegration()`\n- Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant\n\n**Path Parameters:**\n- `id` (required): Integration ID to retrieve\n\n**Response (200 OK):**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag (true if active, false if inactive)\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects, each containing:\n  - `language`: Language code (e.g., \"en\", \"fr\")\n  - `name`: Localized integration name\n  - `description`: Localized integration description\n\n**Status Codes:**\n- 200: Integration found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 404: Integration not found\n- 500: Internal server error"
-			},
-			"response": []
-		},
-		{
-			"name": "create",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 201\", function () {",
-							"    pm.response.to.have.status(201);",
-							"});",
-							"",
-							"if (pm.response.code === 201) {",
-							"    var jsonData = pm.response.json();",
-							"    pm.environment.set(\"integrationId\", jsonData.id);",
-							"    ",
-							"    pm.test(\"Response contains id\", function () {",
-							"        pm.expect(jsonData).to.have.property('id');",
-							"        pm.expect(jsonData.id).to.be.a('number');",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
-							"const now = new Date();\r",
-							"const yyyy = now.getFullYear();\r",
-							"const mm = String(now.getMonth() + 1).padStart(2, '0');\r",
-							"const dd = String(now.getDate()).padStart(2, '0');\r",
-							"const hh = String(now.getHours()).padStart(2, '0');\r",
-							"const mi = String(now.getMinutes()).padStart(2, '0');\r",
-							"const code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;\r",
-							"pm.environment.set(\"admin_code\", code);\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"logo\": null,\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"Garage du coin\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/integrations",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"integrations"
-					]
-				},
-				"description": "Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.\n\n**Multi-Tenancy - Automatic Tenant Assignment:**\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants (no tenantId field in request)\n- Tenant assignment is handled automatically by `IntegrationService.createIntegration()` based on admin type\n\n**Request Body:**\n- `logo` (optional): URL or path to the integration logo image\n- `i18n` (required): Array of internationalized content objects, each containing:\n  - `language` (required): Language code (e.g., \"en\", \"fr\")\n  - `name` (required): Localized integration name\n  - `description` (optional): Localized integration description\n\n**Response (201 Created):**\n- `id`: Unique identifier of the newly created integration\n- Location header: `/api/v1/integrations/{id}`\n\n**Status Codes:**\n- 201: Integration created successfully\n- 400: Invalid data (validation errors)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons."
-			},
-			"response": []
-		},
-		{
-			"name": "delete",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 204 or 404\", function () {",
-							"    pm.expect([204, 404]).to.include(pm.response.code);",
-							"});",
-							"",
-							"if (pm.response.code === 204) {",
-							"    pm.test(\"Deletion successful\", function () {",
-							"        pm.expect(pm.response.code).to.equal(204);",
-							"        // DELETE returns 204 No Content with no body",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{base_url_admin_api}}/api/v1/integrations/:id",
-					"host": [
-						"{{base_url_admin_api}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"integrations",
-						":id"
-					],
-					"variable": [
-						{
-							"key": "id",
-							"value": "{{integrationId}}",
-							"description": "The integration ID to delete"
-						}
-					]
-				},
-				"description": "Removes an integration from the system, effectively disabling MFA protection for the associated application.\n\n**Path Parameters:**\n- `id` (required): Integration ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Integration is removed from the system\n- All associated enrollments and API keys are also removed\n\n**Status Codes:**\n- 204: Integration deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Integration not found\n- 500: Internal server error\n\n**Warning:** This operation is irreversible. Deleting an integration will also delete all associated enrollments, API keys, and authentication attempts."
-			},
-			"response": []
-		}
-	],
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{token}}",
-				"type": "string"
-			}
-		]
-	},
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"requests": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	]
+  "info": {
+    "_postman_id": "7b02aad6-04f2-429c-99b6-149f23c871c8",
+    "name": "EZ Key Integrations admin",
+    "description": "Collection for integration management operations in the Admin API.\n\n## Endpoints\n\n- **Search Integrations**: Retrieve integrations with filters and pagination\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration with i18n support\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all integrations across all tenants\n- **TenantAdmin**: Can only access integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService`\n\n### Automatic Tenant Assignment\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration can have:\n- Multiple language support (i18n) for names and descriptions\n- Logo for branding\n- Active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n- Tenant association (automatically assigned based on admin type)\n\n## Internationalization (i18n)\n\nIntegrations support multiple languages through the `i18n` array. Each entry contains:\n- `language`: Language code (e.g., \"en\", \"fr\")\n- `name`: Localized integration name\n- `description`: Localized integration description",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "search",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is paginated\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('totalElements');",
+              "    pm.expect(jsonData).to.have.property('totalPages');",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.content.length > 0) {",
+              "        pm.environment.set(\"integrationId\", jsonData.content[0].id);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations?page=0&size=20",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Page number (zero-based, default: 0)"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size (default: 20)"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, active",
+              "disabled": true
+            },
+            {
+              "key": "integrationName",
+              "value": "",
+              "description": "Filter by integration name (partial match, case-insensitive, searches i18n names)",
+              "disabled": true
+            },
+            {
+              "key": "active",
+              "value": "true",
+              "description": "Filter by active flag (true/false)",
+              "disabled": true
+            },
+            {
+              "key": "createdAfter",
+              "value": "",
+              "description": "Filter by start date (ISO-8601)",
+              "disabled": true
+            },
+            {
+              "key": "createdBefore",
+              "value": "",
+              "description": "Filter by end date (ISO-8601)",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all integrations across all tenants\n- **TenantAdmin**: Sees only integrations within their tenant (automatic filtering)\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `id`, `createdAt`, `active`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `integrationName`: Filter by integration name (partial match, case-insensitive, searches i18n names)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=id,asc` - Sort by ID ascending\n- `?active=true` - Filter active integrations only\n- `?integrationName=Acme` - Search integrations with 'Acme' in name\n\n**Response (200 OK):**\nPaginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Integration Fields:**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects\n\n**Note:** System integrations are automatically excluded from the listing.\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "get by ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 404\", function () {",
+              "    pm.expect([200, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"integrationId\", jsonData.id);",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('id');",
+              "        pm.expect(jsonData).to.have.property('active');",
+              "        pm.expect(jsonData).to.have.property('createdAt');",
+              "        pm.expect(jsonData).to.have.property('i18n');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{integrationId}}",
+              "description": "The integration ID"
+            }
+          ]
+        },
+        "description": "Retrieves details of a specific integration by its unique identifier for administrative purposes.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can access any integration (any tenant)\n- **TenantAdmin**: Can only access integrations within their tenant\n- Access is validated via `AccessControlService.canAccessIntegration()`\n- Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant\n\n**Path Parameters:**\n- `id` (required): Integration ID to retrieve\n\n**Response (200 OK):**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag (true if active, false if inactive)\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects, each containing:\n  - `language`: Language code (e.g., \"en\", \"fr\")\n  - `name`: Localized integration name\n  - `description`: Localized integration description\n\n**Status Codes:**\n- 200: Integration found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 404: Integration not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"integrationId\", jsonData.id);",
+              "    ",
+              "    pm.test(\"Response contains id\", function () {",
+              "        pm.expect(jsonData).to.have.property('id');",
+              "        pm.expect(jsonData.id).to.be.a('number');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const now = new Date();\r",
+              "const yyyy = now.getFullYear();\r",
+              "const mm = String(now.getMonth() + 1).padStart(2, '0');\r",
+              "const dd = String(now.getDate()).padStart(2, '0');\r",
+              "const hh = String(now.getHours()).padStart(2, '0');\r",
+              "const mi = String(now.getMinutes()).padStart(2, '0');\r",
+              "const code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;\r",
+              "pm.environment.set(\"admin_code\", code);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"logo\": null,\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"Garage du coin\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations"
+          ]
+        },
+        "description": "Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.\n\n**Multi-Tenancy - Automatic Tenant Assignment:**\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants (no tenantId field in request)\n- Tenant assignment is handled automatically by `IntegrationService.createIntegration()` based on admin type\n\n**Request Body:**\n- `logo` (optional): URL or path to the integration logo image\n- `i18n` (required): Array of internationalized content objects, each containing:\n  - `language` (required): Language code (e.g., \"en\", \"fr\")\n  - `name` (required): Localized integration name\n  - `description` (optional): Localized integration description\n\n**Response (201 Created):**\n- `id`: Unique identifier of the newly created integration\n- Location header: `/api/v1/integrations/{id}`\n\n**Status Codes:**\n- 201: Integration created successfully\n- 400: Invalid data (validation errors)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons."
+      },
+      "response": []
+    },
+    {
+      "name": "delete",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 or 404\", function () {",
+              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Deletion successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "        // DELETE returns 204 No Content with no body",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{integrationId}}",
+              "description": "The integration ID to delete"
+            }
+          ]
+        },
+        "description": "Removes an integration from the system, effectively disabling MFA protection for the associated application.\n\n**Path Parameters:**\n- `id` (required): Integration ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Integration is removed from the system\n- All associated enrollments and API keys are also removed\n\n**Status Codes:**\n- 204: Integration deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Integration not found\n- 500: Internal server error\n\n**Warning:** This operation is irreversible. Deleting an integration will also delete all associated enrollments, API keys, and authentication attempts."
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
 }
