@@ -380,8 +380,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204, 400, 404, or 501\", function () {",
-              "    pm.expect([204, 400, 404, 501]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 204, 400, 403, or 404\", function () {",
+              "    pm.expect([204, 400, 403, 404]).to.include(pm.response.code);",
               "});",
               "",
               "if (pm.response.code === 204) {",
@@ -389,12 +389,16 @@
               "        pm.expect(pm.response.code).to.equal(204);",
               "    });",
               "} else if (pm.response.code === 400) {",
-              "    pm.test(\"Cannot deactivate below minimum limit\", function () {",
+              "    pm.test(\"Cannot deactivate - validation failed\", function () {",
               "        pm.expect(pm.response.code).to.equal(400);",
               "    });",
-              "} else if (pm.response.code === 501) {",
-              "    pm.test(\"Not implemented yet\", function () {",
-              "        pm.expect(pm.response.code).to.equal(501);",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test(\"Forbidden - not a global admin\", function () {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    pm.test(\"Administrator not found\", function () {",
+              "        pm.expect(pm.response.code).to.equal(404);",
               "    });",
               "}"
             ],
@@ -426,7 +430,7 @@
             }
           ]
         },
-        "description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**Status**: This endpoint is currently not implemented (returns 501 Not Implemented). It will be implemented in the deactivation-revocation todo.\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum limits to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n  - `ezkey.security.admin.min-tenant-admins-per-tenant` (default: 1)\n- Returns 400 Bad Request if deactivation would violate minimum limits\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate below minimum limit\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 501: Not Implemented (currently returns this)\n- 500: Internal server error"
+        "description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**Rules:**\n- A global admin can deactivate another global admin (but not themselves)\n- A global admin can deactivate any tenant admin\n- A global admin can deactivate a tenant admin even if they're the only admin for that tenant\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum global admin limit to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n- Returns 400 Bad Request if deactivation would violate minimum limits\n- Does NOT enforce minimum tenant admin limits per tenant (global admins can deactivate the only tenant admin)\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate - validation failed (e.g., trying to deactivate yourself, or would violate minimum global admin limit)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 500: Internal server error"
       },
       "response": []
     }
