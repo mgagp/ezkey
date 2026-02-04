@@ -13,8 +13,11 @@ package org.ezkey.tests.tags;
 /**
  * Test category tags for organizing and filtering functional E2E tests.
  *
- * <p>These tags enable flexible test execution by categorizing tests based on their
- * characteristics. Tests can have multiple tags, and Maven profiles can filter by tag.
+ * <p>
+ * These tags enable flexible test execution by categorizing tests based on
+ * their
+ * characteristics. Tests can have multiple tags, and Maven profiles can filter
+ * by tag.
  *
  * <h2>Usage Examples</h2>
  *
@@ -73,10 +76,10 @@ package org.ezkey.tests.tags;
  * <h2>Tag Guidelines</h2>
  *
  * <ul>
- *   <li>Apply tags at class level for the majority behavior
- *   <li>Override at method level only for exceptions
- *   <li>A test can have multiple tags (e.g., slow + encryption)
- *   <li>Tags are metadata for filtering, not organizational structure
+ * <li>Apply tags at class level for the majority behavior
+ * <li>Override at method level only for exceptions
+ * <li>A test can have multiple tags (e.g., slow + encryption)
+ * <li>Tags are metadata for filtering, not organizational structure
  * </ul>
  *
  * @since 2025
@@ -92,30 +95,34 @@ public final class TestTags {
   /**
    * Fast tests that complete in under 5 seconds.
    *
-   * <p>These tests are suitable for:
+   * <p>
+   * These tests are suitable for:
    *
    * <ul>
-   *   <li>CI pipeline on every commit
-   *   <li>Pre-push hooks
-   *   <li>Quick local validation
+   * <li>CI pipeline on every commit
+   * <li>Pre-push hooks
+   * <li>Quick local validation
    * </ul>
    *
-   * <p>This is the <b>default category</b> for CI execution.
+   * <p>
+   * This is the <b>default category</b> for CI execution.
    */
   public static final String FAST = "fast";
 
   /**
    * Slow tests that may take 30+ seconds to complete.
    *
-   * <p>These tests are suitable for:
+   * <p>
+   * These tests are suitable for:
    *
    * <ul>
-   *   <li>Nightly CI builds
-   *   <li>Pre-release validation
-   *   <li>Manual execution when needed
+   * <li>Nightly CI builds
+   * <li>Pre-release validation
+   * <li>Manual execution when needed
    * </ul>
    *
-   * <p>Excluded from default CI execution to keep feedback loop fast.
+   * <p>
+   * Excluded from default CI execution to keep feedback loop fast.
    */
   public static final String SLOW = "slow";
 
@@ -124,36 +131,41 @@ public final class TestTags {
   /**
    * Tests that depend on timing, delays, or time-based logic.
    *
-   * <p>These tests may be sensitive to:
+   * <p>
+   * These tests may be sensitive to:
    *
    * <ul>
-   *   <li>System load (CPU contention)
-   *   <li>Thread scheduling
-   *   <li>Network latency
-   *   <li>Clock precision
+   * <li>System load (CPU contention)
+   * <li>Thread scheduling
+   * <li>Network latency
+   * <li>Clock precision
    * </ul>
    *
-   * <p>May be flaky under heavy load. Consider running in isolation or with retry logic in CI.
+   * <p>
+   * May be flaky under heavy load. Consider running in isolation or with retry
+   * logic in CI.
    */
   public static final String TIME_DEPENDENT = "time-dependent";
 
   /**
    * Critical smoke tests for quick validation of core functionality.
    *
-   * <p>Smoke tests should:
+   * <p>
+   * Smoke tests should:
    *
    * <ul>
-   *   <li>Cover the most critical paths
-   *   <li>Be fast (under 10 seconds total)
-   *   <li>Fail fast if something is fundamentally broken
+   * <li>Cover the most critical paths
+   * <li>Be fast (under 10 seconds total)
+   * <li>Fail fast if something is fundamentally broken
    * </ul>
    *
-   * <p>Use for:
+   * <p>
+   * Use for:
    *
    * <ul>
-   *   <li>Post-deployment validation
-   *   <li>Quick sanity checks
-   *   <li>Health check automation
+   * <li>Post-deployment validation
+   * <li>Quick sanity checks
+   * <li>Health check automation
    * </ul>
    */
   public static final String SMOKE = "smoke";
@@ -163,13 +175,14 @@ public final class TestTags {
   /**
    * Tests related to encryption, decryption, and key management.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Key rotation
-   *   <li>Re-encryption
-   *   <li>Keyset synchronization
-   *   <li>Encryption at rest
+   * <li>Key rotation
+   * <li>Re-encryption
+   * <li>Keyset synchronization
+   * <li>Encryption at rest
    * </ul>
    */
   public static final String ENCRYPTION = "encryption";
@@ -177,13 +190,14 @@ public final class TestTags {
   /**
    * Tests related to enrollment flow.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Enrollment creation
-   *   <li>Device binding
-   *   <li>Enrollment verification
-   *   <li>Enrollment lifecycle
+   * <li>Enrollment creation
+   * <li>Device binding
+   * <li>Enrollment verification
+   * <li>Enrollment lifecycle
    * </ul>
    */
   public static final String ENROLLMENT = "enrollment";
@@ -191,13 +205,14 @@ public final class TestTags {
   /**
    * Tests related to authentication flow.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Authentication attempt creation
-   *   <li>Challenge-response validation
-   *   <li>Token generation
-   *   <li>Session management
+   * <li>Authentication attempt creation
+   * <li>Challenge-response validation
+   * <li>Token generation
+   * <li>Session management
    * </ul>
    */
   public static final String AUTHENTICATION = "authentication";
@@ -205,13 +220,14 @@ public final class TestTags {
   /**
    * Tests related to API key management.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>API key creation
-   *   <li>API key rotation
-   *   <li>API key revocation
-   *   <li>API key authentication
+   * <li>API key creation
+   * <li>API key rotation
+   * <li>API key revocation
+   * <li>API key authentication
    * </ul>
    */
   public static final String API_KEY = "api-key";
@@ -219,12 +235,13 @@ public final class TestTags {
   /**
    * Tests related to admin operations.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Admin authentication
-   *   <li>Admin token management
-   *   <li>Administrative API operations
+   * <li>Admin authentication
+   * <li>Admin token management
+   * <li>Administrative API operations
    * </ul>
    */
   public static final String ADMIN = "admin";
@@ -232,12 +249,13 @@ public final class TestTags {
   /**
    * Tests related to integration management.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Integration creation
-   *   <li>Integration configuration
-   *   <li>Integration lifecycle
+   * <li>Integration creation
+   * <li>Integration configuration
+   * <li>Integration lifecycle
    * </ul>
    */
   public static final String INTEGRATION = "integration";
@@ -247,12 +265,13 @@ public final class TestTags {
   /**
    * Tests that require specific database state or perform database operations.
    *
-   * <p>These tests may:
+   * <p>
+   * These tests may:
    *
    * <ul>
-   *   <li>Require clean database state
-   *   <li>Modify database directly via SQL
-   *   <li>Verify database constraints
+   * <li>Require clean database state
+   * <li>Modify database directly via SQL
+   * <li>Verify database constraints
    * </ul>
    */
   public static final String DATABASE = "database";
@@ -260,12 +279,13 @@ public final class TestTags {
   /**
    * Tests that verify cross-instance behavior (Admin API ↔ Auth API).
    *
-   * <p>These tests validate:
+   * <p>
+   * These tests validate:
    *
    * <ul>
-   *   <li>Data consistency across services
-   *   <li>Keyset synchronization
-   *   <li>Distributed operations
+   * <li>Data consistency across services
+   * <li>Keyset synchronization
+   * <li>Distributed operations
    * </ul>
    */
   public static final String CROSS_INSTANCE = "cross-instance";
@@ -273,13 +293,14 @@ public final class TestTags {
   /**
    * Tests related to multi-tenant isolation and permissions.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Cross-tenant isolation
-   *   <li>Tenant boundary permissions
-   *   <li>TenantAdmin scope restrictions
-   *   <li>Data leakage prevention
+   * <li>Cross-tenant isolation
+   * <li>Tenant boundary permissions
+   * <li>TenantAdmin scope restrictions
+   * <li>Data leakage prevention
    * </ul>
    */
   public static final String MULTI_TENANT = "multi-tenant";
@@ -287,13 +308,14 @@ public final class TestTags {
   /**
    * Tests related to security and authorization.
    *
-   * <p>Includes:
+   * <p>
+   * Includes:
    *
    * <ul>
-   *   <li>Authentication failures (401)
-   *   <li>Authorization failures (403)
-   *   <li>Access control validation
-   *   <li>Security boundaries
+   * <li>Authentication failures (401)
+   * <li>Authorization failures (403)
+   * <li>Access control validation
+   * <li>Security boundaries
    * </ul>
    */
   public static final String SECURITY = "security";
