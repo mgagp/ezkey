@@ -45,6 +45,8 @@ public class SystemTenantDeactivationException extends RuntimeException {
    * developers and API consumers understand the constraint.
    */
   public SystemTenantDeactivationException() {
-    super("Cannot deactivate system tenant. System tenant hosts global administrators and must remain active.");
+    super(
+        "Cannot deactivate system tenant. System tenant hosts global administrators and must"
+            + " remain active.");
   }
 }

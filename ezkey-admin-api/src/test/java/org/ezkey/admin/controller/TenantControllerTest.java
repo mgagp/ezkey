@@ -22,6 +22,7 @@ import java.util.Optional;
 import org.ezkey.admin.exception.SystemTenantDeactivationException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,7 +105,7 @@ class TenantControllerTest {
       when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(applicationTenant));
       when(tenantRepository.save(any(Tenant.class))).thenReturn(applicationTenant);
 
-      AdminPrincipal principal = new AdminPrincipal(1, "admin", true, null);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
       UsernamePasswordAuthenticationToken auth =
           new UsernamePasswordAuthenticationToken(
               principal, null, java.util.List.of(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
@@ -125,7 +126,7 @@ class TenantControllerTest {
       Integer tenantId = systemTenant.getTenantId();
       when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(systemTenant));
 
-      AdminPrincipal principal = new AdminPrincipal(1, "admin", true, null);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
       UsernamePasswordAuthenticationToken auth =
           new UsernamePasswordAuthenticationToken(
               principal, null, java.util.List.of(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
@@ -148,7 +149,7 @@ class TenantControllerTest {
       Integer nonExistentTenantId = 999;
       when(tenantRepository.findById(nonExistentTenantId)).thenReturn(Optional.empty());
 
-      AdminPrincipal principal = new AdminPrincipal(1, "admin", true, null);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
       UsernamePasswordAuthenticationToken auth =
           new UsernamePasswordAuthenticationToken(
               principal, null, java.util.List.of(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
