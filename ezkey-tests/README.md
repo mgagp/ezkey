@@ -176,9 +176,6 @@ mvn test -pl ezkey-tests -X
 # Run specific test class
 mvn test -pl ezkey-tests -Dtest=AdminTokenCreationTest
 mvn test -pl ezkey-tests -Dtest=AdminAuthenticationSecurityTest
-
-# Run CLI tests (CLI tag + slow tests)
-mvn test -pl ezkey-tests -P slow-tests -Dgroups="cli"
 ```
 
 ## Test Structure
