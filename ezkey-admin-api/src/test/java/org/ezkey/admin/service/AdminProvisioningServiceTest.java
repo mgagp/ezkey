@@ -11,6 +11,7 @@
 package org.ezkey.admin.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -329,7 +330,7 @@ class AdminProvisioningServiceTest {
       verify(adminRepository).findById(2);
       verify(adminRepository).save(target);
       verify(tokenRepository).deactivateAllTokensForAdmin(2);
-      assertEquals(false, target.getActive());
+      assertFalse(target.getActive());
     }
 
     @Test
@@ -379,7 +380,7 @@ class AdminProvisioningServiceTest {
       verify(adminRepository).findById(2);
       verify(adminRepository).save(target);
       verify(tokenRepository).deactivateAllTokensForAdmin(2);
-      assertEquals(false, target.getActive());
+      assertFalse(target.getActive());
     }
 
     @Test
@@ -480,7 +481,7 @@ class AdminProvisioningServiceTest {
       verify(adminRepository).findById(2);
       verify(adminRepository).save(target);
       verify(tokenRepository).deactivateAllTokensForAdmin(2);
-      assertEquals(false, target.getActive());
+      assertFalse(target.getActive());
       // Note: No check for min tenant admin limit - this is allowed per requirements
     }
   }
