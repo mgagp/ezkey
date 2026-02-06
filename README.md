@@ -9,8 +9,6 @@ Ezkey is a pragmatic, open-source alternative to complex passkey implementations
 ### Why Ezkey?
 
 ```mermaid
-
-Voir aussi: [docs/windows-power-shell.md](docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
 graph LR
     subgraph "Traditional MFA"
         A[Complex Setup]
