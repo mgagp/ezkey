@@ -24,6 +24,7 @@ class AdminProvisioningDetailScreen(Screen):
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
       Binding("o", "onboarding", "Onboarding"),
+      Binding("d", "deactivate", "Deactivate"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -203,6 +204,52 @@ class AdminProvisioningDetailScreen(Screen):
     self.onboarding_data = response
     self._render_detail()
     self._set_copy_buttons_visible(True)
+
+  def action_deactivate(self) -> None:
+    """Deactivate this admin with confirmation."""
+    if not self.admin_id:
+      self._show_error("Missing admin ID")
+      return
+
+    from .confirmation_modal import ConfirmationModal
+
+    username = self.admin_data.get("username", f"#{self.admin_id}")
+    message = f"Deactivate admin '{username}'?\nThis action cannot be undone."
+
+    def on_confirm(confirmed: bool) -> None:
+      if confirmed:
+        self._do_deactivate()
+
+    self.app.push_screen(
+        ConfirmationModal(
+            title="Deactivate Admin",
+            message=message
+        ),
+        on_confirm
+    )
+
+  def _do_deactivate(self) -> None:
+    """Perform the deactivation after confirmation."""
+    status = self.query_one("#status_label", Label)
+    api_client = self.app.api_client
+    if not api_client:
+      status.update("❌ No API client available")
+      return
+
+    success = api_client.deactivate_admin(self.admin_id)
+
+    if not success:
+      # Extract error message from API response
+      error_msg = api_client.last_error_message or f"Failed to deactivate admin {self.admin_id}"
+      if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
+        self.app.handle_auth_error()
+        return
+      status.update(f"❌ {error_msg}")
+      return
+
+    status.update(f"✅ Admin {self.admin_id} deactivated successfully")
+    self.admin_data["active"] = False
+    self._render_detail()
 
   def action_quit(self) -> None:
     """Quit the application."""

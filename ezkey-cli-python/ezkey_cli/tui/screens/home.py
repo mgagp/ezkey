@@ -204,12 +204,12 @@ class QuickActionsPanel(Static):
 
 
 class InfoPanel(Static):
-  """Info panel for health, session, scope, and refresh."""
+  """Info panel for API endpoint, session status, scope, and username."""
 
-  health_line = reactive("Admin API: unknown")
+  username_line = reactive("User: unknown")
+  api_url_line = reactive("Admin API: unknown")
   session_line = reactive("Session: unknown")
   scope_line = reactive("Scope: unknown")
-  refresh_line = reactive("Last refresh: -")
 
   DEFAULT_CSS = """
   InfoPanel {
@@ -222,11 +222,11 @@ class InfoPanel(Static):
   def render(self) -> str:
     """Render info panel."""
     return (
-        "ℹ️ Info\n\n"
-        f"{self.health_line}\n"
+        "ℹ️ Context\n\n"
+        f"{self.username_line}\n"
+        f"{self.api_url_line}\n"
         f"{self.session_line}\n"
-        f"{self.scope_line}\n"
-        f"{self.refresh_line}"
+        f"{self.scope_line}"
     )
 
 
@@ -314,7 +314,6 @@ class HomeScreen(Screen):
     with Vertical(id="main_container"):
       yield Label("Welcome to Ezkey Admin Console")
       yield Label("", id="status_label")
-      yield InfoPanel(id="info_panel")
       with Horizontal(id="row_top"):
         yield StatusPanel(id="status_panel")
         yield ActionPanel(id="action_panel")
@@ -323,12 +322,21 @@ class HomeScreen(Screen):
       with Horizontal(id="row_bottom"):
         yield SecurityPanel(id="security_panel")
         yield QuickActionsPanel(id="quick_actions_panel")
+      yield InfoPanel(id="info_panel")
 
     yield Footer()
 
   def on_mount(self) -> None:
     """Called when screen is mounted - load data from API."""
     log.debug("HomeScreen mounted")
+
+    # Initialize info panel with config values
+    info_panel = self.query_one("#info_panel", InfoPanel)
+    info_panel.username_line = self._format_username()
+    info_panel.api_url_line = self._format_api_url()
+    info_panel.session_line = self._format_session_status()
+    info_panel.scope_line = self._format_scope_status()
+
     self._load_dashboard_data()
     refresh_seconds = self._get_refresh_seconds()
     self.set_interval(refresh_seconds, self._refresh_dashboard)
@@ -374,11 +382,9 @@ class HomeScreen(Screen):
       security_panel.update_security(snapshot.get("security", {}))
 
       info_panel = self.query_one("#info_panel", InfoPanel)
-      info_panel.health_line = self._format_health(snapshot.get("meta", {}).get("health", {}))
+      info_panel.api_url_line = self._format_api_url()
       info_panel.session_line = self._format_session_status()
       info_panel.scope_line = self._format_scope_status()
-      last_refresh = snapshot.get("meta", {}).get("last_refresh", "")
-      info_panel.refresh_line = self._format_refresh_label(last_refresh)
 
       log.debug("Dashboard snapshot loaded")
 
@@ -403,29 +409,25 @@ class HomeScreen(Screen):
     except (TypeError, ValueError):
       return 30
 
-  def _format_refresh_label(self, last_refresh: str) -> str:
-    """Format refresh label with age."""
-    if not last_refresh:
-      return "Last refresh: -"
-    parsed = self._parse_datetime(last_refresh)
-    if not parsed:
-      return f"Last refresh: {last_refresh}"
-    age_seconds = int((datetime.now(timezone.utc) - parsed).total_seconds())
-    age = self._format_duration(age_seconds)
-    return f"Last refresh: {parsed.isoformat()} ({age} ago)"
-
-  def _format_health(self, health: Dict[str, Any]) -> str:
-    """Format health status label."""
-    if not health:
+  def _format_api_url(self) -> str:
+    """Format Admin API URL label."""
+    config = getattr(self.app, "config", None)
+    if not config:
       return "Admin API: unknown"
-    ok = health.get("ok")
-    latency = health.get("latency_ms")
-    if ok:
-      suffix = f" ({latency} ms)" if isinstance(latency, int) else ""
-      return f"Admin API: OK{suffix}"
-    status_code = health.get("status_code")
-    code = f"HTTP {status_code}" if status_code else "unreachable"
-    return f"Admin API: {code}"
+    admin_url = config.get("adminUrl")
+    if not admin_url:
+      return "Admin API: unknown"
+    return f"Admin API: {admin_url}"
+
+  def _format_username(self) -> str:
+    """Format username label."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return "User: unknown"
+    username = config.get_admin_username()
+    if not username:
+      return "User: unknown"
+    return f"User: {username}"
 
   def _format_session_status(self) -> str:
     """Format token/session expiry label."""

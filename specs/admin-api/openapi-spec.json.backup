@@ -3330,8 +3330,7 @@
           }
         },
         "required": [
-          "authAttemptId",
-          "challengeCode"
+          "authAttemptId"
         ]
       },
       "AdminLoginResponseDto": {
@@ -3412,6 +3411,11 @@
           "challengeRequested": {
             "type": "boolean",
             "description": "Request challenge verification on device (6-digit code). When true, returns authAttemptId and challengeCode for two-step flow",
+            "example": false
+          },
+          "nonBlocking": {
+            "type": "boolean",
+            "description": "Request immediate response with authAttemptId and expiresAt instead of blocking until device responds. Allows client to display countdown timer and poll /passwordless-wait endpoint. When false (default), blocking wait is used when no challenge is required (backward compatible). This flag has no effect when challenge is required (challenge flow is always non-blocking).",
             "example": false
           }
         },
