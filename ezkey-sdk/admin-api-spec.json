@@ -1143,7 +1143,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Deactivate an administrator",
-        "description": "Deactivates an administrator. GlobalAdmin only. Enforces min limits and revokes tokens.",
+        "description": "Deactivates an administrator account and revokes all tokens. GlobalAdmin only. Enforces minimum limits and prevents self-deactivation.",
         "operationId": "deactivateAdmin",
         "parameters": [
           {
@@ -1163,13 +1163,13 @@
             "description": "Administrator deactivated successfully"
           },
           "400": {
-            "description": "Cannot deactivate below minimum limit"
+            "description": "Cannot deactivate: self-deactivation attempted or would violate limits (RFC 9457 Problem Detail)"
+          },
+          "403": {
+            "description": "Forbidden - caller is not a global administrator"
           },
           "404": {
             "description": "Administrator not found"
-          },
-          "403": {
-            "description": "Forbidden - not a global administrator"
           }
         }
       }

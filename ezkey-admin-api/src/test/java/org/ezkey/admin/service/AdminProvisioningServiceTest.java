@@ -20,7 +20,10 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+
 import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.admin.exception.AdminLimitException;
+import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -44,13 +47,18 @@ import org.springframework.data.domain.Pageable;
 /**
  * Unit tests for AdminProvisioningService listAdmins method.
  *
- * <p>This test class validates the tenant-based filtering logic for listing administrators. It
- * ensures that GlobalAdmin sees all administrators while TenantAdmin sees only administrators from
+ * <p>
+ * This test class validates the tenant-based filtering logic for listing
+ * administrators. It
+ * ensures that GlobalAdmin sees all administrators while TenantAdmin sees only
+ * administrators from
  * their tenant.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -59,21 +67,29 @@ import org.springframework.data.domain.Pageable;
 @DisplayName("AdminProvisioningService listAdmins Tests")
 class AdminProvisioningServiceTest {
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock
+  private TenantRepository tenantRepository;
 
-  @Mock private EzkeyAdminRepository adminRepository;
+  @Mock
+  private EzkeyAdminRepository adminRepository;
 
-  @Mock private IntegrationRepository integrationRepository;
+  @Mock
+  private IntegrationRepository integrationRepository;
 
-  @Mock private EnrollmentRepository enrollmentRepository;
+  @Mock
+  private EnrollmentRepository enrollmentRepository;
 
-  @Mock private AdminRecoveryService recoveryService;
+  @Mock
+  private AdminRecoveryService recoveryService;
 
-  @Mock private SignatureService signatureService;
+  @Mock
+  private SignatureService signatureService;
 
-  @Mock private AdminSecurityProperties securityProperties;
+  @Mock
+  private AdminSecurityProperties securityProperties;
 
-  @Mock private org.ezkey.integration.domain.repository.AdminTokenRepository tokenRepository;
+  @Mock
+  private org.ezkey.integration.domain.repository.AdminTokenRepository tokenRepository;
 
   private AdminProvisioningService service;
 
@@ -89,16 +105,15 @@ class AdminProvisioningServiceTest {
 
   @BeforeEach
   void setUp() {
-    service =
-        new AdminProvisioningService(
-            tenantRepository,
-            adminRepository,
-            integrationRepository,
-            enrollmentRepository,
-            recoveryService,
-            signatureService,
-            securityProperties,
-            tokenRepository);
+    service = new AdminProvisioningService(
+        tenantRepository,
+        adminRepository,
+        integrationRepository,
+        enrollmentRepository,
+        recoveryService,
+        signatureService,
+        securityProperties,
+        tokenRepository);
 
     // Setup test tenant
     testTenant = new Tenant();
@@ -157,8 +172,7 @@ class AdminProvisioningServiceTest {
     void globalAdminSeesAllAdmins() {
       // Arrange
       Pageable pageable = PageRequest.of(0, 20);
-      List<EzkeyAdmin> allAdmins =
-          List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
+      List<EzkeyAdmin> allAdmins = List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(allAdmins, pageable, allAdmins.size());
 
       when(adminRepository.findAll(pageable)).thenReturn(expectedPage);
@@ -243,9 +257,8 @@ class AdminProvisioningServiceTest {
       assertNotNull(result);
       assertEquals(2, result.getTotalElements());
       // Verify otherTenantAdmin is not in the results
-      boolean containsOtherTenantAdmin =
-          result.getContent().stream()
-              .anyMatch(admin -> admin.getAdminId().equals(otherTenantAdmin.getAdminId()));
+      boolean containsOtherTenantAdmin = result.getContent().stream()
+          .anyMatch(admin -> admin.getAdminId().equals(otherTenantAdmin.getAdminId()));
       assertEquals(false, containsOtherTenantAdmin);
       verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
     }
@@ -315,8 +328,8 @@ class AdminProvisioningServiceTest {
       target.setAdminType(AdminType.GLOBAL_ADMIN);
       target.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
       when(adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN)).thenReturn(2L);
@@ -343,14 +356,14 @@ class AdminProvisioningServiceTest {
       admin.setAdminType(AdminType.GLOBAL_ADMIN);
       admin.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(1)).thenReturn(java.util.Optional.of(admin));
 
       // Act & Assert
       org.junit.jupiter.api.Assertions.assertThrows(
-          IllegalArgumentException.class, () -> service.deactivateAdmin(1, principal));
+          AdminNotAllowedException.class, () -> service.deactivateAdmin(1, principal));
       verify(adminRepository).findById(1);
       verify(adminRepository, org.mockito.Mockito.never()).save(any());
       verify(tokenRepository, org.mockito.Mockito.never()).deactivateAllTokensForAdmin(any());
@@ -367,8 +380,8 @@ class AdminProvisioningServiceTest {
       target.setTenant(testTenant);
       target.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
       when(tokenRepository.deactivateAllTokensForAdmin(2)).thenReturn(1);
@@ -393,8 +406,8 @@ class AdminProvisioningServiceTest {
       target.setAdminType(AdminType.GLOBAL_ADMIN);
       target.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
       when(adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN)).thenReturn(1L);
@@ -402,7 +415,7 @@ class AdminProvisioningServiceTest {
 
       // Act & Assert
       org.junit.jupiter.api.Assertions.assertThrows(
-          IllegalStateException.class, () -> service.deactivateAdmin(2, principal));
+          AdminLimitException.class, () -> service.deactivateAdmin(2, principal));
       verify(adminRepository).findById(2);
       verify(adminRepository, org.mockito.Mockito.never()).save(any());
       verify(tokenRepository, org.mockito.Mockito.never()).deactivateAllTokensForAdmin(any());
@@ -418,8 +431,8 @@ class AdminProvisioningServiceTest {
       target.setAdminType(AdminType.GLOBAL_ADMIN);
       target.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
       when(adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN)).thenReturn(3L);
@@ -443,8 +456,8 @@ class AdminProvisioningServiceTest {
       target.setAdminType(AdminType.GLOBAL_ADMIN);
       target.setActive(false); // Already inactive
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
 
@@ -468,8 +481,8 @@ class AdminProvisioningServiceTest {
       target.setTenant(testTenant);
       target.setActive(true);
 
-      org.ezkey.admin.security.AdminPrincipal principal =
-          new org.ezkey.admin.security.AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      org.ezkey.admin.security.AdminPrincipal principal = new org.ezkey.admin.security.AdminPrincipal(1,
+          AdminType.GLOBAL_ADMIN, null, null);
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
       when(tokenRepository.deactivateAllTokensForAdmin(2)).thenReturn(2);

@@ -1,8 +1,8 @@
 # GitHub Copilot Instructions for Ezkey Project
 
 ## Project Context
-This is a multi-module Spring Boot project providing an open-source MFA/Passkey alternative.  
-For overall product requirements and functional constraints, always refer to the top-level file `PRD.txt`.  
+This is a multi-module Spring Boot project providing an open-source MFA/Passkey alternative.
+For overall product requirements and functional constraints, always refer to the top-level file `PRD.txt`.
 For build, setup, and project organization, refer to `README.md`.
 
 ## Code Style
@@ -11,7 +11,7 @@ For build, setup, and project organization, refer to `README.md`.
 - Use Java 25+ features where appropriate (records, switch expressions, pattern matching)
 - Follow idiomatic Spring Boot practices:
   - `@Service` for business logic
-  - `@Repository` for persistence  
+  - `@Repository` for persistence
   - `@RestController` for HTTP APIs
 - Use constructor injection rather than field injection
 - Methods and classes should be kept small and cohesive
@@ -58,7 +58,7 @@ src/main/java/org/ezkey/{domain}/
 ├── service/             # Business logic (application layer)
 ├── controller/          # REST endpoints (API modules only)
 ├── dto/
-│   ├── request/         # Request DTOs  
+│   ├── request/         # Request DTOs
 │   ├── response/        # Response DTOs
 │   └── common/          # Shared DTOs
 ├── mapper/              # MapStruct mappers
@@ -144,7 +144,7 @@ src/main/java/org/ezkey/{domain}/
   ```
   feat(admin-api): add integration export endpoint
   fix(auth-api): resolve enrollment binding issue
-  docs(mobile): update Flutter setup instructions
+  docs(mobile): update React Native setup instructions
   style(core): format according to Google style guide
   test(admin-api): add integration controller tests
   ```
@@ -179,23 +179,23 @@ src/main/java/org/ezkey/{domain}/
 - Use efficient algorithms and data structures
 - Implement proper resource cleanup
 
-## Mobile Development (Flutter)
+## Mobile Development (React Native)
 
-### Flutter Standards
-- Flutter 3.8.1+ with Provider state management
-- Follow Flutter best practices for widget composition
-- Implement proper state management patterns
+### React Native Standards
+- React Native 0.72+ with native development environment setup
+- Follow React Native best practices for component composition
+- Implement proper state management patterns (Redux, Context API, or similar)
 - Use consistent theming and styling
 
 ### Project Structure
 ```
-lib/
+app/
 ├── models/                  # Data models
 ├── services/                # API services
-├── providers/               # State management
 ├── screens/                 # UI screens
-├── widgets/                 # Reusable widgets
-└── utils/                   # Utilities
+├── components/              # Reusable components
+├── utils/                   # Utilities
+└── styles/                  # Styling and themes
 ```
 
 ## Build and Deployment

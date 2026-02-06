@@ -52,7 +52,7 @@ ezkey admin integration list
 ezkey --tui
 ```
 
-**First run:** Interactive setup wizard (Admin URL, username, organization, passwordless auth)  
+**First run:** Interactive setup wizard (Admin URL, username, organization, passwordless auth)
 **Subsequent runs:** Session loads automatically, token refreshed silently
 
 ## Command Structure
@@ -146,7 +146,7 @@ The CLI uses hierarchical configuration with the following precedence:
 All commands support these global options:
 
 - `--admin-url <url>` - Override admin API URL
-- `--auth-url <url>` - Override auth API URL  
+- `--auth-url <url>` - Override auth API URL
 - `--crypto-url <url>` - Override crypto API URL
 - `--no-pretty` - Disable pretty printing of JSON output
 - `--timeout <ms>` - Set request timeout in milliseconds
@@ -249,6 +249,19 @@ Error responses include:
 3. Test application with new key
 4. Monitor usage (check `lastUsedAt` field)
 5. Revoke old key after migration complete
+
+## Architecture Notes
+
+### RFC 7807 Problem Details Support
+
+The CLI TUI now supports **RFC 7807 Problem Details** for structured API error responses. This enables:
+- **Readable error messages** from the Admin API (e.g., "Cannot deactivate your own account")
+- **Backward compatibility** with legacy error formats
+- **Automatic extensibility** - new endpoints using RFC 7807 work without code changes
+
+See [TUI_GUIDE.md - API Client & Error Handling](TUI_GUIDE.md#api-client--error-handling) for details.
+
+---
 
 ## Documentation
 

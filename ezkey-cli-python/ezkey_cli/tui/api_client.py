@@ -48,6 +48,43 @@ class ApiClient:
     self.last_status_code = None
     self.last_error_message = None
 
+  def _extract_error_message(self, response: requests.Response) -> str:
+    """
+    Extract error message from HTTP response.
+
+    Supports multiple formats:
+    - RFC 7807 Problem Details (detail, title fields)
+    - Legacy API error (message field)
+    - Plain text or generic message
+
+    Args:
+        response: HTTP response object
+
+    Returns:
+        Human-readable error message
+    """
+    try:
+      data = response.json()
+      # Try RFC 7807 'detail' field first (most specific)
+      if "detail" in data and data["detail"]:
+        return str(data["detail"])
+      # Try 'title' field as fallback
+      if "title" in data and data["title"]:
+        return str(data["title"])
+      # Try legacy 'message' field
+      if "message" in data and data["message"]:
+        return str(data["message"])
+      # If JSON but no recognized fields, return full response
+      return str(data)
+    except (ValueError, TypeError):
+      # Not JSON, use raw text
+      pass
+
+    # Return status text or generic message
+    if response.text:
+      return response.text.strip()
+    return f"HTTP {response.status_code}"
+
   def _get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
     """
     Make GET request to API.
@@ -115,9 +152,6 @@ class ApiClient:
 
     Returns:
         Response JSON or None on error
-
-    Raises:
-        Exception: With API error message if request fails
     """
     try:
       self.last_auth_error = False
@@ -137,39 +171,40 @@ class ApiClient:
 
       log.info(f"Response status: {response.status_code}")
 
+      # Handle authentication/authorization errors
       if response.status_code == 401 or response.status_code == 403:
-        log.error(f"Authorization failed ({response.status_code}): {response.text}")
+        error_msg = self._extract_error_message(response)
+        log.error(f"Authorization failed ({response.status_code}): {error_msg}")
         self.last_auth_error = True
         self.last_status_code = response.status_code
-        self.last_error_message = response.text
-        raise Exception(f"Authorization failed ({response.status_code})")
+        self.last_error_message = error_msg
+        return None
 
-      # Handle 4xx errors with API error response
-      if 400 <= response.status_code < 500:
-        try:
-          error_data = response.json()
-          error_msg = error_data.get("message", response.text)
-          log.error(f"API error ({response.status_code}): {error_msg}")
-          raise Exception(error_msg)
-        except ValueError:
-          # Not JSON, use raw text
-          log.error(f"API error ({response.status_code}): {response.text}")
-          raise Exception(f"API error: {response.text}")
+      # Handle other 4xx/5xx errors (return None, store error message)
+      if response.status_code >= 400:
+        error_msg = self._extract_error_message(response)
+        log.error(f"API error ({response.status_code}): {error_msg}")
+        self.last_status_code = response.status_code
+        self.last_error_message = error_msg
+        return None
 
-      response.raise_for_status()
+      # Success case
       result = response.json() if response.text else {}
       log.debug(f"Response data: {result}")
       return result
 
     except requests.exceptions.RequestException as e:
+      error_msg = f"Request failed: {str(e)}"
       log.error(f"POST {endpoint} failed: {e}", exc_info=True)
-      raise Exception(f"Request failed: {str(e)}")
+      self.last_status_code = None
+      self.last_error_message = error_msg
+      return None
     except Exception as e:
-      # Re-raise exception (already logged above)
-      if "Authorization failed" in str(e) or "API error" in str(e) or "Request failed" in str(e):
-        raise
+      error_msg = f"Unexpected error: {str(e)}"
       log.error(f"POST {endpoint} unexpected error: {e}", exc_info=True)
-      raise Exception(f"Unexpected error: {str(e)}")
+      self.last_status_code = None
+      self.last_error_message = error_msg
+      return None
 
   def _delete(self, endpoint: str) -> bool:
     """
@@ -381,6 +416,11 @@ class ApiClient:
   def get_admin_onboarding(self, admin_id: int) -> Optional[Dict[str, Any]]:
     """Get onboarding credentials for admin."""
     return self._get(f"/api/v1/admins/{admin_id}/onboarding")
+
+  def deactivate_admin(self, admin_id: int) -> bool:
+    """Deactivate an administrator by ID."""
+    response = self._post(f"/api/v1/admins/{admin_id}/deactivate", data={})
+    return response is not None
 
   def get_tenants(self) -> Optional[List[Dict[str, Any]]]:
     """List tenants (GlobalAdmin only)."""

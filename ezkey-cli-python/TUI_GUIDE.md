@@ -134,11 +134,11 @@ ezkey_cli/
 
 ### Design Principles
 
-✅ **Pragmatism** - MVP focuses on essential admin operations  
-✅ **Simplicity** - Single CLI command, clear entry point  
-✅ **Modularity** - Separate concerns (auth, tui, screens)  
-✅ **Security** - Encrypted sessions, no plaintext tokens  
-✅ **User-First** - Setup wizard on first run, no login prompts  
+✅ **Pragmatism** - MVP focuses on essential admin operations
+✅ **Simplicity** - Single CLI command, clear entry point
+✅ **Modularity** - Separate concerns (auth, tui, screens)
+✅ **Security** - Encrypted sessions, no plaintext tokens
+✅ **User-First** - Setup wizard on first run, no login prompts
 ✅ **Scalability** - Easy to add new screens controller-by-controller
 
 ### Entry Point Flow
@@ -477,8 +477,8 @@ Response: 204 No Content
 
 ### Token Validation on Startup
 
-**Current Problem:** Dashboard shows zeros when token is expired/invalid  
-**Root Cause:** No token validation on startup  
+**Current Problem:** Dashboard shows zeros when token is expired/invalid
+**Root Cause:** No token validation on startup
 **User Impact:** Silent failure - admin sees blank dashboard
 
 **Solution:**
@@ -487,7 +487,7 @@ Response: 204 No Content
 def validate_token(self) -> bool:
     """
     Validate if bearer token is still valid.
-    
+
     Returns:
         True if token is valid, False if expired/invalid
     """
@@ -499,7 +499,7 @@ def validate_token(self) -> bool:
             timeout=5,
             verify=self.verify_ssl
         )
-        
+
         if response.status_code == 200:
             return True
         elif response.status_code in [401, 403]:
@@ -553,28 +553,28 @@ from textual.binding import Binding
 
 class MyScreen(Screen):
     """My custom screen."""
-    
+
     BINDINGS = [
         Binding("h", "show_home", "Home"),
         Binding("r", "refresh", "Refresh"),
         Binding("q", "quit", "Quit"),
     ]
-    
+
     def compose(self):
         """Create child widgets."""
         yield Header()
         yield Container(
             # Your widgets here
         )
-    
+
     def action_show_home(self):
         """Return to home screen."""
         self.app.pop_screen()
-    
+
     def action_refresh(self):
         """Refresh screen data."""
         self._load_data()
-    
+
     def _load_data(self):
         """Load data from API."""
         # Implementation here
@@ -590,12 +590,12 @@ from textual.widgets import Button, Label
 
 class MyModal(ModalScreen[bool]):
     """My custom modal dialog."""
-    
+
     def __init__(self, title: str, message: str):
         super().__init__()
         self.title = title
         self.message = message
-    
+
     def compose(self):
         yield Grid(
             Label(self.title, id="title"),
@@ -604,7 +604,7 @@ class MyModal(ModalScreen[bool]):
             Button("Cancel", id="cancel"),
             id="dialog",
         )
-    
+
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "confirm":
             self.dismiss(True)
@@ -617,7 +617,7 @@ class MyModal(ModalScreen[bool]):
 ```python
 class ApiClient:
     """HTTP client for Admin API."""
-    
+
     def __init__(self, admin_url: str, token: str):
         self.admin_url = admin_url
         self.token = token
@@ -625,7 +625,7 @@ class ApiClient:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
-    
+
     def _get(self, endpoint: str, params: dict = None) -> dict:
         """Execute GET request."""
         try:
@@ -636,7 +636,7 @@ class ApiClient:
         except Exception as e:
             log.error(f"GET {endpoint} failed: {e}")
             return {}
-    
+
     def _post(self, endpoint: str, data: dict) -> dict:
         """Execute POST request."""
         try:
@@ -647,7 +647,7 @@ class ApiClient:
         except Exception as e:
             log.error(f"POST {endpoint} failed: {e}")
             return {}
-    
+
     def _delete(self, endpoint: str) -> bool:
         """Execute DELETE request."""
         try:
@@ -658,6 +658,82 @@ class ApiClient:
             log.error(f"DELETE {endpoint} failed: {e}")
             return False
 ```
+
+---
+
+## API Client & Error Handling
+
+### RFC 7807 Problem Details Support
+
+**Status:** Introduced in v1.0.0 - Supports RFC 7807 error responses from Admin API
+
+The API client now gracefully handles **RFC 7807 Problem Details** for HTTP APIs, a standard format for API errors that provides structured, human-readable error messages.
+
+**Implementation Details:**
+- `_extract_error_message()` method parses error responses with priority:
+  1. **RFC 7807 `detail` field** (most specific) - Business logic error
+  2. **RFC 7807 `title` field** - Error category
+  3. **Legacy `message` field** - Backward compatibility
+  4. **Raw text** - Fallback for non-JSON responses
+
+**Error Handling Pattern:**
+```python
+# API Client returns None + stores error message
+success = api_client.deactivate_admin(admin_id)
+
+if not success:
+    # Display stored error message from API response
+    error = api_client.last_error_message
+    # Example: "Cannot deactivate your own account"
+    status.update(f"❌ {error}")
+```
+
+**Example RFC 7807 Response:**
+```json
+{
+  "type": "https://ezkey.io/problems/admin-not-allowed",
+  "title": "Admin Operation Not Allowed",
+  "status": 400,
+  "detail": "Cannot deactivate your own account",
+  "instance": "/api/v1/admins/1/deactivate"
+}
+```
+
+### Extensibility for Future APIs
+
+**Design Principle:** New endpoints using RFC 7807 work automatically
+
+**How it works:**
+1. Backend returns RFC 7807 error response (any status >= 400)
+2. `_extract_error_message()` parses `detail` field
+3. TUI displays the message without code changes
+4. No need to modify `_post()`, `_get()`, `_delete()` methods
+
+**Example: Adding a new deactivation endpoint**
+```python
+# In api_client.py - automatically supports RFC 7807!
+def deactivate_resource(self, resource_id: int) -> bool:
+    response = self._post(f"/api/v1/resources/{resource_id}/deactivate", data={})
+    return response is not None
+```
+
+**Status Fields Available:**
+- `api_client.last_error_message` - Human-readable error message
+- `api_client.last_status_code` - HTTP status code
+- `api_client.last_auth_error` - True if 401/403
+
+### Migration Path for Legacy Endpoints
+
+If an endpoint uses legacy error format with `message` field instead of `detail`:
+```python
+# Old format (still supported)
+{"message": "Error description"}
+
+# New format (RFC 7807)
+{"detail": "Error description", "title": "...", ...}
+```
+
+The API client handles both automatically - no TUI code changes needed.
 
 ---
 
