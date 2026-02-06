@@ -8,7 +8,8 @@ TUI Module: Widgets package
 Description: Reusable Textual widgets
 """
 
-from .header import HeaderWidget
+from .header import HeaderWidget, ContextHeader
 from .sidebar import SidebarWidget
 
-__all__ = ["HeaderWidget", "SidebarWidget"]
+__all__ = ["HeaderWidget", "ContextHeader", "SidebarWidget"]
+
