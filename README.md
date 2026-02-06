@@ -53,6 +53,22 @@ graph LR
 | **Self-Hosting** | Rarely | No | Yes |
 | **Synchronous Integration** | Limited | No | Yes (Wait API) |
 
+## Table of Contents
+
+- [Overview](#overview)
+  - [Why Ezkey?](#why-ezkey)
+  - [Comparison Matrix](#comparison-matrix)
+- [Features](#features)
+- [Security Design](#-security-design)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Documentation](#api-documentation)
+- [Mobile Application](#mobile-application)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Features
 
 - **Multi-Module Architecture**: Separated APIs for different use cases
