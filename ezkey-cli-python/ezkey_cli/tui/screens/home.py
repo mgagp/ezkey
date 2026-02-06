@@ -13,7 +13,6 @@ from textual.widgets import Header, Footer, Static, Label
 from textual.containers import Vertical, Horizontal
 from textual.binding import Binding
 from textual.reactive import reactive
-from ezkey_cli.tui.widgets import ContextHeader
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
@@ -205,8 +204,9 @@ class QuickActionsPanel(Static):
 
 
 class InfoPanel(Static):
-  """Info panel for API endpoint, session status, and scope."""
+  """Info panel for API endpoint, session status, scope, and username."""
 
+  username_line = reactive("User: unknown")
   api_url_line = reactive("Admin API: unknown")
   session_line = reactive("Session: unknown")
   scope_line = reactive("Scope: unknown")
@@ -223,6 +223,7 @@ class InfoPanel(Static):
     """Render info panel."""
     return (
         "ℹ️ Context\n\n"
+        f"{self.username_line}\n"
         f"{self.api_url_line}\n"
         f"{self.session_line}\n"
         f"{self.scope_line}"
@@ -309,7 +310,6 @@ class HomeScreen(Screen):
   def compose(self):
     """Compose the home screen."""
     yield Header(show_clock=True)
-    yield ContextHeader()
 
     with Vertical(id="main_container"):
       yield Label("Welcome to Ezkey Admin Console")
@@ -332,6 +332,7 @@ class HomeScreen(Screen):
 
     # Initialize info panel with config values
     info_panel = self.query_one("#info_panel", InfoPanel)
+    info_panel.username_line = self._format_username()
     info_panel.api_url_line = self._format_api_url()
     info_panel.session_line = self._format_session_status()
     info_panel.scope_line = self._format_scope_status()
@@ -417,6 +418,16 @@ class HomeScreen(Screen):
     if not admin_url:
       return "Admin API: unknown"
     return f"Admin API: {admin_url}"
+
+  def _format_username(self) -> str:
+    """Format username label."""
+    config = getattr(self.app, "config", None)
+    if not config:
+      return "User: unknown"
+    username = config.get_admin_username()
+    if not username:
+      return "User: unknown"
+    return f"User: {username}"
 
   def _format_session_status(self) -> str:
     """Format token/session expiry label."""

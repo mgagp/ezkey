@@ -9,7 +9,7 @@ Description: Reusable header widget for screens with user context
 """
 
 from textual.widgets import Static, Header
-from textual.containers import Container
+from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from rich.text import Text
 from datetime import datetime, timezone
@@ -22,7 +22,7 @@ class ContextHeader(Static):
   """
   Enhanced header widget showing Ezkey branding, user context, and time.
 
-  Displays:
+  Displays in a single line:
   - Left: "Ezkey Admin TUI"
   - Center: username | scope | organization (if available)
   - Right: current time (HH:MM:SS)
@@ -48,12 +48,9 @@ class ContextHeader(Static):
     super().__init__()
     self._update_time()
 
-  def render(self) -> str:
+  def render(self) -> Text:
     """Render the header with context information."""
-    # Left part: title
-    left_str = "Ezkey Admin TUI"
-
-    # Center part: user context
+    # Build center context string
     center_parts = []
     if self.username and self.username != "unknown":
       center_parts.append(self.username)
@@ -63,25 +60,41 @@ class ContextHeader(Static):
       center_parts.append(self.organization)
 
     center = " | ".join(center_parts) if center_parts else ""
+
+    # Build the full line
+    left_str = "Ezkey Admin TUI"
     right_str = self.current_time
 
-    # Calculate spacing
-    total_width = 80
-    available_width = total_width - len(left_str) - len(right_str) - 4
-    center_str = center
-    if len(center_str) > available_width:
-      center_str = center_str[:available_width - 2] + ".."
+    # Create a single line with proper spacing
+    # We'll estimate terminal width (typically 80-120)
+    total_width = 120
+    left_len = len(left_str)
+    right_len = len(right_str)
+    center_len = len(center)
 
-    padding = max(1, available_width - len(center_str))
+    # Calculate available space for center
+    available = total_width - left_len - right_len - 6  # 6 for spacing
 
+    # Format center with proper length
+    if center_len > available:
+      center_display = center[:available - 2] + ".."
+    else:
+      center_display = center
+
+    # Calculate padding
+    padding_before = 2
+    padding_after = total_width - left_len - padding_before - len(center_display) - right_len - 1
+
+    # Build result
     result = Text()
     result.append(left_str, style="bold cyan")
-    result.append(" ")
-    result.append(center_str, style="dim green")
-    result.append(" " * padding)
+    result.append(" " * padding_before)
+    if center_display:
+      result.append(center_display, style="dim green")
+    result.append(" " * max(1, padding_after))
     result.append(right_str, style="dim yellow")
 
-    return str(result)
+    return result
 
   def on_mount(self) -> None:
     """Set up the header when mounted."""
