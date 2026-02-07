@@ -8,6 +8,7 @@ CLI Component: Main CLI Entry Point
 Description: Main command line interface for ezkey
 """
 
+import sys
 import click
 
 from .config import ConfigManager
@@ -37,8 +38,34 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
     # Initialize configuration first
     config = ConfigManager()
 
-    # Handle TUI mode - check explicit flag or default config
-    if tui or config.is_default_tui():
+    # Check if any non-TUI CLI option or argument has been explicitly provided
+    has_cli_options = (
+        admin_url is not None or
+        auth_url is not None or
+        crypto_url is not None or
+        no_pretty or
+        timeout is not None or
+        verbose
+    )
+    
+    # Check if there are any arguments passed (beyond the program name)
+    # sys.argv[0] is the program name, so if len > 1, there are arguments
+    has_arguments = len(sys.argv) > 1
+
+    # Handle TUI mode with proper precedence:
+    # 1. Explicit --tui flag takes priority
+    # 2. Default TUI only if enabled and NO CLI arguments/options provided
+    # 3. Otherwise, use CLI mode
+    if tui:
+        # Explicit --tui flag: always launch TUI
+        from .tui import start_tui
+        start_tui(config)
+        return
+    elif config.is_default_tui() and not has_cli_options and not has_arguments:
+        # Default TUI only if:
+        # - defaultTUI config is enabled
+        # - No CLI options were explicitly provided
+        # - No arguments/subcommands were passed
         from .tui import start_tui
         start_tui(config)
         return
