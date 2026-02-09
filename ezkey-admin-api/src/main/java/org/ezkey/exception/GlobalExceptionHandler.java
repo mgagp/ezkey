@@ -13,7 +13,6 @@ package org.ezkey.exception;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.dto.ErrorResponseDto;
@@ -30,51 +29,36 @@ import org.springframework.web.context.request.WebRequest;
 /**
  * Global exception handler for the Ezkey Admin REST API.
  *
- * <p>
- * This class provides centralized exception handling for all controllers in the
- * Ezkey Admin API,
- * ensuring consistent error responses across the entire application. It
- * intercepts exceptions
- * thrown by controller methods and converts them into standardized HTTP
- * responses with appropriate
+ * <p>This class provides centralized exception handling for all controllers in the Ezkey Admin API,
+ * ensuring consistent error responses across the entire application. It intercepts exceptions
+ * thrown by controller methods and converts them into standardized HTTP responses with appropriate
  * status codes.
  *
- * <p>
- * The handler supports multiple exception types:
+ * <p>The handler supports multiple exception types:
  *
  * <ul>
- * <li><b>AdminNotAllowedException:</b> Returns HTTP 400 with ProblemDetail (RFC
- * 9457)
- * <li><b>AdminLimitException:</b> Returns HTTP 400 with ProblemDetail (RFC
- * 9457)
- * <li><b>AuthorizationDeniedException:</b> Returns HTTP 403 with
- * ErrorResponseDto
- * <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with ErrorResponseDto
- * <li><b>MethodArgumentNotValidException:</b> Returns HTTP 400 with
- * ErrorResponseDto
- * <li><b>IllegalArgumentException:</b> Returns HTTP 400 with ErrorResponseDto
- * <li><b>IllegalStateException:</b> Returns HTTP 409 with ErrorResponseDto
- * <li><b>RuntimeException:</b> Returns HTTP 500 with ErrorResponseDto
- * <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500 with
- * ErrorResponseDto
+ *   <li><b>AdminNotAllowedException:</b> Returns HTTP 400 with ProblemDetail (RFC 9457)
+ *   <li><b>AdminLimitException:</b> Returns HTTP 400 with ProblemDetail (RFC 9457)
+ *   <li><b>AuthorizationDeniedException:</b> Returns HTTP 403 with ErrorResponseDto
+ *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with ErrorResponseDto
+ *   <li><b>MethodArgumentNotValidException:</b> Returns HTTP 400 with ErrorResponseDto
+ *   <li><b>IllegalArgumentException:</b> Returns HTTP 400 with ErrorResponseDto
+ *   <li><b>IllegalStateException:</b> Returns HTTP 409 with ErrorResponseDto
+ *   <li><b>RuntimeException:</b> Returns HTTP 500 with ErrorResponseDto
+ *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500 with ErrorResponseDto
  * </ul>
  *
- * <p>
- * <b>Error Response Formats:</b>
+ * <p><b>Error Response Formats:</b>
  *
  * <ul>
- * <li><b>ProblemDetail (RFC 9457):</b> Used for admin-specific business logic
- * errors with
- * detailed problem type URIs
- * <li><b>ErrorResponseDto:</b> Legacy format used for standard HTTP errors and
- * constraints
+ *   <li><b>ProblemDetail (RFC 9457):</b> Used for admin-specific business logic errors with
+ *       detailed problem type URIs
+ *   <li><b>ErrorResponseDto:</b> Legacy format used for standard HTTP errors and constraints
  * </ul>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -89,47 +73,42 @@ public class GlobalExceptionHandler {
   /**
    * Handles AuthorizationDeniedException and returns HTTP 403.
    *
-   * <p>
-   * This method catches AuthorizationDeniedException instances thrown by Spring
-   * Security's
-   * method-level security (@PreAuthorize) and converts them into standardized
-   * HTTP 403 Forbidden
+   * <p>This method catches AuthorizationDeniedException instances thrown by Spring Security's
+   * method-level security (@PreAuthorize) and converts them into standardized HTTP 403 Forbidden
    * responses with access denied information.
    *
-   * @param ex      the AuthorizationDeniedException that was thrown
+   * @param ex the AuthorizationDeniedException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 403 status
    */
   @ExceptionHandler(AuthorizationDeniedException.class)
   public ResponseEntity<ErrorResponseDto> handleAuthorizationDeniedException(
       AuthorizationDeniedException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "ACCESS_DENIED",
-        "Access denied: insufficient permissions",
-        request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "ACCESS_DENIED",
+            "Access denied: insufficient permissions",
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
   }
 
   /**
-   * Handles AdminNotAllowedException and returns HTTP 400 with ProblemDetail (RFC
-   * 9457).
+   * Handles AdminNotAllowedException and returns HTTP 400 with ProblemDetail (RFC 9457).
    *
-   * <p>
-   * This method catches AdminNotAllowedException instances thrown when an
-   * administrator
-   * attempts a restricted operation (e.g., self-deactivation) and converts them
-   * into RFC 9457
-   * Problem Detail responses with specific problem type URI.
+   * <p>This method catches AdminNotAllowedException instances thrown when an administrator attempts
+   * a restricted operation (e.g., self-deactivation) and converts them into RFC 9457 Problem Detail
+   * responses with specific problem type URI.
    *
-   * @param ex      the AdminNotAllowedException that was thrown
+   * @param ex the AdminNotAllowedException that was thrown
    * @param request the HTTP request that caused the exception
    * @return ResponseEntity containing ProblemDetail and HTTP 400 status
    */
   @ExceptionHandler(AdminNotAllowedException.class)
   public ResponseEntity<ProblemDetail> handleAdminNotAllowedException(
       AdminNotAllowedException ex, jakarta.servlet.http.HttpServletRequest request) {
-    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create("https://ezkey.io/problems/admin-not-allowed"));
     problem.setTitle("Admin Operation Not Allowed");
     problem.setProperty("path", request.getRequestURI());
@@ -138,24 +117,21 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Handles AdminLimitException and returns HTTP 400 with ProblemDetail (RFC
-   * 9457).
+   * Handles AdminLimitException and returns HTTP 400 with ProblemDetail (RFC 9457).
    *
-   * <p>
-   * This method catches AdminLimitException instances thrown when an operation
-   * would violate
-   * configured administrator limits and converts them into RFC 9457 Problem
-   * Detail responses with
+   * <p>This method catches AdminLimitException instances thrown when an operation would violate
+   * configured administrator limits and converts them into RFC 9457 Problem Detail responses with
    * specific problem type URI.
    *
-   * @param ex      the AdminLimitException that was thrown
+   * @param ex the AdminLimitException that was thrown
    * @param request the HTTP request that caused the exception
    * @return ResponseEntity containing ProblemDetail and HTTP 400 status
    */
   @ExceptionHandler(AdminLimitException.class)
   public ResponseEntity<ProblemDetail> handleAdminLimitException(
       AdminLimitException ex, jakarta.servlet.http.HttpServletRequest request) {
-    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create("https://ezkey.io/problems/admin-limit-violation"));
     problem.setTitle("Admin Limit Violation");
     problem.setProperty("path", request.getRequestURI());
@@ -166,24 +142,22 @@ public class GlobalExceptionHandler {
   /**
    * Handles RateLimitExceededException and returns HTTP 429.
    *
-   * <p>
-   * This method catches RateLimitExceededException instances thrown by the
-   * RateLimitService when
-   * API keys exceed their rate limits and converts them into standardized HTTP
-   * 429 Too Many
+   * <p>This method catches RateLimitExceededException instances thrown by the RateLimitService when
+   * API keys exceed their rate limits and converts them into standardized HTTP 429 Too Many
    * Requests responses with rate limit information.
    *
-   * @param ex      the RateLimitExceededException that was thrown
+   * @param ex the RateLimitExceededException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 429 status
    */
   @ExceptionHandler(RateLimitExceededException.class)
   public ResponseEntity<ErrorResponseDto> handleRateLimitExceededException(
       RateLimitExceededException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "RATE_LIMIT_EXCEEDED",
-        ex.getMessage(),
-        request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "RATE_LIMIT_EXCEEDED",
+            ex.getMessage(),
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.TOO_MANY_REQUESTS);
   }
@@ -191,22 +165,21 @@ public class GlobalExceptionHandler {
   /**
    * Handles ResourceNotFoundException and returns HTTP 404.
    *
-   * <p>
-   * This method catches ResourceNotFoundException instances and converts them
-   * into standardized
+   * <p>This method catches ResourceNotFoundException instances and converts them into standardized
    * HTTP 404 Not Found responses with detailed error information.
    *
-   * @param ex      the ResourceNotFoundException that was thrown
+   * @param ex the ResourceNotFoundException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 404 status
    */
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(
       ResourceNotFoundException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "RESOURCE_NOT_FOUND",
-        ex.getMessage(),
-        request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "RESOURCE_NOT_FOUND",
+            ex.getMessage(),
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
   }
@@ -214,20 +187,19 @@ public class GlobalExceptionHandler {
   /**
    * Handles IllegalArgumentException and returns HTTP 400.
    *
-   * <p>
-   * This method catches IllegalArgumentException instances and converts them into
-   * standardized
+   * <p>This method catches IllegalArgumentException instances and converts them into standardized
    * HTTP 400 Bad Request responses with argument error details.
    *
-   * @param ex      the IllegalArgumentException that was thrown
+   * @param ex the IllegalArgumentException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 400 status
    */
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(
       IllegalArgumentException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "INVALID_ARGUMENT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INVALID_ARGUMENT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
@@ -235,22 +207,20 @@ public class GlobalExceptionHandler {
   /**
    * Handles IllegalStateException and returns HTTP 409.
    *
-   * <p>
-   * This method catches IllegalStateException instances and converts them into
-   * standardized HTTP
-   * 409 Conflict responses, as these represent state conflicts in the
-   * authentication or enrollment
+   * <p>This method catches IllegalStateException instances and converts them into standardized HTTP
+   * 409 Conflict responses, as these represent state conflicts in the authentication or enrollment
    * process.
    *
-   * @param ex      the IllegalStateException that was thrown
+   * @param ex the IllegalStateException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 409 status
    */
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<ErrorResponseDto> handleIllegalStateException(
       IllegalStateException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
   }
@@ -258,25 +228,17 @@ public class GlobalExceptionHandler {
   /**
    * Handles MethodArgumentNotValidException and returns HTTP 400.
    *
-   * <p>
-   * This method catches MethodArgumentNotValidException instances thrown by
-   * Spring when Bean
-   * Validation (@Valid) fails and converts them into standardized HTTP 400 Bad
-   * Request responses
+   * <p>This method catches MethodArgumentNotValidException instances thrown by Spring when Bean
+   * Validation (@Valid) fails and converts them into standardized HTTP 400 Bad Request responses
    * with validation error details.
    *
-   * <p>
-   * <b>Security Note:</b> Validation error messages are safe to expose - they are
-   * client-side
-   * validation errors that don't reveal server internals. These messages are
-   * already defined in
-   * validation annotations (@Pattern, @NotNull, etc.) and are part of the API
-   * contract.
+   * <p><b>Security Note:</b> Validation error messages are safe to expose - they are client-side
+   * validation errors that don't reveal server internals. These messages are already defined in
+   * validation annotations (@Pattern, @NotNull, etc.) and are part of the API contract.
    *
-   * @param ex      the MethodArgumentNotValidException that was thrown
+   * @param ex the MethodArgumentNotValidException that was thrown
    * @param request the web request that caused the exception
-   * @return ResponseEntity containing validation error details and HTTP 400
-   *         status
+   * @return ResponseEntity containing validation error details and HTTP 400 status
    */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValidException(
@@ -285,14 +247,16 @@ public class GlobalExceptionHandler {
     // Extract validation error messages
     // These are safe to expose - they're client validation errors, not server
     // errors
-    List<String> errors = ex.getBindingResult().getFieldErrors().stream()
-        .map(error -> error.getField() + ": " + error.getDefaultMessage())
-        .collect(Collectors.toList());
+    List<String> errors =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .collect(Collectors.toList());
 
     String message = String.join("; ", errors);
 
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
@@ -300,35 +264,22 @@ public class GlobalExceptionHandler {
   /**
    * Handles DataIntegrityViolationException and returns HTTP 400.
    *
-   * <p>
-   * This method catches DataIntegrityViolationException instances thrown by
-   * Spring Data JPA when
-   * database constraint violations occur (e.g., NOT NULL constraints, unique
-   * constraints). These
-   * represent invalid data sent by the client, so they should return HTTP 400 Bad
-   * Request instead
+   * <p>This method catches DataIntegrityViolationException instances thrown by Spring Data JPA when
+   * database constraint violations occur (e.g., NOT NULL constraints, unique constraints). These
+   * represent invalid data sent by the client, so they should return HTTP 400 Bad Request instead
    * of HTTP 500 Internal Server Error.
    *
-   * <p>
-   * <b>Security Note:</b> The error message is sanitized to avoid exposing
-   * sensitive database
-   * schema information while still providing useful feedback about what
-   * constraint was violated.
+   * <p><b>Security Note:</b> The error message is sanitized to avoid exposing sensitive database
+   * schema information while still providing useful feedback about what constraint was violated.
    *
-   * <p>
-   * <b>Constraint Parsing:</b> This handler parses PostgreSQL constraint
-   * violation messages to
-   * provide specific error messages for common violations (username, email) while
-   * maintaining
-   * generic fallback messages for other constraints. This provides better user
-   * experience while
-   * protecting against race conditions that might bypass pre-insertion
-   * validation.
+   * <p><b>Constraint Parsing:</b> This handler parses PostgreSQL constraint violation messages to
+   * provide specific error messages for common violations (username, email) while maintaining
+   * generic fallback messages for other constraints. This provides better user experience while
+   * protecting against race conditions that might bypass pre-insertion validation.
    *
-   * @param ex      the DataIntegrityViolationException that was thrown
+   * @param ex the DataIntegrityViolationException that was thrown
    * @param request the web request that caused the exception
-   * @return ResponseEntity containing constraint violation error details and HTTP
-   *         400 status
+   * @return ResponseEntity containing constraint violation error details and HTTP 400 status
    */
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolationException(
@@ -378,29 +329,24 @@ public class GlobalExceptionHandler {
       message = "Invalid data: constraint violation";
     }
 
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
 
   /**
-   * Extracts the constraint name from a PostgreSQL constraint violation error
-   * message.
+   * Extracts the constraint name from a PostgreSQL constraint violation error message.
    *
-   * <p>
-   * PostgreSQL error messages for unique constraint violations typically include
-   * the constraint
-   * name in quotes. This method extracts that constraint name for identification
-   * purposes.
+   * <p>PostgreSQL error messages for unique constraint violations typically include the constraint
+   * name in quotes. This method extracts that constraint name for identification purposes.
    *
-   * <p>
-   * Example formats:
+   * <p>Example formats:
    *
    * <ul>
-   * <li>"duplicate key value violates unique constraint \"uq_admin_email\""
-   * <li>"duplicate key value violates unique constraint
-   * \"ezkey_admin_username_key\""
+   *   <li>"duplicate key value violates unique constraint \"uq_admin_email\""
+   *   <li>"duplicate key value violates unique constraint \"ezkey_admin_username_key\""
    * </ul>
    *
    * @param errorMessage the error message from DataIntegrityViolationException
@@ -435,22 +381,21 @@ public class GlobalExceptionHandler {
   /**
    * Handles RuntimeException and returns HTTP 500.
    *
-   * <p>
-   * This method catches RuntimeException instances and converts them into
-   * standardized HTTP 500
+   * <p>This method catches RuntimeException instances and converts them into standardized HTTP 500
    * Internal Server Error responses with error details.
    *
-   * @param ex      the RuntimeException that was thrown
+   * @param ex the RuntimeException that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 500 status
    */
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ErrorResponseDto> handleRuntimeException(
       RuntimeException ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "INTERNAL_ERROR",
-        "An unexpected error occurred",
-        request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INTERNAL_ERROR",
+            "An unexpected error occurred",
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
@@ -458,22 +403,20 @@ public class GlobalExceptionHandler {
   /**
    * Handles all other exceptions and returns HTTP 500.
    *
-   * <p>
-   * This method serves as a catch-all for any exceptions not handled by more
-   * specific exception
-   * handlers. It ensures that all exceptions result in a consistent error
-   * response.
+   * <p>This method serves as a catch-all for any exceptions not handled by more specific exception
+   * handlers. It ensures that all exceptions result in a consistent error response.
    *
-   * @param ex      the Exception that was thrown
+   * @param ex the Exception that was thrown
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 500 status
    */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
-    ErrorResponseDto errorResponse = new ErrorResponseDto(
-        "INTERNAL_SERVER_ERROR",
-        "An unexpected error occurred",
-        request.getDescription(false).replace("uri=", ""));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "INTERNAL_SERVER_ERROR",
+            "An unexpected error occurred",
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }

@@ -10,14 +10,15 @@
 
 package org.ezkey.demo.acme.controller;
 
-import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.dto.UserMapping;
-import org.ezkey.demo.acme.service.EzkeyAuthService;
 import org.ezkey.demo.acme.service.UserMappingService;
+import org.ezkey.sdk.EzkeyClient;
+import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,11 +27,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import jakarta.servlet.http.HttpSession;
+
 /**
- * Controller handling login POST requests and coordinating EZKey authentication flow.
+ * Controller handling login POST requests and coordinating EZKey authentication
+ * flow.
  *
- * <p>This controller processes login form submissions, creates auth attempts via Admin API, waits
- * for device approval, and creates HTTP sessions upon successful authentication.
+ * <p>
+ * This controller processes login form submissions, creates auth attempts via
+ * Admin API, waits
+ * for device approval, and creates HTTP sessions upon successful
+ * authentication.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -40,35 +47,39 @@ public class LoginController {
 
   private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
+  private static final String SDK_NOT_CONFIGURED_MSG = "Ezkey SDK is not configured. Set ezkey.integration-key and ezkey.secret-key "
+      + "in application.properties and restart the container.";
+
   private final UserMappingService userMappingService;
-  private final EzkeyAuthService ezkeyAuthService;
+  private final EzkeyClient ezkeyClient;
   private final AcmeProperties acmeProperties;
 
   public LoginController(
       UserMappingService userMappingService,
-      EzkeyAuthService ezkeyAuthService,
+      ObjectProvider<EzkeyClient> ezkeyClientProvider,
       AcmeProperties acmeProperties) {
     this.userMappingService = userMappingService;
-    this.ezkeyAuthService = ezkeyAuthService;
+    this.ezkeyClient = ezkeyClientProvider.getIfAvailable();
     this.acmeProperties = acmeProperties;
   }
 
   /**
    * Handles POST /login form submission.
    *
-   * <p>Processes login request:
+   * <p>
+   * Processes login request:
    *
    * <ol>
-   *   <li>Validates username exists in mapping
-   *   <li>Creates auth attempt via Admin API
-   *   <li>Waits for device approval
-   *   <li>Creates HTTP session on success
-   *   <li>Redirects to dashboard
+   * <li>Validates username exists in mapping
+   * <li>Creates auth attempt via Admin API
+   * <li>Waits for device approval
+   * <li>Creates HTTP session on success
+   * <li>Redirects to dashboard
    * </ol>
    *
-   * @param username the username
+   * @param username           the username
    * @param challengeRequested whether challenge code is requested
-   * @param session the HTTP session
+   * @param session            the HTTP session
    * @param redirectAttributes for flash messages
    * @return redirect to dashboard on success, back to login on error
    */
@@ -81,7 +92,8 @@ public class LoginController {
 
     logger.info("Login attempt for username: {}", username);
 
-    // Clear any previous final status flag and pending attributes when starting a new login attempt
+    // Clear any previous final status flag and pending attributes when starting a
+    // new login attempt
     session.removeAttribute("authAttemptFinalStatus");
     session.removeAttribute("pendingAuthAttemptId");
     session.removeAttribute("pendingChallengeCode");
@@ -101,10 +113,15 @@ public class LoginController {
     }
 
     // Step 2: Create auth attempt
+    if (ezkeyClient == null) {
+      logger.error("Login attempt rejected — Ezkey SDK not configured");
+      redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
+      return "redirect:/login?error=authfailed";
+    }
+
     try {
       boolean challengeMode = Boolean.TRUE.equals(challengeRequested);
-      var createResponse =
-          ezkeyAuthService.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
+      var createResponse = ezkeyClient.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
 
       logger.info(
           "Auth attempt created: authAttemptId={}, enrollmentId={}, challenge={}",
@@ -114,7 +131,8 @@ public class LoginController {
               ? "%02d".formatted(createResponse.authAttemptChallenge())
               : "none");
 
-      // Step 3: Store auth attempt info in session and redirect to wait page (unified for both
+      // Step 3: Store auth attempt info in session and redirect to wait page (unified
+      // for both
       // modes)
       session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
       session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
@@ -134,7 +152,7 @@ public class LoginController {
 
       return "redirect:/challenge-wait";
 
-    } catch (EzkeyAuthService.EzkeyAuthException e) {
+    } catch (EzkeyException e) {
       logger.error("EZKey authentication error for username: {}", username, e);
       redirectAttributes.addFlashAttribute("error", "Authentication error: " + e.getMessage());
       return "redirect:/login?error=authfailed";
@@ -144,9 +162,9 @@ public class LoginController {
   /**
    * Handles GET /login (redirected from POST on error).
    *
-   * @param error optional error parameter
+   * @param error  optional error parameter
    * @param logout optional logout parameter
-   * @param model the Spring MVC model
+   * @param model  the Spring MVC model
    * @return login page template
    */
   @GetMapping("/login")
@@ -193,11 +211,15 @@ public class LoginController {
   /**
    * Reloads users mapping file (acme-users.json).
    *
-   * <p>This endpoint manually triggers reload of acme-users.json file by calling
-   * UserMappingService.checkAndReload(). This complements the automatic @Scheduled reload, allowing
+   * <p>
+   * This endpoint manually triggers reload of acme-users.json file by calling
+   * UserMappingService.checkAndReload(). This complements the
+   * automatic @Scheduled reload, allowing
    * immediate refresh on demand.
    *
-   * <p><b>Note:</b> Application properties (API keys, URLs) require container restart to take
+   * <p>
+   * <b>Note:</b> Application properties (API keys, URLs) require container
+   * restart to take
    * effect. Only the users mapping file can be reloaded without restart.
    *
    * @return JSON response indicating success or failure
@@ -218,9 +240,8 @@ public class LoginController {
             new ReloadConfigResponse(false, "Error reloading users file: " + e.getMessage()));
       }
 
-      String message =
-          "Users mapping file reloaded successfully. Note: Application properties (API keys, URLs)"
-              + " require container restart to take effect.";
+      String message = "Users mapping file reloaded successfully. Note: Application properties (API keys, URLs)"
+          + " require container restart to take effect.";
 
       logger.info("Configuration reload completed successfully");
       return ResponseEntity.ok(new ReloadConfigResponse(true, message));
@@ -234,10 +255,12 @@ public class LoginController {
   /**
    * Displays the challenge wait page with the challenge code.
    *
-   * <p>This page shows the challenge code to the user and polls for authentication completion.
+   * <p>
+   * This page shows the challenge code to the user and polls for authentication
+   * completion.
    *
    * @param session the HTTP session
-   * @param model the Spring MVC model
+   * @param model   the Spring MVC model
    * @return challenge-wait page template
    */
   @GetMapping("/challenge-wait")
@@ -246,8 +269,7 @@ public class LoginController {
     Integer challengeCode = (Integer) session.getAttribute("pendingChallengeCode");
     String username = (String) session.getAttribute("pendingUsername");
     Integer timeoutSeconds = (Integer) session.getAttribute("pendingTimeoutSeconds");
-    java.time.OffsetDateTime expiresAt =
-        (java.time.OffsetDateTime) session.getAttribute("pendingExpiresAt");
+    String expiresAt = (String) session.getAttribute("pendingExpiresAt");
 
     if (authAttemptId == null || username == null) {
       logger.warn("Challenge wait page accessed without pending auth attempt");
@@ -267,7 +289,7 @@ public class LoginController {
     model.addAttribute("authAttemptId", authAttemptId);
     model.addAttribute("username", username);
     model.addAttribute("timeoutSeconds", timeoutSeconds);
-    model.addAttribute("expiresAt", expiresAt != null ? expiresAt.toString() : null);
+    model.addAttribute("expiresAt", expiresAt);
 
     return "challenge-wait";
   }
@@ -275,7 +297,9 @@ public class LoginController {
   /**
    * Checks the status of a pending authentication attempt (for polling).
    *
-   * <p>This endpoint is called by the challenge-wait page to check if the authentication attempt
+   * <p>
+   * This endpoint is called by the challenge-wait page to check if the
+   * authentication attempt
    * has been approved.
    *
    * @param session the HTTP session
@@ -283,7 +307,8 @@ public class LoginController {
    */
   @GetMapping("/api/auth-status")
   public ResponseEntity<AuthStatusResponse> checkAuthStatus(HttpSession session) {
-    // Check if user is already authenticated (prevents "expired" glitch after successful auth)
+    // Check if user is already authenticated (prevents "expired" glitch after
+    // successful auth)
     AuthenticatedUser existingUser = (AuthenticatedUser) session.getAttribute("user");
     if (existingUser != null) {
       // User is already authenticated, return success immediately
@@ -292,14 +317,17 @@ public class LoginController {
     }
 
     // Check if a final status was already returned (prevents race condition)
-    // This handles the case where a poll arrives after we've already returned a final status
-    // and cleaned up session attributes, preventing "session expired" from being returned
+    // This handles the case where a poll arrives after we've already returned a
+    // final status
+    // and cleaned up session attributes, preventing "session expired" from being
+    // returned
     String finalStatus = (String) session.getAttribute("authAttemptFinalStatus");
     if (finalStatus != null) {
       logger.info(
           "Final status already returned: {}, returning same status to prevent race condition",
           finalStatus);
-      // A final status was already returned, return the same status to prevent race condition
+      // A final status was already returned, return the same status to prevent race
+      // condition
       if ("REJECTED".equals(finalStatus)) {
         return ResponseEntity.ok(
             new AuthStatusResponse("rejected", "/login?error=rejected", "Rejected"));
@@ -325,12 +353,17 @@ public class LoginController {
       return ResponseEntity.ok(new AuthStatusResponse("expired", null, "Session expired"));
     }
 
+    if (ezkeyClient == null) {
+      return ResponseEntity.ok(
+          new AuthStatusResponse("error", "/login?error=authfailed", SDK_NOT_CONFIGURED_MSG));
+    }
+
     try {
       // Check auth attempt status
-      var waitResponse = ezkeyAuthService.waitForAuthAttempt(authAttemptId, 30, 2);
+      var waitResponse = ezkeyClient.waitForAuthAttempt(authAttemptId, 30, 2);
 
       String status = waitResponse.status();
-      boolean completed = Boolean.TRUE.equals(waitResponse.completed());
+      boolean completed = waitResponse.completed();
 
       // Log received status for debugging
       logger.info(
@@ -372,10 +405,10 @@ public class LoginController {
       }
 
       if ("ACCEPTED".equals(normalizedStatus)) {
-        // Authentication successful - create session FIRST, then clear pending attributes
-        AuthenticatedUser authenticatedUser =
-            new AuthenticatedUser(
-                username, displayName != null ? displayName : username, enrollmentId);
+        // Authentication successful - create session FIRST, then clear pending
+        // attributes
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(
+            username, displayName != null ? displayName : username, enrollmentId);
 
         session.setAttribute("user", authenticatedUser);
 
@@ -393,8 +426,10 @@ public class LoginController {
       } else if ("REJECTED".equals(normalizedStatus)) {
         // Authentication rejected by user
         // Mark as final status to prevent race condition with subsequent polls
-        // Don't clear session attributes immediately - let them be cleared on next request
-        // This prevents a race condition where a poll arrives after cleanup and returns "expired"
+        // Don't clear session attributes immediately - let them be cleared on next
+        // request
+        // This prevents a race condition where a poll arrives after cleanup and returns
+        // "expired"
         session.setAttribute("authAttemptFinalStatus", "REJECTED");
 
         logger.info("Challenge authentication rejected for username: {}", username);
@@ -437,7 +472,7 @@ public class LoginController {
         return ResponseEntity.ok(
             new AuthStatusResponse("pending", null, "Waiting for device approval..."));
       }
-    } catch (EzkeyAuthService.EzkeyAuthException e) {
+    } catch (EzkeyException e) {
       logger.error("Error checking auth status: {}", e.getMessage());
       // Mark as error to prevent race condition
       session.setAttribute("authAttemptFinalStatus", "ERROR");
@@ -452,14 +487,17 @@ public class LoginController {
    * @param success whether the reload was successful
    * @param message status message
    */
-  public record ReloadConfigResponse(boolean success, String message) {}
+  public record ReloadConfigResponse(boolean success, String message) {
+  }
 
   /**
    * Response DTO for authentication status check.
    *
-   * @param status current status (pending, accepted, rejected, expired, error)
+   * @param status      current status (pending, accepted, rejected, expired,
+   *                    error)
    * @param redirectUrl URL to redirect to if status is final
-   * @param message status message
+   * @param message     status message
    */
-  public record AuthStatusResponse(String status, String redirectUrl, String message) {}
+  public record AuthStatusResponse(String status, String redirectUrl, String message) {
+  }
 }

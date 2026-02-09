@@ -5,41 +5,28 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Configuration: EzkeyClientConfig
- * Description: RestTemplate configuration for Admin API calls with API Key authentication.
+ * Description: Spring configuration that creates an EzkeyClient bean from application properties.
  */
 
 package org.ezkey.demo.acme.config;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import org.ezkey.sdk.EzkeyClient;
+import org.ezkey.sdk.EzkeyConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.web.client.RestTemplate;
 
 /**
- * Configuration for RestTemplate used to call EZKey Admin API.
+ * Spring configuration that creates an {@link EzkeyClient} bean from
+ * externalized properties.
  *
- * <p>Configures RestTemplate with HTTP Basic Authentication using API Key credentials (integration
- * key + secret key) for M2M communication.
- *
- * <p><b>Authentication Format:</b>
- *
- * <pre>
- * Authorization: Basic base64(integrationKey:secretKey)
- * </pre>
- *
- * <p>Where:
- *
- * <ul>
- *   <li>integrationKey: Public integration key (e.g., ezkey_ikey_xxx)
- *   <li>secretKey: Secret key (e.g., ezkey_skey_xxx)
- * </ul>
+ * <p>
+ * Bridges the framework-agnostic Ezkey SDK with the Spring Boot configuration
+ * system by reading
+ * credentials and URL from {@link AcmeProperties} and constructing an immutable
+ * SDK client.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -48,84 +35,53 @@ import org.springframework.web.client.RestTemplate;
 @EnableConfigurationProperties(AcmeProperties.class)
 public class EzkeyClientConfig {
 
-  private static final Logger logger = LoggerFactory.getLogger(EzkeyClientConfig.class);
-
-  private final AcmeProperties properties;
-  private final Environment environment;
-
-  public EzkeyClientConfig(AcmeProperties properties, Environment environment) {
-    this.properties = properties;
-    this.environment = environment;
-
-    // Log configuration status at startup
-    String integrationKey = environment.getProperty("ezkey.integration.key");
-    String secretKey = environment.getProperty("ezkey.secret.key");
-
-    if (integrationKey != null
-        && !integrationKey.isBlank()
-        && secretKey != null
-        && !secretKey.isBlank()) {
-      logger.info(
-          "✅ API Key credentials configured - Integration Key: {}...",
-          integrationKey.substring(0, Math.min(20, integrationKey.length())));
-    } else {
-      logger.warn(
-          "⚠️  API Key credentials NOT configured - Integration Key: {}, Secret Key: {}",
-          integrationKey != null ? "present" : "missing",
-          secretKey != null ? "present" : "missing");
-      logger.warn("   Configure via /app/config/application.properties or environment variables");
-    }
-  }
+  private static final Logger LOG = LoggerFactory.getLogger(EzkeyClientConfig.class);
 
   /**
-   * Creates RestTemplate bean configured with HTTP Basic Auth using API Key credentials.
+   * Creates the {@link EzkeyClient} bean configured from application properties.
    *
-   * <p>Adds an interceptor that automatically adds the Authorization header with HTTP Basic Auth
-   * (base64-encoded integrationKey:secretKey) for all requests to Admin API.
+   * <p>
+   * The client uses HTTP Basic Auth with the configured integration key and
+   * secret key for M2M
+   * communication with the Ezkey Admin API.
    *
-   * <p><b>Note:</b> Configuration changes require container restart to take effect.
-   *
-   * @return configured RestTemplate instance
+   * @param properties the ACME application properties containing Ezkey
+   *                   credentials
+   * @return a configured, immutable {@link EzkeyClient} instance
    */
   @Bean
-  public RestTemplate ezkeyRestTemplate() {
-    RestTemplate restTemplate = new RestTemplate();
+  public EzkeyClient ezkeyClient(AcmeProperties properties) {
+    String integrationKey = properties.getIntegrationKey();
+    String secretKey = properties.getSecretKey();
+    String adminApiUrl = properties.getAdminApiUrl();
 
-    // Add HTTP logging interceptor first (to log complete request/response)
-    restTemplate.getInterceptors().add(new HttpLoggingInterceptor());
+    if (integrationKey == null
+        || integrationKey.isBlank()
+        || secretKey == null
+        || secretKey.isBlank()) {
+      LOG.warn(
+          "\n"
+              + "╔══════════════════════════════════════════════════════════════════╗\n"
+              + "║  ⚠️  EZKEY SDK NOT CONFIGURED — DEGRADED MODE                   ║\n"
+              + "║                                                                 ║\n"
+              + "║  Login will be unavailable until credentials are set.            ║\n"
+              + "║  Edit /app/config/application.properties and set:                ║\n"
+              + "║    ezkey.integration-key=ezkey_ikey_xxx                          ║\n"
+              + "║    ezkey.secret-key=ezkey_skey_xxx                               ║\n"
+              + "║  Then restart the container.                                     ║\n"
+              + "╚══════════════════════════════════════════════════════════════════╝");
+      return null;
+    }
 
-    // Add interceptor to inject HTTP Basic Auth header with API Key credentials
-    restTemplate
-        .getInterceptors()
-        .add(
-            (ClientHttpRequestInterceptor)
-                (request, body, execution) -> {
-                  // Read directly from Environment to get current configuration values
-                  String integrationKey = environment.getProperty("ezkey.integration.key");
-                  String secretKey = environment.getProperty("ezkey.secret.key");
+    LOG.info(
+        "Ezkey SDK configured — Integration Key: {}..., Admin API: {}",
+        integrationKey.substring(0, Math.min(20, integrationKey.length())),
+        adminApiUrl);
 
-                  if (integrationKey != null
-                      && !integrationKey.isBlank()
-                      && secretKey != null
-                      && !secretKey.isBlank()) {
-                    // Create HTTP Basic Auth: base64(integrationKey:secretKey)
-                    String credentials = integrationKey + ":" + secretKey;
-                    String encodedCredentials =
-                        Base64.getEncoder()
-                            .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-                    request
-                        .getHeaders()
-                        .set(HttpHeaders.AUTHORIZATION, "Basic " + encodedCredentials);
-                    logger.debug(
-                        "Added HTTP Basic Auth header for request to: {}", request.getURI());
-                  } else {
-                    logger.warn(
-                        "Missing API Key credentials - request to {} will fail authentication",
-                        request.getURI());
-                  }
-                  return execution.execute(request, body);
-                });
-
-    return restTemplate;
+    return EzkeyClient.builder()
+        .integrationKey(integrationKey)
+        .secretKey(secretKey)
+        .baseUrl(adminApiUrl != null ? adminApiUrl : EzkeyConfig.DEFAULT_BASE_URL)
+        .build();
   }
 }

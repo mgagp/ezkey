@@ -11,16 +11,14 @@
 package org.ezkey.admin.exception;
 
 /**
- * Exception thrown when an operation would violate configured administrator
- * limits.
+ * Exception thrown when an operation would violate configured administrator limits.
  *
- * <p>This exception is raised when an administrator operation would violate
- * business rules
- * related to limits, such as:
+ * <p>This exception is raised when an administrator operation would violate business rules related
+ * to limits, such as:
+ *
  * <ul>
- * <li>Deactivating an admin would fall below the minimum required number of
- * global admins
- * <li>Creating an admin would exceed the maximum allowed number
+ *   <li>Deactivating an admin would fall below the minimum required number of global admins
+ *   <li>Creating an admin would exceed the maximum allowed number
  * </ul>
  *
  * <p><b>HTTP Status:</b> 400 Bad Request
@@ -29,6 +27,7 @@ package org.ezkey.admin.exception;
  * `https://ezkey.io/problems/admin-limit-violation`
  *
  * <p><b>Example Response:</b>
+ *
  * <pre>{@code
  * {
  * "type": "https://ezkey.io/problems/admin-limit-violation",
@@ -60,11 +59,10 @@ public class AdminLimitException extends RuntimeException {
   }
 
   /**
-   * Constructs an AdminLimitException with the specified detail message and
-   * cause.
+   * Constructs an AdminLimitException with the specified detail message and cause.
    *
    * @param message the detail message
-   * @param cause   the cause
+   * @param cause the cause
    */
   public AdminLimitException(String message, Throwable cause) {
     super(message, cause);

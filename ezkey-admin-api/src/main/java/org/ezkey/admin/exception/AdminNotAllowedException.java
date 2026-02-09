@@ -13,11 +13,11 @@ package org.ezkey.admin.exception;
 /**
  * Exception thrown when an admin operation is not allowed.
  *
- * <p>This exception is raised when an administrator attempts a restricted
- * operation, such as:
+ * <p>This exception is raised when an administrator attempts a restricted operation, such as:
+ *
  * <ul>
- * <li>Attempting to deactivate their own account
- * <li>Attempting to modify self account in restricted ways
+ *   <li>Attempting to deactivate their own account
+ *   <li>Attempting to modify self account in restricted ways
  * </ul>
  *
  * <p><b>HTTP Status:</b> 400 Bad Request
@@ -26,6 +26,7 @@ package org.ezkey.admin.exception;
  * `https://ezkey.io/problems/admin-not-allowed`
  *
  * <p><b>Example Response:</b>
+ *
  * <pre>{@code
  * {
  * "type": "https://ezkey.io/problems/admin-not-allowed",
@@ -56,11 +57,10 @@ public class AdminNotAllowedException extends RuntimeException {
   }
 
   /**
-   * Constructs an AdminNotAllowedException with the specified detail message and
-   * cause.
+   * Constructs an AdminNotAllowedException with the specified detail message and cause.
    *
    * @param message the detail message
-   * @param cause   the cause
+   * @param cause the cause
    */
   public AdminNotAllowedException(String message, Throwable cause) {
     super(message, cause);

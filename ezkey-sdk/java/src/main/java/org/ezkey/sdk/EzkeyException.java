@@ -4,95 +4,105 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * SDK: EzkeyException
- * Description: Exception class for Ezkey SDK operations
+ * Exception: EzkeyException
+ * Description: Checked exception for Ezkey SDK operations.
  */
 
 package org.ezkey.sdk;
 
 /**
- * Exception thrown by Ezkey SDK operations.
- * <p>
- * This exception wraps underlying API exceptions and provides a consistent
- * error handling mechanism for SDK users.
- * </p>
- * 
+ * Checked exception thrown by Ezkey SDK operations.
+ *
+ * <p>Wraps HTTP errors, network failures, and JSON parsing issues with structured information
+ * including HTTP status code and response body when available.
+ *
  * @since 2025
  */
 public class EzkeyException extends Exception {
-    private final int statusCode;
-    private final String responseBody;
-    
-    /**
-     * Creates a new exception with the specified message.
-     *
-     * @param message the error message
-     */
-    public EzkeyException(String message) {
-        super(message);
-        this.statusCode = -1;
-        this.responseBody = null;
-    }
-    
-    /**
-     * Creates a new exception with the specified message and cause.
-     *
-     * @param message the error message
-     * @param cause the underlying cause
-     */
-    public EzkeyException(String message, Throwable cause) {
-        super(message, cause);
-        
-        // Extract status code and response body from API exception if available
-        if (cause instanceof org.ezkey.sdk.admin.generated.client.ApiException) {
-            org.ezkey.sdk.admin.generated.client.ApiException apiEx = 
-                (org.ezkey.sdk.admin.generated.client.ApiException) cause;
-            this.statusCode = apiEx.getCode();
-            this.responseBody = apiEx.getResponseBody();
-        } else if (cause instanceof org.ezkey.sdk.auth.generated.client.ApiException) {
-            org.ezkey.sdk.auth.generated.client.ApiException apiEx = 
-                (org.ezkey.sdk.auth.generated.client.ApiException) cause;
-            this.statusCode = apiEx.getCode();
-            this.responseBody = apiEx.getResponseBody();
-        } else {
-            this.statusCode = -1;
-            this.responseBody = null;
-        }
-    }
-    
-    /**
-     * Gets the HTTP status code from the underlying API exception.
-     *
-     * @return the status code, or -1 if not available
-     */
-    public int getStatusCode() {
-        return statusCode;
-    }
-    
-    /**
-     * Gets the response body from the underlying API exception.
-     *
-     * @return the response body, or null if not available
-     */
-    public String getResponseBody() {
-        return responseBody;
-    }
-    
-    /**
-     * Returns whether this exception represents a client error (4xx status code).
-     *
-     * @return true if this is a client error
-     */
-    public boolean isClientError() {
-        return statusCode >= 400 && statusCode < 500;
-    }
-    
-    /**
-     * Returns whether this exception represents a server error (5xx status code).
-     *
-     * @return true if this is a server error
-     */
-    public boolean isServerError() {
-        return statusCode >= 500 && statusCode < 600;
-    }
+
+  private static final long serialVersionUID = 386483597859702234L;
+  
+  private final int statusCode;
+  private final String responseBody;
+
+  /**
+   * Creates an exception with the specified message.
+   *
+   * @param message the error message
+   */
+  public EzkeyException(String message) {
+    super(message);
+    this.statusCode = -1;
+    this.responseBody = null;
+  }
+
+  /**
+   * Creates an exception with the specified message and cause.
+   *
+   * @param message the error message
+   * @param cause the underlying cause
+   */
+  public EzkeyException(String message, Throwable cause) {
+    super(message, cause);
+    this.statusCode = -1;
+    this.responseBody = null;
+  }
+
+  /**
+   * Creates an exception from an HTTP error response.
+   *
+   * @param message the error message
+   * @param statusCode the HTTP status code
+   * @param responseBody the raw response body
+   */
+  public EzkeyException(String message, int statusCode, String responseBody) {
+    super(message);
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
+  }
+
+  /**
+   * Gets the HTTP status code from the failed request.
+   *
+   * @return the status code, or {@code -1} if not an HTTP error
+   */
+  public int getStatusCode() {
+    return statusCode;
+  }
+
+  /**
+   * Gets the raw response body from the failed request.
+   *
+   * @return the response body, or {@code null} if not available
+   */
+  public String getResponseBody() {
+    return responseBody;
+  }
+
+  /**
+   * Returns whether this exception represents a client error (4xx status code).
+   *
+   * @return {@code true} if this is a client error
+   */
+  public boolean isClientError() {
+    return statusCode >= 400 && statusCode < 500;
+  }
+
+  /**
+   * Returns whether this exception represents a server error (5xx status code).
+   *
+   * @return {@code true} if this is a server error
+   */
+  public boolean isServerError() {
+    return statusCode >= 500 && statusCode < 600;
+  }
+
+  /**
+   * Returns whether this exception represents an authentication error (401).
+   *
+   * @return {@code true} if authentication failed
+   */
+  public boolean isUnauthorized() {
+    return statusCode == 401;
+  }
 }

@@ -11,6 +11,7 @@
 package org.ezkey.demo.acme;
 
 import java.nio.file.Path;
+
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,23 +23,31 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * Main Spring Boot application for ACME demo.
  *
- * <p>This application demonstrates EZKey passwordless login integration using backend-side
+ * <p>
+ * This application demonstrates EZKey passwordless login integration using
+ * backend-side
  * authentication with API Key M2M communication.
  *
- * <p><b>Demo Purpose:</b> Provides a realistic demonstration of EZKey integration for developers.
- * Shows how an external application can leverage EZKey's API to implement secure passwordless
+ * <p>
+ * <b>Demo Purpose:</b> Provides a realistic demonstration of EZKey integration
+ * for developers.
+ * Shows how an external application can leverage EZKey's API to implement
+ * secure passwordless
  * authentication flows.
  *
- * <p><b>Technical Stack:</b>
+ * <p>
+ * <b>Technical Stack:</b>
  *
  * <ul>
- *   <li><b>Backend:</b> Spring Boot 3.3.6, Java 21
- *   <li><b>Frontend:</b> Thymeleaf templates
- *   <li><b>UI Design:</b> Neo Brutalism styling
- *   <li><b>Port:</b> 8082
+ * <li><b>Backend:</b> Spring Boot 3.3.6, Java 21
+ * <li><b>Frontend:</b> Thymeleaf templates
+ * <li><b>UI Design:</b> Neo Brutalism styling
+ * <li><b>Port:</b> 8082
  * </ul>
  *
- * <p><b>Integration:</b> Communicates with ezkey-admin-api (port 9080) using API Key M2M
+ * <p>
+ * <b>Integration:</b> Communicates with ezkey-admin-api (port 9080) using API
+ * Key M2M
  * authentication to create auth attempts and wait for device approval.
  *
  * @author Ezkey contributors
@@ -76,8 +85,8 @@ public class DemoAcmeApplication {
         "Configuration loaded - Integration Key: {}",
         properties.getIntegrationKey() != null && !properties.getIntegrationKey().isBlank()
             ? properties
-                    .getIntegrationKey()
-                    .substring(0, Math.min(20, properties.getIntegrationKey().length()))
+                .getIntegrationKey()
+                .substring(0, Math.min(20, properties.getIntegrationKey().length()))
                 + "..."
             : "NOT SET");
     logger.info(
@@ -89,13 +98,13 @@ public class DemoAcmeApplication {
     // Also check environment directly
     org.springframework.core.env.Environment env = appContext.getEnvironment();
     logger.info(
-        "Environment property ezkey.integration.key: {}",
-        env.getProperty("ezkey.integration.key", "NOT FOUND"));
+        "Environment property ezkey.integration-key: {}",
+        env.getProperty("ezkey.integration-key", "NOT FOUND"));
     logger.info(
-        "Environment property ezkey.secret.key: {}",
-        env.getProperty("ezkey.secret.key", "NOT FOUND") != null
-                && !env.getProperty("ezkey.secret.key", "").isBlank()
-            ? "SET (hidden)"
-            : "NOT FOUND");
+        "Environment property ezkey.secret-key: {}",
+        env.getProperty("ezkey.secret-key", "NOT FOUND") != null
+            && !env.getProperty("ezkey.secret-key", "").isBlank()
+                ? "SET (hidden)"
+                : "NOT FOUND");
   }
 }

@@ -36,11 +36,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-restclient</artifactId>
-		</dependency>
 
+        <!-- Ezkey SDK for M2M authentication -->
+        <dependency>
+            <groupId>org.ezkey</groupId>
+            <artifactId>ezkey-sdk</artifactId>
+        </dependency>
 
         <!-- DevTools for development -->
         <dependency>

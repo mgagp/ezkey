@@ -17,7 +17,7 @@ ezkey.admin.api.url=http://admin-api:9080
 
 # API Key credentials for M2M authentication
 # IMPORTANT: Set these after creating an integration via Admin API and generating an API key
-# 
+#
 # Steps to get API key credentials:
 #   1. Login to Admin API as Global Admin
 #   2. Create an integration for ACME Demo App
@@ -29,13 +29,13 @@ ezkey.admin.api.url=http://admin-api:9080
 #   Authorization: Basic base64(integrationKey:secretKey)
 #
 # Example:
-#   ezkey.integration.key=ezkey_ikey_98dddb45c5d2d610a929
-#   ezkey.secret.key=ezkey_skey_746e2334d1f8dc5bc5cdd0281dea2d9ad4c1669d
+#   ezkey.integration-key=ezkey_ikey_98dddb45c5d2d610a929
+#   ezkey.secret-key=ezkey_skey_746e2334d1f8dc5bc5cdd0281dea2d9ad4c1669d
 #
 # Note: Both keys are required for authentication attempts to work
 # Leave empty initially - application will start but login will fail until configured
-ezkey.integration.key=
-ezkey.secret.key=
+ezkey.integration-key=
+ezkey.secret-key=
 
 # Users mapping file path (relative to /app/data in Docker)
 # This file maps usernames to enrollment IDs
