@@ -23,6 +23,7 @@ import org.ezkey.admin.dto.request.TenantCreateRequestDto;
 import org.ezkey.admin.dto.response.TenantResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.TenantService;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.springframework.http.HttpStatus;
@@ -39,21 +40,27 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST controller for tenant management API v1.
  *
- * <p>This controller provides REST endpoints for tenant management operations. Only global
+ * <p>
+ * This controller provides REST endpoints for tenant management operations.
+ * Only global
  * administrators can create and manage tenants.
  *
- * <p><b>Endpoints:</b>
+ * <p>
+ * <b>Endpoints:</b>
  *
  * <ul>
- *   <li><b>POST /api/v1/tenants</b> - Create a new tenant (GlobalAdmin only)
- *   <li><b>GET /api/v1/tenants</b> - List all tenants (GlobalAdmin only)
- *   <li><b>GET /api/v1/tenants/{id}</b> - Get tenant by ID (GlobalAdmin only)
- *   <li><b>POST /api/v1/tenants/{id}/deactivate</b> - Deactivate a tenant (GlobalAdmin only)
+ * <li><b>POST /api/v1/tenants</b> - Create a new tenant (GlobalAdmin only)
+ * <li><b>GET /api/v1/tenants</b> - List all tenants (GlobalAdmin only)
+ * <li><b>GET /api/v1/tenants/{id}</b> - Get tenant by ID (GlobalAdmin only)
+ * <li><b>POST /api/v1/tenants/{id}/deactivate</b> - Deactivate a tenant
+ * (GlobalAdmin only)
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -65,34 +72,36 @@ public class TenantController {
 
   private final AdminProvisioningService provisioningService;
   private final TenantRepository tenantRepository;
+  private final TenantService tenantService;
 
   public TenantController(
-      AdminProvisioningService provisioningService, TenantRepository tenantRepository) {
+      AdminProvisioningService provisioningService,
+      TenantRepository tenantRepository,
+      TenantService tenantService) {
     this.provisioningService = provisioningService;
     this.tenantRepository = tenantRepository;
+    this.tenantService = tenantService;
   }
 
   /**
    * Creates a new tenant.
    *
-   * <p>Only global administrators can create tenants. The tenant is created with the specified name
+   * <p>
+   * Only global administrators can create tenants. The tenant is created with the
+   * specified name
    * and description.
    *
    * @param request the tenant creation request
-   * @param auth the authentication context
+   * @param auth    the authentication context
    * @return ResponseEntity with created tenant (201 Created)
    */
   @PostMapping
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(
-      summary = "Create a new tenant",
-      description = "Creates a new tenant. GlobalAdmin only.")
+  @Operation(summary = "Create a new tenant", description = "Creates a new tenant. GlobalAdmin only.")
   @ApiResponses({
-    @ApiResponse(responseCode = "201", description = "Tenant created successfully"),
-    @ApiResponse(
-        responseCode = "400",
-        description = "Invalid request or tenant name already exists"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
+      @ApiResponse(responseCode = "201", description = "Tenant created successfully"),
+      @ApiResponse(responseCode = "400", description = "Invalid request or tenant name already exists"),
+      @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
   public ResponseEntity<TenantResponseDto> createTenant(
       @Valid @RequestBody TenantCreateRequestDto request, Authentication auth) {
@@ -101,17 +110,15 @@ public class TenantController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    Tenant tenant =
-        provisioningService.createTenant(
-            request.tenantName(), request.tenantDescription(), principal);
+    Tenant tenant = provisioningService.createTenant(
+        request.tenantName(), request.tenantDescription(), principal);
 
-    TenantResponseDto response =
-        new TenantResponseDto(
-            tenant.getTenantId(),
-            tenant.getTenantName(),
-            tenant.getTenantDescription(),
-            tenant.getCreatedAt(),
-            tenant.getActive());
+    TenantResponseDto response = new TenantResponseDto(
+        tenant.getTenantId(),
+        tenant.getTenantName(),
+        tenant.getTenantDescription(),
+        tenant.getCreatedAt(),
+        tenant.getActive());
 
     return ResponseEntity.created(URI.create("/api/v1/tenants/" + tenant.getTenantId()))
         .body(response);
@@ -120,7 +127,9 @@ public class TenantController {
   /**
    * Lists tenants.
    *
-   * <p>Global administrators can list all tenants. Tenant administrators cannot access this
+   * <p>
+   * Global administrators can list all tenants. Tenant administrators cannot
+   * access this
    * endpoint.
    *
    * @param auth the authentication context
@@ -128,13 +137,11 @@ public class TenantController {
    */
   @GetMapping
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(
-      summary = "List tenants",
-      description =
-          "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.")
+  @Operation(summary = "List tenants", 
+      description = "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "List of tenants"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
+      @ApiResponse(responseCode = "200", description = "List of tenants"),
+      @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
   })
   public ResponseEntity<List<TenantResponseDto>> listTenants(Authentication auth) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
@@ -145,32 +152,28 @@ public class TenantController {
     List<TenantResponseDto> tenants;
     if (principal.isGlobalAdmin()) {
       // GlobalAdmin: list all tenants
-      tenants =
-          tenantRepository.findAll().stream()
-              .map(
-                  tenant ->
-                      new TenantResponseDto(
-                          tenant.getTenantId(),
-                          tenant.getTenantName(),
-                          tenant.getTenantDescription(),
-                          tenant.getCreatedAt(),
-                          tenant.getActive()))
-              .collect(Collectors.toList());
+      tenants = tenantRepository.findAll().stream()
+          .map(
+              tenant -> new TenantResponseDto(
+                  tenant.getTenantId(),
+                  tenant.getTenantName(),
+                  tenant.getTenantDescription(),
+                  tenant.getCreatedAt(),
+                  tenant.getActive()))
+          .collect(Collectors.toList());
     } else if (principal.tenantId() != null) {
       // TenantAdmin: list only their own tenant
-      tenants =
-          tenantRepository
-              .findById(principal.tenantId())
-              .map(
-                  tenant ->
-                      new TenantResponseDto(
-                          tenant.getTenantId(),
-                          tenant.getTenantName(),
-                          tenant.getTenantDescription(),
-                          tenant.getCreatedAt(),
-                          tenant.getActive()))
-              .map(List::of)
-              .orElse(List.of());
+      tenants = tenantRepository
+          .findById(principal.tenantId())
+          .map(
+              tenant -> new TenantResponseDto(
+                  tenant.getTenantId(),
+                  tenant.getTenantName(),
+                  tenant.getTenantDescription(),
+                  tenant.getCreatedAt(),
+                  tenant.getActive()))
+          .map(List::of)
+          .orElse(List.of());
     } else {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
@@ -181,24 +184,24 @@ public class TenantController {
   /**
    * Gets a tenant by ID.
    *
-   * <p>Only global administrators can view tenants. Tenant administrators cannot access this
+   * <p>
+   * Only global administrators can view tenants. Tenant administrators cannot
+   * access this
    * endpoint.
    *
-   * @param id the tenant ID
+   * @param id   the tenant ID
    * @param auth the authentication context
    * @return ResponseEntity with tenant (200 OK) or 404 Not Found
    */
   @GetMapping("/{id}")
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(
-      summary = "Get tenant by ID",
-      description =
-          "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access"
-              + " their own tenant.")
+  @Operation(summary = "Get tenant by ID",
+      description = "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access"
+      + " their own tenant.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Tenant found"),
-    @ApiResponse(responseCode = "404", description = "Tenant not found"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
+      @ApiResponse(responseCode = "200", description = "Tenant found"),
+      @ApiResponse(responseCode = "404", description = "Tenant not found"),
+      @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
   })
   public ResponseEntity<TenantResponseDto> getTenant(
       @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
@@ -218,36 +221,47 @@ public class TenantController {
     return tenantRepository
         .findById(id)
         .map(
-            tenant ->
-                new TenantResponseDto(
-                    tenant.getTenantId(),
-                    tenant.getTenantName(),
-                    tenant.getTenantDescription(),
-                    tenant.getCreatedAt(),
-                    tenant.getActive()))
+            tenant -> new TenantResponseDto(
+                tenant.getTenantId(),
+                tenant.getTenantName(),
+                tenant.getTenantDescription(),
+                tenant.getCreatedAt(),
+                tenant.getActive()))
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
   }
 
   /**
-   * Deactivates a tenant.
+   * Deactivates a tenant and revokes all active admin tokens for that tenant.
    *
-   * <p>Only global administrators can deactivate tenants. Deactivation prevents further operations
-   * for that tenant while preserving data for audit purposes.
+   * <p>
+   * Only global administrators can deactivate tenants. The system tenant cannot
+   * be deactivated.
+   * Deactivation prevents further operations for that tenant while preserving
+   * data for audit
+   * purposes. All active admin tokens for the tenant are immediately revoked.
    *
-   * @param id the tenant ID
+   * @param id   the tenant ID
    * @param auth the authentication context
-   * @return ResponseEntity with no content (204 No Content) or 404 Not Found
+   * @return ResponseEntity with no content (204 No Content)
+   * @throws org.ezkey.admin.exception.TenantNotAllowedException if attempting to
+   *                                                             deactivate the
+   *                                                             system tenant
+   *                                                             (400, RFC 9457)
+   * @throws org.ezkey.exception.ResourceNotFoundException       if the tenant is
+   *                                                             not found (404)
    */
   @PostMapping("/{id}/deactivate")
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
-  @Operation(
-      summary = "Deactivate a tenant",
-      description = "Deactivates a tenant. GlobalAdmin only. Required in Phase 1.")
+  @Operation(summary = "Deactivate a tenant",
+      description = "Deactivates a tenant and revokes all active admin tokens for that tenant. GlobalAdmin"
+      + " only. The system tenant cannot be deactivated.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "Tenant deactivated successfully"),
-    @ApiResponse(responseCode = "404", description = "Tenant not found"),
-    @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
+      @ApiResponse(responseCode = "204", description = "Tenant deactivated successfully"),
+      @ApiResponse(responseCode = "400",
+        description = "Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)"),
+      @ApiResponse(responseCode = "404", description = "Tenant not found"),
+      @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
   public ResponseEntity<Void> deactivateTenant(
       @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
@@ -257,14 +271,7 @@ public class TenantController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    return tenantRepository
-        .findById(id)
-        .map(
-            tenant -> {
-              tenant.setActive(false);
-              tenantRepository.save(tenant);
-              return ResponseEntity.noContent().<Void>build();
-            })
-        .orElse(ResponseEntity.notFound().build());
+    tenantService.deactivateTenant(id, principal);
+    return ResponseEntity.noContent().build();
   }
 }

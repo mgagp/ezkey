@@ -23,12 +23,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service for validating admin bearer tokens.
  *
- * <p>This service provides transaction-aware token validation to avoid lazy loading issues when
+ * <p>
+ * This service provides transaction-aware token validation to avoid lazy
+ * loading issues when
  * accessing JPA entity relationships.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -47,12 +51,15 @@ public class AdminTokenValidationService {
   /**
    * Validates a bearer token and returns the associated admin if valid.
    *
-   * <p>This method is transaction-aware and properly handles JPA entity relationships.
+   * <p>
+   * This method is transaction-aware and properly handles JPA entity
+   * relationships.
    *
    * @param token the bearer token to validate
    * @return Optional containing the admin if token is valid, empty otherwise
-   * @deprecated Use validateTokenWithRelations instead to get AdminToken with tenant/integration
-   *     loaded
+   * @deprecated Use validateTokenWithRelations instead to get AdminToken with
+   *             tenant/integration
+   *             loaded
    */
   @Deprecated
   @Transactional(readOnly = true)
@@ -62,13 +69,17 @@ public class AdminTokenValidationService {
   }
 
   /**
-   * Validates a bearer token and returns the AdminToken with all relations loaded if valid.
+   * Validates a bearer token and returns the AdminToken with all relations loaded
+   * if valid.
    *
-   * <p>This method eagerly loads admin, tenant, and integration to support AdminPrincipal creation
+   * <p>
+   * This method eagerly loads admin, tenant, and integration to support
+   * AdminPrincipal creation
    * without lazy loading issues.
    *
    * @param token the bearer token to validate
-   * @return Optional containing the AdminToken with relations if token is valid, empty otherwise
+   * @return Optional containing the AdminToken with relations if token is valid,
+   *         empty otherwise
    */
   @Transactional(readOnly = true)
   public Optional<AdminToken> validateTokenWithRelations(String token) {
@@ -76,8 +87,7 @@ public class AdminTokenValidationService {
       logger.debug(
           "🔍 Validating bearer token: {}...", token.substring(0, Math.min(10, token.length())));
 
-      Optional<AdminToken> tokenOptional =
-          tokenRepository.findByBearerTokenAndActiveTrueWithRelations(token);
+      Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenAndActiveTrueWithRelations(token);
 
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
@@ -90,6 +100,14 @@ public class AdminTokenValidationService {
           admin.getUsername();
           admin.getAdminType();
           admin.getActive();
+
+          // Check if admin's tenant is still active
+          if (adminToken.getTenant() != null
+              && !adminToken.getTenant().getActive()) {
+            logger.warn(
+                "❌ Token rejected: tenant inactive for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
 
           logger.debug("✅ Token validated successfully for admin: {}", admin.getUsername());
           return Optional.of(adminToken);
@@ -109,7 +127,8 @@ public class AdminTokenValidationService {
   /**
    * Updates the last used timestamp for a token.
    *
-   * <p>This method requires a separate transaction for the update operation.
+   * <p>
+   * This method requires a separate transaction for the update operation.
    *
    * @param token the bearer token to update
    */

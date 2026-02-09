@@ -10,12 +10,11 @@
 
 package org.ezkey.integration.service;
 
-import inet.ipaddr.IPAddress;
-import inet.ipaddr.IPAddressString;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+
 import org.apache.commons.codec.binary.Hex;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -28,35 +27,46 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import inet.ipaddr.IPAddress;
+import inet.ipaddr.IPAddressString;
+
 /**
  * Service for API key management and validation.
  *
- * <p>This service provides business logic for the complete lifecycle of API keys including
- * generation, validation, rotation, and revocation. It handles security aspects such as BCrypt
+ * <p>
+ * This service provides business logic for the complete lifecycle of API keys
+ * including
+ * generation, validation, rotation, and revocation. It handles security aspects
+ * such as BCrypt
  * hashing, IP whitelist validation, and expiration checks.
  *
- * <p><b>Key Operations:</b>
+ * <p>
+ * <b>Key Operations:</b>
  *
  * <ul>
- *   <li><b>Generation:</b> Create new API key pairs with secure random generation
- *   <li><b>Validation:</b> Authenticate applications using integration key + secret key
- *   <li><b>Management:</b> List, revoke, and monitor API keys
- *   <li><b>Cleanup:</b> Scheduled tasks for expired key handling
+ * <li><b>Generation:</b> Create new API key pairs with secure random generation
+ * <li><b>Validation:</b> Authenticate applications using integration key +
+ * secret key
+ * <li><b>Management:</b> List, revoke, and monitor API keys
+ * <li><b>Cleanup:</b> Scheduled tasks for expired key handling
  * </ul>
  *
- * <p><b>Security Features:</b>
+ * <p>
+ * <b>Security Features:</b>
  *
  * <ul>
- *   <li>BCrypt hashing for secret keys (same security as passwords)
- *   <li>IP whitelist validation with CIDR support
- *   <li>Expiration enforcement for automatic rotation
- *   <li>Rate limiting integration (configured externally)
- *   <li>Comprehensive audit logging
+ * <li>BCrypt hashing for secret keys (same security as passwords)
+ * <li>IP whitelist validation with CIDR support
+ * <li>Expiration enforcement for automatic rotation
+ * <li>Rate limiting integration (configured externally)
+ * <li>Comprehensive audit logging
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -83,9 +93,10 @@ public class ApiKeyService {
   /**
    * Constructs a new ApiKeyService with required dependencies.
    *
-   * @param apiKeyRepository the API key repository
+   * @param apiKeyRepository      the API key repository
    * @param integrationRepository the integration repository
-   * @param passwordEncoder the BCrypt password encoder for secret key hashing
+   * @param passwordEncoder       the BCrypt password encoder for secret key
+   *                              hashing
    */
   public ApiKeyService(
       ApiKeyRepository apiKeyRepository,
@@ -100,31 +111,37 @@ public class ApiKeyService {
   /**
    * Creates a new API key pair for an integration.
    *
-   * <p>This method generates a secure API key pair consisting of a public integration key and a
-   * private secret key. The secret key is shown once in the response and then hashed with BCrypt
+   * <p>
+   * This method generates a secure API key pair consisting of a public
+   * integration key and a
+   * private secret key. The secret key is shown once in the response and then
+   * hashed with BCrypt
    * for storage.
    *
-   * <p><b>Generation Process:</b>
+   * <p>
+   * <b>Generation Process:</b>
    *
    * <ol>
-   *   <li>Validate integration exists and is active
-   *   <li>Check active key limit (max 5 per integration)
-   *   <li>Generate unique integration key (ezkey_ikey_xxx)
-   *   <li>Generate secure secret key (ezkey_skey_xxx)
-   *   <li>Hash secret key with BCrypt
-   *   <li>Save to database with audit metadata
+   * <li>Validate integration exists and is active
+   * <li>Check active key limit (max 5 per integration)
+   * <li>Generate unique integration key (ezkey_ikey_xxx)
+   * <li>Generate secure secret key (ezkey_skey_xxx)
+   * <li>Hash secret key with BCrypt
+   * <li>Save to database with audit metadata
    * </ol>
    *
-   * <p><b>Security:</b> Secret key uses SecureRandom with 40 hex chars (160 bits entropy)
+   * <p>
+   * <b>Security:</b> Secret key uses SecureRandom with 40 hex chars (160 bits
+   * entropy)
    *
-   * @param integrationId the integration ID to create the key for
+   * @param integrationId  the integration ID to create the key for
    * @param createdByAdmin the admin creating the key (for audit)
-   * @param description optional description for the key
-   * @param expiresAt optional expiration date for automatic rotation
-   * @param ipWhitelist optional array of IP addresses or CIDR ranges
+   * @param description    optional description for the key
+   * @param expiresAt      optional expiration date for automatic rotation
+   * @param ipWhitelist    optional array of IP addresses or CIDR ranges
    * @return ApiKeyCreationResult containing both keys and metadata
    * @throws IllegalArgumentException if integration not found or inactive
-   * @throws IllegalStateException if maximum active keys limit reached
+   * @throws IllegalStateException    if maximum active keys limit reached
    */
   @Transactional
   public ApiKeyCreationResult createApiKey(
@@ -137,17 +154,25 @@ public class ApiKeyService {
     logger.info("Creating API key for integration: {}", integrationId);
 
     // Validate integration exists and is active
-    Integration integration =
-        integrationRepository
-            .findById(integrationId)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Integration not found with ID: " + integrationId));
+    Integration integration = integrationRepository
+        .findById(integrationId)
+        .orElseThrow(
+            () -> new IllegalArgumentException(
+                "Integration not found with ID: " + integrationId));
 
     if (!integration.getActive()) {
       throw new IllegalArgumentException(
           "Cannot create API key for inactive integration: " + integrationId);
+    }
+
+    // Security: Block API key creation for inactive tenants
+    if (integration.getTenant() != null && !integration.getTenant().getActive()) {
+      logger.warn(
+          "API key creation blocked: tenant (ID: {}) is inactive for integration {}",
+          integration.getTenant().getTenantId(),
+          integrationId);
+      throw new IllegalStateException(
+          "Cannot create API key for inactive tenant. Contact your Ezkey administrator.");
     }
 
     // Check active key limit
@@ -212,27 +237,34 @@ public class ApiKeyService {
   /**
    * Validates an API key for authentication.
    *
-   * <p>This method validates an API key authentication attempt by checking the integration key,
-   * verifying the secret key against the BCrypt hash, and validating security constraints.
+   * <p>
+   * This method validates an API key authentication attempt by checking the
+   * integration key,
+   * verifying the secret key against the BCrypt hash, and validating security
+   * constraints.
    *
-   * <p><b>Validation Steps:</b>
+   * <p>
+   * <b>Validation Steps:</b>
    *
    * <ol>
-   *   <li>Look up API key by integration key
-   *   <li>Verify key is active (not revoked)
-   *   <li>Check expiration if set
-   *   <li>Validate secret key against BCrypt hash
-   *   <li>Check IP whitelist if configured
-   *   <li>Update last used timestamp
+   * <li>Look up API key by integration key
+   * <li>Verify key is active (not revoked)
+   * <li>Check expiration if set
+   * <li>Validate secret key against BCrypt hash
+   * <li>Check IP whitelist if configured
+   * <li>Update last used timestamp
    * </ol>
    *
-   * <p><b>Performance:</b> Uses BCrypt comparison which is intentionally slow (~100ms) to prevent
+   * <p>
+   * <b>Performance:</b> Uses BCrypt comparison which is intentionally slow
+   * (~100ms) to prevent
    * brute force attacks
    *
    * @param integrationKey the public integration key
-   * @param secretKey the secret key (plain text)
-   * @param clientIp the client IP address for whitelist validation
-   * @return Optional containing the Integration if validation successful, empty otherwise
+   * @param secretKey      the secret key (plain text)
+   * @param clientIp       the client IP address for whitelist validation
+   * @return Optional containing the Integration if validation successful, empty
+   *         otherwise
    */
   @Transactional
   public Optional<Integration> validateApiKey(
@@ -274,6 +306,14 @@ public class ApiKeyService {
     apiKey.setLastUsedAt(OffsetDateTime.now());
     apiKeyRepository.save(apiKey);
 
+    // Check if the parent integration's tenant is active
+    Integration integration = apiKey.getIntegration();
+    if (integration.getTenant() != null && !integration.getTenant().getActive()) {
+      logger.warn(
+          "API key rejected: tenant inactive for integration: {}", integration.getId());
+      return Optional.empty();
+    }
+
     logger.info(
         "API key validated successfully: {} for integration: {}",
         integrationKey,
@@ -285,7 +325,9 @@ public class ApiKeyService {
   /**
    * Lists all API keys for integrations belonging to a specific tenant.
    *
-   * <p>This method is used for tenant-scoped admin operations to list all API keys (active and
+   * <p>
+   * This method is used for tenant-scoped admin operations to list all API keys
+   * (active and
    * revoked) for integrations within a specific tenant.
    *
    * @param tenantId the tenant ID to filter by
@@ -299,7 +341,9 @@ public class ApiKeyService {
   /**
    * Lists all API keys across all integrations and tenants.
    *
-   * <p>This method is used by GlobalAdmin to view all API keys in the system. Should be used with
+   * <p>
+   * This method is used by GlobalAdmin to view all API keys in the system. Should
+   * be used with
    * caution in production due to potential large result sets.
    *
    * @return List of all API keys in the system
@@ -312,7 +356,9 @@ public class ApiKeyService {
   /**
    * Lists all active API keys for an integration.
    *
-   * <p>This method returns all active (non-revoked) API keys for a specific integration. Used for
+   * <p>
+   * This method returns all active (non-revoked) API keys for a specific
+   * integration. Used for
    * administration and monitoring purposes.
    *
    * @param integrationId the integration ID
@@ -326,7 +372,8 @@ public class ApiKeyService {
   /**
    * Lists all API keys (including revoked) for an integration.
    *
-   * <p>This method returns the complete history of API keys for audit purposes.
+   * <p>
+   * This method returns the complete history of API keys for audit purposes.
    *
    * @param integrationId the integration ID
    * @return List of all API keys (active and revoked)
@@ -350,20 +397,25 @@ public class ApiKeyService {
   /**
    * Revokes an API key immediately.
    *
-   * <p>This method performs immediate revocation of an API key, making it unusable for
-   * authentication. The key is preserved for audit purposes with revocation metadata.
+   * <p>
+   * This method performs immediate revocation of an API key, making it unusable
+   * for
+   * authentication. The key is preserved for audit purposes with revocation
+   * metadata.
    *
-   * <p><b>Revocation Process:</b>
+   * <p>
+   * <b>Revocation Process:</b>
    *
    * <ol>
-   *   <li>Set active = false
-   *   <li>Record revocation timestamp
-   *   <li>Record revoking admin for audit
+   * <li>Set active = false
+   * <li>Record revocation timestamp
+   * <li>Record revoking admin for audit
    * </ol>
    *
-   * <p><b>Usage:</b> Use for compromised keys or during key rotation cleanup
+   * <p>
+   * <b>Usage:</b> Use for compromised keys or during key rotation cleanup
    *
-   * @param keyId the API key ID to revoke
+   * @param keyId          the API key ID to revoke
    * @param revokedByAdmin the admin performing the revocation
    * @return true if revoked successfully, false if key not found
    */
@@ -371,8 +423,7 @@ public class ApiKeyService {
   public boolean revokeApiKey(Integer keyId, EzkeyAdmin revokedByAdmin) {
     logger.info("Revoking API key ID: {} by admin: {}", keyId, revokedByAdmin.getUsername());
 
-    int rowsAffected =
-        apiKeyRepository.revokeKey(keyId, OffsetDateTime.now(), revokedByAdmin.getAdminId());
+    int rowsAffected = apiKeyRepository.revokeKey(keyId, OffsetDateTime.now(), revokedByAdmin.getAdminId());
 
     if (rowsAffected > 0) {
       logger.info("API key revoked successfully: {}", keyId);
@@ -386,10 +437,13 @@ public class ApiKeyService {
   /**
    * Cleans up expired API keys (scheduled task).
    *
-   * <p>This method finds and deactivates all API keys that have passed their expiration date but
+   * <p>
+   * This method finds and deactivates all API keys that have passed their
+   * expiration date but
    * are still marked as active. Should be run periodically (e.g., hourly).
    *
-   * <p><b>Note:</b> Expired keys are deactivated but preserved for audit purposes
+   * <p>
+   * <b>Note:</b> Expired keys are deactivated but preserved for audit purposes
    *
    * @return count of keys deactivated
    */
@@ -419,7 +473,9 @@ public class ApiKeyService {
   /**
    * Finds API keys expiring within a specified time window.
    *
-   * <p>This method is used for proactive notifications to admins about keys expiring soon.
+   * <p>
+   * This method is used for proactive notifications to admins about keys expiring
+   * soon.
    *
    * @param days number of days to look ahead
    * @return List of keys expiring within the specified days
@@ -434,9 +490,11 @@ public class ApiKeyService {
   /**
    * Generates a unique integration key.
    *
-   * <p>Format: ezkey_ikey_[20 hex chars] Example: ezkey_ikey_a1b2c3d4e5f6g7h8i9j0
+   * <p>
+   * Format: ezkey_ikey_[20 hex chars] Example: ezkey_ikey_a1b2c3d4e5f6g7h8i9j0
    *
-   * <p><b>Security:</b> Uses SecureRandom with 10 bytes (80 bits entropy)
+   * <p>
+   * <b>Security:</b> Uses SecureRandom with 10 bytes (80 bits entropy)
    *
    * @return the generated integration key
    */
@@ -448,10 +506,12 @@ public class ApiKeyService {
   /**
    * Generates a secure secret key.
    *
-   * <p>Format: ezkey_skey_[40 hex chars] Example:
+   * <p>
+   * Format: ezkey_skey_[40 hex chars] Example:
    * ezkey_skey_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
    *
-   * <p><b>Security:</b> Uses SecureRandom with 20 bytes (160 bits entropy)
+   * <p>
+   * <b>Security:</b> Uses SecureRandom with 20 bytes (160 bits entropy)
    *
    * @return the generated secret key
    */
@@ -463,7 +523,9 @@ public class ApiKeyService {
   /**
    * Generates a secure hex string of specified length.
    *
-   * <p><b>Security:</b> Uses SecureRandom for cryptographically secure random generation
+   * <p>
+   * <b>Security:</b> Uses SecureRandom for cryptographically secure random
+   * generation
    *
    * @param length the desired hex string length (must be even)
    * @return hex string of specified length
@@ -477,7 +539,8 @@ public class ApiKeyService {
   /**
    * Validates IP whitelist format.
    *
-   * <p>Checks that all entries are valid IP addresses or CIDR ranges.
+   * <p>
+   * Checks that all entries are valid IP addresses or CIDR ranges.
    *
    * @param ipWhitelist the IP whitelist to validate
    * @throws IllegalArgumentException if any entry is invalid
@@ -494,9 +557,10 @@ public class ApiKeyService {
   /**
    * Checks if a client IP is whitelisted.
    *
-   * <p>Supports both individual IP addresses and CIDR ranges.
+   * <p>
+   * Supports both individual IP addresses and CIDR ranges.
    *
-   * @param clientIp the client IP address
+   * @param clientIp  the client IP address
    * @param whitelist the IP whitelist
    * @return true if IP is whitelisted, false otherwise
    */
@@ -531,7 +595,9 @@ public class ApiKeyService {
   /**
    * Result object returned when creating an API key.
    *
-   * <p>Contains both the public integration key and the plain text secret key. The secret key is
+   * <p>
+   * Contains both the public integration key and the plain text secret key. The
+   * secret key is
    * ONLY shown in this response and never again.
    */
   public static class ApiKeyCreationResult {

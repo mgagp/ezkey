@@ -47,7 +47,8 @@ public class LoginController {
 
   private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
-  private static final String SDK_NOT_CONFIGURED_MSG = "Ezkey SDK is not configured. Set ezkey.integration-key and ezkey.secret-key "
+  private static final String SDK_NOT_CONFIGURED_MSG = "Ezkey SDK is not configured. " 
+      + "Set ezkey.integration-key and ezkey.secret-key "
       + "in application.properties and restart the container.";
 
   private final UserMappingService userMappingService;
@@ -240,7 +241,8 @@ public class LoginController {
             new ReloadConfigResponse(false, "Error reloading users file: " + e.getMessage()));
       }
 
-      String message = "Users mapping file reloaded successfully. Note: Application properties (API keys, URLs)"
+      String message = "Users mapping file reloaded successfully. "
+          + "Note: Application properties (API keys, URLs)"
           + " require container restart to take effect.";
 
       logger.info("Configuration reload completed successfully");
