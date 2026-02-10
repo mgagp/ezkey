@@ -86,11 +86,27 @@ class HttpClient:
             })
     
     def _format_error(self, response: requests.Response) -> str:
-        """Format error message from HTTP response."""
+        """
+        Format error message from HTTP response.
+        
+        Supports multiple error response formats:
+        - RFC 9457 Problem Details (detail, title fields)
+        - Legacy API error (message, error fields)
+        - Plain text or generic message
+        """
         try:
             error_data = response.json()
             if isinstance(error_data, dict):
-                # Try to extract meaningful error message
+                # RFC 9457 Problem Details support
+                # Try 'detail' field first (most specific - business logic error)
+                if "detail" in error_data and error_data["detail"]:
+                    return f"HTTP {response.status_code}: {error_data['detail']}"
+                
+                # RFC 9457 fallback: Try 'title' field (error category)
+                if "title" in error_data and error_data["title"]:
+                    return f"HTTP {response.status_code}: {error_data['title']}"
+                
+                # Legacy format support
                 # Backend returns ErrorResponseDto with 'message' and 'error' fields
                 message = error_data.get('message', error_data.get('error', 'Unknown error'))
                 
