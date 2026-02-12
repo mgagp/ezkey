@@ -21,7 +21,7 @@ package org.ezkey.sdk;
 public class EzkeyException extends Exception {
 
   private static final long serialVersionUID = 386483597859702234L;
-  
+
   private final int statusCode;
   private final String responseBody;
 

@@ -26,41 +26,29 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service for tenant lifecycle management.
  *
- * <p>
- * This service provides business logic for tenant operations including
- * deactivation with
- * cascading security enforcement. When a tenant is deactivated, all active
- * admin tokens for that
+ * <p>This service provides business logic for tenant operations including deactivation with
+ * cascading security enforcement. When a tenant is deactivated, all active admin tokens for that
  * tenant are revoked, effectively logging out all tenant administrators.
  *
- * <p>
- * <b>Tenant Deactivation Rules:</b>
+ * <p><b>Tenant Deactivation Rules:</b>
  *
  * <ul>
- * <li>The system tenant cannot be deactivated (safety check)
- * <li>Deactivation is idempotent (already-inactive tenants are silently
- * ignored)
- * <li>All active admin tokens for the tenant are revoked on deactivation
- * <li>Integrations, enrollments, and API keys are NOT explicitly cascaded — the
- * tenant
- * {@code active} flag acts as a runtime master switch
+ *   <li>The system tenant cannot be deactivated (safety check)
+ *   <li>Deactivation is idempotent (already-inactive tenants are silently ignored)
+ *   <li>All active admin tokens for the tenant are revoked on deactivation
+ *   <li>Integrations, enrollments, and API keys are NOT explicitly cascaded — the tenant {@code
+ *       active} flag acts as a runtime master switch
  * </ul>
  *
- * <p>
- * <b>Tenant-Active Enforcement:</b>
+ * <p><b>Tenant-Active Enforcement:</b>
  *
- * <p>
- * The {@link #ensureTenantActive(Integer)} method provides a reusable guard
- * that can be called
- * by other services (IntegrationService, EnrollmentService, ApiKeyService)
- * before write operations
+ * <p>The {@link #ensureTenantActive(Integer)} method provides a reusable guard that can be called
+ * by other services (IntegrationService, EnrollmentService, ApiKeyService) before write operations
  * to prevent resource creation for inactive tenants.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -80,7 +68,7 @@ public class TenantService {
    * Constructs a new TenantService with required dependencies.
    *
    * @param tenantRepository the tenant repository
-   * @param tokenRepository  the admin token repository for token revocation
+   * @param tokenRepository the admin token repository for token revocation
    */
   public TenantService(TenantRepository tenantRepository, AdminTokenRepository tokenRepository) {
     this.tenantRepository = tenantRepository;
@@ -90,38 +78,36 @@ public class TenantService {
   /**
    * Deactivates a tenant and revokes all active tokens for its administrators.
    *
-   * <p>
-   * This method implements the full tenant deactivation lifecycle:
+   * <p>This method implements the full tenant deactivation lifecycle:
    *
    * <ol>
-   * <li>Validates the tenant exists
-   * <li>Prevents deactivation of the system tenant (safety check)
-   * <li>If already inactive, returns silently (idempotent)
-   * <li>Sets {@code active = false} on the tenant
-   * <li>Revokes all active admin tokens for the tenant
+   *   <li>Validates the tenant exists
+   *   <li>Prevents deactivation of the system tenant (safety check)
+   *   <li>If already inactive, returns silently (idempotent)
+   *   <li>Sets {@code active = false} on the tenant
+   *   <li>Revokes all active admin tokens for the tenant
    * </ol>
    *
-   * <p>
-   * <b>Security Impact:</b> After deactivation:
+   * <p><b>Security Impact:</b> After deactivation:
    *
    * <ul>
-   * <li>Tenant admins cannot log in (checked at login time)
-   * <li>Existing bearer tokens are immediately revoked
-   * <li>API keys for tenant integrations are rejected at validation time
-   * <li>New integrations, enrollments, and API keys cannot be created
+   *   <li>Tenant admins cannot log in (checked at login time)
+   *   <li>Existing bearer tokens are immediately revoked
+   *   <li>API keys for tenant integrations are rejected at validation time
+   *   <li>New integrations, enrollments, and API keys cannot be created
    * </ul>
    *
-   * @param tenantId  the ID of the tenant to deactivate
+   * @param tenantId the ID of the tenant to deactivate
    * @param principal the admin principal performing the deactivation
    * @throws ResourceNotFoundException if the tenant is not found
-   * @throws TenantNotAllowedException if attempting to deactivate the system
-   *                                   tenant
+   * @throws TenantNotAllowedException if attempting to deactivate the system tenant
    */
   @Transactional
   public void deactivateTenant(Integer tenantId, AdminPrincipal principal) {
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
 
     // Safety check: cannot deactivate the system tenant
     if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
@@ -156,15 +142,12 @@ public class TenantService {
   /**
    * Ensures a tenant is active, throwing an exception if it is not.
    *
-   * <p>
-   * This method is a reusable guard intended to be called by other services
-   * before performing
-   * write operations (creating integrations, enrollments, API keys) to enforce
-   * tenant-active
+   * <p>This method is a reusable guard intended to be called by other services before performing
+   * write operations (creating integrations, enrollments, API keys) to enforce tenant-active
    * integrity rules.
    *
    * @param tenantId the ID of the tenant to check
-   * @throws TenantInactiveException   if the tenant is inactive
+   * @throws TenantInactiveException if the tenant is inactive
    * @throws ResourceNotFoundException if the tenant is not found
    */
   @Transactional(readOnly = true)
@@ -173,15 +156,15 @@ public class TenantService {
       return; // Global admin operations without tenant scope
     }
 
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
 
     if (!tenant.getActive()) {
-      logger.warn("Operation blocked: tenant '{}' (ID: {}) is inactive",
-          tenant.getTenantName(), tenantId);
-      throw new TenantInactiveException(
-          "Tenant is inactive. Contact your Ezkey administrator.");
+      logger.warn(
+          "Operation blocked: tenant '{}' (ID: {}) is inactive", tenant.getTenantName(), tenantId);
+      throw new TenantInactiveException("Tenant is inactive. Contact your Ezkey administrator.");
     }
   }
 }

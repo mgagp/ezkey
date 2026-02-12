@@ -11,23 +11,21 @@
 package org.ezkey.admin.exception;
 
 /**
- * Exception thrown when an operation targets a resource belonging to an
- * inactive tenant.
+ * Exception thrown when an operation targets a resource belonging to an inactive tenant.
  *
- * <p>This exception is raised when an attempt is made to create or modify
- * resources for an
- * inactive tenant, such as:
+ * <p>This exception is raised when an attempt is made to create or modify resources for an inactive
+ * tenant, such as:
  *
  * <ul>
- * <li>Creating an integration for an inactive tenant
- * <li>Creating an enrollment for an integration belonging to an inactive tenant
- * <li>Creating an API key for an integration belonging to an inactive tenant
+ *   <li>Creating an integration for an inactive tenant
+ *   <li>Creating an enrollment for an integration belonging to an inactive tenant
+ *   <li>Creating an API key for an integration belonging to an inactive tenant
  * </ul>
  *
  * <p><b>HTTP Status:</b> 403 Forbidden
  *
- * <p><b>Response Format:</b> RFC 9457 Problem Detail with type URI
- * {@code https://ezkey.io/problems/tenant-inactive}
+ * <p><b>Response Format:</b> RFC 9457 Problem Detail with type URI {@code
+ * https://ezkey.io/problems/tenant-inactive}
  *
  * <p><b>Example Response:</b>
  *
@@ -61,11 +59,10 @@ public class TenantInactiveException extends RuntimeException {
   }
 
   /**
-   * Constructs a TenantInactiveException with the specified detail message and
-   * cause.
+   * Constructs a TenantInactiveException with the specified detail message and cause.
    *
    * @param message the detail message
-   * @param cause   the cause
+   * @param cause the cause
    */
   public TenantInactiveException(String message, Throwable cause) {
     super(message, cause);

@@ -13,19 +13,18 @@ package org.ezkey.admin.exception;
 /**
  * Exception thrown when a tenant operation is not allowed.
  *
- * <p>This exception is raised when an administrator attempts a restricted
- * tenant operation, such
+ * <p>This exception is raised when an administrator attempts a restricted tenant operation, such
  * as:
  *
  * <ul>
- * <li>Attempting to deactivate the system tenant
- * <li>Attempting to modify the system tenant in restricted ways
+ *   <li>Attempting to deactivate the system tenant
+ *   <li>Attempting to modify the system tenant in restricted ways
  * </ul>
  *
  * <p><b>HTTP Status:</b> 400 Bad Request
  *
- * <p><b>Response Format:</b> RFC 9457 Problem Detail with type URI
- * {@code https://ezkey.io/problems/tenant-not-allowed}
+ * <p><b>Response Format:</b> RFC 9457 Problem Detail with type URI {@code
+ * https://ezkey.io/problems/tenant-not-allowed}
  *
  * <p><b>Example Response:</b>
  *
@@ -59,11 +58,10 @@ public class TenantNotAllowedException extends RuntimeException {
   }
 
   /**
-   * Constructs a TenantNotAllowedException with the specified detail message and
-   * cause.
+   * Constructs a TenantNotAllowedException with the specified detail message and cause.
    *
    * @param message the detail message
-   * @param cause   the cause
+   * @param cause the cause
    */
   public TenantNotAllowedException(String message, Throwable cause) {
     super(message, cause);

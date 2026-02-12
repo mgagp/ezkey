@@ -24,6 +24,11 @@ import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
+import org.ezkey.admin.exception.AdminAuthenticationException;
+import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
+import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
+import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
+import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.util.AuditHelper;
@@ -88,42 +93,152 @@ public class AdminAuthController {
   }
 
   /**
-   * Authenticate administrator with username and password.
+   * Authenticate administrator with passwordless Ezkey MFA.
    *
-   * <p>This endpoint allows administrators to authenticate using their credentials and receive a
-   * bearer token for subsequent API calls. Rate limiting is applied to prevent brute force attacks.
+   * <p>This endpoint implements Ezkey's passwordless authentication for administrators using
+   * device-based cryptographic signing. It follows RFC 9457 (Problem Details) for error responses.
    *
-   * <p>Supports two authentication flows:
+   * <p><b>Authentication Flows:</b>
    *
    * <ul>
-   *   <li><b>Single-call mode:</b> Returns bearer token immediately after device approval (HTTP
-   *       200)
-   *   <li><b>Two-call mode (with challenge):</b> Returns authAttemptId and challengeCode with
-   *       status "pending" (HTTP 200), requires separate /passwordless-wait call
+   *   <li><b>Single-call (blocking):</b> Returns bearer token immediately after device approval
+   *       (HTTP 200) - suitable for interactive flows where device is available immediately
+   *   <li><b>Two-call (challenge-based):</b> Returns authAttemptId and challengeCode with status
+   *       "pending" (HTTP 200), requires separate /passwordless-wait call - suitable for showing
+   *       user a display code while waiting for device
    * </ul>
    *
-   * @param request the login request containing username and optional challenge flag
-   * @param httpRequest the HTTP servlet request for IP extraction
+   * <p><b>Security Features:</b>
+   *
+   * <ul>
+   *   <li>Passwordless: No passwords stored, uses device-based cryptography only
+   *   <li>Rate Limiting: IP-based rate limiting to prevent brute force (applied at controller)
+   *   <li>Challenge Security: Optional display code prevents enumeration attacks on authAttemptId
+   *   <li>Audit Logging: All login attempts (success and failure) are logged
+   * </ul>
+   *
+   * <p><b>Error Codes (RFC 9457):</b>
+   *
+   * <ul>
+   *   <li><b>401 Unauthorized:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/invalid-credentials} - Username not
+   *             found or device signature validation failed
+   *       </ul>
+   *   <li><b>400 Bad Request:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-expired} - Authentication
+   *             attempt superseded or expired before device response
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-rejected} - Device explicitly
+   *             rejected the authentication request
+   *         <li>{@code https://ezkey.io/problems/authentication/invalid-signature} - Device
+   *             signature validation failed
+   *       </ul>
+   *   <li><b>403 Forbidden:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/account-inactive} - Administrator
+   *             account or tenant is deactivated
+   *         <li>{@code https://ezkey.io/problems/authentication/no-enrollment} - No device enrolled
+   *             for this administrator account
+   *       </ul>
+   *   <li><b>408 Request Timeout:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-timeout} - No device response
+   *             within 5-minute timeout window
+   *       </ul>
+   * </ul>
+   *
+   * <p><b>Example Success Response (HTTP 200):</b>
+   *
+   * <pre>{@code
+   * {
+   * "status": "approved",
+   * "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+   * "expiresAt": "2026-02-12T12:57:19-05:00",
+   * "success": true
+   * }
+   * }</pre>
+   *
+   * <p><b>Example Pending Response (HTTP 200):</b>
+   *
+   * <pre>{@code
+   * {
+   * "status": "pending",
+   * "authAttemptId": "uuid-here",
+   * "challengeCode": "ABCD-1234",
+   * "success": false
+   * }
+   * }</pre>
+   *
+   * <p><b>Example Error Response (HTTP 401):</b>
+   *
+   * <pre>{@code
+   * {
+   * "type": "https://ezkey.io/problems/authentication/invalid-credentials",
+   * "title": "Invalid Credentials",
+   * "status": 401,
+   * "detail": "Username not found or device signature failed",
+   * "path": "/api/v1/admin/auth/login",
+   * "instance": "uuid-here"
+   * }
+   * }</pre>
+   *
+   * @param request the login request containing username and optional flow configuration flags
+   * @param httpRequest the HTTP servlet request for client IP extraction and audit logging
    * @return ResponseEntity containing authentication response with bearer token or challenge info
+   *     (HTTP 200) on success, or error response (HTTP 400-408) on failure via
+   *     GlobalExceptionHandler
+   * @throws AdminAuthenticationException (401) if username not found or device signature failed
+   * @throws AdminAccountInactiveException (403) if admin or tenant is deactivated
+   * @throws AdminNoEnrollmentException (403) if no device is enrolled
+   * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
+   * @throws AdminAuthenticationRejectedException (400) if device rejects authentication
+   * @throws AdminDeviceSignatureInvalidException (400) if device signature validation fails
+   * @throws AdminAuthenticationTimeoutException (408) if no device response within timeout
+   * @since 2025
    */
   @Operation(
-      summary = "Authenticate administrator",
+      summary = "Authenticate administrator with passwordless Ezkey MFA",
       description =
-          "Passwordless authentication for administrators. Returns bearer token on success, or "
-              + "challenge info for two-step flow. Rate limiting applied.")
+          "Passwordless authentication for administrators using device-based cryptography. "
+              + "Supports single-call (blocking) or two-call (challenge) flows. "
+              + "Returns bearer token on success, or challenge info for two-step authentication. "
+              + "Rate limiting applied per IP. Errors follow RFC 9457 Problem Details format.")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
             description =
-                "Authentication successful or pending. If status='approved', token is present. "
-                    + "If status='pending', authAttemptId and challengeCode are present."),
+                "Authentication successful or pending. If status='approved', bearer token is"
+                    + " present. If status='pending', authAttemptId and challengeCode present for"
+                    + " two-call flow."),
         @ApiResponse(
             responseCode = "400",
             description =
-                "Authentication failed (invalid credentials, no device enrolled) or validation"
-                    + " error"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+                "Bad Request - Authentication failed with temporal issues (expired, rejected,"
+                    + " invalid signature). Returns RFC 9457 ProblemDetail with specific error type"
+                    + " URI."),
+        @ApiResponse(
+            responseCode = "401",
+            description =
+                "Unauthorized - Invalid credentials (username not found). "
+                    + "Returns RFC 9457 ProblemDetail: type='...invalid-credentials'"),
+        @ApiResponse(
+            responseCode = "403",
+            description =
+                "Forbidden - Account inactive or no device enrolled. Returns RFC 9457"
+                    + " ProblemDetail: type='...account-inactive' or '...no-enrollment'"),
+        @ApiResponse(
+            responseCode = "408",
+            description =
+                "Request Timeout - No device response within 5 minutes. "
+                    + "Returns RFC 9457 ProblemDetail: type='...auth-timeout'"),
+        @ApiResponse(
+            responseCode = "429",
+            description =
+                "Too Many Requests - Rate limit exceeded for this IP address. "
+                    + "Applies after 10 failed attempts in 15 minutes."),
+        @ApiResponse(responseCode = "500", description = "Internal Server Error")
       })
   @PostMapping("/login")
   public ResponseEntity<AdminLoginResponseDto> login(
@@ -134,16 +249,18 @@ public class AdminAuthController {
     // Extract client context for audit logging
     ClientContext context = ClientContext.from(httpRequest);
 
+    // Call service - will throw specific exceptions on error (caught by
+    // GlobalExceptionHandler)
     AdminLoginResponseDto response = authService.authenticate(request);
 
-    // Check for successful login (token issued)
+    // Check for successful login outcome
     if (response.success()) {
       logger.info(
           "✅ Login successful for username: {} from IP: {}",
           request.username(),
           context.clientIp());
 
-      // Record successful attempt for rate limiting (clears failure count)
+      // Record successful attempt for rate limiting
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       // Audit successful login
@@ -156,18 +273,17 @@ public class AdminAuthController {
 
       return ResponseEntity.ok(response);
     } else if ("pending".equals(response.status())) {
-      // Check for pending state (challenge required, normal workflow state)
-
+      // Pending state is normal workflow (challenge required)
       logger.info(
           "⏳ Login pending (challenge required) for username: {} from IP: {}",
           request.username(),
           context.clientIp());
 
-      // Record as successful attempt for rate limiting (pending is not a failure)
-      // This prevents legitimate users from being blocked when using challenge mode
+      // Record as successful attempt for rate limiting
+      // Pending is not a failure; it's normal flow progression
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
-      // Audit pending login (normal workflow state, not a failure)
+      // Audit pending login (normal workflow state)
       auditLogService.log(
           AuditHelper.logSuccess(
               context,
@@ -175,30 +291,27 @@ public class AdminAuthController {
               AdminAuditConstants.LOGIN_PENDING,
               "Username: " + request.username() + ", Challenge required"));
 
-      // Return HTTP 200 for pending state (correct semantics - request was processed
-      // successfully)
       return ResponseEntity.ok(response);
     } else {
-      // Actual failure (invalid credentials, no device, etc.)
+      // Should not reach here - service throws exceptions for failures
+      // This is a fallback for unexpected states
+      logger.error(
+          "❌ Unexpected login response status: {} for username: {}",
+          response.status(),
+          request.username());
 
-      logger.warn(
-          "❌ Login failed for username: {} from IP: {} - Reason: {}",
-          request.username(),
-          context.clientIp(),
-          response.message());
-
-      // Record failed attempt for rate limiting (may trigger IP blocking)
+      // Record failed attempt for rate limiting
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
-      // Audit failed login
+      // Audit the unexpected error
       auditLogService.log(
           AuditHelper.logFailure(
               context,
               EventType.ADMIN_LOGIN,
               AdminAuditConstants.LOGIN_FAILURE,
-              response.message()));
+              "Unexpected response status: " + response.status()));
 
-      return ResponseEntity.badRequest().body(response);
+      throw new IllegalStateException("Unexpected authentication response: " + response.status());
     }
   }
 
@@ -237,56 +350,116 @@ public class AdminAuthController {
   /**
    * Wait for passwordless authentication completion.
    *
-   * <p>Supports two authentication flows:
+   * <p>This endpoint handles the polling/waiting phase of two-call passwordless authentication
+   * flows. It is called after the client receives an authAttemptId from /login endpoint.
+   *
+   * <p><b>Supported Flows:</b>
    *
    * <ul>
-   *   <li><b>Challenge Flow:</b> Used when challengeRequested=true in login. After receiving
-   *       authAttemptId and challengeCode from the /login endpoint, the client displays the
-   *       challenge code to the user, then calls this endpoint with both values to wait for device
-   *       approval.
-   *   <li><b>Non-Blocking Flow:</b> Used when nonBlocking=true in login. After receiving only
-   *       authAttemptId from the /login endpoint, the client calls this endpoint with only
-   *       authAttemptId (no challengeCode) to poll for device response.
+   *   <li><b>Challenge Flow:</b> When challengeRequested=true in /login call
+   *       <ul>
+   *         <li>Client receives authAttemptId and challengeCode from /login
+   *         <li>Client displays challengeCode to user (user approves on device)
+   *         <li>Client calls /passwordless-wait with both authAttemptId and challengeCode
+   *       </ul>
+   *   <li><b>Non-Blocking Flow:</b> When nonBlocking=true in /login call
+   *       <ul>
+   *         <li>Client receives authAttemptId from /login (no challenge code)
+   *         <li>Assumes device response already validated during /login
+   *         <li>Client calls /passwordless-wait with only authAttemptId (no challengeCode)
+   *       </ul>
    * </ul>
    *
-   * <p>This endpoint blocks for up to 5 minutes waiting for the device response.
+   * <p><b>Polling Behavior:</b>
    *
-   * <p><b>Security (Challenge Flow):</b> The challengeCode is required to prevent enumeration
-   * attacks on authAttemptId. Only clients that legitimately initiated the authentication and
-   * received the challenge can proceed. When challengeCode is null (non-blocking flow), challenge
-   * verification is skipped (already verified in login).
+   * <ul>
+   *   <li>Blocks for up to 5 minutes waiting for device response
+   *   <li>Polls device every 2 seconds
+   *   <li>Returns immediately when device responds (approved, rejected, expired)
+   *   <li>Returns timeout if no response within 5 minutes
+   * </ul>
    *
-   * @param request the wait request containing auth attempt ID and optional challenge code
-   * @return ResponseEntity with bearer token on success, error on failure
+   * <p><b>Security (Challenge Flow):</b>
+   *
+   * <ul>
+   *   <li>challengeCode is cryptographically verified against stored value
+   *   <li>Verification prevents enumeration attacks on authAttemptId values
+   *   <li>Only clients that received the original challenge can proceed
+   * </ul>
+   *
+   * <p><b>Error Codes (RFC 9457):</b>
+   *
+   * <ul>
+   *   <li><b>400 Bad Request:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/invalid-credentials} - Invalid
+   *             challenge code
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-expired} - Authentication
+   *             attempt superseded or expired
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-rejected} - Device rejected
+   *             the request
+   *         <li>{@code https://ezkey.io/problems/authentication/invalid-signature} - Device
+   *             signature validation failed
+   *       </ul>
+   *   <li><b>408 Request Timeout:</b>
+   *       <ul>
+   *         <li>{@code https://ezkey.io/problems/authentication/auth-timeout} - No device response
+   *             within 5-minute timeout
+   *       </ul>
+   * </ul>
+   *
+   * @param request the wait request containing authAttemptId and optional challengeCode
+   * @return ResponseEntity with bearer token on success (HTTP 200)
+   * @throws AdminAuthenticationException (401) if challenge code is invalid
+   * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
+   * @throws AdminAuthenticationRejectedException (400) if device rejects authentication
+   * @throws AdminDeviceSignatureInvalidException (400) if device signature validation fails
+   * @throws AdminAuthenticationTimeoutException (408) if no device response within timeout
+   * @since 2025
    */
+  @Operation(
+      summary = "Wait for passwordless authentication device response",
+      description =
+          "Polls device for passwordless authentication response in two-call flows. "
+              + "Blocks for up to 5 minutes waiting for device approval. "
+              + "Supports both challenge-based (with display code) and non-blocking flows. "
+              + "Errors follow RFC 9457 Problem Details format.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description =
+                "Authentication successful. Returns bearer token and admin session details."),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Bad Request - Device denied, signature failed, or challenge invalid. "
+                    + "Returns RFC 9457 ProblemDetail with specific error type URI."),
+        @ApiResponse(
+            responseCode = "401",
+            description =
+                "Unauthorized - Invalid challenge code. "
+                    + "Returns RFC 9457 ProblemDetail: type='...invalid-credentials'"),
+        @ApiResponse(
+            responseCode = "408",
+            description =
+                "Request Timeout - No device response within 5-minute window. "
+                    + "Returns RFC 9457 ProblemDetail: type='...auth-timeout'"),
+        @ApiResponse(responseCode = "500", description = "Internal Server Error")
+      })
   @PostMapping("/passwordless-wait")
   public ResponseEntity<AdminLoginResponseDto> passwordlessWait(
       @Valid @RequestBody AdminPasswordlessWaitRequestDto request) {
 
-    try {
-      logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
+    logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
-      AdminLoginResponseDto response =
-          authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
+    // Call service - will throw specific exceptions on error (caught by
+    // GlobalExceptionHandler)
+    AdminLoginResponseDto response =
+        authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
 
-      logger.info("✅ Passwordless authentication successful");
-      return ResponseEntity.ok(response);
-
-    } catch (org.ezkey.admin.exception.AuthenticationException e) {
-      logger.warn("❌ Passwordless wait failed (authentication): {}", e.getMessage());
-      return ResponseEntity.status(403)
-          .body(new AdminLoginResponseDto("Authentication failed: " + e.getMessage()));
-
-    } catch (IllegalArgumentException e) {
-      logger.warn("❌ Passwordless wait failed (invalid request): {}", e.getMessage());
-      return ResponseEntity.badRequest()
-          .body(new AdminLoginResponseDto("Invalid request: " + e.getMessage()));
-
-    } catch (Exception e) {
-      logger.error("❌ Passwordless wait failed (unexpected): {}", e.getMessage(), e);
-      return ResponseEntity.status(500)
-          .body(new AdminLoginResponseDto("An unexpected error occurred during authentication"));
-    }
+    logger.info("✅ Passwordless authentication successful");
+    return ResponseEntity.ok(response);
   }
 
   /**

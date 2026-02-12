@@ -45,6 +45,29 @@ For build, setup, and project organization, refer to `README.md`.
 - Prefer constructor injection over field injection
 - Use `@Autowired` annotation for clarity
 
+### MapStruct Enum Mapping Patterns
+
+**Critical:** MapStruct cannot automatically convert enum types to primitive types (String, int, etc.). When mapping enum fields to different types, you must explicitly provide conversion methods.
+
+**Pattern for enum-to-String conversion:**
+```java
+@Mapper(componentModel = "spring")
+public interface MyMapper {
+
+  TargetDto toDto(Entity entity);
+
+  // Always add explicit enum conversion methods
+  default String statusToString(EnumStatus status) {
+    if (status == null) {
+      return null;
+    }
+    return status.name();
+  }
+}
+```
+
+**Why:** MapStruct generates mapper implementations at compile time. Without explicit conversion methods, the processor cannot determine how to convert enums and will fail silently, causing `ClassNotFoundException` at runtime when the generated implementation is missing.
+
 ## Project Conventions
 
 ### Module Structure

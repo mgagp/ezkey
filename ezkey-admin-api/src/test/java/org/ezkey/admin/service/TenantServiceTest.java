@@ -21,7 +21,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
-
 import org.ezkey.admin.exception.TenantInactiveException;
 import org.ezkey.admin.exception.TenantNotAllowedException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -41,18 +40,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  * Unit tests for TenantService.
  *
- * <p>
- * This test class validates tenant deactivation business rules and
- * tenant-active enforcement
- * logic including system tenant protection, token revocation, idempotency, and
- * the
+ * <p>This test class validates tenant deactivation business rules and tenant-active enforcement
+ * logic including system tenant protection, token revocation, idempotency, and the
  * ensureTenantActive guard.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -61,11 +55,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("TenantService Tests")
 class TenantServiceTest {
 
-  @Mock
-  private TenantRepository tenantRepository;
+  @Mock private TenantRepository tenantRepository;
 
-  @Mock
-  private AdminTokenRepository tokenRepository;
+  @Mock private AdminTokenRepository tokenRepository;
 
   private TenantService tenantService;
 
@@ -118,9 +110,10 @@ class TenantServiceTest {
       when(tenantRepository.findById(1)).thenReturn(Optional.of(systemTenant));
 
       // Act & Assert
-      TenantNotAllowedException exception = assertThrows(
-          TenantNotAllowedException.class,
-          () -> tenantService.deactivateTenant(1, globalAdminPrincipal));
+      TenantNotAllowedException exception =
+          assertThrows(
+              TenantNotAllowedException.class,
+              () -> tenantService.deactivateTenant(1, globalAdminPrincipal));
 
       assertEquals("Cannot deactivate the system tenant", exception.getMessage());
       verify(tenantRepository, never()).save(any());
@@ -215,12 +208,10 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       // Act & Assert
-      TenantInactiveException exception = assertThrows(
-          TenantInactiveException.class,
-          () -> tenantService.ensureTenantActive(2));
+      TenantInactiveException exception =
+          assertThrows(TenantInactiveException.class, () -> tenantService.ensureTenantActive(2));
 
-      assertEquals(
-          "Tenant is inactive. Contact your Ezkey administrator.", exception.getMessage());
+      assertEquals("Tenant is inactive. Contact your Ezkey administrator.", exception.getMessage());
     }
 
     @Test
@@ -238,9 +229,7 @@ class TenantServiceTest {
       when(tenantRepository.findById(999)).thenReturn(Optional.empty());
 
       // Act & Assert
-      assertThrows(
-          ResourceNotFoundException.class,
-          () -> tenantService.ensureTenantActive(999));
+      assertThrows(ResourceNotFoundException.class, () -> tenantService.ensureTenantActive(999));
     }
   }
 }

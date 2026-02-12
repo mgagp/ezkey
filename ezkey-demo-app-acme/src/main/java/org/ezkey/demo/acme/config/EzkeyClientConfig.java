@@ -19,14 +19,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Spring configuration that creates an {@link EzkeyClient} bean from
- * externalized properties.
+ * Spring configuration that creates an {@link EzkeyClient} bean from externalized properties.
  *
- * <p>
- * Bridges the framework-agnostic Ezkey SDK with the Spring Boot configuration
- * system by reading
- * credentials and URL from {@link AcmeProperties} and constructing an immutable
- * SDK client.
+ * <p>Bridges the framework-agnostic Ezkey SDK with the Spring Boot configuration system by reading
+ * credentials and URL from {@link AcmeProperties} and constructing an immutable SDK client.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -40,13 +36,10 @@ public class EzkeyClientConfig {
   /**
    * Creates the {@link EzkeyClient} bean configured from application properties.
    *
-   * <p>
-   * The client uses HTTP Basic Auth with the configured integration key and
-   * secret key for M2M
+   * <p>The client uses HTTP Basic Auth with the configured integration key and secret key for M2M
    * communication with the Ezkey Admin API.
    *
-   * @param properties the ACME application properties containing Ezkey
-   *                   credentials
+   * @param properties the ACME application properties containing Ezkey credentials
    * @return a configured, immutable {@link EzkeyClient} instance
    */
   @Bean

@@ -10,11 +10,11 @@
 
 package org.ezkey.enrollment.service;
 
+import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -38,102 +38,68 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.criteria.Predicate;
-
 /**
  * Core service for managing enrollment operations in the Ezkey MFA system.
  *
- * <p>
- * This service acts as the main coordinator for enrollment operations,
- * delegating complex
- * business logic to specialized services while maintaining a unified public
- * API. It implements the
- * enrollment lifecycle where devices bind to integrations and complete
- * enrollment verification.
+ * <p>This service acts as the main coordinator for enrollment operations, delegating complex
+ * business logic to specialized services while maintaining a unified public API. It implements the
+ * enrollment lifecycle where devices bind to integrations and complete enrollment verification.
  *
- * <p>
- * <b>Architecture:</b> This service uses a delegation pattern to specialized
- * services:
+ * <p><b>Architecture:</b> This service uses a delegation pattern to specialized services:
  *
  * <ul>
- * <li><b>EnrollmentBindService:</b> Handles enrollment binding operations
- * <li><b>EnrollmentVerifyService:</b> Processes enrollment verification
- * <li><b>EnrollmentTxHelper:</b> Manages transactional operations and cleanup
+ *   <li><b>EnrollmentBindService:</b> Handles enrollment binding operations
+ *   <li><b>EnrollmentVerifyService:</b> Processes enrollment verification
+ *   <li><b>EnrollmentTxHelper:</b> Manages transactional operations and cleanup
  * </ul>
  *
- * <p>
- * <b>Enrollment Flow Support:</b>
+ * <p><b>Enrollment Flow Support:</b>
  *
  * <ul>
- * <li><b>Creation Flow:</b> Creates enrollments via Admin API for web
- * applications
- * <li><b>Binding Flow:</b> Processes device binding via Auth API for mobile
- * devices
- * <li><b>Verification Flow:</b> Completes enrollment verification with
- * cryptographic proof
+ *   <li><b>Creation Flow:</b> Creates enrollments via Admin API for web applications
+ *   <li><b>Binding Flow:</b> Processes device binding via Auth API for mobile devices
+ *   <li><b>Verification Flow:</b> Completes enrollment verification with cryptographic proof
  * </ul>
  *
- * <p>
- * <b>Security Features:</b>
+ * <p><b>Security Features:</b>
  *
  * <ul>
- * <li><b>Cryptographic Validation:</b> Verifies device and integration
- * signatures using Ed25519
- * <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through
- * secure token-based
- * identification
- * <li><b>Device Key Uniqueness:</b> Ensures device public keys are used only
- * once
- * <li><b>Challenge-Based Security:</b> Implements numeric challenges for
- * additional verification
+ *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using Ed25519
+ *   <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through secure token-based
+ *       identification
+ *   <li><b>Device Key Uniqueness:</b> Ensures device public keys are used only once
+ *   <li><b>Challenge-Based Security:</b> Implements numeric challenges for additional verification
  * </ul>
  *
- * <p>
- * <b>Transaction Management:</b> This service uses Spring's declarative
- * transaction management
- * with appropriate propagation settings. Specialized services handle their own
- * transaction
+ * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
+ * with appropriate propagation settings. Specialized services handle their own transaction
  * boundaries as needed.
  *
- * <p>
- * <b>Integration Points:</b>
+ * <p><b>Integration Points:</b>
  *
  * <ul>
- * <li><b>EnrollmentRepository:</b> Data persistence layer for enrollments
- * <li><b>SignatureService:</b> Cryptographic operations for signature
- * validation
- * <li><b>EnrollmentBindService:</b> Specialized service for enrollment binding
- * operations
- * <li><b>EnrollmentVerifyService:</b> Specialized service for enrollment
- * verification operations
+ *   <li><b>EnrollmentRepository:</b> Data persistence layer for enrollments
+ *   <li><b>SignatureService:</b> Cryptographic operations for signature validation
+ *   <li><b>EnrollmentBindService:</b> Specialized service for enrollment binding operations
+ *   <li><b>EnrollmentVerifyService:</b> Specialized service for enrollment verification operations
  * </ul>
  *
- * <p>
- * <b>Error Handling:</b> Implements comprehensive error handling with secure
- * error messages to
- * prevent information leakage while providing detailed logging for debugging
- * and monitoring
+ * <p><b>Error Handling:</b> Implements comprehensive error handling with secure error messages to
+ * prevent information leakage while providing detailed logging for debugging and monitoring
  * purposes.
  *
- * <p>
- * <b>Performance Considerations:</b>
+ * <p><b>Performance Considerations:</b>
  *
  * <ul>
- * <li><b>Read-Once Guarantee:</b> Enrollments can only be bound once to prevent
- * replay attacks
- * <li><b>Efficient Locking:</b> Optimized database queries for enrollment state
- * management
- * <li><b>Timeout Management:</b> Configurable timeouts prevent resource
- * exhaustion
- * <li><b>Service Separation:</b> Specialized services allow for targeted
- * optimization
+ *   <li><b>Read-Once Guarantee:</b> Enrollments can only be bound once to prevent replay attacks
+ *   <li><b>Efficient Locking:</b> Optimized database queries for enrollment state management
+ *   <li><b>Timeout Management:</b> Configurable timeouts prevent resource exhaustion
+ *   <li><b>Service Separation:</b> Specialized services allow for targeted optimization
  * </ul>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -163,13 +129,12 @@ public class EnrollmentService {
   /**
    * Constructs the enrollment service with required dependencies.
    *
-   * @param enrollmentRepository  the JPA repository for enrollment operations
-   * @param signatureService      the cryptographic signature service
-   * @param ezkeyCoreProperties   the ezkey core configuration properties
+   * @param enrollmentRepository the JPA repository for enrollment operations
+   * @param signatureService the cryptographic signature service
+   * @param ezkeyCoreProperties the ezkey core configuration properties
    * @param integrationRepository the JPA repository for integration operations
-   * @param bindService           the specialized service for binding operations
-   * @param verifyService         the specialized service for verification
-   *                              operations
+   * @param bindService the specialized service for binding operations
+   * @param verifyService the specialized service for verification operations
    */
   public EnrollmentService(
       EnrollmentRepository enrollmentRepository,
@@ -189,9 +154,7 @@ public class EnrollmentService {
   /**
    * Retrieves an enrollment by its ID.
    *
-   * <p>
-   * This method searches for an enrollment using its primary key and returns the
-   * enrollment
+   * <p>This method searches for an enrollment using its primary key and returns the enrollment
    * entity for internal use.
    *
    * @param id the enrollment ID to search for
@@ -210,8 +173,7 @@ public class EnrollmentService {
   /**
    * Retrieves all enrollments.
    *
-   * <p>
-   * This method returns all enrollments in the system as a list of entities.
+   * <p>This method returns all enrollments in the system as a list of entities.
    *
    * @return list of all enrollment entities
    */
@@ -222,38 +184,26 @@ public class EnrollmentService {
   /**
    * Searches enrollments with optional filters and pagination.
    *
-   * <p>
-   * This method supports multi-criteria search for administrative and operational
-   * purposes. All
-   * filter parameters are optional - if null, they are ignored in the query.
-   * Results are ordered by
+   * <p>This method supports multi-criteria search for administrative and operational purposes. All
+   * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
    * creation date descending (newest first) by default.
    *
-   * <p>
-   * <b>Tenant Scoping:</b> If tenantId is provided (non-null), results are
-   * filtered to only
-   * include enrollments whose integration belongs to that tenant. This enables
-   * tenant isolation for
-   * TenantAdmins while allowing GlobalAdmins to see all enrollments (by passing
-   * null).
+   * <p><b>Tenant Scoping:</b> If tenantId is provided (non-null), results are filtered to only
+   * include enrollments whose integration belongs to that tenant. This enables tenant isolation for
+   * TenantAdmins while allowing GlobalAdmins to see all enrollments (by passing null).
    *
-   * <p>
-   * <b>Use Case:</b> Security operators monitoring enrollments, forensic
-   * analysis, and
+   * <p><b>Use Case:</b> Security operators monitoring enrollments, forensic analysis, and
    * compliance reporting.
    *
-   * @param status         optional enrollment status filter (CREATED, BOUND,
-   *                       VERIFIED, INVALID)
-   * @param integrationId  optional integration ID filter
-   * @param enrollmentName optional enrollment name filter (partial match,
-   *                       case-insensitive)
-   * @param active         optional active flag filter
-   * @param createdAfter   optional start of date range filter
-   * @param createdBefore  optional end of date range filter
-   * @param tenantId       optional tenant ID filter for tenant scoping (null =
-   *                       all tenants, for
-   *                       GlobalAdmin)
-   * @param pageable       pagination and sorting parameters
+   * @param status optional enrollment status filter (CREATED, BOUND, VERIFIED, INVALID)
+   * @param integrationId optional integration ID filter
+   * @param enrollmentName optional enrollment name filter (partial match, case-insensitive)
+   * @param active optional active flag filter
+   * @param createdAfter optional start of date range filter
+   * @param createdBefore optional end of date range filter
+   * @param tenantId optional tenant ID filter for tenant scoping (null = all tenants, for
+   *     GlobalAdmin)
+   * @param pageable pagination and sorting parameters
    * @return page of enrollments matching criteria
    */
   @Transactional(readOnly = true)
@@ -267,59 +217,60 @@ public class EnrollmentService {
       Integer tenantId,
       Pageable pageable) {
 
-    Specification<Enrollment> spec = (root, query, cb) -> {
-      List<Predicate> predicates = new ArrayList<>();
+    Specification<Enrollment> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
 
-      if (status != null) {
-        predicates.add(cb.equal(root.get("status"), status));
-      }
+          if (status != null) {
+            predicates.add(cb.equal(root.get("status"), status));
+          }
 
-      if (integrationId != null) {
-        predicates.add(cb.equal(root.get("integrationId"), integrationId));
-      }
+          if (integrationId != null) {
+            predicates.add(cb.equal(root.get("integrationId"), integrationId));
+          }
 
-      if (enrollmentName != null && !enrollmentName.isBlank()) {
-        predicates.add(
-            cb.like(
-                cb.lower(root.get("enrollmentName")),
-                "%" + enrollmentName.toLowerCase() + "%"));
-      }
+          if (enrollmentName != null && !enrollmentName.isBlank()) {
+            predicates.add(
+                cb.like(
+                    cb.lower(root.get("enrollmentName")),
+                    "%" + enrollmentName.toLowerCase() + "%"));
+          }
 
-      if (active != null) {
-        predicates.add(cb.equal(root.get("active"), active));
-      }
+          if (active != null) {
+            predicates.add(cb.equal(root.get("active"), active));
+          }
 
-      if (createdAfter != null) {
-        predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
-      }
+          if (createdAfter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+          }
 
-      if (createdBefore != null) {
-        predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
-      }
+          if (createdBefore != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
 
-      // Tenant scoping: filter by integration's tenant if tenantId is provided
-      // Since Enrollment doesn't have a direct JPA relation to Integration, we use a
-      // subquery
-      // to check if the enrollment's integrationId belongs to an integration with the
-      // specified
-      // tenantId
-      if (tenantId != null) {
-        var subquery = query.subquery(Integer.class);
-        var integrationRoot = subquery.from(Integration.class);
-        subquery.select(integrationRoot.get("id"));
-        subquery.where(
-            cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
-            cb.equal(integrationRoot.get("id"), root.get("integrationId")));
-        predicates.add(cb.exists(subquery));
-      }
+          // Tenant scoping: filter by integration's tenant if tenantId is provided
+          // Since Enrollment doesn't have a direct JPA relation to Integration, we use a
+          // subquery
+          // to check if the enrollment's integrationId belongs to an integration with the
+          // specified
+          // tenantId
+          if (tenantId != null) {
+            var subquery = query.subquery(Integer.class);
+            var integrationRoot = subquery.from(Integration.class);
+            subquery.select(integrationRoot.get("id"));
+            subquery.where(
+                cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
+                cb.equal(integrationRoot.get("id"), root.get("integrationId")));
+            predicates.add(cb.exists(subquery));
+          }
 
-      // Apply default sort only if pageable is unsorted
-      if (pageable.getSort().isUnsorted()) {
-        query.orderBy(cb.desc(root.get("createdAt")));
-      }
+          // Apply default sort only if pageable is unsorted
+          if (pageable.getSort().isUnsorted()) {
+            query.orderBy(cb.desc(root.get("createdAt")));
+          }
 
-      return cb.and(predicates.toArray(new Predicate[0]));
-    };
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
     return enrollmentRepository.findAll(spec, pageable);
   }
@@ -327,26 +278,18 @@ public class EnrollmentService {
   /**
    * Creates a new enrollment using the new DTO format.
    *
-   * <p>
-   * This method creates a new enrollment with the provided data, requests an
-   * Ed25519 key pair
-   * from the cryptographic service, and returns the new response format. Ed25519
-   * key generation
-   * responsibility is delegated to {@link SignatureService} to centralize
-   * cryptographic operations.
+   * <p>This method creates a new enrollment with the provided data, requests an Ed25519 key pair
+   * from the cryptographic service, and returns the new response format. Ed25519 key generation
+   * responsibility is delegated to {@link SignatureService} to centralize cryptographic operations.
    *
-   * <p>
-   * <b>Security:</b> This method blocks enrollment creation for system
-   * integrations. System
-   * integrations are reserved for global admin authentication and enrollments can
-   * only be created
+   * <p><b>Security:</b> This method blocks enrollment creation for system integrations. System
+   * integrations are reserved for global admin authentication and enrollments can only be created
    * through the admin provisioning API endpoints.
    *
    * @param request the enrollment creation request
    * @return the created enrollment response
-   * @throws IllegalArgumentException if required fields are missing or invalid,
-   *                                  or if attempting to
-   *                                  create enrollment for a system integration
+   * @throws IllegalArgumentException if required fields are missing or invalid, or if attempting to
+   *     create enrollment for a system integration
    */
   public EnrollmentCreateResponse create(EnrollmentCreateRequest request) {
     if (request.getIntegrationId() == null) {
@@ -360,11 +303,13 @@ public class EnrollmentService {
     // System integrations are reserved for global admin authentication and
     // enrollments
     // can only be created through the admin provisioning API endpoints
-    Integration integration = integrationRepository
-        .findById(request.getIntegrationId())
-        .orElseThrow(
-            () -> new IllegalArgumentException(
-                "Integration not found: " + request.getIntegrationId()));
+    Integration integration =
+        integrationRepository
+            .findById(request.getIntegrationId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Integration not found: " + request.getIntegrationId()));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
       logger.warn(
@@ -389,8 +334,9 @@ public class EnrollmentService {
 
     // Security validation: Check for existing VERIFIED enrollment
     List<Enrollment> existingVerifiedEnrollments;
-    existingVerifiedEnrollments = enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-        request.getIntegrationId(), request.getName().trim(), EnrollmentStatus.VERIFIED);
+    existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            request.getIntegrationId(), request.getName().trim(), EnrollmentStatus.VERIFIED);
 
     if (!existingVerifiedEnrollments.isEmpty()) {
       Enrollment existing = existingVerifiedEnrollments.get(0);
@@ -449,17 +395,13 @@ public class EnrollmentService {
   /**
    * Binds an enrollment to a device.
    *
-   * <p>
-   * This method delegates to the specialized EnrollmentBindService to handle the
-   * complex logic
-   * of enrollment binding while maintaining the same public API for backward
-   * compatibility.
+   * <p>This method delegates to the specialized EnrollmentBindService to handle the complex logic
+   * of enrollment binding while maintaining the same public API for backward compatibility.
    *
    * @param request the bind request
    * @return the bind response
-   * @throws IllegalArgumentException if validation fails (with secure error
-   *                                  messages)
-   * @throws IllegalStateException    if the enrollment is already processed
+   * @throws IllegalArgumentException if validation fails (with secure error messages)
+   * @throws IllegalStateException if the enrollment is already processed
    */
   public EnrollmentBindResponse bind(EnrollmentBindRequest request) {
     return bindService.bind(request);
@@ -468,18 +410,13 @@ public class EnrollmentService {
   /**
    * Verifies an enrollment with comprehensive security validation.
    *
-   * <p>
-   * This method delegates to the specialized EnrollmentVerifyService to handle
-   * the complex logic
-   * of enrollment verification while maintaining the same public API for backward
-   * compatibility.
+   * <p>This method delegates to the specialized EnrollmentVerifyService to handle the complex logic
+   * of enrollment verification while maintaining the same public API for backward compatibility.
    *
    * @param request the verify request containing device keys and signatures
    * @return the verify response confirming successful enrollment
-   * @throws IllegalArgumentException if validation fails (signature, uniqueness,
-   *                                  or challenge)
-   * @throws IllegalStateException    if enrollment is in invalid state or already
-   *                                  processed
+   * @throws IllegalArgumentException if validation fails (signature, uniqueness, or challenge)
+   * @throws IllegalStateException if enrollment is in invalid state or already processed
    */
   public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
     return verifyService.verify(request);
@@ -488,8 +425,7 @@ public class EnrollmentService {
   /**
    * Deletes an enrollment by its ID.
    *
-   * <p>
-   * This method removes an enrollment from the system.
+   * <p>This method removes an enrollment from the system.
    *
    * @param id the enrollment ID to delete
    * @return number of rows affected
@@ -501,9 +437,7 @@ public class EnrollmentService {
   /**
    * Finds all enrollments for a specific integration.
    *
-   * <p>
-   * This method retrieves all enrollments associated with a particular
-   * integration.
+   * <p>This method retrieves all enrollments associated with a particular integration.
    *
    * @param integrationId the integration ID
    * @return list of enrollment entities

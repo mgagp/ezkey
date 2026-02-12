@@ -1,0 +1,45 @@
+---
+description: MapStruct enum conversion critical issue - must add explicit conversion methods
+globs: "**/mapper/**/*.java"
+alwaysApply: true
+---
+
+# MapStruct Enum Conversion - CRITICAL
+
+**MapStruct cannot automatically convert enum types to String/primitive types.**
+
+When mapping enum fields to different target types (enum → String, enum → int, etc.), you MUST explicitly provide a conversion method.
+
+## Required Pattern
+
+```java
+@Mapper(componentModel = "spring")
+public interface MyMapper {
+
+  TargetDto toDto(Entity entity);
+
+  // Always add explicit enum conversion method
+  default String statusToString(EnumStatus status) {
+    if (status == null) {
+      return null;
+    }
+    return status.name();
+  }
+}
+```
+
+## Why This Matters
+
+- MapStruct generates implementations at **compile-time** via annotation processor
+- Without explicit conversion methods, the processor cannot determine how to convert enums
+- **Silent failure**: Compilation succeeds, but implementation is NOT generated
+- **Runtime error**: `Mappers.getMapper()` throws `ClassNotFoundException: Cannot find implementation for YourMapper`
+- **Test failure**: Tests mysteriously fail with "method not found" errors when calling mapper
+
+## Solution Checklist
+
+- ✅ Add `default` method for every enum-to-String/primitive mapping
+- ✅ Handle null inputs safely (return `null` if input is `null`)
+- ✅ Use `status.name()` to convert enum to String
+- ✅ After writing: verify `MapperImpl.class` exists in `target/classes/`
+- ✅ If MapperImpl missing: recompile with `mvn clean compile -pl {module}`
