@@ -413,8 +413,20 @@ public final class EzkeyClient {
   /**
    * Attempts to extract an error message from a JSON error response body.
    *
+   * <p>Supports multiple error response formats (in priority order):
+   *
+   * <ul>
+   *   <li><strong>RFC 9457 "detail":</strong> Specific, business-logic error message (most
+   *       preferred)
+   *   <li><strong>RFC 9457 "title":</strong> Error category/title (fallback)
+   *   <li><strong>Legacy "message":</strong> Legacy API error message (for backward
+   *       compatibility)
+   *   <li><strong>Raw body:</strong> If no standard fields found, returns truncated response
+   *       body
+   * </ul>
+   *
    * @param body the response body
-   * @return extracted message or the raw body
+   * @return extracted message or the raw body (truncated to 200 chars if too long)
    */
   private static String extractErrorMessage(String body) {
     if (body == null || body.isBlank()) {
@@ -422,12 +434,26 @@ public final class EzkeyClient {
     }
     try {
       Map<String, String> fields = JsonHelper.parseObject(body);
+
+      // RFC 9457 support: Try 'detail' field first (most specific - business logic error)
+      String detail = fields.get("detail");
+      if (detail != null && !detail.isBlank()) {
+        return detail;
+      }
+
+      // RFC 9457 fallback: Try 'title' field (error category)
+      String title = fields.get("title");
+      if (title != null && !title.isBlank()) {
+        return title;
+      }
+
+      // Legacy support: Try 'message' field
       String message = fields.get("message");
       if (message != null && !message.isBlank()) {
         return message;
       }
     } catch (EzkeyException ignored) {
-      // Not JSON, fall through
+      // Not JSON, fall through to raw body
     }
     return body.length() > 200 ? body.substring(0, 200) + "..." : body;
   }
