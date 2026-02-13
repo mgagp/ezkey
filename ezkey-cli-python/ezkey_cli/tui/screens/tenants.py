@@ -159,11 +159,14 @@ class TenantsScreen(Screen):
     sorted_tenants = self._apply_sort(filtered)
 
     self.total_elements = len(sorted_tenants)
-    self.total_pages = max(1, (self.total_elements + self.page_size - 1) // self.page_size)
+    # Use page_size directly; it's guaranteed to be at least 10 by _apply_page_size()
+    # In case page_size is somehow 0 (shouldn't happen), use 10 as absolute minimum
+    effective_page_size = max(10, self.page_size)
+    self.total_pages = max(1, (self.total_elements + effective_page_size - 1) // effective_page_size)
     self.current_page = min(self.current_page, self.total_pages - 1)
 
-    start = self.current_page * self.page_size
-    end = start + self.page_size
+    start = self.current_page * effective_page_size
+    end = start + effective_page_size
     page_items = sorted_tenants[start:end]
 
     table = self.query_one("#table", DataTable)
@@ -277,9 +280,9 @@ class TenantsScreen(Screen):
         return
 
       rows = self._max_rows()
-      if rows != self.page_size:
-        self.page_size = rows
-        self.page_size_mode = "auto"
+      # Ensure minimum page size of 10 even if table height is not available yet
+      self.page_size = max(10, rows) if rows > 0 else 10
+      self.page_size_mode = "auto"
 
   def _persist_page_size(self) -> None:
     config = getattr(self.app, "config", None)
