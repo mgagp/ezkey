@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -57,13 +56,15 @@ class EzkeyClientErrorExtractionTest {
   @Test
   @DisplayName("Extract RFC 9457 'detail' field (priority 1)")
   void testExtractRfc9457Detail() throws Exception {
-    String json = """
+    String json =
+        """
         {\
           "type": "https://ezkey.io/problems/authentication/invalid-credentials",\
           "title": "Invalid Credentials",\
           "status": 401,\
           "detail": "Invalid username or password"\
-        }""";
+        }\
+        """;
     String result = extractErrorMessage(json);
     assertEquals("Invalid username or password", result);
   }
@@ -71,12 +72,14 @@ class EzkeyClientErrorExtractionTest {
   @Test
   @DisplayName("Extract RFC 9457 'title' field when 'detail' is missing (priority 2)")
   void testExtractRfc9457TitleFallback() throws Exception {
-    String json = """
+    String json =
+        """
         {\
           "type": "https://ezkey.io/problems/authentication/account-inactive",\
           "title": "Account Inactive",\
           "status": 403\
-        }""";
+        }\
+        """;
     String result = extractErrorMessage(json);
     assertEquals("Account Inactive", result);
   }
@@ -84,11 +87,13 @@ class EzkeyClientErrorExtractionTest {
   @Test
   @DisplayName("Extract legacy 'message' field when RFC 9457 fields missing (priority 3)")
   void testExtractLegacyMessage() throws Exception {
-    String json = """
+    String json =
+        """
         {\
           "success": false,\
           "message": "Authentication failed: Invalid credentials"\
-        }""";
+        }\
+        """;
     String result = extractErrorMessage(json);
     assertEquals("Authentication failed: Invalid credentials", result);
   }
@@ -96,13 +101,15 @@ class EzkeyClientErrorExtractionTest {
   @Test
   @DisplayName("Prefer 'detail' over 'title' when both present")
   void testDetailPrerecrencesOverTitle() throws Exception {
-    String json = """
+    String json =
+        """
         {\
           "type": "https://ezkey.io/problems/test",\
           "title": "Generic Error",\
           "detail": "Specific error details",\
           "status": 400\
-        }""";
+        }\
+        """;
     String result = extractErrorMessage(json);
     assertEquals("Specific error details", result);
   }
@@ -142,13 +149,15 @@ class EzkeyClientErrorExtractionTest {
   @Test
   @DisplayName("Ignore empty 'detail' field and use 'title'")
   void testIgnoreEmptyDetail() throws Exception {
-    String json = """
+    String json =
+        """
         {\
           "type": "https://ezkey.io/problems/test",\
           "title": "Error Title",\
           "detail": "",\
           "status": 400\
-        }""";
+        }\
+        """;
     String result = extractErrorMessage(json);
     assertEquals("Error Title", result);
   }

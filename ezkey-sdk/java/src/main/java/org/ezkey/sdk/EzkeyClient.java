@@ -419,10 +419,8 @@ public final class EzkeyClient {
    *   <li><strong>RFC 9457 "detail":</strong> Specific, business-logic error message (most
    *       preferred)
    *   <li><strong>RFC 9457 "title":</strong> Error category/title (fallback)
-   *   <li><strong>Legacy "message":</strong> Legacy API error message (for backward
-   *       compatibility)
-   *   <li><strong>Raw body:</strong> If no standard fields found, returns truncated response
-   *       body
+   *   <li><strong>Legacy "message":</strong> Legacy API error message (for backward compatibility)
+   *   <li><strong>Raw body:</strong> If no standard fields found, returns truncated response body
    * </ul>
    *
    * @param body the response body
