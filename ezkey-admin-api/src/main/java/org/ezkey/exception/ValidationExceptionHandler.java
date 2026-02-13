@@ -12,10 +12,13 @@ package org.ezkey.exception;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.ezkey.dto.ErrorResponseDto;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,11 +32,13 @@ import org.springframework.web.context.request.WebRequest;
  * processing and data persistence, converting them into standardized HTTP responses with
  * appropriate status codes.
  *
- * <p><b>Exceptions Handled (4 total):</b>
+ * <p><b>Exceptions Handled (5 total):</b>
  *
  * <ul>
  *   <li><b>MethodArgumentNotValidException (400):</b> Bean Validation failures on request
  *       parameters
+ *   <li><b>HttpMessageNotReadableException (400):</b> JSON deserialization errors (missing fields,
+ *       type mismatches, malformed payload)
  *   <li><b>IllegalArgumentException (400):</b> Invalid argument values during processing
  *   <li><b>IllegalStateException (409):</b> State conflicts in business logic (e.g., invalid
  *       operation sequence)
@@ -47,7 +52,7 @@ import org.springframework.web.context.request.WebRequest;
  * <p><b>HTTP Status Codes:</b>
  *
  * <ul>
- *   <li>400 - Client data validation failures or constraint violations
+ *   <li>400 - Client data validation failures, deserialization errors, or constraint violations
  *   <li>409 - State conflicts (business logic violations)
  * </ul>
  *
@@ -58,8 +63,9 @@ import org.springframework.web.context.request.WebRequest;
  *
  * <ul>
  *   <li>MethodArgumentNotValidException includes detailed field-level error messages
+ *   <li>HttpMessageNotReadableException handles JSON parsing failures (critical for record DTOs)
  *   <li>DataIntegrityViolationException messages are sanitized to avoid exposing database schema
- *   <li>Error codes identify validation type (VALIDATION_ERROR, CONSTRAINT_VIOLATION, etc.)
+ *   <li>Error codes identify validation type (VALIDATION_ERROR, MALFORMED_REQUEST, etc.)
  *   <li>All handlers are simple, focused, and easy to extend or maintain
  * </ul>
  *
@@ -71,12 +77,14 @@ import org.springframework.web.context.request.WebRequest;
  * @since 2025
  * @see ErrorResponseDto
  * @see MethodArgumentNotValidException
+ * @see HttpMessageNotReadableException
  * @see IllegalArgumentException
  * @see IllegalStateException
  * @see DataIntegrityViolationException
  */
 @RestControllerAdvice
 @Component
+@Order(10)
 public class ValidationExceptionHandler {
 
   /**
@@ -198,6 +206,56 @@ public class ValidationExceptionHandler {
   }
 
   /**
+   * Handles HttpMessageNotReadableException and returns HTTP 400 Bad Request.
+   *
+   * <p>Triggered when Spring's JSON deserializer cannot parse the request body properly. This
+   * occurs when:
+   *
+   * <ul>
+   *   <li>Required fields are missing from the JSON payload
+   *   <li>Field types do not match the expected types (e.g., string instead of integer)
+   *   <li>JSON syntax is invalid
+   *   <li>Required constructor parameters for records cannot be satisfied
+   * </ul>
+   *
+   * <p><b>HTTP Status:</b> 400 Bad Request
+   *
+   * <p><b>Example Scenario:</b> A record DTO requires fields 'name' and 'language', but the JSON
+   * request only provides 'language'. Jackson throws HttpMessageNotReadableException because it
+   * cannot instantiate the record without all required constructor parameters.
+   *
+   * <p><b>Security Note:</b> Error messages indicate what is wrong with the request format/data,
+   * which is safe to expose.
+   *
+   * <p><b>Example:</b>
+   *
+   * <pre>
+   * Input: POST /api/v1/integrations with missing required i18n.name field
+   * Response: {
+   *   "code": "MALFORMED_REQUEST",
+   *   "message": "Invalid request: missing or malformed fields in request body",
+   *   "path": "/api/v1/integrations"
+   * }
+   * </pre>
+   *
+   * @param ex the HttpMessageNotReadableException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   * @since 2025
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(
+      HttpMessageNotReadableException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "MALFORMED_REQUEST",
+            "Invalid request: missing or malformed fields in request body",
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
    * Handles DataIntegrityViolationException and returns HTTP 400 Bad Request.
    *
    * <p>Triggered by Spring Data JPA when database constraint violations occur (NOT NULL, UNIQUE,
@@ -257,7 +315,8 @@ public class ValidationExceptionHandler {
       // Parse unique constraint violations to identify specific constraints
       // Format examples:
       // - "duplicate key value violates unique constraint \"uq_admin_email\""
-      // - "duplicate key value violates unique constraint \"ezkey_admin_username_key\""
+      // - "duplicate key value violates unique constraint
+      // \"ezkey_admin_username_key\""
       String constraintName = extractConstraintName(message);
       if (constraintName != null) {
         // Identify specific constraint violations

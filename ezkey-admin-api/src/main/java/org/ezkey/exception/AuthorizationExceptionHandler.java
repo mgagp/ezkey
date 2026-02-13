@@ -15,6 +15,7 @@ import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.exception.TenantInactiveException;
 import org.ezkey.admin.exception.TenantNotAllowedException;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -91,6 +92,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 @Component
+@Order(30)
 public class AuthorizationExceptionHandler extends ExceptionHandlerBase {
 
   /**

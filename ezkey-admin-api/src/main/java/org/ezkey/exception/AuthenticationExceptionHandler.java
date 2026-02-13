@@ -10,7 +10,6 @@
 
 package org.ezkey.exception;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.admin.exception.AdminAccountInactiveException;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
@@ -18,12 +17,15 @@ import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
 import org.ezkey.admin.exception.AdminNoEnrollmentException;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Handles all authentication-related exceptions in the Ezkey Admin REST API.
@@ -98,6 +100,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 @Component
+@Order(20)
 public class AuthenticationExceptionHandler extends ExceptionHandlerBase {
 
   /**

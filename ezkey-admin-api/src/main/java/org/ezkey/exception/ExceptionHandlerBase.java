@@ -47,17 +47,17 @@ import org.springframework.http.ResponseEntity;
  *
  * <pre>
  * {
- *     &#64;code
- *     &#64;Component
- *     public class MyExceptionHandler extends ExceptionHandlerBase {
- *         @ExceptionHandler(MyException.class)
- *         public ResponseEntity<ProblemDetail> handleMyException(
- *                 MyException ex, HttpServletRequest request) {
- *             return buildProblemDetail(ex, HttpStatus.BAD_REQUEST,
- *                     "https://ezkey.io/problems/my-error",
- *                     "My Error Title", request);
- *         }
+ *   &#64;code
+ *   &#64;Component
+ *   public class MyExceptionHandler extends ExceptionHandlerBase {
+ *     @ExceptionHandler(MyException.class)
+ *     public ResponseEntity<ProblemDetail> handleMyException(
+ *         MyException ex, HttpServletRequest request) {
+ *       return buildProblemDetail(ex, HttpStatus.BAD_REQUEST,
+ *           "https://ezkey.io/problems/my-error",
+ *           "My Error Title", request);
  *     }
+ *   }
  * }
  * </pre>
  *
@@ -80,61 +80,61 @@ import org.springframework.http.ResponseEntity;
  */
 public abstract class ExceptionHandlerBase {
 
-    /**
-     * Builds a RFC 9457 ProblemDetail response for the given exception.
-     *
-     * <p>
-     * <b>Responsibilities:</b>
-     *
-     * <ul>
-     * <li>Create a ProblemDetail with the specified HTTP status and detail message
-     * <li>Set the problem type URI for error categorization
-     * <li>Set a human-readable title for the error
-     * <li>Include the request URI path for debugging
-     * <li>Wrap in a ResponseEntity with the appropriate HTTP status
-     * </ul>
-     *
-     * <p>
-     * <b>RFC 9457 Structure:</b> The returned ProblemDetail includes:
-     *
-     * <pre>
-     * {
-     *   "type": "https://ezkey.io/problems/...",
-     *   "title": "Human Readable Title",
-     *   "status": 400,
-     *   "detail": "Specific error message from exception",
-     *   "path": "/api/v1/admin/endpoint"
-     * }
-     * </pre>
-     *
-     * @param ex      exception containing the error message (detail)
-     * @param status  HTTP status code for the response (e.g.,
-     *                HttpStatus.BAD_REQUEST)
-     * @param typeUri problem type URI for error categorization (e.g.,
-     *                "https://ezkey.io/problems/validation/invalid-input")
-     * @param title   human-readable error title (e.g., "Invalid Input")
-     * @param request HTTP servlet request for extracting the request URI path
-     * @return ResponseEntity containing the ProblemDetail and HTTP status, ready to
-     *         send to client
-     * @throws NullPointerException if any parameter is null
-     */
-    protected ResponseEntity<ProblemDetail> buildProblemDetail(
-            Exception ex,
-            HttpStatus status,
-            String typeUri,
-            String title,
-            jakarta.servlet.http.HttpServletRequest request) {
+  /**
+   * Builds a RFC 9457 ProblemDetail response for the given exception.
+   *
+   * <p>
+   * <b>Responsibilities:</b>
+   *
+   * <ul>
+   * <li>Create a ProblemDetail with the specified HTTP status and detail message
+   * <li>Set the problem type URI for error categorization
+   * <li>Set a human-readable title for the error
+   * <li>Include the request URI path for debugging
+   * <li>Wrap in a ResponseEntity with the appropriate HTTP status
+   * </ul>
+   *
+   * <p>
+   * <b>RFC 9457 Structure:</b> The returned ProblemDetail includes:
+   *
+   * <pre>
+   * {
+   *   "type": "https://ezkey.io/problems/...",
+   *   "title": "Human Readable Title",
+   *   "status": 400,
+   *   "detail": "Specific error message from exception",
+   *   "path": "/api/v1/admin/endpoint"
+   * }
+   * </pre>
+   *
+   * @param ex      exception containing the error message (detail)
+   * @param status  HTTP status code for the response (e.g.,
+   *                HttpStatus.BAD_REQUEST)
+   * @param typeUri problem type URI for error categorization (e.g.,
+   *                "https://ezkey.io/problems/validation/invalid-input")
+   * @param title   human-readable error title (e.g., "Invalid Input")
+   * @param request HTTP servlet request for extracting the request URI path
+   * @return ResponseEntity containing the ProblemDetail and HTTP status, ready to
+   *         send to client
+   * @throws NullPointerException if any parameter is null
+   */
+  protected ResponseEntity<ProblemDetail> buildProblemDetail(
+      Exception ex,
+      HttpStatus status,
+      String typeUri,
+      String title,
+      jakarta.servlet.http.HttpServletRequest request) {
 
-        // Create ProblemDetail with status and exception message
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+    // Create ProblemDetail with status and exception message
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
 
-        // Set RFC 9457 type and title fields
-        problem.setType(URI.create(typeUri));
-        problem.setTitle(title);
+    // Set RFC 9457 type and title fields
+    problem.setType(URI.create(typeUri));
+    problem.setTitle(title);
 
-        // Include request path for debugging
-        problem.setProperty("path", request.getRequestURI());
+    // Include request path for debugging
+    problem.setProperty("path", request.getRequestURI());
 
-        return ResponseEntity.status(status).body(problem);
-    }
+    return ResponseEntity.status(status).body(problem);
+  }
 }

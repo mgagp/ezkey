@@ -121,4 +121,73 @@ If RFC 9457 exceptions grow significantly (150-200+):
 - **Why:** low risk, immediate value, pattern for what follows.
 - **Watch for:** if we target 200+ exceptions, consider annotation-driven.
 
+---
+
+## 10) Lessons Learned: Handler Registration & Priority (Critical)
+
+### Discovery: @RestControllerAdvice + @Component + @Order
+
+When splitting `GlobalExceptionHandler` into specialized handlers, we discovered a **critical interaction** between three annotations:
+
+**Problem:**
+- Multiple `@RestControllerAdvice` classes (specialized handlers + global catch-all)
+- Without explicit ordering, Spring registers handlers in unpredictable order
+- Result: `GlobalExceptionHandler.handleGenericException(Exception)` (catch-all) captures exceptions intended for specialized handlers
+- Example: `MethodArgumentNotValidException` → Global handler → 500 error instead of 400
+
+**Solution (all three required):**
+```java
+@RestControllerAdvice       // ← Registers as exception handler
+@Component                  // ← Ensures Spring picks it up early in initialization
+@Order(N)                   // ← Defines explicit priority (lower = higher priority)
+public class MyExceptionHandler {
+  @ExceptionHandler(SpecificException.class)
+  public ResponseEntity<...> handle(...) { ... }
+}
+```
+
+**Why all three matter:**
+1. `@RestControllerAdvice` alone may not guarantee proper registration order in complex bean graphs
+2. `@Component` signals to Spring that this is a managed component needing priority control
+3. `@Order` makes priority **explicit and deterministic**
+
+### Recommended @Order Values
+
+Use **spaced intervals** to allow future insertion without renumbering:
+
+```
+ValidationExceptionHandler (validation errors)     → @Order(10)
+AuthenticationExceptionHandler (auth errors)       → @Order(20)
+AuthorizationExceptionHandler (authz errors)      → @Order(30)
+CustomBusinessExceptionHandler (if added later)   → @Order(40)
+...future handlers...                             → @Order(50), @Order(60), etc.
+GlobalExceptionHandler (catch-all 500s)           → @Order(99)
+```
+
+**Why 99 for catch-all?**
+- All specific handlers (< 99) are checked first
+- Provides "buffer space" for 80+ future specialized handlers without renumbering
+- Self-documents: "this is the fallback, not a priority handler"
+- Failure mode: if you forget @Order on a new handler, it defaults to 0 and intercepts everything (easy to spot)
+
+### Checklist for Adding New Handlers
+
+```
+[ ] Handler class has @RestControllerAdvice
+[ ] Handler class has @Component
+[ ] Handler class has @Order(N) where N < 99
+[ ] No two handlers share the same exception type
+[ ] Test that specific exception maps to correct handler (not GlobalExceptionHandler)
+[ ] Verify response status code matches exception category
+```
+
+---
+
+## 9) Executive summary
+
+- **Do now:** MVP with `ExceptionHandlerBase` + `AuthenticationExceptionHandler` + proper ordering.
+- **Why:** low risk, immediate value, pattern for what follows.
+- **Watch for:** if we target 200+ exceptions, consider annotation-driven.
+- **Critical:** Use `@RestControllerAdvice` + `@Component` + `@Order(N)` together; catch-all at 99.
+
 Encoding note: this file is UTF-8 without BOM.
