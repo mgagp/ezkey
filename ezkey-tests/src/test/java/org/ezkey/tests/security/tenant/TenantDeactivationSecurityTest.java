@@ -14,10 +14,9 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.TenantAdminTestHelper;
@@ -30,6 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * Security tests for tenant deactivation integrity rules.
