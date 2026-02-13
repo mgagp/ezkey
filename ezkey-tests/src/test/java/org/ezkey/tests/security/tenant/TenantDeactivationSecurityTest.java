@@ -350,7 +350,7 @@ public class TenantDeactivationSecurityTest extends AbstractSecurityTest {
     String type = response.jsonPath().getString("type");
     assertThat(type)
         .as("ProblemDetail type should indicate tenant-not-allowed")
-        .isEqualTo("https://ezkey.io/problems/tenant-not-allowed");
+        .isEqualTo("https://ezkey.io/problems/authorization/tenant-not-allowed");
 
     String title = response.jsonPath().getString("title");
     assertThat(title)
