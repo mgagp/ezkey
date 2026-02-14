@@ -12,23 +12,31 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+
 /**
  * Factory class for creating test data via REST API calls.
  *
- * <p>Provides helper methods to create test entities (integrations, enrollments, auth attempts,
- * etc.) through the Admin API and Auth API. These methods simplify test setup by encapsulating
+ * <p>
+ * Provides helper methods to create test entities (integrations, enrollments,
+ * auth attempts,
+ * etc.) through the Admin API and Auth API. These methods simplify test setup
+ * by encapsulating
  * common creation patterns.
  *
- * <p>Supports opportunistic reuse: Some methods (findOrCreate*) will search for existing entities
- * matching the criteria before creating new ones, reducing overhead in repeated test runs.
+ * <p>
+ * Supports opportunistic reuse: Some methods (findOrCreate*) will search for
+ * existing entities
+ * matching the criteria before creating new ones, reducing overhead in repeated
+ * test runs.
  *
  * @since 2025
  */
@@ -43,7 +51,7 @@ public class TestDataFactory {
    * Creates a new TestDataFactory.
    *
    * @param dockerStackConfig Docker stack configuration
-   * @param authTokenManager Token manager for authentication
+   * @param authTokenManager  Token manager for authentication
    */
   public TestDataFactory(DockerStackConfig dockerStackConfig, AuthTokenManager authTokenManager) {
     this.dockerStackConfig = dockerStackConfig;
@@ -53,9 +61,9 @@ public class TestDataFactory {
   /**
    * Creates a test integration via Admin API.
    *
-   * @param name Integration name
+   * @param name        Integration name
    * @param description Integration description
-   * @param logo Logo URL (optional)
+   * @param logo        Logo URL (optional)
    * @return Integration ID
    */
   public Integer createIntegration(String name, String description, String logo) {
@@ -68,21 +76,24 @@ public class TestDataFactory {
     i18n.put("name", name);
     i18n.put("description", description);
 
-    Map<String, Object> request = new HashMap<>();
-    request.put("logo", logo != null ? logo : "https://example.com/logo.png");
-    request.put("i18n", new Object[] {i18n});
+    // Generate unique code using UUID to prevent conflicts across test runs
+    String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-            .body(request)
-            .when()
-            .post("/integrations")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Map<String, Object> request = new HashMap<>();
+    request.put("code", code);
+    request.put("logo", logo != null ? logo : "https://example.com/logo.png");
+    request.put("i18n", new Object[] { i18n });
+
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body(request)
+        .when()
+        .post("/integrations")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer integrationId = response.jsonPath().getInt("id");
     log.debug("Created integration with ID: {}", integrationId);
@@ -102,8 +113,8 @@ public class TestDataFactory {
   /**
    * Creates a test enrollment via Admin API.
    *
-   * @param integrationId Integration ID
-   * @param name Enrollment name
+   * @param integrationId     Integration ID
+   * @param name              Enrollment name
    * @param challengeRequired Whether challenge is required
    * @return Enrollment ID
    */
@@ -118,17 +129,16 @@ public class TestDataFactory {
     request.put(
         "authAttemptChallengeRequired", challengeRequired != null ? challengeRequired : false);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-            .body(request)
-            .when()
-            .post("/enrollments")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body(request)
+        .when()
+        .post("/enrollments")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer enrollmentId = response.jsonPath().getInt("enrollmentId");
     log.debug("Created enrollment with ID: {}", enrollmentId);
@@ -149,7 +159,7 @@ public class TestDataFactory {
   /**
    * Creates a test auth attempt via Admin API.
    *
-   * @param enrollmentId Enrollment ID
+   * @param enrollmentId       Enrollment ID
    * @param challengeRequested Whether challenge is requested
    * @return Auth attempt ID
    */
@@ -162,17 +172,16 @@ public class TestDataFactory {
     request.put("enrollmentId", enrollmentId);
     request.put("challengeRequested", challengeRequested != null ? challengeRequested : false);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-            .body(request)
-            .when()
-            .post("/auth-attempts")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body(request)
+        .when()
+        .post("/auth-attempts")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer authAttemptId = response.jsonPath().getInt("authAttemptId");
     log.debug("Created auth attempt with ID: {}", authAttemptId);
@@ -193,7 +202,9 @@ public class TestDataFactory {
   /**
    * Creates a tenant via Admin API.
    *
-   * <p>Creates a new tenant with a unique name to ensure idempotence across test runs.
+   * <p>
+   * Creates a new tenant with a unique name to ensure idempotence across test
+   * runs.
    *
    * @param tenantName Tenant name
    * @param adminToken Admin bearer token (must be GlobalAdmin)
@@ -208,17 +219,16 @@ public class TestDataFactory {
     request.put("tenantName", tenantName);
     request.put("tenantDescription", "Test tenant: " + tenantName);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .body(request)
-            .when()
-            .post("/tenants")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .body(request)
+        .when()
+        .post("/tenants")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer tenantId = response.jsonPath().getInt("tenantId");
     log.debug("Created tenant with ID: {}", tenantId);
@@ -229,16 +239,22 @@ public class TestDataFactory {
   /**
    * Creates a tenant admin via Admin API (without full authentication).
    *
-   * <p>Creates a new tenant admin record but does NOT complete the enrollment flow. The returned
-   * token is null - tests should use the globalAdminToken instead for operations that require
+   * <p>
+   * Creates a new tenant admin record but does NOT complete the enrollment flow.
+   * The returned
+   * token is null - tests should use the globalAdminToken instead for operations
+   * that require
    * authentication.
    *
-   * <p>This simple approach avoids complex enrollment binding and device key generation during test
+   * <p>
+   * This simple approach avoids complex enrollment binding and device key
+   * generation during test
    * setup while still creating the required admin records.
    *
-   * @param username Admin username
-   * @param tenantId Tenant ID
-   * @param adminToken Admin bearer token (must be GlobalAdmin or TenantAdmin of same tenant)
+   * @param username   Admin username
+   * @param tenantId   Tenant ID
+   * @param adminToken Admin bearer token (must be GlobalAdmin or TenantAdmin of
+   *                   same tenant)
    * @return null - use globalAdminToken for authenticated API calls instead
    */
   public String createTenantAdmin(String username, Integer tenantId, String adminToken) {
@@ -253,17 +269,16 @@ public class TestDataFactory {
     request.put("lastName", "Admin");
     request.put("tenantId", tenantId);
 
-    Response createResponse =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .body(request)
-            .when()
-            .post("/admins/tenant")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response createResponse = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .body(request)
+        .when()
+        .post("/admins/tenant")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer adminId = createResponse.jsonPath().getInt("adminId");
 
@@ -277,10 +292,11 @@ public class TestDataFactory {
   /**
    * Creates an integration for a specific tenant via Admin API.
    *
-   * <p>Creates a new integration assigned to the specified tenant.
+   * <p>
+   * Creates a new integration assigned to the specified tenant.
    *
-   * @param name Integration name
-   * @param tenantId Tenant ID
+   * @param name       Integration name
+   * @param tenantId   Tenant ID
    * @param adminToken Admin bearer token (must have access to tenant)
    * @return Integration ID
    */
@@ -294,22 +310,25 @@ public class TestDataFactory {
     i18n.put("name", name);
     i18n.put("description", "Test integration for tenant: " + tenantId);
 
+    // Generate unique code using UUID to prevent conflicts across test runs
+    String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+
     Map<String, Object> request = new HashMap<>();
+    request.put("code", code);
     request.put("logo", "https://example.com/logo.png");
     request.put("tenantId", tenantId);
-    request.put("i18n", new Object[] {i18n});
+    request.put("i18n", new Object[] { i18n });
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .body(request)
-            .when()
-            .post("/integrations")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .body(request)
+        .when()
+        .post("/integrations")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     Integer integrationId = response.jsonPath().getInt("id");
     log.debug("Created integration with ID: {} for tenant: {}", integrationId, tenantId);
@@ -320,10 +339,11 @@ public class TestDataFactory {
   /**
    * Creates an API key for an integration via Admin API.
    *
-   * <p>Creates a new API key with a unique description to ensure idempotence.
+   * <p>
+   * Creates a new API key with a unique description to ensure idempotence.
    *
    * @param integrationId Integration ID
-   * @param adminToken Admin bearer token
+   * @param adminToken    Admin bearer token
    * @return API key credentials as "integrationKey:secretKey"
    */
   public String createApiKeyForIntegration(Integer integrationId, String adminToken) {
@@ -336,17 +356,16 @@ public class TestDataFactory {
     request.put("integrationId", integrationId);
     request.put("description", "Test API Key " + uniqueSuffix);
 
-    Response response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .body(request)
-            .when()
-            .post("/api-keys")
-            .then()
-            .statusCode(201)
-            .extract()
-            .response();
+    Response response = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .body(request)
+        .when()
+        .post("/api-keys")
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
 
     String integrationKey = response.jsonPath().getString("integrationKey");
     String secretKey = response.jsonPath().getString("secretKey");
@@ -360,10 +379,14 @@ public class TestDataFactory {
   /**
    * Finds or creates a tenant by name.
    *
-   * <p>Searches for existing tenant with matching name first. If found, returns its ID. Otherwise
+   * <p>
+   * Searches for existing tenant with matching name first. If found, returns its
+   * ID. Otherwise
    * creates a new tenant.
    *
-   * <p>This is useful for test idempotence - tests can reference tenants by name and reuse existing
+   * <p>
+   * This is useful for test idempotence - tests can reference tenants by name and
+   * reuse existing
    * ones across runs.
    *
    * @param tenantName Tenant name
@@ -376,16 +399,15 @@ public class TestDataFactory {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
     // Try to find existing tenant
-    Response listResponse =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .when()
-            .get("/tenants")
-            .then()
-            .statusCode(200)
-            .extract()
-            .response();
+    Response listResponse = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .when()
+        .get("/tenants")
+        .then()
+        .statusCode(200)
+        .extract()
+        .response();
 
     // Check if tenant with this name exists
     java.util.List<Map<String, Object>> tenants = listResponse.jsonPath().getList("content");
@@ -407,14 +429,18 @@ public class TestDataFactory {
   /**
    * Finds or creates an integration by name and tenant.
    *
-   * <p>Searches for existing integration with matching name in the specified tenant. If found,
+   * <p>
+   * Searches for existing integration with matching name in the specified tenant.
+   * If found,
    * returns its ID. Otherwise creates a new integration.
    *
-   * <p>This is useful for test idempotence - tests can reference integrations by name and reuse
+   * <p>
+   * This is useful for test idempotence - tests can reference integrations by
+   * name and reuse
    * existing ones across runs.
    *
-   * @param name Integration name
-   * @param tenantId Tenant ID (null for system tenant)
+   * @param name       Integration name
+   * @param tenantId   Tenant ID (null for system tenant)
    * @param adminToken Admin bearer token
    * @return Integration ID (existing or newly created)
    */
@@ -424,16 +450,15 @@ public class TestDataFactory {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
     // Try to find existing integration
-    Response listResponse =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
-            .when()
-            .get("/integrations")
-            .then()
-            .statusCode(200)
-            .extract()
-            .response();
+    Response listResponse = given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + adminToken)
+        .when()
+        .get("/integrations")
+        .then()
+        .statusCode(200)
+        .extract()
+        .response();
 
     // Check if integration with this name exists for this tenant
     java.util.List<Map<String, Object>> integrations = listResponse.jsonPath().getList("content");
@@ -443,16 +468,14 @@ public class TestDataFactory {
           continue;
         }
         // Get i18n array and extract name
-        java.util.List<Map<String, Object>> i18nList =
-            (java.util.List<Map<String, Object>>) integration.get("i18n");
+        java.util.List<Map<String, Object>> i18nList = (java.util.List<Map<String, Object>>) integration.get("i18n");
         if (i18nList != null && !i18nList.isEmpty()) {
           String integrationName = (String) i18nList.get(0).get("name");
           Integer integrationTenantId = (Integer) integration.get("tenantId");
 
           // Match name and tenant
-          boolean tenantMatch =
-              (tenantId == null && integrationTenantId == null)
-                  || (tenantId != null && tenantId.equals(integrationTenantId));
+          boolean tenantMatch = (tenantId == null && integrationTenantId == null)
+              || (tenantId != null && tenantId.equals(integrationTenantId));
 
           if (name.equals(integrationName) && tenantMatch) {
             Integer integrationId = (Integer) integration.get("id");

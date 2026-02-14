@@ -10,6 +10,7 @@
 
 package org.ezkey.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.admin.exception.AdminAccountInactiveException;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
@@ -24,8 +25,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Handles all authentication-related exceptions in the Ezkey Admin REST API.

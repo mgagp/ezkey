@@ -166,7 +166,7 @@
           "Tenants"
         ],
         "summary": "Deactivate a tenant",
-        "description": "Deactivates a tenant. GlobalAdmin only. Required in Phase 1.",
+        "description": "Deactivates a tenant and revokes all active admin tokens for that tenant. GlobalAdmin only. The system tenant cannot be deactivated.",
         "operationId": "deactivateTenant",
         "parameters": [
           {
@@ -184,6 +184,9 @@
         "responses": {
           "204": {
             "description": "Tenant deactivated successfully"
+          },
+          "400": {
+            "description": "Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)"
           },
           "404": {
             "description": "Tenant not found"
@@ -317,7 +320,7 @@
           "Integrations"
         ],
         "summary": "Create new integration",
-        "description": "Creates a new integration with the provided data",
+        "description": "Creates a new integration with the provided data. Integration code must be unique per tenant.",
         "operationId": "create",
         "requestBody": {
           "content": {
@@ -341,11 +344,21 @@
             }
           },
           "400": {
-            "description": "Invalid data",
+            "description": "Invalid data (validation errors: invalid code format, blank code, etc.)",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Integration code already exists for this tenant",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1385,6 +1398,8 @@
         "tags": [
           "Admin Authentication"
         ],
+        "summary": "Wait for passwordless authentication device response",
+        "description": "Polls device for passwordless authentication response in two-call flows. Blocks for up to 5 minutes waiting for device approval. Supports both challenge-based (with display code) and non-blocking flows. Errors follow RFC 9457 Problem Details format.",
         "operationId": "passwordlessWait",
         "requestBody": {
           "content": {
@@ -1398,7 +1413,47 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Authentication successful. Returns bearer token and admin session details.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Device denied, signature failed, or challenge invalid. Returns RFC 9457 ProblemDetail with specific error type URI.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid challenge code. Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout - No device response within 5-minute window. Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "*/*": {
                 "schema": {
@@ -1438,8 +1493,8 @@
         "tags": [
           "Admin Authentication"
         ],
-        "summary": "Authenticate administrator",
-        "description": "Passwordless authentication for administrators. Returns bearer token on success, or challenge info for two-step flow. Rate limiting applied.",
+        "summary": "Authenticate administrator with passwordless Ezkey MFA",
+        "description": "Passwordless authentication for administrators using device-based cryptography. Supports single-call (blocking) or two-call (challenge) flows. Returns bearer token on success, or challenge info for two-step authentication. Rate limiting applied per IP. Errors follow RFC 9457 Problem Details format.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -1453,7 +1508,7 @@
         },
         "responses": {
           "200": {
-            "description": "Authentication successful or pending. If status='approved', token is present. If status='pending', authAttemptId and challengeCode are present.",
+            "description": "Authentication successful or pending. If status='approved', bearer token is present. If status='pending', authAttemptId and challengeCode present for two-call flow.",
             "content": {
               "*/*": {
                 "schema": {
@@ -1463,7 +1518,47 @@
             }
           },
           "400": {
-            "description": "Authentication failed (invalid credentials, no device enrolled) or validation error",
+            "description": "Bad Request - Authentication failed with temporal issues (expired, rejected, invalid signature). Returns RFC 9457 ProblemDetail with specific error type URI.",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials (username not found). Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Account inactive or no device enrolled. Returns RFC 9457 ProblemDetail: type='...account-inactive' or '...no-enrollment'",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout - No device response within 5 minutes. Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded for this IP address. Applies after 10 failed attempts in 15 minutes.",
             "content": {
               "*/*": {
                 "schema": {
@@ -1473,7 +1568,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal Server Error",
             "content": {
               "*/*": {
                 "schema": {
@@ -2714,8 +2809,16 @@
       },
       "IntegrationCreateRequestDto": {
         "type": "object",
-        "description": "Integration creation data",
+        "description": "Integration creation data including unique code and i18n",
         "properties": {
+          "code": {
+            "type": "string",
+            "description": "Unique business identifier code for the integration",
+            "example": "web-portal",
+            "maxLength": 100,
+            "minLength": 2,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
           "logo": {
             "type": "string",
             "description": "URL or path to the integration's logo image",
@@ -2728,7 +2831,10 @@
               "$ref": "#/components/schemas/IntegrationI18nCreateDto"
             }
           }
-        }
+        },
+        "required": [
+          "code"
+        ]
       },
       "IntegrationI18nCreateDto": {
         "type": "object",
@@ -2759,6 +2865,11 @@
         "type": "object",
         "description": "Response DTO containing created integration details",
         "properties": {
+          "code": {
+            "type": "string",
+            "description": "Unique business identifier code for the integration",
+            "example": "web-portal"
+          },
           "id": {
             "type": "integer",
             "format": "int32",
@@ -2798,6 +2909,33 @@
           "message",
           "timestamp"
         ]
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri"
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
       },
       "EnrollmentCreateRequestDto": {
         "type": "object",
@@ -3459,6 +3597,11 @@
             "format": "int32",
             "description": "Unique identifier for the integration",
             "example": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "Unique business identifier code for the integration",
+            "example": "web-portal"
           },
           "tenantId": {
             "type": "integer",

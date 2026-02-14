@@ -182,14 +182,18 @@
           "listen": "prerequest",
           "script": {
             "exec": [
-              "const now = new Date();\r",
-              "const yyyy = now.getFullYear();\r",
-              "const mm = String(now.getMonth() + 1).padStart(2, '0');\r",
-              "const dd = String(now.getDate()).padStart(2, '0');\r",
-              "const hh = String(now.getHours()).padStart(2, '0');\r",
-              "const mi = String(now.getMinutes()).padStart(2, '0');\r",
-              "const code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;\r",
-              "pm.environment.set(\"admin_code\", code);\r",
+              "// Generate code only if not already set or empty\r",
+              "let existingCode = pm.environment.get(\"admin_code\");\r",
+              "if (!existingCode || existingCode.trim() === \"\") {\r",
+              "  const now = new Date();\r",
+              "  const yyyy = now.getFullYear();\r",
+              "  const mm = String(now.getMonth() + 1).padStart(2, '0');\r",
+              "  const dd = String(now.getDate()).padStart(2, '0');\r",
+              "  const hh = String(now.getHours()).padStart(2, '0');\r",
+              "  const mi = String(now.getMinutes()).padStart(2, '0');\r",
+              "  const code = `admin-${yyyy}-${mm}-${dd}-${hh}-${mi}`;\r",
+              "  pm.environment.set(\"admin_code\", code);\r",
+              "}\r",
               ""
             ],
             "type": "text/javascript",
@@ -203,7 +207,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"logo\": null,\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"Garage du coin\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
+          "raw": "{\n    \"code\": \"{{admin_code}}\",\n    \"logo\": null,\n    \"i18n\": [\n        {\n          \"language\": \"fr\",\n          \"name\": \"Garage du coin\",\n          \"description\": \"Administration\"\n        }\n    ]\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -221,7 +225,7 @@
             "integrations"
           ]
         },
-        "description": "Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.\n\n**Multi-Tenancy - Automatic Tenant Assignment:**\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants (no tenantId field in request)\n- Tenant assignment is handled automatically by `IntegrationService.createIntegration()` based on admin type\n\n**Request Body:**\n- `logo` (optional): URL or path to the integration logo image\n- `i18n` (required): Array of internationalized content objects, each containing:\n  - `language` (required): Language code (e.g., \"en\", \"fr\")\n  - `name` (required): Localized integration name\n  - `description` (optional): Localized integration description\n\n**Response (201 Created):**\n- `id`: Unique identifier of the newly created integration\n- Location header: `/api/v1/integrations/{id}`\n\n**Status Codes:**\n- 201: Integration created successfully\n- 400: Invalid data (validation errors)\n- 401: Unauthorized - admin token required\n- 500: Internal server error\n\n**Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons."
+        "description": "Creates a new integration with the provided data. Integrations represent applications or systems that will use Ezkey for MFA protection.\n\n**Multi-Tenancy - Automatic Tenant Assignment:**\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants (no tenantId field in request)\n- Tenant assignment is handled automatically by `IntegrationService.createIntegration()` based on admin type\n\n**Request Body:**\n- `code` (required): Unique business identifier code for the integration (2-100 characters, alphanumeric with hyphens and underscores, must be unique per tenant)\n- `logo` (optional): URL or path to the integration logo image\n- `i18n` (required): Array of internationalized content objects, each containing:\n  - `language` (required): Language code (e.g., \"en\", \"fr\")\n  - `name` (required): Localized integration name\n  - `description` (optional): Localized integration description\n\n**Response (201 Created):**\n- `id`: Unique identifier of the newly created integration\n- `code`: The integration code as provided in the request\n- Location header: `/api/v1/integrations/{id}`\n\n**Status Codes:**\n- 201: Integration created successfully\n- 400: Invalid data (validation errors, including duplicate code in tenant)\n- 401: Unauthorized - admin token required\n- 409: Conflict - Integration code already exists for this tenant\n- 500: Internal server error\n\n**Note:** The service layer automatically generates cryptographic keys for the integration. These keys are not returned in the response for security reasons."
       },
       "response": []
     },

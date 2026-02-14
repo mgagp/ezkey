@@ -43,23 +43,12 @@ import org.springframework.http.ResponseEntity;
  * </ul>
  *
  * <p>
- * <b>Example Usage:</b>
- *
- * <pre>
- * {
- *   &#64;code
- *   &#64;Component
- *   public class MyExceptionHandler extends ExceptionHandlerBase {
- *     @ExceptionHandler(MyException.class)
- *     public ResponseEntity<ProblemDetail> handleMyException(
- *         MyException ex, HttpServletRequest request) {
- *       return buildProblemDetail(ex, HttpStatus.BAD_REQUEST,
- *           "https://ezkey.io/problems/my-error",
- *           "My Error Title", request);
- *     }
- *   }
- * }
- * </pre>
+ * <b>Example Usage:</b> Subclasses implement exception handler methods
+ * annotated with
+ * {@code @ExceptionHandler} and delegate response construction to
+ * {@link #buildProblemDetail},
+ * passing the exception, HTTP status, problem type URI, human-readable title,
+ * and request object.
  *
  * <p>
  * <b>Design Pattern:</b> This implements the Template Method pattern, allowing
@@ -95,17 +84,13 @@ public abstract class ExceptionHandlerBase {
    * </ul>
    *
    * <p>
-   * <b>RFC 9457 Structure:</b> The returned ProblemDetail includes:
-   *
-   * <pre>
-   * {
-   *   "type": "https://ezkey.io/problems/...",
-   *   "title": "Human Readable Title",
-   *   "status": 400,
-   *   "detail": "Specific error message from exception",
-   *   "path": "/api/v1/admin/endpoint"
-   * }
-   * </pre>
+   * <b>RFC 9457 Structure:</b> The returned ProblemDetail conforms to RFC 9457
+   * and includes
+   * the following fields: type URI (for error categorization), title
+   * (human-readable error
+   * category), status (HTTP status code), detail (specific error message), and
+   * path (request URI
+   * where error occurred).
    *
    * @param ex      exception containing the error message (detail)
    * @param status  HTTP status code for the response (e.g.,

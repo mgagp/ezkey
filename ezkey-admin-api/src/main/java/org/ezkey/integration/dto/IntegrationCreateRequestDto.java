@@ -10,37 +10,57 @@
 
 package org.ezkey.integration.dto;
 
+import java.util.List;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import java.util.List;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for creating new Integration entities in admin API.
  *
- * <p>This DTO contains the data required to create a new Integration through the admin API.
- * Integrations represent applications or systems that will be protected by Ezkey MFA. It includes
- * basic integration information and optional internationalization data for multi-language support.
+ * <p>
+ * This DTO contains the data required to create a new Integration through the
+ * admin API.
+ * Integrations represent applications or systems that will be protected by
+ * Ezkey MFA. It includes
+ * basic integration information and optional internationalization data for
+ * multi-language support.
  *
- * <p><b>Usage Context:</b> Used by administrators to create new integrations that will use Ezkey
- * for MFA authentication. Contains all necessary data for integration setup including branding and
+ * <p>
+ * <b>Usage Context:</b> Used by administrators to create new integrations that
+ * will use Ezkey
+ * for MFA authentication. Contains all necessary data for integration setup
+ * including branding and
  * localization.
  *
- * <p><b>Fields:</b>
+ * <p>
+ * <b>Fields:</b>
  *
  * <ul>
- *   <li><b>code:</b> Unique business identifier for the integration
- *   <li><b>logo:</b> URL or path to the integration's logo image
- *   <li><b>i18n:</b> Optional internationalization data for multi-language support
+ * <li><b>code:</b> Unique business identifier for the integration
+ * <li><b>logo:</b> URL or path to the integration's logo image
+ * <li><b>i18n:</b> Optional internationalization data for multi-language
+ * support
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
- * @param logo URL or path to the integration's logo image displayed in mobile app and web
- *     interfaces
- * @param i18n Optional list of internationalization entries containing localized name and
- *     description for different languages
+ * @param code Unique business identifier for the integration (required, must be
+ *             unique per tenant,
+ *             alphanumeric with hyphens/underscores)
+ * @param logo URL or path to the integration's logo image displayed in mobile
+ *             app and web
+ *             interfaces
+ * @param i18n Optional list of internationalization entries containing
+ *             localized name and
+ *             description for different languages
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.IntegrationCreateRequest
@@ -48,9 +68,7 @@ import java.util.List;
  */
 @Schema(description = "Request DTO for creating new Integration entities")
 public record IntegrationCreateRequestDto(
-    @Schema(
-            description = "URL or path to the integration's logo image",
-            example = "https://example.com/logo.png")
-        String logo,
-    @Schema(description = "List of internationalization entries for multi-language support") @Valid
-        List<IntegrationI18nCreateDto> i18n) {}
+    @NotBlank(message = "code must not be blank") @Size(min = 2, max = 100, message = "code must be between 2 and 100 characters") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "code must contain only alphanumeric characters, hyphens, and underscores") @Schema(description = "Unique business identifier code for the integration", example = "web-portal") String code,
+    @Schema(description = "URL or path to the integration's logo image", example = "https://example.com/logo.png") String logo,
+    @Schema(description = "List of internationalization entries for multi-language support") @Valid List<IntegrationI18nCreateDto> i18n) {
+}
