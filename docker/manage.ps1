@@ -106,7 +106,7 @@ function Show-Status {
     }
 
     try {
-        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api", "curl", "-sf", "http://localhost:8081/actuator/health") | Out-Null
+        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api", "curl", "-sf", "http://localhost:8085/actuator/health") | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  Auth API: Healthy"
         } else {

@@ -199,7 +199,7 @@ $timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health" | Out-Null
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-1 curl -sf http://localhost:8085/actuator/health" | Out-Null
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
@@ -216,7 +216,7 @@ Write-Host "  Auth API Instance 1 is healthy"
 $elapsed = 0
 while ($true) {
     try {
-        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health" | Out-Null
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api-2 curl -sf http://localhost:8085/actuator/health" | Out-Null
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {
@@ -241,7 +241,7 @@ Write-Host "  - Auth API:     http://localhost:8080 (HAProxy → auth-api-1, aut
 Write-Host ""
 Write-Host "📊 HAProxy Statistics:"
 Write-Host "  - Admin API LB: http://localhost:9081/stats"
-Write-Host "  - Auth API LB:  http://localhost:8081/stats"
+Write-Host "  - Auth API LB:  http://localhost:8085/stats"
 Write-Host ""
 Write-Host "💡 Useful commands:"
 Write-Host "  - View logs:    .\manage-ha.ps1 logs"

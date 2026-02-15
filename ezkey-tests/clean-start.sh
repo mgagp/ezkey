@@ -306,7 +306,7 @@ if [ -n "$HA_MODE" ]; then
     echo "  - Instances: 2x admin-api, 2x auth-api behind HAProxy load balancers"
     echo "  - Admin API: http://localhost:9080 (via HAProxy)"
     echo "  - Auth API: http://localhost:8080 (via HAProxy)"
-    echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8081/stats (Auth)"
+    echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
 elif [ -n "$NATIVE_MODE" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (NATIVE mode)"
     echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"

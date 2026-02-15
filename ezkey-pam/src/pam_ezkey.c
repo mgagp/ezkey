@@ -140,7 +140,7 @@ int ezkey_poc1_prooftoken() {
 
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:8081/api/v1/sim/prooftoken");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:8085/api/v1/sim/prooftoken");
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
         res = curl_easy_perform(curl);

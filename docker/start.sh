@@ -264,7 +264,7 @@ echo "  ✅ Admin API is healthy"
 echo "  - Waiting for Auth API..."
 timeout=120
 elapsed=0
-while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Auth API did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api

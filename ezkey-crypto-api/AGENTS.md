@@ -16,7 +16,7 @@ This file is UTF-8 without BOM.
 
 Crypto API is **included in the Docker stack** and starts automatically with `./clean-start.sh`:
 
-- **Port**: `9090` (not 8081 - that's auth-api)
+- **Port**: `9090` (not 8085 - that's auth-api)
 - **Container**: `ezkey-crypto-api`
 - **Base URL**: `http://localhost:9090`
 - **Swagger UI**: `http://localhost:9090/swagger-ui.html`
@@ -219,7 +219,7 @@ Crypto API can decrypt values encrypted with:
 
 ### Port Configuration
 - ✅ **Crypto API**: Port `9090`
-- ❌ **NOT Port 8081**: That's auth-api
+- ❌ **NOT Port 8085**: That's auth-api
 - Always verify you're calling the correct port
 
 ### Security Warnings

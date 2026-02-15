@@ -53,7 +53,7 @@ $env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
 - ✅ Designed for local Docker development only
 - ✅ Exposes a richer Actuator surface for diagnostics (health/info/metrics/threaddump)
 - ✅ Useful for memory and heap analysis via `/actuator/metrics`
-- ✅ Uses a dedicated management port: `8081` (not published by default)
+- ✅ Uses a dedicated management port: `8085` (not published by default)
 - ⚠️ Not intended to be exposed publicly in staging/prod
 
 ---

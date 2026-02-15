@@ -276,7 +276,7 @@ if ($Ha) {
     Write-Host "  - Instances: 2x admin-api, 2x auth-api behind HAProxy load balancers"
     Write-Host "  - Admin API: http://localhost:9080 (via HAProxy)"
     Write-Host "  - Auth API: http://localhost:8080 (via HAProxy)"
-    Write-Host "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8081/stats (Auth)"
+    Write-Host "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
 } elseif ($Native) {
     Write-Host "  - Docker stack: Running with profiles ($springProfiles) (NATIVE mode)"
     Write-Host "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"

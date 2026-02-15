@@ -112,7 +112,7 @@ function show_status() {
     fi
     
     # Check Auth API
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API: Healthy"
     else
         echo "  ❌ Auth API: Unhealthy"

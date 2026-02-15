@@ -318,7 +318,7 @@ mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
 **Exécuter l'image native**:
 ```bash
 docker run -d --name ezkey-auth-api-test-nojson \
-    -p 8081:8080 \
+    -p 8086:8080 \
     -e SPRING_PROFILES_ACTIVE=native \
     -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/ezkey_db \
     -e SPRING_DATASOURCE_USERNAME=postgres \
@@ -344,13 +344,13 @@ docker logs -f ezkey-auth-api-test-nojson
 sleep 10
 
 # Tester l'endpoint
-curl http://localhost:8081/actuator/health
+curl http://localhost:8085/actuator/health
 ```
 
 **Tester un endpoint fonctionnel** (si health check OK):
 ```bash
 # Tester l'endpoint d'enrollment bind (devrait retourner 400 ou 404, mais pas d'erreur de réflexion)
-curl -X POST http://localhost:8081/api/v1/enrollments/bind \
+curl -X POST http://localhost:8085/api/v1/enrollments/bind \
     -H "Content-Type: application/json" \
     -d '{"enrollmentId":1,"enrollmentProofToken":"test"}'
 ```

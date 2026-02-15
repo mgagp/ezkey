@@ -42,7 +42,7 @@ public class DockerStackConfig {
   private static final String DEFAULT_AUTH_API_URL = "http://localhost:8080";
   private static final String DEFAULT_CRYPTO_API_URL = "http://localhost:9090";
   private static final String DEFAULT_ADMIN_ACTUATOR_URL = "http://localhost:9081";
-  private static final String DEFAULT_AUTH_ACTUATOR_URL = "http://localhost:8081";
+  private static final String DEFAULT_AUTH_ACTUATOR_URL = "http://localhost:8085";
 
   private final String adminApiUrl;
   private final String authApiUrl;
@@ -107,7 +107,7 @@ public class DockerStackConfig {
    * <p>Checks the health endpoint of each service via their management ports (Actuator endpoints).
    * Admin API, Auth API, and Crypto API are required.
    *
-   * <p>Uses dedicated management ports (9081, 8081, 9090) for health verification. These ports are
+   * <p>Uses dedicated management ports (9081, 8085, 9090) for health verification. These ports are
    * exposed in both standard and HA modes for consistent verification logic.
    *
    * @throws IllegalStateException if any service is not healthy

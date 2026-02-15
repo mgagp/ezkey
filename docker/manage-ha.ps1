@@ -124,7 +124,7 @@ function Show-Status {
     }
 
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:8081/stats" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri "http://localhost:8085/stats" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
             Write-Host "  Auth API Load Balancer (stats): Healthy"
         } else {
@@ -135,7 +135,7 @@ function Show-Status {
     }
 
     try {
-        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api-1", "curl", "-sf", "http://localhost:8081/actuator/health") | Out-Null
+        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api-1", "curl", "-sf", "http://localhost:8085/actuator/health") | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  Auth API Instance 1: Healthy"
         } else {
@@ -146,7 +146,7 @@ function Show-Status {
     }
 
     try {
-        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api-2", "curl", "-sf", "http://localhost:8081/actuator/health") | Out-Null
+        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "auth-api-2", "curl", "-sf", "http://localhost:8085/actuator/health") | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  Auth API Instance 2: Healthy"
         } else {
@@ -159,7 +159,7 @@ function Show-Status {
     Write-Host ""
     Write-Host "📊 HAProxy Statistics:"
     Write-Host "  - Admin API LB: http://localhost:9081/stats"
-    Write-Host "  - Auth API LB:  http://localhost:8081/stats"
+    Write-Host "  - Auth API LB:  http://localhost:8085/stats"
 }
 
 function Clean-All {

@@ -107,20 +107,20 @@ function show_status() {
     fi
     
     # Check Auth API instances via HAProxy
-    if curl -sf http://localhost:8081/stats > /dev/null 2>&1; then
+    if curl -sf http://localhost:8085/stats > /dev/null 2>&1; then
         echo "  ✅ Auth API Load Balancer (stats): Healthy"
     else
         echo "  ❌ Auth API Load Balancer (stats): Unhealthy"
     fi
     
     # Check individual Auth API instances
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-1 curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API Instance 1: Healthy"
     else
         echo "  ❌ Auth API Instance 1: Unhealthy"
     fi
     
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api-2 curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API Instance 2: Healthy"
     else
         echo "  ❌ Auth API Instance 2: Unhealthy"
@@ -129,7 +129,7 @@ function show_status() {
     echo ""
     echo "📊 HAProxy Statistics:"
     echo "  - Admin API LB: http://localhost:9081/stats"
-    echo "  - Auth API LB:  http://localhost:8081/stats"
+    echo "  - Auth API LB:  http://localhost:8085/stats"
 }
 
 function clean_all() {

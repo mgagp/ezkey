@@ -33,7 +33,7 @@ The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **
 │         │                                                │
 │         ├──► ┌──────────────┐  ┌──────────────┐        │
 │         │    │  Auth API #1 │  │  Auth API #2 │        │
-│         │    │   (8081)     │  │   (8082)     │        │
+│         │    │   (8085)     │  │   (8085)     │        │
 │         │    └──────┬───────┘  └──────┬───────┘        │
 │         │           │                 │                 │
 │         │           └────────┬────────┘                 │
@@ -104,7 +104,7 @@ Once started, you can access:
 
 **HAProxy Statistics Pages:**
 - **Admin API Load Balancer Stats**: http://localhost:9081/stats
-- **Auth API Load Balancer Stats**: http://localhost:8081/stats
+- **Auth API Load Balancer Stats**: http://localhost:8085/stats
 
 See the [HAProxy Statistics](#haproxy-statistics) section below for detailed information about these monitoring pages.
 
@@ -166,7 +166,7 @@ See the [HAProxy Statistics](#haproxy-statistics) section below for detailed inf
 #### HAProxy Auth (haproxy-auth)
 - **Container**: `ezkey-haproxy-auth`
 - **Port**: `8080` (exposed to host)
-- **Stats Port**: `8081` (exposed to host)
+- **Stats Port**: `8085` (exposed to host)
 - **Backends**: auth-api-1:8080, auth-api-2:8080
 - **Algorithm**: Round-robin
 - **Health Checks**: HTTP GET /actuator/health every 5 seconds
@@ -258,7 +258,7 @@ HAProxy provides real-time statistics pages for monitoring load balancer health 
 #### Access URLs
 
 - **Admin API Load Balancer**: http://localhost:9081/stats
-- **Auth API Load Balancer**: http://localhost:8081/stats
+- **Auth API Load Balancer**: http://localhost:8085/stats
 
 #### What You'll See
 
@@ -399,10 +399,10 @@ docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
 2. **Check for port conflicts:**
    ```bash
    # Linux/Mac
-   lsof -i :9080 -i :8080 -i :9081 -i :8081 -i :5432
+   lsof -i :9080 -i :8080 -i :9081 -i :8085 -i :5432
    
    # Windows
-   netstat -ano | findstr "9080 8080 9081 8081 5432"
+   netstat -ano | findstr "9080 8080 9081 8085 5432"
    ```
 
 3. **View service logs:**
@@ -418,7 +418,7 @@ docker exec ezkey-postgres-ha psql -U postgres -d ezkey_db -c \
    ```
 
 2. **Check HAProxy stats:**
-   - Open http://localhost:9081/stats (Admin API) or http://localhost:8081/stats (Auth API)
+   - Open http://localhost:9081/stats (Admin API) or http://localhost:8085/stats (Auth API)
    - Verify both backend servers show "UP" status
    - Check for any error counts or connection issues
 
@@ -528,5 +528,5 @@ For issues or questions:
 - Review service logs: `./docker/manage-ha.sh logs`
 - Check HAProxy stats: 
   - Admin API: http://localhost:9081/stats
-  - Auth API: http://localhost:8081/stats
+  - Auth API: http://localhost:8085/stats
 - Review the main project documentation

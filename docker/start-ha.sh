@@ -188,7 +188,7 @@ echo "  ✅ Admin API instances are healthy"
 echo "  - Waiting for Auth API instances..."
 timeout=120
 elapsed=0
-while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-1 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-1 curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Auth API Instance 1 did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api-1
@@ -198,7 +198,7 @@ while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-1 curl -sf http://loc
     elapsed=$((elapsed + 2))
 done
 elapsed=0
-while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-2 curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+while ! ${DOCKER_COMPOSE} ${COMPOSE_ARGS} exec -T auth-api-2 curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; do
     if [ $elapsed -ge $timeout ]; then
         echo "❌ Error: Auth API Instance 2 did not become healthy within ${timeout} seconds"
         ${DOCKER_COMPOSE} ${COMPOSE_ARGS} logs auth-api-2
@@ -220,7 +220,7 @@ echo "  - Auth API:     http://localhost:8080 (HAProxy → auth-api-1, auth-api-
 echo ""
 echo "📊 HAProxy Statistics:"
 echo "  - Admin API LB: http://localhost:9081/stats"
-echo "  - Auth API LB:  http://localhost:8081/stats"
+echo "  - Auth API LB:  http://localhost:8085/stats"
 echo ""
 echo "💡 Useful commands:"
 echo "  - View logs:    ./docker/manage-ha.sh logs"

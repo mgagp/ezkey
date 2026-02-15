@@ -246,7 +246,7 @@ $timeout = 120
 $elapsed = 0
 while ($true) {
     try {
-        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api curl -sf http://localhost:8081/actuator/health" | Out-Null
+        Invoke-Expression "$DockerCompose $ComposeArgs exec -T auth-api curl -sf http://localhost:8085/actuator/health" | Out-Null
         if ($LASTEXITCODE -eq 0) { break }
     } catch {
         if ($elapsed -ge $timeout) {

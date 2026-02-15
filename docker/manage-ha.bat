@@ -106,7 +106,7 @@ if errorlevel 1 (
 echo.
 echo HAProxy Statistics:
 echo   - Admin API LB: http://localhost:9081/stats
-echo   - Auth API LB:  http://localhost:8081/stats
+echo   - Auth API LB:  http://localhost:8085/stats
 goto end
 
 :clean_all

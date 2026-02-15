@@ -405,7 +405,7 @@ All services use the `docker` Spring profile by default, which loads configurati
 - Enables a richer (but still reasonable) Actuator surface for local analysis
 - Intended for local Docker usage only (never expose publicly)
 - Recommended for profiling memory/heap via `/actuator/metrics` while iterating on native build tradeoffs
- - Uses a dedicated management port: `8081` (not published by default)
+ - Uses a dedicated management port: `8085` (not published by default)
 
 **Optional: `docker-test` (Test Mode)**
 - Rate limiting disabled or very permissive

@@ -5,7 +5,7 @@
 #
 # IMPORTANT:
 # - Do not use this override in staging or production.
-# - Avoid host port collisions with HAProxy stats ports (8081 and 9081).
+# - Avoid host port collisions with HAProxy stats ports (8085 and 9081).
 #
 # Usage:
 #   # Windows PowerShell
@@ -17,10 +17,10 @@
 services:
   auth-api-1:
     ports:
-      - "18081:8081"
+      - "18085:8085"
   auth-api-2:
     ports:
-      - "28081:8081"
+      - "28085:8085"
 
   admin-api-1:
     ports:

@@ -8,7 +8,7 @@
       "isSecret": false
     },
     "base_url_sim_api": {
-      "value": "http://localhost:8081",
+      "value": "http://localhost:8085",
       "type": "string",
       "id": 1,
       "isSecret": false
