@@ -15,19 +15,14 @@ import java.util.List;
 /**
  * Request DTO for creating new Integration entities.
  *
- * <p>
- * This DTO contains the data required to create a new Integration in the
- * system. It includes the
+ * <p>This DTO contains the data required to create a new Integration in the system. It includes the
  * basic integration information and optional internationalization data.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
- * <p>
- * <b>Usage:</b> POST /api/v1/integrations
+ * <p><b>Usage:</b> POST /api/v1/integrations
  *
  * @author Ezkey contributors
  * @since 2025
@@ -35,20 +30,17 @@ import java.util.List;
 public class IntegrationCreateRequest {
 
   /**
-   * Unique business identifier code for the integration within a tenant. Must be
-   * unique per tenant.
+   * Unique business identifier code for the integration within a tenant. Must be unique per tenant.
    */
   private String code;
 
   /**
-   * URL or path to the integration's logo image. Displayed in the mobile app and
-   * web interfaces.
+   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
    */
   private String logo;
 
   /**
-   * Optional list of internationalization entries. Contains localized name and
-   * description for
+   * Optional list of internationalization entries. Contains localized name and description for
    * different languages.
    */
   private List<IntegrationI18nCreate> i18n;

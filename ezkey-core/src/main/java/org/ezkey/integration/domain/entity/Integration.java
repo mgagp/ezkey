@@ -10,9 +10,6 @@
 
 package org.ezkey.integration.domain.entity;
 
-import java.time.OffsetDateTime;
-import java.util.List;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,24 +22,20 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * JPA entity representing an integration in the Ezkey system.
  *
- * <p>
- * An integration represents an application or system that is protected by Ezkey
- * MFA. Each
- * integration can have multiple internationalization entries (i18n) for
- * different languages.
+ * <p>An integration represents an application or system that is protected by Ezkey MFA. Each
+ * integration can have multiple internationalization entries (i18n) for different languages.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
- * <p>
- * <b>Table:</b> ezkey_integration
+ * <p><b>Table:</b> ezkey_integration
  *
  * @author Ezkey contributors
  * @since 2025
@@ -51,53 +44,44 @@ import jakarta.persistence.Table;
 @Table(name = "ezkey_integration")
 public class Integration {
 
-  /**
-   * Unique identifier for the integration. Auto-generated using database
-   * identity.
-   */
+  /** Unique identifier for the integration. Auto-generated using database identity. */
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "integration_id")
   private Integer id;
 
   /**
-   * URL or path to the integration's logo image. Displayed in the mobile app and
-   * web interfaces.
+   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
    */
   @Column(name = "integration_logo")
   private String logo;
 
   /**
-   * Flag indicating whether the integration is active and available for use.
-   * Inactive integrations
-   * cannot be used for authentication. Defaults to {@code true} (matches DB:
-   * {@code DEFAULT TRUE}).
+   * Flag indicating whether the integration is active and available for use. Inactive integrations
+   * cannot be used for authentication. Defaults to {@code true} (matches DB: {@code DEFAULT TRUE}).
    */
   @Column(name = "integration_active", nullable = false)
   private Boolean active = true;
 
-  /**
-   * Timestamp when the integration was created. Automatically set when the entity
-   * is persisted.
-   */
+  /** Timestamp when the integration was created. Automatically set when the entity is persisted. */
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
   /**
-   * Collection of internationalization entries for this integration. Each entry
-   * contains localized
-   * name and description for different languages. Uses lazy loading for
-   * performance optimization.
+   * Collection of internationalization entries for this integration. Each entry contains localized
+   * name and description for different languages. Uses lazy loading for performance optimization.
    */
-  @OneToMany(mappedBy = "integration", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(
+      mappedBy = "integration",
+      cascade = CascadeType.ALL,
+      orphanRemoval = true,
+      fetch = FetchType.LAZY)
   private List<IntegrationI18n> i18n;
 
   /**
    * Reference to the tenant this integration belongs to.
    *
-   * <p>
-   * This field is required for multi-tenant data isolation. Each integration
-   * belongs to a
+   * <p>This field is required for multi-tenant data isolation. Each integration belongs to a
    * specific tenant and can only be accessed by administrators of that tenant.
    */
   @ManyToOne(fetch = FetchType.LAZY)
@@ -107,9 +91,7 @@ public class Integration {
   /**
    * Flag indicating whether this is a system integration.
    *
-   * <p>
-   * System integrations are special integrations that are created by the system
-   * itself (like
+   * <p>System integrations are special integrations that are created by the system itself (like
    * Ezkey admin interfaces) and are not managed by regular tenant administrators.
    */
   @Column(name = "is_system_integration")
@@ -118,11 +100,8 @@ public class Integration {
   /**
    * Unique business identifier code for the integration within a tenant.
    *
-   * <p>
-   * This field must be unique per tenant and is used to reference the integration
-   * by a
-   * human-readable code (e.g., "web-portal", "mobile-app"). Follows slug format
-   * (alphanumeric,
+   * <p>This field must be unique per tenant and is used to reference the integration by a
+   * human-readable code (e.g., "web-portal", "mobile-app"). Follows slug format (alphanumeric,
    * hyphens, underscores).
    */
   @Column(name = "integration_code", nullable = false)
@@ -131,9 +110,7 @@ public class Integration {
   /**
    * Reference to the administrator who created this integration.
    *
-   * <p>
-   * This field tracks the administrator responsible for creating this integration
-   * for audit and
+   * <p>This field tracks the administrator responsible for creating this integration for audit and
    * permission purposes.
    */
   @ManyToOne(fetch = FetchType.LAZY)
@@ -147,8 +124,7 @@ public class Integration {
   }
 
   /**
-   * Sets {@code createdAt} when null before persist. MapStruct create→entity
-   * ignores it; matches DB
+   * Sets {@code createdAt} when null before persist. MapStruct create→entity ignores it; matches DB
    * default.
    */
   @PrePersist

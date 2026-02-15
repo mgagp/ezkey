@@ -13,36 +13,27 @@ package org.ezkey.integration.domain;
 /**
  * Response DTO for the creation of a new Integration entity.
  *
- * <p>
- * This DTO object contains the identifier of the newly created Integration in
- * the system.
+ * <p>This DTO object contains the identifier of the newly created Integration in the system.
  *
- * <p>
- * <b>Usage:</b> Returned by controller methods after a successful Integration
- * creation. *
+ * <p><b>Usage:</b> Returned by controller methods after a successful Integration creation. *
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
  */
 public class IntegrationCreateResponse {
 
-  /**
-   * The unique business identifier code of the newly created Integration entity.
-   */
+  /** The unique business identifier code of the newly created Integration entity. */
   private String code;
 
   /** The unique identifier of the newly created Integration entity. */
   private Integer id;
 
   /**
-   * Gets the unique business identifier code of the newly created Integration
-   * entity.
+   * Gets the unique business identifier code of the newly created Integration entity.
    *
    * @return the Integration entity code
    */
@@ -51,8 +42,7 @@ public class IntegrationCreateResponse {
   }
 
   /**
-   * Sets the unique business identifier code of the newly created Integration
-   * entity.
+   * Sets the unique business identifier code of the newly created Integration entity.
    *
    * @param code the Integration entity code
    */

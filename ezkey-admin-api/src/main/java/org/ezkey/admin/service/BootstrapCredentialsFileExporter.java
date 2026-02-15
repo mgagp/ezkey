@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.ezkey.admin.config.BootstrapExportProperties;
+import org.ezkey.admin.config.QrCodeProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +25,21 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Service for exporting bootstrap credentials to a file.
  *
- * <p>This service writes bootstrap enrollment credentials (enrollmentId, enrollmentProofToken,
- * enrollmentChallengeCode, username) to a JSON file for Docker automation. Recovery codes are NOT
+ * <p>
+ * This service writes bootstrap enrollment credentials (enrollmentId,
+ * enrollmentProofToken,
+ * enrollmentChallengeCode, username) to a JSON file for Docker automation.
+ * Recovery codes are NOT
  * exported (they remain logs-only for security).
  *
- * <p><b>Idempotent:</b> If the file already exists and contains the same enrollmentId, it will not
+ * <p>
+ * <b>Idempotent:</b> If the file already exists and contains the same
+ * enrollmentId, it will not
  * be overwritten to avoid unnecessary churn.
  *
- * <p><b>Security:</b> This feature should only be enabled in Docker/demo profiles, never in
+ * <p>
+ * <b>Security:</b> This feature should only be enabled in Docker/demo profiles,
+ * never in
  * production.
  *
  * @since 2025
@@ -39,27 +47,32 @@ import tools.jackson.databind.node.ObjectNode;
 @Component
 public class BootstrapCredentialsFileExporter {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
+  private static final Logger logger = LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
 
   private final BootstrapExportProperties exportProperties;
+  private final QrCodeProperties qrCodeProperties;
   private final ObjectMapper objectMapper;
 
-  public BootstrapCredentialsFileExporter(BootstrapExportProperties exportProperties) {
+  public BootstrapCredentialsFileExporter(
+      BootstrapExportProperties exportProperties, QrCodeProperties qrCodeProperties) {
     this.exportProperties = exportProperties;
+    this.qrCodeProperties = qrCodeProperties;
     this.objectMapper = new ObjectMapper();
   }
 
   /**
    * Exports bootstrap credentials to a file if export is enabled.
    *
-   * <p>This method is idempotent: if the file already exists and contains the same enrollmentId, it
+   * <p>
+   * This method is idempotent: if the file already exists and contains the same
+   * enrollmentId, it
    * will not be overwritten.
    *
-   * @param enrollment the enrollment with credentials to export
-   * @param enrollmentProofToken the enrollment proof token (from before save, to ensure exact
-   *     match)
-   * @param username the admin username
+   * @param enrollment           the enrollment with credentials to export
+   * @param enrollmentProofToken the enrollment proof token (from before save, to
+   *                             ensure exact
+   *                             match)
+   * @param username             the admin username
    */
   public void exportIfEnabled(Enrollment enrollment, String enrollmentProofToken, String username) {
     if (!exportProperties.isEnabled()) {
@@ -101,6 +114,12 @@ public class BootstrapCredentialsFileExporter {
       jsonNode.put("enrollmentProofToken", enrollmentProofToken);
       jsonNode.put("enrollmentChallengeCode", enrollment.getEnrollmentChallenge());
       jsonNode.put("username", username);
+
+      // Include auth-api URL if configured
+      String authBaseUrl = qrCodeProperties.getAuthBaseUrl();
+      if (authBaseUrl != null && !authBaseUrl.isBlank()) {
+        jsonNode.put("authUrl", authBaseUrl.strip());
+      }
 
       // Write file
       objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), jsonNode);

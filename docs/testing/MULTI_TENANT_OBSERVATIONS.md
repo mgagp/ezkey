@@ -2,16 +2,16 @@
 
 Ce document contient des observations et des points à réanalyser ou compléter avant de prendre action. Ces éléments nécessitent une investigation plus approfondie ou une décision architecturale.
 
-**Statut**: En cours d'analyse  
+**Statut**: En cours d'analyse
 **Date de création**: 2025-12-26
 
 ---
 
 ## 1. TenantAdmin ne peut pas lister les admins de son tenant
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
-**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
+**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)
 **Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
@@ -118,9 +118,9 @@ Un TenantAdmin ne peut pas lister les administrateurs (TenantAdmins) de son prop
 
 ## 2. Gestion d'erreur générique pour violations de contraintes DB
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/admins/tenant`  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
+**Endpoint concerné**: `POST /api/v1/admins/tenant`
 **Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
@@ -293,9 +293,9 @@ Ajouter la vérification d'unicité de l'email dans `AdminProvisioningService`:
 
 ## 3. Séparation création/récupération des credentials d'onboarding admin
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/admins/global`, `POST /api/v1/admins/tenant`  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
+**Endpoint concerné**: `POST /api/v1/admins/global`, `POST /api/v1/admins/tenant`
 **Statut**: ✅ **RÉSOLU** - 2025-12-26
 
 ### Observation
@@ -388,7 +388,7 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 
 3. **Créer GET /api/v1/admins/{id}/onboarding/qrcode**:
    - Générer un QR code PNG pour l'onboarding
-   - Contient `enrollmentId|enrollmentProofToken` (même format que enrollment QR code)
+   - Contient un payload JSON: `{"enrollmentId":"...","enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel)
    - **Sécurité**: Généré à la demande, pas stocké
 
 **Avantages:**
@@ -441,7 +441,7 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 
 3. **Création de GET /api/v1/admins/{id}/onboarding/qrcode**:
    - Génère un QR code PNG pour l'onboarding
-   - Format: `enrollmentId|enrollmentProofToken` (même format que enrollment QR code)
+   - Format JSON: `{"enrollmentId":"...","enrollmentProofToken":"...","authUrl":"..."}` (authUrl optionnel, configurable via `ezkey.qr.auth-base-url`)
    - **Sécurité**: Généré à la demande, pas stocké
    - **Autorisation**: Même règles que GET /api/v1/admins/{id}/onboarding
 
@@ -505,13 +505,13 @@ Cette séparation est plus sécuritaire et devrait être appliquée aussi pour l
 
 ## 4. Affichage de l'information du tenant dans l'application mobile
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
 **Application concernée**: DemoDevice (Phase 1), Application mobile réelle (Phase 2)
 
 ### Observation
 
-Lors des tests avec l'application mobile (DemoDevice), l'utilisateur trouve que l'information sur un enrollment devrait contenir l'information sur le tenant. 
+Lors des tests avec l'application mobile (DemoDevice), l'utilisateur trouve que l'information sur un enrollment devrait contenir l'information sur le tenant.
 
 **Contexte historique:**
 - À l'origine: seulement le `enrollmentName` était affiché
@@ -695,14 +695,14 @@ Integration Description
 
 ## 3. Limitation du nombre d'API keys par tenant
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
-**Contexte**: Tests exploratoires avec TenantAdmin  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
+**Contexte**: Tests exploratoires avec TenantAdmin
 **Statut**: 🔍 **OBSERVATION** - À analyser et planifier
 
 ### Observation
 
-Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys successivement. La seule limitation rencontrée était le rate limit (5 créations par 15 minutes par admin). 
+Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys successivement. La seule limitation rencontrée était le rate limit (5 créations par 15 minutes par admin).
 
 **Limites actuelles:**
 - ✅ **5 API keys actives par intégration** (déjà implémenté) - Permet la rotation de clés
@@ -729,7 +729,7 @@ Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys succe
 **Limite proposée: 20-30 API keys actives par tenant**
 
 **Justification:**
-- **Suffisant pour cas légitimes**: 
+- **Suffisant pour cas légitimes**:
   - 5-10 intégrations × 2-3 clés (rotation) = 10-30 clés
   - Permet environ 5-10 intégrations avec rotation active
 - **Raisonnable pour sécurité**:
@@ -782,9 +782,9 @@ Lors de tests exploratoires, un TenantAdmin a pu créer plusieurs API keys succe
 
 ## 4. Incohérence logique: TenantAdmin créé dans le System Tenant
 
-**Date**: 2025-12-26  
-**Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/admins/tenant`  
+**Date**: 2025-12-26
+**Observateur**: Utilisateur
+**Endpoint concerné**: `POST /api/v1/admins/tenant`
 **Statut**: 🔍 **OBSERVATION** - À analyser et corriger
 
 ### Observation
@@ -931,9 +931,9 @@ Lors de tests exploratoires, un GlobalAdmin a créé un TenantAdmin avec `tenant
 
 ## 5. Création d'enrollment pour intégration système via API normale
 
-**Date**: 2025-12-30  
-**Observateur**: Utilisateur  
-**Endpoint concerné**: `POST /api/v1/enrollments` (Admin API)  
+**Date**: 2025-12-30
+**Observateur**: Utilisateur
+**Endpoint concerné**: `POST /api/v1/enrollments` (Admin API)
 **Statut**: ✅ **RÉSOLU** - 2025-12-30
 
 ### Observation

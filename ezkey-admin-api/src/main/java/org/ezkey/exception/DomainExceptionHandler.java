@@ -23,22 +23,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * Handles domain-level business rule exceptions in the Ezkey Admin REST API.
  *
- * <p><b>Responsibility:</b> This component intercepts domain exceptions thrown
- * during business
- * logic validation and converts them into RFC 9457 ProblemDetail responses with
- * appropriate HTTP
+ * <p><b>Responsibility:</b> This component intercepts domain exceptions thrown during business
+ * logic validation and converts them into RFC 9457 ProblemDetail responses with appropriate HTTP
  * status codes.
  *
  * <p><b>Exceptions Handled (1+ total):</b>
  *
  * <ul>
- * <li><b>IntegrationCodeAlreadyExistsException (409):</b> Integration code
- * already exists for the
- * tenant
+ *   <li><b>IntegrationCodeAlreadyExistsException (409):</b> Integration code already exists for the
+ *       tenant
  * </ul>
  *
- * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details
- * for HTTP APIs) with
+ * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs) with
  * the following structure:
  *
  * <pre>{@code
@@ -54,29 +50,23 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p><b>HTTP Status Codes:</b>
  *
  * <ul>
- * <li>409 - Business logic violations (duplicate integration codes, uniqueness
- * constraints)
+ *   <li>409 - Business logic violations (duplicate integration codes, uniqueness constraints)
  * </ul>
  *
- * <p><b>Integration:</b> This handler is registered as a Spring component and
- * automatically picked
+ * <p><b>Integration:</b> This handler is registered as a Spring component and automatically picked
  * up by the @RestControllerAdvice scanning mechanism with @Order(80) priority.
  *
  * <p><b>Design Notes:</b>
  *
  * <ul>
- * <li>Each handler delegates response building to {@link
- * ExceptionHandlerBase#buildProblemDetail}
- * for consistency
- * <li>Problem type URIs follow the convention:
- * https://ezkey.io/problems/domain/{error-category}
- * <li>This allows future clients to programmatically identify error categories
- * <li>This handler is extensible: additional domain exceptions can be added
- * without modifying
- * other handlers
- * <li>Order 80 ensures this handler is invoked before the generic
- * GlobalExceptionHandler (Order
- * 99)
+ *   <li>Each handler delegates response building to {@link ExceptionHandlerBase#buildProblemDetail}
+ *       for consistency
+ *   <li>Problem type URIs follow the convention: https://ezkey.io/problems/domain/{error-category}
+ *   <li>This allows future clients to programmatically identify error categories
+ *   <li>This handler is extensible: additional domain exceptions can be added without modifying
+ *       other handlers
+ *   <li>Order 80 ensures this handler is invoked before the generic GlobalExceptionHandler (Order
+ *       99)
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -96,12 +86,10 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
   /**
    * Handles IntegrationCodeAlreadyExistsException and returns HTTP 409 Conflict.
    *
-   * <p>Triggered when an administrator attempts to create an integration with a
-   * code that already
+   * <p>Triggered when an administrator attempts to create an integration with a code that already
    * exists for the tenant.
    *
-   * <p><b>HTTP Status:</b> 409 Conflict (Resource already exists with the
-   * specified identifier)
+   * <p><b>HTTP Status:</b> 409 Conflict (Resource already exists with the specified identifier)
    *
    * <p><b>Response Format:</b> RFC 9457 ProblemDetail
    *

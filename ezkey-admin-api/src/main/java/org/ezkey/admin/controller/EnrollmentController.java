@@ -10,18 +10,14 @@
 
 package org.ezkey.admin.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
+
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.QrCodeGeneratorService;
+import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.EventStatus;
@@ -57,29 +53,46 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+
 /**
  * REST controller for enrollment administration API v1.
  *
- * <p>This controller provides REST endpoints for enrollment management operations in the admin API
- * (internal). It handles CRUD operations for device enrollments, allowing administrators to create,
- * view, and delete enrollments. Uses JPA-based service and DTOs for clean API responses with proper
+ * <p>
+ * This controller provides REST endpoints for enrollment management operations
+ * in the admin API
+ * (internal). It handles CRUD operations for device enrollments, allowing
+ * administrators to create,
+ * view, and delete enrollments. Uses JPA-based service and DTOs for clean API
+ * responses with proper
  * HTTP status codes.
  *
- * <p><b>Admin API Endpoints (Internal):</b>
+ * <p>
+ * <b>Admin API Endpoints (Internal):</b>
  *
  * <ul>
- *   <li><b>GET /api/v1/enrollments</b> - List all enrollments
- *   <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID
- *   <li><b>POST /api/v1/enrollments</b> - Create new enrollment
- *   <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment
+ * <li><b>GET /api/v1/enrollments</b> - List all enrollments
+ * <li><b>GET /api/v1/enrollments/{id}</b> - Get enrollment by ID
+ * <li><b>POST /api/v1/enrollments</b> - Create new enrollment
+ * <li><b>DELETE /api/v1/enrollments/{id}</b> - Delete enrollment
  * </ul>
  *
- * <p><b>Usage Context:</b> This is part of the admin-api (port 9080) for internal administration
- * purposes. For mobile enrollment binding and verification, see auth-api endpoints.
+ * <p>
+ * <b>Usage Context:</b> This is part of the admin-api (port 9080) for internal
+ * administration
+ * purposes. For mobile enrollment binding and verification, see auth-api
+ * endpoints.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -97,30 +110,35 @@ public class EnrollmentController {
   private final EnrollmentAdminMapper enrollmentMapper;
   private final AuditLogService auditLogService;
   private final QrCodeGeneratorService qrCodeGeneratorService;
+  private final QrCodePayloadService qrCodePayloadService;
   private final AccessControlService accessControlService;
   private final EnrollmentRepository enrollmentRepository;
 
   /**
    * Constructs the enrollment controller with required dependencies.
    *
-   * @param enrollmentService the JPA-based enrollment service
-   * @param enrollmentMapper the MapStruct mapper for entity-DTO conversions
-   * @param auditLogService the audit log service for security monitoring
+   * @param enrollmentService      the JPA-based enrollment service
+   * @param enrollmentMapper       the MapStruct mapper for entity-DTO conversions
+   * @param auditLogService        the audit log service for security monitoring
    * @param qrCodeGeneratorService the QR code generator service
-   * @param accessControlService the access control service for tenant scoping validation
-   * @param enrollmentRepository the enrollment repository for audit queries
+   * @param qrCodePayloadService   the QR code payload composition service
+   * @param accessControlService   the access control service for tenant scoping
+   *                               validation
+   * @param enrollmentRepository   the enrollment repository for audit queries
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAdminMapper enrollmentMapper,
       AuditLogService auditLogService,
       QrCodeGeneratorService qrCodeGeneratorService,
+      QrCodePayloadService qrCodePayloadService,
       AccessControlService accessControlService,
       EnrollmentRepository enrollmentRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.qrCodeGeneratorService = qrCodeGeneratorService;
+    this.qrCodePayloadService = qrCodePayloadService;
     this.accessControlService = accessControlService;
     this.enrollmentRepository = enrollmentRepository;
   }
@@ -128,85 +146,82 @@ public class EnrollmentController {
   /**
    * Searches enrollments with optional filters and pagination.
    *
-   * <p>Retrieves enrollments matching the specified criteria with pagination support. All filter
-   * parameters are optional - if none are provided, returns all enrollments (paginated). Results
+   * <p>
+   * Retrieves enrollments matching the specified criteria with pagination
+   * support. All filter
+   * parameters are optional - if none are provided, returns all enrollments
+   * (paginated). Results
    * are ordered by creation date descending (newest first) by default.
    *
-   * <p><b>Use Case:</b> Security operators monitoring enrollments, forensic analysis, incident
+   * <p>
+   * <b>Use Case:</b> Security operators monitoring enrollments, forensic
+   * analysis, incident
    * investigation, and compliance reporting.
    *
-   * <p><b>Pagination and Sorting:</b>
+   * <p>
+   * <b>Pagination and Sorting:</b>
    *
    * <ul>
-   *   <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
-   *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=enrollmentId,asc
+   * <li>Use <code>?page=0&size=20</code> for pagination (zero-based page numbers)
+   * <li>Use <code>?sort=field,direction</code> for sorting (e.g.,
+   * <code>?sort=enrollmentId,asc
    *       </code> or <code>?sort=createdAt,desc</code>)
-   *   <li>Default: page=0, size=20, sort=createdAt,DESC
-   *   <li>Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status
+   * <li>Default: page=0, size=20, sort=createdAt,DESC
+   * <li>Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId,
+   * status
    * </ul>
    *
-   * @param status optional filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)
-   * @param integrationId optional filter by integration ID
-   * @param enrollmentName optional filter by enrollment name (partial match, case-insensitive)
-   * @param active optional filter by active flag
-   * @param createdAfter optional filter for enrollments created after this timestamp
-   * @param createdBefore optional filter for enrollments created before this timestamp
-   * @param pageable pagination and sorting parameters (default: page=0, size=20,
-   *     sort=createdAt,DESC)
-   * @return ResponseEntity containing page of enrollment response DTOs with HTTP 200 status
+   * @param status         optional filter by enrollment status (CREATED, BOUND,
+   *                       VERIFIED, INVALID)
+   * @param integrationId  optional filter by integration ID
+   * @param enrollmentName optional filter by enrollment name (partial match,
+   *                       case-insensitive)
+   * @param active         optional filter by active flag
+   * @param createdAfter   optional filter for enrollments created after this
+   *                       timestamp
+   * @param createdBefore  optional filter for enrollments created before this
+   *                       timestamp
+   * @param pageable       pagination and sorting parameters (default: page=0,
+   *                       size=20,
+   *                       sort=createdAt,DESC)
+   * @return ResponseEntity containing page of enrollment response DTOs with HTTP
+   *         200 status
    */
-  @Operation(
-      summary = "Search enrollments",
-      description =
-          "Retrieves enrollments with optional filters and pagination for security monitoring, "
-              + "forensic analysis, and compliance reporting. Supports dynamic sorting via "
-              + "?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by "
-              + "creation date descending (newest first).")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Search enrollments", description = "Retrieves enrollments with optional filters and pagination for security monitoring, "
+      + "forensic analysis, and compliance reporting. Supports dynamic sorting via "
+      + "?sort=field,direction (e.g., ?sort=enrollmentId,asc). Default sort is by "
+      + "creation date descending (newest first).")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+      @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<Page<EnrollmentResponseDto>> search(
-      @Parameter(description = "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)")
-          @RequestParam(required = false)
-          EnrollmentStatus status,
-      @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
-          Integer integrationId,
-      @Parameter(description = "Filter by enrollment name (partial match, case-insensitive)")
-          @RequestParam(required = false)
-          String enrollmentName,
-      @Parameter(description = "Filter by active flag") @RequestParam(required = false)
-          Boolean active,
-      @Parameter(description = "Filter enrollments created after this timestamp (ISO-8601)")
-          @RequestParam(required = false)
-          OffsetDateTime createdAfter,
-      @Parameter(description = "Filter enrollments created before this timestamp (ISO-8601)")
-          @RequestParam(required = false)
-          OffsetDateTime createdBefore,
-      @ParameterObject
-          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
-          Pageable pageable) {
+      @Parameter(description = "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)") @RequestParam(required = false) EnrollmentStatus status,
+      @Parameter(description = "Filter by integration ID") @RequestParam(required = false) Integer integrationId,
+      @Parameter(description = "Filter by enrollment name (partial match, case-insensitive)") @RequestParam(required = false) String enrollmentName,
+      @Parameter(description = "Filter by active flag") @RequestParam(required = false) Boolean active,
+      @Parameter(description = "Filter enrollments created after this timestamp (ISO-8601)") @RequestParam(required = false) OffsetDateTime createdAfter,
+      @Parameter(description = "Filter enrollments created before this timestamp (ISO-8601)") @RequestParam(required = false) OffsetDateTime createdBefore,
+      @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
     // Extract tenant ID from authentication for tenant scoping
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Integer tenantId = extractTenantId(auth);
 
-    Page<EnrollmentResponseDto> enrollments =
-        enrollmentService
-            .findByFilters(
-                status,
-                integrationId,
-                enrollmentName,
-                active,
-                createdAfter,
-                createdBefore,
-                tenantId,
-                pageable)
-            .map(enrollmentMapper::toResponse);
+    Page<EnrollmentResponseDto> enrollments = enrollmentService
+        .findByFilters(
+            status,
+            integrationId,
+            enrollmentName,
+            active,
+            createdAfter,
+            createdBefore,
+            tenantId,
+            pageable)
+        .map(enrollmentMapper::toResponse);
 
     return ResponseEntity.ok(enrollments);
   }
@@ -214,26 +229,25 @@ public class EnrollmentController {
   /**
    * Retrieves an enrollment by its ID for administrative purposes.
    *
-   * <p>Returns the enrollment data as a response DTO for administrative review. Returns 404 if the
+   * <p>
+   * Returns the enrollment data as a response DTO for administrative review.
+   * Returns 404 if the
    * enrollment is not found.
    *
    * @param id the enrollment ID
-   * @return ResponseEntity containing enrollment response with HTTP 200 status, or 404 if not found
+   * @return ResponseEntity containing enrollment response with HTTP 200 status,
+   *         or 404 if not found
    */
-  @Operation(
-      summary = "Retrieve enrollment by ID",
-      description = "Returns details of a specific enrollment")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "200", description = "Enrollment found"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Retrieve enrollment by ID", description = "Returns details of a specific enrollment")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Enrollment found"),
+      @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}")
   public ResponseEntity<EnrollmentResponseDto> getById(
-      @Parameter(description = "Unique enrollment ID", example = "1") @PathVariable("id")
-          Integer id) {
+      @Parameter(description = "Unique enrollment ID", example = "1") @PathVariable("id") Integer id) {
     try {
       // Validate tenant scoping: admin must have access to this enrollment
       Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -252,29 +266,27 @@ public class EnrollmentController {
   /**
    * Creates a new enrollment for administrative purposes.
    *
-   * <p>Creates a new enrollment with the provided data and returns the created enrollment. This
-   * generates an enrollment that can later be bound to a mobile device. Returns 201 Created with
+   * <p>
+   * Creates a new enrollment with the provided data and returns the created
+   * enrollment. This
+   * generates an enrollment that can later be bound to a mobile device. Returns
+   * 201 Created with
    * the created enrollment data including enrollment code and challenge.
    *
    * @param request the enrollment creation request DTO
-   * @return ResponseEntity containing created enrollment response with HTTP 201 status
+   * @return ResponseEntity containing created enrollment response with HTTP 201
+   *         status
    */
-  @Operation(
-      summary = "Create new enrollment",
-      description = "Creates a new enrollment that can later be bound to a mobile device")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "201", description = "Enrollment created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid data"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Create new enrollment", description = "Creates a new enrollment that can later be bound to a mobile device")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "201", description = "Enrollment created successfully"),
+      @ApiResponse(responseCode = "400", description = "Invalid data"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
   public ResponseEntity<EnrollmentCreateResponseDto> create(
-      @Parameter(description = "Enrollment creation data", required = true)
-          @RequestBody
-          @jakarta.validation.Valid
-          EnrollmentCreateRequestDto request,
+      @Parameter(description = "Enrollment creation data", required = true) @RequestBody @jakarta.validation.Valid EnrollmentCreateRequestDto request,
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -284,9 +296,9 @@ public class EnrollmentController {
     if (!accessControlService.canAccessIntegration(auth, request.integrationId())) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+              context,
+              EventType.ENROLLMENT_CREATED,
+              AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               .errorMessage(
                   "Access denied: admin does not have access to integration "
@@ -296,24 +308,22 @@ public class EnrollmentController {
     }
 
     try {
-      EnrollmentCreateResponse response =
-          enrollmentService.create(enrollmentMapper.toCreateRequest(request));
+      EnrollmentCreateResponse response = enrollmentService.create(enrollmentMapper.toCreateRequest(request));
 
       // Check if inactive VERIFIED enrollment exists for audit context
-      List<Enrollment> inactiveVerified =
-          enrollmentRepository
-              .findByIntegrationIdAndEnrollmentNameAndStatus(
-                  request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
-              .stream()
-              .filter(e -> Boolean.FALSE.equals(e.getActive()))
-              .toList();
+      List<Enrollment> inactiveVerified = enrollmentRepository
+          .findByIntegrationIdAndEnrollmentNameAndStatus(
+              request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
+          .stream()
+          .filter(e -> Boolean.FALSE.equals(e.getActive()))
+          .toList();
 
       // Audit successful enrollment creation
       if (!inactiveVerified.isEmpty()) {
         // Enhance success audit log with context about replacing inactive enrollment
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
                 .eventStatus(EventStatus.SUCCESS)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
@@ -328,7 +338,7 @@ public class EnrollmentController {
         // Standard success logging
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
                 .eventStatus(EventStatus.SUCCESS)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
@@ -342,21 +352,20 @@ public class EnrollmentController {
       // Check if error is about existing VERIFIED enrollment
       if (e.getMessage() != null && e.getMessage().contains("active verified enrollment")) {
         // Query to find existing enrollment for audit purposes
-        Enrollment existing =
-            enrollmentRepository
-                .findByIntegrationIdAndEnrollmentNameAndStatus(
-                    request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
-                .stream()
-                .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
-                .findFirst()
-                .orElse(null);
+        Enrollment existing = enrollmentRepository
+            .findByIntegrationIdAndEnrollmentNameAndStatus(
+                request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
+            .stream()
+            .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
+            .findFirst()
+            .orElse(null);
 
         // Audit validation failure with existing enrollment context
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                context,
+                EventType.ENROLLMENT_CREATED,
+                AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
                 .eventStatus(EventStatus.FAILURE)
                 .integrationId(request.integrationId())
                 .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
@@ -369,13 +378,14 @@ public class EnrollmentController {
                         + request.name())
                 .build());
       } else {
-        // Standard validation failure logging - do not include integrationId as it may not exist
+        // Standard validation failure logging - do not include integrationId as it may
+        // not exist
         // (would violate FK constraint if integration doesn't exist)
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                context,
+                EventType.ENROLLMENT_CREATED,
+                AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
                 .eventStatus(EventStatus.FAILURE)
                 // integrationId omitted - may not exist, would violate FK constraint
                 .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
@@ -393,9 +403,9 @@ public class EnrollmentController {
       // This should return 400 Bad Request, not 500 Internal Server Error
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+              context,
+              EventType.ENROLLMENT_CREATED,
+              AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               // integrationId omitted - doesn't exist, would violate FK constraint
               .errorMessage(
@@ -409,9 +419,9 @@ public class EnrollmentController {
       // (would violate FK constraint if integration doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_ERROR)
+              context,
+              EventType.ENROLLMENT_CREATED,
+              AdminAuditConstants.ENROLLMENT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
               // integrationId omitted - may not exist, would violate FK constraint
               .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
@@ -424,24 +434,26 @@ public class EnrollmentController {
   /**
    * Deletes an enrollment by its ID for administrative purposes.
    *
-   * <p>Removes an enrollment from the system, effectively unlinking the device from the
-   * integration. Returns 204 No Content on successful deletion, or 404 if not found.
+   * <p>
+   * Removes an enrollment from the system, effectively unlinking the device from
+   * the
+   * integration. Returns 204 No Content on successful deletion, or 404 if not
+   * found.
    *
    * @param id the enrollment ID to delete
-   * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
+   * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not
+   *         found
    */
   @Operation(summary = "Delete enrollment", description = "Removes an enrollment from the system")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "204", description = "Enrollment deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "204", description = "Enrollment deleted successfully"),
+      @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
-      @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")
-          Integer id,
+      @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id") Integer id,
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -461,7 +473,7 @@ public class EnrollmentController {
       // The enrollment must still exist when we insert the audit log
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETED)
+              context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETED)
               .eventStatus(EventStatus.SUCCESS)
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
@@ -478,9 +490,9 @@ public class EnrollmentController {
       // constraint)
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_DELETED,
-                  AdminAuditConstants.ENROLLMENT_DELETION_FAILED)
+              context,
+              EventType.ENROLLMENT_DELETED,
+              AdminAuditConstants.ENROLLMENT_DELETION_FAILED)
               .eventStatus(EventStatus.FAILURE)
               // enrollmentId omitted - enrollment doesn't exist, would violate FK constraint
               .errorMessage("Enrollment not found: " + id)
@@ -493,37 +505,41 @@ public class EnrollmentController {
   /**
    * Generates a QR code for enrollment binding.
    *
-   * <p>Returns a PNG image containing a QR code with the format: {@code
-   * enrollmentId|enrollmentProofToken}
+   * <p>
+   * Returns a PNG image containing a QR code with a JSON payload:
    *
-   * <p>This QR code can be scanned by the Ezkey mobile application to automatically populate
-   * enrollment credentials, eliminating manual entry and reducing errors.
+   * <pre>
+   * {"enrollmentId":"4","enrollmentProofToken":"abc...","authUrl":"https://..."}
+   * </pre>
    *
-   * <p><b>Example QR Content:</b> {@code 4|abc123def456...}
+   * <p>
+   * The {@code authUrl} field is included only when
+   * {@code ezkey.qr.auth-base-url} is
+   * configured. This QR code can be scanned by the Ezkey mobile application to
+   * automatically
+   * populate enrollment credentials and connect to the correct auth-api instance.
    *
-   * <p><b>Usage in Postman:</b>
+   * <p>
+   * <b>Usage in Postman:</b>
    *
    * <ol>
-   *   <li>Send GET request to {@code /api/v1/enrollments/{id}/qrcode}
-   *   <li>Response will be PNG image that can be viewed directly in Postman
-   *   <li>QR code can be scanned by mobile app or tested with online QR readers
+   * <li>Send GET request to {@code /api/v1/enrollments/{id}/qrcode}
+   * <li>Response will be PNG image that can be viewed directly in Postman
+   * <li>QR code can be scanned by mobile app or tested with online QR readers
    * </ol>
    *
    * @param id the enrollment ID
-   * @return ResponseEntity containing PNG image bytes with HTTP 200 status, or 404 if not found
+   * @return ResponseEntity containing PNG image bytes with HTTP 200 status, or
+   *         404 if not found
    */
-  @Operation(
-      summary = "Generate QR code for enrollment",
-      description =
-          "Returns a PNG QR code image containing enrollment credentials"
-              + " (enrollmentId|enrollmentProofToken)")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
-        @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
-        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
+  @Operation(summary = "Generate QR code for enrollment", description = "Returns a PNG QR code image containing enrollment credentials as JSON"
+      + " ({enrollmentId, enrollmentProofToken, authUrl})")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "QR code generated successfully"),
+      @ApiResponse(responseCode = "400", description = "Enrollment missing proof token"),
+      @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}/qrcode")
   public ResponseEntity<byte[]> getQrCode(
@@ -539,8 +555,9 @@ public class EnrollmentController {
         return ResponseEntity.badRequest().build();
       }
 
-      // Format: enrollmentId|enrollmentProofToken
-      String qrContent = enrollment.getEnrollmentId() + "|" + enrollment.getEnrollmentProofToken();
+      // Compose JSON payload with optional authUrl
+      String qrContent = qrCodePayloadService.composePayload(
+          enrollment.getEnrollmentId(), enrollment.getEnrollmentProofToken());
 
       // Generate QR code (300x300 pixels)
       byte[] qrCodeImage = qrCodeGeneratorService.generateQrCodeImage(qrContent, 300, 300);
@@ -561,7 +578,9 @@ public class EnrollmentController {
   /**
    * Extracts tenant ID from authentication context for tenant scoping.
    *
-   * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for
+   * <p>
+   * Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or
+   * null for
    * GlobalAdmin (who can access all tenants).
    *
    * @param auth the authentication context

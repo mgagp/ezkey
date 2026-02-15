@@ -23,10 +23,12 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
+import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -50,20 +52,27 @@ import org.springframework.security.core.context.SecurityContextHolder;
 /**
  * Unit tests for AdminProvisioningController listAdmins endpoint.
  *
- * <p>This test class validates the tenant-based filtering logic for listing administrators. It
- * ensures that GlobalAdmin sees all administrators while TenantAdmin sees only administrators from
+ * <p>
+ * This test class validates the tenant-based filtering logic for listing
+ * administrators. It
+ * ensures that GlobalAdmin sees all administrators while TenantAdmin sees only
+ * administrators from
  * their tenant.
  *
- * <p><b>Test Coverage:</b>
+ * <p>
+ * <b>Test Coverage:</b>
  *
  * <ul>
- *   <li><b>listAdmins:</b> GlobalAdmin sees all admins, TenantAdmin sees only own tenant admins,
- *       pagination works correctly, tenant isolation is enforced
+ * <li><b>listAdmins:</b> GlobalAdmin sees all admins, TenantAdmin sees only own
+ * tenant admins,
+ * pagination works correctly, tenant isolation is enforced
  * </ul>
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p>
+ * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p><b>License:</b> MIT
+ * <p>
+ * <b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -72,9 +81,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @DisplayName("AdminProvisioningController listAdmins Tests")
 class AdminProvisioningControllerTest {
 
-  @Mock private AdminProvisioningService provisioningService;
+  @Mock
+  private AdminProvisioningService provisioningService;
 
-  @Mock private QrCodeGeneratorService qrCodeGeneratorService;
+  @Mock
+  private QrCodeGeneratorService qrCodeGeneratorService;
+
+  @Mock
+  private QrCodePayloadService qrCodePayloadService;
 
   private AdminProvisioningController controller;
 
@@ -90,7 +104,8 @@ class AdminProvisioningControllerTest {
 
   @BeforeEach
   void setUp() {
-    controller = new AdminProvisioningController(provisioningService, qrCodeGeneratorService);
+    controller = new AdminProvisioningController(
+        provisioningService, qrCodeGeneratorService, qrCodePayloadService);
 
     // Setup test tenant
     testTenant = new Tenant();
@@ -154,8 +169,7 @@ class AdminProvisioningControllerTest {
     void globalAdminSeesAllAdmins() {
       // Arrange
       Pageable pageable = PageRequest.of(0, 20);
-      List<EzkeyAdmin> allAdmins =
-          List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
+      List<EzkeyAdmin> allAdmins = List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(allAdmins, pageable, allAdmins.size());
 
       when(provisioningService.listAdmins(isNull(), any(Pageable.class))).thenReturn(expectedPage);
@@ -259,9 +273,8 @@ class AdminProvisioningControllerTest {
       assertNotNull(responseBody);
 
       // Verify otherTenantAdmin (tenant 2) is not in the results
-      boolean containsOtherTenantAdmin =
-          responseBody.getContent().stream()
-              .anyMatch(admin -> admin.adminId().equals(otherTenantAdmin.getAdminId()));
+      boolean containsOtherTenantAdmin = responseBody.getContent().stream()
+          .anyMatch(admin -> admin.adminId().equals(otherTenantAdmin.getAdminId()));
       assertEquals(false, containsOtherTenantAdmin);
 
       verify(provisioningService).listAdmins(eq(1), eq(pageable));
@@ -316,20 +329,21 @@ class AdminProvisioningControllerTest {
   /**
    * Sets up authentication context for GlobalAdmin.
    *
-   * <p>Creates an AdminPrincipal with GLOBAL_ADMIN type and null tenantId, then sets it in the
+   * <p>
+   * Creates an AdminPrincipal with GLOBAL_ADMIN type and null tenantId, then sets
+   * it in the
    * Spring Security context.
    */
   private void setupGlobalAdminAuthentication() {
-    AdminPrincipal principal =
-        new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null); // tenantId null for GlobalAdmin
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null); // tenantId null for
+                                                                                          // GlobalAdmin
 
-    UsernamePasswordAuthenticationToken authentication =
-        new UsernamePasswordAuthenticationToken(
-            principal,
-            null,
-            Arrays.asList(
-                new SimpleGrantedAuthority("ROLE_ADMIN"),
-                new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
+    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+        principal,
+        null,
+        Arrays.asList(
+            new SimpleGrantedAuthority("ROLE_ADMIN"),
+            new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN")));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }
@@ -337,20 +351,20 @@ class AdminProvisioningControllerTest {
   /**
    * Sets up authentication context for TenantAdmin.
    *
-   * <p>Creates an AdminPrincipal with TENANT_ADMIN type and tenantId=1, then sets it in the Spring
+   * <p>
+   * Creates an AdminPrincipal with TENANT_ADMIN type and tenantId=1, then sets it
+   * in the Spring
    * Security context.
    */
   private void setupTenantAdminAuthentication() {
-    AdminPrincipal principal =
-        new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null); // tenantId=1 for TenantAdmin
+    AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null); // tenantId=1 for TenantAdmin
 
-    UsernamePasswordAuthenticationToken authentication =
-        new UsernamePasswordAuthenticationToken(
-            principal,
-            null,
-            Arrays.asList(
-                new SimpleGrantedAuthority("ROLE_ADMIN"),
-                new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")));
+    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+        principal,
+        null,
+        Arrays.asList(
+            new SimpleGrantedAuthority("ROLE_ADMIN"),
+            new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
   }

@@ -11,26 +11,18 @@
 package org.ezkey.integration.exception;
 
 /**
- * Exception thrown when attempting to create an integration with a code that
- * already exists for the
+ * Exception thrown when attempting to create an integration with a code that already exists for the
  * tenant.
  *
- * <p>
- * This exception is raised during integration creation if the provided code is
- * already used by
- * another integration in the same tenant. Codes must be unique per tenant to
- * prevent duplicates.
+ * <p>This exception is raised during integration creation if the provided code is already used by
+ * another integration in the same tenant. Codes must be unique per tenant to prevent duplicates.
  *
- * <p>
- * <b>Handling:</b> This exception should be caught and mapped to an HTTP 409
- * Conflict status
+ * <p><b>Handling:</b> This exception should be caught and mapped to an HTTP 409 Conflict status
  * code by the global exception handler.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -41,10 +33,9 @@ public class IntegrationCodeAlreadyExistsException extends RuntimeException {
   private final String tenantName;
 
   /**
-   * Constructs a new IntegrationCodeAlreadyExistsException with the specified
-   * code and tenant name.
+   * Constructs a new IntegrationCodeAlreadyExistsException with the specified code and tenant name.
    *
-   * @param code       the integration code that already exists
+   * @param code the integration code that already exists
    * @param tenantName the name of the tenant where the code already exists
    */
   public IntegrationCodeAlreadyExistsException(String code, String tenantName) {

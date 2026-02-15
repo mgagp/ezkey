@@ -67,6 +67,7 @@ services:
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
+      #EZKEY_QR_AUTH_BASE_URL: https://goateed-katalina-monsoonal.ngrok-free.dev
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap

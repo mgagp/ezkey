@@ -107,6 +107,8 @@ public class AdminBootstrapService {
 
   private final QrCodeAsciiRenderer qrCodeAsciiRenderer;
 
+  private final QrCodePayloadService qrCodePayloadService;
+
   private final LockingTaskExecutor lockingTaskExecutor;
 
   private final BootstrapCredentialsFileExporter bootstrapCredentialsFileExporter;
@@ -122,6 +124,7 @@ public class AdminBootstrapService {
       InitialGlobalAdminProperties initialGlobalAdminProperties,
       AdminRecoveryService recoveryService,
       QrCodeAsciiRenderer qrCodeAsciiRenderer,
+      QrCodePayloadService qrCodePayloadService,
       LockingTaskExecutor lockingTaskExecutor,
       BootstrapCredentialsFileExporter bootstrapCredentialsFileExporter) {
     this.integrationRepository = integrationRepository;
@@ -134,6 +137,7 @@ public class AdminBootstrapService {
     this.initialGlobalAdminProperties = initialGlobalAdminProperties;
     this.recoveryService = recoveryService;
     this.qrCodeAsciiRenderer = qrCodeAsciiRenderer;
+    this.qrCodePayloadService = qrCodePayloadService;
     this.lockingTaskExecutor = lockingTaskExecutor;
     this.bootstrapCredentialsFileExporter = bootstrapCredentialsFileExporter;
   }
@@ -436,7 +440,7 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
-    String enrollmentPayload = enrollment.getEnrollmentId() + "|" + enrollmentProofToken;
+    String enrollmentPayload = qrCodePayloadService.composePayload(enrollment.getEnrollmentId(), enrollmentProofToken);
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {

@@ -60,7 +60,7 @@ Ezkey uses a **one-time proof token** system to ensure the integrity and securit
 // ❌ INCORRECT - Never sign enrollmentProofToken for RESPOND
 String signature = signWithDeviceKey(enrollmentProofToken);
 
-// ✅ CORRECT - Always sign authAttemptProofToken for RESPOND  
+// ✅ CORRECT - Always sign authAttemptProofToken for RESPOND
 String signature = signWithDeviceKey(authAttemptProofToken);
 ```
 
@@ -675,11 +675,15 @@ Authorization: Bearer ezkey_admin_token...
 - Content-Disposition: `inline; filename=admin-2-onboarding-qrcode.png`
 
 **QR Code Format:**
-The QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`
+The QR code contains enrollment credentials as a JSON payload:
 
-Example: `123|EZK-ABC123-DEF456-GHI789-JKL012-MNO345-PQR678-STU901-VWX234`
+```json
+{"enrollmentId":"123","enrollmentProofToken":"abc...","authUrl":"https://ezkey.acme.com:8080"}
+```
 
-This allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.
+The `authUrl` field is included only when `ezkey.qr.auth-base-url` is configured. When absent, the mobile app falls back to its default base URL.
+
+This allows the mobile app to automatically populate enrollment credentials and connect to the correct auth-api instance when scanning the QR code, eliminating manual entry and reducing errors.
 
 **Status Codes:**
 - 200: QR code generated successfully

@@ -14,11 +14,12 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.DisplayName;
@@ -28,25 +29,20 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-
 /**
  * Security tests for integration CRUD operations.
  *
- * <p>
- * Validates security aspects of integration management including:
+ * <p>Validates security aspects of integration management including:
  *
  * <ul>
- * <li>Admin can perform all CRUD operations (200, 201, 204)
- * <li>Unauthorized access returns 401
- * <li>API keys cannot access integration endpoints (403)
- * <li>Non-existent integrations return 404
- * <li>Invalid data returns 400
+ *   <li>Admin can perform all CRUD operations (200, 201, 204)
+ *   <li>Unauthorized access returns 401
+ *   <li>API keys cannot access integration endpoints (403)
+ *   <li>Non-existent integrations return 404
+ *   <li>Invalid data returns 400
  * </ul>
  *
- * <p>
- * Note: These tests require admin token to create test data.
+ * <p>Note: These tests require admin token to create test data.
  *
  * @since 2025
  */
@@ -60,7 +56,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
    * Creates HTTP Basic Auth header for API key authentication.
    *
    * @param integrationKey Integration key (username)
-   * @param secretKey      Secret key (password)
+   * @param secretKey Secret key (password)
    * @return Authorization header value
    */
   private String createApiKeyAuthHeader(String integrationKey, String secretKey) {
@@ -73,7 +69,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
    * Helper method to create an API key for an integration.
    *
    * @param integrationId Integration ID
-   * @param adminToken    Admin bearer token
+   * @param adminToken Admin bearer token
    * @return API key credentials as "integrationKey:secretKey"
    */
   private String createApiKeyForIntegration(Integer integrationId, String adminToken) {
@@ -81,16 +77,17 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
     request.put("integrationId", integrationId);
     request.put("description", "Test API Key");
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + adminToken)
-        .body(request)
-        .when()
-        .post("/api-keys")
-        .then()
-        .statusCode(201)
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(request)
+            .when()
+            .post("/api-keys")
+            .then()
+            .statusCode(201)
+            .extract()
+            .response();
 
     String integrationKey = response.jsonPath().getString("integrationKey");
     String secretKey = response.jsonPath().getString("secretKey");
@@ -108,14 +105,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       String adminToken = authTokenManager.getAdminToken();
       configureForAdminApi(dockerStackConfig);
 
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(200);
       // Response is now paginated - content is in "content" field
@@ -139,14 +137,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       Integer integrationId = testDataFactory.createIntegration();
 
       // Get integration by ID
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(200);
       assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationId);
@@ -176,31 +175,33 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       Map<String, Object> request = new HashMap<>();
       request.put("code", code);
       request.put("logo", "https://example.com/logo.png");
-      request.put("i18n", new Object[] { i18n });
+      request.put("i18n", new Object[] {i18n});
 
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .body(request)
-          .when()
-          .post("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .body(request)
+              .when()
+              .post("/integrations")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(201);
       Integer integrationId = response.jsonPath().getInt("id");
       assertThat(integrationId).isNotNull();
 
       // Verify integration was created by retrieving it
-      Response getResponse = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response getResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(getResponse.getStatusCode()).isEqualTo(200);
       assertThat(getResponse.jsonPath().getString("i18n[0].name")).isEqualTo("Test Integration");
@@ -222,26 +223,28 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       Integer integrationId = testDataFactory.createIntegration();
 
       // Delete integration
-      Response deleteResponse = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .delete("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response deleteResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .delete("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(deleteResponse.getStatusCode()).isEqualTo(204);
 
       // Verify integration was deleted by trying to retrieve it
-      Response getResponse = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response getResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(getResponse.getStatusCode()).isEqualTo(404);
     } catch (IllegalStateException e) {
@@ -258,13 +261,14 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
   public void testUnauthorizedCannotListIntegrations() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .when()
-        .get("/integrations")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .when()
+            .get("/integrations")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(401);
   }
@@ -275,14 +279,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
   public void testInvalidTokenCannotListIntegrations() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer invalid-token-12345")
-        .when()
-        .get("/integrations")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer invalid-token-12345")
+            .when()
+            .get("/integrations")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(401);
   }
@@ -296,14 +301,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
     Map<String, Object> request = new HashMap<>();
     request.put("logo", "https://example.com/logo.png");
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .body(request)
-        .when()
-        .post("/integrations")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .body(request)
+            .when()
+            .post("/integrations")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(401);
   }
@@ -314,13 +320,14 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
   public void testUnauthorizedCannotDeleteIntegration() {
     configureForAdminApi(dockerStackConfig);
 
-    Response response = given()
-        .contentType(ContentType.JSON)
-        .when()
-        .delete("/integrations/1")
-        .then()
-        .extract()
-        .response();
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .when()
+            .delete("/integrations/1")
+            .then()
+            .extract()
+            .response();
 
     assertThat(response.getStatusCode()).isEqualTo(401);
   }
@@ -340,16 +347,17 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       String apiKey = createApiKeyForIntegration(integrationId, adminToken);
 
       // Try to access integrations endpoint with API key
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header(
-              "Authorization",
-              createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
-          .when()
-          .get("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(403);
     } catch (IllegalStateException e) {
@@ -371,16 +379,17 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       String apiKey = createApiKeyForIntegration(integrationId, adminToken);
 
       // Try to get integration with API key
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header(
-              "Authorization",
-              createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
-          .when()
-          .get("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(403);
     } catch (IllegalStateException e) {
@@ -409,17 +418,18 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       request.put("logo", "https://example.com/logo.png");
 
       // Try to create integration with API key
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header(
-              "Authorization",
-              createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
-          .body(request)
-          .when()
-          .post("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .body(request)
+              .when()
+              .post("/integrations")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(403);
     } catch (IllegalStateException e) {
@@ -441,16 +451,17 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       String apiKey = createApiKeyForIntegration(integrationId, adminToken);
 
       // Try to delete integration with API key
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header(
-              "Authorization",
-              createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
-          .when()
-          .delete("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header(
+                  "Authorization",
+                  createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .when()
+              .delete("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(403);
     } catch (IllegalStateException e) {
@@ -470,14 +481,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       configureForAdminApi(dockerStackConfig);
 
       // Use a non-existent ID (99999)
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations/99999")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/99999")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(404);
     } catch (IllegalStateException e) {
@@ -495,14 +507,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       configureForAdminApi(dockerStackConfig);
 
       // Use a non-existent ID (99999)
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .delete("/integrations/99999")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .delete("/integrations/99999")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(404);
     } catch (IllegalStateException e) {
@@ -529,15 +542,16 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       request.put("logo", "https://example.com/logo.png");
       // i18n is optional - System Integration is created without i18n
 
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .body(request)
-          .when()
-          .post("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .body(request)
+              .when()
+              .post("/integrations")
+              .then()
+              .extract()
+              .response();
 
       // i18n is optional, so creation should succeed
       assertThat(response.getStatusCode()).isEqualTo(201);
@@ -545,14 +559,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       assertThat(integrationId).isNotNull();
 
       // Verify integration was created without i18n
-      Response getResponse = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .when()
-          .get("/integrations/" + integrationId)
-          .then()
-          .extract()
-          .response();
+      Response getResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
 
       assertThat(getResponse.getStatusCode()).isEqualTo(200);
       // i18n list should be empty or null
@@ -578,17 +593,18 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
       Map<String, Object> request = new HashMap<>();
       request.put("logo", "https://example.com/logo.png");
-      request.put("i18n", new Object[] { i18n });
+      request.put("i18n", new Object[] {i18n});
 
-      Response response = given()
-          .contentType(ContentType.JSON)
-          .header("Authorization", "Bearer " + adminToken)
-          .body(request)
-          .when()
-          .post("/integrations")
-          .then()
-          .extract()
-          .response();
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .body(request)
+              .when()
+              .post("/integrations")
+              .then()
+              .extract()
+              .response();
 
       assertThat(response.getStatusCode()).isEqualTo(400);
     } catch (IllegalStateException e) {

@@ -10,31 +10,45 @@
 
 package org.ezkey.admin.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import org.springframework.stereotype.Service;
 
 /**
  * Service for generating QR code images for enrollment binding.
  *
- * <p>This service uses the ZXing (Zebra Crossing) library to generate QR codes as PNG images. QR
- * codes contain enrollment credentials in a simple format that can be scanned by the mobile
+ * <p>
+ * This service uses the ZXing (Zebra Crossing) library to generate QR codes as
+ * PNG images. QR
+ * codes contain enrollment credentials in JSON format that can be scanned by
+ * the mobile
  * application.
  *
- * <p><b>QR Code Format:</b> {@code enrollmentId|enrollmentProofToken}
+ * <p>
+ * <b>QR Code JSON Format:</b>
  *
- * <p><b>Example:</b> {@code 4|abc123def456...}
+ * <pre>
+ * {"enrollmentId":"4","enrollmentProofToken":"abc...","authUrl":"https://..."}
+ * </pre>
+ *
+ * <p>
+ * The {@code authUrl} field is included only when
+ * {@code ezkey.qr.auth-base-url} is configured.
+ * Payload composition is handled by {@link QrCodePayloadService}.
  *
  * @author Ezkey contributors
  * @since 2025
+ * @see QrCodePayloadService
  */
 @Service
 public class QrCodeGeneratorService {
@@ -42,14 +56,15 @@ public class QrCodeGeneratorService {
   /**
    * Generates a QR code image as PNG byte array.
    *
-   * <p>The QR code is generated with UTF-8 encoding and minimal margin.
+   * <p>
+   * The QR code is generated with UTF-8 encoding and minimal margin.
    *
    * @param content the content to encode in QR code (e.g., "4|abc123...")
-   * @param width the width of the QR code in pixels (recommended: 300)
-   * @param height the height of the QR code in pixels (recommended: 300)
+   * @param width   the width of the QR code in pixels (recommended: 300)
+   * @param height  the height of the QR code in pixels (recommended: 300)
    * @return byte array containing PNG image data
    * @throws WriterException if QR code generation fails (e.g., content too large)
-   * @throws IOException if PNG image conversion fails
+   * @throws IOException     if PNG image conversion fails
    */
   public byte[] generateQrCodeImage(String content, int width, int height)
       throws WriterException, IOException {
