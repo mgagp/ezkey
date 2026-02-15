@@ -12,6 +12,8 @@ export type EnrollmentSummary = {
   status: EnrollmentStatus;
   logoUri?: string;
   favorited?: boolean;
+  /** Base URL of the Ezkey Auth API for this enrollment (e.g. "https://ezkey.acme.com"). */
+  authUrl?: string;
 };
 
 export type BindEnrollmentRequest = {

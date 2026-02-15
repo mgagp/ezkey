@@ -18,6 +18,7 @@ import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {cryptoService} from '../../services/crypto';
+import {env} from '../../config/env';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -132,6 +133,14 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
             timeStyle: 'short',
           })}
         </Text>
+
+        <Text style={styles.label}>Auth API server</Text>
+        <Text style={[styles.value, styles.serverUrl]}>
+          {enrollment.authUrl ?? env.apiBaseUrl}
+        </Text>
+        {!enrollment.authUrl ? (
+          <Text style={styles.fallbackHint}>(default fallback)</Text>
+        ) : null}
       </View>
 
       <Button title="Check pending" onPress={navigateToPending} />
@@ -168,6 +177,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#f4f7ff',
     fontWeight: '500',
+  },
+  serverUrl: {
+    fontSize: 13,
+    color: '#61d095',
+  },
+  fallbackHint: {
+    fontSize: 11,
+    color: '#5f6780',
+    fontStyle: 'italic',
+    marginTop: -8,
   },
   missingContainer: {
     flex: 1,

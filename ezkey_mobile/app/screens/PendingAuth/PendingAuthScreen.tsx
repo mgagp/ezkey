@@ -97,7 +97,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         enrollmentProofToken: enrollment.enrollmentProofToken,
         deviceProofToken,
         deviceProofTokenSigned,
-      });
+      }, enrollment.authUrl);
 
       if (!response) {
         setAttempt(undefined);
@@ -168,7 +168,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           authAttemptAccepted: accepted,
           authAttemptProofTokenSignedByDevice: proofTokenSigned,
           authAttemptChallengeResponse: challengeInput.trim() || undefined,
-        });
+        }, enrollment.authUrl);
         setState(accepted ? 'accepted' : 'rejected');
         Alert.alert(
           accepted ? 'Authentication approved' : 'Authentication rejected',

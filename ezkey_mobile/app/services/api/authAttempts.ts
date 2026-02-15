@@ -34,11 +34,13 @@ export const authAttemptsApi = {
    * enumeration and replay attacks.
    *
    * @param payload Pending auth request encapsulating proof tokens and signatures.
+   * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.
    * @return Pending authentication attempt payload including integration signatures.
    * @since 2025
    */
-  pending: async (payload: PendingAuthRequest) => {
-    const response = await httpClient.post<PendingAuthResponse>(`${basePath}/pending`, payload);
+  pending: async (payload: PendingAuthRequest, authUrl?: string) => {
+    const config = authUrl ? {baseURL: authUrl} : undefined;
+    const response = await httpClient.post<PendingAuthResponse>(`${basePath}/pending`, payload, config);
     return response.data;
   },
   /**
@@ -48,11 +50,13 @@ export const authAttemptsApi = {
    * `docs/CRYPTO.md`.
    *
    * @param payload Respond request including signed proof token and optional challenge.
+   * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.
    * @return Response acknowledgment indicating acceptance state.
    * @since 2025
    */
-  respond: async (payload: RespondAuthRequest) => {
-    const response = await httpClient.post<RespondAuthResponse>(`${basePath}/respond`, payload);
+  respond: async (payload: RespondAuthRequest, authUrl?: string) => {
+    const config = authUrl ? {baseURL: authUrl} : undefined;
+    const response = await httpClient.post<RespondAuthResponse>(`${basePath}/respond`, payload, config);
     return response.data;
   },
 };

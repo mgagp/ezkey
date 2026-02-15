@@ -33,11 +33,13 @@ export const enrollmentsApi = {
    * Refer to `docs/ENDPOINT.md` for payload semantics and security guarantees.
    *
    * @param payload Bind request containing enrollment proof token.
+   * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.
    * @return Integration metadata necessary to complete enrollment verification.
    * @since 2025
    */
-  bind: async (payload: BindEnrollmentRequest) => {
-    const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, payload);
+  bind: async (payload: BindEnrollmentRequest, authUrl?: string) => {
+    const config = authUrl ? {baseURL: authUrl} : undefined;
+    const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, payload, config);
     return response.data;
   },
   /**
@@ -46,11 +48,13 @@ export const enrollmentsApi = {
    * The payload must comply with the cryptographic rules in `docs/CRYPTO.md` (Ed25519, 32-byte keys, 64-byte signatures).
    *
    * @param payload Verify enrollment request carrying device credentials.
+   * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.
    * @return Verification response indicating whether the enrollment is active.
    * @since 2025
    */
-  verify: async (payload: VerifyEnrollmentRequest) => {
-    const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, payload);
+  verify: async (payload: VerifyEnrollmentRequest, authUrl?: string) => {
+    const config = authUrl ? {baseURL: authUrl} : undefined;
+    const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, payload, config);
     return response.data;
   },
 };
