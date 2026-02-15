@@ -97,6 +97,7 @@ class IntegrationDetailScreen(Screen):
 
     # Basic info
     content.append(f"ID: {data.get('id', 'N/A')}")
+    content.append(f"Code: {data.get('code', 'N/A')}")
     content.append(f"Tenant ID: {data.get('tenantId', 'N/A')}")
     content.append(f"Active: {'✓' if data.get('active') else '✗'}")
     content.append(f"Created: {data.get('createdAt', 'N/A')}")

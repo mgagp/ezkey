@@ -170,13 +170,15 @@ def get_integration(ctx, id):
 
 
 @integration_group.command('create')
+@click.option('--code', type=str, required=True,
+              help='Unique code for the integration (alphanumeric, hyphens, underscores). Example: web-portal, mobile-app')
 @click.option('--logo', help='Logo URL or path')
 @click.option('--name', type=str, help='Integration name (single language)')
 @click.option('--description', type=str, help='Integration description (single language)')
 @click.option('--language', type=str, default='en', help='Language code (default: en)')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def create_integration(ctx, logo, name, description, language, data):
+def create_integration(ctx, code, logo, name, description, language, data):
     """
     Create a new integration for MFA protection.
 
@@ -215,6 +217,9 @@ def create_integration(ctx, logo, name, description, language, data):
             return
     else:
         json_data = {}
+
+    # Add code (required)
+    json_data['code'] = code
 
     # Add logo if provided
     if logo:

@@ -12,10 +12,33 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, Container
-from textual.validation import Length
+from textual.validation import Length, Regex, Validator, ValidationResult
+import re
 import logging
 
 log = logging.getLogger(__name__)
+
+
+class IntegrationCodeValidator(Validator):
+  """Validator for integration code: alphanumeric, hyphens, underscores."""
+
+  def validate(self, value: str) -> ValidationResult:
+    """Validate integration code format."""
+    if not value:
+      return ValidationResult.failure("Code is required")
+
+    if len(value) < 2:
+      return ValidationResult.failure("Code must be at least 2 characters")
+
+    if len(value) > 100:
+      return ValidationResult.failure("Code must be at most 100 characters")
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", value):
+      return ValidationResult.failure(
+          "Code must contain only alphanumeric characters, hyphens, and underscores"
+      )
+
+    return ValidationResult.success()
 
 
 class CreateIntegrationModal(ModalScreen):
@@ -82,6 +105,14 @@ class CreateIntegrationModal(ModalScreen):
       yield Label("Create New Integration", id="title")
 
       with Vertical(classes="form_row"):
+        yield Label("Integration Code:", classes="label")
+        yield Input(
+            placeholder="e.g., web-portal, mobile-app",
+            id="code",
+            validators=[IntegrationCodeValidator()]
+        )
+
+      with Vertical(classes="form_row"):
         yield Label("Name (EN):", classes="label")
         yield Input(placeholder="e.g., ACME Portal", id="name_en", validators=[Length(1, 100)])
 
@@ -109,6 +140,7 @@ class CreateIntegrationModal(ModalScreen):
   def _create_integration(self) -> None:
     """Create integration via API."""
     # Get form values
+    code = self.query_one("#code", Input).value.strip()
     name_en = self.query_one("#name_en", Input).value.strip()
     desc_en = self.query_one("#desc_en", Input).value.strip()
     logo = self.query_one("#logo", Input).value.strip()
@@ -116,13 +148,17 @@ class CreateIntegrationModal(ModalScreen):
     # Clear previous error
     self._show_error("")
 
-    # Validate
+    # Validate required fields
+    if not code:
+      self._show_error("Integration code is required")
+      return
     if not name_en:
       self._show_error("Name is required")
       return
 
     # Build payload
     payload = {
+        "code": code,
         "i18n": [
             {
                 "language": "en",
@@ -151,8 +187,12 @@ class CreateIntegrationModal(ModalScreen):
         self._show_error("Failed to create integration (no response from API)")
     except Exception as e:
       error_msg = str(e)
-      log.error(f"Error creating integration: {e}")
-      self._show_error(error_msg)
+      # Check if it's a 409 conflict error (code already exists)
+      if "409" in error_msg or "already" in error_msg.lower():
+        self._show_error("This integration code is already in use. Please choose a different one.")
+      else:
+        log.error(f"Error creating integration: {e}")
+        self._show_error(error_msg)
 
   def _show_error(self, message: str) -> None:
     """Show error message in modal."""

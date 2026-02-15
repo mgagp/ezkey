@@ -82,7 +82,7 @@ class IntegrationsScreen(Screen):
     """Called when screen is mounted."""
     log.debug("IntegrationsScreen mounted")
     table = self.query_one("#table", DataTable)
-    table.add_columns("ID", "Name", "Active", "Tenant", "Created")
+    table.add_columns("ID", "Code", "Name", "Active", "Tenant", "Created")
     table.cursor_type = "row"
     self._apply_page_size(auto=True)
     self._load_integrations()
@@ -153,6 +153,7 @@ class IntegrationsScreen(Screen):
 
     for item in content:
       integration_id = item.get("id", "")
+      integration_code = item.get("code", "")
       tenant_id = item.get("tenantId", "")
       active = "✓" if item.get("active") else "✗"
       created_at = item.get("createdAt", "")
@@ -160,6 +161,7 @@ class IntegrationsScreen(Screen):
 
       table.add_row(
           str(integration_id),
+          integration_code,
           name,
           active,
           str(tenant_id),
