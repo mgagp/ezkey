@@ -5,6 +5,8 @@ export type EnrollmentSummary = {
   integrationId: string;
   integrationName: string;
   tenantName: string;
+  tenantId?: number;
+  tenantDescription?: string;
   createdAt: string;
   lastActivityAt: string;
   status: EnrollmentStatus;
@@ -26,6 +28,9 @@ export type BindEnrollmentResponse = {
   integrationDescription?: string;
   integrationLogo?: string;
   enrollmentName?: string;
+  tenantId?: number;
+  tenantName?: string;
+  tenantDescription?: string;
 };
 
 export type VerifyEnrollmentRequest = {

@@ -15,8 +15,7 @@ import React, {useCallback, useLayoutEffect, useMemo} from 'react';
 import {
   ActivityIndicator,
   Button,
-  FlatList,
-  ListRenderItem,
+  SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,6 +27,7 @@ import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import {groupEnrollmentsByTenant, type TenantGroup} from '../../utils/tenantGrouping';
 
 /**
  * Orders enrollments prioritizing favorites while preserving newest-first semantics.
@@ -48,6 +48,16 @@ const sortEnrollments = (items: StoredEnrollment[]) =>
   });
 
 type HomeNavigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+/**
+ * Converts tenant groups to SectionList sections format.
+ *
+ * @param groups Tenant groups from groupEnrollmentsByTenant.
+ * @return Sections for SectionList.
+ * @since 2025
+ */
+const toSections = (groups: TenantGroup[]): Array<{group: TenantGroup; data: StoredEnrollment[]}> =>
+  groups.map(group => ({group, data: group.enrollments}));
 
 /**
  * Lists stored enrollments and routes users to detail or wizard screens.
@@ -72,7 +82,12 @@ export const HomeScreen: React.FC = () => {
     });
   }, [navigation]);
 
-  const enrollments = useMemo(() => (data ? sortEnrollments(data) : []), [data]);
+  const sections = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const sorted = sortEnrollments(data);
+    const groups = groupEnrollmentsByTenant(sorted);
+    return toSections(groups);
+  }, [data]);
 
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
 
@@ -84,9 +99,18 @@ export const HomeScreen: React.FC = () => {
     [navigation, setSelected],
   );
 
-  const renderEnrollment = useCallback<ListRenderItem<StoredEnrollment>>(
-    ({item}) => <EnrollmentListItem enrollment={item} onPress={handleSelect} />,
+  const renderItem = useCallback(
+    ({item}: {item: StoredEnrollment}) => (
+      <EnrollmentListItem enrollment={item} onPress={handleSelect} />
+    ),
     [handleSelect],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({section}: {section: {group: TenantGroup; data: StoredEnrollment[]}}) => (
+      <TenantSectionHeader tenantName={section.group.tenantName} tenantDescription={section.group.tenantDescription} />
+    ),
+    [],
   );
 
   const keyExtractor = useCallback((item: StoredEnrollment) => item.id, []);
@@ -102,12 +126,14 @@ export const HomeScreen: React.FC = () => {
           <ActivityIndicator />
         </View>
       ) : (
-        <FlatList
-          data={enrollments}
+        <SectionList
+          sections={sections}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          renderItem={renderEnrollment}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           ListEmptyComponent={EmptyState}
+          stickySectionHeadersEnabled={false}
         />
       )}
     </View>
@@ -122,6 +148,31 @@ export const HomeScreen: React.FC = () => {
 const EmptyState: React.FC = () => (
   <View style={styles.emptyState}>
     <Text style={styles.emptyText}>No enrollments yet. Tap Add to begin.</Text>
+  </View>
+);
+
+type TenantSectionHeaderProps = {
+  tenantName: string;
+  tenantDescription?: string;
+};
+
+/**
+ * Renders a tenant section header with name and optional description.
+ *
+ * @param tenantName Display name of the tenant.
+ * @param tenantDescription Optional description of the tenant.
+ * @since 2025
+ */
+const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
+  tenantName,
+  tenantDescription,
+}) => (
+  <View style={styles.tenantHeader} accessibilityLabel={`Section ${tenantName}`}>
+    <Text style={styles.tenantName}>{tenantName}</Text>
+    {tenantDescription ? (
+      <Text style={styles.tenantDescription}>{tenantDescription}</Text>
+    ) : null}
+    <View style={styles.tenantDivider} />
   </View>
 );
 
@@ -146,7 +197,6 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
     {enrollment.enrollmentName ? (
       <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
     ) : null}
-    <Text style={styles.cardSubtitle}>{enrollment.tenantName}</Text>
     <Text style={styles.cardMeta}>
       Created {new Date(enrollment.createdAt).toLocaleDateString()}
     </Text>
@@ -189,6 +239,26 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 12,
     paddingBottom: 32,
+  },
+  tenantHeader: {
+    marginTop: 14,
+    paddingHorizontal: 0,
+  },
+  tenantName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#f4f7ff',
+  },
+  tenantDescription: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#9aa3b6',
+    lineHeight: 18,
+  },
+  tenantDivider: {
+    height: 1,
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   card: {
     backgroundColor: '#151923',

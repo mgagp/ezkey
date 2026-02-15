@@ -46,6 +46,8 @@ type EnrollmentDraft = {
   integrationId: string;
   integrationName: string;
   tenantName: string;
+  tenantId?: number;
+  tenantDescription?: string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
   logoUri?: string;
@@ -154,7 +156,10 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         id: enrollmentId,
         integrationId: enrollmentId,
         integrationName: response.integrationName ?? 'Integration',
-        tenantName: response.integrationDescription ?? 'Your organization',
+        tenantName:
+          response.tenantName ?? response.integrationDescription ?? 'Your organization',
+        tenantId: response.tenantId,
+        tenantDescription: response.tenantDescription,
         enrollmentProofToken: response.enrollmentProofToken ?? request.enrollmentProofToken,
         integrationPublicKey: response.integrationPublicKey,
         logoUri: response.integrationLogo,
@@ -248,6 +253,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         integrationId: draft.integrationId,
         integrationName: draft.integrationName,
         tenantName: draft.tenantName,
+        tenantId: draft.tenantId,
+        tenantDescription: draft.tenantDescription,
         createdAt: now,
         lastActivityAt: now,
         status,
