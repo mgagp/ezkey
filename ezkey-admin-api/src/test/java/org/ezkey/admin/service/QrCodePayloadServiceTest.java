@@ -19,16 +19,13 @@ import org.ezkey.admin.config.QrCodeProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for {@link QrCodePayloadService}.
  *
- * <p>
- * Tests validate JSON payload composition with and without the optional
- * {@code authUrl} field,
+ * <p>Tests validate JSON payload composition with and without the optional {@code authUrl} field,
  * ensuring backward compatibility and correct JSON structure.
  *
  * @author Ezkey contributors

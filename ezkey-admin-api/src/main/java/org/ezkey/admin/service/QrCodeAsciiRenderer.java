@@ -10,31 +10,26 @@
 
 package org.ezkey.admin.service;
 
-import java.util.Map;
-
-import org.springframework.stereotype.Service;
-
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import java.util.Map;
+import org.springframework.stereotype.Service;
 
 /**
  * Utility for rendering QR codes as ASCII art.
  *
- * <p>
- * The output uses two-character blocks for each module so the QR code maintains
- * a square aspect
- * ratio when displayed in terminal logs. This is intended for bootstrap flows
- * where administrators
+ * <p>The output uses two-character blocks for each module so the QR code maintains a square aspect
+ * ratio when displayed in terminal logs. This is intended for bootstrap flows where administrators
  * need to scan credentials directly from a console.
  */
 @Service
 public class QrCodeAsciiRenderer {
 
-  private static final Map<EncodeHintType, Object> ENCODE_HINTS = Map.of(EncodeHintType.CHARACTER_SET, "UTF-8",
-      EncodeHintType.MARGIN, 1);
+  private static final Map<EncodeHintType, Object> ENCODE_HINTS =
+      Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 1);
 
   private static final String DARK = "██";
 
@@ -53,8 +48,9 @@ public class QrCodeAsciiRenderer {
    */
   public String renderAscii(String content) {
     try {
-      BitMatrix bitMatrix = qrCodeWriter.encode(
-          content, BarcodeFormat.QR_CODE, DEFAULT_SIZE, DEFAULT_SIZE, ENCODE_HINTS);
+      BitMatrix bitMatrix =
+          qrCodeWriter.encode(
+              content, BarcodeFormat.QR_CODE, DEFAULT_SIZE, DEFAULT_SIZE, ENCODE_HINTS);
 
       StringBuilder builder = new StringBuilder();
       for (int y = 0; y < bitMatrix.getHeight(); y++) {

@@ -20,8 +20,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
@@ -50,16 +50,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 /**
  * Unit tests for enrollment creation audit logging with uniqueness validation.
  *
- * <p>
- * Tests validate that audit logs are correctly written with required fields for
- * SOC2 compliance
- * when enrollment creation is rejected or allowed due to uniqueness
- * constraints.
+ * <p>Tests validate that audit logs are correctly written with required fields for SOC2 compliance
+ * when enrollment creation is rejected or allowed due to uniqueness constraints.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -68,29 +63,21 @@ import jakarta.servlet.http.HttpServletRequest;
 @DisplayName("Enrollment Controller Audit Logging Tests")
 class EnrollmentControllerAuditTest {
 
-  @Mock
-  private EnrollmentService enrollmentService;
+  @Mock private EnrollmentService enrollmentService;
 
-  @Mock
-  private EnrollmentAdminMapper enrollmentMapper;
+  @Mock private EnrollmentAdminMapper enrollmentMapper;
 
-  @Mock
-  private AuditLogService auditLogService;
+  @Mock private AuditLogService auditLogService;
 
-  @Mock
-  private QrCodeGeneratorService qrCodeGeneratorService;
+  @Mock private QrCodeGeneratorService qrCodeGeneratorService;
 
-  @Mock
-  private QrCodePayloadService qrCodePayloadService;
+  @Mock private QrCodePayloadService qrCodePayloadService;
 
-  @Mock
-  private AccessControlService accessControlService;
+  @Mock private AccessControlService accessControlService;
 
-  @Mock
-  private EnrollmentRepository enrollmentRepository;
+  @Mock private EnrollmentRepository enrollmentRepository;
 
-  @Mock
-  private HttpServletRequest httpRequest;
+  @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
 
@@ -128,19 +115,21 @@ class EnrollmentControllerAuditTest {
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
 
     // Create controller manually (like AuthAttemptControllerTest)
-    enrollmentController = new EnrollmentController(
-        enrollmentService,
-        enrollmentMapper,
-        auditLogService,
-        qrCodeGeneratorService,
-        qrCodePayloadService,
-        accessControlService,
-        enrollmentRepository);
+    enrollmentController =
+        new EnrollmentController(
+            enrollmentService,
+            enrollmentMapper,
+            auditLogService,
+            qrCodeGeneratorService,
+            qrCodePayloadService,
+            accessControlService,
+            enrollmentRepository);
   }
 
   @Test
-  @DisplayName("create() - Should log audit with existing enrollment ID when creation rejected (active"
-      + " VERIFIED)")
+  @DisplayName(
+      "create() - Should log audit with existing enrollment ID when creation rejected (active"
+          + " VERIFIED)")
   void create_WhenRejected_ShouldLogAuditWithExistingEnrollmentId() {
     // Arrange
     Enrollment existingVerified = new Enrollment();
@@ -157,7 +146,7 @@ class EnrollmentControllerAuditTest {
                     + " integration."));
 
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
         .thenReturn(List.of(existingVerified));
 
     // Act
@@ -185,7 +174,8 @@ class EnrollmentControllerAuditTest {
   }
 
   @Test
-  @DisplayName("create() - Should log audit with inactive enrollment ID when replacing inactive VERIFIED")
+  @DisplayName(
+      "create() - Should log audit with inactive enrollment ID when replacing inactive VERIFIED")
   void create_WhenReplacingInactive_ShouldLogAuditWithInactiveEnrollmentId() {
     // Arrange
     Enrollment existingInactiveVerified = new Enrollment();
@@ -204,12 +194,12 @@ class EnrollmentControllerAuditTest {
         .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456));
 
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
         .thenReturn(List.of(existingInactiveVerified));
 
     // Act
-    ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response = enrollmentController
-        .create(requestDto, httpRequest);
+    ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response =
+        enrollmentController.create(requestDto, httpRequest);
 
     // Assert
     assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -242,12 +232,12 @@ class EnrollmentControllerAuditTest {
         .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456));
 
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
         .thenReturn(List.of()); // No VERIFIED enrollments
 
     // Act
-    ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response = enrollmentController
-        .create(requestDto, httpRequest);
+    ResponseEntity<org.ezkey.enrollment.dto.EnrollmentCreateResponseDto> response =
+        enrollmentController.create(requestDto, httpRequest);
 
     // Assert
     assertEquals(HttpStatus.CREATED, response.getStatusCode());

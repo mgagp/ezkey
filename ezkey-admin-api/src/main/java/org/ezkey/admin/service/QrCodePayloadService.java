@@ -14,22 +14,17 @@ import org.ezkey.admin.config.QrCodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Centralized service for composing QR code payloads.
  *
- * <p>
- * This service produces JSON payloads for QR codes containing enrollment
- * credentials and,
- * optionally, the public auth-api URL. The JSON format is extensible and
- * already supported by the
+ * <p>This service produces JSON payloads for QR codes containing enrollment credentials and,
+ * optionally, the public auth-api URL. The JSON format is extensible and already supported by the
  * mobile application's {@code parseQrPayload} parser.
  *
- * <p>
- * <b>QR Code JSON Format:</b>
+ * <p><b>QR Code JSON Format:</b>
  *
  * <pre>
  * {
@@ -39,11 +34,8 @@ import tools.jackson.databind.node.ObjectNode;
  * }
  * </pre>
  *
- * <p>
- * The {@code authUrl} field is only included when
- * {@code ezkey.qr.auth-base-url} is configured.
- * When absent, the mobile application falls back to its own configured base
- * URL.
+ * <p>The {@code authUrl} field is only included when {@code ezkey.qr.auth-base-url} is configured.
+ * When absent, the mobile application falls back to its own configured base URL.
  *
  * @author Ezkey contributors
  * @since 2025
@@ -72,14 +64,11 @@ public class QrCodePayloadService {
   /**
    * Composes a JSON payload for QR code encoding.
    *
-   * <p>
-   * The payload always includes {@code enrollmentId} and
-   * {@code enrollmentProofToken}. If {@code
-   * ezkey.qr.auth-base-url} is configured, an {@code authUrl} field is added so
-   * the mobile
+   * <p>The payload always includes {@code enrollmentId} and {@code enrollmentProofToken}. If {@code
+   * ezkey.qr.auth-base-url} is configured, an {@code authUrl} field is added so the mobile
    * application can dynamically connect to the correct auth-api instance.
    *
-   * @param enrollmentId         the enrollment ID
+   * @param enrollmentId the enrollment ID
    * @param enrollmentProofToken the enrollment proof token
    * @return JSON string suitable for QR code encoding
    * @throws IllegalStateException if JSON serialization fails

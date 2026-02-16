@@ -25,21 +25,14 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Service for exporting bootstrap credentials to a file.
  *
- * <p>
- * This service writes bootstrap enrollment credentials (enrollmentId,
- * enrollmentProofToken,
- * enrollmentChallengeCode, username) to a JSON file for Docker automation.
- * Recovery codes are NOT
+ * <p>This service writes bootstrap enrollment credentials (enrollmentId, enrollmentProofToken,
+ * enrollmentChallengeCode, username) to a JSON file for Docker automation. Recovery codes are NOT
  * exported (they remain logs-only for security).
  *
- * <p>
- * <b>Idempotent:</b> If the file already exists and contains the same
- * enrollmentId, it will not
+ * <p><b>Idempotent:</b> If the file already exists and contains the same enrollmentId, it will not
  * be overwritten to avoid unnecessary churn.
  *
- * <p>
- * <b>Security:</b> This feature should only be enabled in Docker/demo profiles,
- * never in
+ * <p><b>Security:</b> This feature should only be enabled in Docker/demo profiles, never in
  * production.
  *
  * @since 2025
@@ -47,7 +40,8 @@ import tools.jackson.databind.node.ObjectNode;
 @Component
 public class BootstrapCredentialsFileExporter {
 
-  private static final Logger logger = LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(BootstrapCredentialsFileExporter.class);
 
   private final BootstrapExportProperties exportProperties;
   private final QrCodeProperties qrCodeProperties;
@@ -63,16 +57,13 @@ public class BootstrapCredentialsFileExporter {
   /**
    * Exports bootstrap credentials to a file if export is enabled.
    *
-   * <p>
-   * This method is idempotent: if the file already exists and contains the same
-   * enrollmentId, it
+   * <p>This method is idempotent: if the file already exists and contains the same enrollmentId, it
    * will not be overwritten.
    *
-   * @param enrollment           the enrollment with credentials to export
-   * @param enrollmentProofToken the enrollment proof token (from before save, to
-   *                             ensure exact
-   *                             match)
-   * @param username             the admin username
+   * @param enrollment the enrollment with credentials to export
+   * @param enrollmentProofToken the enrollment proof token (from before save, to ensure exact
+   *     match)
+   * @param username the admin username
    */
   public void exportIfEnabled(Enrollment enrollment, String enrollmentProofToken, String username) {
     if (!exportProperties.isEnabled()) {
