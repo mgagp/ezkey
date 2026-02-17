@@ -11,7 +11,7 @@ Demo application showcasing EZKey passwordless login integration with backend-si
 ./docker/start.sh
 # Access: http://localhost:8082
 
-# Ensure API key credentials are configured:
+# API key credentials: set via config or use "Configure API Key" dialog on login page
 export EZKEY_INTEGRATION_KEY=ezkey_ikey_xxx
 export EZKEY_SECRET_KEY=ezkey_skey_xxx
 
@@ -110,10 +110,11 @@ The file is hot-reloadable - changes are detected and reloaded automatically (if
 
 - `controller/LoginController.java` - Handles POST `/login`, coordinates auth flow
 - `controller/HomeController.java` - Routes for dashboard/logout
-- `service/EzkeyAuthService.java` - Admin API client (create auth-attempt, wait)
+- `config/EzkeyClientProvider.java` - Supplies EzkeyClient from current credentials
+- `service/DemoApiKeyConfigService.java` - API key holder with runtime override support
 - `service/UserMappingService.java` - Users file loader with hot-reload
-- `config/EzkeyClientConfig.java` - RestTemplate with API Key authentication
-- `templates/login.html` - Login page with form POST
+- `config/EzkeyClientConfig.java` - Spring configuration
+- `templates/login.html` - Login page with "Configure API Key" dialog
 - `templates/dashboard.html` - Post-login dashboard
 
 ## Architecture
@@ -128,7 +129,7 @@ The file is hot-reloadable - changes are detected and reloaded automatically (if
 1. **API Key Credentials**: Must be created via Admin API for the ACME integration:
    - `integrationKey`: Public key (e.g., `ezkey_ikey_xxx`) - used as HTTP Basic Auth username
    - `secretKey`: Secret key (e.g., `ezkey_skey_xxx`) - used as HTTP Basic Auth password
-   - Set via `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` env vars or in `/app/config/application.properties`
+   - Set via `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` env vars, config file, or **"Configure API Key" dialog** on login page (no restart)
 2. **Users File**: Automatically created by bootstrap-init with `admin.docker` user (enrollmentId: 1)
 3. **Enrollments**: Users must have active enrollments in EZKey system
 
@@ -141,8 +142,8 @@ The Docker stack automatically:
 
 ### Editing Configuration in Docker Desktop
 
-1. **External Config**: Edit `/app/config/application.properties` → POST `/actuator/refresh`
-2. **Users Mapping**: Edit `/app/data/acme-users.json` → Auto-reloaded every 5 seconds
+1. **API Keys**: Use "Configure API Key" dialog on login page (no restart), or edit `/app/config/application.properties` and restart
+2. **Users Mapping**: Edit `/app/data/acme-users.json` → Auto-reloaded every 5 seconds or click "Reload Users"
 
 ## Future Enhancements
 

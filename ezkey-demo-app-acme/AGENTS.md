@@ -10,19 +10,20 @@ Demo application for EZKey passwordless login. Demonstrates backend-side authent
 |------|-------------|
 | `controller/HomeController.java` | Routes: `/dashboard`, `/logout` |
 | `controller/LoginController.java` | Handles POST `/login`, coordinates auth flow |
-| `service/EzkeyAuthService.java` | Calls Admin API: create auth-attempt, wait for completion |
+| `config/EzkeyClientProvider.java` | Supplies EzkeyClient from current credentials (config or runtime override) |
+| `service/DemoApiKeyConfigService.java` | Holds API key credentials; supports runtime override via "Apply API Key" dialog |
 | `service/UserMappingService.java` | Loads/reloads users.json mapping (username -> enrollmentId) |
-| `config/EzkeyClientConfig.java` | RestTemplate configuration with API Key auth |
+| `config/EzkeyClientConfig.java` | Spring configuration for AcmeProperties |
 | `config/AcmeProperties.java` | Type-safe configuration properties |
-| `templates/login.html` | Login page with form POST |
+| `templates/login.html` | Login page with form POST, "Configure API Key" dialog |
 | `templates/dashboard.html` | Post-login dashboard with user info |
 
 ## Architecture
 
-- **Mode**: Backend-side (server calls Admin API via RestTemplate)
+- **Mode**: Backend-side (server calls Admin API via Ezkey SDK)
 - **Port**: 8082
 - **Auth**: HTTP session (server-side)
-- **API Key**: M2M authentication for Admin API calls (HTTP Basic Auth: `base64(integrationKey:secretKey)`)
+- **API Key**: M2M authentication via EzkeyClient (from EzkeyClientProvider); credentials from config or "Apply API Key" dialog
 - **User Mapping**: External JSON file (`data/acme-users.json`) with hot-reload
 
 ## Login Flow
@@ -66,24 +67,20 @@ ezkey.users.file.check-interval=${EZKEY_USERS_CHECK_INTERVAL:5}
 
 ### Hot-Reload Configuration
 
-The "Reload Config" button (or `/api/reload-config` endpoint) performs **two types of reload**:
+1. **API Key (runtime, no restart)**:
+   - Click "Configure API Key" in the How it Works section on the login page
+   - Enter Integration Key and Secret Key, then click "Apply API Key"
+   - Credentials take effect immediately for subsequent logins
+   - Demo only — credentials held in memory, not persisted
 
-1. **Application Properties Reload** (requires container restart):
-   - Application properties (`/app/config/application.properties`) require container restart to take effect
-   - This includes API key credentials (`ezkey.integration.key`, `ezkey.secret.key`) and Admin API URL (`ezkey.admin.api.url`)
-   - **Note**: For simplicity and Spring Boot 4 compatibility, we removed Spring Cloud Context dependency
-   - Developers using Docker can easily restart the container: `docker restart ezkey-demo-app-acme`
-
-2. **Users Mapping File Reload** (manual trigger via UI button):
+2. **Users Mapping File** (manual trigger or automatic):
+   - Click "Reload Users" button (or wait for automatic reload every 5 seconds)
    - Manually triggers reload of `acme-users.json` file
-   - Complements the automatic `@Scheduled` reload (every 5 seconds by default)
-   - Allows immediate refresh on demand without waiting for scheduled check
+   - Edit `/app/data/acme-users.json` in Docker Desktop
 
-**Usage:**
-1. **Application Properties** (API keys, URLs): Edit `/app/config/application.properties` in Docker Desktop, then restart container: `docker restart ezkey-demo-app-acme`
-2. **Users Mapping File**: Edit `/app/data/acme-users.json` in Docker Desktop, then click "Reload Users" button in UI (or wait for automatic reload every 5 seconds)
-
-**Note**: The users file is automatically reloaded every 5 seconds via `@Scheduled`, but the button allows immediate refresh. Application properties require container restart for simplicity and Spring Boot 4 compatibility.
+3. **Application Properties** (requires container restart):
+   - API keys and Admin API URL can also be set in `/app/config/application.properties` at startup
+   - Changes to this file require container restart: `docker restart ezkey-demo-app-acme`
 
 ## Users Mapping File
 
@@ -125,22 +122,27 @@ File: `data/acme-users.json`
 5. Enter username: `admin.docker`
 6. Approve on demo-device (http://localhost:8083)
 
+### Configure API Key (No Restart)
+1. Open http://localhost:8082/login
+2. In the "How it Works" section, click "Configure API Key"
+3. Enter Integration Key and Secret Key from your Admin API
+4. Click "Apply API Key" — credentials take effect immediately
+
 ### Edit External Configuration (Docker Desktop)
 1. Open Docker Desktop → Containers → `ezkey-demo-app-acme`
 2. Go to "Files" tab
 3. Navigate to `/app/config/`
 4. Create/edit `application.properties` (add your API key credentials)
-5. Click "Reload Config" button on login page OR call: `curl -X POST http://localhost:8082/api/reload-config`
-6. Changes are applied without restart
+5. Restart container: `docker restart ezkey-demo-app-acme`
 
-**Important**: If you perform a clean-start (remove volumes), the `/app/config/application.properties` file will be automatically recreated from template. If the volume persists, you may need to manually delete the file or edit it directly.
+**Alternative**: Use the "Configure API Key" dialog on the login page for immediate application without restart.
 
 ### Edit Users Mapping File (Docker Desktop)
 1. Open Docker Desktop → Containers → `ezkey-demo-app-acme`
 2. Go to "Files" tab
 3. Navigate to `/app/data/`
 4. Edit `acme-users.json`
-5. File is automatically reloaded every 5 seconds (configurable) OR click "Reload Config" for immediate reload
+5. File is automatically reloaded every 5 seconds OR click "Reload Users" for immediate reload
 
 ### Debug Login Issues
 
@@ -149,9 +151,9 @@ File: `data/acme-users.json`
 If you see `401 UNAUTHORIZED` errors when creating auth attempts, check the following:
 
 1. **API Key Credentials**:
-   - Verify `ezkey.integration.key` and `ezkey.secret.key` are set correctly in `/app/config/application.properties`
-   - Check logs for: `✅ API Key credentials configured` (should appear at startup)
-   - After editing config, click "Reload Config" button or restart container
+   - Use "Configure API Key" dialog on login page for immediate application without restart
+   - Or set via `/app/config/application.properties` and restart container
+   - Check logs for: `Demo API key loaded from config` or `API key applied via demo UI`
 
 2. **IP Whitelist**:
    - API keys have an IP whitelist that restricts which IPs can use them

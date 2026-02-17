@@ -74,9 +74,14 @@
                 <div class="info-card">
                     <div class="info-card-header">
                         <h3>HOW IT WORKS</h3>
-                        <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
-                            🔄 RELOAD USERS
-                        </button>
+                        <div class="info-card-buttons">
+                            <button type="button" id="api-key-btn" class="reload-config-btn" onclick="openApiKeyDialog()">
+                                🔑 CONFIGURE API KEY
+                            </button>
+                            <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
+                                🔄 RELOAD USERS
+                            </button>
+                        </div>
                     </div>
                     <ol class="steps-list">
                         <li>Enter your username</li>
@@ -90,8 +95,8 @@
                     </p>
                     <div class="info-note" style="margin-top: 1rem;">
                         <p style="margin: 0; font-size: 0.85rem;">
-                            <strong>Configuration:</strong> To update API keys or URLs, restart the Docker container.
-                            The "Reload Users" button only refreshes the users mapping file.
+                            <strong>Configuration:</strong> Use "Configure API Key" to set credentials without restart.
+                            "Reload Users" refreshes the users mapping file.
                         </p>
                     </div>
                     <div id="reload-status" class="reload-status hidden"></div>
@@ -99,6 +104,34 @@
             </section>
         </div>
     </main>
+
+    <!-- API Key Dialog Modal -->
+    <div id="api-key-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>CONFIGURE API KEY</h3>
+                <button type="button" class="modal-close" onclick="closeApiKeyDialog()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint">Enter API key credentials for demo testing. Applied immediately, no restart needed.</p>
+                <div class="form-group">
+                    <label for="api-key-integration">INTEGRATION KEY</label>
+                    <input type="text" id="api-key-integration" placeholder="ezkey_ikey_xxx"
+                           autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="api-key-secret">SECRET KEY</label>
+                    <input type="password" id="api-key-secret" placeholder="ezkey_skey_xxx"
+                           autocomplete="new-password">
+                </div>
+                <div id="api-key-status" class="reload-status hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="neo-brutal-button secondary" onclick="closeApiKeyDialog()">Cancel</button>
+                <button type="button" id="apply-api-key-btn" class="neo-brutal-button primary" onclick="applyApiKey()">APPLY API KEY</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="neo-brutal-footer">
@@ -148,6 +181,52 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🔄 RELOAD USERS';
+            }
+        }
+
+        function openApiKeyDialog() {
+            document.getElementById('api-key-modal').classList.remove('hidden');
+            document.getElementById('api-key-integration').value = '';
+            document.getElementById('api-key-secret').value = '';
+            document.getElementById('api-key-status').classList.add('hidden');
+        }
+
+        function closeApiKeyDialog() {
+            document.getElementById('api-key-modal').classList.add('hidden');
+        }
+
+        async function applyApiKey() {
+            const integrationKey = document.getElementById('api-key-integration').value.trim();
+            const secretKey = document.getElementById('api-key-secret').value.trim();
+            const status = document.getElementById('api-key-status');
+            const btn = document.getElementById('apply-api-key-btn');
+
+            status.classList.remove('hidden');
+            status.className = 'reload-status';
+            status.textContent = 'Applying...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/apply-api-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ integrationKey: integrationKey, secretKey: secretKey })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    status.className = 'reload-status success';
+                    status.textContent = '✅ ' + result.message;
+                    setTimeout(closeApiKeyDialog, 1500);
+                } else {
+                    status.className = 'reload-status error';
+                    status.textContent = '❌ ' + result.message;
+                }
+            } catch (error) {
+                status.className = 'reload-status error';
+                status.textContent = '❌ Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
             }
         }
     </script>
@@ -429,7 +508,87 @@
         .info-card-header h3 {
             margin: 0;
         }
-        
+
+        .info-card-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--acme-light);
+            border: 4px solid var(--acme-dark);
+            padding: 0;
+            box-shadow: 8px 8px 0 var(--acme-dark);
+            max-width: 480px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 3px solid var(--acme-dark);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+            color: var(--acme-dark);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-hint {
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+            color: var(--acme-dark);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border-top: 3px solid var(--acme-dark);
+        }
+
+        .modal-body .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .modal-body input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 3px solid var(--acme-dark);
+            font-size: 0.95rem;
+        }
+
         .reload-config-btn {
             padding: 0.5rem 1rem;
             font-size: 0.85rem;

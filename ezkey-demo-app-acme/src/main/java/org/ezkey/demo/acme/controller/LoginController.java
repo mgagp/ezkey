@@ -11,20 +11,21 @@
 package org.ezkey.demo.acme.controller;
 
 import jakarta.servlet.http.HttpSession;
-import org.ezkey.demo.acme.config.AcmeProperties;
+import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
 import org.ezkey.demo.acme.dto.UserMapping;
+import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
 import org.ezkey.demo.acme.service.UserMappingService;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -43,21 +44,20 @@ public class LoginController {
   private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
   private static final String SDK_NOT_CONFIGURED_MSG =
-      "Ezkey SDK is not configured. "
-          + "Set ezkey.integration-key and ezkey.secret-key "
-          + "in application.properties and restart the container.";
+      "Ezkey SDK is not configured. Set credentials via config file or use the 'Apply API Key' "
+          + "dialog in the How it Works section.";
 
   private final UserMappingService userMappingService;
-  private final EzkeyClient ezkeyClient;
-  private final AcmeProperties acmeProperties;
+  private final EzkeyClientProvider ezkeyClientProvider;
+  private final DemoApiKeyConfigService demoApiKeyConfigService;
 
   public LoginController(
       UserMappingService userMappingService,
-      ObjectProvider<EzkeyClient> ezkeyClientProvider,
-      AcmeProperties acmeProperties) {
+      EzkeyClientProvider ezkeyClientProvider,
+      DemoApiKeyConfigService demoApiKeyConfigService) {
     this.userMappingService = userMappingService;
-    this.ezkeyClient = ezkeyClientProvider.getIfAvailable();
-    this.acmeProperties = acmeProperties;
+    this.ezkeyClientProvider = ezkeyClientProvider;
+    this.demoApiKeyConfigService = demoApiKeyConfigService;
   }
 
   /**
@@ -109,7 +109,8 @@ public class LoginController {
     }
 
     // Step 2: Create auth attempt
-    if (ezkeyClient == null) {
+    EzkeyClient client = ezkeyClientProvider.getClient();
+    if (client == null) {
       logger.error("Login attempt rejected — Ezkey SDK not configured");
       redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
       return "redirect:/login?error=authfailed";
@@ -117,7 +118,7 @@ public class LoginController {
 
     try {
       boolean challengeMode = Boolean.TRUE.equals(challengeRequested);
-      var createResponse = ezkeyClient.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
+      var createResponse = client.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
 
       logger.info(
           "Auth attempt created: authAttemptId={}, enrollmentId={}, challenge={}",
@@ -234,8 +235,7 @@ public class LoginController {
 
       String message =
           "Users mapping file reloaded successfully. "
-              + "Note: Application properties (API keys, URLs)"
-              + " require container restart to take effect.";
+              + "API keys can be applied via the 'Configure API Key' dialog without restart.";
 
       logger.info("Configuration reload completed successfully");
       return ResponseEntity.ok(new ReloadConfigResponse(true, message));
@@ -244,6 +244,33 @@ public class LoginController {
       logger.error("Error reloading configuration", e);
       return ResponseEntity.ok(new ReloadConfigResponse(false, "Error: " + e.getMessage()));
     }
+  }
+
+  /**
+   * Applies API key credentials at runtime for demo testing.
+   *
+   * <p>Updates the in-memory credentials used when building {@link EzkeyClient}. Takes effect
+   * immediately for subsequent login attempts. Demo only — credentials are not persisted.
+   *
+   * @param request the API key credentials (integrationKey, secretKey)
+   * @return JSON response indicating success or failure
+   */
+  @PostMapping("/api/apply-api-key")
+  public ResponseEntity<ApplyApiKeyResponse> applyApiKey(@RequestBody ApplyApiKeyRequest request) {
+    if (request == null || request.integrationKey() == null || request.secretKey() == null) {
+      return ResponseEntity.badRequest()
+          .body(new ApplyApiKeyResponse(false, "Integration key and secret key are required."));
+    }
+    boolean applied =
+        demoApiKeyConfigService.applyApiKey(request.integrationKey(), request.secretKey());
+    if (applied) {
+      return ResponseEntity.ok(
+          new ApplyApiKeyResponse(true, "API key applied. You can now test login."));
+    }
+    return ResponseEntity.badRequest()
+        .body(
+            new ApplyApiKeyResponse(
+                false, "Both integration key and secret key must be non-blank."));
   }
 
   /**
@@ -343,14 +370,15 @@ public class LoginController {
       return ResponseEntity.ok(new AuthStatusResponse("expired", null, "Session expired"));
     }
 
-    if (ezkeyClient == null) {
+    EzkeyClient client = ezkeyClientProvider.getClient();
+    if (client == null) {
       return ResponseEntity.ok(
           new AuthStatusResponse("error", "/login?error=authfailed", SDK_NOT_CONFIGURED_MSG));
     }
 
     try {
       // Check auth attempt status
-      var waitResponse = ezkeyClient.waitForAuthAttempt(authAttemptId, 30, 2);
+      var waitResponse = client.waitForAuthAttempt(authAttemptId, 30, 2);
 
       String status = waitResponse.status();
       boolean completed = waitResponse.completed();
@@ -479,6 +507,22 @@ public class LoginController {
    * @param message status message
    */
   public record ReloadConfigResponse(boolean success, String message) {}
+
+  /**
+   * Request DTO for apply API key operation.
+   *
+   * @param integrationKey the integration key (e.g. ezkey_ikey_xxx)
+   * @param secretKey the secret key (e.g. ezkey_skey_xxx)
+   */
+  public record ApplyApiKeyRequest(String integrationKey, String secretKey) {}
+
+  /**
+   * Response DTO for apply API key operation.
+   *
+   * @param success whether the operation was successful
+   * @param message status message
+   */
+  public record ApplyApiKeyResponse(boolean success, String message) {}
 
   /**
    * Response DTO for authentication status check.
