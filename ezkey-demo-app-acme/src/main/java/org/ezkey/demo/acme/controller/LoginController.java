@@ -13,9 +13,7 @@ package org.ezkey.demo.acme.controller;
 import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
-import org.ezkey.demo.acme.dto.UserMapping;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
-import org.ezkey.demo.acme.service.UserMappingService;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
@@ -47,15 +45,11 @@ public class LoginController {
       "Ezkey SDK is not configured. Set credentials via config file or use the 'Apply API Key' "
           + "dialog in the How it Works section.";
 
-  private final UserMappingService userMappingService;
   private final EzkeyClientProvider ezkeyClientProvider;
   private final DemoApiKeyConfigService demoApiKeyConfigService;
 
   public LoginController(
-      UserMappingService userMappingService,
-      EzkeyClientProvider ezkeyClientProvider,
-      DemoApiKeyConfigService demoApiKeyConfigService) {
-    this.userMappingService = userMappingService;
+      EzkeyClientProvider ezkeyClientProvider, DemoApiKeyConfigService demoApiKeyConfigService) {
     this.ezkeyClientProvider = ezkeyClientProvider;
     this.demoApiKeyConfigService = demoApiKeyConfigService;
   }
@@ -66,14 +60,16 @@ public class LoginController {
    * <p>Processes login request:
    *
    * <ol>
-   *   <li>Validates username exists in mapping
-   *   <li>Creates auth attempt via Admin API
+   *   <li>Creates auth attempt via Admin API using username as userIdentifier
    *   <li>Waits for device approval
    *   <li>Creates HTTP session on success
    *   <li>Redirects to dashboard
    * </ol>
    *
-   * @param username the username
+   * <p>When the user has no verified enrollment for this integration, or multiple enrollments, the
+   * API returns an error and the user is redirected to login with an error message.
+   *
+   * @param username the username (used as userIdentifier for API lookup)
    * @param challengeRequested whether challenge code is requested
    * @param session the HTTP session
    * @param redirectAttributes for flash messages
@@ -99,16 +95,6 @@ public class LoginController {
     session.removeAttribute("pendingTimeoutSeconds");
     session.removeAttribute("pendingExpiresAt");
 
-    // Step 1: Lookup user in mapping
-    UserMapping.UserEntry userEntry = userMappingService.findByUsername(username).orElse(null);
-
-    if (userEntry == null) {
-      logger.warn("User not found in mapping: {}", username);
-      redirectAttributes.addFlashAttribute("error", "User not found");
-      return "redirect:/login?error=notfound";
-    }
-
-    // Step 2: Create auth attempt
     EzkeyClient client = ezkeyClientProvider.getClient();
     if (client == null) {
       logger.error("Login attempt rejected — Ezkey SDK not configured");
@@ -118,24 +104,22 @@ public class LoginController {
 
     try {
       boolean challengeMode = Boolean.TRUE.equals(challengeRequested);
-      var createResponse = client.createAuthAttempt(userEntry.enrollmentId(), challengeMode);
+      var createResponse = client.createAuthAttemptByUserIdentifier(username.trim(), challengeMode);
 
       logger.info(
-          "Auth attempt created: authAttemptId={}, enrollmentId={}, challenge={}",
+          "Auth attempt created: authAttemptId={}, userIdentifier={}, challenge={}",
           createResponse.authAttemptId(),
-          userEntry.enrollmentId(),
+          username,
           createResponse.authAttemptChallenge() != null
               ? "%02d".formatted(createResponse.authAttemptChallenge())
               : "none");
 
-      // Step 3: Store auth attempt info in session and redirect to wait page (unified
-      // for both
-      // modes)
+      // Store auth attempt info in session and redirect to wait page
       session.setAttribute("pendingAuthAttemptId", createResponse.authAttemptId());
       session.setAttribute("pendingChallengeCode", createResponse.authAttemptChallenge());
       session.setAttribute("pendingUsername", username);
-      session.setAttribute("pendingDisplayName", userEntry.displayName());
-      session.setAttribute("pendingEnrollmentId", userEntry.enrollmentId());
+      session.setAttribute("pendingDisplayName", username);
+      session.setAttribute("pendingEnrollmentId", null);
       session.setAttribute("pendingTimeoutSeconds", createResponse.timeoutSeconds());
       session.setAttribute("pendingExpiresAt", createResponse.expiresAt());
 
@@ -151,7 +135,12 @@ public class LoginController {
 
     } catch (EzkeyException e) {
       logger.error("EZKey authentication error for username: {}", username, e);
-      redirectAttributes.addFlashAttribute("error", "Authentication error: " + e.getMessage());
+      // Use API error message when available (e.g. user not found, multiple enrollments)
+      String errorMsg =
+          e.getMessage() != null && !e.getMessage().isBlank()
+              ? e.getMessage()
+              : "Authentication error. Check that the user is enrolled with this integration.";
+      redirectAttributes.addFlashAttribute("error", errorMsg);
       return "redirect:/login?error=authfailed";
     }
   }
@@ -203,47 +192,6 @@ public class LoginController {
     }
 
     return "login";
-  }
-
-  /**
-   * Reloads users mapping file (acme-users.json).
-   *
-   * <p>This endpoint manually triggers reload of acme-users.json file by calling
-   * UserMappingService.checkAndReload(). This complements the automatic @Scheduled reload, allowing
-   * immediate refresh on demand.
-   *
-   * <p><b>Note:</b> Application properties (API keys, URLs) require container restart to take
-   * effect. Only the users mapping file can be reloaded without restart.
-   *
-   * @return JSON response indicating success or failure
-   */
-  @PostMapping("/api/reload-config")
-  public ResponseEntity<ReloadConfigResponse> reloadConfig() {
-    try {
-      logger.info("Configuration reload requested via /api/reload-config");
-
-      // Reload users mapping file (acme-users.json)
-      // Note: Application properties require container restart
-      try {
-        userMappingService.checkAndReload();
-        logger.info("Users mapping file reload triggered");
-      } catch (Exception e) {
-        logger.warn("Error triggering users file reload: {}", e.getMessage());
-        return ResponseEntity.ok(
-            new ReloadConfigResponse(false, "Error reloading users file: " + e.getMessage()));
-      }
-
-      String message =
-          "Users mapping file reloaded successfully. "
-              + "API keys can be applied via the 'Configure API Key' dialog without restart.";
-
-      logger.info("Configuration reload completed successfully");
-      return ResponseEntity.ok(new ReloadConfigResponse(true, message));
-
-    } catch (Exception e) {
-      logger.error("Error reloading configuration", e);
-      return ResponseEntity.ok(new ReloadConfigResponse(false, "Error: " + e.getMessage()));
-    }
   }
 
   /**
@@ -499,14 +447,6 @@ public class LoginController {
           new AuthStatusResponse("error", "/login?error=authfailed", e.getMessage()));
     }
   }
-
-  /**
-   * Response DTO for configuration reload operation.
-   *
-   * @param success whether the reload was successful
-   * @param message status message
-   */
-  public record ReloadConfigResponse(boolean success, String message) {}
 
   /**
    * Request DTO for apply API key operation.

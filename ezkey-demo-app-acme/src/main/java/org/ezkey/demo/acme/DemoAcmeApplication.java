@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main Spring Boot application for ACME demo.
@@ -45,7 +44,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @since 2025
  */
 @SpringBootApplication
-@EnableScheduling
 @EnableConfigurationProperties(AcmeProperties.class)
 public class DemoAcmeApplication {
 

@@ -72,6 +72,134 @@
     }
   ],
   "paths": {
+    "/api/v1/tenants/{id}": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Get tenant by ID",
+        "description": "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access their own tenant.",
+        "operationId": "getTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Update a tenant",
+        "description": "Updates a tenant (partial update). GlobalAdmin only.",
+        "operationId": "updateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tenant updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenants": {
       "get": {
         "tags": [
@@ -952,7 +1080,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptCreateResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -962,7 +1090,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptCreateResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -972,7 +1100,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptCreateResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1580,61 +1708,6 @@
         }
       }
     },
-    "/api/v1/tenants/{id}": {
-      "get": {
-        "tags": [
-          "Tenants"
-        ],
-        "summary": "Get tenant by ID",
-        "description": "Gets a tenant by ID. GlobalAdmins can access any tenant. TenantAdmins can only access their own tenant.",
-        "operationId": "getTenant",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Tenant ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantResponseDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - not authorized",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantResponseDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/integrations/{id}": {
       "get": {
         "tags": [
@@ -1829,7 +1902,7 @@
           "Enrollments"
         ],
         "summary": "Generate QR code for enrollment",
-        "description": "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken)",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl})",
         "operationId": "getQrCode",
         "parameters": [
           {
@@ -2685,7 +2758,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Generate QR code for onboarding",
-        "description": "Returns a PNG QR code image containing enrollment credentials (enrollmentId|enrollmentProofToken) for passwordless enrollment binding.",
+        "description": "Returns a PNG QR code image containing enrollment credentials as JSON ({enrollmentId, enrollmentProofToken, authUrl}) for passwordless enrollment binding.",
         "operationId": "getAdminOnboardingQrCode",
         "parameters": [
           {
@@ -2751,28 +2824,70 @@
   },
   "components": {
     "schemas": {
-      "TenantCreateRequestDto": {
+      "TenantUpdateRequestDto": {
         "type": "object",
-        "description": "Request DTO for creating a tenant",
+        "description": "Request DTO for updating a tenant (partial update)",
         "properties": {
           "tenantName": {
             "type": "string",
-            "description": "Unique name for the tenant",
+            "description": "New unique name for the tenant",
             "example": "Acme Corporation",
             "maxLength": 100,
             "minLength": 3
           },
           "tenantDescription": {
             "type": "string",
-            "description": "Optional description of the tenant",
-            "example": "Acme Corp's Ezkey tenant for MFA authentication",
+            "description": "Updated description of the tenant",
+            "example": "Acme Corp MFA tenant",
             "maxLength": 500,
             "minLength": 0
+          },
+          "organizationName": {
+            "type": "string",
+            "description": "Legal name of the organization",
+            "example": "Acme Corporation Inc.",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "organizationDomain": {
+            "type": "string",
+            "description": "Primary domain of the organization",
+            "example": "acme.com",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code",
+            "example": "CA",
+            "maxLength": 2,
+            "minLength": 2,
+            "pattern": "^[A-Z]{2}$"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone identifier",
+            "example": "America/Montreal",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "primaryContactName": {
+            "type": "string",
+            "description": "Primary contact full name",
+            "example": "Jane Doe",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "primaryContactEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary contact email address",
+            "example": "jane.doe@acme.com",
+            "maxLength": 255,
+            "minLength": 0
           }
-        },
-        "required": [
-          "tenantName"
-        ]
+        }
       },
       "TenantResponseDto": {
         "type": "object",
@@ -2794,18 +2909,127 @@
             "description": "Optional description of the tenant",
             "example": "Acme Corp's Ezkey tenant"
           },
+          "organizationName": {
+            "type": "string",
+            "description": "Legal name of the organization",
+            "example": "Acme Corporation Inc."
+          },
+          "organizationDomain": {
+            "type": "string",
+            "description": "Primary domain of the organization",
+            "example": "acme.com"
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code",
+            "example": "CA"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone identifier",
+            "example": "America/Montreal"
+          },
+          "primaryContactName": {
+            "type": "string",
+            "description": "Primary contact full name",
+            "example": "Jane Doe"
+          },
+          "primaryContactEmail": {
+            "type": "string",
+            "description": "Primary contact email address",
+            "example": "jane.doe@acme.com"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
             "description": "Timestamp when the tenant was created",
             "example": "2025-10-15T14:30:00Z"
           },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the last modification",
+            "example": "2025-11-01T09:15:00Z"
+          },
           "active": {
             "type": "boolean",
             "description": "Flag indicating if the tenant is active",
             "example": true
+          },
+          "isSystemTenant": {
+            "type": "boolean",
+            "description": "Flag indicating if this is the system tenant",
+            "example": false
           }
         }
+      },
+      "TenantCreateRequestDto": {
+        "type": "object",
+        "description": "Request DTO for creating a tenant",
+        "properties": {
+          "tenantName": {
+            "type": "string",
+            "description": "Unique name for the tenant",
+            "example": "Acme Corporation",
+            "maxLength": 100,
+            "minLength": 3
+          },
+          "tenantDescription": {
+            "type": "string",
+            "description": "Optional description of the tenant",
+            "example": "Acme Corp's Ezkey tenant for MFA authentication",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "organizationName": {
+            "type": "string",
+            "description": "Legal name of the organization",
+            "example": "Acme Corporation Inc.",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "organizationDomain": {
+            "type": "string",
+            "description": "Primary domain of the organization",
+            "example": "acme.com",
+            "maxLength": 255,
+            "minLength": 0,
+            "pattern": "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code",
+            "example": "CA",
+            "maxLength": 2,
+            "minLength": 2,
+            "pattern": "^[A-Z]{2}$"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone identifier",
+            "example": "America/Montreal",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "primaryContactName": {
+            "type": "string",
+            "description": "Primary contact full name",
+            "example": "Jane Doe",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "primaryContactEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary contact email address",
+            "example": "jane.doe@acme.com",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "tenantName"
+        ]
       },
       "IntegrationCreateRequestDto": {
         "type": "object",
@@ -2956,6 +3180,14 @@
             "type": "boolean",
             "description": "Whether authentication attempts require challenge validation",
             "example": true
+          },
+          "contactEmail": {
+            "type": "string",
+            "description": "Optional contact email for the end-user"
+          },
+          "userIdentifier": {
+            "type": "string",
+            "description": "Optional user identifier from the integrating application"
           }
         },
         "required": [
@@ -3068,49 +3300,29 @@
           "enrollmentId": {
             "type": "integer",
             "format": "int32",
-            "description": "The enrollment ID for which the authentication attempt is requested",
+            "description": "Enrollment ID (use this OR userIdentifier). Direct reference to enrollment.",
             "example": 123
+          },
+          "userIdentifier": {
+            "type": "string",
+            "description": "User identifier (username, user_id) for lookup within integration scope. Use this OR enrollmentId. When used with admin token, integrationId is required.",
+            "example": "alice"
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID. Required when userIdentifier is used with admin token. Ignored when API key (derived from credentials).",
+            "example": 1
           },
           "challengeRequested": {
             "type": "boolean",
-            "description": "Indicates whether a challenge is requested for this authentication attempt",
+            "description": "Whether a challenge code is requested for this attempt",
             "example": false
           }
         },
         "required": [
-          "challengeRequested",
-          "enrollmentId"
+          "challengeRequested"
         ]
-      },
-      "AuthAttemptCreateResponseDto": {
-        "type": "object",
-        "description": "Response DTO containing created authentication attempt details",
-        "properties": {
-          "authAttemptId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier of the created authentication attempt",
-            "example": 11
-          },
-          "authAttemptChallenge": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Optional challenge code (2 digits) that must be entered on the device if challenge was requested",
-            "example": 42
-          },
-          "timeoutSeconds": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Maximum time in seconds the user has to respond to the authentication request",
-            "example": 120
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Absolute expiration timestamp when the authentication attempt will expire",
-            "example": "2025-01-20T15:34:00.123456Z"
-          }
-        }
       },
       "AuthAttemptDto": {
         "type": "object",
@@ -3729,6 +3941,29 @@
           "devicePublicKey": {
             "type": "string",
             "description": "Public key for the device"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When enrollment was verified (device completed binding)"
+          },
+          "createdByAdminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Admin who created this enrollment (null when via API key)"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When enrollment was last used for successful authentication"
+          },
+          "contactEmail": {
+            "type": "string",
+            "description": "Optional contact email for the end-user"
+          },
+          "userIdentifier": {
+            "type": "string",
+            "description": "Optional user identifier from the integrating application"
           }
         }
       },

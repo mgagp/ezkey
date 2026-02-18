@@ -27,7 +27,6 @@ public class AcmeProperties {
   private String adminApiUrl;
   private String integrationKey;
   private String secretKey;
-  private Users users = new Users();
 
   public String getAdminApiUrl() {
     return adminApiUrl;
@@ -51,35 +50,5 @@ public class AcmeProperties {
 
   public void setSecretKey(String secretKey) {
     this.secretKey = secretKey;
-  }
-
-  public Users getUsers() {
-    return users;
-  }
-
-  public void setUsers(Users users) {
-    this.users = users;
-  }
-
-  /** Users mapping configuration. */
-  public static class Users {
-    private String file;
-    private Integer checkInterval;
-
-    public String getFile() {
-      return file;
-    }
-
-    public void setFile(String file) {
-      this.file = file;
-    }
-
-    public Integer getCheckInterval() {
-      return checkInterval;
-    }
-
-    public void setCheckInterval(Integer checkInterval) {
-      this.checkInterval = checkInterval;
-    }
   }
 }

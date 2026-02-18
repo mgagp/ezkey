@@ -49,7 +49,7 @@
                             <span class="profile-label">DISPLAY NAME</span>
                             <span class="profile-value" th:text="${user?.displayName ?: '-'}">-</span>
                         </div>
-                        <div class="profile-item">
+                        <div class="profile-item" th:if="${user?.enrollmentId != null}">
                             <span class="profile-label">ENROLLMENT ID</span>
                             <span class="profile-value" th:text="${user?.enrollmentId}">-</span>
                         </div>

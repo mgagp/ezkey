@@ -179,23 +179,52 @@ public final class EzkeyClient {
    */
   public AuthAttemptCreateResponse createAuthAttempt(int enrollmentId, boolean challengeRequested)
       throws EzkeyException {
+    return createAuthAttemptInternal(
+        Map.of("enrollmentId", enrollmentId, "challengeRequested", challengeRequested));
+  }
 
-    LOG.log(
-        System.Logger.Level.DEBUG,
-        "Creating auth attempt: enrollmentId={0}, challengeRequested={1}",
-        enrollmentId,
-        challengeRequested);
+  /**
+   * Creates a new authentication attempt using user identifier instead of enrollment ID.
+   *
+   * <p>When using API key authentication, the integration context is derived from the credentials.
+   * The API resolves the user identifier to an enrollment within that integration. Use this when
+   * your application identifies users by username or user ID rather than enrollment ID.
+   *
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API with {@code
+   * userIdentifier} in the body. Requires API key auth (integration key + secret); integration is
+   * derived from the key.
+   *
+   * @param userIdentifier the user identifier (username, user_id) to resolve to an enrollment
+   * @param challengeRequested whether a challenge code should be generated
+   * @return the created auth attempt details including ID, optional challenge code, and timeout
+   * @throws EzkeyException if the request fails, user has no verified enrollment, or user has
+   *     multiple enrollments (specify enrollmentId in that case)
+   */
+  public AuthAttemptCreateResponse createAuthAttemptByUserIdentifier(
+      String userIdentifier, boolean challengeRequested) throws EzkeyException {
+    Objects.requireNonNull(userIdentifier, "userIdentifier must not be null");
+    if (userIdentifier.isBlank()) {
+      throw new IllegalArgumentException("userIdentifier must not be blank");
+    }
+    return createAuthAttemptInternal(
+        Map.of("userIdentifier", userIdentifier.trim(), "challengeRequested", challengeRequested));
+  }
 
-    // Build JSON request body
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("enrollmentId", enrollmentId);
-    body.put("challengeRequested", challengeRequested);
+  /**
+   * Internal helper to create auth attempt with a given request body.
+   *
+   * @param bodyFields the JSON body fields (enrollmentId or userIdentifier, challengeRequested)
+   * @return the created auth attempt response
+   */
+  private AuthAttemptCreateResponse createAuthAttemptInternal(Map<String, Object> bodyFields)
+      throws EzkeyException {
+    Map<String, Object> body = new LinkedHashMap<>(bodyFields);
     String jsonBody = JsonHelper.toJson(body);
 
-    // Execute POST
+    LOG.log(System.Logger.Level.DEBUG, "Creating auth attempt: body keys={0}", body.keySet());
+
     String responseBody = executePost(AUTH_ATTEMPTS_PATH, jsonBody, 201);
 
-    // Parse response
     Map<String, String> fields = JsonHelper.parseObject(responseBody);
     var response =
         new AuthAttemptCreateResponse(

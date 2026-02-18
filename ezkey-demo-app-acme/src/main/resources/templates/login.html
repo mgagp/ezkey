@@ -78,9 +78,6 @@
                             <button type="button" id="api-key-btn" class="reload-config-btn" onclick="openApiKeyDialog()">
                                 🔑 CONFIGURE API KEY
                             </button>
-                            <button type="button" id="reload-config-btn" class="reload-config-btn" onclick="reloadConfig()">
-                                🔄 RELOAD USERS
-                            </button>
                         </div>
                     </div>
                     <ol class="steps-list">
@@ -95,11 +92,10 @@
                     </p>
                     <div class="info-note" style="margin-top: 1rem;">
                         <p style="margin: 0; font-size: 0.85rem;">
-                            <strong>Configuration:</strong> Use "Configure API Key" to set credentials without restart.
-                            "Reload Users" refreshes the users mapping file.
+                            <strong>Configuration:</strong> Use "Configure API Key" to set integration key and secret.
+                            Enter the username you enrolled via the TUI or demo device.
                         </p>
                     </div>
-                    <div id="reload-status" class="reload-status hidden"></div>
                 </div>
             </section>
         </div>
@@ -142,48 +138,8 @@
         </div>
     </footer>
 
-    <!-- Reload Config Script -->
+    <!-- API Key Dialog Script -->
     <script>
-        async function reloadConfig() {
-            const btn = document.getElementById('reload-config-btn');
-            const status = document.getElementById('reload-status');
-            
-            // Disable button and show loading
-            btn.disabled = true;
-            btn.textContent = '⏳ RELOADING...';
-            status.className = 'reload-status';
-            status.textContent = 'Reloading users mapping file...';
-            status.style.display = 'block';
-            
-            try {
-                const response = await fetch('/api/reload-config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    status.className = 'reload-status success';
-                    status.textContent = '✅ ' + result.message;
-                    setTimeout(() => {
-                        status.style.display = 'none';
-                    }, 3000);
-                } else {
-                    status.className = 'reload-status error';
-                    status.textContent = '❌ ' + result.message;
-                }
-            } catch (error) {
-                status.className = 'reload-status error';
-                status.textContent = '❌ Error: ' + error.message;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🔄 RELOAD USERS';
-            }
-        }
-
         function openApiKeyDialog() {
             document.getElementById('api-key-modal').classList.remove('hidden');
             document.getElementById('api-key-integration').value = '';

@@ -78,7 +78,7 @@
             "auth-attempts"
           ]
         },
-        "description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to create authentication attempt for\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
+        "description": "Creates a new authentication attempt for MFA validation. This endpoint is typically used by integrating applications to initiate MFA authentication requests.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can create auth attempts for any enrollment (any tenant)\n- **TenantAdmin**: Can only create auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessEnrollment()`\n- Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n**Request Body:**\nProvide either `enrollmentId` OR `userIdentifier` (plus `integrationId` when using admin token):\n- `enrollmentId` (optional): Direct enrollment ID\n- `userIdentifier` (optional): Username/user ID for lookup within integration scope. When used with admin token, `integrationId` is required.\n- `integrationId` (optional): Required when `userIdentifier` is used with admin token. Ignored when using API key (derived from credentials).\n- `challengeRequested` (required): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The user must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data (e.g., enrollment not found)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create auth attempt for enrollment from another tenant\n- 500: Internal server error"
       },
       "response": []
     },
@@ -169,7 +169,33 @@
             "auth-attempts"
           ]
         },
-        "description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID (must belong to API key's integration)\n- `challengeRequested` (optional, default: false): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
+        "description": "Creates a new authentication attempt using API key authentication (machine-to-machine). API keys can only create auth attempts for enrollments belonging to their associated integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Request Body:**\nProvide either `enrollmentId` OR `userIdentifier`:\n- `enrollmentId` (optional): Enrollment ID (must belong to API key's integration)\n- `userIdentifier` (optional): Username/user ID for lookup (integration derived from API key)\n- `challengeRequested` (required): Whether to require challenge code verification (2-digit code)\n\n**Response (201 Created):**\n- `authAttemptId`: Unique identifier of the created authentication attempt\n- `authAttemptChallenge`: Optional challenge code (2 digits, 00-99) if `challengeRequested` was true. Null if no challenge was requested.\n- `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)\n- `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format, e.g., `2025-01-20T15:34:00.123456Z`)\n\n**Challenge Flow:**\nWhen `challengeRequested: true`, the response includes `authAttemptChallenge`. The integrating application must:\n1. Display the challenge code to the user\n2. User enters the code on their device\n3. User approves the authentication request\n4. Call `/wait` endpoint to check for completion\n\n**Status Codes:**\n- 201: Auth attempt created successfully\n- 400: Invalid data or enrollment doesn't belong to API key's integration\n- 401: Unauthorized - invalid API key\n- 429: Rate limit exceeded (100 requests per hour per integration key)\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "create with userIdentifier (API key)",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {"key": "username", "value": "{{integrationKey}}", "type": "string"},
+            {"key": "password", "value": "{{secretKey}}", "type": "string"}
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"userIdentifier\": \"alice\",\r\n    \"challengeRequested\": false\r\n}",
+          "options": {"raw": {"language": "json"}}
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
+          "host": ["{{base_url_admin_api}}"],
+          "path": ["api", "v1", "auth-attempts"]
+        },
+        "description": "Creates an auth attempt using userIdentifier instead of enrollmentId. Use when your app identifies users by username. Integration is derived from API key. Requires enrollment with matching user_identifier in the integration."
       },
       "response": []
     },

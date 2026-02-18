@@ -238,3 +238,33 @@ The `username` in `acme-users.json` is exactly what becomes `user_identifier` on
 
 
 These additions align with the Tenant analysis (contact, normative, operational), respect the 80/20 rule, and keep Ezkey pragmatic for MFA security projects. The `user_identifier` field also unlocks future API evolution to reduce domain pollution for integrating applications (see Future Phase section).
+
+---
+
+## Implementation Status (Commit Guide)
+
+**Phases 1 & 2 — DONE**
+
+- **Migration V31**: `verified_at`, `created_by_admin_id`, `last_used_at`, `contact_email`, `user_identifier`; index on `(integration_id, user_identifier)`.
+- **Enrollment entity**: New fields; `verified_at` set on VERIFIED transition; `created_by_admin_id` on Admin API create; `last_used_at` in `AuthAttemptRespondService`.
+- **EnrollmentCreateRequest/DTO**: `contactEmail`, `userIdentifier`, `createdByAdminId`; response DTOs updated.
+
+**Phase 3 — DONE**
+
+- **Admin API** `POST /api/v1/auth-attempts`: Accepts `enrollmentId` OR `userIdentifier` (with `integrationId` for admin token). Consistency check when both provided. Multi-device → 400 "Multiple enrollments… specify enrollmentId or deviceHint".
+- **SDK Java**: `createAuthAttemptByUserIdentifier(userIdentifier, challengeRequested)`.
+- **Demo App Acme**: Removed `acme-users.json` and `UserMappingService`; flow uses `userIdentifier` only (integration key + username → auth attempt).
+- **Bootstrap**: No longer creates acme-users.json; demo uses `userIdentifier` resolution.
+- **Docker**: Removed `EZKEY_USERS_FILE` / `EZKEY_USERS_CHECK_INTERVAL` from compose; Postman collection updated.
+
+---
+
+## Remaining / Future (Backlog)
+
+
+| Item                                           | Priority | Notes                                                                                              |
+| ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| **deviceHint** for multi-device disambiguation | Low      | API message mentions it; not implemented. Single-device is 80/20; `enrollmentId` suffices for now. |
+| **contactEmail** as auth-attempt lookup key    | Low      | `userIdentifier` covers main use case; contactEmail lookup would be incremental.                   |
+
+

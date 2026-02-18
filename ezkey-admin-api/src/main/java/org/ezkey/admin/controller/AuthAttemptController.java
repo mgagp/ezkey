@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -28,6 +29,7 @@ import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -40,6 +42,7 @@ import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.RateLimitExceededException;
@@ -52,6 +55,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -277,7 +282,7 @@ public class AuthAttemptController {
       })
   @PreAuthorize("hasAnyRole('ADMIN', 'API_KEY')")
   @PostMapping
-  public ResponseEntity<AuthAttemptCreateResponseDto> create(
+  public ResponseEntity<?> create(
       @Parameter(description = "Auth attempt creation data", required = true) @RequestBody
           AuthAttemptCreateRequestDto request,
       HttpServletRequest httpRequest) {
@@ -290,17 +295,35 @@ public class AuthAttemptController {
       throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
     }
 
+    // Resolve effective enrollment ID from enrollmentId and/or userIdentifier
+    Integer effectiveEnrollmentId;
+    try {
+      effectiveEnrollmentId = resolveEnrollmentId(request, apiKeyId != null, httpRequest);
+    } catch (IllegalArgumentException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      ProblemDetail pd =
+          ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
+      pd.setTitle("Invalid Request");
+      return ResponseEntity.badRequest().body(pd);
+    }
+
     // Check enrollment ownership for API keys
     if (apiKeyId != null) {
-      validateEnrollmentOwnership(request.enrollmentId(), apiKeyId);
+      validateEnrollmentOwnership(effectiveEnrollmentId, apiKeyId);
     }
 
     // Validate tenant scoping for admins: admin must have access to the enrollment
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null
         && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
-      // Admin authentication - validate access to enrollment
-      if (!accessControlService.canAccessEnrollment(auth, request.enrollmentId())) {
+      if (!accessControlService.canAccessEnrollment(auth, effectiveEnrollmentId)) {
         auditLogService.log(
             AuditHelper.createAdminAudit(
                     context,
@@ -309,15 +332,18 @@ public class AuthAttemptController {
                 .eventStatus(EventStatus.FAILURE)
                 .errorMessage(
                     "Access denied: admin does not have access to enrollment "
-                        + request.enrollmentId())
+                        + effectiveEnrollmentId)
                 .build());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
       }
     }
 
     try {
-      AuthAttemptCreateResponse response =
-          authAttemptService.create(authAttemptMapper.toAuthAttemptCreateRequest(request));
+      AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
+      createRequest.setEnrollmentId(effectiveEnrollmentId);
+      createRequest.setChallengeRequested(request.challengeRequested());
+
+      AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 
       // Record successful operation for rate limiting
       if (apiKeyId != null) {
@@ -332,7 +358,7 @@ public class AuthAttemptController {
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
-              .enrollmentId(request.enrollmentId())
+              .enrollmentId(effectiveEnrollmentId)
               .eventDetails(
                   "Auth Type: "
                       + authType
@@ -343,34 +369,134 @@ public class AuthAttemptController {
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(authAttemptMapper.toAuthAttemptCreateResponseDto(response));
     } catch (IllegalArgumentException e) {
-      // Audit validation failure - do not include enrollmentId as it may not exist
-      // (would violate FK constraint if enrollment doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
-              // enrollmentId omitted - may not exist, would violate FK constraint
-              .errorMessage(e.getMessage() + " (enrollmentId: " + request.enrollmentId() + ")")
+              .errorMessage(e.getMessage())
               .build());
 
-      return ResponseEntity.badRequest().build();
+      ProblemDetail pd =
+          ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
+      pd.setTitle("Invalid Request");
+      return ResponseEntity.badRequest().body(pd);
     } catch (Exception e) {
-      // Audit error - do not include enrollmentId as it may not exist
-      // (would violate FK constraint if enrollment doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR)
               .eventStatus(EventStatus.ERROR)
-              // enrollmentId omitted - may not exist, would violate FK constraint
-              .errorMessage(e.getMessage() + " (enrollmentId: " + request.enrollmentId() + ")")
+              .errorMessage(e.getMessage())
               .build());
 
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+  }
+
+  /**
+   * Resolves the effective enrollment ID from the request, supporting either enrollmentId or
+   * userIdentifier (with optional consistency check when both are provided).
+   *
+   * @param request the auth attempt create request DTO
+   * @param isApiKeyAuth true if authenticated via API key
+   * @param httpRequest the HTTP request (for path in error details)
+   * @return the resolved enrollment ID
+   * @throws IllegalArgumentException if validation fails (missing identifiers, not found,
+   *     multi-device, or consistency mismatch)
+   */
+  private Integer resolveEnrollmentId(
+      AuthAttemptCreateRequestDto request, boolean isApiKeyAuth, HttpServletRequest httpRequest) {
+    Integer enrollmentId = request.enrollmentId();
+    String userIdentifier =
+        request.userIdentifier() != null && !request.userIdentifier().isBlank()
+            ? request.userIdentifier().trim()
+            : null;
+    Integer integrationIdFromRequest = request.integrationId();
+
+    // Must have at least one identifier
+    if (enrollmentId == null && userIdentifier == null) {
+      throw new IllegalArgumentException(
+          "Either enrollmentId or userIdentifier is required. Provide one or both for consistency "
+              + "check.");
+    }
+
+    // Determine integration ID for userIdentifier resolution
+    Integer effectiveIntegrationId = null;
+    if (userIdentifier != null) {
+      if (isApiKeyAuth) {
+        effectiveIntegrationId = extractIntegrationId();
+        if (effectiveIntegrationId == null) {
+          throw new IllegalArgumentException(
+              "Unable to determine integration from API key. Contact support.");
+        }
+      } else {
+        // Admin token: integrationId must be in request
+        if (integrationIdFromRequest == null) {
+          throw new IllegalArgumentException(
+              "integrationId is required when using userIdentifier with admin authentication.");
+        }
+        effectiveIntegrationId = integrationIdFromRequest;
+      }
+    }
+
+    // Path 1: enrollmentId only
+    if (enrollmentId != null && userIdentifier == null) {
+      return enrollmentId;
+    }
+
+    // Path 2: userIdentifier only
+    if (enrollmentId == null && userIdentifier != null) {
+      List<Enrollment> enrollments =
+          enrollmentRepository.findByIntegrationIdAndUserIdentifierAndStatusAndActive(
+              effectiveIntegrationId, userIdentifier, EnrollmentStatus.VERIFIED, true);
+
+      if (enrollments.isEmpty()) {
+        throw new IllegalArgumentException(
+            "No verified enrollment found for userIdentifier '" + userIdentifier + "'.");
+      }
+      if (enrollments.size() > 1) {
+        throw new IllegalArgumentException(
+            "Multiple enrollments for this user. Please specify enrollmentId or deviceHint.");
+      }
+      return enrollments.get(0).getEnrollmentId();
+    }
+
+    // Path 3: Both provided - consistency check
+    List<Enrollment> byUserIdentifier =
+        enrollmentRepository.findByIntegrationIdAndUserIdentifierAndStatusAndActive(
+            effectiveIntegrationId, userIdentifier, EnrollmentStatus.VERIFIED, true);
+
+    if (byUserIdentifier.isEmpty()) {
+      throw new IllegalArgumentException(
+          "No verified enrollment found for userIdentifier '" + userIdentifier + "'.");
+    }
+
+    if (byUserIdentifier.size() > 1) {
+      // Multiple enrollments: enrollmentId must be one of them
+      boolean matches =
+          byUserIdentifier.stream().anyMatch(e -> e.getEnrollmentId().equals(enrollmentId));
+      if (!matches) {
+        throw new IllegalArgumentException(
+            "Enrollment ID and userIdentifier resolve to different enrollments. Specify a valid "
+                + "enrollmentId for this user.");
+      }
+      return enrollmentId;
+    }
+
+    // Single match: must be same enrollment
+    Enrollment resolved = byUserIdentifier.get(0);
+    if (!resolved.getEnrollmentId().equals(enrollmentId)) {
+      throw new IllegalArgumentException(
+          "Enrollment ID and userIdentifier resolve to different enrollments. Got enrollment "
+              + enrollmentId
+              + " but userIdentifier maps to enrollment "
+              + resolved.getEnrollmentId()
+              + ".");
+    }
+    return enrollmentId;
   }
 
   /**

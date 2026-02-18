@@ -329,4 +329,22 @@ public interface EnrollmentRepository
       String enrollmentName,
       EnrollmentStatus status,
       Integer excludeEnrollmentId);
+
+  /**
+   * Finds active VERIFIED enrollments by integration and user identifier.
+   *
+   * <p>Used for auth attempt creation when the client provides userIdentifier instead of
+   * enrollmentId. Returns all matching enrollments to support multi-device scenarios (user may have
+   * multiple devices). Caller must handle: 0 matches (not found), 1 match (use it), 2+ matches
+   * (disambiguation required).
+   *
+   * @param integrationId the integration ID to search for
+   * @param userIdentifier the user identifier (username, user_id) to search for
+   * @param status the enrollment status to filter by (typically VERIFIED)
+   * @param active whether the enrollment is active (typically true)
+   * @return list of matching enrollments
+   * @since 2025
+   */
+  List<Enrollment> findByIntegrationIdAndUserIdentifierAndStatusAndActive(
+      Integer integrationId, String userIdentifier, EnrollmentStatus status, Boolean active);
 }

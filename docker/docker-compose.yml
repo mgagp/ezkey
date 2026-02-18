@@ -189,8 +189,6 @@ services:
       EZKEY_ADMIN_API_URL: http://admin-api:9080
       # EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY: Leave unset initially - configure via /app/config/application.properties after creating integration
       # Format: Authorization: Basic base64(integrationKey:secretKey)
-      EZKEY_USERS_FILE: ${EZKEY_USERS_FILE:-data/acme-users.json}
-      EZKEY_USERS_CHECK_INTERVAL: ${EZKEY_USERS_CHECK_INTERVAL:-5}
     volumes:
       - demo-app-acme-data:/app/data
       - demo-app-acme-config:/app/config

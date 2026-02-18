@@ -37,16 +37,6 @@ ezkey.admin.api.url=http://admin-api:9080
 ezkey.integration-key=
 ezkey.secret-key=
 
-# Users mapping file path (relative to /app/data in Docker)
-# This file maps usernames to enrollment IDs
-# Automatically created by bootstrap-init with admin.docker user (enrollmentId: 1)
-ezkey.users.file=data/acme-users.json
-
-# File hot-reload check interval (seconds, 0 to disable)
-# The users.json file is automatically reloaded when changed
-# Set to 0 to disable hot-reload (requires restart to pick up changes)
-ezkey.users.file.check-interval=5
-
 # =============================================================================
 # Optional Overrides
 # =============================================================================

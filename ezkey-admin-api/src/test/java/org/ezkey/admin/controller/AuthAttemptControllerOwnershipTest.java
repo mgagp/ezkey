@@ -118,16 +118,15 @@ class AuthAttemptControllerOwnershipTest {
     // Mock successful auth attempt creation
     AuthAttemptCreateResponse mockResponse = createMockResponse();
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
-    when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
-        .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(
             new AuthAttemptCreateResponseDto(1, null, 120, OffsetDateTime.now().plusSeconds(120)));
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
 
     // Act
-    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request, null);
+    ResponseEntity<?> response = controller.create(request, null);
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;
@@ -153,7 +152,8 @@ class AuthAttemptControllerOwnershipTest {
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
 
     // Act & Assert
     assertThrows(
@@ -181,7 +181,8 @@ class AuthAttemptControllerOwnershipTest {
     // Mock rate limiting to allow the operation
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
 
     // Act & Assert
     assertThrows(
@@ -211,16 +212,15 @@ class AuthAttemptControllerOwnershipTest {
     // Mock successful auth attempt creation
     AuthAttemptCreateResponse mockResponse = createMockResponse();
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
-    when(authAttemptMapper.toAuthAttemptCreateRequest(any()))
-        .thenReturn(new AuthAttemptCreateRequest());
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(
             new AuthAttemptCreateResponseDto(1, null, 120, OffsetDateTime.now().plusSeconds(120)));
 
-    AuthAttemptCreateRequestDto request = new AuthAttemptCreateRequestDto(enrollmentId, false);
+    AuthAttemptCreateRequestDto request =
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
 
     // Act
-    ResponseEntity<AuthAttemptCreateResponseDto> response = controller.create(request, null);
+    ResponseEntity<?> response = controller.create(request, null);
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;

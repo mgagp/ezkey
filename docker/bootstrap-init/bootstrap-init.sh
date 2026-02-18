@@ -7,11 +7,7 @@ set -e
 BOOTSTRAP_CREDS_FILE="/bootstrap/bootstrap-credentials.json"
 DEVICE_CREDS_FILE="/bootstrap/device-credentials.json"
 DEMO_DEVICE_ENROLLMENTS_DIR="/app/data/enrollments"
-# Note: demo-app-acme-data volume is mounted at /app/data in demo-app-acme container
-# In bootstrap-init, we mount it at /app/acme-data to avoid conflict with demo-device-data
-# The file created here will be visible in demo-app-acme at /app/data/acme-users.json
-DEMO_APP_ACME_DATA_DIR="/app/acme-data"
-DEMO_APP_ACME_USERS_FILE="$DEMO_APP_ACME_DATA_DIR/acme-users.json"
+# Note: demo-app-acme uses userIdentifier (username) for auth attempt creation; no acme-users.json
 
 ADMIN_API_URL="${ADMIN_API_URL:-http://admin-api:9080}"
 AUTH_API_URL="${AUTH_API_URL:-http://auth-api:8080}"
@@ -234,33 +230,8 @@ ENROLLMENT_JSON=$(jq -n \
 echo "$ENROLLMENT_JSON" > "$ENROLLMENT_FILE"
 echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE"
 
-# Step 8: Seed demo-app-acme users mapping file
-echo ""
-echo "Step 8: Seeding demo-app-acme users mapping file..."
-mkdir -p "$DEMO_APP_ACME_DATA_DIR"
-if [ ! -d "$DEMO_APP_ACME_DATA_DIR" ]; then
-  echo "❌ Error: Failed to create demo-app-acme data directory"
-  exit 1
-fi
-# Set permissions to 755 so spring user can read/write
-chmod 755 "$DEMO_APP_ACME_DATA_DIR" 2>/dev/null || true
-
-# Create users mapping file with admin.docker user
-# Only create if file doesn't exist (idempotent)
-if [ ! -f "$DEMO_APP_ACME_USERS_FILE" ]; then
-  USERS_JSON=$(jq -n \
-    --arg username "$USERNAME" \
-    --arg enrollmentId "$ENROLLMENT_ID" \
-    --arg displayName "Admin Docker" \
-    '{users: [{username: $username, enrollmentId: ($enrollmentId | tonumber), displayName: $displayName}]}')
-  
-  echo "$USERS_JSON" > "$DEMO_APP_ACME_USERS_FILE"
-  echo "✅ Demo-app-acme users mapping file created: $DEMO_APP_ACME_USERS_FILE"
-  echo "   User: $USERNAME (enrollmentId: $ENROLLMENT_ID)"
-else
-  echo "⚠️  Demo-app-acme users mapping file already exists: $DEMO_APP_ACME_USERS_FILE"
-  echo "   Skipping creation (file will not be overwritten)"
-fi
+# Step 8: Demo-app-acme uses userIdentifier (username) - no users mapping file
+# Ensure enrollment has user_identifier set when created (TUI/demo flow)
 
 echo ""
 echo "=========================================="
@@ -269,9 +240,9 @@ echo "=========================================="
 echo ""
 echo "📋 Summary:"
 echo "   Enrollment ID: $ENROLLMENT_ID"
+echo "   Username: $USERNAME (use as userIdentifier in demo-app-acme)"
 echo "   Device credentials: $DEVICE_CREDS_FILE"
 echo "   Demo-device enrollment: $ENROLLMENT_FILE"
-echo "   Demo-app-acme users mapping: $DEMO_APP_ACME_USERS_FILE"
 echo ""
 echo "🎉 Demo-device and demo-app-acme are ready for use!"
 echo "   Next: Login via POST /api/v1/admin/auth/login and approve on demo-device"
