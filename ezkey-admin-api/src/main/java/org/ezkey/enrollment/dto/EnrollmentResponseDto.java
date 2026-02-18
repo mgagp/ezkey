@@ -105,4 +105,13 @@ public record EnrollmentResponseDto(
             example = "false")
         Boolean authAttemptChallengeRequired,
     @Schema(description = "Public key for integration communication") String integrationPublicKey,
-    @Schema(description = "Public key for the device") String devicePublicKey) {}
+    @Schema(description = "Public key for the device") String devicePublicKey,
+    @Schema(description = "When enrollment was verified (device completed binding)")
+        java.time.OffsetDateTime verifiedAt,
+    @Schema(description = "Admin who created this enrollment (null when via API key)")
+        Integer createdByAdminId,
+    @Schema(description = "When enrollment was last used for successful authentication")
+        java.time.OffsetDateTime lastUsedAt,
+    @Schema(description = "Optional contact email for the end-user") String contactEmail,
+    @Schema(description = "Optional user identifier from the integrating application")
+        String userIdentifier) {}

@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
@@ -381,6 +382,7 @@ public class EnrollmentVerifyService {
 
     enrollment.setStatus(EnrollmentStatus.VERIFIED);
     enrollment.setActive(true);
+    enrollment.setVerifiedAt(OffsetDateTime.now());
     enrollment.setDevicePublicKey(request.getDevicePublicKey());
 
     // Calculate and store SHA-256 hash of device public key for uniqueness validation

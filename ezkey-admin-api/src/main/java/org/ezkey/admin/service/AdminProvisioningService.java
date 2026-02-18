@@ -12,7 +12,6 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-
 import org.ezkey.admin.config.AdminSecurityProperties;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
@@ -40,45 +39,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for provisioning tenants and administrators with proper limits and
- * audit.
+ * Service for provisioning tenants and administrators with proper limits and audit.
  *
- * <p>
- * This service handles the creation of tenants and administrators (both global
- * and tenant
- * admins) with enforcement of configurable limits and complete audit logging.
- * It also handles the
+ * <p>This service handles the creation of tenants and administrators (both global and tenant
+ * admins) with enforcement of configurable limits and complete audit logging. It also handles the
  * creation of enrollments and recovery codes for passwordless authentication.
  *
- * <p>
- * <b>Provisioning Operations:</b>
+ * <p><b>Provisioning Operations:</b>
  *
  * <ul>
- * <li><b>Tenant Creation:</b> Global admins can create tenants
- * <li><b>Peer Global Admin Creation:</b> Global admins can create other global
- * admins (with
- * limits)
- * <li><b>Peer Tenant Admin Creation:</b> Global admins or tenant admins can
- * create tenant admins
- * for a tenant (with limits)
+ *   <li><b>Tenant Creation:</b> Global admins can create tenants
+ *   <li><b>Peer Global Admin Creation:</b> Global admins can create other global admins (with
+ *       limits)
+ *   <li><b>Peer Tenant Admin Creation:</b> Global admins or tenant admins can create tenant admins
+ *       for a tenant (with limits)
  * </ul>
  *
- * <p>
- * <b>Security Features:</b>
+ * <p><b>Security Features:</b>
  *
  * <ul>
- * <li>Limit enforcement (max/min admins per type)
- * <li>Tenant scoping validation
- * <li>Automatic enrollment creation with credentials
- * <li>Recovery code generation
- * <li>Complete audit trail
+ *   <li>Limit enforcement (max/min admins per type)
+ *   <li>Tenant scoping validation
+ *   <li>Automatic enrollment creation with credentials
+ *   <li>Recovery code generation
+ *   <li>Complete audit trail
  * </ul>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -119,46 +108,37 @@ public class AdminProvisioningService {
   /**
    * Result object containing provisioning output with onboarding credentials.
    *
-   * <p>
-   * This record contains all information needed for the newly created admin to
-   * complete
+   * <p>This record contains all information needed for the newly created admin to complete
    * passwordless enrollment, including enrollment credentials and recovery codes.
    *
-   * @param admin                The created administrator entity
-   * @param enrollment           The enrollment created for passwordless
-   *                             authentication
-   * @param enrollmentProofToken Enrollment proof token (shown once - save
-   *                             securely)
-   * @param enrollmentChallenge  Enrollment challenge code (6 digits, shown once -
-   *                             save securely)
-   * @param recoveryCodes        List of recovery codes (shown once, single-use -
-   *                             save securely)
+   * @param admin The created administrator entity
+   * @param enrollment The enrollment created for passwordless authentication
+   * @param enrollmentProofToken Enrollment proof token (shown once - save securely)
+   * @param enrollmentChallenge Enrollment challenge code (6 digits, shown once - save securely)
+   * @param recoveryCodes List of recovery codes (shown once, single-use - save securely)
    */
   public record ProvisioningResult(
       EzkeyAdmin admin,
       Enrollment enrollment,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      java.util.List<String> recoveryCodes) {
-  }
+      java.util.List<String> recoveryCodes) {}
 
   /**
    * Creates a new tenant.
    *
-   * <p>
-   * Only global administrators can create tenants. The tenant is
-   * created with the specified name, description, and optional
-   * organizational identity fields.
+   * <p>Only global administrators can create tenants. The tenant is created with the specified
+   * name, description, and optional organizational identity fields.
    *
-   * @param tenantName          the unique name of the tenant
-   * @param tenantDescription   optional description of the tenant
-   * @param organizationName    optional legal organization name
-   * @param organizationDomain  optional primary domain
-   * @param countryCode         optional ISO 3166-1 alpha-2 country code
-   * @param timezone            optional IANA timezone identifier
-   * @param primaryContactName  optional primary contact name
+   * @param tenantName the unique name of the tenant
+   * @param tenantDescription optional description of the tenant
+   * @param organizationName optional legal organization name
+   * @param organizationDomain optional primary domain
+   * @param countryCode optional ISO 3166-1 alpha-2 country code
+   * @param timezone optional IANA timezone identifier
+   * @param primaryContactName optional primary contact name
    * @param primaryContactEmail optional primary contact email
-   * @param creatorPrincipal    the creating administrator principal
+   * @param creatorPrincipal the creating administrator principal
    * @return the created tenant
    * @throws IllegalArgumentException if name exists or not global admin
    */
@@ -173,28 +153,23 @@ public class AdminProvisioningService {
       String primaryContactName,
       String primaryContactEmail,
       AdminPrincipal creatorPrincipal) {
-    logger.info(
-        "Creating tenant: {} (creator: {})",
-        tenantName,
-        creatorPrincipal.adminId());
+    logger.info("Creating tenant: {} (creator: {})", tenantName, creatorPrincipal.adminId());
 
     // Validate creator is global admin
     if (!creatorPrincipal.isGlobalAdmin()) {
-      throw new IllegalArgumentException(
-          "Only global administrators can create tenants");
+      throw new IllegalArgumentException("Only global administrators can create tenants");
     }
 
     // Check if tenant name already exists
     if (tenantRepository.existsByTenantName(tenantName)) {
-      throw new IllegalArgumentException(
-          "Tenant name already exists: " + tenantName);
+      throw new IllegalArgumentException("Tenant name already exists: " + tenantName);
     }
 
     // Get creator admin
-    EzkeyAdmin creator = adminRepository
-        .findById(creatorPrincipal.adminId())
-        .orElseThrow(() -> new ResourceNotFoundException(
-            "Admin", creatorPrincipal.adminId()));
+    EzkeyAdmin creator =
+        adminRepository
+            .findById(creatorPrincipal.adminId())
+            .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
 
     // Create tenant with identity fields
     Tenant tenant = new Tenant(tenantName, tenantDescription);
@@ -210,10 +185,7 @@ public class AdminProvisioningService {
 
     tenant = tenantRepository.save(tenant);
 
-    logger.info(
-        "✅ Tenant created: {} (ID: {})",
-        tenantName,
-        tenant.getTenantId());
+    logger.info("✅ Tenant created: {} (ID: {})", tenantName, tenant.getTenantId());
 
     return tenant;
   }
@@ -221,22 +193,17 @@ public class AdminProvisioningService {
   /**
    * Creates a new global administrator (peer admin).
    *
-   * <p>
-   * Only global administrators can create other global administrators. The
-   * operation enforces
-   * maximum limit and creates enrollment + recovery codes for passwordless
-   * authentication.
+   * <p>Only global administrators can create other global administrators. The operation enforces
+   * maximum limit and creates enrollment + recovery codes for passwordless authentication.
    *
-   * @param username         the unique username for the new admin
-   * @param email            the email address (required for SOC 2 compliance)
-   * @param firstName        the first name (required for SOC 2 compliance)
-   * @param lastName         the last name (required for SOC 2 compliance)
-   * @param creatorPrincipal the principal of the creating administrator (must be
-   *                         global admin)
+   * @param username the unique username for the new admin
+   * @param email the email address (required for SOC 2 compliance)
+   * @param firstName the first name (required for SOC 2 compliance)
+   * @param lastName the last name (required for SOC 2 compliance)
+   * @param creatorPrincipal the principal of the creating administrator (must be global admin)
    * @return ProvisioningResult with admin, enrollment, and onboarding credentials
-   * @throws IllegalArgumentException if limit exceeded, username exists, or
-   *                                  creator is not global
-   *                                  admin
+   * @throws IllegalArgumentException if limit exceeded, username exists, or creator is not global
+   *     admin
    */
   @Transactional
   public ProvisioningResult createGlobalAdmin(
@@ -253,7 +220,8 @@ public class AdminProvisioningService {
     }
 
     // Enforce maximum limit
-    long currentGlobalAdminCount = adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
+    long currentGlobalAdminCount =
+        adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
     if (currentGlobalAdminCount >= securityProperties.getMaxGlobalAdmins()) {
       throw new IllegalArgumentException(
           "Maximum global admins limit reached (%d). Cannot create more global admins."
@@ -271,19 +239,22 @@ public class AdminProvisioningService {
     }
 
     // Get creator admin
-    EzkeyAdmin creator = adminRepository
-        .findById(creatorPrincipal.adminId())
-        .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
+    EzkeyAdmin creator =
+        adminRepository
+            .findById(creatorPrincipal.adminId())
+            .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
 
     // Get system tenant (global admins belong to system tenant)
-    Tenant systemTenant = tenantRepository
-        .findByTenantName("Ezkey System")
-        .orElseThrow(() -> new RuntimeException("System tenant not found"));
+    Tenant systemTenant =
+        tenantRepository
+            .findByTenantName("Ezkey System")
+            .orElseThrow(() -> new RuntimeException("System tenant not found"));
 
     // Get system integration (for admin enrollment)
-    Integration systemIntegration = integrationRepository
-        .findByIsSystemIntegrationAndActiveTrue(true)
-        .orElseThrow(() -> new RuntimeException("System integration not found"));
+    Integration systemIntegration =
+        integrationRepository
+            .findByIsSystemIntegrationAndActiveTrue(true)
+            .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.GLOBAL_ADMIN);
@@ -297,7 +268,8 @@ public class AdminProvisioningService {
     admin.setChallengeRequired(false);
 
     // Generate recovery codes
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+        recoveryService.generateRecoveryCodes();
     admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     admin = adminRepository.save(admin);
@@ -313,23 +285,19 @@ public class AdminProvisioningService {
   /**
    * Creates a new tenant administrator (peer admin).
    *
-   * <p>
-   * Global administrators can create tenant admins for any tenant. Tenant
-   * administrators can
-   * create peer tenant admins for their own tenant only. The operation enforces
-   * maximum limit and
+   * <p>Global administrators can create tenant admins for any tenant. Tenant administrators can
+   * create peer tenant admins for their own tenant only. The operation enforces maximum limit and
    * creates enrollment + recovery codes for passwordless authentication.
    *
-   * @param username         the unique username for the new admin
-   * @param email            optional email address
-   * @param firstName        optional first name
-   * @param lastName         optional last name
-   * @param tenantId         the ID of the tenant this admin will manage
+   * @param username the unique username for the new admin
+   * @param email optional email address
+   * @param firstName optional first name
+   * @param lastName optional last name
+   * @param tenantId the ID of the tenant this admin will manage
    * @param creatorPrincipal the principal of the creating administrator
    * @return ProvisioningResult with admin, enrollment, and onboarding credentials
-   * @throws IllegalArgumentException if limit exceeded, username exists, tenant
-   *                                  not found, or
-   *                                  unauthorized
+   * @throws IllegalArgumentException if limit exceeded, username exists, tenant not found, or
+   *     unauthorized
    */
   @Transactional
   public ProvisioningResult createTenantAdmin(
@@ -346,9 +314,10 @@ public class AdminProvisioningService {
         creatorPrincipal.adminId());
 
     // Get tenant
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
 
     // Validate that tenant is not the system tenant
     // System tenant hosts global administrators only, not tenant administrators
@@ -375,8 +344,9 @@ public class AdminProvisioningService {
     }
 
     // Enforce maximum limit
-    long currentTenantAdminCount = adminRepository.countByTenantTenantIdAndAdminTypeAndActiveTrue(
-        tenantId, AdminType.TENANT_ADMIN);
+    long currentTenantAdminCount =
+        adminRepository.countByTenantTenantIdAndAdminTypeAndActiveTrue(
+            tenantId, AdminType.TENANT_ADMIN);
     if (currentTenantAdminCount >= securityProperties.getMaxTenantAdminsPerTenant()) {
       throw new IllegalArgumentException(
           String.format(
@@ -396,14 +366,16 @@ public class AdminProvisioningService {
     }
 
     // Get creator admin
-    EzkeyAdmin creator = adminRepository
-        .findById(creatorPrincipal.adminId())
-        .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
+    EzkeyAdmin creator =
+        adminRepository
+            .findById(creatorPrincipal.adminId())
+            .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
 
     // Get system integration (for admin enrollment)
-    Integration systemIntegration = integrationRepository
-        .findByIsSystemIntegrationAndActiveTrue(true)
-        .orElseThrow(() -> new RuntimeException("System integration not found"));
+    Integration systemIntegration =
+        integrationRepository
+            .findByIsSystemIntegrationAndActiveTrue(true)
+            .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.TENANT_ADMIN);
@@ -417,7 +389,8 @@ public class AdminProvisioningService {
     admin.setChallengeRequired(false);
 
     // Generate recovery codes
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+        recoveryService.generateRecoveryCodes();
     admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     admin = adminRepository.save(admin);
@@ -435,19 +408,15 @@ public class AdminProvisioningService {
   }
 
   /**
-   * Creates an enrollment for an administrator with passwordless authentication
-   * credentials.
+   * Creates an enrollment for an administrator with passwordless authentication credentials.
    *
-   * <p>
-   * This method creates an enrollment linked to the system integration, generates
-   * proof token
-   * and challenge code, and links it to the admin. The enrollment credentials are
-   * returned for
+   * <p>This method creates an enrollment linked to the system integration, generates proof token
+   * and challenge code, and links it to the admin. The enrollment credentials are returned for
    * onboarding.
    *
-   * @param admin             the administrator to create enrollment for
+   * @param admin the administrator to create enrollment for
    * @param systemIntegration the system integration to enroll with
-   * @param recoveryCodes     the recovery codes result (for inclusion in result)
+   * @param recoveryCodes the recovery codes result (for inclusion in result)
    * @return ProvisioningResult with enrollment and credentials
    */
   private ProvisioningResult createAdminEnrollment(
@@ -466,18 +435,20 @@ public class AdminProvisioningService {
     Integer enrollmentChallenge = signatureService.generateSecureChallenge(6);
 
     // Create enrollment name (include username for uniqueness)
-    String enrollmentName = "%s Admin MFA - %s %s (%s)"
-        .formatted(
-            admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
-            admin.getFirstName() != null ? admin.getFirstName() : "",
-            admin.getLastName() != null ? admin.getLastName() : "",
-            admin.getUsername())
-        .trim();
+    String enrollmentName =
+        "%s Admin MFA - %s %s (%s)"
+            .formatted(
+                admin.getAdminType() == AdminType.GLOBAL_ADMIN ? "Global" : "Tenant",
+                admin.getFirstName() != null ? admin.getFirstName() : "",
+                admin.getLastName() != null ? admin.getLastName() : "",
+                admin.getUsername())
+            .trim();
 
     // Security validation: Check for existing VERIFIED enrollment with same name
     // This ensures idempotence and prevents conflicts when tests are re-executed
-    List<Enrollment> existingVerifiedEnrollments = enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
-        systemIntegration.getId(), enrollmentName.trim(), EnrollmentStatus.VERIFIED);
+    List<Enrollment> existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            systemIntegration.getId(), enrollmentName.trim(), EnrollmentStatus.VERIFIED);
 
     if (!existingVerifiedEnrollments.isEmpty()) {
       Enrollment existing = existingVerifiedEnrollments.get(0);
@@ -552,23 +523,17 @@ public class AdminProvisioningService {
   /**
    * Lists administrators with tenant-based filtering.
    *
-   * <p>
-   * Returns a paginated list of administrators filtered by tenant. GlobalAdmin
-   * sees all
-   * administrators across all tenants. TenantAdmin sees only administrators from
-   * their tenant.
+   * <p>Returns a paginated list of administrators filtered by tenant. GlobalAdmin sees all
+   * administrators across all tenants. TenantAdmin sees only administrators from their tenant.
    *
-   * <p>
-   * <b>Tenant Filtering:</b>
+   * <p><b>Tenant Filtering:</b>
    *
    * <ul>
-   * <li><b>GlobalAdmin (tenantId = null):</b> Returns all administrators
-   * <li><b>TenantAdmin (tenantId != null):</b> Returns only administrators from
-   * their tenant
+   *   <li><b>GlobalAdmin (tenantId = null):</b> Returns all administrators
+   *   <li><b>TenantAdmin (tenantId != null):</b> Returns only administrators from their tenant
    * </ul>
    *
-   * @param tenantId the tenant ID to filter by (null for GlobalAdmin = all
-   *                 tenants)
+   * @param tenantId the tenant ID to filter by (null for GlobalAdmin = all tenants)
    * @param pageable pagination and sorting parameters
    * @return page of administrators matching the tenant filter
    */
@@ -589,30 +554,23 @@ public class AdminProvisioningService {
   /**
    * Retrieves onboarding credentials for an administrator.
    *
-   * <p>
-   * This method retrieves sensitive onboarding credentials (enrollment proof
-   * token, challenge
-   * code, recovery codes) for an administrator. Access is restricted to
-   * authorized administrators
+   * <p>This method retrieves sensitive onboarding credentials (enrollment proof token, challenge
+   * code, recovery codes) for an administrator. Access is restricted to authorized administrators
    * who have permission to view these credentials.
    *
-   * <p>
-   * <b>Authorization:</b>
+   * <p><b>Authorization:</b>
    *
    * <ul>
-   * <li>GlobalAdmin can retrieve onboarding credentials for any admin
-   * <li>TenantAdmin can only retrieve onboarding credentials for admins in their
-   * tenant
+   *   <li>GlobalAdmin can retrieve onboarding credentials for any admin
+   *   <li>TenantAdmin can only retrieve onboarding credentials for admins in their tenant
    * </ul>
    *
-   * @param adminId            the administrator ID
+   * @param adminId the administrator ID
    * @param requesterPrincipal the principal of the requesting administrator
-   * @return OnboardingCredentialsResult with enrollment credentials and recovery
-   *         codes
+   * @return OnboardingCredentialsResult with enrollment credentials and recovery codes
    * @throws ResourceNotFoundException if admin not found
-   * @throws IllegalArgumentException  if requester doesn't have permission to
-   *                                   access these
-   *                                   credentials
+   * @throws IllegalArgumentException if requester doesn't have permission to access these
+   *     credentials
    */
   @Transactional(readOnly = true)
   public OnboardingCredentialsResult getAdminOnboarding(
@@ -623,9 +581,10 @@ public class AdminProvisioningService {
         requesterPrincipal.adminId());
 
     // Get admin
-    EzkeyAdmin admin = adminRepository
-        .findById(adminId)
-        .orElseThrow(() -> new ResourceNotFoundException("Admin", adminId));
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Admin", adminId));
 
     // Validate authorization
     if (requesterPrincipal.isGlobalAdmin()) {
@@ -658,10 +617,11 @@ public class AdminProvisioningService {
 
     // Reload enrollment from repository to ensure session is active and all
     // properties are loaded
-    Enrollment loadedEnrollment = enrollmentRepository
-        .findById(enrollment.getEnrollmentId())
-        .orElseThrow(
-            () -> new ResourceNotFoundException("Enrollment", enrollment.getEnrollmentId()));
+    Enrollment loadedEnrollment =
+        enrollmentRepository
+            .findById(enrollment.getEnrollmentId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Enrollment", enrollment.getEnrollmentId()));
 
     // Recovery codes are stored as BCrypt hashes and cannot be retrieved in plain
     // text
@@ -686,38 +646,32 @@ public class AdminProvisioningService {
   /**
    * Deactivates an administrator account.
    *
-   * <p>
-   * This method deactivates an administrator based on the following rules:
+   * <p>This method deactivates an administrator based on the following rules:
    *
    * <ul>
-   * <li>A global admin can deactivate another global admin (but not themselves)
-   * <li>A global admin can deactivate any tenant admin
-   * <li>Cannot deactivate if it would violate minimum admin limits
-   * <li>All active tokens for the admin are revoked upon deactivation
+   *   <li>A global admin can deactivate another global admin (but not themselves)
+   *   <li>A global admin can deactivate any tenant admin
+   *   <li>Cannot deactivate if it would violate minimum admin limits
+   *   <li>All active tokens for the admin are revoked upon deactivation
    * </ul>
    *
-   * <p>
-   * <b>NOTE:</b> Unlike tenant admin minimum limits, global admin deactivation is
-   * allowed even
-   * if the tenant admin is the only admin for their tenant. This is intentional
-   * to avoid preventing
+   * <p><b>NOTE:</b> Unlike tenant admin minimum limits, global admin deactivation is allowed even
+   * if the tenant admin is the only admin for their tenant. This is intentional to avoid preventing
    * global admins from deactivating tenant admins.
    *
-   * @param adminId   the ID of the administrator to deactivate
+   * @param adminId the ID of the administrator to deactivate
    * @param principal the admin principal performing the deactivation
-   * @throws ResourceNotFoundException if the administrator to deactivate is not
-   *                                   found (404)
-   * @throws AdminNotAllowedException  if the admin tries to deactivate themselves
-   *                                   (400, RFC 9457)
-   * @throws AdminLimitException       if deactivation would violate minimum
-   *                                   limits (400, RFC 9457)
+   * @throws ResourceNotFoundException if the administrator to deactivate is not found (404)
+   * @throws AdminNotAllowedException if the admin tries to deactivate themselves (400, RFC 9457)
+   * @throws AdminLimitException if deactivation would violate minimum limits (400, RFC 9457)
    */
   @Transactional
   public void deactivateAdmin(Integer adminId, AdminPrincipal principal) {
     // Load the admin to deactivate
-    EzkeyAdmin adminToDeactivate = adminRepository
-        .findById(adminId)
-        .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+    EzkeyAdmin adminToDeactivate =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
 
     // Rule 1: Cannot deactivate yourself
     if (principal.adminId().equals(adminId)) {
@@ -733,7 +687,8 @@ public class AdminProvisioningService {
 
     // Rule 3: Enforce minimum limits for global admins
     if (adminToDeactivate.getAdminType() == AdminType.GLOBAL_ADMIN) {
-      long activeGlobalAdmins = adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
+      long activeGlobalAdmins =
+          adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
       int minGlobalAdmins = securityProperties.getMinGlobalAdmins();
 
       if (activeGlobalAdmins <= minGlobalAdmins) {
@@ -770,17 +725,16 @@ public class AdminProvisioningService {
   /**
    * Result containing onboarding credentials for an administrator.
    *
-   * @param enrollmentId         Enrollment ID
+   * @param enrollmentId Enrollment ID
    * @param enrollmentProofToken Enrollment proof token
-   * @param enrollmentChallenge  Enrollment challenge code
-   * @param recoveryCodes        Recovery codes (null if not available)
+   * @param enrollmentChallenge Enrollment challenge code
+   * @param recoveryCodes Recovery codes (null if not available)
    */
   public record OnboardingCredentialsResult(
       Integer enrollmentId,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      java.util.List<String> recoveryCodes) {
-  }
+      java.util.List<String> recoveryCodes) {}
 
   /**
    * Extracts AdminPrincipal from authentication context.

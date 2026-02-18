@@ -378,6 +378,15 @@ public class EnrollmentService {
             ? request.getAuthAttemptChallengeRequired()
             : false);
     enrollment.setCreatedAt(OffsetDateTime.now());
+    enrollment.setContactEmail(
+        request.getContactEmail() != null && !request.getContactEmail().isBlank()
+            ? request.getContactEmail().trim()
+            : null);
+    enrollment.setUserIdentifier(
+        request.getUserIdentifier() != null && !request.getUserIdentifier().isBlank()
+            ? request.getUserIdentifier().trim()
+            : null);
+    enrollment.setCreatedByAdminId(request.getCreatedByAdminId());
     ECP256KeyPair integrationKeys = signatureService.generateECP256KeyPair();
     enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
     enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());

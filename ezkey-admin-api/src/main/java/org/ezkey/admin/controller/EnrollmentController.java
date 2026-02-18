@@ -21,6 +21,7 @@ import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
@@ -28,6 +29,7 @@ import org.ezkey.admin.util.ClientContext;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -301,8 +303,12 @@ public class EnrollmentController {
     }
 
     try {
-      EnrollmentCreateResponse response =
-          enrollmentService.create(enrollmentMapper.toCreateRequest(request));
+      EnrollmentCreateRequest createRequest = enrollmentMapper.toCreateRequest(request);
+      AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+      if (principal != null) {
+        createRequest.setCreatedByAdminId(principal.adminId());
+      }
+      EnrollmentCreateResponse response = enrollmentService.create(createRequest);
 
       // Check if inactive VERIFIED enrollment exists for audit context
       List<Enrollment> inactiveVerified =

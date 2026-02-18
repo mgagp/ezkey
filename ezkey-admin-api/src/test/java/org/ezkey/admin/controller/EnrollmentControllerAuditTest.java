@@ -87,7 +87,7 @@ class EnrollmentControllerAuditTest {
 
   @BeforeEach
   void setUp() {
-    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false);
+    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false, null, null);
     createRequest = new EnrollmentCreateRequest();
     createRequest.setIntegrationId(1);
     createRequest.setName("Test Enrollment");

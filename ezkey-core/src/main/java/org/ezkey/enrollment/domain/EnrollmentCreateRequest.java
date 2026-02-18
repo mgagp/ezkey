@@ -75,6 +75,24 @@ public class EnrollmentCreateRequest {
   private Boolean authAttemptChallengeRequired;
 
   /**
+   * Optional contact email for the end-user (device owner). Used for incident response, revocation
+   * notices, support. Provided by the integrating application at creation.
+   */
+  private String contactEmail;
+
+  /**
+   * Optional reference to the integrating app's user (username, user_id). Unique per integration
+   * for lookup. Enables future auth attempt creation by userIdentifier (Phase 3).
+   */
+  private String userIdentifier;
+
+  /**
+   * Admin who created this enrollment. Set by the controller when request comes from admin (bearer
+   * token); null when created via API key. For SOC 2 audit (CC6.1, CC7.2).
+   */
+  private Integer createdByAdminId;
+
+  /**
    * Gets the integration identifier for this enrollment.
    *
    * @return the integration ID
@@ -126,5 +144,59 @@ public class EnrollmentCreateRequest {
    */
   public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
     this.authAttemptChallengeRequired = authAttemptChallengeRequired;
+  }
+
+  /**
+   * Gets the optional contact email for the end-user.
+   *
+   * @return the contact email, or null
+   */
+  public String getContactEmail() {
+    return contactEmail;
+  }
+
+  /**
+   * Sets the optional contact email for the end-user.
+   *
+   * @param contactEmail the contact email to set
+   */
+  public void setContactEmail(String contactEmail) {
+    this.contactEmail = contactEmail;
+  }
+
+  /**
+   * Gets the optional user identifier from the integrating app.
+   *
+   * @return the user identifier, or null
+   */
+  public String getUserIdentifier() {
+    return userIdentifier;
+  }
+
+  /**
+   * Sets the optional user identifier from the integrating app.
+   *
+   * @param userIdentifier the user identifier to set
+   */
+  public void setUserIdentifier(String userIdentifier) {
+    this.userIdentifier = userIdentifier;
+  }
+
+  /**
+   * Gets the admin ID who created this enrollment.
+   *
+   * @return the created-by admin ID, or null when created via API key
+   */
+  public Integer getCreatedByAdminId() {
+    return createdByAdminId;
+  }
+
+  /**
+   * Sets the admin ID who created this enrollment.
+   *
+   * @param createdByAdminId the created-by admin ID to set
+   */
+  public void setCreatedByAdminId(Integer createdByAdminId) {
+    this.createdByAdminId = createdByAdminId;
   }
 }

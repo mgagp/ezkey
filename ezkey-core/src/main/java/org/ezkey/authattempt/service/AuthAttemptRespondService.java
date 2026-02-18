@@ -119,7 +119,7 @@ public class AuthAttemptRespondService {
       validateChallenge(request, authAttempt, enrollment);
 
       // Step 5: Update attempt status
-      updateAttemptStatus(authAttempt, request);
+      updateAttemptStatus(authAttempt, enrollment, request);
 
       // Step 6: Build and return response
       return buildResponse(request, authAttempt);
@@ -295,10 +295,13 @@ public class AuthAttemptRespondService {
    * @param authAttempt the authentication attempt to update
    * @param request the authentication response request
    */
-  private void updateAttemptStatus(AuthAttempt authAttempt, AuthAttemptRespondRequest request) {
+  private void updateAttemptStatus(
+      AuthAttempt authAttempt, Enrollment enrollment, AuthAttemptRespondRequest request) {
     // Update authorization attempt based on user decision
     if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
       authAttempt.setAuthAttemptStatus(AuthAttemptStatus.ACCEPTED);
+      enrollment.setLastUsedAt(OffsetDateTime.now());
+      enrollmentRepository.save(enrollment);
     } else {
       authAttempt.setAuthAttemptStatus(AuthAttemptStatus.REJECTED);
     }

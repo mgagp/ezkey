@@ -11,7 +11,6 @@
 package org.ezkey.admin.mapper;
 
 import java.util.List;
-
 import org.ezkey.admin.dto.response.TenantResponseDto;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.mapstruct.Mapper;
@@ -20,16 +19,13 @@ import org.mapstruct.ReportingPolicy;
 /**
  * MapStruct mapper for converting between Tenant entities and DTOs.
  *
- * <p>
- * This mapper provides type-safe, compile-time validated conversions
- * between the {@link Tenant} JPA entity and the admin API response DTO.
- * It replaces the inline manual mapping previously done in the controller.
+ * <p>This mapper provides type-safe, compile-time validated conversions between the {@link Tenant}
+ * JPA entity and the admin API response DTO. It replaces the inline manual mapping previously done
+ * in the controller.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025

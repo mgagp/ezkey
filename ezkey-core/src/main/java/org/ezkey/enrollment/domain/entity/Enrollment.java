@@ -158,6 +158,41 @@ public class Enrollment implements Reencryptable {
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
+  /**
+   * When the enrollment transitioned to VERIFIED status. Set once when device completes binding.
+   * Used for audit trail and lifecycle metrics (SOC 2 CC7.2).
+   */
+  @Column(name = "verified_at")
+  private OffsetDateTime verifiedAt;
+
+  /**
+   * Admin who created this enrollment (SOC 2 CC6.1, CC7.2). Populated when created via Admin API;
+   * null when created via API key.
+   */
+  @Column(name = "created_by_admin_id")
+  private Integer createdByAdminId;
+
+  /**
+   * When this enrollment was last used for successful authentication. Updated on each accepted auth
+   * attempt. Used for operational hygiene and stale enrollment detection.
+   */
+  @Column(name = "last_used_at")
+  private OffsetDateTime lastUsedAt;
+
+  /**
+   * Optional contact for the end-user (device owner). Used for incident response, revocation
+   * notices, support. Provided by integrating app at creation.
+   */
+  @Column(name = "contact_email", length = 255)
+  private String contactEmail;
+
+  /**
+   * Optional reference to integrating app user (username, user_id). Unique per integration for
+   * lookup. Enables future auth attempt creation by userIdentifier.
+   */
+  @Column(name = "user_identifier", length = 255)
+  private String userIdentifier;
+
   // Default constructor
   public Enrollment() {
     // Initialize to match database NOT NULL DEFAULT constraints
@@ -404,6 +439,46 @@ public class Enrollment implements Reencryptable {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public OffsetDateTime getVerifiedAt() {
+    return verifiedAt;
+  }
+
+  public void setVerifiedAt(OffsetDateTime verifiedAt) {
+    this.verifiedAt = verifiedAt;
+  }
+
+  public Integer getCreatedByAdminId() {
+    return createdByAdminId;
+  }
+
+  public void setCreatedByAdminId(Integer createdByAdminId) {
+    this.createdByAdminId = createdByAdminId;
+  }
+
+  public OffsetDateTime getLastUsedAt() {
+    return lastUsedAt;
+  }
+
+  public void setLastUsedAt(OffsetDateTime lastUsedAt) {
+    this.lastUsedAt = lastUsedAt;
+  }
+
+  public String getContactEmail() {
+    return contactEmail;
+  }
+
+  public void setContactEmail(String contactEmail) {
+    this.contactEmail = contactEmail;
+  }
+
+  public String getUserIdentifier() {
+    return userIdentifier;
+  }
+
+  public void setUserIdentifier(String userIdentifier) {
+    this.userIdentifier = userIdentifier;
   }
 
   // ===== Reencryptable Interface Implementation =====

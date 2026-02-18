@@ -56,19 +56,19 @@ public class DemoApiKeyConfigService {
    * immediately for subsequent {@link org.ezkey.demo.acme.config.EzkeyClientProvider#getClient()}
    * calls.
    *
-   * @param integrationKey the integration key (e.g. ezkey_ikey_xxx)
-   * @param secretKey the secret key (e.g. ezkey_skey_xxx)
+   * @param integrationKeyParam the integration key (e.g. ezkey_ikey_xxx)
+   * @param secretKeyParam the secret key (e.g. ezkey_skey_xxx)
    * @return true if both values are non-blank and were applied
    */
-  public boolean applyApiKey(String integrationKey, String secretKey) {
-    if (integrationKey == null
-        || integrationKey.isBlank()
-        || secretKey == null
-        || secretKey.isBlank()) {
+  public boolean applyApiKey(String integrationKeyParam, String secretKeyParam) {
+    if (integrationKeyParam == null
+        || integrationKeyParam.isBlank()
+        || secretKeyParam == null
+        || secretKeyParam.isBlank()) {
       return false;
     }
-    this.integrationKey = integrationKey.trim();
-    this.secretKey = secretKey.trim();
+    this.integrationKey = integrationKeyParam.trim();
+    this.secretKey = secretKeyParam.trim();
     LOG.info(
         "API key applied via demo UI — Integration Key: {}...",
         this.integrationKey.substring(0, Math.min(20, this.integrationKey.length())));

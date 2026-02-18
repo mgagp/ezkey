@@ -76,4 +76,15 @@ public record EnrollmentCreateRequestDto(
     @Schema(
             description = "Whether authentication attempts require challenge validation",
             example = "true")
-        Boolean authAttemptChallengeRequired) {}
+        Boolean authAttemptChallengeRequired,
+    /**
+     * Optional contact email for the end-user (device owner). Used for incident response,
+     * revocation notices, support.
+     */
+    @Schema(description = "Optional contact email for the end-user") String contactEmail,
+    /**
+     * Optional reference to the integrating app's user (username, user_id). Unique per integration
+     * for lookup. Enables future auth attempt creation by userIdentifier.
+     */
+    @Schema(description = "Optional user identifier from the integrating application")
+        String userIdentifier) {}
