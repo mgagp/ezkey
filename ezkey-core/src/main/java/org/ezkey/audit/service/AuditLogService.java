@@ -77,22 +77,36 @@ public class AuditLogService {
   }
 
   /**
-   * Find audit logs with filters and pagination.
+   * Find audit logs with filters, tenant scoping, and pagination.
    *
-   * <p>This method supports multi-criteria search for administrative and operational purposes. All
-   * filter parameters are optional - if null, they are ignored in the query. Results are ordered by
-   * creation date descending (newest first) for operational relevance by default.
+   * <p>This method supports multi-criteria search with mandatory tenant-based visibility
+   * enforcement. All filter parameters are optional except {@code requesterTenantId} which controls
+   * tenant scoping:
+   *
+   * <ul>
+   *   <li><b>Global Admin ({@code requesterTenantId = null}):</b> Sees all audit logs. An optional
+   *       {@code filterTenantId} may be provided to narrow results to a specific tenant.
+   *   <li><b>Tenant Admin ({@code requesterTenantId != null}):</b> Sees only audit logs where
+   *       {@code tenant_id} matches their tenant. Audit entries with {@code tenant_id = NULL}
+   *       (e.g., system-level events) are excluded.
+   * </ul>
+   *
+   * <p>Results are ordered by creation date descending (newest first) by default.
    *
    * <p><b>Use Case:</b> Security operators monitoring audit logs, forensic analysis, and compliance
-   * reporting.
+   * reporting with proper multi-tenant isolation.
    *
    * @param eventType optional event type filter
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
    * @param adminId optional admin ID filter
+   * @param requesterTenantId the tenant ID of the requesting admin; {@code null} for Global Admin
+   *     (no tenant restriction), non-null for Tenant Admin (strict tenant filtering)
+   * @param filterTenantId optional explicit tenant filter for Global Admin; ignored when {@code
+   *     requesterTenantId} is non-null (Tenant Admin scope takes precedence)
    * @param pageable pagination and sorting parameters
-   * @return page of audit logs matching criteria
+   * @return page of audit logs matching criteria and tenant scope
    */
   @Transactional(readOnly = true)
   public Page<AuditLog> findByFilters(
@@ -101,11 +115,21 @@ public class AuditLogService {
       ApiName apiName,
       Integer enrollmentId,
       Integer adminId,
+      Integer requesterTenantId,
+      Integer filterTenantId,
       Pageable pageable) {
 
     Specification<AuditLog> spec =
         (root, query, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
+
+          // Tenant scoping: Tenant Admin sees only their tenant's audit logs
+          if (requesterTenantId != null) {
+            predicates.add(cb.equal(root.get("tenantId"), requesterTenantId));
+          } else if (filterTenantId != null) {
+            // Global Admin with explicit tenant filter
+            predicates.add(cb.equal(root.get("tenantId"), filterTenantId));
+          }
 
           if (eventType != null) {
             predicates.add(cb.equal(root.get("eventType"), eventType));

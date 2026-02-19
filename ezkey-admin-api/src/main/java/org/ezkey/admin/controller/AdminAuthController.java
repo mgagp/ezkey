@@ -37,6 +37,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -79,17 +80,21 @@ public class AdminAuthController {
 
   private final AdminRecoveryProperties recoveryProperties;
 
+  private final EzkeyAdminRepository adminRepository;
+
   public AdminAuthController(
       AdminAuthService authService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
       AuditLogService auditLogService,
       AdminRateLimitFilter rateLimitFilter,
-      AdminRecoveryProperties recoveryProperties) {
+      AdminRecoveryProperties recoveryProperties,
+      EzkeyAdminRepository adminRepository) {
     this.authService = authService;
     this.recoveryService = recoveryService;
     this.auditLogService = auditLogService;
     this.rateLimitFilter = rateLimitFilter;
     this.recoveryProperties = recoveryProperties;
+    this.adminRepository = adminRepository;
   }
 
   /**
@@ -249,6 +254,9 @@ public class AdminAuthController {
     // Extract client context for audit logging
     ClientContext context = ClientContext.from(httpRequest);
 
+    // Resolve admin's tenant for audit log association
+    Integer adminTenantId = resolveAdminTenantId(request.username());
+
     // Call service - will throw specific exceptions on error (caught by
     // GlobalExceptionHandler)
     AdminLoginResponseDto response = authService.authenticate(request);
@@ -263,53 +271,47 @@ public class AdminAuthController {
       // Record successful attempt for rate limiting
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
-      // Audit successful login
       auditLogService.log(
           AuditHelper.logSuccess(
               context,
               EventType.ADMIN_LOGIN,
               AdminAuditConstants.LOGIN_SUCCESS,
-              "Username: " + request.username()));
+              "Username: " + request.username(),
+              adminTenantId));
 
       return ResponseEntity.ok(response);
     } else if ("pending".equals(response.status())) {
-      // Pending state is normal workflow (challenge required)
       logger.info(
           "⏳ Login pending (challenge required) for username: {} from IP: {}",
           request.username(),
           context.clientIp());
 
-      // Record as successful attempt for rate limiting
-      // Pending is not a failure; it's normal flow progression
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
-      // Audit pending login (normal workflow state)
       auditLogService.log(
           AuditHelper.logSuccess(
               context,
               EventType.ADMIN_LOGIN,
               AdminAuditConstants.LOGIN_PENDING,
-              "Username: " + request.username() + ", Challenge required"));
+              "Username: " + request.username() + ", Challenge required",
+              adminTenantId));
 
       return ResponseEntity.ok(response);
     } else {
-      // Should not reach here - service throws exceptions for failures
-      // This is a fallback for unexpected states
       logger.error(
           "❌ Unexpected login response status: {} for username: {}",
           response.status(),
           request.username());
 
-      // Record failed attempt for rate limiting
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
-      // Audit the unexpected error
       auditLogService.log(
           AuditHelper.logFailure(
               context,
               EventType.ADMIN_LOGIN,
               AdminAuditConstants.LOGIN_FAILURE,
-              "Unexpected response status: " + response.status()));
+              "Unexpected response status: " + response.status(),
+              adminTenantId));
 
       throw new IllegalStateException("Unexpected authentication response: " + response.status());
     }
@@ -536,10 +538,15 @@ public class AdminAuthController {
       // Record successful attempt for rate limiting
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
-      // Audit successful recovery
+      Integer recoveryTenantId =
+          admin != null && admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.ADMIN_RECOVERY_USE, AdminAuditConstants.RECOVERY_CODE_USED)
+                  context,
+                  EventType.ADMIN_RECOVERY_USE,
+                  AdminAuditConstants.RECOVERY_CODE_USED,
+                  recoveryTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin != null ? admin.getAdminId() : null)
               .eventDetails(
@@ -555,16 +562,16 @@ public class AdminAuthController {
           context.clientIp(),
           e.getMessage());
 
-      // Record failed attempt for rate limiting
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
-      // Audit failed recovery
+      Integer failTenantId = resolveAdminTenantId(request.username());
       auditLogService.log(
           AuditHelper.logFailure(
               context,
               EventType.ADMIN_RECOVERY_USE,
               AdminAuditConstants.RECOVERY_CODE_FAILED,
-              e.getMessage()));
+              e.getMessage(),
+              failTenantId));
 
       return ResponseEntity.status(403)
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
@@ -572,16 +579,38 @@ public class AdminAuthController {
     } catch (Exception e) {
       logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
 
-      // Audit error in recovery
+      Integer errorTenantId = resolveAdminTenantId(request.username());
       auditLogService.log(
           AuditHelper.logError(
               context,
               EventType.ADMIN_RECOVERY_USE,
               AdminAuditConstants.RECOVERY_ERROR,
-              e.getMessage()));
+              e.getMessage(),
+              errorTenantId));
 
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));
     }
+  }
+
+  /**
+   * Resolves the tenant ID for an administrator by username.
+   *
+   * <p>Looks up the admin by username and traverses to their tenant to extract the tenant ID.
+   * Returns {@code null} for Global Admins (who have no tenant) or if the admin cannot be found,
+   * which is safe for audit logging.
+   *
+   * @param username the admin username to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable or Global Admin
+   */
+  private Integer resolveAdminTenantId(String username) {
+    if (username == null || username.isBlank()) {
+      return null;
+    }
+    return adminRepository
+        .findByUsername(username)
+        .map(EzkeyAdmin::getTenant)
+        .map(tenant -> tenant.getTenantId())
+        .orElse(null);
   }
 }

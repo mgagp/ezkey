@@ -47,6 +47,8 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
@@ -118,6 +120,7 @@ public class AuthAttemptController {
   private final RateLimitService rateLimitService;
   private final EnrollmentRepository enrollmentRepository;
   private final AccessControlService accessControlService;
+  private final IntegrationRepository integrationRepository;
 
   /**
    * Constructs the authorization attempt controller with required dependencies.
@@ -128,6 +131,7 @@ public class AuthAttemptController {
    * @param rateLimitService the rate limiting service for API key operations
    * @param enrollmentRepository the enrollment repository for ownership checks
    * @param accessControlService the access control service for tenant scoping validation
+   * @param integrationRepository the integration repository for tenant resolution in audit logs
    */
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
@@ -135,13 +139,15 @@ public class AuthAttemptController {
       AuditLogService auditLogService,
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
-      AccessControlService accessControlService) {
+      AccessControlService accessControlService,
+      IntegrationRepository integrationRepository) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
     this.rateLimitService = rateLimitService;
     this.enrollmentRepository = enrollmentRepository;
     this.accessControlService = accessControlService;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -338,6 +344,9 @@ public class AuthAttemptController {
       }
     }
 
+    // Resolve tenant from enrollment for audit log association
+    Integer auditTenantId = resolveTenantIdFromEnrollment(effectiveEnrollmentId);
+
     try {
       AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
       createRequest.setEnrollmentId(effectiveEnrollmentId);
@@ -350,11 +359,13 @@ public class AuthAttemptController {
         rateLimitService.recordCreateAuthAttempt(apiKeyId);
       }
 
-      // Audit successful auth attempt creation
       String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.AUTH_ATTEMPT_CREATED, AdminAuditConstants.AUTH_ATTEMPT_CREATED)
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATED,
+                  auditTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
@@ -373,7 +384,8 @@ public class AuthAttemptController {
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
               .eventStatus(EventStatus.FAILURE)
               .errorMessage(e.getMessage())
               .build());
@@ -387,7 +399,8 @@ public class AuthAttemptController {
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CREATED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR)
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR,
+                  auditTenantId)
               .eventStatus(EventStatus.ERROR)
               .errorMessage(e.getMessage())
               .build());
@@ -579,6 +592,8 @@ public class AuthAttemptController {
       throw new RateLimitExceededException("CANCEL_AUTH_ATTEMPT", 200, 0, 15);
     }
 
+    Integer cancelTenantId = resolveTenantIdFromAuthAttempt(id);
+
     try {
       AuthAttempt cancelledAttempt = authAttemptService.cancel(id);
 
@@ -587,13 +602,13 @@ public class AuthAttemptController {
         rateLimitService.recordWaitAuthAttempt(apiKeyId);
       }
 
-      // Audit successful cancellation
       String authType = apiKeyId != null ? "API_KEY" : "BEARER_TOKEN";
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CANCELLED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLED)
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLED,
+                  cancelTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(id)
               .enrollmentId(cancelledAttempt.getEnrollmentId())
@@ -604,12 +619,12 @@ public class AuthAttemptController {
       return ResponseEntity.ok(response);
 
     } catch (ResourceNotFoundException e) {
-      // Audit not found
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CANCELLED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
+                  cancelTenantId)
               .eventStatus(EventStatus.FAILURE)
               .authAttemptId(id)
               .errorMessage("Authentication attempt not found")
@@ -618,12 +633,12 @@ public class AuthAttemptController {
       return ResponseEntity.notFound().build();
 
     } catch (IllegalArgumentException e) {
-      // Audit validation failure (already in final state)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CANCELLED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
+                  cancelTenantId)
               .eventStatus(EventStatus.FAILURE)
               .authAttemptId(id)
               .errorMessage(e.getMessage())
@@ -632,12 +647,12 @@ public class AuthAttemptController {
       return ResponseEntity.badRequest().build();
 
     } catch (Exception e) {
-      // Audit error
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.AUTH_ATTEMPT_CANCELLED,
-                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED)
+                  AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
+                  cancelTenantId)
               .eventStatus(EventStatus.ERROR)
               .authAttemptId(id)
               .errorMessage(e.getMessage())
@@ -868,5 +883,46 @@ public class AuthAttemptController {
     }
 
     return null;
+  }
+
+  /**
+   * Resolves the tenant ID from an enrollment ID by traversing enrollment to integration to tenant.
+   *
+   * @param enrollmentId the enrollment ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdFromEnrollment(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(Enrollment::getIntegrationId)
+        .flatMap(integrationRepository::findById)
+        .map(Integration::getTenant)
+        .map(tenant -> tenant.getTenantId())
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the tenant ID from an auth attempt ID by traversing auth attempt to enrollment to
+   * integration to tenant.
+   *
+   * <p>This method is safe to call before operations that may fail; it returns {@code null} if the
+   * auth attempt does not exist or the tenant chain cannot be resolved.
+   *
+   * @param authAttemptId the auth attempt ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    try {
+      AuthAttempt attempt = authAttemptService.getById(authAttemptId);
+      return resolveTenantIdFromEnrollment(attempt.getEnrollmentId());
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

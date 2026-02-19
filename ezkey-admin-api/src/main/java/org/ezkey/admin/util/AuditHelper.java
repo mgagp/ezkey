@@ -141,6 +141,27 @@ public final class AuditHelper {
   }
 
   /**
+   * Creates base audit log builder for admin API operations with tenant association.
+   *
+   * <p>Variant of {@link #createAdminAudit(ClientContext, EventType, String)} that pre-populates
+   * the {@code tenantId} field. Use this overload when the tenant context is known at audit
+   * creation time to ensure proper tenant-scoped visibility of audit entries.
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param tenantId the tenant ID to associate with this audit entry; {@code null} for system-level
+   *     events visible only to Global Admins
+   * @return audit log builder with common fields and tenantId pre-populated
+   * @see #createAdminAudit(ClientContext, EventType, String)
+   */
+  public static AuditLog.Builder createAdminAudit(
+      ClientContext context, EventType eventType, String action, Integer tenantId) {
+
+    return createAdminAudit(context, eventType, action).tenantId(tenantId);
+  }
+
+  /**
    * Creates a SUCCESS audit log entry for admin API operations.
    *
    * <p>This is a convenience method for the most common audit pattern - logging successful
@@ -165,6 +186,32 @@ public final class AuditHelper {
 
     AuditLog.Builder builder =
         createAdminAudit(context, eventType, action).eventStatus(EventStatus.SUCCESS);
+
+    if (details != null && !details.isEmpty()) {
+      builder.eventDetails(details);
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Creates a SUCCESS audit log entry for admin API operations with tenant association.
+   *
+   * <p>Variant of {@link #logSuccess(ClientContext, EventType, String, String)} that includes the
+   * {@code tenantId} for proper tenant-scoped visibility.
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param details optional details about the operation (can be null)
+   * @param tenantId the tenant ID to associate; {@code null} for system-level events
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logSuccess(
+      ClientContext context, EventType eventType, String action, String details, Integer tenantId) {
+
+    AuditLog.Builder builder =
+        createAdminAudit(context, eventType, action, tenantId).eventStatus(EventStatus.SUCCESS);
 
     if (details != null && !details.isEmpty()) {
       builder.eventDetails(details);
@@ -203,6 +250,32 @@ public final class AuditHelper {
   }
 
   /**
+   * Creates a FAILURE audit log entry for admin API operations with tenant association.
+   *
+   * <p>Variant of {@link #logFailure(ClientContext, EventType, String, String)} that includes the
+   * {@code tenantId} for proper tenant-scoped visibility.
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param errorMessage the error message describing why the operation failed
+   * @param tenantId the tenant ID to associate; {@code null} for system-level events
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logFailure(
+      ClientContext context,
+      EventType eventType,
+      String action,
+      String errorMessage,
+      Integer tenantId) {
+
+    return createAdminAudit(context, eventType, action, tenantId)
+        .eventStatus(EventStatus.FAILURE)
+        .errorMessage(errorMessage)
+        .build();
+  }
+
+  /**
    * Creates an ERROR audit log entry for admin API operations.
    *
    * <p>This is a convenience method for logging unexpected errors (exceptions, system errors) with
@@ -226,6 +299,32 @@ public final class AuditHelper {
       ClientContext context, EventType eventType, String action, String errorMessage) {
 
     return createAdminAudit(context, eventType, action)
+        .eventStatus(EventStatus.ERROR)
+        .errorMessage(errorMessage)
+        .build();
+  }
+
+  /**
+   * Creates an ERROR audit log entry for admin API operations with tenant association.
+   *
+   * <p>Variant of {@link #logError(ClientContext, EventType, String, String)} that includes the
+   * {@code tenantId} for proper tenant-scoped visibility.
+   *
+   * @param context the client context containing IP and user agent
+   * @param eventType the event type for categorization
+   * @param action the specific action being audited
+   * @param errorMessage the error message from the exception
+   * @param tenantId the tenant ID to associate; {@code null} for system-level events
+   * @return complete audit log ready to be logged
+   */
+  public static AuditLog logError(
+      ClientContext context,
+      EventType eventType,
+      String action,
+      String errorMessage,
+      Integer tenantId) {
+
+    return createAdminAudit(context, eventType, action, tenantId)
         .eventStatus(EventStatus.ERROR)
         .errorMessage(errorMessage)
         .build();

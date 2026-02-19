@@ -65,6 +65,8 @@ class EnrollmentControllerVerifyAuditTest {
 
   @Mock private EnrollmentRepository enrollmentRepository;
 
+  @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
@@ -104,7 +106,11 @@ class EnrollmentControllerVerifyAuditTest {
     // Create controller manually
     enrollmentController =
         new EnrollmentController(
-            enrollmentService, enrollmentMapper, auditLogService, enrollmentRepository);
+            enrollmentService,
+            enrollmentMapper,
+            auditLogService,
+            enrollmentRepository,
+            integrationRepository);
   }
 
   @Test

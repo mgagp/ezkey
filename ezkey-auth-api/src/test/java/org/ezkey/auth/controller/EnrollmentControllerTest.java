@@ -94,6 +94,9 @@ class EnrollmentControllerTest {
   @MockitoBean
   private org.ezkey.enrollment.domain.repository.EnrollmentRepository enrollmentRepository;
 
+  @MockitoBean
+  private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   private EnrollmentBindRequestDto bindRequestDto;
 
   private EnrollmentBindRequest bindRequest;

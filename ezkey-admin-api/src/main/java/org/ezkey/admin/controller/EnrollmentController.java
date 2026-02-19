@@ -40,6 +40,8 @@ import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -103,6 +105,7 @@ public class EnrollmentController {
   private final QrCodePayloadService qrCodePayloadService;
   private final AccessControlService accessControlService;
   private final EnrollmentRepository enrollmentRepository;
+  private final IntegrationRepository integrationRepository;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -114,6 +117,7 @@ public class EnrollmentController {
    * @param qrCodePayloadService the QR code payload composition service
    * @param accessControlService the access control service for tenant scoping validation
    * @param enrollmentRepository the enrollment repository for audit queries
+   * @param integrationRepository the integration repository for tenant resolution in audit logs
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -122,7 +126,8 @@ public class EnrollmentController {
       QrCodeGeneratorService qrCodeGeneratorService,
       QrCodePayloadService qrCodePayloadService,
       AccessControlService accessControlService,
-      EnrollmentRepository enrollmentRepository) {
+      EnrollmentRepository enrollmentRepository,
+      IntegrationRepository integrationRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
@@ -130,6 +135,7 @@ public class EnrollmentController {
     this.qrCodePayloadService = qrCodePayloadService;
     this.accessControlService = accessControlService;
     this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -302,6 +308,9 @@ public class EnrollmentController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    // Resolve tenant from integration for audit log association
+    Integer auditTenantId = resolveTenantId(request.integrationId());
+
     try {
       EnrollmentCreateRequest createRequest = enrollmentMapper.toCreateRequest(request);
       AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
@@ -321,10 +330,12 @@ public class EnrollmentController {
 
       // Audit successful enrollment creation
       if (!inactiveVerified.isEmpty()) {
-        // Enhance success audit log with context about replacing inactive enrollment
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                    context,
+                    EventType.ENROLLMENT_CREATED,
+                    AdminAuditConstants.ENROLLMENT_CREATED,
+                    auditTenantId)
                 .eventStatus(EventStatus.SUCCESS)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
@@ -336,10 +347,12 @@ public class EnrollmentController {
                         + ")")
                 .build());
       } else {
-        // Standard success logging
         auditLogService.log(
             AuditHelper.createAdminAudit(
-                    context, EventType.ENROLLMENT_CREATED, AdminAuditConstants.ENROLLMENT_CREATED)
+                    context,
+                    EventType.ENROLLMENT_CREATED,
+                    AdminAuditConstants.ENROLLMENT_CREATED,
+                    auditTenantId)
                 .eventStatus(EventStatus.SUCCESS)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
@@ -362,12 +375,12 @@ public class EnrollmentController {
                 .findFirst()
                 .orElse(null);
 
-        // Audit validation failure with existing enrollment context
         auditLogService.log(
             AuditHelper.createAdminAudit(
                     context,
                     EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                    auditTenantId)
                 .eventStatus(EventStatus.FAILURE)
                 .integrationId(request.integrationId())
                 .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
@@ -380,16 +393,13 @@ public class EnrollmentController {
                         + request.name())
                 .build());
       } else {
-        // Standard validation failure logging - do not include integrationId as it may
-        // not exist
-        // (would violate FK constraint if integration doesn't exist)
         auditLogService.log(
             AuditHelper.createAdminAudit(
                     context,
                     EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                    auditTenantId)
                 .eventStatus(EventStatus.FAILURE)
-                // integrationId omitted - may not exist, would violate FK constraint
                 .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
                 .build());
       }
@@ -400,16 +410,13 @@ public class EnrollmentController {
       // This ensures consistent error response format across all endpoints
       throw e;
     } catch (DataIntegrityViolationException e) {
-      // Handle database constraint violations (e.g., FK constraint for non-existent
-      // integration)
-      // This should return 400 Bad Request, not 500 Internal Server Error
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                  auditTenantId)
               .eventStatus(EventStatus.FAILURE)
-              // integrationId omitted - doesn't exist, would violate FK constraint
               .errorMessage(
                   "Invalid integration ID or constraint violation: "
                       + e.getMostSpecificCause().getMessage())
@@ -417,15 +424,13 @@ public class EnrollmentController {
 
       return ResponseEntity.badRequest().build();
     } catch (Exception e) {
-      // Audit error - do not include integrationId as it may not exist
-      // (would violate FK constraint if integration doesn't exist)
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_ERROR)
+                  AdminAuditConstants.ENROLLMENT_CREATION_ERROR,
+                  auditTenantId)
               .eventStatus(EventStatus.ERROR)
-              // integrationId omitted - may not exist, would violate FK constraint
               .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
               .build());
 
@@ -468,12 +473,15 @@ public class EnrollmentController {
 
       // Get enrollment details after access validation
       var enrollment = enrollmentService.getById(id);
+      Integer deleteTenantId = resolveTenantId(enrollment.getIntegrationId());
 
       // Create audit log BEFORE deletion to avoid foreign key constraint violation
-      // The enrollment must still exist when we insert the audit log
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.ENROLLMENT_DELETED, AdminAuditConstants.ENROLLMENT_DELETED)
+                  context,
+                  EventType.ENROLLMENT_DELETED,
+                  AdminAuditConstants.ENROLLMENT_DELETED,
+                  deleteTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
@@ -594,5 +602,26 @@ public class EnrollmentController {
     }
 
     return null;
+  }
+
+  /**
+   * Resolves the tenant ID from an integration for audit log tenant association.
+   *
+   * <p>Loads the integration by ID and traverses to its tenant to extract the tenant ID. Returns
+   * {@code null} if the integration or tenant cannot be resolved, which is safe for audit logging
+   * (system-level events have {@code tenant_id = NULL}).
+   *
+   * @param integrationId the integration ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantId(Integer integrationId) {
+    if (integrationId == null) {
+      return null;
+    }
+    return integrationRepository
+        .findById(integrationId)
+        .map(Integration::getTenant)
+        .map(tenant -> tenant.getTenantId())
+        .orElse(null);
   }
 }

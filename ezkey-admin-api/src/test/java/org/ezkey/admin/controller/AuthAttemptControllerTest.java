@@ -61,6 +61,8 @@ class AuthAttemptControllerTest {
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private AccessControlService accessControlService;
 
+  @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   private AuthAttemptController controller;
 
   @BeforeEach
@@ -72,7 +74,8 @@ class AuthAttemptControllerTest {
             auditLogService,
             rateLimitService,
             enrollmentRepository,
-            accessControlService);
+            accessControlService,
+            integrationRepository);
   }
 
   @Test

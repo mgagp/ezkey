@@ -33,6 +33,8 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -100,6 +102,8 @@ public class EnrollmentController {
 
   private final EnrollmentRepository enrollmentRepository;
 
+  private final IntegrationRepository integrationRepository;
+
   /**
    * Constructs the mobile enrollment controller with required dependencies.
    *
@@ -107,16 +111,19 @@ public class EnrollmentController {
    * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
    * @param auditLogService audit log service for security monitoring
    * @param enrollmentRepository enrollment repository for audit queries
+   * @param integrationRepository integration repository for tenant resolution in audit logs
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAuthMapper enrollmentMapper,
       AuditLogService auditLogService,
-      EnrollmentRepository enrollmentRepository) {
+      EnrollmentRepository enrollmentRepository,
+      IntegrationRepository integrationRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -185,7 +192,7 @@ public class EnrollmentController {
         || request.enrollmentProofToken() == null
         || request.enrollmentProofToken().trim().isEmpty()) {
 
-      // Audit validation failure
+      Integer validationTenantId = resolveTenantId(request.enrollmentId());
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -195,17 +202,19 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .tenantId(validationTenantId)
               .errorMessage("Enrollment ID and enrollment proof token are required")
               .build());
 
       throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
     }
 
+    Integer auditTenantId = resolveTenantId(request.enrollmentId());
+
     try {
       EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
       EnrollmentBindResponse response = enrollmentService.bind(bindRequest);
 
-      // Audit successful binding
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -215,11 +224,11 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .tenantId(auditTenantId)
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
     } catch (Exception e) {
-      // Audit bind error
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -229,6 +238,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .tenantId(auditTenantId)
               .errorMessage(e.getMessage())
               .build());
 
@@ -293,12 +303,12 @@ public class EnrollmentController {
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
+    Integer verifyTenantId = resolveTenantId(req.enrollmentId());
 
     try {
       EnrollmentVerifyResponse response =
           enrollmentService.verify(enrollmentMapper.toEnrollmentVerifyRequest(req));
 
-      // Audit successful verification
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_VERIFY)
@@ -308,16 +318,14 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(req.enrollmentId())
+              .tenantId(verifyTenantId)
               .eventDetails("Enrollment activated")
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
     } catch (IllegalStateException e) {
-      // Check if error is about existing VERIFIED enrollment
       if (e.getMessage() != null
           && e.getMessage().contains("verified enrollment with the same name")) {
-        // Query to find existing enrollment for audit purposes
-        // First, get the enrollment being verified to get integrationId and name
         Enrollment attemptedEnrollment =
             enrollmentRepository.findById(req.enrollmentId()).orElse(null);
 
@@ -335,7 +343,6 @@ public class EnrollmentController {
                   .orElse(null);
         }
 
-        // Audit verification failure with existing enrollment context
         auditLogService.log(
             AuditLog.builder()
                 .eventType(EventType.ENROLLMENT_VERIFY)
@@ -345,6 +352,7 @@ public class EnrollmentController {
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
                 .enrollmentId(req.enrollmentId())
+                .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .eventDetails(
                     "Verification rejected: VERIFIED enrollment already exists. "
@@ -358,7 +366,6 @@ public class EnrollmentController {
                             : "unknown"))
                 .build());
       } else {
-        // Standard failure logging
         auditLogService.log(
             AuditLog.builder()
                 .eventType(EventType.ENROLLMENT_VERIFY)
@@ -368,13 +375,13 @@ public class EnrollmentController {
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
                 .enrollmentId(req.enrollmentId())
+                .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .build());
       }
 
       throw e;
     } catch (Exception e) {
-      // Audit verification failure for other exceptions
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_VERIFY)
@@ -384,10 +391,30 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(req.enrollmentId())
+              .tenantId(verifyTenantId)
               .errorMessage(e.getMessage())
               .build());
 
       throw e;
     }
+  }
+
+  /**
+   * Resolves the tenant ID from an enrollment by traversing enrollment to integration to tenant.
+   *
+   * @param enrollmentId the enrollment ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantId(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(Enrollment::getIntegrationId)
+        .flatMap(integrationRepository::findById)
+        .map(Integration::getTenant)
+        .map(tenant -> tenant.getTenantId())
+        .orElse(null);
   }
 }

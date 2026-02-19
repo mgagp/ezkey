@@ -25,12 +25,18 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
+import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -100,20 +106,38 @@ public class AuthAttemptController {
   /** Service for audit logging of security-critical operations. */
   private final AuditLogService auditLogService;
 
+  /** Repository for resolving auth attempt to enrollment for tenant association. */
+  private final AuthAttemptRepository authAttemptRepository;
+
+  /** Repository for resolving enrollment to integration for tenant association. */
+  private final EnrollmentRepository enrollmentRepository;
+
+  /** Repository for resolving integration to tenant for audit log tenant association. */
+  private final IntegrationRepository integrationRepository;
+
   /**
    * Constructs the mobile authentication attempt controller with required dependencies.
    *
    * @param authAttemptService the JPA-based authorization attempt service
    * @param authAttemptMapper the MapStruct mapper for entity-DTO conversions
    * @param auditLogService the audit log service for security monitoring
+   * @param authAttemptRepository the auth attempt repository for tenant resolution
+   * @param enrollmentRepository the enrollment repository for tenant resolution
+   * @param integrationRepository the integration repository for tenant resolution in audit logs
    */
   public AuthAttemptController(
       final AuthAttemptService authAttemptService,
       final AuthAttemptAuthApiMapper authAttemptMapper,
-      final AuditLogService auditLogService) {
+      final AuditLogService auditLogService,
+      final AuthAttemptRepository authAttemptRepository,
+      final EnrollmentRepository enrollmentRepository,
+      final IntegrationRepository integrationRepository) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
+    this.authAttemptRepository = authAttemptRepository;
+    this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -188,7 +212,7 @@ public class AuthAttemptController {
       AuthAttemptPendingResponse response =
           authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
 
-      // Audit pending request found
+      Integer pendingTenantId = resolveTenantIdFromAuthAttempt(response.getAuthAttemptId());
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_PENDING)
@@ -199,6 +223,7 @@ public class AuthAttemptController {
               .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
+              .tenantId(pendingTenantId)
               .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
@@ -270,17 +295,17 @@ public class AuthAttemptController {
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
+    Integer respondTenantId = resolveTenantIdFromAuthAttempt(request.authAttemptId());
+
     try {
       AuthAttemptRespondResponse response =
           authAttemptService.respond(authAttemptMapper.toAuthAttemptRespondRequest(request));
 
-      // Determine action based on acceptance status
       String action =
           request.authAttemptAccepted() != null && request.authAttemptAccepted()
               ? "auth_attempt_approved"
               : "auth_attempt_denied";
 
-      // Audit response
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_RESPOND)
@@ -291,6 +316,7 @@ public class AuthAttemptController {
               .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
+              .tenantId(respondTenantId)
               .eventDetails(
                   "User "
                       + (request.authAttemptAccepted() ? "approved" : "denied")
@@ -299,10 +325,6 @@ public class AuthAttemptController {
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
     } catch (Exception e) {
-      // Audit response failure
-      // Note: For failures, we may not have the createdAt, so we try to get it from the request
-      // In case of validation errors, the service may not have been able to retrieve the attempt
-      // We'll set authAttemptCreatedAt to null if unavailable - FK constraint allows NULL
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_RESPOND)
@@ -312,11 +334,34 @@ public class AuthAttemptController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .authAttemptId(request.authAttemptId())
-              .authAttemptCreatedAt(null) // May be null if attempt not found - FK allows NULL
+              .authAttemptCreatedAt(null)
+              .tenantId(respondTenantId)
               .errorMessage(e.getMessage())
               .build());
 
       throw e;
     }
+  }
+
+  /**
+   * Resolves the tenant ID from an auth attempt by traversing auth attempt to enrollment to
+   * integration to tenant.
+   *
+   * @param authAttemptId the auth attempt ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    return authAttemptRepository
+        .findById(authAttemptId)
+        .map(AuthAttempt::getEnrollmentId)
+        .flatMap(enrollmentRepository::findById)
+        .map(Enrollment::getIntegrationId)
+        .flatMap(integrationRepository::findById)
+        .map(Integration::getTenant)
+        .map(tenant -> tenant.getTenantId())
+        .orElse(null);
   }
 }

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,6 +84,8 @@ class AuthAttemptControllerOwnershipTest {
 
   @Mock private AccessControlService accessControlService;
 
+  @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
+
   private AuthAttemptController controller;
 
   @BeforeEach
@@ -94,7 +97,8 @@ class AuthAttemptControllerOwnershipTest {
             auditLogService,
             rateLimitService,
             enrollmentRepository,
-            accessControlService);
+            accessControlService,
+            integrationRepository);
   }
 
   @Test
@@ -130,7 +134,8 @@ class AuthAttemptControllerOwnershipTest {
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;
-    verify(enrollmentRepository).findById(enrollmentId);
+    // Called twice: once in validateEnrollmentOwnership, once in resolveTenantIdFromEnrollment
+    verify(enrollmentRepository, times(2)).findById(enrollmentId);
   }
 
   @Test
