@@ -16,7 +16,7 @@ For build, setup, and project organization, refer to `README.md`.
 - Use constructor injection rather than field injection
 - Methods and classes should be kept small and cohesive
 - Favor immutability whenever possible
-- For logging, always use SLF4J with `private static final Logger log = LoggerFactory.getLogger(...)`
+- For logging, always use SLF4J with `private static final Logger logger = LoggerFactory.getLogger(...)`
 
 ### Formatting Rules
 - **Indentation**: 2 spaces (no tabs) - Google Java Format standard

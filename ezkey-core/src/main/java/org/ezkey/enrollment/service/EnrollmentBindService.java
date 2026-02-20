@@ -353,7 +353,7 @@ public class EnrollmentBindService {
       String integrationName,
       String integrationDescription) {
     logger.debug(
-        "Step 6: Building bind response for enrollment ID: {}", enrollment.getEnrollmentId());
+        "Step 5: Building bind response for enrollment ID: {}", enrollment.getEnrollmentId());
 
     EnrollmentBindResponse response = new EnrollmentBindResponse();
     response.setEnrollmentId(enrollment.getEnrollmentId());
