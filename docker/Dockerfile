@@ -13,6 +13,7 @@ COPY ezkey-core/pom.xml ./ezkey-core/pom.xml
 COPY ezkey-migration/pom.xml ./ezkey-migration/pom.xml
 COPY ezkey-admin-api/pom.xml ./ezkey-admin-api/pom.xml
 COPY ezkey-auth-api/pom.xml ./ezkey-auth-api/pom.xml
+COPY ezkey-m2m-api/pom.xml ./ezkey-m2m-api/pom.xml
 COPY ezkey-crypto-api/pom.xml ./ezkey-crypto-api/pom.xml
 COPY ezkey-sdk/java/pom.xml ./ezkey-sdk/java/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
@@ -27,7 +28,7 @@ COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
     mvn dependency:go-offline -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-m2m-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
 
@@ -39,6 +40,8 @@ COPY ezkey-admin-api/src ./ezkey-admin-api/src
 COPY ezkey-admin-api/config ./ezkey-admin-api/config
 COPY ezkey-auth-api/src ./ezkey-auth-api/src
 COPY ezkey-auth-api/config ./ezkey-auth-api/config
+COPY ezkey-m2m-api/src ./ezkey-m2m-api/src
+COPY ezkey-m2m-api/config ./ezkey-m2m-api/config
 COPY ezkey-crypto-api/src ./ezkey-crypto-api/src
 COPY ezkey-crypto-api/config ./ezkey-crypto-api/config
 COPY ezkey-sdk/java/src ./ezkey-sdk/java/src
@@ -54,7 +57,7 @@ COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
     mvn clean package -DskipTests -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-m2m-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
 
@@ -132,7 +135,36 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================
-# Stage 5: Runtime image for crypto-api service
+# Stage 5: Runtime image for m2m-api service
+# ============================================
+FROM eclipse-temurin:25-jre-alpine AS m2m-api
+RUN apk add --no-cache curl su-exec && \
+    addgroup -S spring && adduser -S spring -G spring
+WORKDIR /app
+COPY --from=build /build/ezkey-m2m-api/target/*.jar app.jar
+COPY --from=build /build/ezkey-m2m-api/config ./config
+# Create entrypoint script that fixes permissions without creating directories
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
+    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
+    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '# Fix directory permissions (only if directories exist from volume)' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/secrets ]; then chmod 700 /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/keysets ]; then chmod 755 /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/secrets ]; then chown spring:spring /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'if [ -d /etc/ezkey/keysets ]; then chown spring:spring /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
+    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+EXPOSE 7080
+EXPOSE 7081
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost:7081/actuator/health || exit 1
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ============================================
+# Stage 6: Runtime image for crypto-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS crypto-api
 RUN apk add --no-cache curl su-exec && \

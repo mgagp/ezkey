@@ -117,6 +117,17 @@ function Show-Status {
     }
 
     try {
+        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "m2m-api", "curl", "-sf", "http://localhost:7081/actuator/health") | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  M2M API: Healthy"
+        } else {
+            Write-Host "  M2M API: Unhealthy"
+        }
+    } catch {
+        Write-Host "  M2M API: Not available (optional service)"
+    }
+
+    try {
         $response = Invoke-WebRequest -Uri "http://localhost:9090/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
             Write-Host "  Crypto API: Healthy"

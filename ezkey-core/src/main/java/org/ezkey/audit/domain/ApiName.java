@@ -27,5 +27,8 @@ public enum ApiName {
   ADMIN_API,
 
   /** Auth API (port 8080) - mobile device operations. */
-  AUTH_API
+  AUTH_API,
+
+  /** M2M API (port 7080) - machine-to-machine integration operations. */
+  M2M_API
 }

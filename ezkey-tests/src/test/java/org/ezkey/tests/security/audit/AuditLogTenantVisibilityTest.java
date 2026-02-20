@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
  * Functional tests for audit log tenant visibility.
  *
  * <p>Validates that the {@code tenant_id} field is correctly populated in audit log entries created
- * by admin operations (specifically auth attempt cancellation) and that the audit log query endpoint
- * enforces proper tenant-scoped visibility.
+ * by admin operations (specifically auth attempt cancellation) and that the audit log query
+ * endpoint enforces proper tenant-scoped visibility.
  *
  * <p><b>Test Scenarios:</b>
  *
@@ -87,10 +87,8 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
 
       uniqueSuffix = String.valueOf(System.currentTimeMillis());
 
-      tenantAId =
-          testDataFactory.findOrCreateTenant("AuditVisA " + uniqueSuffix, globalAdminToken);
-      tenantBId =
-          testDataFactory.findOrCreateTenant("AuditVisB " + uniqueSuffix, globalAdminToken);
+      tenantAId = testDataFactory.findOrCreateTenant("AuditVisA " + uniqueSuffix, globalAdminToken);
+      tenantBId = testDataFactory.findOrCreateTenant("AuditVisB " + uniqueSuffix, globalAdminToken);
 
       tenantAdminAToken =
           tenantAdminTestHelper.createAndLoginTenantAdmin(
@@ -143,9 +141,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    assertThat(cancelResponse.getStatusCode())
-        .as("Cancel should succeed with 200")
-        .isEqualTo(200);
+    assertThat(cancelResponse.getStatusCode()).as("Cancel should succeed with 200").isEqualTo(200);
 
     Response auditResponse =
         given()
@@ -166,9 +162,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
     assertThat(content).as("Audit log content should not be empty").isNotEmpty();
 
     Map<String, Object> entry = findAuditEntryByAuthAttemptId(content, authAttemptId);
-    assertThat(entry)
-        .as("Audit entry for auth attempt %d should exist", authAttemptId)
-        .isNotNull();
+    assertThat(entry).as("Audit entry for auth attempt %d should exist", authAttemptId).isNotNull();
     assertThat(entry.get("tenantId"))
         .as("Audit entry tenant_id should match Tenant A")
         .isEqualTo(tenantAId);
@@ -207,9 +201,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
             .then()
             .extract()
             .response();
-    assertThat(firstCancel.getStatusCode())
-        .as("First cancel should succeed")
-        .isEqualTo(200);
+    assertThat(firstCancel.getStatusCode()).as("First cancel should succeed").isEqualTo(200);
 
     Response secondCancel =
         given()
@@ -346,9 +338,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
     assertThat(allContent).as("GlobalAdmin should see audit entries").isNotEmpty();
 
     Map<String, Object> targetEntry = findAuditEntryByAuthAttemptId(allContent, authAttemptId);
-    assertThat(targetEntry)
-        .as("GlobalAdmin should see Tenant A's cancel audit entry")
-        .isNotNull();
+    assertThat(targetEntry).as("GlobalAdmin should see Tenant A's cancel audit entry").isNotNull();
     assertThat(targetEntry.get("tenantId"))
         .as("Entry should have Tenant A's tenantId")
         .isEqualTo(tenantAId);
@@ -369,9 +359,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
             .response();
 
     List<Map<String, Object>> filteredContent = filteredResponse.jsonPath().getList("content");
-    assertThat(filteredContent)
-        .as("Filtered results should not be empty")
-        .isNotEmpty();
+    assertThat(filteredContent).as("Filtered results should not be empty").isNotEmpty();
 
     for (Map<String, Object> entry : filteredContent) {
       assertThat(entry.get("tenantId"))
@@ -436,10 +424,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
       return null;
     }
     return content.stream()
-        .filter(
-            e ->
-                e.get("authAttemptId") != null
-                    && authAttemptId.equals(e.get("authAttemptId")))
+        .filter(e -> e.get("authAttemptId") != null && authAttemptId.equals(e.get("authAttemptId")))
         .findFirst()
         .orElse(null);
   }

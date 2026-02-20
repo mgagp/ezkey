@@ -96,35 +96,42 @@ function show_status() {
     echo ""
     echo "🔍 Health Checks:"
     echo ""
-    
+
     # Check PostgreSQL
     if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
         echo "  ✅ PostgreSQL: Healthy"
     else
         echo "  ❌ PostgreSQL: Unhealthy"
     fi
-    
+
     # Check Admin API
     if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T admin-api curl -sf http://localhost:9081/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Admin API: Healthy"
     else
         echo "  ❌ Admin API: Unhealthy"
     fi
-    
+
     # Check Auth API
     if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T auth-api curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Auth API: Healthy"
     else
         echo "  ❌ Auth API: Unhealthy"
     fi
-    
+
+    # Check M2M API
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T m2m-api curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ M2M API: Healthy"
+    else
+        echo "  ❌ M2M API: Unhealthy"
+    fi
+
     # Check Crypto API
     if curl -sf http://localhost:9090/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Crypto API: Healthy"
     else
         echo "  ❌ Crypto API: Unhealthy"
     fi
-    
+
     # Check Demo Device
     if curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo Device: Healthy"
@@ -149,7 +156,7 @@ function clean_all() {
 
 function build_images() {
     echo "📦 Building Docker images..."
-    
+
     # Create Maven cache volume if it doesn't exist
     if ! docker volume inspect maven-cache > /dev/null 2>&1; then
         echo "📦 Creating Maven cache volume..."
@@ -158,7 +165,7 @@ function build_images() {
     else
         echo "  ✅ Using existing Maven cache volume"
     fi
-    
+
     echo ""
     echo "========================================"
     echo "Building Docker images with BuildKit"

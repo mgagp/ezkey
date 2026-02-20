@@ -35,6 +35,14 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
+		<!-- Servlet API (provided by the web container at runtime; needed to compile
+		     shared utilities like ClientContext that handle HttpServletRequest) -->
+		<dependency>
+			<groupId>jakarta.servlet</groupId>
+			<artifactId>jakarta.servlet-api</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
 		<!-- Database Driver (for JPA entities) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>

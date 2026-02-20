@@ -17,4 +17,6 @@ services:
   auth-api:
     ports:
       - "8085:8085"
-
+  m2m-api:
+    ports:
+      - "7081:7081"

@@ -43,6 +43,7 @@
 		<module>ezkey-migration</module>
 		<module>ezkey-admin-api</module>
 		<module>ezkey-auth-api</module>
+		<module>ezkey-m2m-api</module>
 		<module>ezkey-crypto-api</module>
 		<module>ezkey-sdk/java</module>
 		<module>ezkey-demo-app-acme</module>
