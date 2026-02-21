@@ -11,21 +11,15 @@
 package org.ezkey.exception;
 
 /**
- * Exception thrown when an API key exceeds its rate limit for a specific
- * operation.
+ * Exception thrown when an API key exceeds its rate limit for a specific operation.
  *
- * <p>
- * This exception is thrown by the RateLimitService when an API key attempts to
- * perform an
- * operation that would exceed the configured rate limits. It provides
- * information about the rate
+ * <p>This exception is thrown by the RateLimitService when an API key attempts to perform an
+ * operation that would exceed the configured rate limits. It provides information about the rate
  * limit status to help clients understand when they can retry the operation.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -40,9 +34,9 @@ public class RateLimitExceededException extends RuntimeException {
   /**
    * Constructs a new RateLimitExceededException with the specified details.
    *
-   * @param operation         the operation that exceeded the rate limit
-   * @param limit             the maximum number of operations allowed per window
-   * @param current           the current number of operations in the window
+   * @param operation the operation that exceeded the rate limit
+   * @param limit the maximum number of operations allowed per window
+   * @param current the current number of operations in the window
    * @param windowSizeMinutes the size of the rate limiting window in minutes
    */
   public RateLimitExceededException(

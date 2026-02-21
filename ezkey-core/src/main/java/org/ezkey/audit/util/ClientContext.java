@@ -15,25 +15,20 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * Immutable carrier for client context used in audit logging.
  *
- * <p>
- * Encapsulates the client IP address and User-Agent extracted from an HTTP
- * request, providing a
- * single, consistent way to carry this information through the request
- * processing chain for audit
+ * <p>Encapsulates the client IP address and User-Agent extracted from an HTTP request, providing a
+ * single, consistent way to carry this information through the request processing chain for audit
  * trail purposes across all API modules.
  *
- * <p>
- * <b>IP Extraction Priority:</b>
+ * <p><b>IP Extraction Priority:</b>
  *
  * <ol>
- * <li>CF-Connecting-IP (Cloudflare)
- * <li>X-Forwarded-For (standard proxy header — first entry)
- * <li>X-Real-IP (nginx proxy header)
- * <li>Remote address (direct connection)
+ *   <li>CF-Connecting-IP (Cloudflare)
+ *   <li>X-Forwarded-For (standard proxy header — first entry)
+ *   <li>X-Real-IP (nginx proxy header)
+ *   <li>Remote address (direct connection)
  * </ol>
  *
- * <p>
- * <b>Example Usage:</b>
+ * <p><b>Example Usage:</b>
  *
  * <pre>
  * ClientContext context = ClientContext.from(httpRequest);
@@ -43,14 +38,11 @@ import jakarta.servlet.http.HttpServletRequest;
  *         .build());
  * </pre>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
- * @param clientIp  client IP address extracted from the request (handles proxy
- *                  headers)
+ * @param clientIp client IP address extracted from the request (handles proxy headers)
  * @param userAgent client User-Agent string from the request headers
  * @author Ezkey contributors
  * @since 2025
@@ -60,9 +52,7 @@ public record ClientContext(String clientIp, String userAgent) {
   /**
    * Extracts client context from an HTTP servlet request.
    *
-   * <p>
-   * Inspects proxy headers in priority order before falling back to the direct
-   * remote address.
+   * <p>Inspects proxy headers in priority order before falling back to the direct remote address.
    * User-Agent is extracted unconditionally from the {@code User-Agent} header.
    *
    * @param request the HTTP servlet request (must not be null)

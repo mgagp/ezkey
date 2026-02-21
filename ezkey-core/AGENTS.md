@@ -32,3 +32,78 @@ For agents working in `ezkey-core/`.
 2. Database constraint prevents duplicate VERIFIED enrollments (database-level validation)
 
 This dual validation ensures security is enforced at both application and database levels.
+
+---
+
+## CascadeType.ALL + orphanRemoval shared-reference hazard
+
+### What it is
+
+Hibernate tracks `@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)` collections as
+**owned bags**. It snapshots them at entity load and dirty-checks them at flush time to determine
+whether to INSERT, UPDATE, or DELETE children.
+
+The hazard: under concurrent load, if two or more transactions load the **same parent entity row**
+(same primary key), Hibernate may detect that two managed entity states reference the same
+collection object in the JVM heap and throw:
+
+```
+org.hibernate.HibernateException: Found shared references to a collection:
+    org.ezkey.integration.domain.entity.Integration.i18n
+```
+
+This is intermittent at low concurrency but becomes **progressively more likely** as the number of
+parallel requests sharing the same parent entity grows. The system integration (`id=1`,
+`is_system_integration=true`) is the highest-risk entity: every admin MFA enrollment (bind step)
+loads it.
+
+### Observed occurrence
+
+- **Date:** 2026-02-20
+- **Test:** `MultiTenantGlobalAdminTest.integration_tenantA_has_correct_tenantId`
+- **Enrollment:** id=122, integration_id=1 (system integration)
+- **Trigger:** multiple tenant admins onboarded in parallel, all sharing integration_id=1
+- **Error stored in audit log:**
+  `Found shared references to a collection: org.ezkey.integration.domain.entity.Integration.i18n`
+
+### The fix pattern
+
+For any code path that **reads** an entity with `cascade=ALL` on a collection but does **not
+mutate** it, load via a dedicated read-only repository method:
+
+```java
+// In the JPA repository:
+@Query("SELECT i FROM Integration i"
+     + " LEFT JOIN FETCH i.i18n"
+     + " LEFT JOIN FETCH i.tenant"
+     + " WHERE i.id = :id")
+@QueryHints(@QueryHint(name = "org.hibernate.readOnly", value = "true"))
+Optional<Integration> findByIdWithI18nAndTenant(@Param("id") Integer id);
+```
+
+`org.hibernate.readOnly=true` tells Hibernate: do not snapshot this entity, do not dirty-check it,
+do not cascade from it. This eliminates the ownership conflict entirely.
+
+### Rule for all code generation
+
+| Goal | Method to use |
+|---|---|
+| Read integration for display / bind / verify response | `findByIdWithI18nAndTenant()` |
+| Mutate integration or its i18n entries | `findById()` (standard managed entity) |
+| Any new `@OneToMany(cascade=ALL)` introduced in the future | Apply the same read/write split |
+
+### How to flag this in code review
+
+Flag any code that calls `repository.findById()` on an entity with `cascade=ALL` on a collection
+and then only reads that collection (no `set*`, `add`, or `remove` calls follow). Migrate to a
+read-only query method.
+
+### OSIV amplifier
+
+Spring Boot enables `spring.jpa.open-in-view=true` by default, extending the Hibernate session
+across the entire HTTP request lifecycle. This widens the window during which the hazard can
+manifest. For high-concurrency endpoints, consider disabling OSIV in `application.properties`:
+
+```properties
+spring.jpa.open-in-view=false
+```
