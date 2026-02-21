@@ -12,8 +12,8 @@
 
 | Module | Platform | Responsibility | Entry Point |
 |--------|----------|----------------|-------------|
-| `EzkeyCryptoModule` | Android (Kotlin) | Ed25519 key management with HKDF derivation, root key management, signing | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` |
-| `EzkeyCryptoModule` | iOS (Swift) | Secure Enclave/Keychain-backed Ed25519 operations (to be implemented) | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
+| `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management with hardware-backed storage (StrongBox), signing | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` |
+| `EzkeyCryptoModule` | iOS (Swift) | Secure Enclave-backed EC P-256 operations (to be implemented) | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
 | `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoPackage.kt` |
 | `EzkeyQrFrameProcessorPlugin` | Android (Kotlin) | Decodes QR payloads via Vision Camera frame processors | `android/app/src/main/java/com/ezkeymobile/qr/EzkeyQrFrameProcessorPlugin.kt` |
 | `EzkeyCryptoModuleBridge` | iOS (Objective-C) | Exposes Swift crypto module to React Native bridge | `ios/EzkeyMobile/Crypto/EzkeyCryptoModuleBridge.m` |
@@ -25,26 +25,26 @@ sequenceDiagram
     participant JS as React Native (TypeScript)
     participant Android as Android Native
     participant iOS as iOS Native
-    JS->>Android: NativeModules.EzkeyCryptoModule.generateRootKey()
-    Android-->>JS: Promise resolved with success flag
-    JS->>Android: NativeModules.EzkeyCryptoModule.getEd25519PublicKey(enrollmentId)
-    Android-->>JS: Promise resolved with Base64 public key (32 bytes)
-    JS->>Android: NativeModules.EzkeyCryptoModule.signEd25519(enrollmentId, payload)
-    Android-->>JS: Promise resolved with Base64 signature (64 bytes)
+    JS->>Android: NativeModules.EzkeyCryptoModule.generateEnrollmentKeyPair(enrollmentId)
+    Android-->>JS: Promise resolved with true (key pair created in Keystore)
+    JS->>Android: NativeModules.EzkeyCryptoModule.getPublicKey(enrollmentId)
+    Android-->>JS: Promise resolved with Base64 X.509 public key (~88 chars)
+    JS->>Android: NativeModules.EzkeyCryptoModule.sign(enrollmentId, payload)
+    Android-->>JS: Promise resolved with Base64 ECDSA signature (~96 chars)
 ```
 
 - JavaScript calls are issued through `app/services/crypto/nativeCrypto.ts`.
-- Android uses Android Keystore (`AndroidKeyStore`) with StrongBox when supported for root key storage; Ed25519 keys are derived via HKDF-SHA-256 per enrollment.
-- iOS implementation deferred to 2026; will use Secure Enclave with CryptoKit for Ed25519 operations.
+- Android uses Android Keystore (`AndroidKeyStore`) with StrongBox when available; one EC P-256 key pair generated per enrollment, non-extractable.
+- iOS implementation deferred to 2026; will use Secure Enclave with CryptoKit for EC P-256 operations.
 - QR scanning is Android-only today; iOS uses JS-based fallbacks until a Swift counterpart is implemented.
 
 ## Security Alignment
 
-- Ed25519 configuration matches [`docs/CRYPTO.md`](../../docs/CRYPTO.md): 32-byte keys, 64-byte signatures, HKDF-SHA-256 derivation, Base64 transport.
-- Root key (256-bit AES) stored in hardware-backed storage (StrongBox/Secure Enclave), non-extractable.
-- Enrollment-specific Ed25519 keys derived deterministically via HKDF: `seed = HKDF(root_key, info = "enrollment:<id>:signing")`.
+- EC P-256 key format matches [`docs/CRYPTO.md`](../../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, ECDSA-SHA256 signatures in ASN.1 DER format, Base64 transport.
+- Per-enrollment EC P-256 key pairs stored directly in hardware-backed storage (StrongBox/Secure Enclave), non-extractable.
+- Enrollment key pairs generated natively by platform keystore (no manual derivation needed).
 - Enrollment and authentication payloads follow [`docs/features/AUTH_SECURITY.md`](../../docs/features/AUTH_SECURITY.md) to prevent proof-token reuse and enumeration.
-- Native modules never persist sensitive payloads; root key remains in hardware-backed storage, Ed25519 seeds derived on-demand.
+- Native modules never persist sensitive payloads; EC P-256 private keys are non-extractable and remain in hardware-backed storage throughout their lifecycle.
 - Error messages are intentionally generic in production to avoid leaking device state; detailed logs are limited to development builds.
 
 ## iOS Documentation Guidance

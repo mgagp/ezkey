@@ -12,13 +12,15 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * REST client for Crypto API operations.
@@ -30,9 +32,9 @@ import org.slf4j.LoggerFactory;
  * <p>Supported operations:
  *
  * <ul>
- *   <li>Generate Ed25519 key pairs for device simulation
+ *   <li>Generate EC P-256 key pairs for device simulation
  *   <li>Generate proof tokens
- *   <li>Sign data with private keys (Ed25519)
+ *   <li>Sign data with private keys (ECDSA-SHA256)
  *   <li>Validate signatures (optional, for testing)
  * </ul>
  *
@@ -54,26 +56,27 @@ public class CryptoApiClient {
   }
 
   /**
-   * Represents an Ed25519 key pair returned by the Crypto API.
+   * Represents an EC P-256 key pair returned by the Crypto API.
    *
-   * <p>Ed25519 keys are always 32 bytes (256 bits) for both private and public keys.
+   * <p>Keys are ASN.1 DER encoded and Base64-encoded for transport: private key in PKCS#8 format
+   * (~121 chars Base64), public key in X.509 SubjectPublicKeyInfo format (~88 chars Base64).
    *
-   * @param privateKey Base64-encoded Ed25519 private key seed (32 bytes)
-   * @param publicKey Base64-encoded Ed25519 public key (32 bytes)
+   * @param privateKey Base64-encoded EC P-256 private key (PKCS#8 DER format)
+   * @param publicKey Base64-encoded EC P-256 public key (X.509 SubjectPublicKeyInfo DER format)
    */
-  public record Ed25519KeyPair(String privateKey, String publicKey) {}
+  public record EcP256KeyPair(String privateKey, String publicKey) {}
 
   /**
-   * Generates a new Ed25519 key pair using the Crypto API.
+   * Generates a new EC P-256 key pair using the Crypto API.
    *
-   * <p>Calls GET /api/v1/crypto/keypair. Ed25519 keys are always 32 bytes (256 bits) - no key size
-   * parameter needed.
+   * <p>Calls GET /api/v1/crypto/keypair. Returns an ECDSA key pair with private key in PKCS#8
+   * format and public key in X.509 SubjectPublicKeyInfo format, both Base64-encoded.
    *
-   * @return Ed25519 key pair with private key and public key
+   * @return EC P-256 key pair with private key and public key
    * @throws RuntimeException if key generation fails
    */
-  public Ed25519KeyPair generateKeyPair() {
-    log.debug("Generating Ed25519 key pair");
+  public EcP256KeyPair generateKeyPair() {
+    log.debug("Generating EC P-256 key pair");
 
     RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
 
@@ -90,9 +93,9 @@ public class CryptoApiClient {
     String privateKey = response.jsonPath().getString("privateKey");
     String publicKey = response.jsonPath().getString("publicKey");
 
-    log.debug("Generated Ed25519 key pair (32 bytes each)");
+    log.debug("Generated EC P-256 key pair (PKCS#8 private, X.509 public)");
 
-    return new Ed25519KeyPair(privateKey, publicKey);
+    return new EcP256KeyPair(privateKey, publicKey);
   }
 
   /**

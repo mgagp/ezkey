@@ -149,7 +149,7 @@ sequenceDiagram
   - `POST /api/v1/enrollments/verify`
   - `POST /api/v1/auth-attempts/pending` (body includes enrollment/device proof to avoid path-based enumeration)
   - `POST /api/v1/auth-attempts/respond`
-- Requests follow cryptographic expectations defined in `v1/enrollment/EnrollmentService.kt` and `v1/auth/AuthService.kt` (RSA-2048, SHA-256 signatures).
+- Requests follow cryptographic expectations defined in `docs/CRYPTO.md`: EC P-256 (secp256r1) key pairs, ECDSA-SHA256 signatures, PKCS#8/X.509 key formats.
 - Conservative networking stack: Axios (REST), exponential backoff, TLS pinning placeholder for future.
 
 ### 6.2 Permissions & Native Integrations
@@ -208,6 +208,6 @@ sequenceDiagram
 
 ---
 
-**Document version**: 0.1 (November 2025)  
-**Owners**: Mobile squad @ Ezkey  
+**Document version**: 0.1 (November 2025)
+**Owners**: Mobile squad @ Ezkey
 **Next review**: December 2025

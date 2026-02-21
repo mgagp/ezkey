@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
-import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
+import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  * <p>Validates cryptographic operations including:
  *
  * <ul>
- *   <li>Ed25519 key pair generation
+ *   <li>EC P-256 key pair generation
  *   <li>Proof token generation
  *   <li>Data signing with private keys
  *   <li>Signature validation
@@ -41,15 +41,15 @@ import org.junit.jupiter.api.Test;
 public class CryptographicSecurityTest extends AbstractSecurityTest {
 
   @Test
-  @DisplayName("Can generate Ed25519 key pair via Crypto API")
+  @DisplayName("Can generate EC P-256 key pair via Crypto API")
   public void testGenerateKeyPair() {
-    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair = cryptoApiClient.generateKeyPair();
 
     assertThat(keyPair.privateKey()).isNotNull().isNotEmpty();
     assertThat(keyPair.publicKey()).isNotNull().isNotEmpty();
-    // Ed25519 keys are always 32 bytes (256 bits) - verify Base64 length
-    assertThat(keyPair.privateKey().length()).isGreaterThan(40); // Base64 of 32 bytes
-    assertThat(keyPair.publicKey().length()).isGreaterThan(40); // Base64 of 32 bytes
+    // EC P-256 PKCS#8 private key is ~121 chars Base64; X.509 public key is ~88 chars Base64
+    assertThat(keyPair.privateKey().length()).isGreaterThan(80);
+    assertThat(keyPair.publicKey().length()).isGreaterThan(60);
   }
 
   @Test
@@ -63,7 +63,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Can sign data with private key via Crypto API")
   public void testSignData() {
-    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair.privateKey());
 
@@ -73,7 +73,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Can validate signature via Crypto API")
   public void testValidateSignature() {
-    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair.privateKey());
 
@@ -85,7 +85,7 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Invalid signature should fail validation")
   public void testInvalidSignatureFails() {
-    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String invalidSignature = "invalid-signature-data";
 
@@ -98,8 +98,8 @@ public class CryptographicSecurityTest extends AbstractSecurityTest {
   @Test
   @DisplayName("Signature validation fails with wrong public key")
   public void testSignatureValidationFailsWithWrongKey() {
-    Ed25519KeyPair keyPair1 = cryptoApiClient.generateKeyPair();
-    Ed25519KeyPair keyPair2 = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair1 = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair2 = cryptoApiClient.generateKeyPair();
     String data = "test-data-to-sign";
     String signature = cryptoApiClient.signData(data, keyPair1.privateKey());
 

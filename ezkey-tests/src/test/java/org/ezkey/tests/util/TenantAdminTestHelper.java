@@ -12,20 +12,23 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.ezkey.tests.config.DockerStackConfig;
-import org.ezkey.tests.util.CryptoApiClient.Ed25519KeyPair;
+import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * Helper class for creating TenantAdmin with full device simulation and authentication.
@@ -74,8 +77,9 @@ public class TenantAdminTestHelper {
    * @param enrollmentId Enrollment ID
    * @param adminId Admin ID
    * @param username Admin username
-   * @param privateKey Base64-encoded Ed25519 device private key seed (32 bytes)
-   * @param publicKey Base64-encoded Ed25519 device public key (32 bytes)
+   * @param privateKey Base64-encoded EC P-256 device private key (PKCS#8 DER format)
+   * @param publicKey Base64-encoded EC P-256 device public key (X.509 SubjectPublicKeyInfo DER
+   *     format)
    */
   private record DeviceCredentials(
       Integer enrollmentId,
@@ -223,7 +227,7 @@ public class TenantAdminTestHelper {
     log.info("Retrieved onboarding credentials for enrollment: {}", enrollmentId);
 
     // Step 3: Generate device key pair
-    Ed25519KeyPair keyPair = cryptoApiClient.generateKeyPair();
+    EcP256KeyPair keyPair = cryptoApiClient.generateKeyPair();
     log.info("Generated device key pair");
 
     // Step 4: Bind device to enrollment

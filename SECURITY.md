@@ -28,9 +28,9 @@ To help us better understand and resolve the issue, please include as much of th
 
 - **Initial Response**: Within 48 hours of report submission
 - **Status Update**: Within 7 days with assessment of the issue
-- **Resolution Target**: 
+- **Resolution Target**:
   - Critical vulnerabilities: 7 days
-  - High vulnerabilities: 30 days  
+  - High vulnerabilities: 30 days
   - Medium vulnerabilities: 60 days
   - Low vulnerabilities: 90 days
 
@@ -68,12 +68,12 @@ The following are considered out of scope for security reports:
 Ezkey follows secure development practices including:
 
 - **Code Review**: All code changes require peer review
-- **Automated Security Scanning**: 
+- **Automated Security Scanning**:
   - Dependency vulnerability scanning (Dependabot)
   - Static Application Security Testing (SAST)
   - Secret scanning
-- **Cryptographic Standards**: 
-  - RSA-2048 minimum for key generation
+- **Cryptographic Standards**:
+  - EC P-256 (secp256r1) with ECDSA-SHA256 for all digital signatures
   - SHA-256 for hashing
   - Industry-standard cryptographic libraries
 - **Regular Updates**: Dependencies are regularly updated for security patches
@@ -140,6 +140,6 @@ For security concerns, always use: **security@ezkey.org**
 
 ---
 
-**Last Updated**: 2025-10-12  
+**Last Updated**: 2025-10-12
 **Policy Version**: 1.0
 

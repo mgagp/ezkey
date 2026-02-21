@@ -11,18 +11,18 @@
 
 ## Core Capabilities
 
-- Guided enrollment wizard with QR scanning, challenge validation, and Ed25519 key provisioning
+- Guided enrollment wizard with QR scanning, challenge validation, and EC P-256 key provisioning
 - Local enrollment catalogue with enrollment metadata storage, detail views, and pending-auth shortcuts
 - Manual, user-driven polling for authentication attempts followed by approve/deny flows
 - Shared Axios client with deterministic timeouts and error handling suitable for mobile networks
-- Native crypto bridge (Kotlin/Swift) that delegates Ed25519 key management with HKDF derivation to Android Keystore and iOS Secure Enclave/Keychain
+- Native crypto bridge (Kotlin/Swift) that exposes EC P-256 key management with hardware-backed storage (Android Keystore StrongBox, iOS Secure Enclave)
 
 ## Security Posture
 
 - Proof tokens and signatures are always handled in memory; sensitive values are stored via secure storage abstractions only
 - Enrollment and authentication requests follow the pull-based model that avoids background polling to prevent enumeration or replay
-- Device credentials honour the Ed25519 constraints listed in [`docs/CRYPTO.md`](../docs/CRYPTO.md) (32-byte keys, 64-byte signatures, HKDF-SHA-256 derivation)
-- Single root key (256-bit AES) stored in hardware-backed storage (StrongBox/Secure Enclave), with Ed25519 keys derived per enrollment via HKDF
+- Device credentials use EC P-256 (ECDSA-SHA256) as specified in [`docs/CRYPTO.md`](../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, hardware-backed in platform keystore
+- Per-enrollment EC P-256 key pairs generated natively in hardware-backed storage (Android Keystore StrongBox, iOS Secure Enclave); private keys are non-extractable
 - Client-side documentation references the backend security analysis in [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) to keep UI logic aligned with server-side guarantees
 
 ## Project Structure
@@ -107,7 +107,7 @@ yarn test                  # Jest unit/component tests
 
 ## Native Modules Summary
 
-- `EzkeyCryptoModule` (Kotlin/Swift) exposes Ed25519 key generation, retrieval, signing, and root key management with HKDF derivation
+- `EzkeyCryptoModule` (Kotlin/Swift) exposes EC P-256 key generation, retrieval, and signing with hardware-backed storage (Android Keystore, iOS Secure Enclave)
 - `EzkeyQrFrameProcessorPlugin` (Kotlin) feeds `react-native-vision-camera` with decoded QR payloads
 - iOS bridges live under `ios/EzkeyMobile/` and should adopt Xcode Quick Help (`///`) comments referencing the same security docs noted above
 - Detailed design notes live in [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) *(created in this revision)*

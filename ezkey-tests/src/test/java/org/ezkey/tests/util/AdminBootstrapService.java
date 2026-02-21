@@ -13,10 +13,6 @@ package org.ezkey.tests.util;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,9 +22,16 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 /**
  * Service for bootstrapping admin enrollment and obtaining admin token.
@@ -73,9 +76,10 @@ public class AdminBootstrapService {
    * Represents device credentials saved after initial bootstrap.
    *
    * @param enrollmentId Enrollment ID
-   * @param privateKey Base64-encoded Ed25519 device private key seed (32 bytes)
-   * @param publicKey Base64-encoded Ed25519 device public key (32 bytes)
-   * @param keySize Key size in bits (always 256 for Ed25519)
+   * @param privateKey Base64-encoded EC P-256 device private key (PKCS#8 DER format)
+   * @param publicKey Base64-encoded EC P-256 device public key (X.509 SubjectPublicKeyInfo DER
+   *     format)
+   * @param keySize Key size in bits (256 for EC P-256)
    */
   private record DeviceCredentials(
       Integer enrollmentId, String privateKey, String publicKey, int keySize) {}
@@ -274,7 +278,7 @@ public class AdminBootstrapService {
         }
       }
 
-      CryptoApiClient.Ed25519KeyPair deviceKeyPair;
+      CryptoApiClient.EcP256KeyPair deviceKeyPair;
       DeviceCredentials deviceCredentials;
 
       if ("VERIFIED".equals(enrollmentStatus)) {
@@ -303,7 +307,7 @@ public class AdminBootstrapService {
           log.info("   ✅ Found existing device credentials - Reusing them");
           deviceCredentials = existingCredentials;
           deviceKeyPair =
-              new CryptoApiClient.Ed25519KeyPair(
+              new CryptoApiClient.EcP256KeyPair(
                   existingCredentials.privateKey(), existingCredentials.publicKey());
           log.info("   ⏭️  Skipping bind and verify steps - Using existing credentials");
         } else {
@@ -330,11 +334,11 @@ public class AdminBootstrapService {
       } else {
         // Enrollment not verified - proceed with normal bootstrap
         log.info("═══════════════════════════════════════════════════════════════");
-        log.info("STEP 2: Generating Ed25519 device key pair...");
+        log.info("STEP 2: Generating EC P-256 device key pair...");
         log.info("═══════════════════════════════════════════════════════════════");
         deviceKeyPair = cryptoApiClient.generateKeyPair();
-        log.info("✅ Step 2 Complete - Ed25519 device key pair generated:");
-        log.info("   Key Size: 256 bits (Ed25519 - fixed size)");
+        log.info("✅ Step 2 Complete - EC P-256 device key pair generated:");
+        log.info("   Key Size: 256 bits (EC P-256 secp256r1)");
         log.info(
             "   Public Key: {}...",
             deviceKeyPair
@@ -373,7 +377,7 @@ public class AdminBootstrapService {
                 credentials.enrollmentId(),
                 deviceKeyPair.privateKey(),
                 deviceKeyPair.publicKey(),
-                256); // Ed25519 is always 256 bits (32 bytes)
+                256); // EC P-256 uses 256-bit keys
         log.info("Saving device credentials to file: {}", DEVICE_CREDENTIALS_FILE_PATH);
         saveDeviceCredentials(deviceCredentials);
       }
@@ -482,11 +486,11 @@ public class AdminBootstrapService {
 
       // Step 2: Generate new device key pair
       log.info("═══════════════════════════════════════════════════════════════");
-      log.info("STEP 2: Generating new Ed25519 device key pair...");
+      log.info("STEP 2: Generating new EC P-256 device key pair...");
       log.info("═══════════════════════════════════════════════════════════════");
-      CryptoApiClient.Ed25519KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+      CryptoApiClient.EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
       log.info("✅ Step 2 Complete - New device key pair generated:");
-      log.info("   Key Size: 256 bits (Ed25519 - fixed size)");
+      log.info("   Key Size: 256 bits (EC P-256 secp256r1)");
       log.info(
           "   Public Key: {}...",
           deviceKeyPair.publicKey().substring(0, Math.min(50, deviceKeyPair.publicKey().length())));
@@ -526,7 +530,7 @@ public class AdminBootstrapService {
               credentials.enrollmentId(),
               deviceKeyPair.privateKey(),
               deviceKeyPair.publicKey(),
-              256); // Ed25519 is always 256 bits (32 bytes)
+              256); // EC P-256 uses 256-bit keys
       log.info("Saving device credentials to file: {}", DEVICE_CREDENTIALS_FILE_PATH);
       saveDeviceCredentials(deviceCredentials);
       log.info("✅ Step 5 Complete - Device credentials saved");
@@ -618,8 +622,8 @@ public class AdminBootstrapService {
           bootstrapCredentialsExtractor.loadOrExtractCredentials();
 
       // Reconstruct device key pair from saved credentials
-      CryptoApiClient.Ed25519KeyPair deviceKeyPair =
-          new CryptoApiClient.Ed25519KeyPair(
+      CryptoApiClient.EcP256KeyPair deviceKeyPair =
+          new CryptoApiClient.EcP256KeyPair(
               deviceCredentials.privateKey(), deviceCredentials.publicKey());
 
       // Step 5: Login admin (creates auth attempt)
@@ -833,7 +837,7 @@ public class AdminBootstrapService {
    */
   private void verifyEnrollment(
       Integer enrollmentId,
-      CryptoApiClient.Ed25519KeyPair deviceKeyPair,
+      CryptoApiClient.EcP256KeyPair deviceKeyPair,
       String bindProofToken,
       Integer challengeCode) {
     log.info("   Signing bind proof token with device private key...");
@@ -941,7 +945,7 @@ public class AdminBootstrapService {
    */
   private void respondToAuthAttempt(
       Integer authAttemptId,
-      CryptoApiClient.Ed25519KeyPair deviceKeyPair,
+      CryptoApiClient.EcP256KeyPair deviceKeyPair,
       String enrollmentProofToken,
       Integer challengeCode) {
     log.info("   Sub-step 6a: Generating device proof token...");
@@ -1190,7 +1194,7 @@ public class AdminBootstrapService {
       String privateKey = jsonNode.get("privateKey").asText();
       String publicKey = jsonNode.get("publicKey").asText();
       int keySize =
-          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
+          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // EC P-256 default
 
       log.info("Device credentials loaded from bootstrap volume");
       return new DeviceCredentials(credsEnrollmentId, privateKey, publicKey, keySize);
@@ -1219,7 +1223,7 @@ public class AdminBootstrapService {
       String privateKey = jsonNode.get("privateKey").asText();
       String publicKey = jsonNode.get("publicKey").asText();
       int keySize =
-          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // Ed25519 default
+          jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // EC P-256 default
 
       log.info("Device credentials loaded from file");
       return new DeviceCredentials(enrollmentId, privateKey, publicKey, keySize);

@@ -1,5 +1,13 @@
 # Hardware-Backed Key Derivation Analysis
 
+> **Historical Decision Document** — This document captures the investigation that led to the
+> final cryptographic decision. The approach described here (Ed25519 + HKDF) was **abandoned**
+> because Android Keystore does not support Ed25519 natively.
+>
+> **Final decision**: One EC P-256 (secp256r1) key pair per enrollment, generated directly by
+> the platform keystore (Android Keystore StrongBox / iOS Secure Enclave). No HKDF derivation.
+> See [`docs/CRYPTO.md`](../../docs/CRYPTO.md) for the authoritative specification.
+
 ## Problem Statement
 
 The mobile application needs to:
@@ -127,7 +135,7 @@ The fundamental issue is that **Android Keystore hardware-backed keys are design
    ```kotlin
    // Generate random 32-byte master seed
    val masterSeed = SecureRandom().generateSeed(32)
-   
+
    // Encrypt master seed with root key (one-time operation)
    // Store encrypted seed in Android Keystore or encrypted SharedPreferences
    val encryptedSeed = encryptWithRootKey(masterSeed)
@@ -137,10 +145,10 @@ The fundamental issue is that **Android Keystore hardware-backed keys are design
    ```kotlin
    // Decrypt master seed (in memory only)
    val masterSeed = decryptWithRootKey(encryptedSeed)
-   
+
    // Derive Ed25519 seed using HKDF-SHA-256
    val enrollmentSeed = hkdfSha256(
-       masterSeed, 
+       masterSeed,
        "enrollment:$enrollmentId:signing"
    )
    ```
