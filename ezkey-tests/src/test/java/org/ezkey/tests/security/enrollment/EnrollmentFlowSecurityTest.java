@@ -15,18 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 
 /**
  * End-to-end security tests for enrollment flow.

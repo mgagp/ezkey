@@ -27,9 +27,17 @@ import org.ezkey.audit.domain.EventType;
  * JPA entity representing an audit log entry.
  *
  * <p>Captures comprehensive information about security-relevant events across all Ezkey APIs for
- * monitoring, forensic analysis, and SOC2 compliance requirements.
+ * monitoring, forensic analysis, and SOC 2 compliance requirements. Supports per-entry HMAC signing
+ * for tamper-evidence in self-hosted deployments.
  *
- * <p><b>Database Table:</b> ezkey_audit_log
+ * <p><b>Integrity Fields:</b>
+ *
+ * <ul>
+ *   <li>{@code instanceId} - Application instance that created this entry (HA traceability)
+ *   <li>{@code entryHmac} - HMAC-SHA256 of canonical entry content (tamper-evidence)
+ * </ul>
+ *
+ * <p><b>Database Table:</b> ezkey_audit_log (partitioned by month on created_at)
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -91,6 +99,12 @@ public class AuditLog {
 
   @Column(name = "error_message", columnDefinition = "TEXT")
   private String errorMessage;
+
+  @Column(name = "instance_id", length = 50)
+  private String instanceId;
+
+  @Column(name = "entry_hmac", length = 88)
+  private String entryHmac;
 
   @Column(
       name = "created_at",
@@ -187,6 +201,16 @@ public class AuditLog {
 
     public Builder errorMessage(String errorMessage) {
       auditLog.errorMessage = errorMessage;
+      return this;
+    }
+
+    public Builder instanceId(String instanceId) {
+      auditLog.instanceId = instanceId;
+      return this;
+    }
+
+    public Builder entryHmac(String entryHmac) {
+      auditLog.entryHmac = entryHmac;
       return this;
     }
 
@@ -327,6 +351,22 @@ public class AuditLog {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public String getInstanceId() {
+    return instanceId;
+  }
+
+  public void setInstanceId(String instanceId) {
+    this.instanceId = instanceId;
+  }
+
+  public String getEntryHmac() {
+    return entryHmac;
+  }
+
+  public void setEntryHmac(String entryHmac) {
+    this.entryHmac = entryHmac;
   }
 
   public OffsetDateTime getCreatedAt() {

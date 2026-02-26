@@ -32,6 +32,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.authattempt.domain.repository", //
       "org.ezkey.enrollment.domain.repository", //
       "org.ezkey.audit.domain.repository", //
+      "org.ezkey.audit.integrity", //
       "org.ezkey.security.domain.repository", //
     })
 @EntityScan(
@@ -40,6 +41,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
       "org.ezkey.authattempt.domain.entity", //
       "org.ezkey.enrollment.domain.entity", //
       "org.ezkey.audit.domain.entity", //
+      "org.ezkey.audit.integrity", //
       "org.ezkey.security.domain.entity", //
     })
 public class AuthJpaConfig {

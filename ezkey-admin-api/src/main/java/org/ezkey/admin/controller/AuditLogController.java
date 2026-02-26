@@ -15,11 +15,14 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.OffsetDateTime;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.dto.AuditLogResponseDto;
+import org.ezkey.audit.integrity.AuditChainVerificationService;
+import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
 import org.springdoc.core.annotations.ParameterObject;
@@ -27,11 +30,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -79,16 +84,26 @@ public class AuditLogController {
 
   private final AuditLogService auditLogService;
   private final AuditLogMapper auditLogMapper;
+  private final AuditIntegrityService auditIntegrityService;
+  private final AuditChainVerificationService auditChainVerificationService;
 
   /**
    * Constructs the audit log controller with required dependencies.
    *
    * @param auditLogService the audit log service
    * @param auditLogMapper the MapStruct mapper for entity-DTO conversions
+   * @param auditIntegrityService the integrity verification service
+   * @param auditChainVerificationService the chain checkpoint verification service
    */
-  public AuditLogController(AuditLogService auditLogService, AuditLogMapper auditLogMapper) {
+  public AuditLogController(
+      AuditLogService auditLogService,
+      AuditLogMapper auditLogMapper,
+      AuditIntegrityService auditIntegrityService,
+      AuditChainVerificationService auditChainVerificationService) {
     this.auditLogService = auditLogService;
     this.auditLogMapper = auditLogMapper;
+    this.auditIntegrityService = auditIntegrityService;
+    this.auditChainVerificationService = auditChainVerificationService;
   }
 
   /**
@@ -190,6 +205,127 @@ public class AuditLogController {
             .map(auditLogMapper::toResponseDto);
 
     return ResponseEntity.ok(auditLogs);
+  }
+
+  /**
+   * Verifies HMAC integrity of audit log entries within a date range.
+   *
+   * <p>Recomputes the HMAC-SHA256 signature for each entry and compares it to the stored value.
+   * Returns a summary report indicating whether any tampered entries were detected. This endpoint
+   * is restricted to Global Admins only, as it is a system-level security operation.
+   *
+   * @param from start of the verification window (inclusive, ISO-8601)
+   * @param to end of the verification window (exclusive, ISO-8601)
+   * @return integrity verification report
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/integrity-check")
+  @Operation(
+      summary = "Verify audit log integrity",
+      description =
+          "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date "
+              + "range and reports any tampered or unsigned entries. Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Integrity check completed"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<AuditIntegrityService.IntegrityReport> checkIntegrity(
+      @Parameter(description = "Start of verification window (inclusive, ISO-8601)")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime from,
+      @Parameter(description = "End of verification window (exclusive, ISO-8601)")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime to) {
+
+    AuditIntegrityService.IntegrityReport report = auditIntegrityService.verifyRange(from, to);
+    return ResponseEntity.ok(report);
+  }
+
+  /**
+   * Verifies the HMAC integrity of a single audit log entry by its ID.
+   *
+   * <p>Recomputes the HMAC-SHA256 signature for the entry and compares it to the stored value.
+   * Intended for targeted forensic analysis and developer experimentation -- pass any audit log ID
+   * to instantly verify its integrity or confirm a tamper is detected.
+   *
+   * <p>Response status values:
+   *
+   * <ul>
+   *   <li>{@code OK} - HMAC matches; entry is intact
+   *   <li>{@code INTEGRITY_VIOLATION_DETECTED} - HMAC mismatch; entry was modified
+   *   <li>{@code UNSIGNED} - entry has no HMAC (created before signing was enabled)
+   *   <li>{@code NOT_FOUND} - no entry with the given ID (totalEntries=0)
+   * </ul>
+   *
+   * @param id the audit log entry ID to verify
+   * @return integrity verification report (totalEntries=1 when found, 0 when not found)
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/{id}/integrity-check")
+  @Operation(
+      summary = "Verify integrity of a single audit log entry",
+      description =
+          "Recomputes the HMAC-SHA256 signature for a single audit log entry and compares "
+              + "it to the stored value. Returns OK if the entry is intact, "
+              + "INTEGRITY_VIOLATION_DETECTED if modified, UNSIGNED if not signed, "
+              + "or NOT_FOUND if the ID does not exist. Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Integrity check completed"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<AuditIntegrityService.IntegrityReport> checkSingleEntryIntegrity(
+      @Parameter(description = "Audit log entry ID to verify", required = true, example = "42")
+          @PathVariable
+          Long id) {
+
+    AuditIntegrityService.IntegrityReport report = auditIntegrityService.verifySingle(id);
+    return ResponseEntity.ok(report);
+  }
+
+  /**
+   * Verifies the chain checkpoint integrity for a date range.
+   *
+   * <p>Recomputes entries_digest for each checkpoint window and verifies chain linkage between
+   * consecutive checkpoints. Detects entry insertion, deletion, reordering, and checkpoint
+   * tampering. This endpoint is restricted to Global Admins only.
+   *
+   * @param from start of the verification range (inclusive, ISO-8601)
+   * @param to end of the verification range (exclusive, ISO-8601)
+   * @return chain verification report
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/chain-integrity")
+  @Operation(
+      summary = "Verify audit chain checkpoint integrity",
+      description =
+          "Verifies chain checkpoint integrity by recomputing entry digests and validating "
+              + "chain linkage. Detects entry insertion, deletion, reordering, and checkpoint "
+              + "tampering. Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Chain verification completed"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<AuditChainVerificationService.ChainVerificationReport> checkChainIntegrity(
+      @Parameter(description = "Start of verification range (inclusive, ISO-8601)")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime from,
+      @Parameter(description = "End of verification range (exclusive, ISO-8601)")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime to) {
+
+    AuditChainVerificationService.ChainVerificationReport report =
+        auditChainVerificationService.verifyChain(from, to);
+    return ResponseEntity.ok(report);
   }
 
   /**

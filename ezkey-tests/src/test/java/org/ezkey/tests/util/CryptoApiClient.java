@@ -12,15 +12,13 @@ package org.ezkey.tests.util;
 
 import static io.restassured.RestAssured.given;
 
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 
 /**
  * REST client for Crypto API operations.

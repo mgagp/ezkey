@@ -44,6 +44,8 @@ public class AuditLogResponseDto {
   private Integer tenantId;
   private String eventDetails;
   private String errorMessage;
+  private String instanceId;
+  private String entryHmac;
   private OffsetDateTime createdAt;
 
   // Constructors
@@ -162,6 +164,22 @@ public class AuditLogResponseDto {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public String getInstanceId() {
+    return instanceId;
+  }
+
+  public void setInstanceId(String instanceId) {
+    this.instanceId = instanceId;
+  }
+
+  public String getEntryHmac() {
+    return entryHmac;
+  }
+
+  public void setEntryHmac(String entryHmac) {
+    this.entryHmac = entryHmac;
   }
 
   public OffsetDateTime getCreatedAt() {

@@ -19,6 +19,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.integrity.AuditHmacService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -53,25 +54,33 @@ public class AuditLogService {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
 
   private final AuditLogRepository auditLogRepository;
+  private final AuditHmacService auditHmacService;
 
-  public AuditLogService(AuditLogRepository auditLogRepository) {
+  public AuditLogService(AuditLogRepository auditLogRepository, AuditHmacService auditHmacService) {
     this.auditLogRepository = auditLogRepository;
+    this.auditHmacService = auditHmacService;
   }
 
   /**
-   * Log an audit event in a separate transaction.
+   * Log an audit event in a separate transaction with optional HMAC signing.
    *
    * <p>Uses REQUIRES_NEW propagation to ensure the audit log is saved even if the calling
-   * transaction is rolled back.
+   * transaction is rolled back. When HMAC signing is active, automatically sets the instance ID and
+   * computes the per-entry HMAC-SHA256 signature before persisting.
    *
    * @param auditLog the audit log to save
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void log(AuditLog auditLog) {
     try {
+      if (auditLog.getInstanceId() == null) {
+        auditLog.setInstanceId(auditHmacService.getInstanceId());
+      }
+      if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
+        auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
+      }
       auditLogRepository.save(auditLog);
     } catch (Exception e) {
-      // Log error but don't throw to avoid disrupting main operation
       logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }
   }

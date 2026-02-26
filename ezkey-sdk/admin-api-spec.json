@@ -2328,7 +2328,7 @@
           "Audit Logs"
         ],
         "summary": "Query audit logs",
-        "description": "Retrieves audit logs with optional filters and pagination for security monitoring and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=auditLogId,asc). Default sort is by creation date descending (newest first).",
+        "description": "Retrieves audit logs with optional filters, tenant-scoped visibility, and pagination for security monitoring and compliance reporting. Tenant Admins automatically see only their tenant's audit logs. Global Admins see all logs and may optionally filter by tenantId. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=auditLogId,asc). Default sort is by creation date descending (newest first).",
         "operationId": "getAuditLogs",
         "parameters": [
           {
@@ -2395,7 +2395,8 @@
               "type": "string",
               "enum": [
                 "ADMIN_API",
-                "AUTH_API"
+                "AUTH_API",
+                "M2M_API"
               ]
             }
           },
@@ -2413,6 +2414,16 @@
             "name": "adminId",
             "in": "query",
             "description": "Filter by admin ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Filter by tenant ID (Global Admin only). Ignored for Tenant Admin whose scope is enforced automatically.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2478,12 +2489,215 @@
               }
             }
           },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedModelAuditLogResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/{id}/integrity-check": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Verify integrity of a single audit log entry",
+        "description": "Recomputes the HMAC-SHA256 signature for a single audit log entry and compares it to the stored value. Returns OK if the entry is intact, INTEGRITY_VIOLATION_DETECTED if modified, UNSIGNED if not signed, or NOT_FOUND if the ID does not exist. Global Admin only.",
+        "operationId": "checkSingleEntryIntegrity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Audit log entry ID to verify",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integrity check completed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/integrity-check": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Verify audit log integrity",
+        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries. Global Admin only.",
+        "operationId": "checkIntegrity",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of verification window (inclusive, ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of verification window (exclusive, ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integrity check completed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/chain-integrity": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Verify audit chain checkpoint integrity",
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, and checkpoint tampering. Global Admin only.",
+        "operationId": "checkChainIntegrity",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of verification range (inclusive, ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of verification range (exclusive, ISO-8601)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chain verification completed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerificationReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerificationReport"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerificationReport"
                 }
               }
             }
@@ -3326,23 +3540,23 @@
       },
       "AuthAttemptDto": {
         "type": "object",
-        "description": "Response DTO containing complete authentication attempt information for administrative purposes",
+        "description": "Authentication attempt details",
         "properties": {
           "authAttemptId": {
             "type": "integer",
             "format": "int32",
-            "description": "Unique identifier for the authentication attempt",
-            "example": 456
+            "description": "Unique auth attempt ID",
+            "example": 42
           },
           "enrollmentId": {
             "type": "integer",
             "format": "int32",
-            "description": "Enrollment identifier this authentication attempt belongs to",
-            "example": 123
+            "description": "Associated enrollment ID",
+            "example": 7
           },
           "authAttemptStatus": {
             "type": "string",
-            "description": "Current lifecycle status of the authentication attempt",
+            "description": "Current status of the authentication attempt",
             "enum": [
               "PENDING",
               "READ",
@@ -3356,27 +3570,33 @@
           "authAttemptChallenge": {
             "type": "integer",
             "format": "int32",
-            "description": "Challenge value for the authentication attempt",
-            "example": 789012
+            "description": "Numeric challenge displayed to user for verification (null if not requested)",
+            "example": 123456
           },
           "authAttemptProofToken": {
             "type": "string",
-            "description": "Proof token for the authentication attempt",
-            "example": "EZK-XYZ789-ABC123"
+            "description": "Signed JWT proof token (present only when status is ACCEPTED)"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp when the authentication attempt was created (with timezone)",
-            "example": "2025-01-27T10:30:00+01:00"
+            "description": "Creation timestamp with timezone",
+            "example": "2025-01-27T10:00:00+01:00"
           },
           "expiresAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp when the authentication attempt expires (with timezone)",
-            "example": "2025-01-27T10:35:00+01:00"
+            "description": "Expiration timestamp with timezone",
+            "example": "2025-01-27T10:05:00+01:00"
           }
-        }
+        },
+        "required": [
+          "authAttemptId",
+          "authAttemptStatus",
+          "createdAt",
+          "enrollmentId",
+          "expiresAt"
+        ]
       },
       "ApiKeyCreateRequestDto": {
         "type": "object",
@@ -4098,11 +4318,11 @@
       },
       "AuthAttemptWaitResponseDto": {
         "type": "object",
-        "description": "Response DTO for authentication wait operation",
+        "description": "Response from the wait endpoint after waiting for device authentication",
         "properties": {
           "authAttempt": {
             "$ref": "#/components/schemas/AuthAttemptDto",
-            "description": "Complete authentication attempt data"
+            "description": "Current authentication attempt state"
           },
           "status": {
             "type": "string",
@@ -4205,7 +4425,8 @@
             "type": "string",
             "enum": [
               "ADMIN_API",
-              "AUTH_API"
+              "AUTH_API",
+              "M2M_API"
             ]
           },
           "ipAddress": {
@@ -4240,6 +4461,12 @@
           "errorMessage": {
             "type": "string"
           },
+          "instanceId": {
+            "type": "string"
+          },
+          "entryHmac": {
+            "type": "string"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -4257,6 +4484,62 @@
           },
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "IntegrityReport": {
+        "type": "object",
+        "properties": {
+          "totalEntries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "validEntries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invalidEntries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unsignedEntries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "intact": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ChainVerificationReport": {
+        "type": "object",
+        "properties": {
+          "totalCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "validCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalidCheckpoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "intact": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },

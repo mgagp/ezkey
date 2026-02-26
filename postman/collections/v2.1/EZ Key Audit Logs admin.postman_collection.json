@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "998795a6-b1c7-4ed8-8203-ce971bbbfeb8",
     "name": "EZ Key Audit Logs admin",
-    "description": "Collection for audit log query operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Multi-Tenancy (Phase 1)\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **No Access Restrictions**: Unlike other resources, audit logs do not enforce tenant boundaries for compliance and security monitoring purposes\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range",
+    "description": "Collection for audit log query and integrity verification operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n- **Verify Entry Integrity (range)**: Recompute HMAC-SHA256 for each entry in a date range and detect tampering (Global Admin only)\n- **Verify Single Entry Integrity**: Recompute HMAC-SHA256 for one specific entry by ID -- ideal for targeted forensic checks and developer experimentation (Global Admin only)\n- **Verify Chain Integrity**: Validate chain checkpoint linkage to detect insertion, deletion, or reordering (Global Admin only)\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Integrity Verification\n\n### Per-Entry HMAC Verification\n- Each audit log entry is signed with HMAC-SHA256 at creation time\n- The integrity-check endpoint recomputes and compares each signature\n- Detects individual entry tampering\n\n### Chain Checkpoint Verification\n- Periodic batch job creates chain checkpoints every 5 minutes\n- Checkpoints link consecutive windows via HMAC chains\n- The chain-integrity endpoint validates the chain linkage\n- Detects entry insertion, deletion, or reordering between checkpoints\n\n## Multi-Tenancy\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC 2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **Integrity endpoints**: Restricted to Global Admin only (system-level security operation)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC 2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range\n- **Tamper Detection**: Verify audit log integrity for SOC 2 audits",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -104,7 +104,190 @@
             }
           ]
         },
-        "description": "Retrieves audit logs with optional filters and pagination for security monitoring, forensic analysis, and SOC2 compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `auditLogId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `auditLogId`, `createdAt`, `eventType`, `eventStatus`, `apiName`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `eventType`: Filter by event type (AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, LOGIN_SUCCESS, etc.)\n- `eventStatus`: Filter by event status (SUCCESS, FAILURE, ERROR)\n- `apiName`: Filter by API name (ADMIN, AUTH)\n- `enrollmentId`: Filter by enrollment ID\n- `adminId`: Filter by admin ID\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=auditLogId,asc` - Sort by ID ascending\n- `?eventType=AUTH_ATTEMPT_CREATED&eventStatus=SUCCESS` - Filter successful auth attempts\n- `?enrollmentId=123&sort=createdAt,desc` - Events for specific enrollment, newest first\n\n**Response (200 OK):**\nPaginated response containing `content` (array of audit log entries) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Audit Log Entry Fields:**\n- `auditLogId`: Unique identifier\n- `eventType`: Type of event\n- `eventAction`: Human-readable action description\n- `eventStatus`: SUCCESS, FAILURE, or ERROR\n- `apiName`: Which API generated the event\n- `ipAddress`: Client IP address\n- `userAgent`: Client user agent\n- `adminId`: Administrator ID (if applicable)\n- `integrationId`: Integration ID (if applicable)\n- `enrollmentId`: Enrollment ID (if applicable)\n- `authAttemptId`: Auth attempt ID (if applicable)\n- `eventDetails`: Additional event details\n- `errorMessage`: Error message (for failures/errors)\n- `createdAt`: Timestamp when event occurred\n\n**Status Codes:**\n- 200: Audit logs retrieved successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+        "description": "Retrieves audit logs with optional filters and pagination for security monitoring, forensic analysis, and SOC2 compliance reporting.\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `auditLogId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `auditLogId`, `createdAt`, `eventType`, `eventStatus`, `apiName`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `eventType`: Filter by event type (AUTH_ATTEMPT_CREATED, ENROLLMENT_CREATED, LOGIN_SUCCESS, etc.)\n- `eventStatus`: Filter by event status (SUCCESS, FAILURE, ERROR)\n- `apiName`: Filter by API name (ADMIN, AUTH)\n- `enrollmentId`: Filter by enrollment ID\n- `adminId`: Filter by admin ID\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=auditLogId,asc` - Sort by ID ascending\n- `?eventType=AUTH_ATTEMPT_CREATED&eventStatus=SUCCESS` - Filter successful auth attempts\n- `?enrollmentId=123&sort=createdAt,desc` - Events for specific enrollment, newest first\n\n**Response (200 OK):**\nPaginated response containing `content` (array of audit log entries) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Audit Log Entry Fields:**\n- `auditLogId`: Unique identifier\n- `eventType`: Type of event\n- `eventAction`: Human-readable action description\n- `eventStatus`: SUCCESS, FAILURE, or ERROR\n- `apiName`: Which API generated the event\n- `ipAddress`: Client IP address\n- `userAgent`: Client user agent\n- `adminId`: Administrator ID (if applicable)\n- `integrationId`: Integration ID (if applicable)\n- `enrollmentId`: Enrollment ID (if applicable)\n- `authAttemptId`: Auth attempt ID (if applicable)\n- `eventDetails`: Additional event details\n- `errorMessage`: Error message (for failures/errors)\n- `instanceId`: Application instance that created this entry (HA traceability)\n- `entryHmac`: HMAC-SHA256 signature for tamper-evidence (null if signing was disabled)\n- `createdAt`: Timestamp when event occurred\n\n**Status Codes:**\n- 200: Audit logs retrieved successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "verify entry integrity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has integrity report fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('totalEntries');",
+              "    pm.expect(jsonData).to.have.property('validEntries');",
+              "    pm.expect(jsonData).to.have.property('invalidEntries');",
+              "    pm.expect(jsonData).to.have.property('unsignedEntries');",
+              "    pm.expect(jsonData).to.have.property('intact');",
+              "    pm.expect(jsonData).to.have.property('status');",
+              "});",
+              "",
+              "pm.test(\"Integrity is intact (no tampering detected)\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.intact).to.be.true;",
+              "    pm.expect(jsonData.status).to.equal('OK');",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/integrity-check",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "integrity-check"
+          ],
+          "query": [
+            {
+              "key": "from",
+              "value": "2026-01-01T00:00:00Z",
+              "description": "Start of verification window (inclusive, ISO-8601). Optional -- omit to verify all entries.",
+              "disabled": true
+            },
+            {
+              "key": "to",
+              "value": "2026-12-31T23:59:59Z",
+              "description": "End of verification window (exclusive, ISO-8601). Optional -- omit to verify up to now.",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Recomputes HMAC-SHA256 signatures for audit log entries in the specified date range and reports any tampered or unsigned entries.\n\n**Access:** Global Admin only (system-level security operation).\n\n**Parameters (all optional):**\n- `from`: Start of verification window (inclusive, ISO-8601 format, e.g. `2026-01-01T00:00:00Z`)\n- `to`: End of verification window (exclusive, ISO-8601 format)\n- If both are omitted, verifies ALL entries\n\n**Response (200 OK):**\n```json\n{\n  \"totalEntries\": 1234,\n  \"validEntries\": 1230,\n  \"invalidEntries\": 0,\n  \"unsignedEntries\": 4,\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalEntries`: Total number of entries checked\n- `validEntries`: Entries with valid HMAC signature\n- `invalidEntries`: Entries with HMAC mismatch (potential tampering)\n- `unsignedEntries`: Entries created before HMAC signing was enabled\n- `intact`: `true` if no HMAC mismatches were found\n- `status`: `OK` or `INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Integrity check completed\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
+      },
+      "response": []
+    },
+    {
+      "name": "verify single entry integrity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has integrity report fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('totalEntries');",
+              "    pm.expect(jsonData).to.have.property('validEntries');",
+              "    pm.expect(jsonData).to.have.property('invalidEntries');",
+              "    pm.expect(jsonData).to.have.property('unsignedEntries');",
+              "    pm.expect(jsonData).to.have.property('intact');",
+              "    pm.expect(jsonData).to.have.property('status');",
+              "});",
+              "",
+              "pm.test(\"Status is one of the expected values\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    var validStatuses = ['OK', 'INTEGRITY_VIOLATION_DETECTED', 'UNSIGNED', 'NOT_FOUND', 'HMAC signing is not active'];",
+              "    pm.expect(validStatuses).to.include(jsonData.status);",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/1/integrity-check",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "1",
+            "integrity-check"
+          ]
+        },
+        "description": "Recomputes the HMAC-SHA256 signature for a single audit log entry by ID and compares it to the stored value.\n\n**Access:** Global Admin only.\n\n**Path Parameter:**\n- `{id}`: The `auditLogId` of the entry to verify (replace `1` in the URL with the target ID)\n\n**Tip:** Use the *query audit logs* request first to retrieve a real `auditLogId`, then paste it into this URL for a targeted check.\n\n**Response (200 OK) -- entry intact:**\n```json\n{\n  \"totalEntries\": 1,\n  \"validEntries\": 1,\n  \"invalidEntries\": 0,\n  \"unsignedEntries\": 0,\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response status values:**\n| `status` | Meaning |\n|---|---|\n| `OK` | HMAC matches -- entry is intact |\n| `INTEGRITY_VIOLATION_DETECTED` | HMAC mismatch -- entry was modified |\n| `UNSIGNED` | Entry has no HMAC (created before signing was enabled) |\n| `NOT_FOUND` | No entry with this ID (`totalEntries: 0`) |\n| `HMAC signing is not active` | Signing is disabled in this environment |\n\n**Status Codes:**\n- 200: Check completed (see `status` field for result)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
+      },
+      "response": []
+    },
+    {
+      "name": "verify chain integrity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has chain verification fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('totalCheckpoints');",
+              "    pm.expect(jsonData).to.have.property('validCheckpoints');",
+              "    pm.expect(jsonData).to.have.property('invalidCheckpoints');",
+              "    pm.expect(jsonData).to.have.property('violations');",
+              "    pm.expect(jsonData).to.have.property('intact');",
+              "    pm.expect(jsonData).to.have.property('status');",
+              "    pm.expect(jsonData.violations).to.be.an('array');",
+              "});",
+              "",
+              "pm.test(\"Chain integrity is intact\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.intact).to.be.true;",
+              "    pm.expect(jsonData.status).to.equal('OK');",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/chain-integrity",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "chain-integrity"
+          ],
+          "query": [
+            {
+              "key": "from",
+              "value": "2026-01-01T00:00:00Z",
+              "description": "Start of verification range (inclusive, ISO-8601). Optional -- omit to verify from the beginning.",
+              "disabled": true
+            },
+            {
+              "key": "to",
+              "value": "2026-12-31T23:59:59Z",
+              "description": "End of verification range (exclusive, ISO-8601). Optional -- omit to verify up to now.",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.\n\n**Access:** Global Admin only (system-level security operation).\n\n**What it detects:**\n- Entry insertion (entries added after checkpoint creation)\n- Entry deletion (entries removed after checkpoint creation)\n- Entry reordering\n- Checkpoint tampering (chain_hmac modification)\n\n**Parameters (all optional):**\n- `from`: Start of verification range (inclusive, ISO-8601 format)\n- `to`: End of verification range (exclusive, ISO-8601 format)\n- If both are omitted, verifies ALL checkpoints\n\n**Response (200 OK):**\n```json\n{\n  \"totalCheckpoints\": 288,\n  \"validCheckpoints\": 288,\n  \"invalidCheckpoints\": 0,\n  \"violations\": [],\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalCheckpoints`: Total number of chain checkpoints verified\n- `validCheckpoints`: Checkpoints with valid digest and chain linkage\n- `invalidCheckpoints`: Checkpoints with integrity violations\n- `violations`: Array of human-readable violation descriptions\n- `intact`: `true` if no violations were found\n- `status`: `OK` or `CHAIN_INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Chain verification completed\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
       },
       "response": []
     }

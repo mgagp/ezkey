@@ -31,6 +31,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
  *   <li><b>Auth Attempt:</b> Repositories for authentication attempt operations
  *   <li><b>Enrollment:</b> Repositories for device enrollment management
  *   <li><b>Audit:</b> Repositories for audit logging
+ *   <li><b>Audit Integrity:</b> Repositories for audit chain checkpoint management
  *   <li><b>Security:</b> Repositories for encryption key and re-encryption batch management
  * </ul>
  *
@@ -41,6 +42,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
  *   <li><b>Auth Attempt Entities:</b> AuthAttempt and related entities
  *   <li><b>Enrollment Entities:</b> Enrollment and related entities
  *   <li><b>Audit Entities:</b> AuditLog and related entities
+ *   <li><b>Audit Integrity Entities:</b> AuditChainCheckpoint
  *   <li><b>Security Entities:</b> EncryptionKey, ReencryptionBatch
  * </ul>
  *
@@ -62,6 +64,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.authattempt.domain.repository",
       "org.ezkey.enrollment.domain.repository",
       "org.ezkey.audit.domain.repository",
+      "org.ezkey.audit.integrity",
       "org.ezkey.security.domain.repository"
     })
 @EntityScan(
@@ -70,6 +73,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.authattempt.domain.entity",
       "org.ezkey.enrollment.domain.entity",
       "org.ezkey.audit.domain.entity",
+      "org.ezkey.audit.integrity",
       "org.ezkey.security.domain.entity"
     })
 @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
