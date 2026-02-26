@@ -84,8 +84,8 @@
           <includes>
             <include>**/*Test.java</include>
           </includes>
-          <!-- Default: exclude slow and time-dependent tests for fast feedback -->
-          <excludedGroups>slow,time-dependent</excludedGroups>
+          <!-- Default: exclude slow, time-dependent, and elective tests -->
+          <excludedGroups>slow,time-dependent,elective</excludedGroups>
         </configuration>
       </plugin>
     </plugins>
@@ -147,9 +147,9 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
-              <!-- No groups filter = run all tests -->
+              <!-- No groups filter = run all standard tests; elective always excluded -->
               <groups combine.self="override"></groups>
-              <excludedGroups combine.self="override"></excludedGroups>
+              <excludedGroups>elective</excludedGroups>
             </configuration>
           </plugin>
         </plugins>
@@ -200,6 +200,23 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
               <groups>encryption</groups>
+              <excludedGroups combine.self="override"></excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Elective on-demand spot-check tests (never run automatically) -->
+    <profile>
+      <id>elective-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <groups>elective</groups>
               <excludedGroups combine.self="override"></excludedGroups>
             </configuration>
           </plugin>

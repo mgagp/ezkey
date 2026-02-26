@@ -297,4 +297,45 @@ public final class TestTags {
    * </ul>
    */
   public static final String SECURITY = "security";
+
+  /**
+   * Tests related to audit log integrity (HMAC signing and chain checkpoints).
+   *
+   * <p>Includes:
+   *
+   * <ul>
+   *   <li>Per-entry HMAC-SHA256 verification
+   *   <li>Chain checkpoint linkage verification
+   *   <li>Tamper detection
+   * </ul>
+   */
+  public static final String AUDIT_INTEGRITY = "audit-integrity";
+
+  // ==================== Execution Mode Categories ====================
+
+  /**
+   * Elective tests that are never run automatically and must be invoked explicitly on demand.
+   *
+   * <p>These tests are designed for:
+   *
+   * <ul>
+   *   <li>Periodic spot checks on a running system with accumulated data
+   *   <li>Pre-audit or pre-release sanity checks on real operational data
+   *   <li>Developer-triggered verification after days of uptime
+   * </ul>
+   *
+   * <p><b>Key characteristic:</b> Elective tests are <em>tolerant to empty data</em> -- running
+   * them on a freshly started stack is safe (they skip gracefully) but they become meaningful once
+   * the system has accumulated real audit logs and chain checkpoints.
+   *
+   * <p><b>Excluded from:</b> all standard profiles (fast, slow, all-tests, smoke-tests). Must be
+   * invoked with the {@code elective-tests} Maven profile or {@code -Dgroups=elective}.
+   *
+   * <p><b>Invocation:</b>
+   *
+   * <pre>
+   * mvn test -pl ezkey-tests -P elective-tests
+   * </pre>
+   */
+  public static final String ELECTIVE = "elective";
 }

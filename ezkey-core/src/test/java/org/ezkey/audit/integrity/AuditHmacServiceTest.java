@@ -144,10 +144,8 @@ class AuditHmacServiceTest {
 
   @Test
   void buildCanonicalForm_timestampNormalisedToUtc() {
-    OffsetDateTime plusTwo =
-        OffsetDateTime.of(2026, 1, 15, 12, 0, 0, 0, ZoneOffset.ofHours(2));
-    OffsetDateTime utcEquiv =
-        OffsetDateTime.of(2026, 1, 15, 10, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime plusTwo = OffsetDateTime.of(2026, 1, 15, 12, 0, 0, 0, ZoneOffset.ofHours(2));
+    OffsetDateTime utcEquiv = OffsetDateTime.of(2026, 1, 15, 10, 0, 0, 0, ZoneOffset.UTC);
 
     AuditLog entryPlusTwo =
         new AuditLog.Builder()
@@ -303,6 +301,25 @@ class AuditHmacServiceTest {
   }
 
   @Test
+  void verifyHmac_subMicrosecondNanosecondsPrecision_roundTripPasses() {
+    // Java's OffsetDateTime.now() can carry nanoseconds beyond microsecond precision.
+    // PostgreSQL TIMESTAMPTZ silently truncates those extra nanoseconds.
+    // This test ensures the HMAC round-trip is stable across that truncation.
+    AuditLog entry = buildEntry(10L, "10.0.0.1", "admin-api");
+    entry.setCreatedAt(
+        OffsetDateTime.of(2026, 2, 19, 10, 0, 0, 123_456_789, ZoneOffset.UTC)); // nanos: 789 extra
+    entry.setEntryHmac(service.computeHmac(entry));
+
+    // Simulate PostgreSQL read-back: microsecond precision only (789 nanoseconds stripped)
+    entry.setCreatedAt(
+        OffsetDateTime.of(2026, 2, 19, 10, 0, 0, 123_456_000, ZoneOffset.UTC));
+
+    assertTrue(
+        service.verifyHmac(entry),
+        "HMAC must survive PostgreSQL TIMESTAMPTZ nanosecond truncation (sub-microsecond digits)");
+  }
+
+  @Test
   void verifyHmac_keyMismatch_returnsFalse() throws Exception {
     // Sign with one key, verify with a different key
     AuditLog entry = buildEntry(10L, "10.0.0.1", "admin-api");
@@ -322,8 +339,7 @@ class AuditHmacServiceTest {
     otherService.init();
 
     assertFalse(
-        otherService.verifyHmac(entry),
-        "Entry signed with key A must not verify against key B");
+        otherService.verifyHmac(entry), "Entry signed with key A must not verify against key B");
   }
 
   // -----------------------------------------------------------------------
@@ -336,8 +352,7 @@ class AuditHmacServiceTest {
             .eventType(EventType.ADMIN_LOGIN)
             .eventAction("login")
             .eventStatus(EventStatus.SUCCESS)
-            .apiName(
-                "auth-api".equalsIgnoreCase(apiNameStr) ? ApiName.AUTH_API : ApiName.ADMIN_API)
+            .apiName("auth-api".equalsIgnoreCase(apiNameStr) ? ApiName.AUTH_API : ApiName.ADMIN_API)
             .ipAddress(ip)
             .tenantId(1)
             .instanceId("test-instance")

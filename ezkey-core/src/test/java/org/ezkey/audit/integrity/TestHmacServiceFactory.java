@@ -26,8 +26,8 @@ final class TestHmacServiceFactory {
   private TestHmacServiceFactory() {}
 
   /**
-   * Creates an active {@link AuditHmacService} backed by a freshly generated 256-bit key written
-   * to a temp file. {@code init()} is called automatically.
+   * Creates an active {@link AuditHmacService} backed by a freshly generated 256-bit key written to
+   * a temp file. {@code init()} is called automatically.
    */
   static AuditHmacService create() {
     try {
@@ -35,7 +35,8 @@ final class TestHmacServiceFactory {
       new SecureRandom().nextBytes(keyBytes);
       Path keyFile = Files.createTempFile("ezkey-test-hmac-", ".key");
       keyFile.toFile().deleteOnExit();
-      Files.writeString(keyFile, Base64.getEncoder().encodeToString(keyBytes), StandardCharsets.UTF_8);
+      Files.writeString(
+          keyFile, Base64.getEncoder().encodeToString(keyBytes), StandardCharsets.UTF_8);
 
       AuditHmacProperties props = new AuditHmacProperties();
       props.setEnabled(true);
@@ -51,8 +52,8 @@ final class TestHmacServiceFactory {
   }
 
   /**
-   * Creates a disabled (inactive) {@link AuditHmacService}. {@code isActive()} returns
-   * {@code false}.
+   * Creates a disabled (inactive) {@link AuditHmacService}. {@code isActive()} returns {@code
+   * false}.
    */
   static AuditHmacService createInactive() {
     AuditHmacProperties props = new AuditHmacProperties();

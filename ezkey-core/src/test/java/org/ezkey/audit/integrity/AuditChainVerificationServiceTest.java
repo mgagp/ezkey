@@ -132,7 +132,8 @@ class AuditChainVerificationServiceTest {
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
 
     // First window returns e1, second window returns e2
-    when(auditLogRepository.findAll(any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
         .thenReturn(List.of(e1))
         .thenReturn(List.of(e2));
 
@@ -187,7 +188,8 @@ class AuditChainVerificationServiceTest {
     cp2.setPrevChainHmac("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
 
     when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
-    when(auditLogRepository.findAll(any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
         .thenReturn(List.of(e1))
         .thenReturn(List.of(e2));
 
@@ -230,13 +232,14 @@ class AuditChainVerificationServiceTest {
 
   @SuppressWarnings("unchecked")
   private void stubAuditLogs(List<AuditLog> entries) {
-    when(auditLogRepository.findAll(any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
         .thenReturn(entries);
   }
 
   /**
-   * Builds a genesis checkpoint (no predecessor) for the given entries, using the same HMAC
-   * service as the service under test so digests match.
+   * Builds a genesis checkpoint (no predecessor) for the given entries, using the same HMAC service
+   * as the service under test so digests match.
    */
   private AuditChainCheckpoint buildGenesisCheckpoint(List<AuditLog> entries) {
     String entriesDigest = computeEntriesDigest(entries);
@@ -253,9 +256,7 @@ class AuditChainVerificationServiceTest {
     return cp;
   }
 
-  /**
-   * Builds a subsequent checkpoint linked to its predecessor.
-   */
+  /** Builds a subsequent checkpoint linked to its predecessor. */
   private AuditChainCheckpoint buildLinkedCheckpoint(List<AuditLog> entries, String prevChainHmac) {
     String entriesDigest = computeEntriesDigest(entries);
     String chainInput = entriesDigest + "|" + prevChainHmac;
@@ -271,7 +272,10 @@ class AuditChainVerificationServiceTest {
     return cp;
   }
 
-  /** Replicates the digest logic from {@link AuditChainScheduler} / {@link AuditChainVerificationService}. */
+  /**
+   * Replicates the digest logic from {@link AuditChainScheduler} / {@link
+   * AuditChainVerificationService}.
+   */
   private String computeEntriesDigest(List<AuditLog> entries) {
     if (entries.isEmpty()) {
       return hmacService.computeHmac("EMPTY_WINDOW");

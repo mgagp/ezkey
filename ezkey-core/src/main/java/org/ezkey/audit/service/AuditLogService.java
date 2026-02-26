@@ -65,8 +65,13 @@ public class AuditLogService {
    * Log an audit event in a separate transaction with optional HMAC signing.
    *
    * <p>Uses REQUIRES_NEW propagation to ensure the audit log is saved even if the calling
-   * transaction is rolled back. When HMAC signing is active, automatically sets the instance ID and
-   * computes the per-entry HMAC-SHA256 signature before persisting.
+   * transaction is rolled back.
+   *
+   * <p><b>HMAC signing order is critical:</b> the {@code audit_log_id} is assigned by the database
+   * on the first {@code save()} call. The HMAC must therefore be computed <em>after</em> the
+   * initial save so that the database-assigned ID is included in the canonical form. A second
+   * {@code save()} persists the computed HMAC. This two-step pattern is intentional: the ID is an
+   * immutable, database-assigned value and must be part of the cryptographic seal.
    *
    * @param auditLog the audit log to save
    */
@@ -76,10 +81,12 @@ public class AuditLogService {
       if (auditLog.getInstanceId() == null) {
         auditLog.setInstanceId(auditHmacService.getInstanceId());
       }
+      auditLogRepository.save(auditLog);
+
       if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
         auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
+        auditLogRepository.save(auditLog);
       }
-      auditLogRepository.save(auditLog);
     } catch (Exception e) {
       logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }

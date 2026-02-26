@@ -209,7 +209,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/1/integrity-check",
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/{{audit_log_id}}/integrity-check",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -217,8 +217,15 @@
             "api",
             "v1",
             "audit-logs",
-            "1",
+            "{{audit_log_id}}",
             "integrity-check"
+          ],
+          "variable": [
+            {
+              "key": "audit_log_id",
+              "value": "1",
+              "description": "The auditLogId of the entry to verify. Copy an ID from the 'query audit logs' response and paste it here."
+            }
           ]
         },
         "description": "Recomputes the HMAC-SHA256 signature for a single audit log entry by ID and compares it to the stored value.\n\n**Access:** Global Admin only.\n\n**Path Parameter:**\n- `{id}`: The `auditLogId` of the entry to verify (replace `1` in the URL with the target ID)\n\n**Tip:** Use the *query audit logs* request first to retrieve a real `auditLogId`, then paste it into this URL for a targeted check.\n\n**Response (200 OK) -- entry intact:**\n```json\n{\n  \"totalEntries\": 1,\n  \"validEntries\": 1,\n  \"invalidEntries\": 0,\n  \"unsignedEntries\": 0,\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response status values:**\n| `status` | Meaning |\n|---|---|\n| `OK` | HMAC matches -- entry is intact |\n| `INTEGRITY_VIOLATION_DETECTED` | HMAC mismatch -- entry was modified |\n| `UNSIGNED` | Entry has no HMAC (created before signing was enabled) |\n| `NOT_FOUND` | No entry with this ID (`totalEntries: 0`) |\n| `HMAC signing is not active` | Signing is disabled in this environment |\n\n**Status Codes:**\n- 200: Check completed (see `status` field for result)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"

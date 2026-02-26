@@ -21,6 +21,7 @@ import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -263,7 +264,13 @@ public class AuditHmacService {
     if (ts == null) {
       return "";
     }
-    return UTC_FORMATTER.format(ts.withOffsetSameInstant(ZoneOffset.UTC));
+    // Truncate to microseconds before formatting to match PostgreSQL TIMESTAMPTZ precision.
+    // Java's OffsetDateTime.now() can carry sub-microsecond nanoseconds that PostgreSQL
+    // silently truncates. Without this, the canonical form at sign-time (nanoseconds present)
+    // differs from the form at verify-time (value read back from DB, microseconds only),
+    // causing every HMAC to fail verification systematically.
+    return UTC_FORMATTER.format(
+        ts.withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS));
   }
 
   /**
