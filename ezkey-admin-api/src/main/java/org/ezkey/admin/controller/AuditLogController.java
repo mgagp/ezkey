@@ -15,14 +15,20 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.dto.ArchiveSealRequest;
+import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.AuditLogResponseDto;
+import org.ezkey.audit.dto.GapDeclarationRequest;
+import org.ezkey.audit.dto.GapDeclarationResult;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
+import org.ezkey.audit.integrity.AuditLifecycleService;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
 import org.springdoc.core.annotations.ParameterObject;
@@ -31,15 +37,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * REST controller for audit log query API with tenant-scoped visibility.
@@ -86,6 +96,7 @@ public class AuditLogController {
   private final AuditLogMapper auditLogMapper;
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService auditChainVerificationService;
+  private final AuditLifecycleService auditLifecycleService;
 
   /**
    * Constructs the audit log controller with required dependencies.
@@ -94,16 +105,20 @@ public class AuditLogController {
    * @param auditLogMapper the MapStruct mapper for entity-DTO conversions
    * @param auditIntegrityService the integrity verification service
    * @param auditChainVerificationService the chain checkpoint verification service
+   * @param auditLifecycleService the chain lifecycle service for archive sealing and gap
+   *     declaration
    */
   public AuditLogController(
       AuditLogService auditLogService,
       AuditLogMapper auditLogMapper,
       AuditIntegrityService auditIntegrityService,
-      AuditChainVerificationService auditChainVerificationService) {
+      AuditChainVerificationService auditChainVerificationService,
+      AuditLifecycleService auditLifecycleService) {
     this.auditLogService = auditLogService;
     this.auditLogMapper = auditLogMapper;
     this.auditIntegrityService = auditIntegrityService;
     this.auditChainVerificationService = auditChainVerificationService;
+    this.auditLifecycleService = auditLifecycleService;
   }
 
   /**
@@ -326,6 +341,129 @@ public class AuditLogController {
     AuditChainVerificationService.ChainVerificationReport report =
         auditChainVerificationService.verifyChain(from, to);
     return ResponseEntity.ok(report);
+  }
+
+  /**
+   * Seals an audit chain period prior to archiving and dropping the corresponding DB partition.
+   *
+   * <p>Marks all chain checkpoints in the specified period as {@code ARCHIVE_SEAL}. Future {@code
+   * verifyChain()} calls will skip entries_digest re-computation for sealed checkpoints (entries no
+   * longer in DB by design) while still verifying the chain_hmac linkage.
+   *
+   * <p><b>Pre-condition:</b> All checkpoints in the period must pass integrity verification. The
+   * operation is rejected if any violation is detected.
+   *
+   * <p><b>Post-condition:</b> The DBA may safely {@code DROP} the audit log partition. Include the
+   * returned {@code sealChainHmac} in the Git archive manifest for long-term provenance.
+   *
+   * @param request period and justification for the archive seal
+   * @return seal result with the last chain HMAC and metadata
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/lifecycle/seal-archive")
+  @Operation(
+      summary = "Seal an audit chain period for archival",
+      description =
+          "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping "
+              + "the corresponding DB partition. Runs a mandatory pre-flight integrity check — "
+              + "rejected if any violation is detected. Returns the seal HMAC to include in the "
+              + "Git archive manifest. Global Admin only.\n\n"
+              + "**Period identification — two alternative modes:**\n"
+              + "- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` "
+              + "(exclusive) as ISO-8601 timestamps.\n"
+              + "- **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` "
+              + "(both inclusive integers). The service resolves the effective time range from "
+              + "those checkpoints automatically. Ergonomic when working directly with the "
+              + "database — short IDs are easier to read than full timestamps.\n\n"
+              + "Exactly one mode must be used. Providing both is an error.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Period sealed successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid request: conflicting modes, missing required fields, or no checkpoints "
+                    + "found for the given ID range"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Chain integrity violation detected — resolve before sealing"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<ArchiveSealResult> sealArchive(
+      @Valid @RequestBody ArchiveSealRequest request) {
+    try {
+      ArchiveSealResult result = auditLifecycleService.sealArchive(request);
+      return ResponseEntity.ok(result);
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+    } catch (IllegalStateException e) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Formally declares a downtime gap in the audit chain.
+   *
+   * <p>Creates a single {@code GAP_DECLARATION} checkpoint spanning the full gap period and signs
+   * it into the chain with the provided justification. The next scheduler tick will chain its
+   * regular checkpoints from the gap declaration, restoring continuity.
+   *
+   * <p><b>Operational constraint:</b> Must be called before the scheduler creates regular
+   * checkpoints for the gap period (i.e., within the lookback window after system restart). The
+   * request is rejected if conflicting checkpoints already exist.
+   *
+   * @param request gap period boundaries and downtime justification
+   * @return gap declaration result with the new checkpoint ID and chain HMAC
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/lifecycle/declare-gap")
+  @Operation(
+      summary = "Declare a downtime gap in the audit chain",
+      description =
+          "Creates a single GAP_DECLARATION checkpoint covering the specified period and signs "
+              + "it into the chain with the admin's justification. Use when the system was "
+              + "offline longer than the scheduler lookback window. Must be called before the "
+              + "scheduler fills the gap with regular checkpoints. Global Admin only.\n\n"
+              + "**Gap start — two alternative modes:**\n"
+              + "- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment "
+              + "the system went offline).\n"
+              + "- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the "
+              + "`checkpoint_id` of the last checkpoint recorded before the downtime. The "
+              + "service derives `gapStart = anchorCheckpoint.window_end` automatically. "
+              + "Ergonomic when working directly with the database — look up the last "
+              + "checkpoint ID before the gap and pass it directly, no timestamp extraction "
+              + "needed.\n\n"
+              + "`gapEnd` is always a timestamp when provided. In anchor checkpoint mode it is "
+              + "**optional**: if omitted, the service auto-derives it as the `window_start` of "
+              + "the first checkpoint that exists after the anchor (the boundary between the "
+              + "undeclared gap and the scheduler's catch-up checkpoints). If no such checkpoint "
+              + "exists yet, falls back to the start of the current 5-minute window. Exactly one "
+              + "of `gapStart` or `anchorCheckpointId` must be provided.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Gap declared successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid request: conflicting modes, missing required fields, audit entries "
+                    + "found in gap period, or anchor checkpoint not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Conflicting regular checkpoints already exist in the gap period"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<GapDeclarationResult> declareGap(
+      @Valid @RequestBody GapDeclarationRequest request) {
+    try {
+      GapDeclarationResult result = auditLifecycleService.declareGap(request);
+      return ResponseEntity.ok(result);
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+    } catch (IllegalStateException e) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+    }
   }
 
   /**

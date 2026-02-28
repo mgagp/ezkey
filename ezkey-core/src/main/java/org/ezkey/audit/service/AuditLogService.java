@@ -10,6 +10,7 @@
 
 package org.ezkey.audit.service;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -55,10 +56,15 @@ public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
+  private final EntityManager entityManager;
 
-  public AuditLogService(AuditLogRepository auditLogRepository, AuditHmacService auditHmacService) {
+  public AuditLogService(
+      AuditLogRepository auditLogRepository,
+      AuditHmacService auditHmacService,
+      EntityManager entityManager) {
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
+    this.entityManager = entityManager;
   }
 
   /**
@@ -73,6 +79,12 @@ public class AuditLogService {
    * {@code save()} persists the computed HMAC. This two-step pattern is intentional: the ID is an
    * immutable, database-assigned value and must be part of the cryptographic seal.
    *
+   * <p><b>Timestamp alignment:</b> After the first save, the entity is refreshed from the database
+   * before computing the HMAC. This ensures {@code created_at} used in the canonical form matches
+   * exactly what PostgreSQL stores (microsecond precision, rounded if needed). Without this, in-memory
+   * nanosecond precision could differ from DB-stored value and cause ~50% of entries to fail
+   * verification.
+   *
    * @param auditLog the audit log to save
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -81,11 +93,13 @@ public class AuditLogService {
       if (auditLog.getInstanceId() == null) {
         auditLog.setInstanceId(auditHmacService.getInstanceId());
       }
-      auditLogRepository.save(auditLog);
+      AuditLog saved = auditLogRepository.save(auditLog);
 
-      if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
-        auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
-        auditLogRepository.save(auditLog);
+      if (saved.getEntryHmac() == null && auditHmacService.isActive()) {
+        entityManager.refresh(saved);
+        saved.setEnrollmentIdHmacSnapshot(saved.getEnrollmentId());
+        saved.setEntryHmac(auditHmacService.computeHmac(saved));
+        auditLogRepository.save(saved);
       }
     } catch (Exception e) {
       logger.error("Failed to save audit log: {}", e.getMessage(), e);

@@ -12,9 +12,16 @@ package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,12 +41,20 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Algorithm:</b>
  *
  * <ol>
+ *   <li>Detect and alert on any pre-lookback gap (undeclared downtime before the lookback window)
  *   <li>Round current time down to the nearest window boundary
  *   <li>Look back N minutes (default: 60) to find uncheckpointed windows
  *   <li>For each missing window, compute entries_digest from ordered entry_hmac values
  *   <li>Chain with previous checkpoint's chain_hmac
  *   <li>Insert checkpoint row (idempotent via UNIQUE constraint)
  * </ol>
+ *
+ * <p><b>Defensive gap detection:</b> Before processing the lookback window, the scheduler checks
+ * whether the latest checkpoint in the database pre-dates the start of the lookback window. If so,
+ * an undeclared gap exists that falls outside the scheduler's catch-up range. A WARNING is logged
+ * and an {@code AUDIT_CHAIN_GAP_PENDING} audit entry is emitted on every scheduler tick until an
+ * admin calls {@code POST /lifecycle/declare-gap} to formally close the gap. Regular checkpoints
+ * for the lookback window are still created to ensure new post-restart activity is signed.
  *
  * <p><b>HA Safety:</b> Uses ShedLock to ensure only one instance creates checkpoints at a time.
  *
@@ -67,23 +82,36 @@ public class AuditChainScheduler {
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
+  private final AuditLogService auditLogService;
 
+  /**
+   * Constructs the scheduler with required dependencies.
+   *
+   * @param chainProperties chain configuration (window size, lookback window)
+   * @param checkpointRepository checkpoint persistence
+   * @param auditLogRepository audit log entry repository
+   * @param auditHmacService HMAC signing service
+   * @param auditLogService audit log service for emitting gap-pending alerts
+   */
   public AuditChainScheduler(
       AuditChainProperties chainProperties,
       AuditChainCheckpointRepository checkpointRepository,
       AuditLogRepository auditLogRepository,
-      AuditHmacService auditHmacService) {
+      AuditHmacService auditHmacService,
+      AuditLogService auditLogService) {
     this.chainProperties = chainProperties;
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
+    this.auditLogService = auditLogService;
   }
 
   /**
    * Scheduled job to create chain checkpoints for recent time windows.
    *
-   * <p>Processes all uncheckpointed windows within the lookback period, creating chain links in
-   * chronological order. Idempotent -- safe to run multiple times or after missed executions.
+   * <p>Detects undeclared gaps before the lookback window and emits alerts, then processes all
+   * uncheckpointed windows within the lookback period. Idempotent — safe to run multiple times or
+   * after missed executions.
    */
   @Scheduled(cron = "${ezkey.audit.chain.cron:0 */5 * * * ?}")
   @SchedulerLock(name = "AUDIT_CHAIN_CHECKPOINT", lockAtMostFor = "PT5M")
@@ -101,6 +129,9 @@ public class AuditChainScheduler {
       OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
       OffsetDateTime currentWindowStart = roundDownToWindow(now, windowMinutes);
       OffsetDateTime lookbackStart = currentWindowStart.minusMinutes(lookbackMinutes);
+
+      // Defensive check: detect undeclared gap before the lookback window
+      detectPreLookbackGap(lookbackStart);
 
       int created = 0;
       OffsetDateTime windowStart = lookbackStart;
@@ -123,6 +154,78 @@ public class AuditChainScheduler {
       }
     } catch (Exception e) {
       logger.error("Failed to create audit chain checkpoints: {}", e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Detects whether the latest checkpoint in the database predates the start of the current
+   * lookback window, indicating an undeclared gap that the scheduler cannot cover.
+   *
+   * <p>When a gap is detected, a WARNING is logged and an {@code AUDIT_CHAIN_GAP_PENDING} audit
+   * entry is emitted. This entry is visible to the TUI dashboard alert widget and signals to the
+   * Global Admin that {@code POST /lifecycle/declare-gap} must be called to formally close the gap.
+   *
+   * <p>Regular checkpoints for the lookback window are still created even when a gap is detected:
+   * post-restart audit activity must be signed and checkpointed regardless.
+   *
+   * @param lookbackStart start of the scheduler's current lookback window
+   */
+  private void detectPreLookbackGap(OffsetDateTime lookbackStart) {
+    try {
+      Optional<AuditChainCheckpoint> latestOpt = checkpointRepository.findLatest();
+      if (latestOpt.isEmpty()) {
+        return; // No checkpoints yet — system just started, nothing to detect
+      }
+
+      AuditChainCheckpoint latest = latestOpt.get();
+
+      // A gap exists if the latest checkpoint's window_end is before the lookback window start.
+      // This means there are uncovered windows between the last checkpoint and the scheduler's
+      // catch-up horizon that will never be automatically filled.
+      if (latest.getWindowEnd().isBefore(lookbackStart)) {
+        OffsetDateTime gapStart = latest.getWindowEnd();
+        long gapMinutes = ChronoUnit.MINUTES.between(gapStart, lookbackStart);
+
+        logger.warn(
+            "AUDIT CHAIN GAP DETECTED: Last checkpoint window_end={}, lookback starts at {}."
+                + " Undeclared gap of ~{} minutes. "
+                + "Call POST /lifecycle/declare-gap with anchorCheckpointId={} to resolve.",
+            gapStart,
+            lookbackStart,
+            gapMinutes,
+            latest.getCheckpointId());
+
+        String eventDetails =
+            "{"
+                + "\"gapStart\":\""
+                + gapStart
+                + "\","
+                + "\"estimatedGapEnd\":\""
+                + lookbackStart
+                + "\","
+                + "\"estimatedGapMinutes\":"
+                + gapMinutes
+                + ","
+                + "\"anchorCheckpointId\":"
+                + latest.getCheckpointId()
+                + ","
+                + "\"message\":\"Undeclared gap detected before scheduler lookback window."
+                + " Admin action required: POST /lifecycle/declare-gap\""
+                + "}";
+
+        AuditLog alert =
+            AuditLog.builder()
+                .eventType(EventType.AUDIT_CHAIN_GAP_PENDING)
+                .eventAction("audit-chain-scheduler")
+                .eventStatus(EventStatus.FAILURE)
+                .apiName(ApiName.ADMIN_API)
+                .eventDetails(eventDetails)
+                .build();
+
+        auditLogService.log(alert);
+      }
+    } catch (Exception e) {
+      logger.error("Failed to check for pre-lookback gap: {}", e.getMessage(), e);
     }
   }
 
@@ -185,11 +288,14 @@ public class AuditChainScheduler {
   /**
    * Rounds a timestamp down to the nearest window boundary.
    *
+   * <p>Public to allow reuse in {@link AuditLifecycleService} for {@code gapEnd} auto-derivation
+   * without duplicating the arithmetic.
+   *
    * @param time the timestamp to round
    * @param windowMinutes the window size in minutes
    * @return rounded timestamp
    */
-  static OffsetDateTime roundDownToWindow(OffsetDateTime time, int windowMinutes) {
+  public static OffsetDateTime roundDownToWindow(OffsetDateTime time, int windowMinutes) {
     long minutesSinceEpoch = time.toEpochSecond() / 60;
     long roundedMinutes = (minutesSinceEpoch / windowMinutes) * windowMinutes;
     return OffsetDateTime.ofInstant(

@@ -80,6 +80,27 @@ public class AuditChainCheckpoint {
       columnDefinition = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
   private OffsetDateTime createdAt;
 
+  /**
+   * Lifecycle type of this checkpoint.
+   *
+   * <ul>
+   *   <li>{@code REGULAR} – normal scheduler-created 5-minute window (default)
+   *   <li>{@code ARCHIVE_SEAL} – entries archived to external storage; entries_digest cannot be
+   *       re-verified against live DB entries by design
+   *   <li>{@code GAP_DECLARATION} – admin-declared downtime gap; no entries expected, gap is
+   *       formally documented in the chain with a justification
+   * </ul>
+   */
+  @Column(name = "checkpoint_type", nullable = false, length = 20)
+  private String checkpointType = "REGULAR";
+
+  /**
+   * Human-readable justification or provenance note for non-REGULAR checkpoints. Set by the admin
+   * during lifecycle operations (seal-archive, declare-gap). {@code null} for REGULAR checkpoints.
+   */
+  @Column(name = "notes", columnDefinition = "TEXT")
+  private String notes;
+
   public AuditChainCheckpoint() {
     this.createdAt = OffsetDateTime.now();
   }
@@ -164,5 +185,21 @@ public class AuditChainCheckpoint {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getCheckpointType() {
+    return checkpointType;
+  }
+
+  public void setCheckpointType(String checkpointType) {
+    this.checkpointType = checkpointType;
+  }
+
+  public String getNotes() {
+    return notes;
+  }
+
+  public void setNotes(String notes) {
+    this.notes = notes;
   }
 }

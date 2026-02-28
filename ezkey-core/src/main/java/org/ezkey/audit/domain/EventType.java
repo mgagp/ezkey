@@ -66,5 +66,10 @@ public enum EventType {
   REENCRYPTION_COMPLETED, // Batch re-encryption finished successfully
   REENCRYPTION_FAILED, // Batch re-encryption error
   REENCRYPTION_RESUMED, // Batch resumed after pause/failure
-  REENCRYPTION_PAUSED // Batch paused by admin
+  REENCRYPTION_PAUSED, // Batch paused by admin
+
+  // Audit chain lifecycle events
+  AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop
+  AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain
+  AUDIT_CHAIN_GAP_PENDING // Scheduler detected an undeclared gap before its lookback window
 }

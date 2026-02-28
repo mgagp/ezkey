@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "998795a6-b1c7-4ed8-8203-ce971bbbfeb8",
     "name": "EZ Key Audit Logs admin",
-    "description": "Collection for audit log query and integrity verification operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n- **Verify Entry Integrity (range)**: Recompute HMAC-SHA256 for each entry in a date range and detect tampering (Global Admin only)\n- **Verify Single Entry Integrity**: Recompute HMAC-SHA256 for one specific entry by ID -- ideal for targeted forensic checks and developer experimentation (Global Admin only)\n- **Verify Chain Integrity**: Validate chain checkpoint linkage to detect insertion, deletion, or reordering (Global Admin only)\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Integrity Verification\n\n### Per-Entry HMAC Verification\n- Each audit log entry is signed with HMAC-SHA256 at creation time\n- The integrity-check endpoint recomputes and compares each signature\n- Detects individual entry tampering\n\n### Chain Checkpoint Verification\n- Periodic batch job creates chain checkpoints every 5 minutes\n- Checkpoints link consecutive windows via HMAC chains\n- The chain-integrity endpoint validates the chain linkage\n- Detects entry insertion, deletion, or reordering between checkpoints\n\n## Multi-Tenancy\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC 2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **Integrity endpoints**: Restricted to Global Admin only (system-level security operation)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC 2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range\n- **Tamper Detection**: Verify audit log integrity for SOC 2 audits",
+    "description": "Collection for audit log query, integrity verification, and chain lifecycle operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n- **Verify Entry Integrity (range)**: Recompute HMAC-SHA256 for each entry in a date range and detect tampering (Global Admin only)\n- **Verify Single Entry Integrity**: Recompute HMAC-SHA256 for one specific entry by ID -- ideal for targeted forensic checks and developer experimentation (Global Admin only)\n- **Verify Chain Integrity**: Validate chain checkpoint linkage to detect insertion, deletion, or reordering (Global Admin only)\n- **Seal Archive (timestamp mode)**: Seal a period identified by ISO-8601 timestamps -- marks checkpoints as ARCHIVE_SEAL and returns the seal HMAC for the Git archive manifest (Global Admin only)\n- **Seal Archive (checkpoint ID mode)**: Same operation, period identified by checkpoint IDs read directly from the DB -- ergonomic alternative when working with the database (Global Admin only)\n- **Declare Gap (timestamp mode)**: Formally document a downtime gap using explicit timestamps for start and end (Global Admin only)\n- **Declare Gap (anchor checkpoint mode)**: Same operation, gap start derived automatically from the last checkpoint ID before the outage -- no timestamp extraction needed (Global Admin only)\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Integrity Verification\n\n### Per-Entry HMAC Verification\n- Each audit log entry is signed with HMAC-SHA256 at creation time\n- The integrity-check endpoint recomputes and compares each signature\n- Detects individual entry tampering\n\n### Chain Checkpoint Verification\n- Periodic batch job creates chain checkpoints every 5 minutes\n- Checkpoints link consecutive windows via HMAC chains\n- The chain-integrity endpoint validates the chain linkage\n- Detects entry insertion, deletion, or reordering between checkpoints\n- Lifecycle checkpoints (ARCHIVE_SEAL, GAP_DECLARATION) are acknowledged -- chain_hmac still verified\n\n## Chain Lifecycle Operations\n\n### Archive Seal (seal-archive)\n- Call before dropping an audit log DB partition (monthly rotation after 12-month retention)\n- Pre-flight integrity check is mandatory -- rejected if any violation detected\n- Returns `sealChainHmac` to include in Git archive manifest\n- Subsequent `verifyChain()` skips entries_digest for sealed periods (entries no longer in DB)\n\n### Gap Declaration (declare-gap)\n- Call when the system was offline longer than the scheduler lookback window (default: 60 min)\n- Must be called before the scheduler creates regular checkpoints for the gap period\n- Creates a single GAP_DECLARATION checkpoint spanning the full gap\n- Both operations create a signed meta-audit entry (AUDIT_CHAIN_ARCHIVE_SEALED / AUDIT_CHAIN_GAP_DECLARED)\n\n## Multi-Tenancy\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC 2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **Integrity endpoints**: Restricted to Global Admin only (system-level security operation)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC 2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range\n- **Tamper Detection**: Verify audit log integrity for SOC 2 audits\n- **Partition Archival**: Seal chain before dropping old partitions for 12-month retention compliance\n- **Downtime Documentation**: Formally declare gaps for unplanned or extended maintenance",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -248,6 +248,8 @@
               "    pm.expect(jsonData).to.have.property('totalCheckpoints');",
               "    pm.expect(jsonData).to.have.property('validCheckpoints');",
               "    pm.expect(jsonData).to.have.property('invalidCheckpoints');",
+              "    pm.expect(jsonData).to.have.property('archivedCheckpoints');",
+              "    pm.expect(jsonData).to.have.property('gapDeclaredCheckpoints');",
               "    pm.expect(jsonData).to.have.property('violations');",
               "    pm.expect(jsonData).to.have.property('intact');",
               "    pm.expect(jsonData).to.have.property('status');",
@@ -258,6 +260,12 @@
               "    var jsonData = pm.response.json();",
               "    pm.expect(jsonData.intact).to.be.true;",
               "    pm.expect(jsonData.status).to.equal('OK');",
+              "});",
+              "",
+              "pm.test(\"Lifecycle checkpoint counts are non-negative numbers\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.archivedCheckpoints).to.be.a('number').and.to.be.at.least(0);",
+              "    pm.expect(jsonData.gapDeclaredCheckpoints).to.be.a('number').and.to.be.at.least(0);",
               "});"
             ],
             "type": "text/javascript",
@@ -297,6 +305,292 @@
         "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.\n\n**Access:** Global Admin only (system-level security operation).\n\n**What it detects:**\n- Entry insertion (entries added after checkpoint creation)\n- Entry deletion (entries removed after checkpoint creation)\n- Entry reordering\n- Checkpoint tampering (chain_hmac modification)\n\n**Parameters (all optional):**\n- `from`: Start of verification range (inclusive, ISO-8601 format)\n- `to`: End of verification range (exclusive, ISO-8601 format)\n- If both are omitted, verifies ALL checkpoints\n\n**Response (200 OK):**\n```json\n{\n  \"totalCheckpoints\": 288,\n  \"validCheckpoints\": 288,\n  \"invalidCheckpoints\": 0,\n  \"violations\": [],\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalCheckpoints`: Total number of chain checkpoints verified\n- `validCheckpoints`: Checkpoints with valid digest and chain linkage\n- `invalidCheckpoints`: Checkpoints with integrity violations\n- `violations`: Array of human-readable violation descriptions\n- `intact`: `true` if no violations were found\n- `status`: `OK` or `CHAIN_INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Chain verification completed\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
       },
       "response": []
+    },
+    {
+      "name": "seal archive — timestamp mode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has seal result fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('periodStart');",
+              "    pm.expect(jsonData).to.have.property('periodEnd');",
+              "    pm.expect(jsonData).to.have.property('checkpointsSealed');",
+              "    pm.expect(jsonData).to.have.property('sealChainHmac');",
+              "    pm.expect(jsonData).to.have.property('auditLogId');",
+              "    pm.expect(jsonData).to.have.property('justification');",
+              "});",
+              "",
+              "pm.test(\"checkpointsSealed is a non-negative number\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.checkpointsSealed).to.be.a('number').and.to.be.at.least(0);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.sealChainHmac) {",
+              "        pm.collectionVariables.set('last_seal_chain_hmac', jsonData.sealChainHmac);",
+              "        console.log('Seal HMAC (include in Git archive manifest): ' + jsonData.sealChainHmac);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"periodStart\": \"{{archive_period_start}}\",\n  \"periodEnd\": \"{{archive_period_end}}\",\n  \"justification\": \"{{archive_justification}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/lifecycle/seal-archive",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "lifecycle",
+            "seal-archive"
+          ]
+        },
+        "description": "Seals an audit chain period prior to archiving and dropping the DB partition — **timestamp mode**.\n\nProvide the period as ISO-8601 timestamps: `periodStart` (inclusive) and `periodEnd` (exclusive). Typically the first instant of the oldest archived month and the first instant of the following month.\n\n**Use this mode when:** you know the exact partition boundaries as timestamps (e.g., `2025-01-01T00:00:00Z` → `2026-01-01T00:00:00Z`).\n\n**Access:** Global Admin only.\n\n**Pre-condition:** All checkpoints in the period must pass integrity verification. Rejected (409) if any violation is detected.\n\n**Post-condition:** DBA may safely `DROP` the partition. Include `sealChainHmac` in the Git archive manifest.\n\n**Collection variables:**\n- `archive_period_start` — start of the period (inclusive)\n- `archive_period_end` — end of the period (exclusive)\n- `archive_justification` — reason + archival destination\n\n**Response (200 OK):**\n```json\n{\n  \"periodStart\": \"2025-01-01T00:00:00Z\",\n  \"periodEnd\": \"2026-01-01T00:00:00Z\",\n  \"checkpointsSealed\": 105120,\n  \"sealChainHmac\": \"abc123...\",\n  \"auditLogId\": 4521,\n  \"justification\": \"...\"\n}\n```\n\n**Status Codes:** 200 OK · 400 Invalid request · 409 Integrity violation or HMAC not active · 401 Unauthorized · 403 Forbidden"
+      },
+      "response": []
+    },
+    {
+      "name": "seal archive — checkpoint ID mode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has seal result fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('periodStart');",
+              "    pm.expect(jsonData).to.have.property('periodEnd');",
+              "    pm.expect(jsonData).to.have.property('checkpointsSealed');",
+              "    pm.expect(jsonData).to.have.property('sealChainHmac');",
+              "    pm.expect(jsonData).to.have.property('auditLogId');",
+              "    pm.expect(jsonData).to.have.property('justification');",
+              "});",
+              "",
+              "pm.test(\"checkpointsSealed is a non-negative number\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.checkpointsSealed).to.be.a('number').and.to.be.at.least(0);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.sealChainHmac) {",
+              "        pm.collectionVariables.set('last_seal_chain_hmac', jsonData.sealChainHmac);",
+              "        console.log('Seal HMAC (include in Git archive manifest): ' + jsonData.sealChainHmac);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"checkpointIdFrom\": {{archive_checkpoint_id_from}},\n  \"checkpointIdTo\": {{archive_checkpoint_id_to}},\n  \"justification\": \"{{archive_justification}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/lifecycle/seal-archive",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "lifecycle",
+            "seal-archive"
+          ]
+        },
+        "description": "Seals an audit chain period prior to archiving and dropping the DB partition — **checkpoint ID mode** (ergonomic).\n\nIdentify the first and last checkpoint IDs for the partition directly in the database — no timestamp conversion needed. Both bounds are **inclusive**.\n\n**Use this mode when:** you are looking at the DB and can read the `checkpoint_id` values directly. Short integers are easier to work with than full ISO-8601 timestamps.\n\n```sql\n-- Find the first and last checkpoint IDs for a given month:\nSELECT MIN(checkpoint_id), MAX(checkpoint_id)\nFROM ezkey_audit_chain_checkpoint\nWHERE window_start >= '2025-01-01' AND window_end <= '2026-01-01';\n```\n\nThe service resolves `periodStart`/`periodEnd` automatically from the fetched checkpoints.\n\n**Access:** Global Admin only.\n\n**Pre-condition:** All checkpoints in the ID range must pass integrity verification. Rejected (409) if any violation is detected.\n\n**Post-condition:** DBA may safely `DROP` the partition. Include `sealChainHmac` in the Git archive manifest.\n\n**Collection variables:**\n- `archive_checkpoint_id_from` — first checkpoint ID (inclusive)\n- `archive_checkpoint_id_to` — last checkpoint ID (inclusive)\n- `archive_justification` — reason + archival destination\n\n**Response (200 OK):**\n```json\n{\n  \"periodStart\": \"2025-01-01T00:00:00Z\",\n  \"periodEnd\": \"2026-01-01T00:00:00Z\",\n  \"checkpointsSealed\": 105120,\n  \"sealChainHmac\": \"abc123...\",\n  \"auditLogId\": 4521,\n  \"justification\": \"...\"\n}\n```\n\n**Status Codes:** 200 OK · 400 Invalid request or IDs not found · 409 Integrity violation or HMAC not active · 401 Unauthorized · 403 Forbidden"
+      },
+      "response": []
+    },
+    {
+      "name": "declare gap — timestamp mode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has gap declaration fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('gapStart');",
+              "    pm.expect(jsonData).to.have.property('gapEnd');",
+              "    pm.expect(jsonData).to.have.property('gapCheckpointId');",
+              "    pm.expect(jsonData).to.have.property('gapChainHmac');",
+              "    pm.expect(jsonData).to.have.property('auditLogId');",
+              "    pm.expect(jsonData).to.have.property('justification');",
+              "});",
+              "",
+              "pm.test(\"gapCheckpointId is a positive number\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.gapCheckpointId).to.be.a('number').and.to.be.above(0);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Gap declared: checkpointId=' + jsonData.gapCheckpointId + ', chainHmac=' + jsonData.gapChainHmac.substring(0, 12) + '...');",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"gapStart\": \"{{gap_start}}\",\n  \"gapEnd\": \"{{gap_end}}\",\n  \"justification\": \"{{gap_justification}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/lifecycle/declare-gap",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "lifecycle",
+            "declare-gap"
+          ]
+        },
+        "description": "Formally declares a downtime gap in the audit chain — **timestamp mode**.\n\nProvide `gapStart` (the moment the system went offline, inclusive) and `gapEnd` (the moment the system came back online, exclusive) as ISO-8601 timestamps.\n\n**Use this mode when:** you know the exact outage boundaries as timestamps.\n\n**Access:** Global Admin only.\n\n**Operational constraint:** Must be called before the scheduler creates regular checkpoints for the gap period (within `ezkey.audit.chain.lookback-minutes` of system restart — default 60 min). Call within the first 5 minutes after restart to be safe.\n\n**Collection variables:**\n- `gap_start` — moment the system went offline (inclusive)\n- `gap_end` — moment the system came back online (exclusive)\n- `gap_justification` — reason for the downtime\n\n**Response (200 OK):**\n```json\n{\n  \"gapStart\": \"2026-02-17T10:00:00Z\",\n  \"gapEnd\": \"2026-02-19T08:00:00Z\",\n  \"gapCheckpointId\": 1024,\n  \"gapChainHmac\": \"xyz789...\",\n  \"auditLogId\": 4522,\n  \"justification\": \"...\"\n}\n```\n\n**Status Codes:** 200 OK · 400 Invalid request or entries found in gap · 409 Conflicting checkpoints exist or HMAC not active · 401 Unauthorized · 403 Forbidden"
+      },
+      "response": []
+    },
+    {
+      "name": "declare gap — anchor checkpoint mode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has gap declaration fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('gapStart');",
+              "    pm.expect(jsonData).to.have.property('gapEnd');",
+              "    pm.expect(jsonData).to.have.property('gapCheckpointId');",
+              "    pm.expect(jsonData).to.have.property('gapChainHmac');",
+              "    pm.expect(jsonData).to.have.property('auditLogId');",
+              "    pm.expect(jsonData).to.have.property('justification');",
+              "});",
+              "",
+              "pm.test(\"gapCheckpointId is a positive number\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.gapCheckpointId).to.be.a('number').and.to.be.above(0);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Gap declared: checkpointId=' + jsonData.gapCheckpointId + ', gapStart (derived)=' + jsonData.gapStart + ', chainHmac=' + jsonData.gapChainHmac.substring(0, 12) + '...');",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"anchorCheckpointId\": {{gap_anchor_checkpoint_id}},\n  \"justification\": \"{{gap_justification}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/lifecycle/declare-gap",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "lifecycle",
+            "declare-gap"
+          ]
+        },
+        "description": "Formally declares a downtime gap in the audit chain — **anchor checkpoint mode** (ergonomic).\n\nPass the `checkpoint_id` of the **last checkpoint recorded before the downtime**. The service automatically derives `gapStart = anchorCheckpoint.window_end` — no timestamp reading or formatting required.\n\n**Use this mode when:** you are looking at the DB or responding to a `AUDIT_CHAIN_GAP_PENDING` alert in the TUI dashboard. Run this query to find the anchor:\n\n```sql\nSELECT checkpoint_id, window_end\nFROM ezkey_audit_chain_checkpoint\nORDER BY checkpoint_id DESC\nLIMIT 5;\n-- Pick the last checkpoint before the downtime\n```\n\n**`gapEnd` is optional in this mode.** If omitted, the service auto-derives it as:\n1. The `window_start` of the first checkpoint that exists after the anchor (the exact boundary between the undeclared gap and the scheduler's catch-up checkpoints)\n2. If no such checkpoint exists yet (scheduler hasn't ticked): falls back to the start of the current 5-minute window\n\n**Recommended workflow after extended downtime:**\n1. Restart EZKey stack\n2. Wait for the first scheduler tick (~5 min) — it creates checkpoints for the last 60 min\n3. Call this endpoint with just `anchorCheckpointId` and `justification` — `gapEnd` is auto-derived\n\n**Access:** Global Admin only.\n\n**Operational constraint:** The scheduler already creates checkpoints for the last 60 minutes post-restart. This endpoint fills the gap BEFORE those checkpoints. If you see `AUDIT_CHAIN_GAP_PENDING` entries in audit logs, that is the alert signal.\n\n**Collection variables:**\n- `gap_anchor_checkpoint_id` — `checkpoint_id` of the last checkpoint before the outage\n- `gap_end` — (optional) moment the system came back online; leave empty to auto-derive\n- `gap_justification` — reason for the downtime\n\n**Response (200 OK):**\n```json\n{\n  \"gapStart\": \"2026-02-17T10:00:00Z\",\n  \"gapEnd\": \"2026-02-19T08:00:00Z\",\n  \"gapCheckpointId\": 1024,\n  \"gapChainHmac\": \"xyz789...\",\n  \"auditLogId\": 4522,\n  \"justification\": \"...\"\n}\n```\n\n`gapStart` in the response shows the derived value (anchor's `window_end`). `gapEnd` shows the final boundary used (explicit or auto-derived).\n\n**Status Codes:** 200 OK · 400 Anchor checkpoint not found, conflicting modes, entries found in gap, or gapEnd ≤ gapStart · 409 Conflicting checkpoints exist or HMAC not active · 401 Unauthorized · 403 Forbidden"
+      },
+      "response": []
     }
   ],
   "auth": {
@@ -329,6 +623,63 @@
           ""
         ]
       }
+    }
+  ],
+  "variable": [
+    {
+      "key": "audit_log_id",
+      "value": "1",
+      "description": "Audit log entry ID for single-entry integrity check. Copy an ID from the query audit logs response."
+    },
+    {
+      "key": "archive_period_start",
+      "value": "2025-01-01T00:00:00Z",
+      "description": "[Timestamp mode] Start of the audit chain period to seal (inclusive, ISO-8601). Example: first day of the oldest partition month."
+    },
+    {
+      "key": "archive_period_end",
+      "value": "2026-01-01T00:00:00Z",
+      "description": "[Timestamp mode] End of the audit chain period to seal (exclusive, ISO-8601). Example: first day of the month after the last archived partition."
+    },
+    {
+      "key": "archive_checkpoint_id_from",
+      "value": "1",
+      "description": "[Checkpoint ID mode] First checkpoint_id to seal (inclusive). Look up in ezkey_audit_chain_checkpoint for the start of the partition. Both archive_checkpoint_id_from and archive_checkpoint_id_to must be provided together."
+    },
+    {
+      "key": "archive_checkpoint_id_to",
+      "value": "100",
+      "description": "[Checkpoint ID mode] Last checkpoint_id to seal (inclusive). Look up in ezkey_audit_chain_checkpoint for the end of the partition. Both archive_checkpoint_id_from and archive_checkpoint_id_to must be provided together."
+    },
+    {
+      "key": "archive_justification",
+      "value": "12-month retention rotation. Partition exported to git://audit-archive/2025.git",
+      "description": "Human-readable reason and archival destination for the archive seal. Used in both timestamp and checkpoint ID modes."
+    },
+    {
+      "key": "gap_start",
+      "value": "2026-02-17T10:00:00Z",
+      "description": "[Timestamp mode] Start of the downtime gap period (inclusive, ISO-8601). The moment the system went offline. Mutually exclusive with gap_anchor_checkpoint_id."
+    },
+    {
+      "key": "gap_anchor_checkpoint_id",
+      "value": "",
+      "description": "[Anchor checkpoint mode] checkpoint_id of the last checkpoint recorded before the downtime. The service derives gapStart = anchorCheckpoint.window_end automatically. Mutually exclusive with gap_start."
+    },
+    {
+      "key": "gap_end",
+      "value": "2026-02-19T08:00:00Z",
+      "description": "End of the downtime gap period (exclusive, ISO-8601). The moment the system came back online. Always required as a timestamp in both modes."
+    },
+    {
+      "key": "gap_justification",
+      "value": "Unplanned outage. System was offline. No audit events were generated during this period.",
+      "description": "Human-readable reason for the downtime gap. Used in both timestamp and anchor checkpoint modes."
+    },
+    {
+      "key": "last_seal_chain_hmac",
+      "value": "",
+      "description": "Auto-populated by the seal-archive test script. The sealChainHmac to include in the Git archive manifest."
     }
   ]
 }

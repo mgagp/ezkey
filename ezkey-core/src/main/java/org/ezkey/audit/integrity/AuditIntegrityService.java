@@ -50,6 +50,7 @@ public class AuditIntegrityService {
   private static final Logger logger = LoggerFactory.getLogger(AuditIntegrityService.class);
 
   private static final int VERIFICATION_BATCH_SIZE = 500;
+  private static final int DIAGNOSTIC_FAILURE_LIMIT = 5;
 
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
@@ -83,6 +84,7 @@ public class AuditIntegrityService {
 
     int page = 0;
     boolean hasMore = true;
+    int diagnosticFailuresLogged = 0;
 
     while (hasMore) {
       Specification<AuditLog> spec = buildRangeSpec(from, to);
@@ -104,6 +106,10 @@ public class AuditIntegrityService {
               entry.getAuditLogId(),
               entry.getEventType(),
               entry.getCreatedAt());
+          if (diagnosticFailuresLogged < DIAGNOSTIC_FAILURE_LIMIT) {
+            logDiagnostics(entry);
+            diagnosticFailuresLogged++;
+          }
         }
       }
 
@@ -154,6 +160,7 @@ public class AuditIntegrityService {
                     entry.getAuditLogId(),
                     entry.getEventType(),
                     entry.getCreatedAt());
+                logDiagnostics(entry);
               }
               String status = valid ? "OK" : "INTEGRITY_VIOLATION_DETECTED";
               long invalid = valid ? 0L : 1L;
@@ -161,6 +168,35 @@ public class AuditIntegrityService {
               return new IntegrityReport(1, validCount, invalid, 0, valid, status);
             })
         .orElse(new IntegrityReport(0, 0, 0, 0, true, "NOT_FOUND"));
+  }
+
+  private void logDiagnostics(AuditLog entry) {
+    String canonical = auditHmacService.buildCanonicalForm(entry);
+    String computedHmac = auditHmacService.computeHmac(entry);
+    String storedHmac = entry.getEntryHmac();
+    String createdAtFull =
+        entry.getCreatedAt() != null
+            ? entry.getCreatedAt().toString()
+            + " (nano="
+            + (entry.getCreatedAt().getNano())
+            + ")"
+            : "null";
+    int len = canonical.length();
+    String first = len > 80 ? canonical.substring(0, 80) + "..." : canonical;
+    String last = len > 80 ? "..." + canonical.substring(len - 80) : "";
+    logger.warn(
+        "[HMAC DIAG] audit_log_id={} | canonical_len={} | created_at_full={} | "
+            + "stored_hmac={} | computed_hmac={} | match={}",
+        entry.getAuditLogId(),
+        len,
+        createdAtFull,
+        storedHmac,
+        computedHmac,
+        Boolean.valueOf(storedHmac != null && storedHmac.equals(computedHmac)));
+    logger.warn("[HMAC DIAG] canonical_first80={}", first);
+    if (!last.isEmpty()) {
+      logger.warn("[HMAC DIAG] canonical_last80={}", last);
+    }
   }
 
   private Specification<AuditLog> buildRangeSpec(OffsetDateTime from, OffsetDateTime to) {

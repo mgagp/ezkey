@@ -85,6 +85,9 @@ public class AuditLog {
   @Column(name = "enrollment_id")
   private Integer enrollmentId;
 
+  @Column(name = "enrollment_id_hmac_snapshot")
+  private Integer enrollmentIdHmacSnapshot;
+
   @Column(name = "auth_attempt_id")
   private Integer authAttemptId;
 
@@ -311,6 +314,14 @@ public class AuditLog {
 
   public void setEnrollmentId(Integer enrollmentId) {
     this.enrollmentId = enrollmentId;
+  }
+
+  public Integer getEnrollmentIdHmacSnapshot() {
+    return enrollmentIdHmacSnapshot;
+  }
+
+  public void setEnrollmentIdHmacSnapshot(Integer enrollmentIdHmacSnapshot) {
+    this.enrollmentIdHmacSnapshot = enrollmentIdHmacSnapshot;
   }
 
   public Integer getAuthAttemptId() {

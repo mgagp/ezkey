@@ -242,7 +242,7 @@ public class AuditHmacService {
     sb.append(FIELD_SEPARATOR);
     sb.append(nullSafe(entry.getIntegrationId()));
     sb.append(FIELD_SEPARATOR);
-    sb.append(nullSafe(entry.getEnrollmentId()));
+    sb.append(nullSafe(getEnrollmentIdForCanonical(entry)));
     sb.append(FIELD_SEPARATOR);
     sb.append(nullSafe(entry.getTenantId()));
     sb.append(FIELD_SEPARATOR);
@@ -254,6 +254,11 @@ public class AuditHmacService {
     sb.append(FIELD_SEPARATOR);
     sb.append(nullSafe(entry.getInstanceId()));
     return sb.toString();
+  }
+
+  private static Integer getEnrollmentIdForCanonical(AuditLog entry) {
+    Integer snapshot = entry.getEnrollmentIdHmacSnapshot();
+    return snapshot != null ? snapshot : entry.getEnrollmentId();
   }
 
   private static String nullSafe(Object value) {

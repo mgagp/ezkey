@@ -61,4 +61,67 @@ public interface AuditChainCheckpointRepository extends JpaRepository<AuditChain
           + "ORDER BY c.windowStart ASC")
   List<AuditChainCheckpoint> findByWindowRange(
       @Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
+
+  /**
+   * Finds all checkpoints whose checkpoint_id falls within [idFrom, idTo] (both inclusive), ordered
+   * by checkpoint_id ascending.
+   *
+   * <p>Used by the archive seal operation when the period is identified by checkpoint IDs rather
+   * than timestamps. This is the ergonomic mode for admins who look at the database directly.
+   *
+   * @param idFrom lower bound (inclusive)
+   * @param idTo upper bound (inclusive)
+   * @return list of checkpoints in ID order
+   */
+  @Query(
+      "SELECT c FROM AuditChainCheckpoint c "
+          + "WHERE c.checkpointId >= :idFrom AND c.checkpointId <= :idTo "
+          + "ORDER BY c.checkpointId ASC")
+  List<AuditChainCheckpoint> findByIdRange(@Param("idFrom") Long idFrom, @Param("idTo") Long idTo);
+
+  /**
+   * Counts checkpoints of any type whose window_start falls within the given range.
+   *
+   * <p>Used by gap declaration to validate that no regular checkpoints already exist in the
+   * declared gap period before creating the GAP_DECLARATION checkpoint.
+   *
+   * @param from start boundary (inclusive)
+   * @param to end boundary (exclusive)
+   * @return number of checkpoints in the range
+   */
+  @Query(
+      "SELECT COUNT(c) FROM AuditChainCheckpoint c "
+          + "WHERE c.windowStart >= :from AND c.windowStart < :to")
+  long countByWindowRange(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
+
+  /**
+   * Finds the checkpoint immediately preceding the given start time (the latest checkpoint with
+   * window_start strictly before {@code before}).
+   *
+   * <p>Used by gap declaration to find the chain anchor for the new GAP_DECLARATION checkpoint.
+   *
+   * @param before exclusive upper boundary
+   * @return the most recent checkpoint before the boundary, or empty if none
+   */
+  @Query(
+      "SELECT c FROM AuditChainCheckpoint c "
+          + "WHERE c.windowStart < :before ORDER BY c.windowStart DESC LIMIT 1")
+  Optional<AuditChainCheckpoint> findLatestBefore(@Param("before") OffsetDateTime before);
+
+  /**
+   * Finds the earliest checkpoint whose window_start is strictly after {@code after}, ordered
+   * ascending.
+   *
+   * <p>Used by gap declaration to auto-derive {@code gapEnd} when it is not explicitly provided:
+   * {@code gapEnd = firstCheckpointAfter(anchor.window_end).window_start}. This places the gap
+   * boundary exactly at the start of the first checkpoint the scheduler created post-restart,
+   * avoiding any overlap between the GAP_DECLARATION and regular checkpoints.
+   *
+   * @param after exclusive lower boundary
+   * @return the earliest checkpoint after the boundary, or empty if none exist
+   */
+  @Query(
+      "SELECT c FROM AuditChainCheckpoint c "
+          + "WHERE c.windowStart > :after ORDER BY c.windowStart ASC LIMIT 1")
+  Optional<AuditChainCheckpoint> findFirstAfter(@Param("after") OffsetDateTime after);
 }
