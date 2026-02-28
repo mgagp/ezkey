@@ -322,10 +322,12 @@ class AuditHmacServiceTest {
   void verifyHmac_whenPostgresRoundsNanos_verificationFails() {
     // If PostgreSQL ROUNDS (not truncates) sub-microsecond nanos, sign-time and verify-time
     // canonical forms differ. E.g. 123456789 nanos: we truncate to 123456, PG rounds to 123457.
-    // This test proves that rounding would cause verification failure - root cause of ~50% failures.
+    // This test proves that rounding would cause verification failure - root cause of ~50%
+    // failures.
     AuditLog entry = buildEntry(10L, "10.0.0.1", "admin-api");
     entry.setCreatedAt(
-        OffsetDateTime.of(2026, 2, 19, 10, 0, 0, 123_456_789, ZoneOffset.UTC)); // 789 would round up
+        OffsetDateTime.of(
+            2026, 2, 19, 10, 0, 0, 123_456_789, ZoneOffset.UTC)); // 789 would round up
     entry.setEntryHmac(service.computeHmac(entry));
 
     // Simulate PostgreSQL ROUNDING: 123456789 -> 123457000 (next microsecond)

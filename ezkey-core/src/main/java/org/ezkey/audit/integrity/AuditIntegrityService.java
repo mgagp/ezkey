@@ -176,10 +176,7 @@ public class AuditIntegrityService {
     String storedHmac = entry.getEntryHmac();
     String createdAtFull =
         entry.getCreatedAt() != null
-            ? entry.getCreatedAt().toString()
-            + " (nano="
-            + (entry.getCreatedAt().getNano())
-            + ")"
+            ? entry.getCreatedAt().toString() + " (nano=" + (entry.getCreatedAt().getNano()) + ")"
             : "null";
     int len = canonical.length();
     String first = len > 80 ? canonical.substring(0, 80) + "..." : canonical;

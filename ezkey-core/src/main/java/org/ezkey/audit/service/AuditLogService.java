@@ -81,9 +81,9 @@ public class AuditLogService {
    *
    * <p><b>Timestamp alignment:</b> After the first save, the entity is refreshed from the database
    * before computing the HMAC. This ensures {@code created_at} used in the canonical form matches
-   * exactly what PostgreSQL stores (microsecond precision, rounded if needed). Without this, in-memory
-   * nanosecond precision could differ from DB-stored value and cause ~50% of entries to fail
-   * verification.
+   * exactly what PostgreSQL stores (microsecond precision, rounded if needed). Without this,
+   * in-memory nanosecond precision could differ from DB-stored value and cause ~50% of entries to
+   * fail verification.
    *
    * @param auditLog the audit log to save
    */
