@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/auth-context';
-import { AppShell } from '@/components/layout/app-shell';
 import type { ReactNode } from 'react';
 
 const LoginPage = lazy(() => import('@/pages/login'));
@@ -10,6 +9,10 @@ const IntegrationsPage = lazy(() => import('@/pages/integrations'));
 const IntegrationDetailPage = lazy(() => import('@/pages/integration-detail'));
 const EnrollmentsPage = lazy(() => import('@/pages/enrollments'));
 const EnrollmentDetailPage = lazy(() => import('@/pages/enrollment-detail'));
+const AdminsPage = lazy(() => import('@/pages/admins'));
+const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
+const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
+const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 
 // ── Guards ───────────────────────────────────────────────────────────────────
@@ -34,22 +37,6 @@ function SuspensePage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-// ── Placeholder pages — replaced in Phase 3 ──────────────────────────────────
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <AppShell title={title}>
-      <div className="flex items-center justify-center h-64 text-center">
-        <div>
-          <p className="font-black text-fg/10" style={{ fontSize: '4rem', lineHeight: 1 }}>
-            {title.toUpperCase()}
-          </p>
-          <p className="text-fg-muted mt-4 text-sm">This screen will be implemented in Phase 3.</p>
-        </div>
-      </div>
-    </AppShell>
-  );
-}
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -119,7 +106,9 @@ export const router = createBrowserRouter([
     path: '/auth-attempts',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="Auth Attempts" />
+        <SuspensePage>
+          <AuthAttemptsPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },
@@ -127,7 +116,9 @@ export const router = createBrowserRouter([
     path: '/audit-logs',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="Audit Logs" />
+        <SuspensePage>
+          <AuditLogsPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },
@@ -135,7 +126,9 @@ export const router = createBrowserRouter([
     path: '/admins',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="Admins" />
+        <SuspensePage>
+          <AdminsPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },
@@ -143,7 +136,9 @@ export const router = createBrowserRouter([
     path: '/api-keys',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="API Keys" />
+        <SuspensePage>
+          <ApiKeysPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },

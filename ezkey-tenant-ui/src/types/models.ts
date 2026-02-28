@@ -46,7 +46,10 @@ export interface AuthAttempt {
   authAttemptId: number;
   enrollmentId: number;
   authAttemptStatus: AuthAttemptStatus;
-  authAttemptChallenge?: string;
+  /** 2-digit challenge code (00–99), present only when challenge was requested. */
+  authAttemptChallenge?: number;
+  /** Proof token present only when status is ACCEPTED. */
+  authAttemptProofToken?: string;
   createdAt: string;
   expiresAt: string;
 }
@@ -72,9 +75,10 @@ export interface AuditLog {
   auditLogId: number;
   eventType: string;
   eventAction?: string;
-  eventStatus: string;
+  eventStatus: 'SUCCESS' | 'FAILURE' | 'ERROR';
   apiName?: string;
   ipAddress?: string;
+  userAgent?: string;
   adminId?: number;
   integrationId?: number;
   enrollmentId?: number;
@@ -82,17 +86,51 @@ export interface AuditLog {
   tenantId?: number;
   eventDetails?: string;
   errorMessage?: string;
+  /** HMAC-SHA256 signature — presence confirms the chain is intact for this entry. */
+  entryHmac?: string;
+  instanceId?: string;
   createdAt: string;
 }
 
 /** ApiKey — machine-to-machine credentials scoped to an integration. */
 export interface ApiKey {
   apiKeyId: number;
+  integrationId: number;
+  /** Public key identifier, format: ezkey_ikey_[20 hex chars]. Safe to display. */
   integrationKey: string;
   description?: string;
   active: boolean;
   createdAt: string;
   expiresAt?: string;
+  lastUsedAt?: string;
   ipWhitelist?: string[];
-  integrationId: number;
+  revokedAt?: string;
+  revokedByUsername?: string;
+}
+
+/** Returned only at creation — secretKey is shown ONCE and cannot be retrieved later. */
+export interface ApiKeyCreateResponse extends ApiKey {
+  secretKey: string;
+  warning?: string;
+}
+
+/** Provisioning result returned when creating a new admin. */
+export interface AdminProvisioning {
+  adminId: number;
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  adminType: AdminType;
+  tenantId?: number;
+  enrollmentId: number;
+  createdAt: string;
+}
+
+/** Onboarding credentials — enrollmentProofToken and challenge are shown once. */
+export interface AdminOnboarding {
+  enrollmentId: number;
+  enrollmentProofToken: string;
+  enrollmentChallenge: number;
+  recoveryCodes: string[] | null;
 }

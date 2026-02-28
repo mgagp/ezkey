@@ -70,3 +70,21 @@ export interface EnrollmentCreateRequest {
   contactEmail?: string;
   userIdentifier?: string;
 }
+
+/** Request body for POST /api/v1/admins/tenant. */
+export interface AdminCreateRequest {
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/** Request body for POST /api/v1/api-keys. */
+export interface ApiKeyCreateRequest {
+  integrationId: number;
+  description?: string;
+  /** ISO-8601 datetime; must be in the future. Omit for no expiration. */
+  expiresAt?: string;
+  /** Array of IP addresses or CIDR ranges. Omit for no restriction. */
+  ipWhitelist?: string[];
+}
