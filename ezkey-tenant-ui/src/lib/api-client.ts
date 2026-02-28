@@ -63,6 +63,21 @@ async function fetchApi<T>(path: string, options: FetchOptions = {}): Promise<T>
   return response.json() as Promise<T>;
 }
 
+/**
+ * Fetches a binary resource (e.g. QR code PNG) that requires authentication and
+ * returns a temporary object URL for use with <img src={...}>.
+ * Always call URL.revokeObjectURL() in a useEffect cleanup to avoid memory leaks.
+ */
+export async function fetchBlobUrl(path: string): Promise<string> {
+  const token = getToken();
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new ApiError(response.status, null, `HTTP ${response.status}`);
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 /** Typed API methods — always prefer these over raw fetch in components. */
 export const api = {
   get: <T>(path: string): Promise<T> =>

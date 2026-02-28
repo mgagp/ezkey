@@ -61,3 +61,12 @@ export interface PasswordlessWaitRequest {
   /** Required only when challengeRequested was true on login. */
   challengeCode?: number;
 }
+
+/** Request body for POST /api/v1/enrollments. */
+export interface EnrollmentCreateRequest {
+  integrationId: number;
+  name: string;
+  authAttemptChallengeRequired?: boolean;
+  contactEmail?: string;
+  userIdentifier?: string;
+}

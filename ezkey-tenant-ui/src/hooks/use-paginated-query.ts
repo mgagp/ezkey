@@ -51,7 +51,7 @@ export function usePaginatedQuery<T>({
   defaultSize = 20,
   defaultSort = 'createdAt,DESC',
 }: {
-  queryKey: string[];
+  queryKey: unknown[];
   queryFn: (params: PaginationState) => Promise<PageResponse<T>>;
   defaultSize?: number;
   defaultSort?: string;

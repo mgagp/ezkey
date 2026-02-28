@@ -25,7 +25,10 @@ export interface Enrollment {
   enrollmentName: string;
   enrollmentStatus: EnrollmentStatus;
   enrollmentActive: boolean;
+  /** Numeric binding challenge code displayed during initial device setup. */
   enrollmentChallenge?: number;
+  /** Whether auth attempts for this enrollment require a challenge code. */
+  authAttemptChallengeRequired?: boolean;
   enrollmentProofToken?: string;
   verifiedAt?: string;
   createdByAdminId?: number;

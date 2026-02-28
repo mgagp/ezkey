@@ -6,6 +6,10 @@ import type { ReactNode } from 'react';
 
 const LoginPage = lazy(() => import('@/pages/login'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
+const IntegrationsPage = lazy(() => import('@/pages/integrations'));
+const IntegrationDetailPage = lazy(() => import('@/pages/integration-detail'));
+const EnrollmentsPage = lazy(() => import('@/pages/enrollments'));
+const EnrollmentDetailPage = lazy(() => import('@/pages/enrollment-detail'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 
 // ── Guards ───────────────────────────────────────────────────────────────────
@@ -30,7 +34,7 @@ function SuspensePage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-// ── Placeholder pages — replaced in Phase 2 ──────────────────────────────────
+// ── Placeholder pages — replaced in Phase 3 ──────────────────────────────────
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -40,7 +44,7 @@ function PlaceholderPage({ title }: { title: string }) {
           <p className="font-black text-fg/10" style={{ fontSize: '4rem', lineHeight: 1 }}>
             {title.toUpperCase()}
           </p>
-          <p className="text-fg-muted mt-4 text-sm">This screen will be implemented in Phase 2.</p>
+          <p className="text-fg-muted mt-4 text-sm">This screen will be implemented in Phase 3.</p>
         </div>
       </div>
     </AppShell>
@@ -75,7 +79,19 @@ export const router = createBrowserRouter([
     path: '/integrations',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="Integrations" />
+        <SuspensePage>
+          <IntegrationsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/integrations/:id',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <IntegrationDetailPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },
@@ -83,7 +99,19 @@ export const router = createBrowserRouter([
     path: '/enrollments',
     element: (
       <ProtectedRoute>
-        <PlaceholderPage title="Enrollments" />
+        <SuspensePage>
+          <EnrollmentsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/enrollments/:id',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <EnrollmentDetailPage />
+        </SuspensePage>
       </ProtectedRoute>
     ),
   },
