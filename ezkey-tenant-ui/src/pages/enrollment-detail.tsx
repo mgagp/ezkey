@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, Copy, Eye, EyeOff, QrCode, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Eye, EyeOff, QrCode, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
-import { formatDate } from '@/lib/utils';
-import type { Enrollment } from '@/types/models';
+import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
+import type { AuthAttemptCreateRequest, AuthAttemptCreateResponse } from '@/types/api';
+import type { AuthAttempt, AuthAttemptStatus, Enrollment } from '@/types/models';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -23,6 +25,280 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
       </dt>
       <dd className="text-sm">{children}</dd>
     </div>
+  );
+}
+
+// ── Test Auth Dialog ──────────────────────────────────────────────────────────
+
+const FINAL_STATUSES: AuthAttemptStatus[] = ['ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'];
+
+function authStatusVariant(s: AuthAttemptStatus): 'success' | 'error' | 'warning' | 'muted' {
+  if (s === 'ACCEPTED') return 'success';
+  if (s === 'REJECTED' || s === 'INVALID') return 'error';
+  if (s === 'READ') return 'warning';
+  return 'muted';
+}
+
+function authStatusLabel(s: AuthAttemptStatus): string {
+  switch (s) {
+    case 'PENDING': return 'Waiting for device…';
+    case 'READ':    return 'Device is reading…';
+    case 'ACCEPTED': return 'Accepted';
+    case 'REJECTED': return 'Rejected';
+    case 'EXPIRED':  return 'Expired';
+    case 'INVALID':  return 'Invalid';
+  }
+}
+
+function TestAuthDialog({
+  open,
+  onClose,
+  enrollment,
+}: {
+  open: boolean;
+  onClose: () => void;
+  enrollment: Enrollment;
+}) {
+  type Step = 'configure' | 'live' | 'done';
+  type DoneReason = 'accepted' | 'rejected' | 'expired' | 'invalid' | 'cancelled';
+
+  const [step, setStep] = useState<Step>('configure');
+  const [challengeRequested, setChallengeRequested] = useState(
+    enrollment.authAttemptChallengeRequired ?? false,
+  );
+  const [createdAttempt, setCreatedAttempt] = useState<AuthAttemptCreateResponse | null>(null);
+  const [isFinal, setIsFinal] = useState(false);
+  const [doneReason, setDoneReason] = useState<DoneReason | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  // Countdown drives from expiresAt, stops when final
+  useEffect(() => {
+    if (step !== 'live' || !createdAttempt || isFinal) return;
+    const tick = () => {
+      const rem = Math.max(
+        0,
+        Math.floor((new Date(createdAttempt.expiresAt).getTime() - Date.now()) / 1000),
+      );
+      setCountdown(rem);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [step, createdAttempt, isFinal]);
+
+  // Live status — polls every 3 s, stops automatically on final state
+  const { data: liveStatus } = useQuery({
+    queryKey: ['test-auth', createdAttempt?.authAttemptId],
+    queryFn: () =>
+      api.get<AuthAttempt>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}`),
+    enabled: step === 'live' && createdAttempt !== null,
+    refetchInterval: isFinal ? false : 3_000,
+  });
+
+  // Transition to done when status becomes final
+  useEffect(() => {
+    if (!liveStatus || isFinal) return;
+    if (FINAL_STATUSES.includes(liveStatus.authAttemptStatus)) {
+      setIsFinal(true);
+      setDoneReason(liveStatus.authAttemptStatus.toLowerCase() as DoneReason);
+      setStep('done');
+    }
+  }, [liveStatus, isFinal]);
+
+  const createMutation = useMutation({
+    mutationFn: (req: AuthAttemptCreateRequest) =>
+      api.post<AuthAttemptCreateResponse>('/api/v1/auth-attempts', req),
+    onSuccess: (data) => {
+      setCreatedAttempt(data);
+      setCountdown(data.timeoutSeconds);
+      setStep('live');
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () =>
+      api.post<AuthAttempt>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}/cancel`, {}),
+    onSuccess: () => {
+      setIsFinal(true);
+      setDoneReason('cancelled');
+      setStep('done');
+    },
+  });
+
+  const resetState = () => {
+    setStep('configure');
+    setChallengeRequested(enrollment.authAttemptChallengeRequired ?? false);
+    setCreatedAttempt(null);
+    setIsFinal(false);
+    setDoneReason(null);
+    setCountdown(0);
+    createMutation.reset();
+    cancelMutation.reset();
+  };
+
+  const handleClose = () => { resetState(); onClose(); };
+
+  return (
+    <Dialog open={open} onClose={handleClose} title="Test Authentication" size="md">
+
+      {/* ── Step 1: Configure ── */}
+      {step === 'configure' && (
+        <div className="space-y-4">
+          <p className="text-sm text-fg">
+            Trigger a live authentication request for enrollment{' '}
+            <strong>{enrollment.enrollmentName}</strong>. The end-user will see a pending
+            request on their EZKey mobile app.
+          </p>
+
+          <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-fg/20 hover:border-fg/40 transition-colors">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-accent"
+              checked={challengeRequested}
+              onChange={(e) => setChallengeRequested(e.target.checked)}
+            />
+            <div>
+              <p className="text-sm font-bold">Request challenge code</p>
+              <p className="text-xs text-fg-muted mt-0.5">
+                A 2-digit code is displayed here. The user must confirm the matching code on
+                their device.
+              </p>
+            </div>
+          </label>
+
+          {createMutation.isError && (
+            <Alert variant="error">
+              {createMutation.error instanceof ApiError
+                ? createMutation.error.message
+                : 'Failed to create auth attempt.'}
+            </Alert>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+            <Button
+              isLoading={createMutation.isPending}
+              onClick={() =>
+                createMutation.mutate({
+                  enrollmentId: enrollment.enrollmentId,
+                  challengeRequested,
+                })
+              }
+              className="gap-1.5"
+            >
+              <Zap className="size-3.5" />
+              Launch Test
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 2: Live ── */}
+      {step === 'live' && createdAttempt && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border-2 border-fg/30 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+                Attempt ID
+              </p>
+              <p className="font-mono font-black text-xl">{createdAttempt.authAttemptId}</p>
+            </div>
+            <div className="border-2 border-fg/30 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+                Expires in
+              </p>
+              <p
+                className={`font-mono font-black text-xl ${
+                  countdown <= 10 ? 'text-error animate-pulse' : ''
+                }`}
+              >
+                {formatCountdown(countdown)}
+              </p>
+            </div>
+          </div>
+
+          {createdAttempt.authAttemptChallenge != null && (
+            <div className="border-2 border-fg p-4 bg-bg text-center shadow-brutal">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
+                Challenge Code
+              </p>
+              <p className="font-mono text-5xl font-black tracking-[0.5em] text-accent">
+                {formatChallengeCode(createdAttempt.authAttemptChallenge)}
+              </p>
+              <p className="text-xs text-fg-muted mt-2">
+                Show this to the user — they must confirm the matching code on their device.
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 py-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+              Status
+            </span>
+            {liveStatus ? (
+              <Badge variant={authStatusVariant(liveStatus.authAttemptStatus)}>
+                {authStatusLabel(liveStatus.authAttemptStatus)}
+              </Badge>
+            ) : (
+              <span className="size-3.5 border-2 border-fg/30 border-t-fg rounded-full animate-spin inline-block" />
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              isLoading={cancelMutation.isPending}
+              onClick={() => cancelMutation.mutate()}
+              className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
+            >
+              Cancel Attempt
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 3: Done ── */}
+      {step === 'done' && (
+        <div className="space-y-4">
+          {doneReason === 'accepted' && (
+            <Alert variant="success">
+              <strong>Authentication accepted!</strong> The user confirmed the request on their
+              device. The enrollment is working correctly.
+            </Alert>
+          )}
+          {doneReason === 'rejected' && (
+            <Alert variant="error">
+              <strong>Authentication rejected.</strong> The user declined the request on their
+              device.
+            </Alert>
+          )}
+          {doneReason === 'expired' && (
+            <Alert variant="warning">
+              <strong>Timed out.</strong> No response was received before the attempt expired.
+            </Alert>
+          )}
+          {doneReason === 'invalid' && (
+            <Alert variant="error">
+              <strong>Invalid attempt.</strong> The request was marked invalid — this may
+              indicate a device binding issue.
+            </Alert>
+          )}
+          {doneReason === 'cancelled' && (
+            <Alert variant="info">
+              <strong>Cancelled.</strong> The test authentication was cancelled.
+            </Alert>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={resetState}>
+              Run Another Test
+            </Button>
+            <Button onClick={handleClose}>Close</Button>
+          </div>
+        </div>
+      )}
+    </Dialog>
   );
 }
 
@@ -39,6 +315,7 @@ export default function EnrollmentDetailPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [testAuthOpen, setTestAuthOpen] = useState(false);
 
   const { lookup } = useIntegrations();
 
@@ -96,11 +373,24 @@ export default function EnrollmentDetailPage() {
     <AppShell title={enrollment?.enrollmentName ?? 'Enrollment Detail'}>
       <div className="space-y-6">
 
-        {/* Back */}
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 -ml-2">
-          <ArrowLeft className="size-3.5" />
-          Back
-        </Button>
+        {/* Back + Test Auth */}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 -ml-2">
+            <ArrowLeft className="size-3.5" />
+            Back
+          </Button>
+          {enrollment?.enrollmentStatus === 'VERIFIED' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setTestAuthOpen(true)}
+              className="gap-1.5"
+            >
+              <Zap className="size-3.5" />
+              Test Authentication
+            </Button>
+          )}
+        </div>
 
         {isLoading && (
           <div className="flex justify-center py-12">
@@ -291,6 +581,14 @@ export default function EnrollmentDetailPage() {
           </div>
         )}
       </div>
+
+      {enrollment && (
+        <TestAuthDialog
+          open={testAuthOpen}
+          onClose={() => setTestAuthOpen(false)}
+          enrollment={enrollment}
+        />
+      )}
     </AppShell>
   );
 }

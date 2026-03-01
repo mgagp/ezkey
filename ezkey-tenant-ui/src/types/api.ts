@@ -89,6 +89,28 @@ export interface AdminCreateRequest {
   lastName?: string;
 }
 
+/** Request body for POST /api/v1/auth-attempts. */
+export interface AuthAttemptCreateRequest {
+  enrollmentId: number;
+  /** Whether a 2-digit challenge code should be generated for the attempt. */
+  challengeRequested: boolean;
+}
+
+/**
+ * Response from POST /api/v1/auth-attempts (201 Created).
+ * Use authAttemptId to poll status via GET /api/v1/auth-attempts/{id}
+ * or to cancel via POST /api/v1/auth-attempts/{id}/cancel.
+ */
+export interface AuthAttemptCreateResponse {
+  authAttemptId: number;
+  /** Present only when challengeRequested was true. */
+  authAttemptChallenge?: number;
+  /** Seconds until expiry — use to seed the countdown timer. */
+  timeoutSeconds: number;
+  /** ISO-8601 absolute expiry timestamp — use to drive the live countdown. */
+  expiresAt: string;
+}
+
 /** Request body for POST /api/v1/api-keys. */
 export interface ApiKeyCreateRequest {
   integrationId: number;
