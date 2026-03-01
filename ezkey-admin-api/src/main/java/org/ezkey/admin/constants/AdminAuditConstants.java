@@ -171,6 +171,30 @@ public final class AdminAuditConstants {
   public static final String TENANT_DEACTIVATED = "tenant_deactivated";
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  // Admin Provisioning Actions
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+  /** Audit action for successful global administrator creation. */
+  public static final String ADMIN_GLOBAL_CREATED = "admin_global_created";
+
+  /** Audit action for failed global administrator creation. */
+  public static final String ADMIN_GLOBAL_CREATION_FAILED = "admin_global_creation_failed";
+
+  /** Audit action for successful tenant administrator creation. */
+  public static final String ADMIN_TENANT_CREATED = "admin_tenant_created";
+
+  /** Audit action for failed tenant administrator creation. */
+  public static final String ADMIN_TENANT_CREATION_FAILED = "admin_tenant_creation_failed";
+
+  /** Audit action for successful administrator deactivation. */
+  public static final String ADMIN_DEACTIVATED = "admin_deactivated";
+
+  /**
+   * Audit action for failed administrator deactivation (not found, limit, or self-deactivation).
+   */
+  public static final String ADMIN_DEACTIVATION_FAILED = "admin_deactivation_failed";
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Encryption Key Actions
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
 

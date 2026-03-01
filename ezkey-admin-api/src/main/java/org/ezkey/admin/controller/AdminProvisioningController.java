@@ -15,8 +15,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
 import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
@@ -29,6 +32,11 @@ import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsRes
 import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.springdoc.core.annotations.ParameterObject;
@@ -42,11 +50,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -70,6 +80,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Ezkey contributors
  * @since 2025
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/admins")
 @Tag(name = "Administrator Provisioning", description = "Administrator provisioning API")
@@ -78,14 +89,17 @@ public class AdminProvisioningController {
   private final AdminProvisioningService provisioningService;
   private final QrCodeGeneratorService qrCodeGeneratorService;
   private final QrCodePayloadService qrCodePayloadService;
+  private final AuditLogService auditLogService;
 
   public AdminProvisioningController(
       AdminProvisioningService provisioningService,
       QrCodeGeneratorService qrCodeGeneratorService,
-      QrCodePayloadService qrCodePayloadService) {
+      QrCodePayloadService qrCodePayloadService,
+      AuditLogService auditLogService) {
     this.provisioningService = provisioningService;
     this.qrCodeGeneratorService = qrCodeGeneratorService;
     this.qrCodePayloadService = qrCodePayloadService;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -112,7 +126,10 @@ public class AdminProvisioningController {
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
   public ResponseEntity<AdminProvisioningResponseDto> createGlobalAdmin(
-      @Valid @RequestBody AdminCreateRequestDto request, Authentication auth) {
+      @Valid @RequestBody AdminCreateRequestDto request,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -129,28 +146,55 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 
-    ProvisioningResult result =
-        provisioningService.createGlobalAdmin(
-            request.username(),
-            request.email(),
-            request.firstName(),
-            request.lastName(),
-            principal);
+    try {
+      ProvisioningResult result =
+          provisioningService.createGlobalAdmin(
+              request.username(),
+              request.email(),
+              request.firstName(),
+              request.lastName(),
+              principal);
 
-    AdminProvisioningResponseDto response =
-        new AdminProvisioningResponseDto(
-            result.admin().getAdminId(),
-            result.admin().getUsername(),
-            result.admin().getEmail(),
-            result.admin().getFirstName(),
-            result.admin().getLastName(),
-            result.admin().getAdminType().name(),
-            result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
-            result.enrollment().getEnrollmentId(),
-            result.admin().getCreatedAt());
+      AdminProvisioningResponseDto response =
+          new AdminProvisioningResponseDto(
+              result.admin().getAdminId(),
+              result.admin().getUsername(),
+              result.admin().getEmail(),
+              result.admin().getFirstName(),
+              result.admin().getLastName(),
+              result.admin().getAdminType().name(),
+              result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
+              result.enrollment().getEnrollmentId(),
+              result.admin().getCreatedAt());
 
-    return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
-        .body(response);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_CREATED,
+                  AdminAuditConstants.ADMIN_GLOBAL_CREATED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .eventDetails(
+                  "Admin ID: "
+                      + result.admin().getAdminId()
+                      + ", username: "
+                      + result.admin().getUsername())
+              .build());
+
+      return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
+          .body(response);
+    } catch (IllegalArgumentException | AdminLimitException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_CREATED,
+                  AdminAuditConstants.ADMIN_GLOBAL_CREATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    }
   }
 
   /**
@@ -182,7 +226,10 @@ public class AdminProvisioningController {
             "Forbidden - not authorized or tenant admin trying to create for different tenant")
   })
   public ResponseEntity<AdminProvisioningResponseDto> createTenantAdmin(
-      @Valid @RequestBody AdminCreateRequestDto request, Authentication auth) {
+      @Valid @RequestBody AdminCreateRequestDto request,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -193,29 +240,58 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 
-    ProvisioningResult result =
-        provisioningService.createTenantAdmin(
-            request.username(),
-            request.email(),
-            request.firstName(),
-            request.lastName(),
-            request.tenantId(),
-            principal);
+    try {
+      ProvisioningResult result =
+          provisioningService.createTenantAdmin(
+              request.username(),
+              request.email(),
+              request.firstName(),
+              request.lastName(),
+              request.tenantId(),
+              principal);
 
-    AdminProvisioningResponseDto response =
-        new AdminProvisioningResponseDto(
-            result.admin().getAdminId(),
-            result.admin().getUsername(),
-            result.admin().getEmail(),
-            result.admin().getFirstName(),
-            result.admin().getLastName(),
-            result.admin().getAdminType().name(),
-            result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
-            result.enrollment().getEnrollmentId(),
-            result.admin().getCreatedAt());
+      AdminProvisioningResponseDto response =
+          new AdminProvisioningResponseDto(
+              result.admin().getAdminId(),
+              result.admin().getUsername(),
+              result.admin().getEmail(),
+              result.admin().getFirstName(),
+              result.admin().getLastName(),
+              result.admin().getAdminType().name(),
+              result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
+              result.enrollment().getEnrollmentId(),
+              result.admin().getCreatedAt());
 
-    return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
-        .body(response);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_CREATED,
+                  AdminAuditConstants.ADMIN_TENANT_CREATED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .eventDetails(
+                  "Admin ID: "
+                      + result.admin().getAdminId()
+                      + ", username: "
+                      + result.admin().getUsername()
+                      + ", tenantId: "
+                      + request.tenantId())
+              .build());
+
+      return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
+          .body(response);
+    } catch (IllegalArgumentException | AdminLimitException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_CREATED,
+                  AdminAuditConstants.ADMIN_TENANT_CREATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    }
   }
 
   /**
@@ -485,14 +561,54 @@ public class AdminProvisioningController {
   })
   public ResponseEntity<Void> deactivateAdmin(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
-      Authentication auth) {
+      @Parameter(description = "Audit justification for the deactivation (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    provisioningService.deactivateAdmin(id, principal);
-    return ResponseEntity.noContent().build();
+    try {
+      provisioningService.deactivateAdmin(id, principal);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_DEACTIVATED,
+                  AdminAuditConstants.ADMIN_DEACTIVATED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .reason(reason)
+              .eventDetails("Admin ID: " + id)
+              .build());
+      return ResponseEntity.noContent().build();
+    } catch (AdminNotAllowedException | AdminLimitException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_DEACTIVATED,
+                  AdminAuditConstants.ADMIN_DEACTIVATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_DEACTIVATED,
+                  AdminAuditConstants.ADMIN_DEACTIVATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage("Admin not found: " + id)
+              .build());
+      throw e;
+    }
   }
 
   /**

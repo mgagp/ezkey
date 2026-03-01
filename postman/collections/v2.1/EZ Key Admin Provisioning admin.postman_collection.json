@@ -390,21 +390,29 @@
               "    });",
               "} else if (pm.response.code === 400) {",
               "    var jsonData = pm.response.json();",
-              "    pm.test(\"400 response is RFC 9457 Problem Detail\", function () {",
-              "        pm.expect(jsonData).to.have.property('type');",
-              "        pm.expect(jsonData).to.have.property('title');",
-              "        pm.expect(jsonData).to.have.property('status');",
-              "        pm.expect(jsonData).to.have.property('detail');",
-              "        pm.expect(jsonData.status).to.equal(400);",
-              "    });",
-              "    ",
-              "    pm.test(\"400 response has valid problem type URI\", function () {",
-              "        const validTypes = [",
-              "            'https://ezkey.io/problems/admin-not-allowed',",
-              "            'https://ezkey.io/problems/admin-limit-violation'",
-              "        ];",
-              "        pm.expect(validTypes).to.include(jsonData.type);",
-              "    });",
+              "    // Two types of 400: RFC 9457 Problem Detail (business rules) or VALIDATION_ERROR (invalid reason length)",
+              "    if (jsonData.code === 'VALIDATION_ERROR') {",
+              "        pm.test(\"400 validation error - reason too short\", function () {",
+              "            pm.expect(jsonData).to.have.property('code');",
+              "            pm.expect(jsonData.code).to.equal('VALIDATION_ERROR');",
+              "            pm.expect(jsonData).to.have.property('message');",
+              "        });",
+              "    } else {",
+              "        pm.test(\"400 response is RFC 9457 Problem Detail\", function () {",
+              "            pm.expect(jsonData).to.have.property('type');",
+              "            pm.expect(jsonData).to.have.property('title');",
+              "            pm.expect(jsonData).to.have.property('status');",
+              "            pm.expect(jsonData).to.have.property('detail');",
+              "            pm.expect(jsonData.status).to.equal(400);",
+              "        });",
+              "        pm.test(\"400 response has valid problem type URI\", function () {",
+              "            const validTypes = [",
+              "                'https://ezkey.io/problems/admin-not-allowed',",
+              "                'https://ezkey.io/problems/admin-limit-violation'",
+              "            ];",
+              "            pm.expect(validTypes).to.include(jsonData.type);",
+              "        });",
+              "    }",
               "} else if (pm.response.code === 403) {",
               "    pm.test(\"Forbidden - not a global admin\", function () {",
               "        pm.expect(pm.response.code).to.equal(403);",
@@ -435,6 +443,14 @@
             ":id",
             "deactivate"
           ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "{{reason}}",
+              "description": "Audit justification for the deactivation (min 10 characters, recommended for SOC 2 CC6.3 compliance)",
+              "disabled": true
+            }
+          ],
           "variable": [
             {
               "key": "id",
@@ -443,7 +459,7 @@
             }
           ]
         },
-        "description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**RFC 9457 Problem Detail Responses:**\nBusiness logic errors are returned as RFC 9457 Problem Detail responses with specific type URIs:\n- `https://ezkey.io/problems/admin-not-allowed` - Operation not allowed (e.g., self-deactivation)\n- `https://ezkey.io/problems/admin-limit-violation` - Would violate admin limits\n\n**Rules:**\n- A global admin can deactivate another global admin (but not themselves)\n- A global admin can deactivate any tenant admin\n- A global admin can deactivate a tenant admin even if they're the only admin for that tenant\n- Deactivating a global admin must not fall below minimum global admin limit\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum global admin limit to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n- Returns 400 Bad Request with AdminLimitException if minimum limits violated\n- Does NOT enforce minimum tenant admin limits per tenant (global admins can deactivate the only tenant admin)\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n- Operation is idempotent (already inactive → returns 204)\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Error Responses (400):**\n- `AdminNotAllowedException` - Self-deactivation attempt (RFC 9457)\n- `AdminLimitException` - Would violate minimum global admin limit (RFC 9457)\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate - AdminNotAllowedException or AdminLimitException (RFC 9457 Problem Detail)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 500: Internal server error"
+        "description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**RFC 9457 Problem Detail Responses:**\nBusiness logic errors are returned as RFC 9457 Problem Detail responses with specific type URIs:\n- `https://ezkey.io/problems/admin-not-allowed` - Operation not allowed (e.g., self-deactivation)\n- `https://ezkey.io/problems/admin-limit-violation` - Would violate admin limits\n\n**Rules:**\n- A global admin can deactivate another global admin (but not themselves)\n- A global admin can deactivate any tenant admin\n- A global admin can deactivate a tenant admin even if they're the only admin for that tenant\n- Deactivating a global admin must not fall below minimum global admin limit\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum global admin limit to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n- Returns 400 Bad Request with AdminLimitException if minimum limits violated\n- Does NOT enforce minimum tenant admin limits per tenant (global admins can deactivate the only tenant admin)\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n- Operation is idempotent (already inactive → returns 204)\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Query Parameters:**\n- `reason` (optional): Audit justification for the deactivation. Must be between 10 and 500 characters when provided. Recommended for SOC 2 CC6.3 compliance. Enable the query param in Postman to include it.\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Error Responses (400):**\n- `AdminNotAllowedException` - Self-deactivation attempt (RFC 9457)\n- `AdminLimitException` - Would violate minimum global admin limit (RFC 9457)\n- `VALIDATION_ERROR` - `reason` provided but shorter than 10 characters\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate - business rule violation (RFC 9457) or invalid reason length\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 500: Internal server error"
       },
       "response": []
     }

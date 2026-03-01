@@ -28,6 +28,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -79,6 +80,8 @@ class AdminProvisioningControllerTest {
 
   @Mock private QrCodePayloadService qrCodePayloadService;
 
+  @Mock private AuditLogService auditLogService;
+
   private AdminProvisioningController controller;
 
   private Tenant testTenant;
@@ -95,7 +98,7 @@ class AdminProvisioningControllerTest {
   void setUp() {
     controller =
         new AdminProvisioningController(
-            provisioningService, qrCodeGeneratorService, qrCodePayloadService);
+            provisioningService, qrCodeGeneratorService, qrCodePayloadService, auditLogService);
 
     // Setup test tenant
     testTenant = new Tenant();
