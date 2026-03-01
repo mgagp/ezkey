@@ -1,0 +1,17 @@
+:8080 {
+    root * /usr/share/caddy
+
+    encode gzip
+
+    # Proxy all /api/* requests to the admin-api running on the Docker host
+    # Mirrors exactly what the Vite dev server proxy does in development mode
+    handle /api/* {
+        reverse_proxy host.docker.internal:9080
+    }
+
+    # Serve the SPA: fall back to index.html for client-side routes (React Router)
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
