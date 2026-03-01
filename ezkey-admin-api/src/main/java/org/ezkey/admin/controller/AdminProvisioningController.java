@@ -253,7 +253,7 @@ public class AdminProvisioningController {
               request.email(),
               request.firstName(),
               request.lastName(),
-            effectiveTenantId,
+              effectiveTenantId,
               principal);
 
       AdminProvisioningResponseDto response =

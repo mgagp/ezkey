@@ -64,7 +64,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -88,7 +87,6 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><b>GET /api/v1/auth-attempts/{id}</b> - Get authorization attempt by ID
  *   <li><b>GET /api/v1/auth-attempts/{id}/wait</b> - Wait for authentication response
  *   <li><b>POST /api/v1/auth-attempts</b> - Create new authorization attempt
- *   <li><b>DELETE /api/v1/auth-attempts/{id}</b> - Delete authorization attempt
  * </ul>
  *
  * <p><b>Usage Context:</b> This is part of the admin-api (port 9080) for internal administration
@@ -510,37 +508,6 @@ public class AuthAttemptController {
               + ".");
     }
     return enrollmentId;
-  }
-
-  /**
-   * Deletes an authorization attempt by its ID for administrative purposes.
-   *
-   * <p>Removes an authorization attempt from the system. Returns 204 No Content on successful
-   * deletion, or 404 if not found.
-   *
-   * @param id the authorization attempt ID to delete
-   * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
-   */
-  @Operation(
-      summary = "Delete auth attempt",
-      description = "Removes an authentication attempt from the system")
-  @ApiResponses(
-      value = {
-        @ApiResponse(responseCode = "204", description = "Auth attempt deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
-  @PreAuthorize("hasRole('ADMIN')")
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(
-      @Parameter(description = "Auth attempt ID to delete", example = "1") @PathVariable("id")
-          Integer id) {
-    try {
-      authAttemptService.delete(id);
-      return ResponseEntity.noContent().build();
-    } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
-    }
   }
 
   /**

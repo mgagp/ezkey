@@ -397,10 +397,6 @@ class ApiClient:
       log.error(f"Cancel auth attempt failed: {e}")
       return None
 
-  def delete_auth_attempt(self, auth_attempt_id: int) -> bool:
-    """Delete auth attempt by ID."""
-    return self._delete(f"/api/v1/auth-attempts/{auth_attempt_id}")
-
   def get_admins(
       self,
       page: int = 0,

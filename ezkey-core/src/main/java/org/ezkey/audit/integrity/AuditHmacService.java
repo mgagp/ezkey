@@ -10,6 +10,7 @@
 
 package org.ezkey.audit.integrity;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -22,53 +23,37 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
-
 /**
  * HMAC-SHA256 signing and verification service for audit log entries.
  *
- * <p>
- * Provides tamper-evidence for audit log entries in self-hosted deployments by
- * computing and
- * verifying HMAC-SHA256 signatures. This is the cryptographic foundation for
- * SOC 2 audit log
+ * <p>Provides tamper-evidence for audit log entries in self-hosted deployments by computing and
+ * verifying HMAC-SHA256 signatures. This is the cryptographic foundation for SOC 2 audit log
  * integrity (CC7.2, CC6.1).
  *
- * <p>
- * <b>Design Decisions:</b>
+ * <p><b>Design Decisions:</b>
  *
  * <ul>
- * <li><b>Algorithm:</b> HMAC-SHA256 via {@code javax.crypto.Mac} (no Tink
- * dependency --
- * separation of concerns between integrity and confidentiality)
- * <li><b>Key:</b> Dedicated 256-bit key, separate from the Tink encryption
- * master key
- * <li><b>Canonical form:</b> Pipe-delimited fields, null as empty string,
- * timestamps in ISO-8601
- * UTC -- deterministic and unambiguous
- * <li><b>Inspired by:</b> HashiCorp Vault audit backend (per-entry HMAC, proven
- * SOC 2 acceptable)
+ *   <li><b>Algorithm:</b> HMAC-SHA256 via {@code javax.crypto.Mac} (no Tink dependency --
+ *       separation of concerns between integrity and confidentiality)
+ *   <li><b>Key:</b> Dedicated 256-bit key, separate from the Tink encryption master key
+ *   <li><b>Canonical form:</b> Pipe-delimited fields, null as empty string, timestamps in ISO-8601
+ *       UTC -- deterministic and unambiguous
+ *   <li><b>Inspired by:</b> HashiCorp Vault audit backend (per-entry HMAC, proven SOC 2 acceptable)
  * </ul>
  *
- * <p>
- * <b>Thread Safety:</b> This service is thread-safe. Each HMAC computation
- * creates a new {@link
+ * <p><b>Thread Safety:</b> This service is thread-safe. Each HMAC computation creates a new {@link
  * Mac} instance (Mac is not thread-safe, but creation is lightweight).
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2026
@@ -80,8 +65,8 @@ public class AuditHmacService {
 
   private static final String HMAC_ALGORITHM = "HmacSHA256";
   private static final String FIELD_SEPARATOR = "|";
-  private static final DateTimeFormatter UTC_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-      .withZone(ZoneOffset.UTC);
+  private static final DateTimeFormatter UTC_FORMATTER =
+      DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneOffset.UTC);
 
   private final AuditHmacProperties properties;
   private volatile SecretKeySpec hmacKeySpec;
@@ -93,11 +78,8 @@ public class AuditHmacService {
   /**
    * Initializes the HMAC key from the configured key file at startup.
    *
-   * <p>
-   * The key file must contain a Base64-encoded 256-bit (32-byte) secret. If the
-   * key file is not
-   * configured or cannot be read, HMAC signing is disabled gracefully with a
-   * warning.
+   * <p>The key file must contain a Base64-encoded 256-bit (32-byte) secret. If the key file is not
+   * configured or cannot be read, HMAC signing is disabled gracefully with a warning.
    */
   @PostConstruct
   void init() {
@@ -167,16 +149,12 @@ public class AuditHmacService {
   /**
    * Computes the HMAC-SHA256 signature of an audit log entry.
    *
-   * <p>
-   * The HMAC is computed over a canonical pipe-delimited representation of the
-   * entry fields.
-   * Null fields are represented as empty strings. Timestamps are normalized to
-   * UTC ISO-8601 format
+   * <p>The HMAC is computed over a canonical pipe-delimited representation of the entry fields.
+   * Null fields are represented as empty strings. Timestamps are normalized to UTC ISO-8601 format
    * for deterministic output regardless of the JVM's default timezone.
    *
    * @param entry the audit log entry to sign
-   * @return Base64-encoded HMAC-SHA256 signature, or null if signing is not
-   *         active
+   * @return Base64-encoded HMAC-SHA256 signature, or null if signing is not active
    */
   public String computeHmac(AuditLog entry) {
     if (!isActive()) {
@@ -199,8 +177,7 @@ public class AuditHmacService {
    * Computes HMAC-SHA256 over arbitrary data (used by chain checkpoint service).
    *
    * @param data the string data to sign
-   * @return Base64-encoded HMAC-SHA256 signature, or null if signing is not
-   *         active
+   * @return Base64-encoded HMAC-SHA256 signature, or null if signing is not active
    */
   public String computeHmac(String data) {
     if (!isActive()) {
@@ -222,8 +199,7 @@ public class AuditHmacService {
    * Verifies the HMAC signature of an audit log entry.
    *
    * @param entry the audit log entry to verify (must have entry_hmac set)
-   * @return true if the HMAC matches, false if it does not match or signing is
-   *         not active
+   * @return true if the HMAC matches, false if it does not match or signing is not active
    */
   public boolean verifyHmac(AuditLog entry) {
     if (!isActive()) {
@@ -239,13 +215,10 @@ public class AuditHmacService {
   }
 
   /**
-   * Builds the canonical pipe-delimited string representation of an audit log
-   * entry for HMAC
+   * Builds the canonical pipe-delimited string representation of an audit log entry for HMAC
    * computation.
    *
-   * <p>
-   * Field order is fixed and deterministic. Null values are represented as empty
-   * strings.
+   * <p>Field order is fixed and deterministic. Null values are represented as empty strings.
    * Timestamps are normalized to UTC ISO-8601 format.
    *
    * @param entry the audit log entry
@@ -321,11 +294,8 @@ public class AuditHmacService {
   /**
    * Generates a new 256-bit HMAC key file at the specified path.
    *
-   * <p>
-   * Creates parent directories if they do not exist and writes a Base64-encoded
-   * 32-byte key.
-   * This auto-generation mirrors the Tink master key behavior for first-startup
-   * convenience.
+   * <p>Creates parent directories if they do not exist and writes a Base64-encoded 32-byte key.
+   * This auto-generation mirrors the Tink master key behavior for first-startup convenience.
    *
    * @param path the file path to write the key to
    * @throws IOException if the file cannot be written

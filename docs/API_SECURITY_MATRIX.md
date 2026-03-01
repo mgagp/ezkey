@@ -45,7 +45,6 @@ This document provides a comprehensive security matrix for all endpoints in the 
 | `/api/v1/auth-attempts` | GET | `ROLE_ADMIN` | List auth attempts | ❌ No | N/A |
 | `/api/v1/auth-attempts/{id}` | GET | `ROLE_ADMIN` or `ROLE_API_KEY` | Get auth attempt by ID | ✅ Yes (ownership check) | N/A |
 | `/api/v1/auth-attempts` | POST | `ROLE_ADMIN` or `ROLE_API_KEY` | Create new auth attempt | ✅ Yes | ✅ 100/15min |
-| `/api/v1/auth-attempts/{id}` | DELETE | `ROLE_ADMIN` | Delete auth attempt | ❌ No | N/A |
 | `/api/v1/auth-attempts/{id}/wait` | GET | `ROLE_ADMIN` or `ROLE_API_KEY` | Wait for auth response | ✅ Yes (ownership check) | ✅ 200/15min |
 
 ### API Key Management
@@ -112,7 +111,6 @@ This document provides a comprehensive security matrix for all endpoints in the 
 # ✅ Should succeed
 GET /api/v1/auth-attempts/10
 POST /api/v1/auth-attempts
-DELETE /api/v1/auth-attempts/10
 GET /api/v1/auth-attempts/10/wait
 ```
 
@@ -128,7 +126,6 @@ GET /api/v1/auth-attempts/10/wait
 ```bash
 # ❌ Should fail with 403
 GET /api/v1/auth-attempts/20
-DELETE /api/v1/auth-attempts/20
 GET /api/v1/auth-attempts/20/wait
 ```
 

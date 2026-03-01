@@ -382,20 +382,6 @@ public class AuthAttemptService {
   }
 
   /**
-   * Deletes an authentication attempt by its ID.
-   *
-   * @param id the authentication attempt ID to delete
-   * @throws ResourceNotFoundException if the authentication attempt is not found
-   */
-  @Transactional
-  public void delete(Integer id) {
-    if (!authAttemptRepository.existsById(id)) {
-      throw new ResourceNotFoundException("Authentication attempt", id);
-    }
-    authAttemptRepository.deleteById(id);
-  }
-
-  /**
    * Cancels a pending or read authentication attempt by marking it as expired.
    *
    * <p>This method allows client applications to proactively cancel authentication requests that

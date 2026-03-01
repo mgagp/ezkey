@@ -162,7 +162,6 @@ curl -X GET http://localhost:8080/api/v1/enrollments \
 | `/api/v1/auth-attempts` | GET | ✅ 200 | ✅ 200 | ❌ 401 |
 | `/api/v1/auth-attempts` | POST | ✅ 201 | ✅ 201 | ❌ 401 |
 | `/api/v1/auth-attempts/{id}` | GET | ✅ 200* | ✅ 200 | ❌ 401 |
-| `/api/v1/auth-attempts/{id}` | DELETE | ✅ 204* | ✅ 204 | ❌ 401 |
 | `/api/v1/auth-attempts/{id}/wait` | GET | ✅ 200* | ✅ 200 | ❌ 401 |
 
 *API key access requires ownership check (auth attempt must belong to API key's integration)

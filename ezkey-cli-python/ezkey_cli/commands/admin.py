@@ -858,38 +858,6 @@ def wait_for_auth_attempt(ctx, id, timeout, polling):
         OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
 
 
-@auth_attempt_group.command('delete')
-@click.option('--id', required=True, type=int, help='Auth attempt ID')
-@click.confirmation_option(prompt='Are you sure you want to delete this auth attempt?')
-@click.pass_context
-def delete_auth_attempt(ctx, id):
-    """
-    Delete an authentication attempt from the system.
-
-    WARNING: This will permanently remove the authentication attempt.
-    This action cannot be undone.
-    """
-    config: ConfigManager = ctx.obj['config']
-    http_client = HttpClient(config)
-    verbose = ctx.obj.get('verbose', False)
-    pretty_print = ctx.obj.get('pretty_print', True)
-
-    admin_url = config.get('adminUrl')
-    if not admin_url:
-        OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
-        return
-
-    url = f"{admin_url}/api/v1/auth-attempts/{id}"
-    OutputUtils.verbose(f"DELETE {url}", verbose)
-
-    response = http_client.delete(url)
-
-    if response.success:
-        OutputUtils.success(f"✅ Auth attempt {id} deleted successfully")
-    else:
-        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
-
-
 @auth_attempt_group.command('cancel')
 @click.option('--id', required=True, type=int, help='Auth attempt ID')
 @click.pass_context

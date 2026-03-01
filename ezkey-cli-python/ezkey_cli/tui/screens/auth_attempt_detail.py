@@ -24,7 +24,6 @@ class AuthAttemptDetailScreen(Screen):
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
       Binding("c", "cancel", "Cancel"),
-      Binding("d", "delete", "Delete"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -158,42 +157,6 @@ class AuthAttemptDetailScreen(Screen):
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
         self.app.handle_auth_error()
       self._show_error(f"Failed to cancel auth attempt {self.auth_attempt_id}")
-
-  def action_delete(self) -> None:
-    """Delete auth attempt with confirmation."""
-    log.debug(f"Deleting auth attempt {self.auth_attempt_id}")
-    from .confirmation_modal import ConfirmationModal
-
-    def on_confirm(confirmed: bool) -> None:
-      if confirmed:
-        self._perform_delete()
-
-    self.app.push_screen(
-        ConfirmationModal(
-            title="Delete Auth Attempt",
-            message="Are you sure you want to delete this auth attempt?\n"
-                    "This action cannot be undone."
-        ),
-        on_confirm
-    )
-
-  def _perform_delete(self) -> None:
-    """Perform delete API call."""
-    api_client = self.app.api_client
-    if not api_client:
-      self._show_error("No API client available")
-      return
-
-    success = api_client.delete_auth_attempt(self.auth_attempt_id)
-    if success:
-      log.info(f"Auth attempt {self.auth_attempt_id} deleted successfully")
-      detail_widget = self.query_one("#detail_content", Static)
-      detail_widget.update("✓ Auth attempt deleted. Returning to list...")
-      self.app.set_timer(1.0, lambda: self.app.pop_screen())
-    else:
-      if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
-        self.app.handle_auth_error()
-      self._show_error(f"Failed to delete auth attempt {self.auth_attempt_id}")
 
   def action_quit(self) -> None:
     """Quit the application."""

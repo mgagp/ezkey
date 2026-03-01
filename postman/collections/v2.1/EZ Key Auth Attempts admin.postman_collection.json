@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3822eaa7-740f-4b2d-824f-791b9376c346",
     "name": "EZ Key Auth Attempts admin",
-    "description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Cancel Auth Attempt**: Cancel a pending or read authentication attempt by marking it as expired\n- **Delete Auth Attempt**: Remove an authentication attempt from the system\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
+    "description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Cancel Auth Attempt**: Cancel a pending or read authentication attempt by marking it as expired\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -640,55 +640,6 @@
           ]
         },
         "description": "Cancels a pending or read authentication attempt using API key authentication. Access control ensures API keys can only cancel attempts belonging to their integration.\n\n**Authentication:**\n- HTTP Basic Auth with `integrationKey:secretKey`\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to cancel\n\n**Response (200 OK):**\nSame structure as cancel endpoint\n\n**Status Codes:**\n- 200: Authentication attempt cancelled successfully\n- 400: Bad Request - authentication attempt already in final state\n- 404: Not Found - authentication attempt not found\n- 401: Unauthorized - invalid API key\n- 403: Forbidden - API key cannot cancel attempts from other integrations\n- 429: Rate limit exceeded (200 requests per hour per integration key)\n- 500: Internal server error"
-      },
-      "response": []
-    },
-    {
-      "name": "delete",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"Status code is 204 or 404\", function () {",
-              "    pm.expect([204, 404]).to.include(pm.response.code);",
-              "});",
-              "",
-              "if (pm.response.code === 204) {",
-              "    pm.test(\"Deletion successful\", function () {",
-              "        pm.expect(pm.response.code).to.equal(204);",
-              "    });",
-              "}"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
-          }
-        }
-      ],
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/auth-attempts/:id",
-          "host": [
-            "{{base_url_admin_api}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "auth-attempts",
-            ":id"
-          ],
-          "variable": [
-            {
-              "key": "id",
-              "value": "{{authAttemptId}}",
-              "description": "The authentication attempt ID to delete"
-            }
-          ]
-        },
-        "description": "Removes an authentication attempt from the system. This endpoint is used for administrative cleanup of authentication attempts.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can delete any auth attempt (any tenant)\n- **TenantAdmin**: Can only delete auth attempts for enrollments within their tenant\n- Access is validated via `AccessControlService.canAccessAuthAttempt()`\n- Returns 403 Forbidden if TenantAdmin tries to delete auth attempt from another tenant\n\n**Path Parameters:**\n- `id` (required): Authentication attempt ID to delete\n\n**Response (204 No Content):**\nNo response body. The authentication attempt is removed from the system.\n\n**Status Codes:**\n- 204: Auth attempt deleted successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to delete auth attempt from another tenant\n- 404: Auth attempt not found\n- 500: Internal server error"
       },
       "response": []
     }

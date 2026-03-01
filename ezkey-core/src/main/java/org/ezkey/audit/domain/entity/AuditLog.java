@@ -10,12 +10,6 @@
 
 package org.ezkey.audit.domain.entity;
 
-import java.time.OffsetDateTime;
-
-import org.ezkey.audit.domain.ApiName;
-import org.ezkey.audit.domain.EventStatus;
-import org.ezkey.audit.domain.EventType;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,35 +18,30 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
 
 /**
  * JPA entity representing an audit log entry.
  *
- * <p>
- * Captures comprehensive information about security-relevant events across all
- * Ezkey APIs for
- * monitoring, forensic analysis, and SOC 2 compliance requirements. Supports
- * per-entry HMAC signing
+ * <p>Captures comprehensive information about security-relevant events across all Ezkey APIs for
+ * monitoring, forensic analysis, and SOC 2 compliance requirements. Supports per-entry HMAC signing
  * for tamper-evidence in self-hosted deployments.
  *
- * <p>
- * <b>Integrity Fields:</b>
+ * <p><b>Integrity Fields:</b>
  *
  * <ul>
- * <li>{@code instanceId} - Application instance that created this entry (HA
- * traceability)
- * <li>{@code entryHmac} - HMAC-SHA256 of canonical entry content
- * (tamper-evidence)
+ *   <li>{@code instanceId} - Application instance that created this entry (HA traceability)
+ *   <li>{@code entryHmac} - HMAC-SHA256 of canonical entry content (tamper-evidence)
  * </ul>
  *
- * <p>
- * <b>Database Table:</b> ezkey_audit_log (partitioned by month on created_at)
+ * <p><b>Database Table:</b> ezkey_audit_log (partitioned by month on created_at)
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -124,21 +113,20 @@ public class AuditLog {
   private String entryHmac;
 
   /**
-   * Optional justification supplied by the admin for sensitive operations
-   * (revocation, deletion,
+   * Optional justification supplied by the admin for sensitive operations (revocation, deletion,
    * deactivation, key rotation).
    *
-   * <p>
-   * Supports SOC 2 CC6.3 (access deprovisioning) and CC8.1 (authorized changes).
-   * Validated to be
-   * between 10 and 500 characters when provided. Included in per-entry HMAC
-   * canonical form as field
+   * <p>Supports SOC 2 CC6.3 (access deprovisioning) and CC8.1 (authorized changes). Validated to be
+   * between 10 and 500 characters when provided. Included in per-entry HMAC canonical form as field
    * 15 (null → empty string).
    */
   @Column(name = "reason", length = 500)
   private String reason;
 
-  @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "created_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
   private OffsetDateTime createdAt;
 
   /** Default constructor for JPA. */
@@ -246,8 +234,7 @@ public class AuditLog {
     /**
      * Sets the optional justification for sensitive operations.
      *
-     * @param reason the justification text (10–500 chars when provided; null
-     *               accepted)
+     * @param reason the justification text (10–500 chars when provided; null accepted)
      * @return this builder
      */
     public Builder reason(String reason) {

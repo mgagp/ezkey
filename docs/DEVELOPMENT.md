@@ -43,7 +43,6 @@ This section covers the complete OpenAPI (Swagger) documentation strategy for Ez
 - `POST /api/v1/auth-attempts` - Create auth attempt (admin scope)
 - `GET /api/v1/auth-attempts/{id}` - Get auth attempt by ID (admin scope)
 - `GET /api/v1/auth-attempts/{id}/wait` - Wait for authentication completion (admin scope)
-- `DELETE /api/v1/auth-attempts/{id}` - Delete auth attempt (admin scope)
 - `POST /api/v1/auth-attempts/pending` - Retrieve pending request using proof payload (auth scope)
 - `POST /api/v1/auth-attempts/respond` - Submit decision for pending request (auth scope)
 
