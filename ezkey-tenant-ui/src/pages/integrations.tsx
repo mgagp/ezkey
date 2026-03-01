@@ -34,15 +34,16 @@ export default function IntegrationsPage() {
   });
 
   const columns: ColumnDef<Integration>[] = [
-    { header: 'ID', key: 'id', className: 'w-14', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
-    { header: 'Code', key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
+    { header: 'ID', key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
+    { header: 'Code', key: 'code', sortKey: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
     { header: 'Name', key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
     {
       header: 'Status',
       key: 'active',
+      sortKey: 'active',
       render: (row) => <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? 'Active' : 'Inactive'}</Badge>,
     },
-    { header: 'Created', key: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt)}</span> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt)}</span> },
   ];
 
   return (
@@ -85,6 +86,8 @@ export default function IntegrationsPage() {
             onRowClick={(row) => navigate(`/integrations/${row.id}`)}
             keyExtractor={(row) => row.id}
             emptyMessage="No integrations found. Create your first integration to get started."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
             page={pagination.page}
@@ -94,6 +97,8 @@ export default function IntegrationsPage() {
             isLast={pagination.isLast}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
 

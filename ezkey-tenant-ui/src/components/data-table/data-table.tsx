@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export interface ColumnDef<T> {
@@ -7,6 +8,11 @@ export interface ColumnDef<T> {
   key: string;
   render?: (row: T) => ReactNode;
   className?: string;
+  /**
+   * Backend field name for server-side sorting (e.g. 'createdAt', 'id').
+   * Omit for non-sortable columns.
+   */
+  sortKey?: string;
 }
 
 interface DataTableProps<T extends object> {
@@ -16,11 +22,29 @@ interface DataTableProps<T extends object> {
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
+  /**
+   * Current sort string from usePaginatedQuery (e.g. 'createdAt,DESC').
+   * Required to show active sort indicator.
+   */
+  currentSort?: string;
+  /**
+   * Called with the new sort string when a sortable column header is clicked.
+   * Connect to `pagination.setSort` from usePaginatedQuery.
+   */
+  onSort?: (sort: string) => void;
+}
+
+/** Parse 'field,DIR' → { field, dir }. Returns empty strings if missing. */
+function parseSortString(sort: string): { field: string; dir: string } {
+  const [field = '', dir = ''] = sort.split(',');
+  return { field, dir: dir.toUpperCase() };
 }
 
 /**
- * Reusable data table with neo-brutalism styling.
+ * Reusable data table with neo-brutalism styling and optional server-side sorting.
  * Use alongside <Pagination> for paginated lists.
+ *
+ * Sorting: add `sortKey` to column definitions and pass `currentSort` + `onSort`.
  */
 export function DataTable<T extends object>({
   columns,
@@ -29,23 +53,55 @@ export function DataTable<T extends object>({
   onRowClick,
   emptyMessage = 'No records found.',
   keyExtractor,
+  currentSort = '',
+  onSort,
 }: DataTableProps<T>) {
+  const { field: activeField, dir: activeDir } = parseSortString(currentSort);
+
+  const handleSort = (sortKey: string) => {
+    if (!onSort) return;
+    // Same column: toggle direction. New column: default DESC.
+    if (sortKey === activeField) {
+      onSort(`${sortKey},${activeDir === 'ASC' ? 'DESC' : 'ASC'}`);
+    } else {
+      onSort(`${sortKey},DESC`);
+    }
+  };
+
   return (
     <div className="w-full overflow-x-auto border-2 border-fg">
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-fg text-surface">
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={cn(
-                  'px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap',
-                  col.className,
-                )}
-              >
-                {col.header}
-              </th>
-            ))}
+            {columns.map((col) => {
+              const isSortable = !!col.sortKey && !!onSort;
+              const isActive = isSortable && col.sortKey === activeField;
+
+              return (
+                <th
+                  key={col.key}
+                  onClick={isSortable ? () => handleSort(col.sortKey!) : undefined}
+                  className={cn(
+                    'px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap',
+                    isSortable && 'cursor-pointer select-none hover:bg-white/10 transition-colors',
+                    col.className,
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {col.header}
+                    {isSortable && (
+                      isActive ? (
+                        activeDir === 'ASC'
+                          ? <ArrowUp className="size-3 opacity-90" />
+                          : <ArrowDown className="size-3 opacity-90" />
+                      ) : (
+                        <ArrowUpDown className="size-3 opacity-40" />
+                      )
+                    )}
+                  </span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

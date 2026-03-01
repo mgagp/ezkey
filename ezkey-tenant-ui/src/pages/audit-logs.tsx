@@ -136,15 +136,16 @@ export default function AuditLogsPage() {
   });
 
   const columns: ColumnDef<AuditLog>[] = [
-    { header: 'ID', key: 'auditLogId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
+    { header: 'ID', key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
     {
       header: 'Event',
       key: 'eventType',
+      sortKey: 'eventType',
       render: (r) => (
         <span className="font-mono text-xs">{formatEventType(r.eventType)}</span>
       ),
     },
-    { header: 'Status', key: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
+    { header: 'Status', key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
     {
       header: 'API',
       key: 'apiName',
@@ -167,7 +168,7 @@ export default function AuditLogsPage() {
           <span className="text-fg-muted text-xs">—</span>
         ),
     },
-    { header: 'Time', key: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
+    { header: 'Time', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
     {
       header: '',
       key: 'detail',
@@ -241,6 +242,8 @@ export default function AuditLogsPage() {
             onRowClick={(row) => setSelectedLog(row)}
             keyExtractor={(r) => r.auditLogId}
             emptyMessage="No audit log entries found for the selected filters."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
             page={pagination.page}
@@ -250,6 +253,8 @@ export default function AuditLogsPage() {
             isLast={pagination.isLast}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
       </div>

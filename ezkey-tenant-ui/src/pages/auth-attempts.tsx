@@ -94,8 +94,8 @@ export default function AuthAttemptsPage() {
   });
 
   const columns: ColumnDef<AuthAttempt>[] = [
-    { header: 'ID', key: 'authAttemptId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
-    { header: 'Status', key: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
+    { header: 'ID', key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
+    { header: 'Status', key: 'authAttemptStatus', sortKey: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
     {
       header: 'Enrollment',
       key: 'enrollmentId',
@@ -128,8 +128,8 @@ export default function AuthAttemptsPage() {
           <span className="text-fg-muted">—</span>
         ),
     },
-    { header: 'Created', key: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
-    { header: 'Expires', key: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.expiresAt)}</span> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
+    { header: 'Expires', key: 'expiresAt', sortKey: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.expiresAt)}</span> },
   ];
 
   // Suppress unused variable warning
@@ -197,6 +197,8 @@ export default function AuthAttemptsPage() {
             onRowClick={(row) => setSelectedAttempt(row)}
             keyExtractor={(r) => r.authAttemptId}
             emptyMessage="No auth attempts found for the selected filters."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
             page={pagination.page}
@@ -206,6 +208,8 @@ export default function AuthAttemptsPage() {
             isLast={pagination.isLast}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
       </div>

@@ -261,10 +261,10 @@ export default function EnrollmentsPage() {
   });
 
   const columns: ColumnDef<Enrollment>[] = [
-    { header: 'ID', key: 'enrollmentId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: 'Name', key: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: 'Status', key: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
-    { header: 'Active', key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
+    { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
+    { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
+    { header: 'Status', key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: 'Active', key: 'enrollmentActive', sortKey: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
     {
       header: 'Integration',
       key: 'integrationId',
@@ -278,7 +278,7 @@ export default function EnrollmentsPage() {
       },
     },
     { header: 'Challenge', key: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
   ];
 
   return (
@@ -344,6 +344,8 @@ export default function EnrollmentsPage() {
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
             keyExtractor={(row) => row.enrollmentId}
             emptyMessage="No enrollments found. Create your first enrollment to get started."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
             page={pagination.page}
@@ -353,6 +355,8 @@ export default function EnrollmentsPage() {
             isLast={pagination.isLast}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
       </div>

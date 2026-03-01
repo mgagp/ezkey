@@ -51,11 +51,11 @@ export default function IntegrationDetailPage() {
   });
 
   const enrollmentColumns: ColumnDef<Enrollment>[] = [
-    { header: 'ID', key: 'enrollmentId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: 'Name', key: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: 'Status', key: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
+    { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
+    { header: 'Status', key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
     { header: 'Active', key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
-    { header: 'Verified', key: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    { header: 'Verified', key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
   ];
 
   const name = integration ? getIntegrationName(integration) : '...';
@@ -139,6 +139,8 @@ export default function IntegrationDetailPage() {
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
             keyExtractor={(row) => row.enrollmentId}
             emptyMessage="No enrollments for this integration yet."
+            currentSort={enrPagination.sort}
+            onSort={enrPagination.setSort}
           />
           <Pagination
             page={enrPagination.page}
@@ -148,6 +150,8 @@ export default function IntegrationDetailPage() {
             isLast={enrPagination.isLast}
             onPrevPage={enrPagination.prevPage}
             onNextPage={enrPagination.nextPage}
+            pageSize={enrPagination.size}
+            onPageSizeChange={enrPagination.setPageSize}
           />
         </div>
       </div>

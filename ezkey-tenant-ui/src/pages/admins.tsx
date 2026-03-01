@@ -314,8 +314,8 @@ export default function AdminsPage() {
   });
 
   const columns: ColumnDef<Admin>[] = [
-    { header: 'ID', key: 'adminId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
-    { header: 'Username', key: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
+    { header: 'ID', key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
+    { header: 'Username', key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
     {
       header: 'Name',
       key: 'name',
@@ -326,9 +326,9 @@ export default function AdminsPage() {
       ),
     },
     { header: 'Email', key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
-    { header: 'Type', key: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    { header: 'Active', key: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt)}</span> },
+    { header: 'Type', key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
+    { header: 'Active', key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt)}</span> },
     {
       header: 'Actions',
       key: 'actions',
@@ -382,6 +382,8 @@ export default function AdminsPage() {
             isLoading={isLoading}
             keyExtractor={(r) => r.adminId}
             emptyMessage="No admins found."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
             page={pagination.page}
@@ -391,6 +393,8 @@ export default function AdminsPage() {
             isLast={pagination.isLast}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
       </div>
