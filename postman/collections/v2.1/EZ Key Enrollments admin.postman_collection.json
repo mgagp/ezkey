@@ -380,6 +380,14 @@
             "enrollments",
             ":id"
           ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "{{reason}}",
+              "description": "Audit justification for the deletion (min 10 characters, recommended for SOC 2 CC6.3 compliance)",
+              "disabled": true
+            }
+          ],
           "variable": [
             {
               "key": "id",

@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -42,9 +41,7 @@ import org.mockito.quality.Strictness;
 /**
  * Unit tests for enrollment verification uniqueness validation.
  *
- * <p>
- * Tests validate that verification is rejected when a VERIFIED enrollment
- * already exists with
+ * <p>Tests validate that verification is rejected when a VERIFIED enrollment already exists with
  * the same integration and name.
  *
  * @author Ezkey contributors
@@ -55,17 +52,13 @@ import org.mockito.quality.Strictness;
 @DisplayName("Enrollment Verification Uniqueness Tests")
 class EnrollmentVerifyUniquenessTest {
 
-  @Mock
-  private EnrollmentRepository enrollmentRepository;
+  @Mock private EnrollmentRepository enrollmentRepository;
 
-  @Mock
-  private SignatureService signatureService;
+  @Mock private SignatureService signatureService;
 
-  @Mock
-  private EnrollmentTxHelper enrollmentTxHelper;
+  @Mock private EnrollmentTxHelper enrollmentTxHelper;
 
-  @InjectMocks
-  private EnrollmentVerifyService enrollmentVerifyService;
+  @InjectMocks private EnrollmentVerifyService enrollmentVerifyService;
 
   private Enrollment enrollment;
   private EnrollmentVerifyRequest verifyRequest;
@@ -109,7 +102,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature - signature validation passes
     when(signatureService.validateSignature(
-        eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness - device key is unique
@@ -121,13 +114,14 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 6: Mock validateUniqueness - existing VERIFIED enrollment found
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
     // The exception will be thrown during validateUniqueness (Step 6)
-    IllegalStateException exception = assertThrows(
-        IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("verified enrollment with the same name"),
@@ -156,7 +150,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-        eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness
@@ -167,7 +161,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 6: Mock validateUniqueness
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
@@ -188,7 +182,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-        eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness - device key is unique
@@ -199,7 +193,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 6: Mock validateUniqueness - no existing VERIFIED enrollment
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
         .thenReturn(List.of());
 
     // Mock markAsVerified - enrollment will be saved
@@ -236,7 +230,7 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-        eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness
@@ -250,12 +244,13 @@ class EnrollmentVerifyUniquenessTest {
     // flag doesn't affect
     // uniqueness)
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
         .thenReturn(List.of(existingInactiveVerified));
 
     // Act & Assert
-    IllegalStateException exception = assertThrows(
-        IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("verified enrollment with the same name"),
@@ -281,17 +276,18 @@ class EnrollmentVerifyUniquenessTest {
 
     when(enrollmentRepository.findById(200)).thenReturn(Optional.of(enrollment));
     when(signatureService.validateSignature(
-        eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
         .thenReturn(true);
     when(enrollmentRepository.existsByDevicePublicKeyHash(any(String.class))).thenReturn(false);
     when(enrollmentRepository.findAndLockBoundById(200)).thenReturn(Optional.of(enrollment));
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
-        eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
+            eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED), eq(200)))
         .thenReturn(List.of(existingVerified));
 
     // Act
-    IllegalStateException exception = assertThrows(
-        IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
 
     // Assert
     String errorMessage = exception.getMessage();

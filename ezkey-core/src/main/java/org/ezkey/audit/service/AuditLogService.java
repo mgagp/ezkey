@@ -27,8 +27,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Service for audit log operations.
@@ -57,21 +59,32 @@ public class AuditLogService {
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
   private final EntityManager entityManager;
+  private final TransactionTemplate requiresNewTx;
 
   public AuditLogService(
       AuditLogRepository auditLogRepository,
       AuditHmacService auditHmacService,
-      EntityManager entityManager) {
+      EntityManager entityManager,
+      PlatformTransactionManager transactionManager) {
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
     this.entityManager = entityManager;
+    TransactionTemplate tx = new TransactionTemplate(transactionManager);
+    tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.requiresNewTx = tx;
   }
 
   /**
-   * Log an audit event in a separate transaction with optional HMAC signing.
+   * Log an audit event in a dedicated new transaction with optional HMAC signing.
    *
-   * <p>Uses REQUIRES_NEW propagation to ensure the audit log is saved even if the calling
-   * transaction is rolled back.
+   * <p>Uses a programmatic {@link TransactionTemplate} with {@code REQUIRES_NEW} propagation
+   * instead of the declarative {@code @Transactional(REQUIRES_NEW)} annotation. This is
+   * intentional: with the declarative approach, if Hibernate marks the inner JPA session as
+   * rollback-only (e.g. due to a schema mismatch or constraint violation caught internally), Spring
+   * throws {@code UnexpectedRollbackException} <em>after</em> the method body returns — escaping
+   * the internal {@code catch} block and propagating to the caller. With a programmatic template
+   * the commit/rollback is fully controlled here, so audit failures are always silently absorbed
+   * and never disrupt the calling business operation.
    *
    * <p><b>HMAC signing order is critical:</b> the {@code audit_log_id} is assigned by the database
    * on the first {@code save()} call. The HMAC must therefore be computed <em>after</em> the
@@ -87,20 +100,23 @@ public class AuditLogService {
    *
    * @param auditLog the audit log to save
    */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void log(AuditLog auditLog) {
     try {
-      if (auditLog.getInstanceId() == null) {
-        auditLog.setInstanceId(auditHmacService.getInstanceId());
-      }
-      AuditLog saved = auditLogRepository.save(auditLog);
+      requiresNewTx.execute(
+          status -> {
+            if (auditLog.getInstanceId() == null) {
+              auditLog.setInstanceId(auditHmacService.getInstanceId());
+            }
+            AuditLog saved = auditLogRepository.save(auditLog);
 
-      if (saved.getEntryHmac() == null && auditHmacService.isActive()) {
-        entityManager.refresh(saved);
-        saved.setEnrollmentIdHmacSnapshot(saved.getEnrollmentId());
-        saved.setEntryHmac(auditHmacService.computeHmac(saved));
-        auditLogRepository.save(saved);
-      }
+            if (saved.getEntryHmac() == null && auditHmacService.isActive()) {
+              entityManager.refresh(saved);
+              saved.setEnrollmentIdHmacSnapshot(saved.getEnrollmentId());
+              saved.setEntryHmac(auditHmacService.computeHmac(saved));
+              auditLogRepository.save(saved);
+            }
+            return null;
+          });
     } catch (Exception e) {
       logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }

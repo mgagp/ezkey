@@ -14,14 +14,19 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.security.KeyRotationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
@@ -33,10 +38,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -78,6 +85,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Ezkey contributors
  * @since 2025
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/encryption-keys")
 @Tag(
@@ -189,10 +197,24 @@ public class EncryptionKeyController {
   })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/rotate")
-  public ResponseEntity<KeyRotationResponse> rotateKey() {
+  public ResponseEntity<KeyRotationResponse> rotateKey(
+      @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     try {
       logger.info("Manual key rotation triggered by admin");
       long newPrimaryKeyId = rotationService.introduceNewKey("ADMIN_MANUAL");
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.KEY_INTRODUCED,
+                  AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
+              .eventStatus(EventStatus.SUCCESS)
+              .reason(reason)
+              .eventDetails("New primary key ID: " + newPrimaryKeyId)
+              .build());
       return ResponseEntity.ok(
           new KeyRotationResponse(newPrimaryKeyId, "Key rotation completed successfully"));
     } catch (Exception e) {

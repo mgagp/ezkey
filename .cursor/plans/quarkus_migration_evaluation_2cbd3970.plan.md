@@ -2,6 +2,7 @@
 name: Quarkus Migration Evaluation
 overview: Evaluate and potentially convert the Authorization API from Spring Boot to Quarkus for simplified native compilation. Create a separate subproject (authorization-api-quarkus) to test the conversion without destabilizing the current working version.
 todos: []
+isProject: false
 ---
 
 # Quarkus Migration Evaluation and Conversion Plan
@@ -64,7 +65,7 @@ The Authorization API is experiencing significant challenges with Spring Boot na
 - Basic configuration files
 - Dependencies mapping
 
-3. **Test dependency compatibility**:
+1. **Test dependency compatibility**:
 
 - Verify `ezkey-core` can be used as dependency
 - Test MapStruct generation in Quarkus context
@@ -77,19 +78,19 @@ The Authorization API is experiencing significant challenges with Spring Boot na
 - Replace `@SpringBootApplication` with Quarkus main class
 - Configure package scanning
 
-2. **Convert controllers**:
+1. **Convert controllers**:
 
 - Replace `@RestController` with Quarkus `@Path` annotations (JAX-RS)
 - Convert Spring `@RequestMapping` to JAX-RS `@Path`
 - Update dependency injection (constructor injection works the same)
 
-3. **Convert configuration**:
+1. **Convert configuration**:
 
 - `application.properties` → `application.properties` (Quarkus format)
-- JPA configuration → `quarkus.hibernate-orm.*`
+- JPA configuration → `quarkus.hibernate-orm.`*
 - Database configuration → `quarkus.datasource.*`
 
-4. **MapStruct integration**:
+1. **MapStruct integration**:
 
 - Add `quarkus-mapstruct` extension
 - Verify mapper generation works
@@ -103,17 +104,17 @@ The Authorization API is experiencing significant challenges with Spring Boot na
 - OR convert to Quarkus Panache repositories
 - Test entity scanning and repository injection
 
-2. **Rate limiting**:
+1. **Rate limiting**:
 
 - Evaluate Bucket4j compatibility
 - Consider Quarkus rate limiting extensions
 
-3. **OpenAPI documentation**:
+1. **OpenAPI documentation**:
 
 - Convert SpringDoc annotations to OpenAPI annotations
 - Configure `quarkus-smallrye-openapi`
 
-4. **Exception handling**:
+1. **Exception handling**:
 
 - Convert `@ControllerAdvice` to Quarkus exception mappers
 - Update error response format if needed
@@ -125,19 +126,19 @@ The Authorization API is experiencing significant challenges with Spring Boot na
 - Convert Spring Boot Test to QuarkusTest
 - Update test configuration
 
-2. **Integration tests**:
+1. **Integration tests**:
 
 - Test all endpoints
 - Verify database operations
 - Validate MapStruct mappings
 
-3. **Native compilation test**:
+1. **Native compilation test**:
 
 - Build native image: `mvn clean package -Pnative`
 - Compare build time and complexity
 - Test native binary execution
 
-4. **Performance comparison**:
+1. **Performance comparison**:
 
 - Startup time
 - Memory usage
@@ -163,8 +164,6 @@ ezkey-auth-api-quarkus/
 └── src/test/java/ (QuarkusTest)
 ```
 
-
-
 ### Key Dependencies Mapping
 
 | Spring Boot | Quarkus ||------------|---------|| `spring-boot-starter-web` | `quarkus-resteasy-reactive` or `quarkus-vertx-web` || `spring-boot-starter-data-jpa` | `quarkus-hibernate-orm` + `quarkus-spring-data-jpa` || `mapstruct` | `quarkus-mapstruct` || `springdoc-openapi` | `quarkus-smallrye-openapi` || `spring-boot-starter-validation` | `quarkus-hibernate-validator` |
@@ -186,8 +185,6 @@ quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/ezkey_db
 quarkus.hibernate-orm.database.generation=validate
 quarkus.http.port=8080
 ```
-
-
 
 ## Risk Assessment
 
@@ -249,3 +246,4 @@ quarkus.http.port=8080
 6. **Week 7**: Documentation and decision on full migration
 
 ## References
+

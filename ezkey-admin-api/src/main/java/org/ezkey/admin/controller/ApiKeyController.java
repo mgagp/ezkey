@@ -17,15 +17,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -38,12 +46,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -77,6 +87,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2025
  * @see ApiKeyService
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/api-keys")
 @Tag(
@@ -90,6 +101,7 @@ public class ApiKeyController {
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
+  private final AuditLogService auditLogService;
 
   /**
    * Constructs a new ApiKeyController.
@@ -98,16 +110,19 @@ public class ApiKeyController {
    * @param adminOpsRateLimitService the admin operations rate limiting service
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
+   * @param auditLogService the audit log service for security monitoring
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
       AdminOperationsRateLimitService adminOpsRateLimitService,
       EzkeyAdminRepository adminRepository,
-      AccessControlService accessControlService) {
+      AccessControlService accessControlService,
+      AuditLogService auditLogService) {
     this.apiKeyService = apiKeyService;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -155,7 +170,9 @@ public class ApiKeyController {
             description = "Maximum active keys limit reached for integration")
       })
   public ResponseEntity<ApiKeyCreateResponseDto> createApiKey(
-      @Valid @RequestBody ApiKeyCreateRequestDto request) {
+      @Valid @RequestBody ApiKeyCreateRequestDto request, HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
 
     logger.info(
         "Creating API key for integration: {} with description: '{}'",
@@ -164,6 +181,10 @@ public class ApiKeyController {
 
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
+    Integer adminTenantId =
+        currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN
+            ? currentAdmin.getTenant().getTenantId()
+            : null;
 
     // Validate tenant scoping: admin must have access to the integration
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -212,13 +233,44 @@ public class ApiKeyController {
       // Record successful operation for rate limiting
       adminOpsRateLimitService.recordCreateApiKey(adminId);
 
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_CREATED,
+                  AdminAuditConstants.API_KEY_CREATED,
+                  adminTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .integrationId(request.integrationId())
+              .eventDetails("API key ID: " + result.getApiKeyId())
+              .build());
+
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
     } catch (IllegalArgumentException e) {
       logger.warn("API key creation failed - Bad request: {}", e.getMessage());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_CREATED,
+                  AdminAuditConstants.API_KEY_CREATION_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .integrationId(request.integrationId())
+              .errorMessage(e.getMessage())
+              .build());
       return ResponseEntity.badRequest().build();
     } catch (IllegalStateException e) {
       logger.warn("API key creation failed - Conflict: {}", e.getMessage());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_CREATED,
+                  AdminAuditConstants.API_KEY_CREATION_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .integrationId(request.integrationId())
+              .errorMessage(e.getMessage())
+              .build());
       return ResponseEntity.status(HttpStatus.CONFLICT).build();
     }
   }
@@ -408,21 +460,51 @@ public class ApiKeyController {
       })
   public ResponseEntity<Void> revokeApiKey(
       @Parameter(description = "API key ID to revoke", example = "42") @PathVariable("keyId")
-          Integer keyId) {
+          Integer keyId,
+      @Parameter(description = "Audit justification for the revocation (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
 
     logger.info("Revoking API key: {}", keyId);
 
     // Get authenticated admin
     EzkeyAdmin currentAdmin = getCurrentAdmin();
+    Integer adminTenantId =
+        currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN
+            ? currentAdmin.getTenant().getTenantId()
+            : null;
 
     boolean revoked = apiKeyService.revokeApiKey(keyId, currentAdmin);
 
     if (revoked) {
       logger.info(
           "API key revoked successfully: {} by admin: {}", keyId, currentAdmin.getUsername());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_REVOKED,
+                  AdminAuditConstants.API_KEY_REVOKED,
+                  adminTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .reason(reason)
+              .eventDetails("API key ID: " + keyId)
+              .build());
       return ResponseEntity.noContent().build();
     } else {
       logger.warn("API key not found for revocation: {}", keyId);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_REVOKED,
+                  AdminAuditConstants.API_KEY_REVOCATION_NOT_FOUND,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage("API key not found: " + keyId)
+              .build());
       return ResponseEntity.notFound().build();
     }
   }

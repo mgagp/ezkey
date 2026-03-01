@@ -15,10 +15,18 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
@@ -31,6 +39,8 @@ import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +51,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,15 +93,19 @@ import org.springframework.web.bind.annotation.RestController;
  * @see IntegrationResponseDto
  * @see IntegrationCreateRequestDto
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/integrations")
 @Tag(name = "Integrations", description = "Integration management API")
 public class IntegrationController {
 
+  private static final Logger logger = LoggerFactory.getLogger(IntegrationController.class);
+
   private final IntegrationService service;
   private final IntegrationControllerMapper mapper;
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
+  private final AuditLogService auditLogService;
 
   /**
    * Constructs the controller with required dependencies.
@@ -99,16 +114,19 @@ public class IntegrationController {
    * @param mapper the mapper for converting between entities and DTOs
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
+   * @param auditLogService the audit log service for security monitoring
    */
   public IntegrationController(
       IntegrationService service,
       IntegrationControllerMapper mapper,
       EzkeyAdminRepository adminRepository,
-      AccessControlService accessControlService) {
+      AccessControlService accessControlService,
+      AuditLogService auditLogService) {
     this.service = service;
     this.mapper = mapper;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -305,15 +323,50 @@ public class IntegrationController {
               required = true)
           @RequestBody
           @jakarta.validation.Valid
-          IntegrationCreateRequestDto request) {
+          IntegrationCreateRequestDto request,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
 
-    // Create integration with tenant automatically assigned based on admin type
-    IntegrationCreateResponse savedIntegration =
-        service.createIntegration(mapper.toCreateRequest(request), currentAdmin);
-    URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
-    return ResponseEntity.created(location).body(mapper.toCreateResponseDto(savedIntegration));
+    try {
+      // Create integration with tenant automatically assigned based on admin type
+      IntegrationCreateResponse savedIntegration =
+          service.createIntegration(mapper.toCreateRequest(request), currentAdmin);
+
+      // Resolve tenant ID from the newly created integration for audit
+      Integer tenantId =
+          service
+              .getById(savedIntegration.getId())
+              .map(i -> i.getTenant() != null ? i.getTenant().getTenantId() : null)
+              .orElse(null);
+
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.INTEGRATION_CREATED,
+                  AdminAuditConstants.INTEGRATION_CREATED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .integrationId(savedIntegration.getId())
+              .eventDetails("Integration code: " + savedIntegration.getCode())
+              .build());
+
+      URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
+      return ResponseEntity.created(location).body(mapper.toCreateResponseDto(savedIntegration));
+
+    } catch (Exception e) {
+      logger.warn("Integration creation failed: {}", e.getMessage());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.INTEGRATION_CREATED,
+                  AdminAuditConstants.INTEGRATION_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    }
   }
 
   /**
@@ -354,7 +407,13 @@ public class IntegrationController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Integration ID to delete", example = "1") @PathVariable("id")
-          Integer id) {
+          Integer id,
+      @Parameter(description = "Audit justification for the deletion (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     EzkeyAdmin currentAdmin = getCurrentAdmin();
 
     // Check if integration exists
@@ -368,6 +427,20 @@ public class IntegrationController {
         throw new ResourceNotFoundException("Integration", id);
       }
     }
+
+    Integer tenantId =
+        integration.getTenant() != null ? integration.getTenant().getTenantId() : null;
+
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context,
+                EventType.INTEGRATION_DELETED,
+                AdminAuditConstants.INTEGRATION_DELETED,
+                tenantId)
+            .eventStatus(EventStatus.SUCCESS)
+            .integrationId(id)
+            .reason(reason)
+            .build());
 
     service.delete(id);
     return ResponseEntity.noContent().build();

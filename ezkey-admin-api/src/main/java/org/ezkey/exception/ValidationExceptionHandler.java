@@ -10,6 +10,7 @@
 
 package org.ezkey.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
@@ -31,11 +32,13 @@ import org.springframework.web.context.request.WebRequest;
  * processing and data persistence, converting them into standardized HTTP responses with
  * appropriate status codes.
  *
- * <p><b>Exceptions Handled (5 total):</b>
+ * <p><b>Exceptions Handled (6 total):</b>
  *
  * <ul>
  *   <li><b>MethodArgumentNotValidException (400):</b> Bean Validation failures on request
  *       parameters
+ *   <li><b>ConstraintViolationException (400):</b> {@code @Validated} + {@code @Size} on
+ *       {@code @RequestParam} (e.g., short {@code reason} param)
  *   <li><b>HttpMessageNotReadableException (400):</b> JSON deserialization errors (missing fields,
  *       type mismatches, malformed payload)
  *   <li><b>IllegalArgumentException (400):</b> Invalid argument values during processing
@@ -339,6 +342,45 @@ public class ValidationExceptionHandler {
         new ErrorResponseDto(
             "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
 
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Handles ConstraintViolationException and returns HTTP 400 Bad Request.
+   *
+   * <p>Triggered when {@code @Validated} on a controller class intercepts an invalid
+   * {@code @RequestParam} (e.g., a {@code reason} param that is shorter than 10 characters). Spring
+   * AOP throws {@code jakarta.validation.ConstraintViolationException}, which is NOT handled by
+   * Spring's default exception resolvers.
+   *
+   * <p><b>HTTP Status:</b> 400 Bad Request
+   *
+   * <p><b>Example:</b>
+   *
+   * <pre>
+   * Input: DELETE /api/v1/api-keys/42?reason=short
+   * Response: {
+   *   "code": "VALIDATION_ERROR",
+   *   "message": "revokeApiKey.reason: Reason must be between 10 and 500 characters",
+   *   "path": "/api/v1/api-keys/42"
+   * }
+   * </pre>
+   *
+   * @param ex the ConstraintViolationException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   * @since 2025
+   */
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<ErrorResponseDto> handleConstraintViolationException(
+      ConstraintViolationException ex, WebRequest request) {
+    String message =
+        ex.getConstraintViolations().stream()
+            .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+            .collect(Collectors.joining("; "));
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
 

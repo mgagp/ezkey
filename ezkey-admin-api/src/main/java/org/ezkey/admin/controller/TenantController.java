@@ -15,22 +15,33 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.TenantCreateRequestDto;
+import org.ezkey.admin.dto.request.TenantDeactivateRequestDto;
 import org.ezkey.admin.dto.request.TenantUpdateRequestDto;
 import org.ezkey.admin.dto.response.TenantResponseDto;
 import org.ezkey.admin.mapper.TenantMapper;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.TenantService;
+import org.ezkey.admin.util.AuditHelper;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,25 +73,31 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Ezkey contributors
  * @since 2025
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/tenants")
 @Tag(name = "Tenants", description = "Tenant management API")
 public class TenantController {
 
+  private static final Logger logger = LoggerFactory.getLogger(TenantController.class);
+
   private final AdminProvisioningService provisioningService;
   private final TenantRepository tenantRepository;
   private final TenantService tenantService;
   private final TenantMapper tenantMapper;
+  private final AuditLogService auditLogService;
 
   public TenantController(
       AdminProvisioningService provisioningService,
       TenantRepository tenantRepository,
       TenantService tenantService,
-      TenantMapper tenantMapper) {
+      TenantMapper tenantMapper,
+      AuditLogService auditLogService) {
     this.provisioningService = provisioningService;
     this.tenantRepository = tenantRepository;
     this.tenantService = tenantService;
     this.tenantMapper = tenantMapper;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -106,28 +123,52 @@ public class TenantController {
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
   public ResponseEntity<TenantResponseDto> createTenant(
-      @Valid @RequestBody TenantCreateRequestDto request, Authentication auth) {
+      @Valid @RequestBody TenantCreateRequestDto request,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    Tenant tenant =
-        provisioningService.createTenant(
-            request.tenantName(),
-            request.tenantDescription(),
-            request.organizationName(),
-            request.organizationDomain(),
-            request.countryCode(),
-            request.timezone(),
-            request.primaryContactName(),
-            request.primaryContactEmail(),
-            principal);
+    try {
+      Tenant tenant =
+          provisioningService.createTenant(
+              request.tenantName(),
+              request.tenantDescription(),
+              request.organizationName(),
+              request.organizationDomain(),
+              request.countryCode(),
+              request.timezone(),
+              request.primaryContactName(),
+              request.primaryContactEmail(),
+              principal);
 
-    TenantResponseDto response = tenantMapper.toResponseDto(tenant);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.TENANT_CREATED,
+                  AdminAuditConstants.TENANT_CREATED,
+                  tenant.getTenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .eventDetails("Tenant name: " + tenant.getTenantName())
+              .build());
 
-    return ResponseEntity.created(URI.create("/api/v1/tenants/" + tenant.getTenantId()))
-        .body(response);
+      TenantResponseDto response = tenantMapper.toResponseDto(tenant);
+      return ResponseEntity.created(URI.create("/api/v1/tenants/" + tenant.getTenantId()))
+          .body(response);
+
+    } catch (Exception e) {
+      logger.warn("Tenant creation failed: {}", e.getMessage());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.TENANT_CREATED, AdminAuditConstants.TENANT_CREATION_FAILED)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    }
   }
 
   /**
@@ -241,13 +282,23 @@ public class TenantController {
   public ResponseEntity<TenantResponseDto> updateTenant(
       @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
       @Valid @RequestBody TenantUpdateRequestDto request,
-      Authentication auth) {
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     Tenant updated = tenantService.updateTenant(id, request, principal);
+
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context, EventType.TENANT_UPDATED, AdminAuditConstants.TENANT_UPDATED, id)
+            .eventStatus(EventStatus.SUCCESS)
+            .eventDetails("Tenant ID: " + id)
+            .build());
+
     return ResponseEntity.ok(tenantMapper.toResponseDto(updated));
   }
 
@@ -282,13 +333,26 @@ public class TenantController {
   })
   public ResponseEntity<Void> deactivateTenant(
       @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
-      Authentication auth) {
+      @RequestBody(required = false) @Valid TenantDeactivateRequestDto body,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     tenantService.deactivateTenant(id, principal);
+
+    String reason = body != null ? body.reason() : null;
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context, EventType.TENANT_DEACTIVATED, AdminAuditConstants.TENANT_DEACTIVATED, id)
+            .eventStatus(EventStatus.SUCCESS)
+            .reason(reason)
+            .eventDetails("Tenant ID: " + id)
+            .build());
+
     return ResponseEntity.noContent().build();
   }
 }

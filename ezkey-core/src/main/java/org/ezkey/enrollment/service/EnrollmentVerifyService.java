@@ -12,7 +12,6 @@ package org.ezkey.enrollment.service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -28,36 +27,26 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Specialized service for handling enrollment verification operations.
  *
- * <p>
- * This service manages the enrollment verification process where a mobile
- * device completes the
- * enrollment by providing cryptographic proof of device ownership. It
- * implements comprehensive
- * security validation to prevent replay attacks and ensure enrollment
- * integrity.
+ * <p>This service manages the enrollment verification process where a mobile device completes the
+ * enrollment by providing cryptographic proof of device ownership. It implements comprehensive
+ * security validation to prevent replay attacks and ensure enrollment integrity.
  *
- * <p>
- * <b>Security Features:</b>
+ * <p><b>Security Features:</b>
  *
  * <ul>
- * <li><b>Signature Validation:</b> Verifies device cryptographic signature
- * <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public
- * key
- * <li><b>Challenge Verification:</b> Validates enrollment challenge response
- * <li><b>State Consistency:</b> Ensures enrollment state integrity
- * <li><b>Atomic Operations:</b> Uses row-level locking for thread safety
+ *   <li><b>Signature Validation:</b> Verifies device cryptographic signature
+ *   <li><b>Device Key Uniqueness:</b> Prevents replay attacks using same public key
+ *   <li><b>Challenge Verification:</b> Validates enrollment challenge response
+ *   <li><b>State Consistency:</b> Ensures enrollment state integrity
+ *   <li><b>Atomic Operations:</b> Uses row-level locking for thread safety
  * </ul>
  *
- * <p>
- * <b>Transaction Management:</b> This service uses Spring's declarative
- * transaction management
+ * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
  * to ensure data consistency during the enrollment verification process.
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -80,10 +69,8 @@ public class EnrollmentVerifyService {
    * Constructs the verify service with required dependencies.
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
-   * @param signatureService     the signature service for cryptographic
-   *                             operations
-   * @param enrollmentTxHelper   the transactional helper for enrollment
-   *                             operations
+   * @param signatureService the signature service for cryptographic operations
+   * @param enrollmentTxHelper the transactional helper for enrollment operations
    */
   public EnrollmentVerifyService(
       EnrollmentRepository enrollmentRepository,
@@ -97,21 +84,15 @@ public class EnrollmentVerifyService {
   /**
    * Verifies an enrollment with comprehensive security validation.
    *
-   * <p>
-   * This method handles the enrollment confirmation process with multiple layers
-   * of security
-   * validation including signature verification, device public key uniqueness
-   * validation, and
-   * challenge verification. It implements the same security principles as
-   * AuthAttemptService to
+   * <p>This method handles the enrollment confirmation process with multiple layers of security
+   * validation including signature verification, device public key uniqueness validation, and
+   * challenge verification. It implements the same security principles as AuthAttemptService to
    * prevent replay attacks and ensure enrollment integrity.
    *
    * @param request the verify request containing device keys and signatures
    * @return the verify response confirming successful enrollment
-   * @throws IllegalArgumentException if validation fails (signature, uniqueness,
-   *                                  or challenge)
-   * @throws IllegalStateException    if enrollment is in invalid state or already
-   *                                  processed
+   * @throws IllegalArgumentException if validation fails (signature, uniqueness, or challenge)
+   * @throws IllegalStateException if enrollment is in invalid state or already processed
    */
   public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
     logger.info(
@@ -145,9 +126,7 @@ public class EnrollmentVerifyService {
   /**
    * Validates the enrollment state and ensures it's ready for verification.
    *
-   * <p>
-   * This method performs read-only pre-checks to ensure the enrollment exists and
-   * is in the
+   * <p>This method performs read-only pre-checks to ensure the enrollment exists and is in the
    * correct state for verification.
    *
    * @param request the verify request
@@ -158,15 +137,16 @@ public class EnrollmentVerifyService {
     logger.debug(
         "Step 1: Performing read-only pre-checks for enrollment ID: {}", request.getEnrollmentId());
 
-    Enrollment enrollment = enrollmentRepository
-        .findById(request.getEnrollmentId())
-        .orElseThrow(
-            () -> {
-              logger.warn(
-                  "Validation failed: Enrollment not found for ID: {}",
-                  request.getEnrollmentId());
-              return new IllegalStateException("Enrollment already verified");
-            });
+    Enrollment enrollment =
+        enrollmentRepository
+            .findById(request.getEnrollmentId())
+            .orElseThrow(
+                () -> {
+                  logger.warn(
+                      "Validation failed: Enrollment not found for ID: {}",
+                      request.getEnrollmentId());
+                  return new IllegalStateException("Enrollment already verified");
+                });
 
     logger.debug(
         "Enrollment found: ID={}, Status={}", enrollment.getEnrollmentId(), enrollment.getStatus());
@@ -197,22 +177,21 @@ public class EnrollmentVerifyService {
   /**
    * Validates the device signature for the enrollment.
    *
-   * <p>
-   * This method ensures that the device signature is valid and corresponds to the
-   * enrollment
+   * <p>This method ensures that the device signature is valid and corresponds to the enrollment
    * proof token.
    *
-   * @param request    the verify request containing device signature
+   * @param request the verify request containing device signature
    * @param enrollment the enrollment containing proof token
    * @throws IllegalArgumentException if signature validation fails
    */
   private void validateSignature(EnrollmentVerifyRequest request, Enrollment enrollment) {
     logger.debug("Step 2: Validating signature for enrollment ID: {}", request.getEnrollmentId());
 
-    boolean valid = signatureService.validateSignature(
-        enrollment.getEnrollmentProofToken(),
-        request.getEnrollmentProofTokenSigned(),
-        request.getDevicePublicKey());
+    boolean valid =
+        signatureService.validateSignature(
+            enrollment.getEnrollmentProofToken(),
+            request.getEnrollmentProofTokenSigned(),
+            request.getDevicePublicKey());
 
     if (!valid) {
       logger.warn(
@@ -228,11 +207,8 @@ public class EnrollmentVerifyService {
   /**
    * Validates the device public key uniqueness to prevent replay attacks.
    *
-   * <p>
-   * This method ensures that the device public key has not been used for any
-   * other verified
-   * enrollment to prevent enrollment hijacking. Uses SHA-256 hash for validation
-   * to ensure
+   * <p>This method ensures that the device public key has not been used for any other verified
+   * enrollment to prevent enrollment hijacking. Uses SHA-256 hash for validation to ensure
    * uniqueness independent of encryption format.
    *
    * @param request the verify request containing device public key
@@ -264,12 +240,10 @@ public class EnrollmentVerifyService {
   /**
    * Validates the challenge response for the enrollment.
    *
-   * <p>
-   * This method ensures that the challenge response matches the expected value to
-   * complete the
+   * <p>This method ensures that the challenge response matches the expected value to complete the
    * enrollment verification process.
    *
-   * @param request    the verify request containing challenge response
+   * @param request the verify request containing challenge response
    * @param enrollment the enrollment containing expected challenge
    * @throws IllegalArgumentException if challenge response is invalid
    */
@@ -295,12 +269,10 @@ public class EnrollmentVerifyService {
   /**
    * Acquires a lock on the enrollment and performs final validation.
    *
-   * <p>
-   * This method implements the read-once guarantee by atomically locking and
-   * validating the
+   * <p>This method implements the read-once guarantee by atomically locking and validating the
    * enrollment state.
    *
-   * @param request  the verify request
+   * @param request the verify request
    * @param snapshot the enrollment snapshot from pre-checks
    * @return the locked enrollment
    * @throws IllegalStateException if enrollment is not found or in invalid state
@@ -308,7 +280,8 @@ public class EnrollmentVerifyService {
   private Enrollment acquireLockAndValidate(EnrollmentVerifyRequest request, Enrollment snapshot) {
     logger.debug("Step 5: Acquiring lock for enrollment ID: {}", request.getEnrollmentId());
 
-    Enrollment enrollment = enrollmentRepository.findAndLockBoundById(request.getEnrollmentId()).orElse(null);
+    Enrollment enrollment =
+        enrollmentRepository.findAndLockBoundById(request.getEnrollmentId()).orElse(null);
 
     if (enrollment == null) {
       logger.warn(
@@ -351,28 +324,23 @@ public class EnrollmentVerifyService {
   }
 
   /**
-   * Validates that no other VERIFIED enrollment exists with the same integration
-   * and name.
+   * Validates that no other VERIFIED enrollment exists with the same integration and name.
    *
-   * <p>
-   * This method ensures uniqueness constraint at the application level before
-   * database
-   * constraint violations occur. It provides clear error messages directing users
-   * to the recovery
+   * <p>This method ensures uniqueness constraint at the application level before database
+   * constraint violations occur. It provides clear error messages directing users to the recovery
    * process if a duplicate VERIFIED enrollment exists.
    *
    * @param enrollment the enrollment being verified
-   * @throws IllegalStateException if a VERIFIED enrollment already exists with
-   *                               the same integration
-   *                               and name
+   * @throws IllegalStateException if a VERIFIED enrollment already exists with the same integration
+   *     and name
    */
   private void validateUniqueness(Enrollment enrollment) {
     logger.debug(
         "Step 6: Validating uniqueness for enrollment ID: {}", enrollment.getEnrollmentId());
 
     // Check for existing VERIFIED enrollments with same integration and name
-    List<Enrollment> existingVerifiedEnrollments = enrollmentRepository
-        .findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
+    List<Enrollment> existingVerifiedEnrollments =
+        enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
             enrollment.getIntegrationId(),
             enrollment.getEnrollmentName(),
             EnrollmentStatus.VERIFIED,
@@ -402,15 +370,12 @@ public class EnrollmentVerifyService {
   /**
    * Marks the enrollment as verified and activates it.
    *
-   * <p>
-   * This method updates the enrollment status to VERIFIED and sets it as active,
-   * completing the
-   * enrollment process. Also calculates and stores the SHA-256 hash of the device
-   * public key for
+   * <p>This method updates the enrollment status to VERIFIED and sets it as active, completing the
+   * enrollment process. Also calculates and stores the SHA-256 hash of the device public key for
    * uniqueness validation.
    *
    * @param enrollment the enrollment to mark as verified
-   * @param request    the verify request containing device public key
+   * @param request the verify request containing device public key
    */
   private void markAsVerified(Enrollment enrollment, EnrollmentVerifyRequest request) {
     logger.info("Step 7: Marking enrollment as VERIFIED - ID: {}", enrollment.getEnrollmentId());
@@ -437,9 +402,7 @@ public class EnrollmentVerifyService {
   /**
    * Builds the verification response.
    *
-   * <p>
-   * This method creates a response confirming that the enrollment has been
-   * successfully verified
+   * <p>This method creates a response confirming that the enrollment has been successfully verified
    * and activated.
    *
    * @return the verification response

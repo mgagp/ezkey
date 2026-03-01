@@ -68,6 +68,16 @@ public enum EventType {
   REENCRYPTION_RESUMED, // Batch resumed after pause/failure
   REENCRYPTION_PAUSED, // Batch paused by admin
 
+  // Integration lifecycle events
+  INTEGRATION_CREATED, // New integration registered
+  INTEGRATION_UPDATED, // Integration updated
+  INTEGRATION_DELETED, // Integration removed (+ reason when provided)
+
+  // Tenant lifecycle events
+  TENANT_CREATED, // New tenant provisioned
+  TENANT_UPDATED, // Tenant metadata updated
+  TENANT_DEACTIVATED, // Tenant deactivated (+ reason when provided)
+
   // Audit chain lifecycle events
   AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop
   AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain

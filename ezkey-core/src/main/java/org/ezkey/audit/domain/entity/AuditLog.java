@@ -109,6 +109,17 @@ public class AuditLog {
   @Column(name = "entry_hmac", length = 88)
   private String entryHmac;
 
+  /**
+   * Optional justification supplied by the admin for sensitive operations (revocation, deletion,
+   * deactivation, key rotation).
+   *
+   * <p>Supports SOC 2 CC6.3 (access deprovisioning) and CC8.1 (authorized changes). Validated to be
+   * between 10 and 500 characters when provided. Included in per-entry HMAC canonical form as field
+   * 15 (null → empty string).
+   */
+  @Column(name = "reason", length = 500)
+  private String reason;
+
   @Column(
       name = "created_at",
       nullable = false,
@@ -214,6 +225,17 @@ public class AuditLog {
 
     public Builder entryHmac(String entryHmac) {
       auditLog.entryHmac = entryHmac;
+      return this;
+    }
+
+    /**
+     * Sets the optional justification for sensitive operations.
+     *
+     * @param reason the justification text (10–500 chars when provided; null accepted)
+     * @return this builder
+     */
+    public Builder reason(String reason) {
+      auditLog.reason = reason;
       return this;
     }
 
@@ -386,5 +408,13 @@ public class AuditLog {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getReason() {
+    return reason;
+  }
+
+  public void setReason(String reason) {
+    this.reason = reason;
   }
 }

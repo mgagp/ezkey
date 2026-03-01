@@ -217,6 +217,28 @@ Contrôleurs à modifier :
 
 ---
 
+## Interaction avec le système HMAC (feature livré 21-27 fév. 2026)
+
+Entre le 21 et le 27 février 2026, le système de signature HMAC-SHA256 par entrée a été livré (commits `33a354b2`, `01025966`, `a93a8316`). Il est **directement impacté** par l'ajout de `reason`.
+
+La méthode `buildCanonicalForm()` dans `AuditHmacService` définit 14 champs pipe-delimited signés. Le champ `reason` doit être ajouté en **15e position** (à la fin, après `instanceId`), ce qui s'applique aussi dans l'étape 2 sur l'entité.
+
+**Rétrocompatibilité** : Pas de système en production. Les entrées existantes en dev auront `reason = null` → `""` dans la forme canonique lors de la vérification — cohérent avec le comportement `nullSafe()` actuel.
+
+### Étape supplémentaire : `AuditHmacService.buildCanonicalForm()`
+
+**Fichier** : `ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditHmacService.java`
+
+Ajouter en fin de `buildCanonicalForm()`, après `instanceId` :
+```java
+sb.append(FIELD_SEPARATOR);
+sb.append(nullSafe(entry.getReason()));
+```
+
+Et mettre à jour `AuditHmacServiceTest` : les cas de test dont la forme canonique attendue est codifiée en dur doivent inclure l'appended `|` (reason vide ou valeur).
+
+---
+
 ## Vérification finale
 
 ```bash
@@ -227,7 +249,8 @@ mvn clean verify
 Checklist :
 - [ ] Tous les nouveaux `EventType` sont couverts dans les mappers MapStruct (méthode `eventTypeToString`)
 - [ ] Migration Flyway s'applique proprement (test sur base vierge et base avec données existantes)
-- [ ] HMAC recalculé après ajout de `reason` dans la concaténation — vérifier rétrocompatibilité des entrées existantes (reason null → chaîne vide ou "null" dans le hash ? À trancher)
+- [ ] `AuditHmacService.buildCanonicalForm()` inclut `reason` en 15e position
+- [ ] `AuditHmacServiceTest` — formes canoniques attendues mises à jour (ajout `|` final)
 - [ ] Postman collection mise à jour avec les nouveaux paramètres `reason`
 - [ ] OpenAPI/Swagger documenté pour les nouveaux paramètres
 

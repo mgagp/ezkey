@@ -21,6 +21,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
@@ -87,13 +89,21 @@ class ApiKeyControllerTest {
 
   @Mock private AccessControlService accessControlService;
 
+  @Mock private AuditLogService auditLogService;
+
+  @Mock private HttpServletRequest httpServletRequest;
+
   private ApiKeyController controller;
 
   @BeforeEach
   void setUp() {
     controller =
         new ApiKeyController(
-            apiKeyService, adminOpsRateLimitService, adminRepository, accessControlService);
+            apiKeyService,
+            adminOpsRateLimitService,
+            adminRepository,
+            accessControlService,
+            auditLogService);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();
@@ -125,7 +135,8 @@ class ApiKeyControllerTest {
           .thenReturn(mockResult);
 
       // Act
-      ResponseEntity<ApiKeyCreateResponseDto> response = controller.createApiKey(request);
+      ResponseEntity<ApiKeyCreateResponseDto> response =
+          controller.createApiKey(request, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -154,7 +165,8 @@ class ApiKeyControllerTest {
           .thenThrow(new IllegalArgumentException("Invalid integration ID"));
 
       // Act
-      ResponseEntity<ApiKeyCreateResponseDto> response = controller.createApiKey(request);
+      ResponseEntity<ApiKeyCreateResponseDto> response =
+          controller.createApiKey(request, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -170,7 +182,8 @@ class ApiKeyControllerTest {
           .thenThrow(new IllegalStateException("Maximum keys limit reached"));
 
       // Act
-      ResponseEntity<ApiKeyCreateResponseDto> response = controller.createApiKey(request);
+      ResponseEntity<ApiKeyCreateResponseDto> response =
+          controller.createApiKey(request, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
@@ -277,7 +290,7 @@ class ApiKeyControllerTest {
       when(apiKeyService.revokeApiKey(eq(keyId), any(EzkeyAdmin.class))).thenReturn(true);
 
       // Act
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId);
+      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
@@ -292,7 +305,7 @@ class ApiKeyControllerTest {
       when(apiKeyService.revokeApiKey(eq(keyId), any(EzkeyAdmin.class))).thenReturn(false);
 
       // Act
-      ResponseEntity<Void> response = controller.revokeApiKey(keyId);
+      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());

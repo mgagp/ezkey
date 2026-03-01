@@ -492,6 +492,11 @@
       "request": {
         "method": "POST",
         "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"reason\": \"{{tenantDeactivateReason}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
         "url": {
           "raw": "{{base_url_admin_api}}/api/v1/tenants/:id/deactivate",
           "host": [

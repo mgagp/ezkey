@@ -31,9 +31,8 @@ package org.ezkey.admin.constants;
  *
  * <pre>
  * auditLogService.log(
- *   AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN,
- *     AdminAuditConstants.LOGIN_SUCCESS, "Username: john.doe")
- * );
+ *     AuditHelper.logSuccess(context, EventType.ADMIN_LOGIN,
+ *         AdminAuditConstants.LOGIN_SUCCESS, "Username: john.doe"));
  * </pre>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -125,4 +124,56 @@ public final class AdminAuditConstants {
 
   /** Prefix for bearer tokens in Authorization header. */
   public static final String BEARER_PREFIX = "Bearer ";
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // API Key Actions
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Audit action for successful API key creation. */
+  public static final String API_KEY_CREATED = "api_key_created";
+
+  /** Audit action for failed API key creation. */
+  public static final String API_KEY_CREATION_FAILED = "api_key_creation_failed";
+
+  /** Audit action for successful API key revocation. */
+  public static final String API_KEY_REVOKED = "api_key_revoked";
+
+  /** Audit action for API key not found during revocation. */
+  public static final String API_KEY_REVOCATION_NOT_FOUND = "api_key_revocation_not_found";
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Integration Actions
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Audit action for successful integration creation. */
+  public static final String INTEGRATION_CREATED = "integration_created";
+
+  /** Audit action for failed integration creation. */
+  public static final String INTEGRATION_CREATION_FAILED = "integration_creation_failed";
+
+  /** Audit action for successful integration deletion. */
+  public static final String INTEGRATION_DELETED = "integration_deleted";
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Tenant Actions
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Audit action for successful tenant creation. */
+  public static final String TENANT_CREATED = "tenant_created";
+
+  /** Audit action for failed tenant creation. */
+  public static final String TENANT_CREATION_FAILED = "tenant_creation_failed";
+
+  /** Audit action for successful tenant update. */
+  public static final String TENANT_UPDATED = "tenant_updated";
+
+  /** Audit action for successful tenant deactivation. */
+  public static final String TENANT_DEACTIVATED = "tenant_deactivated";
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  // Encryption Key Actions
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+  /** Audit action for a manually triggered encryption key rotation. */
+  public static final String ENCRYPTION_KEY_ROTATION_MANUAL = "encryption_key_rotation_manual";
 }

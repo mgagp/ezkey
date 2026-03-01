@@ -47,6 +47,7 @@ public class AuditLogResponseDto {
   private String instanceId;
   private String entryHmac;
   private OffsetDateTime createdAt;
+  private String reason;
 
   // Constructors
 
@@ -188,5 +189,13 @@ public class AuditLogResponseDto {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getReason() {
+    return reason;
+  }
+
+  public void setReason(String reason) {
+    this.reason = reason;
   }
 }

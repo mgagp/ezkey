@@ -187,6 +187,14 @@
             "v1",
             "encryption-keys",
             "rotate"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "{{reason}}",
+              "description": "Audit justification for the manual key rotation (min 10 characters, recommended for SOC 2 CC8.1 compliance)",
+              "disabled": true
+            }
           ]
         },
         "description": "Manually triggers encryption key rotation. This creates a new primary key and demotes the old primary key to ENABLED status. Useful for emergency rotations or testing. ⚠️ Use with caution in production."

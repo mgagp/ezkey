@@ -11,6 +11,7 @@
 package org.ezkey.admin.dto.request;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for resetting an enrollment after device loss.
@@ -32,9 +33,13 @@ import jakarta.validation.constraints.NotNull;
  * @author Ezkey contributors
  * @since 2025
  * @param enrollmentId the enrollment ID to reset
+ * @param reason optional justification for the reset (min 10, max 500 characters; required for
+ *     normative compliance on sensitive operations)
  */
 public record EnrollmentResetRequestDto(
-    @NotNull(message = "Enrollment ID is required") Integer enrollmentId) {
+    @NotNull(message = "Enrollment ID is required") Integer enrollmentId,
+    @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+        String reason) {
 
   /**
    * Returns a string representation of the enrollment reset request.

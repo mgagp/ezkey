@@ -253,6 +253,10 @@ public class AuditHmacService {
     sb.append(formatTimestamp(entry.getCreatedAt()));
     sb.append(FIELD_SEPARATOR);
     sb.append(nullSafe(entry.getInstanceId()));
+    // Field 15 — reason (optional justification for sensitive operations; null →
+    // empty string)
+    sb.append(FIELD_SEPARATOR);
+    sb.append(nullSafe(entry.getReason()));
     return sb.toString();
   }
 
@@ -269,10 +273,14 @@ public class AuditHmacService {
     if (ts == null) {
       return "";
     }
-    // Truncate to microseconds before formatting to match PostgreSQL TIMESTAMPTZ precision.
-    // Java's OffsetDateTime.now() can carry sub-microsecond nanoseconds that PostgreSQL
-    // silently truncates. Without this, the canonical form at sign-time (nanoseconds present)
-    // differs from the form at verify-time (value read back from DB, microseconds only),
+    // Truncate to microseconds before formatting to match PostgreSQL TIMESTAMPTZ
+    // precision.
+    // Java's OffsetDateTime.now() can carry sub-microsecond nanoseconds that
+    // PostgreSQL
+    // silently truncates. Without this, the canonical form at sign-time
+    // (nanoseconds present)
+    // differs from the form at verify-time (value read back from DB, microseconds
+    // only),
     // causing every HMAC to fail verification systematically.
     return UTC_FORMATTER.format(
         ts.withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS));

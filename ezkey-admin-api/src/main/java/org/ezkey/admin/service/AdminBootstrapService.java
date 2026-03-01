@@ -13,7 +13,6 @@ package org.ezkey.admin.service;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
-
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.config.OrganizationProperties;
@@ -38,46 +37,37 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service for bootstrapping admin MFA infrastructure at application startup.
  *
- * <p>
- * This service implements the "Eat Your Own Dog Food" principle by
- * automatically creating the
- * necessary infrastructure for Ezkey admin MFA authentication using Ezkey's own
- * MFA solution.
+ * <p>This service implements the "Eat Your Own Dog Food" principle by automatically creating the
+ * necessary infrastructure for Ezkey admin MFA authentication using Ezkey's own MFA solution.
  *
- * <p>
- * <b>Bootstrap Process:</b>
+ * <p><b>Bootstrap Process:</b>
  *
  * <ol>
- * <li>Check if System Integration (for global admin authentication) already
- * exists
- * <li>If not exists, create System Integration with Ed25519 key pair
- * <li>Optionally create Global Admin Enrollment
- * <li>Log enrollment credentials with highly visible formatting
+ *   <li>Check if System Integration (for global admin authentication) already exists
+ *   <li>If not exists, create System Integration with Ed25519 key pair
+ *   <li>Optionally create Global Admin Enrollment
+ *   <li>Log enrollment credentials with highly visible formatting
  * </ol>
  *
- * <p>
- * <b>Security Features:</b>
+ * <p><b>Security Features:</b>
  *
  * <ul>
- * <li>Idempotent operation (can be run multiple times safely)
- * <li>Ed25519 cryptographic keys for System Integration
- * <li>Unique enrollment proof tokens for security
- * <li>Highly visible credential logging for easy admin access
+ *   <li>Idempotent operation (can be run multiple times safely)
+ *   <li>Ed25519 cryptographic keys for System Integration
+ *   <li>Unique enrollment proof tokens for security
+ *   <li>Highly visible credential logging for easy admin access
  * </ul>
  *
- * <p>
- * <b>Configuration:</b> Controlled by {@link AdminMfaProperties} configuration:
+ * <p><b>Configuration:</b> Controlled by {@link AdminMfaProperties} configuration:
  *
  * <pre>
  * ezkey.admin.mfa.bootstrap.enabled=true
  * ezkey.admin.mfa.bootstrap.auto-enrollment=true
  * </pre>
  *
- * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
- * <p>
- * <b>License:</b> MIT
+ * <p><b>License:</b> MIT
  *
  * @author Ezkey contributors
  * @since 2025
@@ -145,15 +135,10 @@ public class AdminBootstrapService {
   /**
    * Bootstrap admin MFA infrastructure on application startup.
    *
-   * <p>
-   * This method is automatically triggered when the application is ready. It
-   * creates System
-   * Integration and optionally Global Admin Enrollment if they don't already
-   * exist.
+   * <p>This method is automatically triggered when the application is ready. It creates System
+   * Integration and optionally Global Admin Enrollment if they don't already exist.
    *
-   * <p>
-   * <b>HA Safety:</b> Uses distributed locking to ensure only one instance
-   * performs bootstrap in
+   * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
    */
   @EventListener(ApplicationReadyEvent.class)
@@ -166,8 +151,9 @@ public class AdminBootstrapService {
     logger.info("🚀 Starting admin MFA bootstrap...");
 
     // Use distributed lock to ensure only one instance performs bootstrap in HA
-    boolean executed = lockingTaskExecutor.executeWithLock(
-        "ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doBootstrapAdminMfa);
+    boolean executed =
+        lockingTaskExecutor.executeWithLock(
+            "ADMIN_STARTUP_BOOTSTRAP", Duration.ofMinutes(5), this::doBootstrapAdminMfa);
 
     if (!executed) {
       logger.info("Skipping admin MFA bootstrap - another instance is handling bootstrap");
@@ -177,16 +163,15 @@ public class AdminBootstrapService {
   /**
    * Perform the actual admin MFA bootstrap (called within distributed lock).
    *
-   * <p>
-   * This method creates System Integration and optionally Global Admin Enrollment
-   * if they don't
+   * <p>This method creates System Integration and optionally Global Admin Enrollment if they don't
    * already exist.
    */
   @Transactional
   private void doBootstrapAdminMfa() {
     try {
       // 1. Check if System Integration already exists
-      Optional<Integration> existingIntegration = integrationRepository.findSystemIntegrationReadOnly();
+      Optional<Integration> existingIntegration =
+          integrationRepository.findSystemIntegrationReadOnly();
 
       if (existingIntegration.isPresent()) {
         logger.info(
@@ -217,9 +202,7 @@ public class AdminBootstrapService {
   /**
    * Create System Integration for global admin authentication.
    *
-   * <p>
-   * System Integration is a special integration marked with
-   * isSystemIntegration=true. It uses
+   * <p>System Integration is a special integration marked with isSystemIntegration=true. It uses
    * the system tenant and is created by the initial global admin.
    *
    * @return the created System Integration
@@ -228,19 +211,23 @@ public class AdminBootstrapService {
     logger.info("🔧 Creating System Integration...");
 
     // Get System Tenant
-    Tenant systemTenant = tenantRepository
-        .findByTenantName(organizationProperties.getName())
-        .orElseThrow(
-            () -> new RuntimeException(
-                "System tenant not found: " + organizationProperties.getName()));
+    Tenant systemTenant =
+        tenantRepository
+            .findByTenantName(organizationProperties.getName())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "System tenant not found: " + organizationProperties.getName()));
 
     // Get Initial Global Admin (using configured username)
-    EzkeyAdmin globalAdmin = adminRepository
-        .findByUsername(initialGlobalAdminProperties.getUsername())
-        .orElseThrow(
-            () -> new RuntimeException(
-                "Initial global admin not found: "
-                    + initialGlobalAdminProperties.getUsername()));
+    EzkeyAdmin globalAdmin =
+        adminRepository
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
     // Create System Integration
     Integration systemIntegration = new Integration();
@@ -262,20 +249,20 @@ public class AdminBootstrapService {
   /**
    * Check and create Global Admin Enrollment if it doesn't exist.
    *
-   * <p>
-   * This method checks if the initial global admin already has an MFA enrollment.
-   * If not, it
+   * <p>This method checks if the initial global admin already has an MFA enrollment. If not, it
    * creates one.
    *
    * @param systemIntegration the System Integration to enroll with
    */
   private void checkAndCreateGlobalAdminEnrollment(Integration systemIntegration) {
-    EzkeyAdmin globalAdmin = adminRepository
-        .findByUsername(initialGlobalAdminProperties.getUsername())
-        .orElseThrow(
-            () -> new RuntimeException(
-                "Initial global admin not found: "
-                    + initialGlobalAdminProperties.getUsername()));
+    EzkeyAdmin globalAdmin =
+        adminRepository
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
     // Check if admin already has enrollment
     if (globalAdmin.getMfaEnrollment() != null) {
@@ -295,9 +282,10 @@ public class AdminBootstrapService {
       // previous run
       // Reload enrollment from repository to ensure session is active and all
       // properties are loaded
-      Enrollment existingEnrollment = enrollmentRepository
-          .findById(enrollmentId)
-          .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
+      Enrollment existingEnrollment =
+          enrollmentRepository
+              .findById(enrollmentId)
+              .orElseThrow(() -> new RuntimeException("Enrollment not found: " + enrollmentId));
       bootstrapCredentialsFileExporter.exportIfEnabled(
           existingEnrollment,
           existingEnrollment.getEnrollmentProofToken(),
@@ -311,11 +299,8 @@ public class AdminBootstrapService {
   /**
    * Create Global Admin Enrollment.
    *
-   * <p>
-   * This method creates an enrollment for the initial global admin with Ed25519
-   * key pair for
-   * cryptographic operations. The enrollment credentials are logged with highly
-   * visible formatting.
+   * <p>This method creates an enrollment for the initial global admin with Ed25519 key pair for
+   * cryptographic operations. The enrollment credentials are logged with highly visible formatting.
    *
    * @param systemIntegration the System Integration to enroll with
    */
@@ -323,12 +308,14 @@ public class AdminBootstrapService {
     logger.info("🔧 Creating Global Admin Enrollment...");
 
     // Get Initial Global Admin (using configured username)
-    EzkeyAdmin globalAdmin = adminRepository
-        .findByUsername(initialGlobalAdminProperties.getUsername())
-        .orElseThrow(
-            () -> new RuntimeException(
-                "Initial global admin not found: "
-                    + initialGlobalAdminProperties.getUsername()));
+    EzkeyAdmin globalAdmin =
+        adminRepository
+            .findByUsername(initialGlobalAdminProperties.getUsername())
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Initial global admin not found: "
+                            + initialGlobalAdminProperties.getUsername()));
 
     // Generate EC P-256 key pair for enrollment
     logger.info("🔐 Generating EC P-256 key pair for Global Admin Enrollment...");
@@ -342,13 +329,14 @@ public class AdminBootstrapService {
 
     // Create Global Admin Enrollment with personalized name (include username for
     // uniqueness)
-    String enrollmentName = "Global Admin MFA - "
-        + globalAdmin.getFirstName()
-        + " "
-        + globalAdmin.getLastName()
-        + " ("
-        + globalAdmin.getUsername()
-        + ")";
+    String enrollmentName =
+        "Global Admin MFA - "
+            + globalAdmin.getFirstName()
+            + " "
+            + globalAdmin.getLastName()
+            + " ("
+            + globalAdmin.getUsername()
+            + ")";
     Enrollment globalAdminEnrollment = new Enrollment();
     globalAdminEnrollment.setIntegrationId(systemIntegration.getId());
     globalAdminEnrollment.setEnrollmentName(enrollmentName);
@@ -376,7 +364,8 @@ public class AdminBootstrapService {
     globalAdmin.setChallengeRequired(false);
 
     // Generate recovery codes for emergency access
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+        recoveryService.generateRecoveryCodes();
     globalAdmin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     adminRepository.save(globalAdmin);
@@ -401,18 +390,14 @@ public class AdminBootstrapService {
   /**
    * Log global admin enrollment credentials with highly visible formatting.
    *
-   * <p>
-   * This method logs enrollment credentials and recovery codes using WARN level
-   * with
-   * 80-character separator lines to ensure visibility in logs. Credentials are
-   * logged ONCE at
+   * <p>This method logs enrollment credentials and recovery codes using WARN level with
+   * 80-character separator lines to ensure visibility in logs. Credentials are logged ONCE at
    * startup and should be saved securely by the administrator.
    *
-   * @param enrollment           the enrollment with credentials to log
-   * @param recoveryCodes        the plain recovery codes to log
-   * @param enrollmentProofToken the enrollment proof token to log (from local
-   *                             variable, before
-   *                             save)
+   * @param enrollment the enrollment with credentials to log
+   * @param recoveryCodes the plain recovery codes to log
+   * @param enrollmentProofToken the enrollment proof token to log (from local variable, before
+   *     save)
    */
   private void logGlobalAdminEnrollmentCredentials(
       Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
@@ -440,7 +425,8 @@ public class AdminBootstrapService {
     logger.warn("   Enrollment Challenge Code: {}", enrollment.getEnrollmentChallenge());
     logger.warn("");
 
-    String enrollmentPayload = qrCodePayloadService.composePayload(enrollment.getEnrollmentId(), enrollmentProofToken);
+    String enrollmentPayload =
+        qrCodePayloadService.composePayload(enrollment.getEnrollmentId(), enrollmentProofToken);
     logger.warn("📷 QR CODE (Scan with Ezkey Mobile):");
     logger.warn("");
     for (String line : qrCodeAsciiRenderer.renderAscii(enrollmentPayload).split("\\R")) {

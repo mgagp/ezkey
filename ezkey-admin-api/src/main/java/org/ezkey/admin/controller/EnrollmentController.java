@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
@@ -53,6 +54,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -93,6 +95,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @see EnrollmentCreateRequestDto
  * @see EnrollmentCreateResponseDto
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/enrollments")
 @Tag(name = "Enrollments", description = "Enrollment management API")
@@ -459,6 +462,10 @@ public class EnrollmentController {
   public ResponseEntity<Void> delete(
       @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")
           Integer id,
+      @Parameter(description = "Audit justification for the deletion (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
@@ -486,6 +493,7 @@ public class EnrollmentController {
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
               .eventDetails("Enrollment name: " + enrollment.getEnrollmentName())
+              .reason(reason)
               .build());
 
       // Delete enrollment after audit log is created
