@@ -1,14 +1,24 @@
-/** Spring Data Page<T> response structure — returned by all paginated Admin API endpoints. */
+/**
+ * Spring Data Page<T> response structure — returned by all paginated Admin API endpoints.
+ *
+ * The backend serialises pagination metadata inside a nested `page` object
+ * (Spring HATEOAS / Spring Data REST format):
+ * ```json
+ * { "content": [...], "page": { "size": 20, "totalElements": 42, "totalPages": 3, "number": 0 } }
+ * ```
+ */
 export interface PageResponse<T> {
   content: T[];
-  totalElements: number;
-  totalPages: number;
-  /** Zero-based current page number. */
-  number: number;
-  size: number;
-  first: boolean;
-  last: boolean;
-  numberOfElements: number;
+  page: {
+    /** Page size requested. */
+    size: number;
+    /** Total number of elements across all pages. */
+    totalElements: number;
+    /** Total number of pages. */
+    totalPages: number;
+    /** Zero-based current page number. */
+    number: number;
+  };
 }
 
 /** RFC 9457 Problem Details error shape returned by the Admin API on failures. */

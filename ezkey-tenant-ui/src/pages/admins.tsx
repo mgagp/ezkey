@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, KeyRound, Plus, QrCode, RefreshCw } from 'lucide-react';
+import { Check, Copy, KeyRound, Plus, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/context/auth-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
@@ -139,6 +140,69 @@ function OnboardingDialog({
   );
 }
 
+// ── Deactivate admin dialog ────────────────────────────────────────────────────
+
+function DeactivateAdminDialog({
+  open,
+  onClose,
+  admin,
+}: {
+  open: boolean;
+  onClose: () => void;
+  admin: Admin | null;
+}) {
+  const queryClient = useQueryClient();
+
+  const deactivateMutation = useMutation({
+    mutationFn: (adminId: number) => api.post<void>(`/api/v1/admins/${adminId}/deactivate`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admins'] });
+      onClose();
+    },
+  });
+
+  const handleClose = () => {
+    deactivateMutation.reset();
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} title="Deactivate Admin" size="sm">
+      {admin && (
+        <div className="space-y-4">
+          <p className="text-sm text-fg">
+            Are you sure you want to deactivate{' '}
+            <strong>{admin.username}</strong>? All active tokens will be revoked immediately.
+          </p>
+          <p className="text-xs text-fg-muted">This action cannot be undone from this interface.</p>
+
+          {deactivateMutation.isError && (
+            <Alert variant="error">
+              {deactivateMutation.error instanceof ApiError
+                ? deactivateMutation.error.message
+                : 'Failed to deactivate admin.'}
+            </Alert>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              isLoading={deactivateMutation.isPending}
+              onClick={() => admin && deactivateMutation.mutate(admin.adminId)}
+            >
+              <UserX className="size-3.5 mr-1.5" />
+              Deactivate
+            </Button>
+          </div>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
 // ── Create admin dialog ────────────────────────────────────────────────────────
 
 const adminSchema = z.object({
@@ -236,8 +300,12 @@ function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => vo
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminsPage() {
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+
   const [createOpen, setCreateOpen] = useState(false);
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<Admin | null>(null);
 
   const { data, pagination, isLoading, refetch } = usePaginatedQuery<Admin>({
     queryKey: ['admins'],
@@ -262,18 +330,31 @@ export default function AdminsPage() {
     { header: 'Active', key: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
     { header: 'Created', key: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt)}</span> },
     {
-      header: 'Onboarding',
-      key: 'onboarding',
+      header: 'Actions',
+      key: 'actions',
       render: (r) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1"
-          onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId, username: r.username }); }}
-        >
-          <KeyRound className="size-3" />
-          Credentials
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId, username: r.username }); }}
+          >
+            <KeyRound className="size-3" />
+            Credentials
+          </Button>
+          {isGlobalAdmin && r.active && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
+              onClick={(e) => { e.stopPropagation(); setDeactivateTarget(r); }}
+            >
+              <UserX className="size-3" />
+              Deactivate
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -320,6 +401,11 @@ export default function AdminsPage() {
         onClose={() => setOnboardingTarget(null)}
         adminId={onboardingTarget?.id ?? null}
         adminUsername={onboardingTarget?.username ?? ''}
+      />
+      <DeactivateAdminDialog
+        open={deactivateTarget !== null}
+        onClose={() => setDeactivateTarget(null)}
+        admin={deactivateTarget}
       />
     </AppShell>
   );

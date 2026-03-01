@@ -88,16 +88,19 @@ export function usePaginatedQuery<T>({
     setPaginationState((prev) => ({ ...prev, sort, page: 0 }));
   }, []);
 
+  const totalPages = data?.page?.totalPages ?? 0;
+  const currentPageNum = data?.page?.number ?? paginationState.page;
+
   return {
     data: data?.content ?? [],
     pagination: {
       page: paginationState.page,
       size: paginationState.size,
       sort: paginationState.sort,
-      totalPages: data?.totalPages ?? 0,
-      totalElements: data?.totalElements ?? 0,
-      isFirst: data?.first ?? true,
-      isLast: data?.last ?? true,
+      totalPages,
+      totalElements: data?.page?.totalElements ?? 0,
+      isFirst: currentPageNum === 0,
+      isLast: totalPages === 0 || currentPageNum >= totalPages - 1,
       goToPage,
       nextPage,
       prevPage,

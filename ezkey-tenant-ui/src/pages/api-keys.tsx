@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,12 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useDebounce } from '@/hooks/use-debounce';
-import { useIntegrations, getIntegrationName } from '@/hooks/use-integrations';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { ApiKeyCreateRequest, PageResponse } from '@/types/api';
+import type { ApiKeyCreateRequest } from '@/types/api';
 import type { ApiKey, ApiKeyCreateResponse } from '@/types/models';
 
 // ── Create API key dialog ──────────────────────────────────────────────────────
@@ -37,6 +34,7 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
   const queryClient = useQueryClient();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
   const [createdKey, setCreatedKey] = useState<ApiKeyCreateResponse | null>(null);
+  const [integrationKeyCopied, setIntegrationKeyCopied] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
   const [savedConfirmed, setSavedConfirmed] = useState(false);
 
@@ -57,10 +55,20 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
     if (createdKey && !savedConfirmed) return; // block until confirmed
     reset();
     setCreatedKey(null);
+    setIntegrationKeyCopied(false);
     setSecretCopied(false);
     setSavedConfirmed(false);
     createMutation.reset();
     onClose();
+  };
+
+  const handleCopyIntegrationKey = async () => {
+    if (!createdKey?.integrationKey) return;
+    try {
+      await navigator.clipboard.writeText(createdKey.integrationKey);
+      setIntegrationKeyCopied(true);
+      setTimeout(() => setIntegrationKeyCopied(false), 2000);
+    } catch { /* ignore */ }
   };
 
   const onSubmit = (values: ApiKeyFormValues) => {
@@ -100,11 +108,15 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
           </div>
 
           {/* Public key */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">Integration Key (public)</p>
-            <div className="border-2 border-fg/30 p-2.5 font-mono text-xs bg-bg break-all">
+            <div className="border-2 border-fg/30 p-2.5 font-mono text-xs bg-bg break-all select-all">
               {createdKey.integrationKey}
             </div>
+            <Button variant="secondary" size="sm" onClick={handleCopyIntegrationKey} className="gap-1.5">
+              {integrationKeyCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+              {integrationKeyCopied ? 'Copied!' : 'Copy Integration Key'}
+            </Button>
           </div>
 
           {/* Secret key */}
@@ -265,19 +277,19 @@ export default function ApiKeysPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<ApiKey | null>(null);
   const [integrationFilter, setIntegrationFilter] = useState('');
-  const debouncedFilter = useDebounce(integrationFilter, 0);
 
   const { list: integrations, lookup } = useIntegrations();
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<ApiKey>({
-    queryKey: ['api-keys', debouncedFilter],
-    queryFn: ({ page, size, sort }) => {
-      const base = debouncedFilter
-        ? `/api/v1/api-keys/integration/${debouncedFilter}`
+  // API returns List<ApiKeyResponseDto> (not paginated) — use plain useQuery
+  const { data: apiKeys = [], isLoading, refetch } = useQuery({
+    queryKey: ['api-keys', integrationFilter],
+    queryFn: () => {
+      const url = integrationFilter
+        ? `/api/v1/api-keys/integration/${integrationFilter}`
         : '/api/v1/api-keys';
-      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
-      return api.get<PageResponse<ApiKey>>(`${base}?${p.toString()}`);
+      return api.get<ApiKey[]>(url);
     },
+    staleTime: 30_000,
   });
 
   const columns: ColumnDef<ApiKey>[] = [
@@ -360,20 +372,16 @@ export default function ApiKeysPage() {
         <div>
           <DataTable
             columns={columns}
-            data={data}
+            data={apiKeys}
             isLoading={isLoading}
             keyExtractor={(r) => r.apiKeyId}
             emptyMessage="No API keys found. Create your first key to enable M2M access."
           />
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalElements={pagination.totalElements}
-            isFirst={pagination.isFirst}
-            isLast={pagination.isLast}
-            onPrevPage={pagination.prevPage}
-            onNextPage={pagination.nextPage}
-          />
+          {!isLoading && apiKeys.length > 0 && (
+            <p className="text-xs text-fg-muted px-3 py-2 border-t border-fg/10">
+              {apiKeys.length} key{apiKeys.length !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
       </div>
 

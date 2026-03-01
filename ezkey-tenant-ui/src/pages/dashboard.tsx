@@ -86,19 +86,19 @@ export default function DashboardPage() {
     ],
   });
 
-  const intTotal = results[0].data?.totalElements;
-  const intActive = results[1].data?.totalElements;
+  const intTotal = results[0].data?.page?.totalElements;
+  const intActive = results[1].data?.page?.totalElements;
   const intInactive = intTotal !== undefined && intActive !== undefined ? intTotal - intActive : undefined;
 
-  const enrTotal = results[2].data?.totalElements;
-  const enrVerified = results[3].data?.totalElements;
-  const enrBound = results[4].data?.totalElements;
-  const enrCreated = results[5].data?.totalElements;
+  const enrTotal = results[2].data?.page?.totalElements;
+  const enrVerified = results[3].data?.page?.totalElements;
+  const enrBound = results[4].data?.page?.totalElements;
+  const enrCreated = results[5].data?.page?.totalElements;
 
-  const authTotal = results[6].data?.totalElements;
-  const authAccepted = results[7].data?.totalElements;
-  const authRejected = results[8].data?.totalElements;
-  const authPending = results[9].data?.totalElements;
+  const authTotal = results[6].data?.page?.totalElements;
+  const authAccepted = results[7].data?.page?.totalElements;
+  const authRejected = results[8].data?.page?.totalElements;
+  const authPending = results[9].data?.page?.totalElements;
 
   const failureRate =
     authTotal && authTotal > 0 && authRejected !== undefined

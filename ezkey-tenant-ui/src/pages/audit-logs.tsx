@@ -73,7 +73,7 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLog | null; onClose:
           <span className="font-mono text-xs bg-fg/5 px-1.5 py-0.5">{log.eventType}</span>
         </InfoRow>
         <InfoRow label="Status"><EventStatusBadge status={log.eventStatus} /></InfoRow>
-        {log.apiName && <InfoRow label="API"><Badge variant="muted">{log.apiName}</Badge></InfoRow>}
+        {log.apiName && <InfoRow label="API"><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
         {log.adminId && <InfoRow label="Admin ID"><span className="font-mono">#{log.adminId}</span></InfoRow>}
         {log.integrationId && <InfoRow label="Integration"><span className="font-mono">#{log.integrationId}</span></InfoRow>}
         {log.enrollmentId && <InfoRow label="Enrollment"><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
@@ -145,7 +145,13 @@ export default function AuditLogsPage() {
       ),
     },
     { header: 'Status', key: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
-    { header: 'API', key: 'apiName', render: (r) => r.apiName ? <Badge variant="muted">{r.apiName}</Badge> : <span className="text-fg-muted">—</span> },
+    {
+      header: 'API',
+      key: 'apiName',
+      render: (r) => r.apiName
+        ? <Badge variant="muted">{r.apiName.replace('_API', '')}</Badge>
+        : <span className="text-fg-muted">—</span>,
+    },
     {
       header: 'Admin',
       key: 'adminId',
@@ -201,11 +207,12 @@ export default function AuditLogsPage() {
               <option value="ERROR">Error</option>
             </Select>
           </div>
-          <div className="w-28">
+          <div className="w-36">
             <Select value={apiNameFilter} onChange={(e) => setApiNameFilter(e.target.value)}>
               <option value="">All APIs</option>
-              <option value="ADMIN">Admin</option>
-              <option value="AUTH">Auth</option>
+              <option value="ADMIN_API">Admin API</option>
+              <option value="AUTH_API">Auth API</option>
+              <option value="M2M_API">M2M API</option>
             </Select>
           </div>
           <div className="flex items-center gap-2">

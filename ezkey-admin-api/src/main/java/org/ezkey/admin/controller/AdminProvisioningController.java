@@ -188,8 +188,14 @@ public class AdminProvisioningController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    // Validate tenantId is provided
-    if (request.tenantId() == null) {
+    // When a TenantAdmin creates a peer admin, tenantId is implicitly their own tenant.
+    // This avoids requiring the caller to repeat information already present in their JWT.
+    // GlobalAdmin must still supply tenantId explicitly (they can target any tenant).
+    Integer effectiveTenantId = request.tenantId();
+    if (effectiveTenantId == null && principal.isTenantAdmin()) {
+      effectiveTenantId = principal.tenantId();
+    }
+    if (effectiveTenantId == null) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 
@@ -199,7 +205,7 @@ public class AdminProvisioningController {
             request.email(),
             request.firstName(),
             request.lastName(),
-            request.tenantId(),
+            effectiveTenantId,
             principal);
 
     AdminProvisioningResponseDto response =

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { type AuthSession, clearSession, getSession, saveSession } from '@/lib/auth';
+import { queryClient } from '@/lib/query-client';
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearSession();
+    queryClient.clear();
     setSession(null);
   }, []);
 
