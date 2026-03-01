@@ -1,3 +1,6 @@
+# Override root .gitignore: package-lock.json must be committed for reproducible Docker builds
+!package-lock.json
+
 # Logs
 logs
 *.log
