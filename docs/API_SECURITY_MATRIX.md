@@ -275,7 +275,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
      -H "Content-Type: application/json" \
      http://localhost:8080/api/v1/auth-attempts
 
-# Test admin authentication  
+# Test admin authentication
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      http://localhost:8080/api/v1/enrollments
@@ -299,6 +299,6 @@ mvn test -Dtest=ApiKeyControllerTest
 
 ---
 
-**Last Updated:** 2025-10-23  
-**Version:** 1.0  
+**Last Updated:** 2025-10-23
+**Version:** 1.0
 **Status:** Implementation Complete, Testing In Progress

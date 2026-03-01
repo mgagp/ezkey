@@ -241,7 +241,7 @@ mvn spring-boot:run
 
 #### 2. Invalid Credentials
 **Error**: 401 Unauthorized with valid-looking tokens
-**Solution**: 
+**Solution**:
 - Verify API key is active and not expired
 - Check admin token is valid and not expired
 - Ensure credentials are properly formatted
@@ -328,6 +328,6 @@ wait
 
 ---
 
-**Last Updated**: 2025-10-23  
-**Version**: 1.0  
+**Last Updated**: 2025-10-23
+**Version**: 1.0
 **Status**: Ready for Testing
