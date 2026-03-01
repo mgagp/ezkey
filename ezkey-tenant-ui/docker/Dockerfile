@@ -18,11 +18,12 @@ RUN npm run build
 # Stage 2: Serve the built SPA with Caddy (non-root, Apache 2.0 licensed)
 FROM caddy:2-alpine AS runtime
 
-# Copy built assets and Caddyfile, owned by the caddy user (uid 82)
-COPY --from=builder --chown=caddy:caddy /app/dist /usr/share/caddy
-COPY --chown=caddy:caddy docker/Caddyfile /etc/caddy/Caddyfile
+# Copy built assets and Caddyfile
+# Use numeric UID 1000 — avoids "no matching entries in passwd" on some Alpine Caddy variants
+COPY --from=builder --chown=1000:1000 /app/dist /usr/share/caddy
+COPY --chown=1000:1000 docker/Caddyfile /etc/caddy/Caddyfile
 
-# Run as non-privileged caddy user
-USER caddy
+# Run as non-privileged user (numeric UID — no dependency on a named user in /etc/passwd)
+USER 1000:1000
 
 EXPOSE 8080
