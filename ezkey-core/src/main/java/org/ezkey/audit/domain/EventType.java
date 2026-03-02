@@ -37,6 +37,10 @@ public enum EventType {
   ENROLLMENT_DELETED,
   ENROLLMENT_BIND,
   ENROLLMENT_VERIFY,
+  ENROLLMENT_REVOKED, // Admin permanently revoked an enrollment (SOC 2 CC6.3)
+  ENROLLMENT_DEACTIVATED, // Admin deactivated an enrollment (reversible)
+  ENROLLMENT_REACTIVATED, // Admin reactivated a previously deactivated enrollment
+  ENROLLMENT_AUTH_ATTEMPT_BLOCKED, // Auth attempt rejected because enrollment is inactive/revoked
 
   // Authentication attempt events
   AUTH_ATTEMPT_CREATED,

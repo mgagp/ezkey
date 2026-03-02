@@ -542,8 +542,41 @@ public class M2mAuthAttemptController {
       throw new IllegalArgumentException("Either enrollmentId or userIdentifier is required.");
     }
 
-    // Path 1: enrollmentId only
+    // Path 1: enrollmentId only — validate enrollment belongs to API key's integration
+    // and is active + VERIFIED. This prevents cross-integration probing and ensures that
+    // revoked/deactivated enrollments are rejected at the earliest possible point.
     if (enrollmentId != null && userIdentifier == null) {
+      Integer integrationIdForPath1 = extractIntegrationId();
+      if (integrationIdForPath1 == null) {
+        throw new IllegalArgumentException(
+            "Unable to determine integration from API key. Contact support.");
+      }
+      Enrollment enrollmentForPath1 =
+          enrollmentRepository
+              .findById(enrollmentId)
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException("Enrollment not found for ID: " + enrollmentId));
+      if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
+        logger.warn(
+            "M2M cross-integration access attempt: API key from integration {} tried to use"
+                + " enrollment {} belonging to integration {}",
+            integrationIdForPath1,
+            enrollmentId,
+            enrollmentForPath1.getIntegrationId());
+        throw new IllegalArgumentException("Enrollment does not belong to this integration.");
+      }
+      if (!Boolean.TRUE.equals(enrollmentForPath1.getActive())
+          || !EnrollmentStatus.VERIFIED.equals(enrollmentForPath1.getStatus())) {
+        logger.warn(
+            "M2M auth attempt rejected: enrollment {} is not active or not VERIFIED (status={},"
+                + " active={})",
+            enrollmentId,
+            enrollmentForPath1.getStatus(),
+            enrollmentForPath1.getActive());
+        throw new org.ezkey.exception.EnrollmentInactiveException(
+            "Enrollment is not active for authentication. Enrollment ID: " + enrollmentId);
+      }
       return enrollmentId;
     }
 

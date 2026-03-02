@@ -1,3 +1,10 @@
+---
+name: ""
+overview: ""
+todos: []
+isProject: false
+---
+
 # EZKey Tenant UI — Scope & Strategic Positioning
 
 ## Original Scope: Tenant Admin UI (Docker Standalone)
@@ -8,10 +15,12 @@ the primary interface for Global Admins (IT/DevOps audience).
 
 ### Initial positioning rationale
 
-| Interface | Audience | Rationale |
-|---|---|---|
+
+| Interface              | Audience     | Rationale                                          |
+| ---------------------- | ------------ | -------------------------------------------------- |
 | `ezkey-cli` (TUI mode) | Global Admin | IT/ops-first, terminal-native, automation-friendly |
-| `ezkey-tenant-ui` | Tenant Admin | Business users, web UI, process-oriented UX |
+| `ezkey-tenant-ui`      | Tenant Admin | Business users, web UI, process-oriented UX        |
+
 
 ### Initial functional scope (Phases 1–3)
 
@@ -37,10 +46,12 @@ This observation triggered a **strategic reassessment** (Feb 2025).
 
 ### Features added beyond the original tenant-only scope
 
-| Feature | Type | Trigger |
-|---|---|---|
-| Admin deactivation (`POST /api/v1/admins/{id}/deactivate`) | Global Admin only | Discovered during review; conditionally shown (`isGlobalAdmin`) |
-| Test Authentication simulator (`POST /api/v1/auth-attempts`) | All admins | Intentional expansion for operational value |
+
+| Feature                                                      | Type              | Trigger                                                         |
+| ------------------------------------------------------------ | ----------------- | --------------------------------------------------------------- |
+| Admin deactivation (`POST /api/v1/admins/{id}/deactivate`)   | Global Admin only | Discovered during review; conditionally shown (`isGlobalAdmin`) |
+| Test Authentication simulator (`POST /api/v1/auth-attempts`) | All admins        | Intentional expansion for operational value                     |
+
 
 ### Test Authentication feature (enrollment-detail page)
 
@@ -48,6 +59,7 @@ This observation triggered a **strategic reassessment** (Feb 2025).
 to confirm the device binding is working before going to production.
 
 **Implementation**:
+
 - Button "Test Authentication" visible on `enrollment-detail` page only when `enrollmentStatus === 'VERIFIED'`
 - Opens a 3-step dialog:
   1. **Configure** — optional challenge code checkbox (pre-checked if `authAttemptChallengeRequired`)
@@ -65,11 +77,13 @@ current tenant UI iteration first, then plan a dedicated phase to generalize.
 
 ### Planned evolution
 
-| Phase | Scope | Decision |
-|---|---|---|
-| **Current** | Complete `ezkey-tenant-ui` as-is | ✅ In progress |
-| **Next** | Add Global Admin features to the web UI (tenant CRUD, crypto key rotation, system-wide monitoring) | Planned post-release |
-| **Future** | Rename project to `ezkey-admin-ui`; retire the TUI interactive mode | Planned |
+
+| Phase       | Scope                                                                                              | Decision             |
+| ----------- | -------------------------------------------------------------------------------------------------- | -------------------- |
+| **Current** | Complete `ezkey-tenant-ui` as-is                                                                   | ✅ In progress        |
+| **Next**    | Add Global Admin features to the web UI (tenant CRUD, crypto key rotation, system-wide monitoring) | Planned post-release |
+| **Future**  | Rename project to `ezkey-admin-ui`; retire the TUI interactive mode                                | Planned              |
+
 
 ### CLI Python fate
 
@@ -82,3 +96,4 @@ current tenant UI iteration first, then plan a dedicated phase to generalize.
 > The backend is the authoritative gate. Role-based access (JWT claims) determines visibility
 > and permissions. The UI should reflect what the backend allows — not artificially restrict it.
 > Expanding UI scope is low-risk because the backend enforces all security boundaries.
+

@@ -12,6 +12,7 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -94,6 +95,17 @@ public class AdminTokenValidationService {
           // Check if admin's tenant is still active
           if (adminToken.getTenant() != null && !adminToken.getTenant().getActive()) {
             logger.warn("❌ Token rejected: tenant inactive for admin: {}", admin.getUsername());
+            return Optional.empty();
+          }
+
+          // Check if admin's MFA enrollment is still active.
+          // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
+          // immediately on revocation, but this guard catches any window where the
+          // enrollment was deactivated without explicit token revocation.
+          Enrollment mfaEnrollment = admin.getMfaEnrollment();
+          if (mfaEnrollment != null && !Boolean.TRUE.equals(mfaEnrollment.getActive())) {
+            logger.warn(
+                "❌ Token rejected: MFA enrollment inactive for admin: {}", admin.getUsername());
             return Optional.empty();
           }
 

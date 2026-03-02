@@ -709,6 +709,62 @@
           "response": []
         },
         {
+          "name": "create - enrollment inactive (revoked or deactivated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 - enrollment inactive\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"RFC 9457 ProblemDetail returned\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('type');",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData.status).to.equal(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Problem type is enrollment-inactive\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.type).to.include('enrollment-inactive');",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"enrollmentId\": {{inactiveEnrollmentId}},\n    \"challengeRequested\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_m2m_api}}/api/v1/auth-attempts",
+              "host": [
+                "{{base_url_m2m_api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth-attempts"
+              ]
+            },
+            "description": "Attempts to create an auth attempt using an enrollment that has been deactivated or revoked.\n\nPrerequisite: set `{{inactiveEnrollmentId}}` to an enrollment ID that has been deactivated (via `POST /api/v1/enrollments/{id}/deactivate`) or revoked (via `POST /api/v1/enrollments/{id}/revoke`).\n\n**Expected behavior:**\n- 403 Forbidden with RFC 9457 ProblemDetail\n- `type`: `https://ezkey.io/problems/enrollment/enrollment-inactive`\n- `title`: `Enrollment Inactive`\n\nThis verifies the security gate in `AuthAttemptService.create()` that prevents new auth attempts against revoked or deactivated enrollments."
+          },
+          "response": []
+        },
+        {
           "name": "create - bad credentials",
           "event": [
             {

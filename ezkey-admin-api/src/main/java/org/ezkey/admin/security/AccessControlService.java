@@ -151,6 +151,29 @@ public class AccessControlService {
   }
 
   /**
+   * Checks if the authenticated user can revoke or deactivate a specific enrollment.
+   *
+   * <p>The scoping rules for revocation are identical to those for read access: Global Admins can
+   * revoke any enrollment; Tenant Admins can only revoke enrollments within their tenant; API Keys
+   * cannot revoke enrollments.
+   *
+   * <p><b>Self-revocation prevention</b> is enforced at the service layer ({@link
+   * org.ezkey.admin.service.EnrollmentRevocationService}), not here. This method only enforces
+   * tenant scoping.
+   *
+   * <p><b>Non-impersonation note:</b> Revoking an enrollment is an administrative control action,
+   * not impersonation. Global Admins may revoke any enrollment including regular user enrollments
+   * across all integrations. Tenant Admins may revoke enrollments within their tenant.
+   *
+   * @param auth the authentication context
+   * @param enrollmentId the enrollment ID to check
+   * @return true if the caller may revoke this enrollment, false otherwise
+   */
+  public boolean canRevokeEnrollment(Authentication auth, Integer enrollmentId) {
+    return canAccessEnrollment(auth, enrollmentId);
+  }
+
+  /**
    * Checks if the authenticated user can access a specific integration.
    *
    * <p><b>Access Rules:</b>

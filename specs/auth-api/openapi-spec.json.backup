@@ -572,24 +572,6 @@
             "type": "string",
             "description": "Optional descriptive message for the approver (null if no context provided). Example: \"Authorize payment batch #1497 to Acme Corp for $1,400\"",
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
-          },
-          "contextDetails": {
-            "type": "string",
-            "description": "Optional structured key-value context details as a JSON object (null if not provided).",
-            "example": {
-              "Amount": "$1,400.00",
-              "Vendor": "Acme Corp"
-            }
-          },
-          "contextLevel": {
-            "type": "string",
-            "description": "Severity level: INFO (default), WARNING, or CRITICAL",
-            "enum": [
-              "INFO",
-              "WARNING",
-              "CRITICAL"
-            ],
-            "example": "WARNING"
           }
         },
         "required": [

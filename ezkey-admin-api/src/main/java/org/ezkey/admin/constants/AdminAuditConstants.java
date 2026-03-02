@@ -96,6 +96,35 @@ public final class AdminAuditConstants {
   /** Audit action for failed enrollment deletion (not found). */
   public static final String ENROLLMENT_DELETION_FAILED = "enrollment_deletion_failed";
 
+  /** Audit action for successful enrollment revocation (permanent, admin-initiated). */
+  public static final String ENROLLMENT_REVOKED = "enrollment_revoked";
+
+  /** Audit action for failed enrollment revocation. */
+  public static final String ENROLLMENT_REVOCATION_FAILED = "enrollment_revocation_failed";
+
+  /** Audit action for successful enrollment deactivation (reversible). */
+  public static final String ENROLLMENT_DEACTIVATED = "enrollment_deactivated";
+
+  /** Audit action for failed enrollment deactivation. */
+  public static final String ENROLLMENT_DEACTIVATION_FAILED = "enrollment_deactivation_failed";
+
+  /** Audit action for successful enrollment reactivation. */
+  public static final String ENROLLMENT_REACTIVATED = "enrollment_reactivated";
+
+  /** Audit action for failed enrollment reactivation. */
+  public static final String ENROLLMENT_REACTIVATION_FAILED = "enrollment_reactivation_failed";
+
+  /** Audit action for successful bulk enrollment revocation for an integration. */
+  public static final String ENROLLMENT_REVOKE_ALL = "enrollment_revoke_all";
+
+  /** Audit action for failed bulk enrollment revocation. */
+  public static final String ENROLLMENT_REVOKE_ALL_FAILED = "enrollment_revoke_all_failed";
+
+  /**
+   * Audit action when an auth attempt creation is blocked due to inactive or revoked enrollment.
+   */
+  public static final String ENROLLMENT_AUTH_ATTEMPT_BLOCKED = "enrollment_auth_attempt_blocked";
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Authentication Attempt Actions
   // ═══════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,176 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Class: EnrollmentExceptionHandler
+ * Description: Handles enrollment lifecycle exceptions in the Ezkey Admin API,
+ *              returning RFC 9457 ProblemDetail responses.
+ */
+
+package org.ezkey.exception;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
+import org.ezkey.admin.exception.SystemIntegrationRevocationException;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * Handles enrollment lifecycle exceptions in the Ezkey Admin REST API.
+ *
+ * <p><b>Responsibility:</b> Intercepts exceptions thrown during enrollment revocation, deactivation
+ * and reactivation operations and converts them into RFC 9457 ProblemDetail responses.
+ *
+ * <p><b>Exceptions Handled (3 total):</b>
+ *
+ * <ul>
+ *   <li><b>EnrollmentInactiveException (403):</b> Auth attempt rejected — enrollment is not active
+ *       or not in VERIFIED status.
+ *   <li><b>SelfRevocationNotAllowedException (403):</b> Admin attempted to revoke or deactivate
+ *       their own MFA enrollment.
+ *   <li><b>SystemIntegrationRevocationException (403):</b> Bulk revocation targeted a system
+ *       integration, which is not permitted.
+ * </ul>
+ *
+ * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs).
+ *
+ * <pre>{@code
+ * {
+ *   "type": "https://ezkey.io/problems/enrollment/...",
+ *   "title": "...",
+ *   "status": 403,
+ *   "detail": "...",
+ *   "path": "/api/v1/enrollments/42/revoke"
+ * }
+ * }</pre>
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * @author Ezkey contributors
+ * @since 2025
+ * @see ExceptionHandlerBase
+ * @see EnrollmentInactiveException
+ * @see SelfRevocationNotAllowedException
+ * @see SystemIntegrationRevocationException
+ */
+@RestControllerAdvice
+@Component
+@Order(35)
+public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
+
+  /**
+   * Handles EnrollmentInactiveException and returns HTTP 403 Forbidden.
+   *
+   * <p>Triggered when an authentication attempt targets an enrollment that is either not active
+   * ({@code active=false}) or not in {@code VERIFIED} status. This is a security gate that prevents
+   * new auth attempts from being created against revoked or deactivated enrollments.
+   *
+   * <p><b>HTTP Status:</b> 403 Forbidden
+   *
+   * <p><b>Example Response:</b>
+   *
+   * <pre>{@code
+   * {
+   *   "type": "https://ezkey.io/problems/enrollment/enrollment-inactive",
+   *   "title": "Enrollment Inactive",
+   *   "status": 403,
+   *   "detail": "Enrollment is not active for authentication.",
+   *   "path": "/api/v1/auth-attempts"
+   * }
+   * }</pre>
+   *
+   * @param ex the EnrollmentInactiveException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 403 status
+   */
+  @ExceptionHandler(EnrollmentInactiveException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentInactiveException(
+      EnrollmentInactiveException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/enrollment/enrollment-inactive",
+        "Enrollment Inactive",
+        request);
+  }
+
+  /**
+   * Handles SelfRevocationNotAllowedException and returns HTTP 403 Forbidden.
+   *
+   * <p>Triggered when an administrator attempts to revoke or deactivate their own MFA enrollment,
+   * which would cause a self-inflicted lockout.
+   *
+   * <p><b>HTTP Status:</b> 403 Forbidden
+   *
+   * <p><b>Example Response:</b>
+   *
+   * <pre>{@code
+   * {
+   *   "type": "https://ezkey.io/problems/enrollment/self-revocation-not-allowed",
+   *   "title": "Self-Revocation Not Allowed",
+   *   "status": 403,
+   *   "detail": "Cannot revoke your own MFA enrollment. Use the recovery flow to reset it.",
+   *   "path": "/api/v1/enrollments/42/revoke"
+   * }
+   * }</pre>
+   *
+   * @param ex the SelfRevocationNotAllowedException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 403 status
+   */
+  @ExceptionHandler(SelfRevocationNotAllowedException.class)
+  public ResponseEntity<ProblemDetail> handleSelfRevocationNotAllowedException(
+      SelfRevocationNotAllowedException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/enrollment/self-revocation-not-allowed",
+        "Self-Revocation Not Allowed",
+        request);
+  }
+
+  /**
+   * Handles SystemIntegrationRevocationException and returns HTTP 403 Forbidden.
+   *
+   * <p>Triggered when a bulk revocation operation targets a system integration. System integrations
+   * host all administrator MFA enrollments and cannot be bulk-revoked to prevent a complete system
+   * lockout.
+   *
+   * <p><b>HTTP Status:</b> 403 Forbidden
+   *
+   * <p><b>Example Response:</b>
+   *
+   * <pre>{@code
+   * {
+   *   "type": "https://ezkey.io/problems/enrollment/system-integration-revocation",
+   *   "title": "System Integration Revocation Not Allowed",
+   *   "status": 403,
+   *   "detail": "Bulk revocation cannot be applied to a system integration.",
+   *   "path": "/api/v1/integrations/1/enrollments/revoke-all"
+   * }
+   * }</pre>
+   *
+   * @param ex the SystemIntegrationRevocationException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 403 status
+   */
+  @ExceptionHandler(SystemIntegrationRevocationException.class)
+  public ResponseEntity<ProblemDetail> handleSystemIntegrationRevocationException(
+      SystemIntegrationRevocationException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/enrollment/system-integration-revocation",
+        "System Integration Revocation Not Allowed",
+        request);
+  }
+}

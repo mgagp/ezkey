@@ -343,6 +343,200 @@
       "response": []
     },
     {
+      "name": "revoke",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 (revoked) or 403 (forbidden/self-revocation)\", function () {",
+              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Revocation successful - no content\", function () {",
+              "        pm.expect(pm.response.body).to.be.empty;",
+              "    });",
+              "}",
+              "",
+              "if (pm.response.code === 403) {",
+              "    pm.test(\"RFC 9457 problem detail returned\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('title');",
+              "        pm.expect(jsonData).to.have.property('status');",
+              "        pm.expect(jsonData.status).to.equal(403);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/revoke?reason=Security incident - enrollment revoked per security policy",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id",
+            "revoke"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "Security incident - enrollment revoked per security policy",
+              "description": "Mandatory justification for revocation (min 10, max 500 characters)"
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID to permanently revoke"
+            }
+          ]
+        },
+        "description": "Permanently revokes an enrollment.\n\n**Revocation is IRREVERSIBLE**: the enrollment transitions to status `REVOKED` and `active=false`. A new enrollment must be created if the device needs re-enrolment.\n\n**Security Effects:**\n- Enrollment status set to `REVOKED`\n- `active` flag set to `false`\n- `revokedAt` and `revokedByAdminId` audit fields populated\n- If the enrollment belongs to an administrator, **all their active bearer tokens are immediately invalidated**\n\n**Guards:**\n- Self-revocation is **not allowed** (returns 403 with `self-revocation-not-allowed` problem detail)\n- Scoping: Tenant Admins can revoke enrollments within their tenant; Global Admins can revoke any enrollment\n\n**Required Parameters:**\n- `id` (path): Enrollment ID to revoke\n- `reason` (query): Mandatory justification (min 10 characters) — SOC 2 CC6.3 audit trail\n\n**Status Codes:**\n- 204: Enrollment permanently revoked\n- 400: Missing or invalid `reason` parameter\n- 403: Access denied, self-revocation attempted, or system integration guard\n- 404: Enrollment not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "deactivate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 (deactivated) or 403 (forbidden)\", function () {",
+              "    pm.expect([204, 400, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Deactivation successful - no content\", function () {",
+              "        pm.expect(pm.response.body).to.be.empty;",
+              "    });",
+              "}",
+              "",
+              "if (pm.response.code === 403) {",
+              "    pm.test(\"RFC 9457 problem detail returned\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData.status).to.equal(403);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/deactivate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id",
+            "deactivate"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "Temporary deactivation pending device replacement",
+              "description": "Optional justification for deactivation (max 500 characters)",
+              "disabled": true
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID to deactivate"
+            }
+          ]
+        },
+        "description": "Reversibly deactivates an enrollment (soft-disable).\n\n**Deactivation is REVERSIBLE**: the enrollment's `active` flag is set to `false` while status remains `VERIFIED`. The enrollment can be re-enabled via `/reactivate`.\n\n**Security Effects:**\n- `active` flag set to `false`\n- `deactivatedAt` and `deactivatedByAdminId` audit fields populated\n- New auth attempts for this enrollment will be rejected with 403\n- If the enrollment belongs to an administrator, **all their active bearer tokens are immediately invalidated**\n\n**Guards:**\n- Self-deactivation is **not allowed** (returns 403 with `self-revocation-not-allowed` problem detail)\n- Deactivating an already-inactive enrollment is a **no-op** (returns 204 silently)\n- Deactivating a `REVOKED` enrollment returns 400 (conflict)\n\n**Status Codes:**\n- 204: Enrollment deactivated\n- 400: Enrollment is permanently revoked or invalid parameters\n- 403: Access denied or self-deactivation attempted\n- 404: Enrollment not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "reactivate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 (reactivated) or 400 (conflict)\", function () {",
+              "    pm.expect([204, 400, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Reactivation successful - no content\", function () {",
+              "        pm.expect(pm.response.body).to.be.empty;",
+              "    });",
+              "}",
+              "",
+              "if (pm.response.code === 400) {",
+              "    pm.test(\"Cannot reactivate revoked enrollment\", function () {",
+              "        pm.expect(pm.response.code).to.equal(400);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id/reactivate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id",
+            "reactivate"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "Device replacement completed",
+              "description": "Optional justification for reactivation (max 500 characters)",
+              "disabled": true
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "The enrollment ID to reactivate"
+            }
+          ]
+        },
+        "description": "Reactivates a previously deactivated enrollment.\n\n**Only applicable to VERIFIED enrollments**: the enrollment must have `status=VERIFIED` and `active=false`. Permanently revoked enrollments (`status=REVOKED`) cannot be reactivated — a new enrollment must be created.\n\n**Effects on reactivation:**\n- `active` flag set back to `true`\n- `deactivatedAt` and `deactivatedByAdminId` audit fields are cleared\n- New auth attempts for this enrollment are allowed again\n\n**Status Codes:**\n- 204: Enrollment reactivated\n- 400: Enrollment is permanently revoked, not in VERIFIED status, or already active\n- 403: Access denied\n- 404: Enrollment not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
       "name": "delete",
       "event": [
         {

@@ -23,6 +23,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
@@ -109,6 +110,7 @@ public class EnrollmentController {
   private final AccessControlService accessControlService;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
+  private final EnrollmentRevocationService enrollmentRevocationService;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -121,6 +123,7 @@ public class EnrollmentController {
    * @param accessControlService the access control service for tenant scoping validation
    * @param enrollmentRepository the enrollment repository for audit queries
    * @param integrationRepository the integration repository for tenant resolution in audit logs
+   * @param enrollmentRevocationService the service for enrollment revocation lifecycle
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -130,7 +133,8 @@ public class EnrollmentController {
       QrCodePayloadService qrCodePayloadService,
       AccessControlService accessControlService,
       EnrollmentRepository enrollmentRepository,
-      IntegrationRepository integrationRepository) {
+      IntegrationRepository integrationRepository,
+      EnrollmentRevocationService enrollmentRevocationService) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
@@ -139,6 +143,7 @@ public class EnrollmentController {
     this.accessControlService = accessControlService;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.enrollmentRevocationService = enrollmentRevocationService;
   }
 
   /**
@@ -591,6 +596,173 @@ public class EnrollmentController {
   }
 
   /**
+   * Permanently revokes an enrollment.
+   *
+   * <p>Revocation is <b>irreversible</b>: the enrollment transitions to status {@code REVOKED} and
+   * {@code active=false}. If the enrollment belongs to an administrator, all their active bearer
+   * tokens are immediately invalidated.
+   *
+   * <p><b>Self-revocation guard:</b> Administrators cannot revoke their own MFA enrollment.
+   *
+   * <p><b>Peer revocation:</b> Tenant Admins may revoke other Tenant Admins' enrollments within
+   * their tenant. Global Admins may revoke any enrollment.
+   *
+   * @param id the enrollment ID to revoke
+   * @param reason mandatory justification (min 10, max 500 characters)
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Permanently revoke an enrollment",
+      description =
+          "Irrevocably revokes an enrollment. Sets status to REVOKED and active=false."
+              + " If the enrollment belongs to an admin, their active bearer tokens are"
+              + " immediately invalidated. Self-revocation is not allowed.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "204", description = "Enrollment revoked successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied, self-revocation attempted, or system integration guard"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/revoke")
+  public ResponseEntity<Void> revoke(
+      @Parameter(description = "Enrollment ID to revoke", example = "1") @PathVariable("id")
+          Integer id,
+      @Parameter(description = "Mandatory justification for revocation (min 10 characters)")
+          @RequestParam
+          @jakarta.validation.constraints.Size(
+              min = 10,
+              max = 500,
+              message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canRevokeEnrollment(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = resolveTenantIdFromEnrollment(id);
+
+    enrollmentRevocationService.revoke(id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Deactivates an enrollment (reversible soft-disable).
+   *
+   * <p>Sets {@code active=false} while preserving status as {@code VERIFIED}. The enrollment can
+   * later be reactivated via {@code POST /api/v1/enrollments/{id}/reactivate}. If the enrollment
+   * belongs to an administrator, all their active bearer tokens are immediately invalidated.
+   *
+   * <p><b>Self-revocation guard:</b> Administrators cannot deactivate their own MFA enrollment.
+   *
+   * @param id the enrollment ID to deactivate
+   * @param reason optional justification
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Deactivate an enrollment",
+      description =
+          "Reversibly deactivates an enrollment (active=false). Status remains VERIFIED."
+              + " Can be undone with /reactivate. If the enrollment belongs to an admin,"
+              + " their active bearer tokens are immediately invalidated."
+              + " Self-deactivation is not allowed.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "204", description = "Enrollment deactivated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters or state conflict"),
+        @ApiResponse(responseCode = "403", description = "Access denied or self-deactivation"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/deactivate")
+  public ResponseEntity<Void> deactivate(
+      @Parameter(description = "Enrollment ID to deactivate", example = "1") @PathVariable("id")
+          Integer id,
+      @Parameter(description = "Optional justification for deactivation")
+          @RequestParam(required = false)
+          @jakarta.validation.constraints.Size(
+              max = 500,
+              message = "Reason must be at most 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canRevokeEnrollment(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = resolveTenantIdFromEnrollment(id);
+
+    enrollmentRevocationService.deactivate(id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Reactivates a previously deactivated enrollment.
+   *
+   * <p>Only applicable to enrollments with status {@code VERIFIED} and {@code active=false}.
+   * Permanently revoked enrollments ({@code status=REVOKED}) cannot be reactivated.
+   *
+   * @param id the enrollment ID to reactivate
+   * @param reason optional justification
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Reactivate a deactivated enrollment",
+      description =
+          "Reactivates an enrollment that was previously deactivated via /deactivate."
+              + " Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "204", description = "Enrollment reactivated successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Enrollment is already active, revoked, or not in VERIFIED status"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/reactivate")
+  public ResponseEntity<Void> reactivate(
+      @Parameter(description = "Enrollment ID to reactivate", example = "1") @PathVariable("id")
+          Integer id,
+      @Parameter(description = "Optional justification for reactivation")
+          @RequestParam(required = false)
+          @jakarta.validation.constraints.Size(
+              max = 500,
+              message = "Reason must be at most 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canRevokeEnrollment(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = resolveTenantIdFromEnrollment(id);
+
+    enrollmentRevocationService.reactivate(id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * Extracts tenant ID from authentication context for tenant scoping.
    *
    * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for
@@ -630,6 +802,24 @@ public class EnrollmentController {
         .findById(integrationId)
         .map(Integration::getTenant)
         .map(tenant -> tenant.getTenantId())
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the tenant ID from an enrollment's integration for audit log association.
+   *
+   * <p>Used by the revoke/deactivate/reactivate endpoints which operate on enrollments directly.
+   *
+   * @param enrollmentId the enrollment ID to resolve the tenant from
+   * @return the tenant ID, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdFromEnrollment(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(enrollment -> resolveTenantId(enrollment.getIntegrationId()))
         .orElse(null);
   }
 }

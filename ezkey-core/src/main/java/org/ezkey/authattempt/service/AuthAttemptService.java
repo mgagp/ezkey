@@ -28,8 +28,10 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.EzkeyCoreProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
@@ -315,6 +317,31 @@ public class AuthAttemptService {
                 () ->
                     new IllegalArgumentException(
                         "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
+
+    // Security gate: reject auth attempts for inactive or non-verified enrollments.
+    // This covers enrollments that have been administratively deactivated or revoked.
+    // Logged at WARN because an M2M caller using a known enrollmentId against a revoked
+    // enrollment is a security-relevant event (stale integration or suspicious probe).
+    if (!Boolean.TRUE.equals(enrollment.getActive())) {
+      logger.warn(
+          "Auth attempt creation rejected: enrollment {} is not active (status={})",
+          authRequest.getEnrollmentId(),
+          enrollment.getStatus());
+      throw new EnrollmentInactiveException(
+          "Enrollment is not active for authentication. Enrollment ID: "
+              + authRequest.getEnrollmentId());
+    }
+    if (!EnrollmentStatus.VERIFIED.equals(enrollment.getStatus())) {
+      logger.warn(
+          "Auth attempt creation rejected: enrollment {} is not in VERIFIED status (status={})",
+          authRequest.getEnrollmentId(),
+          enrollment.getStatus());
+      throw new EnrollmentInactiveException(
+          "Enrollment is not in VERIFIED status. Current status: "
+              + enrollment.getStatus()
+              + ". Enrollment ID: "
+              + authRequest.getEnrollmentId());
+    }
 
     // Supersession: Mark existing non-final attempts as EXPIRED
     List<AuthAttempt> existingAttempts =

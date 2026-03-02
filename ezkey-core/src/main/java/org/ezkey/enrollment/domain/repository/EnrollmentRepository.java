@@ -347,4 +347,18 @@ public interface EnrollmentRepository
    */
   List<Enrollment> findByIntegrationIdAndUserIdentifierAndStatusAndActive(
       Integer integrationId, String userIdentifier, EnrollmentStatus status, Boolean active);
+
+  /**
+   * Finds all enrollments for an integration matching the given status and active flag.
+   *
+   * <p>Used by bulk revocation to retrieve all active VERIFIED enrollments for a given integration.
+   *
+   * @param integrationId the integration ID
+   * @param status the enrollment status to filter by (typically VERIFIED)
+   * @param active whether the enrollment is active (typically true)
+   * @return list of matching enrollments
+   * @since 2025
+   */
+  List<Enrollment> findByIntegrationIdAndStatusAndActive(
+      Integer integrationId, EnrollmentStatus status, Boolean active);
 }

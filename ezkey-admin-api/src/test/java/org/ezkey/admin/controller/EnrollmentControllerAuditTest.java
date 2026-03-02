@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.domain.EventStatus;
@@ -79,6 +80,8 @@ class EnrollmentControllerAuditTest {
 
   @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
 
+  @Mock private EnrollmentRevocationService enrollmentRevocationService;
+
   @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
@@ -126,7 +129,8 @@ class EnrollmentControllerAuditTest {
             qrCodePayloadService,
             accessControlService,
             enrollmentRepository,
-            integrationRepository);
+            integrationRepository,
+            enrollmentRevocationService);
   }
 
   @Test

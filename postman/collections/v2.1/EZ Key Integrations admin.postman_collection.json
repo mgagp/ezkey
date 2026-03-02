@@ -230,6 +230,71 @@
       "response": []
     },
     {
+      "name": "revoke all enrollments",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 (all revoked) or 403 (system integration guard)\", function () {",
+              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Bulk revocation successful - no content\", function () {",
+              "        pm.expect(pm.response.body).to.be.empty;",
+              "    });",
+              "}",
+              "",
+              "if (pm.response.code === 403) {",
+              "    pm.test(\"RFC 9457 ProblemDetail returned\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData.status).to.equal(403);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations/:id/enrollments/revoke-all?reason=Security incident - all enrollments revoked",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            ":id",
+            "enrollments",
+            "revoke-all"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "Security incident - all enrollments revoked",
+              "description": "Mandatory justification (min 10, max 500 characters)"
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{integrationId}}",
+              "description": "The integration ID whose enrollments will be bulk-revoked"
+            }
+          ]
+        },
+        "description": "Bulk-revokes all active VERIFIED enrollments for an integration.\n\n**Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.\n\n**Guards:**\n- Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)\n- Calling admin's own enrollment is **skipped** (self-guard) rather than throwing\n- Tenant Admins can only bulk-revoke enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments for the integration transition to `REVOKED`\n- Bearer tokens for any admin enrollments found are immediately invalidated\n- Audit log entry created with count of revoked enrollments\n\n**Status Codes:**\n- 204: All enrollments revoked\n- 400: Missing or invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
       "name": "delete",
       "event": [
         {

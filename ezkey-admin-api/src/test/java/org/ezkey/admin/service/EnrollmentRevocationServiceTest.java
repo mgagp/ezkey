@@ -1,0 +1,337 @@
+/*
+ * Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Test: EnrollmentRevocationServiceTest
+ * Description: Unit tests for enrollment revocation, deactivation, and reactivation lifecycle.
+ */
+
+package org.ezkey.admin.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Optional;
+import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
+import org.ezkey.admin.exception.SystemIntegrationRevocationException;
+import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.ClientContext;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.AdminTokenRepository;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/**
+ * Unit tests for {@link EnrollmentRevocationService}.
+ *
+ * <p>Tests focus on the security guards (self-revocation, system integration protection), state
+ * transitions (VERIFIED → REVOKED, active flag), and idempotency guarantees. Audit log calls are
+ * verified for presence but not for exact content (content is stable and tested via integration
+ * tests).
+ *
+ * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ *
+ * <p><b>License:</b> MIT
+ *
+ * @author Ezkey contributors
+ * @since 2025
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("EnrollmentRevocationService Tests")
+class EnrollmentRevocationServiceTest {
+
+  @Mock private EnrollmentRepository enrollmentRepository;
+
+  @Mock private EzkeyAdminRepository adminRepository;
+
+  @Mock private AdminTokenRepository adminTokenRepository;
+
+  @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private AuditLogService auditLogService;
+
+  @Mock private EzkeyAdmin ownerAdmin;
+
+  @Mock private Integration integration;
+
+  private EnrollmentRevocationService service;
+
+  private AdminPrincipal globalAdminPrincipal;
+
+  private ClientContext clientContext;
+
+  @BeforeEach
+  void setUp() {
+    service =
+        new EnrollmentRevocationService(
+            enrollmentRepository,
+            adminRepository,
+            adminTokenRepository,
+            integrationRepository,
+            auditLogService);
+
+    globalAdminPrincipal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    clientContext = new ClientContext("127.0.0.1", "test-agent/1.0");
+  }
+
+  // -------------------------------------------------------------------------
+  // revoke()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("revoke()")
+  class RevokeTests {
+
+    @Test
+    @DisplayName("Should permanently set status to REVOKED and active=false")
+    void revoke_shouldSetStatusRevokedAndInactive_onHappyPath() {
+      Enrollment enrollment = activeVerifiedEnrollment(1);
+      when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.empty());
+
+      service.revoke(1, globalAdminPrincipal, "Security incident - revocation required", clientContext, null);
+
+      assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(enrollment.getActive()).isFalse();
+      assertThat(enrollment.getRevokedAt()).isNotNull();
+      assertThat(enrollment.getRevokedByAdminId()).isEqualTo(1);
+      verify(enrollmentRepository).save(enrollment);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when enrollment not found")
+    void revoke_shouldThrow_whenEnrollmentNotFound() {
+      when(enrollmentRepository.findById(99)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(
+              () -> service.revoke(99, globalAdminPrincipal, "Valid reason here", clientContext, null))
+          .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw SelfRevocationNotAllowedException when admin revokes own enrollment")
+    void revoke_shouldThrow_whenAdminRevokesOwnEnrollment() {
+      Enrollment enrollment = activeVerifiedEnrollment(1);
+      when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(1); // Same as globalAdminPrincipal.adminId()
+
+      assertThatThrownBy(
+              () -> service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null))
+          .isInstanceOf(SelfRevocationNotAllowedException.class);
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should be idempotent — no save or audit when enrollment already REVOKED")
+    void revoke_shouldBeIdempotent_whenAlreadyRevoked() {
+      Enrollment enrollment = revokedEnrollment(1);
+      when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.empty());
+
+      service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null);
+
+      verify(enrollmentRepository, never()).save(any());
+      verify(auditLogService, never()).log(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // deactivate()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("deactivate()")
+  class DeactivateTests {
+
+    @Test
+    @DisplayName("Should set active=false and record deactivation audit fields")
+    void deactivate_shouldSetInactiveAndRecordAuditFields_onHappyPath() {
+      Enrollment enrollment = activeVerifiedEnrollment(2);
+      when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.empty());
+
+      service.deactivate(2, globalAdminPrincipal, "Suspicious activity", clientContext, null);
+
+      assertThat(enrollment.getActive()).isFalse();
+      assertThat(enrollment.getDeactivatedAt()).isNotNull();
+      assertThat(enrollment.getDeactivatedByAdminId()).isEqualTo(1);
+      verify(enrollmentRepository).save(enrollment);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalStateException when enrollment is permanently REVOKED")
+    void deactivate_shouldThrow_whenEnrollmentAlreadyRevoked() {
+      Enrollment enrollment = revokedEnrollment(2);
+      when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(
+              () -> service.deactivate(2, globalAdminPrincipal, "reason", clientContext, null))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("permanently revoked");
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should throw SelfRevocationNotAllowedException when admin deactivates own enrollment")
+    void deactivate_shouldThrow_whenAdminDeactivatesOwnEnrollment() {
+      Enrollment enrollment = activeVerifiedEnrollment(2);
+      when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(1); // Same as principal
+
+      assertThatThrownBy(
+              () -> service.deactivate(2, globalAdminPrincipal, "reason", clientContext, null))
+          .isInstanceOf(SelfRevocationNotAllowedException.class);
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // reactivate()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("reactivate()")
+  class ReactivateTests {
+
+    @Test
+    @DisplayName("Should set active=true and clear deactivation audit fields")
+    void reactivate_shouldSetActiveAndClearAuditFields_onHappyPath() {
+      Enrollment enrollment = inactiveVerifiedEnrollment(3);
+      when(enrollmentRepository.findById(3)).thenReturn(Optional.of(enrollment));
+
+      service.reactivate(3, globalAdminPrincipal, "Resolved incident", clientContext, null);
+
+      assertThat(enrollment.getActive()).isTrue();
+      assertThat(enrollment.getDeactivatedAt()).isNull();
+      assertThat(enrollment.getDeactivatedByAdminId()).isNull();
+      verify(enrollmentRepository).save(enrollment);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalStateException when trying to reactivate a REVOKED enrollment")
+    void reactivate_shouldThrow_whenEnrollmentIsPermanentlyRevoked() {
+      Enrollment enrollment = revokedEnrollment(3);
+      when(enrollmentRepository.findById(3)).thenReturn(Optional.of(enrollment));
+
+      assertThatThrownBy(
+              () -> service.reactivate(3, globalAdminPrincipal, "reason", clientContext, null))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("permanently revoked");
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // revokeAllByIntegration()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("revokeAllByIntegration()")
+  class RevokeAllByIntegrationTests {
+
+    @Test
+    @DisplayName("Should throw SystemIntegrationRevocationException for system integrations")
+    void revokeAll_shouldThrow_whenIntegrationIsSystemIntegration() {
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(true);
+
+      assertThatThrownBy(
+              () ->
+                  service.revokeAllByIntegration(
+                      10, globalAdminPrincipal, "Valid long reason here", clientContext, null))
+          .isInstanceOf(SystemIntegrationRevocationException.class);
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should revoke all active VERIFIED enrollments for a normal integration")
+    void revokeAll_shouldRevokeAllActiveEnrollments_forNonSystemIntegration() {
+      Enrollment enrollmentA = activeVerifiedEnrollment(101);
+      Enrollment enrollmentB = activeVerifiedEnrollment(102);
+
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, true))
+          .thenReturn(List.of(enrollmentA, enrollmentB));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(any())).thenReturn(Optional.empty());
+
+      service.revokeAllByIntegration(
+          10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
+
+      assertThat(enrollmentA.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(enrollmentA.getActive()).isFalse();
+      assertThat(enrollmentB.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(enrollmentB.getActive()).isFalse();
+      verify(enrollmentRepository).save(enrollmentA);
+      verify(enrollmentRepository).save(enrollmentB);
+      verify(auditLogService).log(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Enrollment factories
+  // -------------------------------------------------------------------------
+
+  private Enrollment activeVerifiedEnrollment(Integer id) {
+    Enrollment e = new Enrollment();
+    e.setEnrollmentId(id);
+    e.setStatus(EnrollmentStatus.VERIFIED);
+    e.setActive(true);
+    e.setEnrollmentName("test-enrollment-" + id);
+    e.setIntegrationId(10);
+    return e;
+  }
+
+  private Enrollment inactiveVerifiedEnrollment(Integer id) {
+    Enrollment e = new Enrollment();
+    e.setEnrollmentId(id);
+    e.setStatus(EnrollmentStatus.VERIFIED);
+    e.setActive(false);
+    e.setEnrollmentName("test-enrollment-" + id);
+    e.setIntegrationId(10);
+    return e;
+  }
+
+  private Enrollment revokedEnrollment(Integer id) {
+    Enrollment e = new Enrollment();
+    e.setEnrollmentId(id);
+    e.setStatus(EnrollmentStatus.REVOKED);
+    e.setActive(false);
+    e.setEnrollmentName("test-enrollment-" + id);
+    e.setIntegrationId(10);
+    return e;
+  }
+}

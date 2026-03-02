@@ -22,6 +22,8 @@ import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -106,6 +108,7 @@ public class IntegrationController {
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
   private final AuditLogService auditLogService;
+  private final EnrollmentRevocationService enrollmentRevocationService;
 
   /**
    * Constructs the controller with required dependencies.
@@ -115,18 +118,21 @@ public class IntegrationController {
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
    * @param auditLogService the audit log service for security monitoring
+   * @param enrollmentRevocationService the service for bulk enrollment revocation
    */
   public IntegrationController(
       IntegrationService service,
       IntegrationControllerMapper mapper,
       EzkeyAdminRepository adminRepository,
       AccessControlService accessControlService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EnrollmentRevocationService enrollmentRevocationService) {
     this.service = service;
     this.mapper = mapper;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
     this.auditLogService = auditLogService;
+    this.enrollmentRevocationService = enrollmentRevocationService;
   }
 
   /**
@@ -513,6 +519,62 @@ public class IntegrationController {
   private boolean hasRole(Authentication authentication, String role) {
     return authentication.getAuthorities().stream()
         .anyMatch(authority -> authority.getAuthority().equals(role));
+  }
+
+  /**
+   * Bulk-revokes all active VERIFIED enrollments for an integration.
+   *
+   * <p>Designed for incident response: when an integration's API key is compromised, all associated
+   * enrollments can be immediately and permanently revoked in a single operation.
+   *
+   * <p><b>System integration guard:</b> Cannot be applied to system integrations — they host all
+   * administrator MFA enrollments and a bulk revocation would lock out all admins.
+   *
+   * <p><b>Self-revocation skip:</b> If the calling admin's own enrollment is encountered during
+   * bulk revocation (unlikely for non-system integrations), it is skipped rather than throwing.
+   *
+   * @param id the integration ID whose enrollments should be bulk-revoked
+   * @param reason mandatory justification (min 10, max 500 characters)
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Bulk-revoke all enrollments for an integration",
+      description =
+          "Permanently revokes all active VERIFIED enrollments for the specified integration."
+              + " Intended for incident response (e.g., compromised API key)."
+              + " Cannot be applied to system integrations.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "204", description = "All enrollments revoked successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied or system integration guard triggered"),
+        @ApiResponse(responseCode = "404", description = "Integration not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/enrollments/revoke-all")
+  public ResponseEntity<Void> revokeAllEnrollments(
+      @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
+      @Parameter(description = "Mandatory justification for bulk revocation (min 10 characters)")
+          @RequestParam
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = extractTenantId(auth);
+
+    enrollmentRevocationService.revokeAllByIntegration(id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
   }
 
   /**

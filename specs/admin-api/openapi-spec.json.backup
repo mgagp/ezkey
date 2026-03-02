@@ -3744,26 +3744,6 @@
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400",
             "maxLength": 2000,
             "minLength": 0
-          },
-          "contextDetails": {
-            "type": "string",
-            "description": "Optional structured key-value context details as a JSON object. Forwarded to the mobile device for rich display.",
-            "example": {
-              "Amount": "$1,400.00",
-              "Vendor": "Acme Corp",
-              "Batch": "#1497"
-            }
-          },
-          "contextLevel": {
-            "type": "string",
-            "description": "Severity level for visual styling on the mobile device. Defaults to INFO.",
-            "enum": [
-              "INFO",
-              "WARNING",
-              "CRITICAL"
-            ],
-            "example": "WARNING",
-            "pattern": "^(INFO|WARNING|CRITICAL)$"
           }
         },
         "required": [
@@ -3830,24 +3810,6 @@
             "type": "string",
             "description": "Descriptive approval message (null if no context provided)",
             "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
-          },
-          "contextDetails": {
-            "type": "string",
-            "description": "Structured key-value context details as a JSON object (null if not provided)",
-            "example": {
-              "Amount": "$1,400.00",
-              "Vendor": "Acme Corp"
-            }
-          },
-          "contextLevel": {
-            "type": "string",
-            "description": "Severity level: INFO (default), WARNING, or CRITICAL",
-            "enum": [
-              "INFO",
-              "WARNING",
-              "CRITICAL"
-            ],
-            "example": "WARNING"
           }
         },
         "required": [

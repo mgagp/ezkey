@@ -70,7 +70,19 @@ public enum EnrollmentStatus {
    * <p>The enrollment failed verification or has been marked as invalid due to security concerns.
    * This enrollment cannot be used for authentication and may require re-enrollment.
    */
-  INVALID("INVALID");
+  INVALID("INVALID"),
+
+  /**
+   * Enrollment has been permanently revoked by an administrator.
+   *
+   * <p>Semantically distinct from {@link #INVALID}: revocation is <em>admin-initiated</em> (a
+   * deliberate security decision), whereas INVALID is <em>system-initiated</em> (verification
+   * failure or cryptographic compromise). A revoked enrollment cannot be reactivated. The
+   * associated cryptographic credentials are considered destroyed from a security standpoint.
+   *
+   * <p>SOC 2 CC6.3 — removal of access.
+   */
+  REVOKED("REVOKED");
 
   private final String value;
 

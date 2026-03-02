@@ -21,6 +21,7 @@ import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.EzkeyCoreProperties;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.signature.SignatureService;
@@ -172,6 +173,8 @@ class AuthAttemptServiceChallengeTest {
   private void setupBasicMocks(boolean challengeRequired) {
     Enrollment enrollment = new Enrollment();
     enrollment.setEnrollmentId(1);
+    enrollment.setStatus(EnrollmentStatus.VERIFIED);
+    enrollment.setActive(true);
     enrollment.setAuthAttemptChallengeRequired(challengeRequired);
 
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));

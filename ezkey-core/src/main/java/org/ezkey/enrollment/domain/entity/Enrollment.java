@@ -180,6 +180,35 @@ public class Enrollment implements Reencryptable {
   private OffsetDateTime lastUsedAt;
 
   /**
+   * When this enrollment was deactivated by an administrator (reversible). Null if never
+   * deactivated. Combined with {@link #deactivatedByAdminId} for SOC 2 CC6.3 audit trail.
+   */
+  @Column(name = "deactivated_at")
+  private OffsetDateTime deactivatedAt;
+
+  /**
+   * ID of the administrator who deactivated this enrollment. Null if never deactivated. Used for
+   * SOC 2 CC6.3 audit trail (who performed the access removal).
+   */
+  @Column(name = "deactivated_by_admin_id")
+  private Integer deactivatedByAdminId;
+
+  /**
+   * When this enrollment was permanently revoked by an administrator. Null if never revoked. Once
+   * set, the enrollment cannot be reactivated. Combined with {@link #revokedByAdminId} for SOC 2
+   * CC6.3 audit trail.
+   */
+  @Column(name = "revoked_at")
+  private OffsetDateTime revokedAt;
+
+  /**
+   * ID of the administrator who permanently revoked this enrollment. Null if never revoked. Used
+   * for SOC 2 CC6.3 audit trail (who performed the irrevocable access removal).
+   */
+  @Column(name = "revoked_by_admin_id")
+  private Integer revokedByAdminId;
+
+  /**
    * Optional contact for the end-user (device owner). Used for incident response, revocation
    * notices, support. Provided by integrating app at creation.
    */
@@ -479,6 +508,38 @@ public class Enrollment implements Reencryptable {
 
   public void setUserIdentifier(String userIdentifier) {
     this.userIdentifier = userIdentifier;
+  }
+
+  public OffsetDateTime getDeactivatedAt() {
+    return deactivatedAt;
+  }
+
+  public void setDeactivatedAt(OffsetDateTime deactivatedAt) {
+    this.deactivatedAt = deactivatedAt;
+  }
+
+  public Integer getDeactivatedByAdminId() {
+    return deactivatedByAdminId;
+  }
+
+  public void setDeactivatedByAdminId(Integer deactivatedByAdminId) {
+    this.deactivatedByAdminId = deactivatedByAdminId;
+  }
+
+  public OffsetDateTime getRevokedAt() {
+    return revokedAt;
+  }
+
+  public void setRevokedAt(OffsetDateTime revokedAt) {
+    this.revokedAt = revokedAt;
+  }
+
+  public Integer getRevokedByAdminId() {
+    return revokedByAdminId;
+  }
+
+  public void setRevokedByAdminId(Integer revokedByAdminId) {
+    this.revokedByAdminId = revokedByAdminId;
   }
 
   // ===== Reencryptable Interface Implementation =====

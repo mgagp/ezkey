@@ -513,6 +513,57 @@
         }
       }
     },
+    "/api/v1/integrations/{id}/enrollments/revoke-all": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Bulk-revoke all enrollments for an integration",
+        "description": "Permanently revokes all active VERIFIED enrollments for the specified integration. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.",
+        "operationId": "revokeAllEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 5
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Mandatory justification for bulk revocation (min 10 characters)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "All enrollments revoked successfully"
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "403": {
+            "description": "Access denied or system integration guard triggered"
+          },
+          "404": {
+            "description": "Integration not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/v1/enrollments": {
       "get": {
         "tags": [
@@ -533,7 +584,8 @@
                 "CREATED",
                 "BOUND",
                 "VERIFIED",
-                "INVALID"
+                "INVALID",
+                "REVOKED"
               ]
             }
           },
@@ -703,6 +755,159 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/{id}/revoke": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Permanently revoke an enrollment",
+        "description": "Irrevocably revokes an enrollment. Sets status to REVOKED and active=false. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-revocation is not allowed.",
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enrollment ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Mandatory justification for revocation (min 10 characters)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Enrollment revoked successfully"
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "403": {
+            "description": "Access denied, self-revocation attempted, or system integration guard"
+          },
+          "404": {
+            "description": "Enrollment not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/{id}/reactivate": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Reactivate a deactivated enrollment",
+        "description": "Reactivates an enrollment that was previously deactivated via /deactivate. Only applicable to VERIFIED enrollments. Cannot reactivate REVOKED enrollments.",
+        "operationId": "reactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enrollment ID to reactivate",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Optional justification for reactivation",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Enrollment reactivated successfully"
+          },
+          "400": {
+            "description": "Enrollment is already active, revoked, or not in VERIFIED status"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Enrollment not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Deactivate an enrollment",
+        "description": "Reversibly deactivates an enrollment (active=false). Status remains VERIFIED. Can be undone with /reactivate. If the enrollment belongs to an admin, their active bearer tokens are immediately invalidated. Self-deactivation is not allowed.",
+        "operationId": "deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enrollment ID to deactivate",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Optional justification for deactivation",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Enrollment deactivated successfully"
+          },
+          "400": {
+            "description": "Invalid parameters or state conflict"
+          },
+          "403": {
+            "description": "Access denied or self-deactivation"
+          },
+          "404": {
+            "description": "Enrollment not found"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -2515,6 +2720,10 @@
                 "ENROLLMENT_DELETED",
                 "ENROLLMENT_BIND",
                 "ENROLLMENT_VERIFY",
+                "ENROLLMENT_REVOKED",
+                "ENROLLMENT_DEACTIVATED",
+                "ENROLLMENT_REACTIVATED",
+                "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
@@ -4721,6 +4930,10 @@
               "ENROLLMENT_DELETED",
               "ENROLLMENT_BIND",
               "ENROLLMENT_VERIFY",
+              "ENROLLMENT_REVOKED",
+              "ENROLLMENT_DEACTIVATED",
+              "ENROLLMENT_REACTIVATED",
+              "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
