@@ -134,9 +134,15 @@ Content-Type: application/json
   "authAttemptId": 123,
   "authAttemptProofToken": "abc123-def456-ghi789",
   "authAttemptProofTokenSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "authAttemptChallengeRequired": true
+  "authAttemptChallengeRequired": true,
+  "contextTitle": "Payment Authorization",
+  "contextMessage": "Authorize payment of $5,000 to Suppliers Ltd. for invoice INV-2025-042."
 }
 ```
+
+**Response Fields (context — all nullable):**
+- `contextTitle`: Short heading displayed as the card header on the mobile device. Null when no context was attached.
+- `contextMessage`: Descriptive body explaining what the approver is authorizing. Null when no context was attached.
 
 ### b) Submit response to request
 
@@ -1023,7 +1029,9 @@ Content-Type: application/json
 
 Creates a new authentication attempt for MFA validation. This endpoint is used by integrating applications to initiate authentication requests.
 
-**Request:**
+Optional context fields (`contextTitle`, `contextMessage`) allow attaching business context to the attempt, which is forwarded to the mobile device and displayed to the approver. This transforms a generic "Approve login?" prompt into a meaningful approval request (e.g. "Authorize payment of $5,000 to Suppliers Ltd.").
+
+**Request (minimal — backward-compatible):**
 ```http
 POST /api/v1/auth-attempts
 Authorization: Bearer ezkey_admin_token...
@@ -1035,13 +1043,37 @@ Content-Type: application/json
 }
 ```
 
+**Request (with contextual authentication):**
+```http
+POST /api/v1/auth-attempts
+Authorization: Basic base64(ezkey_ikey_xxx:ezkey_skey_xxx)
+Content-Type: application/json
+
+{
+  "enrollmentId": 456,
+  "challengeRequested": false,
+  "contextTitle": "Payment Authorization",
+  "contextMessage": "Authorize payment of $5,000 to Suppliers Ltd. for invoice INV-2025-042."
+}
+```
+
+**Request Fields:**
+- `enrollmentId`: Enrollment to authenticate (use this OR `userIdentifier`)
+- `userIdentifier`: User identifier for lookup within integration scope (use this OR `enrollmentId`)
+- `integrationId`: Required when `userIdentifier` is used with admin token; ignored with API key
+- `challengeRequested` (**required**): Whether a challenge code is requested
+- `contextTitle` (optional): Short heading displayed as card header on mobile, max 200 chars
+- `contextMessage` (optional): Descriptive body explaining what the approver is authorizing, max 2 000 chars
+
 **Response (201 Created):**
 ```json
 {
   "authAttemptId": 123,
   "authAttemptChallenge": 42,
   "timeoutSeconds": 120,
-  "expiresAt": "2025-01-20T15:34:00.123456Z"
+  "expiresAt": "2025-01-20T15:34:00.123456Z",
+  "contextTitle": "Payment Authorization",
+  "contextMessage": "Authorize payment of $5,000 to Suppliers Ltd. for invoice INV-2025-042."
 }
 ```
 
@@ -1050,6 +1082,7 @@ Content-Type: application/json
 - `authAttemptChallenge`: Optional challenge code (2 digits) if challenge was requested. Null if no challenge was requested.
 - `timeoutSeconds`: Maximum time in seconds the user has to respond to the authentication request (currently 120 seconds)
 - `expiresAt`: Absolute expiration timestamp when the authentication attempt will expire (UTC format)
+- `contextTitle`, `contextMessage`: Context fields echoed back for confirmation (null if not provided)
 
 **Status Codes:**
 - 201: Authentication attempt created successfully

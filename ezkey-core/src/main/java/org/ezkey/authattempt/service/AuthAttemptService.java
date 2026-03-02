@@ -10,10 +10,12 @@
 
 package org.ezkey.authattempt.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
@@ -39,10 +41,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.criteria.Predicate;
 
 /**
  * Core service for managing authentication attempts in the Ezkey MFA system.
@@ -354,6 +352,11 @@ public class AuthAttemptService {
       logger.debug("No challenge code generated for auth attempt");
     }
     authAttempt.setAuthAttemptProofToken(signatureService.generateProofToken());
+
+    // Propagate optional contextual authentication fields
+    authAttempt.setContextTitle(authRequest.getContextTitle());
+    authAttempt.setContextMessage(authRequest.getContextMessage());
+
     int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
     authAttempt.setCreatedAt(OffsetDateTime.now());
     authAttempt.setExpiresAt(OffsetDateTime.now().plusSeconds(ttlSeconds));
@@ -361,7 +364,7 @@ public class AuthAttemptService {
     // Save the authorization attempt
     AuthAttempt savedAuthAttempt = authAttemptRepository.save(authAttempt);
 
-    // Create response
+    // Create response — echo context back for confirmation
     AuthAttemptCreateResponse response = new AuthAttemptCreateResponse();
     response.setAuthAttemptId(savedAuthAttempt.getAuthAttemptId());
     response.setAuthAttemptChallenge(
@@ -369,6 +372,8 @@ public class AuthAttemptService {
     response.setCreatedAt(savedAuthAttempt.getCreatedAt()); // Required for FK to partitioned table
     response.setTimeoutSeconds(ttlSeconds);
     response.setExpiresAt(savedAuthAttempt.getExpiresAt()); // Absolute expiration timestamp
+    response.setContextTitle(savedAuthAttempt.getContextTitle());
+    response.setContextMessage(savedAuthAttempt.getContextMessage());
 
     return response;
   }

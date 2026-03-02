@@ -180,7 +180,30 @@ public final class EzkeyClient {
   public AuthAttemptCreateResponse createAuthAttempt(int enrollmentId, boolean challengeRequested)
       throws EzkeyException {
     return createAuthAttemptInternal(
-        Map.of("enrollmentId", enrollmentId, "challengeRequested", challengeRequested));
+        Map.of("enrollmentId", enrollmentId, "challengeRequested", challengeRequested), null);
+  }
+
+  /**
+   * Creates a new authentication attempt for the given enrollment with optional business context.
+   *
+   * <p>Contextual authentication surfaces rich business context on the mobile device so the user
+   * understands exactly what they are approving. All context fields are optional — passing {@code
+   * null} is equivalent to calling {@link #createAuthAttempt(int, boolean)}.
+   *
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API.
+   *
+   * @param enrollmentId the enrollment ID to authenticate
+   * @param challengeRequested whether a challenge code should be generated
+   * @param context optional business context to display on the mobile device, or {@code null}
+   * @return the created auth attempt details including ID, optional challenge code, timeout, and
+   *     echoed context fields
+   * @throws EzkeyException if the request fails (network error, HTTP error, or invalid response)
+   */
+  public AuthAttemptCreateResponse createAuthAttempt(
+      int enrollmentId, boolean challengeRequested, AuthAttemptContext context)
+      throws EzkeyException {
+    return createAuthAttemptInternal(
+        Map.of("enrollmentId", enrollmentId, "challengeRequested", challengeRequested), context);
   }
 
   /**
@@ -207,18 +230,61 @@ public final class EzkeyClient {
       throw new IllegalArgumentException("userIdentifier must not be blank");
     }
     return createAuthAttemptInternal(
-        Map.of("userIdentifier", userIdentifier.trim(), "challengeRequested", challengeRequested));
+        Map.of("userIdentifier", userIdentifier.trim(), "challengeRequested", challengeRequested),
+        null);
   }
 
   /**
-   * Internal helper to create auth attempt with a given request body.
+   * Creates a new authentication attempt using user identifier with optional business context.
+   *
+   * <p>Contextual authentication surfaces rich business context on the mobile device so the user
+   * understands exactly what they are approving. All context fields are optional — passing {@code
+   * null} is equivalent to calling {@link #createAuthAttemptByUserIdentifier(String, boolean)}.
+   *
+   * <p>Sends a {@code POST /api/v1/auth-attempts} request to the Admin API with {@code
+   * userIdentifier} in the body. Requires API key auth (integration key + secret); integration is
+   * derived from the key.
+   *
+   * @param userIdentifier the user identifier (username, user_id) to resolve to an enrollment
+   * @param challengeRequested whether a challenge code should be generated
+   * @param context optional business context to display on the mobile device, or {@code null}
+   * @return the created auth attempt details including ID, optional challenge code, timeout, and
+   *     echoed context fields
+   * @throws EzkeyException if the request fails, user has no verified enrollment, or user has
+   *     multiple enrollments (specify enrollmentId in that case)
+   */
+  public AuthAttemptCreateResponse createAuthAttemptByUserIdentifier(
+      String userIdentifier, boolean challengeRequested, AuthAttemptContext context)
+      throws EzkeyException {
+    Objects.requireNonNull(userIdentifier, "userIdentifier must not be null");
+    if (userIdentifier.isBlank()) {
+      throw new IllegalArgumentException("userIdentifier must not be blank");
+    }
+    return createAuthAttemptInternal(
+        Map.of("userIdentifier", userIdentifier.trim(), "challengeRequested", challengeRequested),
+        context);
+  }
+
+  /**
+   * Internal helper to create auth attempt with a given request body and optional context.
    *
    * @param bodyFields the JSON body fields (enrollmentId or userIdentifier, challengeRequested)
+   * @param context optional business context to include in the request, or {@code null}
    * @return the created auth attempt response
    */
-  private AuthAttemptCreateResponse createAuthAttemptInternal(Map<String, Object> bodyFields)
-      throws EzkeyException {
+  private AuthAttemptCreateResponse createAuthAttemptInternal(
+      Map<String, Object> bodyFields, AuthAttemptContext context) throws EzkeyException {
     Map<String, Object> body = new LinkedHashMap<>(bodyFields);
+
+    if (context != null) {
+      if (context.contextTitle() != null) {
+        body.put("contextTitle", context.contextTitle());
+      }
+      if (context.contextMessage() != null) {
+        body.put("contextMessage", context.contextMessage());
+      }
+    }
+
     String jsonBody = JsonHelper.toJson(body);
 
     LOG.log(System.Logger.Level.DEBUG, "Creating auth attempt: body keys={0}", body.keySet());
@@ -231,13 +297,16 @@ public final class EzkeyClient {
             JsonHelper.getInt(fields, "authAttemptId", 0),
             JsonHelper.getInteger(fields, "authAttemptChallenge"),
             JsonHelper.getInt(fields, "timeoutSeconds", 120),
-            JsonHelper.getString(fields, "expiresAt"));
+            JsonHelper.getString(fields, "expiresAt"),
+            JsonHelper.getString(fields, "contextTitle"),
+            JsonHelper.getString(fields, "contextMessage"));
 
     LOG.log(
         System.Logger.Level.INFO,
-        "Auth attempt created: authAttemptId={0}, challenge={1}",
+        "Auth attempt created: authAttemptId={0}, challenge={1}, contextTitle={2}",
         response.authAttemptId(),
-        response.authAttemptChallenge() != null ? response.authAttemptChallenge() : "none");
+        response.authAttemptChallenge() != null ? response.authAttemptChallenge() : "none",
+        response.contextTitle() != null ? response.contextTitle() : "none");
 
     return response;
   }

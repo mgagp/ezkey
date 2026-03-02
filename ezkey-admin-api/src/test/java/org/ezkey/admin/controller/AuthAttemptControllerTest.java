@@ -102,8 +102,9 @@ class AuthAttemptControllerTest {
             123456, // challenge
             "token", // proof token
             now, // createdAt
-            now.plusMinutes(5) // expiresAt
-            );
+            now.plusMinutes(5), // expiresAt
+            null,
+            null);
 
     when(authAttemptService.findByFilters(
             eq(status),
@@ -157,8 +158,9 @@ class AuthAttemptControllerTest {
             123456, // challenge
             "token", // proof token
             OffsetDateTime.now(), // createdAt
-            OffsetDateTime.now().plusMinutes(5) // expiresAt
-            );
+            OffsetDateTime.now().plusMinutes(5), // expiresAt
+            null,
+            null);
 
     when(authAttemptService.findByFilters(
             eq(null),
@@ -207,8 +209,9 @@ class AuthAttemptControllerTest {
             123456, // challenge
             "token", // proof token
             OffsetDateTime.now(), // createdAt
-            OffsetDateTime.now().plusMinutes(5) // expiresAt
-            );
+            OffsetDateTime.now().plusMinutes(5), // expiresAt
+            null,
+            null);
 
     when(authAttemptService.findByFilters(
             eq(null),
@@ -254,8 +257,9 @@ class AuthAttemptControllerTest {
             123456, // challenge
             "token", // proof token
             OffsetDateTime.now(), // createdAt
-            OffsetDateTime.now().plusMinutes(5) // expiresAt
-            );
+            OffsetDateTime.now().plusMinutes(5), // expiresAt
+            null,
+            null);
 
     when(authAttemptService.findByFilters(
             eq(null),

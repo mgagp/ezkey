@@ -255,6 +255,10 @@ public class AuthAttemptPendingService {
       response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
     }
 
+    // Forward optional contextual authentication fields to the mobile device
+    response.setContextTitle(authAttempt.getContextTitle());
+    response.setContextMessage(authAttempt.getContextMessage());
+
     return response;
   }
 }

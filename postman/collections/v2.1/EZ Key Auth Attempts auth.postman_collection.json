@@ -126,12 +126,27 @@
               "    pm.environment.set(\"authAttemptProofTokenSignedByIntegration\", jsonData.authAttemptProofTokenSignedByIntegration);",
               "    pm.environment.set(\"authAttemptChallengeRequired\", jsonData.authAttemptChallengeRequired);",
               "    ",
+              "    // Capture optional context fields (contextual authentication)",
+              "    if (jsonData.contextTitle) {",
+              "        pm.environment.set(\"contextTitle\", jsonData.contextTitle);",
+              "    }",
+              "    ",
               "    pm.test(\"Response contains required fields\", function () {",
               "        pm.expect(jsonData).to.have.property('authAttemptId');",
               "        pm.expect(jsonData).to.have.property('authAttemptProofToken');",
               "        pm.expect(jsonData).to.have.property('authAttemptProofTokenSignedByIntegration');",
               "        pm.expect(jsonData).to.have.property('authAttemptChallengeRequired');",
               "    });",
+              "    ",
+              "    ",
+              "    // Log context fields for manual inspection",
+              "    if (jsonData.contextTitle || jsonData.contextMessage) {",
+              "        console.log('--- Contextual Auth ---');",
+              "        console.log('contextTitle:', jsonData.contextTitle);",
+              "        console.log('contextMessage:', jsonData.contextMessage);",
+              "    } else {",
+              "        console.log('No contextual metadata on this auth attempt (standard MFA).');",
+              "    }",
               "} else if (pm.response.code === 204) {",
               "    pm.test(\"No pending requests\", function () {",
               "        pm.expect(pm.response.code).to.equal(204);",
@@ -168,7 +183,7 @@
             "pending"
           ]
         },
-        "description": "Checks for pending authentication requests for the device's enrollment. This endpoint uses a **user-initiated polling model** - the mobile app polls only when the user explicitly requests to check for pending attempts.\n\n**Security Enhancement:** Uses `enrollmentProofToken` in the request body (not URL path) to prevent enumeration attacks.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to check for pending attempts\n- `enrollmentProofToken` (required): Cryptographic proof token that authenticates the enrollment\n- `deviceProofToken` (required): Device proof token generated in step 1\n- `deviceProofTokenSigned` (required): Cryptographic signature of device proof token\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier of the authentication attempt\n- `authAttemptProofToken`: Authentication proof token containing challenge data\n- `authAttemptProofTokenSignedByIntegration`: Integration-signed proof token for integrity verification\n- `authAttemptChallengeRequired`: Whether additional challenge validation is required\n\n**Response (204 No Content):**\nNo pending authentication attempts found. This is a normal operational state, not an error.\n\n**Status Codes:**\n- 200: Pending authentication attempt found\n- 204: No pending authentication attempts\n- 400: Invalid request or enrollment proof token\n- 429: Rate limit exceeded\n\n**Note:** The mobile app should verify the integration's signature on `authAttemptProofToken` before proceeding."
+        "description": "Checks for pending authentication requests for the device's enrollment. This endpoint uses a **user-initiated polling model** - the mobile app polls only when the user explicitly requests to check for pending attempts.\n\n**Security Enhancement:** Uses `enrollmentProofToken` in the request body (not URL path) to prevent enumeration attacks.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to check for pending attempts\n- `enrollmentProofToken` (required): Cryptographic proof token that authenticates the enrollment\n- `deviceProofToken` (required): Device proof token generated in step 1\n- `deviceProofTokenSigned` (required): Cryptographic signature of device proof token\n\n**Response (200 OK):**\n- `authAttemptId`: Unique identifier of the authentication attempt\n- `authAttemptProofToken`: Authentication proof token containing challenge data\n- `authAttemptProofTokenSignedByIntegration`: Integration-signed proof token for integrity verification\n- `authAttemptChallengeRequired`: Whether additional challenge validation is required\n- `contextTitle` *(optional)*: Short title for the approval request (e.g. `\"Payment Approval\"`). Null if no context was attached.\n- `contextMessage` *(optional)*: Descriptive message explaining the request (e.g. `\"Authorize payment batch #1497 to Acme Corp for $1,400\"`). Null if no context.\n- `contextDetails` *(optional)*: Structured key-value JSON object for display as a table (e.g. `{\"Amount\":\"$1,400.00\",\"Vendor\":\"Acme Corp\"}`). Null if not provided.\n- `contextLevel` *(optional)*: Visual severity — `INFO` (default, blue), `WARNING` (orange), `CRITICAL` (red). Null if no context.\n\n**Response (204 No Content):**\nNo pending authentication attempts found. This is a normal operational state, not an error.\n\n**Status Codes:**\n- 200: Pending authentication attempt found\n- 204: No pending authentication attempts\n- 400: Invalid request or enrollment proof token\n- 429: Rate limit exceeded\n\n**Note:** The mobile app should verify the integration's signature on `authAttemptProofToken` before proceeding. Context fields are all optional — existing integrations that do not send context fields will receive `null` for these fields."
       },
       "response": []
     },
@@ -376,3 +391,4 @@
     }
   ]
 }
+

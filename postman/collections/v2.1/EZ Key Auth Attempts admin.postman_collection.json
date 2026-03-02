@@ -200,6 +200,61 @@
       "response": []
     },
     {
+      "name": "create with context",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"authAttemptId\", jsonData.authAttemptId);",
+              "",
+              "    pm.test(\"Response contains authAttemptId\", function () {",
+              "        pm.expect(jsonData).to.have.property('authAttemptId');",
+              "        pm.expect(jsonData.authAttemptId).to.be.a('number');",
+              "    });",
+              "",
+              "    pm.test(\"Context fields echoed back in response\", function () {",
+              "        pm.expect(jsonData.contextTitle).to.equal('Document Signature Request');",
+              "        pm.expect(jsonData.contextMessage).to.include('NDA');",
+              "    });",
+              "",
+              "    console.log('authAttemptId saved:', jsonData.authAttemptId);",
+              "    console.log('contextTitle:', jsonData.contextTitle);",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeRequested\": false,\r\n    \"contextTitle\": \"Document Signature Request\",\r\n    \"contextMessage\": \"Please approve the signing of the NDA with partner Acme Corp.\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/auth-attempts",
+          "host": ["{{base_url_admin_api}}"],
+          "path": ["api", "v1", "auth-attempts"]
+        },
+        "description": "Creates an auth attempt with contextual metadata — attaches a title and message visible to the approver on their mobile device.\n\n**Optional context fields:**\n- `contextTitle`: Short heading displayed as the card header on the mobile device (max 200 chars)\n- `contextMessage`: Descriptive message explaining what the approver is authorizing (max 2000 chars)\n\nBoth fields are optional and fully backward-compatible — omitting them produces the standard MFA approval screen.\n\n**Verify in response:** `contextTitle` and `contextMessage` are echoed back so the integrating application can confirm what was persisted."
+      },
+      "response": []
+    },
+    {
       "name": "list all",
       "event": [
         {
@@ -679,3 +734,5 @@
     }
   ]
 }
+
+

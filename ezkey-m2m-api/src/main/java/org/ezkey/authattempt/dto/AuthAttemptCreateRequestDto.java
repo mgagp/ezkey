@@ -10,9 +10,11 @@
 
 package org.ezkey.authattempt.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for creating a new authentication attempt via the M2M API.
@@ -41,10 +43,16 @@ import jakarta.validation.constraints.NotNull;
  * @param userIdentifier the user identifier to look up a verified enrollment (optional; required if
  *     enrollmentId not provided)
  * @param challengeRequested whether a numeric challenge should be generated and sent to the device
+ * @param contextTitle optional short title for the approval request (max 200 chars)
+ * @param contextMessage optional descriptive message for the approver (max 2 000 chars)
  * @author Ezkey contributors
  * @since 2025
  */
-@Schema(description = "Request body for creating a new authentication attempt")
+@Schema(
+    description =
+        "Request body for creating a new authentication attempt. Optional context fields "
+            + "(contextTitle, contextMessage) attach business context visible to the approver "
+            + "on the mobile device.")
 public record AuthAttemptCreateRequestDto(
     /**
      * Direct reference to the enrollment. Optional when userIdentifier is provided; when both are
@@ -71,4 +79,30 @@ public record AuthAttemptCreateRequestDto(
             description = "Whether to generate a numeric challenge for additional verification",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
-        Boolean challengeRequested) {}
+        Boolean challengeRequested,
+    /**
+     * Optional short title displayed as the card header on the mobile device (max 200 characters).
+     * Example: "Payment Approval", "Deploy Confirmation".
+     */
+    @Schema(
+            description =
+                "Optional short title for the approval request, displayed as the mobile card"
+                    + " header. Max 200 characters.",
+            example = "Payment Approval",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 200, message = "contextTitle must not exceed 200 characters")
+        @JsonProperty("contextTitle")
+        String contextTitle,
+    /**
+     * Optional descriptive message providing the approver with full business context (max 2 000
+     * characters).
+     */
+    @Schema(
+            description =
+                "Optional descriptive message explaining what the approver is authorizing."
+                    + " Max 2000 characters.",
+            example = "Authorize payment batch #1497 to Acme Corp for $1,400",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 2000, message = "contextMessage must not exceed 2000 characters")
+        @JsonProperty("contextMessage")
+        String contextMessage) {}

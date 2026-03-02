@@ -10,9 +10,16 @@
 
 package org.ezkey.admin.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
-
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -64,15 +71,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * REST controller for authorization attempt administration API v1.
@@ -351,6 +349,8 @@ public class AuthAttemptController {
       AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
       createRequest.setEnrollmentId(effectiveEnrollmentId);
       createRequest.setChallengeRequested(request.challengeRequested());
+      createRequest.setContextTitle(request.contextTitle());
+      createRequest.setContextMessage(request.contextMessage());
 
       AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 

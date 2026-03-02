@@ -89,6 +89,12 @@ public class AuthAttempt implements Reencryptable {
 
   @Transient private String deviceProofToken;
 
+  @Column(name = "context_title", length = 200)
+  private String contextTitle;
+
+  @Column(name = "context_message", length = 2000)
+  private String contextMessage;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -326,6 +332,42 @@ public class AuthAttempt implements Reencryptable {
   }
 
   /**
+   * Gets the optional short title for contextual authentication (e.g. "Payment Approval").
+   *
+   * @return the context title, or null if not provided
+   */
+  public String getContextTitle() {
+    return contextTitle;
+  }
+
+  /**
+   * Sets the optional short title for contextual authentication.
+   *
+   * @param contextTitle the context title to set
+   */
+  public void setContextTitle(String contextTitle) {
+    this.contextTitle = contextTitle;
+  }
+
+  /**
+   * Gets the optional descriptive message for contextual authentication.
+   *
+   * @return the context message, or null if not provided
+   */
+  public String getContextMessage() {
+    return contextMessage;
+  }
+
+  /**
+   * Sets the optional descriptive message for contextual authentication.
+   *
+   * @param contextMessage the context message to set
+   */
+  public void setContextMessage(String contextMessage) {
+    this.contextMessage = contextMessage;
+  }
+
+  /**
    * Checks if this authorization attempt has expired.
    *
    * @return true if the attempt has expired, false otherwise
@@ -382,6 +424,9 @@ public class AuthAttempt implements Reencryptable {
         + authAttemptStatus
         + ", authAttemptChallenge="
         + authAttemptChallenge
+        + ", contextTitle='"
+        + contextTitle
+        + '\''
         + ", createdAt="
         + createdAt
         + ", expiresAt="

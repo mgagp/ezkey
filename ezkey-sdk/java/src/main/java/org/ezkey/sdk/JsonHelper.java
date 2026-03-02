@@ -17,7 +17,7 @@ import java.util.Map;
  * Minimal JSON helper for flat key-value objects.
  *
  * <p>Handles only the subset of JSON needed by the SDK: flat objects with string, integer, boolean,
- * and null values. No arrays, no nested objects. This keeps the SDK at zero external dependencies.
+ * and null values. This keeps the SDK at zero external dependencies.
  *
  * <p>This class is internal to the SDK and not part of the public API.
  *
@@ -28,9 +28,9 @@ final class JsonHelper {
   private JsonHelper() {}
 
   /**
-   * Serializes a map of key-value pairs to a JSON object string.
+   * Serializes a flat map of key-value pairs to a JSON object string.
    *
-   * @param fields the fields to serialize (values may be String, Number, Boolean, or null)
+   * @param fields the fields to serialize (values must be String, Number, Boolean, or null)
    * @return JSON object string
    */
   static String toJson(Map<String, Object> fields) {

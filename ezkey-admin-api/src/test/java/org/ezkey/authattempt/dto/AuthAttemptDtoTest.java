@@ -67,7 +67,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
 
     // Assert
     assertThat(dto.authAttemptId()).isEqualTo(TEST_AUTH_ATTEMPT_ID);
@@ -83,7 +85,7 @@ class AuthAttemptDtoTest {
   @DisplayName("Should handle null values for optional fields")
   void shouldHandleNullValues() {
     // Act
-    AuthAttemptDto dto = new AuthAttemptDto(null, null, null, null, null, null, null);
+    AuthAttemptDto dto = new AuthAttemptDto(null, null, null, null, null, null, null, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isNull();
@@ -108,7 +110,9 @@ class AuthAttemptDtoTest {
               TEST_CHALLENGE,
               TEST_PROOF_TOKEN,
               TEST_CREATED_AT,
-              TEST_EXPIRES_AT);
+              TEST_EXPIRES_AT,
+              null,
+              null);
 
       assertThat(dto.authAttemptStatus()).isEqualTo(status);
     }
@@ -126,7 +130,9 @@ class AuthAttemptDtoTest {
             Integer.MIN_VALUE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(dtoMin.authAttemptId()).isEqualTo(Integer.MIN_VALUE);
     assertThat(dtoMin.enrollmentId()).isEqualTo(Integer.MIN_VALUE);
     assertThat(dtoMin.authAttemptChallenge()).isEqualTo(Integer.MIN_VALUE);
@@ -140,7 +146,9 @@ class AuthAttemptDtoTest {
             Integer.MAX_VALUE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(dtoMax.authAttemptId()).isEqualTo(Integer.MAX_VALUE);
     assertThat(dtoMax.enrollmentId()).isEqualTo(Integer.MAX_VALUE);
     assertThat(dtoMax.authAttemptChallenge()).isEqualTo(Integer.MAX_VALUE);
@@ -148,7 +156,7 @@ class AuthAttemptDtoTest {
     // Test with zero
     AuthAttemptDto dtoZero =
         new AuthAttemptDto(
-            0, 0, TEST_STATUS, 0, TEST_PROOF_TOKEN, TEST_CREATED_AT, TEST_EXPIRES_AT);
+            0, 0, TEST_STATUS, 0, TEST_PROOF_TOKEN, TEST_CREATED_AT, TEST_EXPIRES_AT, null, null);
     assertThat(dtoZero.authAttemptId()).isEqualTo(0);
     assertThat(dtoZero.enrollmentId()).isEqualTo(0);
     assertThat(dtoZero.authAttemptChallenge()).isEqualTo(0);
@@ -166,7 +174,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             "",
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(dtoEmpty.authAttemptProofToken()).isEmpty();
 
     // Very long string
@@ -179,7 +189,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             longToken,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(dtoLong.authAttemptProofToken()).hasSize(1000);
   }
 
@@ -196,7 +208,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             utcTime,
-            utcTime);
+            utcTime,
+            null,
+            null);
     assertThat(dtoUtc.createdAt()).isEqualTo(utcTime);
     assertThat(dtoUtc.expiresAt()).isEqualTo(utcTime);
 
@@ -211,7 +225,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             negativeOffset,
-            negativeOffset);
+            negativeOffset,
+            null,
+            null);
     assertThat(dtoNegative.createdAt()).isEqualTo(negativeOffset);
   }
 
@@ -227,7 +243,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
 
     AuthAttemptDto dto2 =
         new AuthAttemptDto(
@@ -237,7 +255,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
 
     AuthAttemptDto dto3 =
         new AuthAttemptDto(
@@ -247,7 +267,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
 
     // Assert - Records provide correct equals/hashCode implementations
     assertThat(dto1).isEqualTo(dto2);
@@ -267,7 +289,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
 
     // Act
     String toString = dto.toString();
@@ -292,7 +316,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(pendingDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.PENDING);
 
     // Test ACCEPTED status
@@ -304,7 +330,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(acceptedDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.ACCEPTED);
 
     // Test REJECTED status
@@ -316,7 +344,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(rejectedDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.REJECTED);
 
     // Test EXPIRED status
@@ -328,7 +358,9 @@ class AuthAttemptDtoTest {
             TEST_CHALLENGE,
             TEST_PROOF_TOKEN,
             TEST_CREATED_AT,
-            TEST_EXPIRES_AT);
+            TEST_EXPIRES_AT,
+            null,
+            null);
     assertThat(expiredDto.authAttemptStatus()).isEqualTo(AuthAttemptStatus.EXPIRED);
   }
 }

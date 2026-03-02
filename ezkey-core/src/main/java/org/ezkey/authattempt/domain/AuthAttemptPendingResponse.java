@@ -92,6 +92,18 @@ public class AuthAttemptPendingResponse {
   private OffsetDateTime createdAt;
 
   /**
+   * Optional short title for contextual authentication, displayed as the card header on the mobile
+   * device. Null when no context was attached to the authentication attempt.
+   */
+  private String contextTitle;
+
+  /**
+   * Optional descriptive message providing the approver with full business context. Null when no
+   * context was attached to the authentication attempt.
+   */
+  private String contextMessage;
+
+  /**
    * Gets the unique identifier of the authentication attempt.
    *
    * @return the authentication attempt ID
@@ -180,5 +192,41 @@ public class AuthAttemptPendingResponse {
    */
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /**
+   * Gets the optional short context title.
+   *
+   * @return the context title, or null if not provided
+   */
+  public String getContextTitle() {
+    return contextTitle;
+  }
+
+  /**
+   * Sets the optional short context title.
+   *
+   * @param contextTitle the context title to set
+   */
+  public void setContextTitle(String contextTitle) {
+    this.contextTitle = contextTitle;
+  }
+
+  /**
+   * Gets the optional descriptive context message.
+   *
+   * @return the context message, or null if not provided
+   */
+  public String getContextMessage() {
+    return contextMessage;
+  }
+
+  /**
+   * Sets the optional descriptive context message.
+   *
+   * @param contextMessage the context message to set
+   */
+  public void setContextMessage(String contextMessage) {
+    this.contextMessage = contextMessage;
   }
 }

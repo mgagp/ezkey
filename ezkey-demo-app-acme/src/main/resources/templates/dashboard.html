@@ -153,6 +153,84 @@
                 </div>
             </section>
 
+            <!-- Business Approval Demo Widget -->
+            <section class="biz-approval-section">
+                <div class="biz-approval-card">
+
+                    <!-- Header -->
+                    <div class="biz-approval-header">
+                        <h3>BUSINESS APPROVAL DEMO</h3>
+                    </div>
+
+                    <!-- Feature explanation -->
+                    <div class="biz-explanation">
+                        <p>
+                            EZKey contextual authentication lets any system action require explicit approval
+                            from a designated person on their enrolled mobile device. Select a scenario, enter
+                            the approver's EZKey identifier, and click <strong>REQUEST</strong> — their device
+                            will display the full context before they approve or deny. Click
+                            <strong>CHECK STATUS</strong> at any time to read the result.
+                        </p>
+                    </div>
+
+                    <!-- Scenario list -->
+                    <div class="biz-scenario-list">
+
+                        <!-- Row 1: Authorize Payment -->
+                        <div class="biz-scenario-row">
+                            <div class="biz-row-main">
+                                <div class="biz-row-info">
+                                    <span class="biz-row-icon">💳</span>
+                                    <div>
+                                        <div class="biz-row-name">Authorize Payment</div>
+                                        <div class="biz-row-desc">$5,000 · Suppliers Ltd. · INV-2025-042</div>
+                                    </div>
+                                </div>
+                                <div class="biz-row-actions">
+                                    <div class="biz-approver-field">
+                                        <label class="biz-label" for="biz-approver-PAYMENT">CONFIRMED BY</label>
+                                        <input type="text" id="biz-approver-PAYMENT" class="biz-approver-input"
+                                               placeholder="approver id" value="jane">
+                                    </div>
+                                    <button id="biz-req-PAYMENT" class="biz-req-btn"
+                                            onclick="requestApproval('PAYMENT')">&#9654; REQUEST</button>
+                                    <button id="biz-chk-PAYMENT" class="biz-chk-btn"
+                                            onclick="checkApprovalStatus('PAYMENT')" disabled>&#8635; CHECK STATUS</button>
+                                </div>
+                            </div>
+                            <div id="biz-status-PAYMENT" class="biz-row-status hidden"></div>
+                        </div>
+
+                        <!-- Row 2: Authorize Batch Transfer -->
+                        <div class="biz-scenario-row">
+                            <div class="biz-row-main">
+                                <div class="biz-row-info">
+                                    <span class="biz-row-icon">🏦</span>
+                                    <div>
+                                        <div class="biz-row-name">Authorize Batch Transfer</div>
+                                        <div class="biz-row-desc">6 payments · $18,400 · Batch #B-2025-18</div>
+                                    </div>
+                                </div>
+                                <div class="biz-row-actions">
+                                    <div class="biz-approver-field">
+                                        <label class="biz-label" for="biz-approver-BATCH_PAYMENT">CONFIRMED BY</label>
+                                        <input type="text" id="biz-approver-BATCH_PAYMENT" class="biz-approver-input"
+                                               placeholder="approver id" value="jane">
+                                    </div>
+                                    <button id="biz-req-BATCH_PAYMENT" class="biz-req-btn"
+                                            onclick="requestApproval('BATCH_PAYMENT')">&#9654; REQUEST</button>
+                                    <button id="biz-chk-BATCH_PAYMENT" class="biz-chk-btn"
+                                            onclick="checkApprovalStatus('BATCH_PAYMENT')" disabled>&#8635; CHECK STATUS</button>
+                                </div>
+                            </div>
+                            <div id="biz-status-BATCH_PAYMENT" class="biz-row-status hidden"></div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </section>
+
         </div>
     </main>
 
@@ -434,6 +512,386 @@
             font-weight: 400;
         }
     </style>
+
+    <!-- Business Approval Widget Styles -->
+    <style>
+        /* ── Section wrapper ── */
+        .biz-approval-section {
+            margin: 2rem 0 3rem;
+        }
+
+        .biz-approval-card {
+            background-color: var(--acme-light);
+            border: 4px solid var(--acme-dark);
+            padding: 2rem;
+            box-shadow: 6px 6px 0 var(--acme-dark);
+        }
+
+        /* ── Header ── */
+        .biz-approval-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 3px solid var(--acme-primary);
+            padding-bottom: 0.75rem;
+        }
+
+        .biz-approval-header h3 {
+            color: var(--acme-dark);
+            font-size: 1.3rem;
+            margin: 0;
+        }
+
+        /* ── Explanation ── */
+        .biz-explanation {
+            margin-bottom: 1.5rem;
+        }
+
+        .biz-explanation p {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            padding: 1rem;
+            background-color: var(--acme-gray);
+            border: 2px solid var(--acme-dark);
+            margin: 0;
+        }
+
+        /* ── Shared label style ── */
+        .biz-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 900;
+            color: var(--acme-primary);
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.06em;
+        }
+
+        /* ── Scenario list ── */
+        .biz-scenario-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* ── Scenario row ── */
+        .biz-scenario-row {
+            border: 3px solid var(--acme-dark);
+            padding: 1.25rem;
+            background-color: var(--acme-gray);
+            box-shadow: 4px 4px 0 var(--acme-dark);
+        }
+
+        .biz-row-main {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* ── Row left: scenario info ── */
+        .biz-row-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .biz-row-icon {
+            font-size: 2rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .biz-row-name {
+            font-weight: 900;
+            font-size: 1rem;
+            color: var(--acme-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .biz-row-desc {
+            font-size: 0.82rem;
+            color: #555;
+            margin-top: 0.15rem;
+        }
+
+        /* ── Row right: approver field + action buttons ── */
+        .biz-row-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .biz-approver-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .biz-approver-input {
+            padding: 0.55rem 0.75rem;
+            border: 3px solid var(--acme-dark);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            background-color: var(--acme-light);
+            color: var(--acme-dark);
+            box-shadow: 2px 2px 0 var(--acme-dark);
+            width: 130px;
+        }
+
+        .biz-approver-input:focus {
+            outline: none;
+            box-shadow: 4px 4px 0 var(--acme-dark);
+        }
+
+        /* ── Request button ── */
+        .biz-req-btn {
+            padding: 0.6rem 1rem;
+            background-color: var(--acme-primary);
+            color: var(--acme-light);
+            border: 3px solid var(--acme-dark);
+            font-size: 0.85rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 3px 3px 0 var(--acme-dark);
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            align-self: flex-end;
+        }
+
+        .biz-req-btn:hover:not(:disabled) {
+            box-shadow: 5px 5px 0 var(--acme-dark);
+            transform: translate(-1px, -1px);
+        }
+
+        .biz-req-btn:active:not(:disabled) {
+            box-shadow: 1px 1px 0 var(--acme-dark);
+            transform: translate(2px, 2px);
+        }
+
+        .biz-req-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: 1px 1px 0 var(--acme-dark);
+        }
+
+        /* ── Check status button ── */
+        .biz-chk-btn {
+            padding: 0.6rem 1rem;
+            background-color: var(--acme-light);
+            color: var(--acme-dark);
+            border: 3px solid var(--acme-dark);
+            font-size: 0.85rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 3px 3px 0 var(--acme-dark);
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            align-self: flex-end;
+        }
+
+        .biz-chk-btn:hover:not(:disabled) {
+            box-shadow: 5px 5px 0 var(--acme-dark);
+            transform: translate(-1px, -1px);
+            background-color: var(--acme-gray);
+        }
+
+        .biz-chk-btn:active:not(:disabled) {
+            box-shadow: 1px 1px 0 var(--acme-dark);
+            transform: translate(2px, 2px);
+        }
+
+        .biz-chk-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: 1px 1px 0 var(--acme-dark);
+        }
+
+        /* ── Inline row status ── */
+        .biz-row-status {
+            margin-top: 0.85rem;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-left: 5px solid var(--acme-dark);
+            background-color: var(--acme-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .biz-row-status.st-sent {
+            border-left-color: var(--acme-primary);
+            color: var(--acme-dark);
+        }
+
+        .biz-row-status.st-pending {
+            border-left-color: #E87722;
+            background-color: #fff8f2;
+            color: #7a3c00;
+        }
+
+        .biz-row-status.st-accepted {
+            border-left-color: #155724;
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .biz-row-status.st-rejected {
+            border-left-color: #721c24;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .biz-row-status.st-expired {
+            border-left-color: #666;
+            background-color: var(--acme-gray);
+            color: #444;
+        }
+
+        .biz-row-status.st-error {
+            border-left-color: var(--acme-dark);
+            background-color: var(--acme-gray);
+            color: #333;
+        }
+
+        .biz-st-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+
+    <!-- Business Approval Widget Script -->
+    <script>
+        // Per-scenario state: { attemptId, approver }
+        const bizState = {};
+
+        /**
+         * Sends a business-approval request for the given scenario to the specified approver.
+         * The approver's EZKey-enrolled device will receive a contextual push prompt.
+         */
+        async function requestApproval(scenario) {
+            const approverInput = document.getElementById('biz-approver-' + scenario);
+            const approverIdentifier = approverInput ? approverInput.value.trim() : '';
+
+            if (!approverIdentifier) {
+                showRowStatus(scenario, 'st-error', '!', 'Please enter an approver identifier before sending the request.');
+                return;
+            }
+
+            const reqBtn = document.getElementById('biz-req-' + scenario);
+            const chkBtn = document.getElementById('biz-chk-' + scenario);
+
+            reqBtn.disabled = true;
+            reqBtn.textContent = 'REQUESTING...';
+
+            // Reset any previous inline status for this row
+            hideRowStatus(scenario);
+
+            try {
+                const resp = await fetch('/api/business-approval', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario, approverIdentifier })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) {
+                    showRowStatus(scenario, 'st-error', '!',
+                        (data.error || 'HTTP ' + resp.status + ' — failed to send request.').toUpperCase());
+                    return;
+                }
+
+                bizState[scenario] = { attemptId: data.authAttemptId, approver: approverIdentifier };
+                chkBtn.disabled = false;
+                showRowStatus(scenario, 'st-sent', '→',
+                    'Request sent to "' + approverIdentifier + '" \u00b7 Attempt #' + data.authAttemptId
+                    + ' \u00b7 Click CHECK STATUS once the approver has responded.');
+
+            } catch (err) {
+                showRowStatus(scenario, 'st-error', '!', 'Network error: ' + err.message);
+            } finally {
+                reqBtn.disabled = false;
+                reqBtn.textContent = '\u25B6 REQUEST';
+            }
+        }
+
+        /**
+         * Performs a fast spot-check on the most recent approval request for the given scenario
+         * and updates the inline status row with the current result.
+         */
+        async function checkApprovalStatus(scenario) {
+            const state = bizState[scenario];
+            if (!state || !state.attemptId) {
+                showRowStatus(scenario, 'st-error', '!', 'No pending request for this scenario — click REQUEST first.');
+                return;
+            }
+
+            const chkBtn = document.getElementById('biz-chk-' + scenario);
+            chkBtn.disabled = true;
+            chkBtn.textContent = 'CHECKING...';
+
+            try {
+                const resp = await fetch('/api/business-approval-status?authAttemptId=' + state.attemptId);
+                const data = await resp.json();
+                const approver = state.approver;
+
+                switch (data.status) {
+                    case 'accepted':
+                        showRowStatus(scenario, 'st-accepted', '\u2713',
+                            'APPROVED \u2014 "' + approver + '" authorized the request on their device.');
+                        break;
+                    case 'rejected':
+                        showRowStatus(scenario, 'st-rejected', '\u2717',
+                            'DENIED \u2014 "' + approver + '" rejected the request on their device.');
+                        break;
+                    case 'expired':
+                        showRowStatus(scenario, 'st-expired', '\u23F1',
+                            'EXPIRED \u2014 the request timed out before "' + approver + '" responded.');
+                        break;
+                    case 'pending':
+                        showRowStatus(scenario, 'st-pending', '\u2026',
+                            'PENDING \u2014 waiting for "' + approver + '" to respond on their device.');
+                        break;
+                    default:
+                        showRowStatus(scenario, 'st-error', '!',
+                            (data.message || 'An unexpected error occurred.').toUpperCase());
+                        break;
+                }
+            } catch (err) {
+                showRowStatus(scenario, 'st-error', '!', 'Network error: ' + err.message);
+            } finally {
+                chkBtn.disabled = false;
+                chkBtn.textContent = '\u21BB CHECK STATUS';
+            }
+        }
+
+        function showRowStatus(scenario, cssClass, icon, text) {
+            const el = document.getElementById('biz-status-' + scenario);
+            if (!el) return;
+            el.className = 'biz-row-status ' + cssClass;
+            el.innerHTML = '<span class="biz-st-icon">' + icon + '</span><span>' + text + '</span>';
+            el.classList.remove('hidden');
+        }
+
+        function hideRowStatus(scenario) {
+            const el = document.getElementById('biz-status-' + scenario);
+            if (el) el.classList.add('hidden');
+        }
+    </script>
 
     <script>
         function toggleIntegrationPatterns() {

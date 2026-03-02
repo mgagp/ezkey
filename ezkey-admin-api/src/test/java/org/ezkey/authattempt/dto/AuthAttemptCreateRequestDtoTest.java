@@ -60,7 +60,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldCreateRecordWithEnrollmentId() {
     // Act
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     // Assert
     assertThat(dto.enrollmentId()).isEqualTo(TEST_ENROLLMENT_ID);
@@ -74,7 +75,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldCreateRecordWithUserIdentifier() {
     // Act
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, TEST_USER_IDENTIFIER, TEST_INTEGRATION_ID, false);
+        new AuthAttemptCreateRequestDto(
+            null, TEST_USER_IDENTIFIER, TEST_INTEGRATION_ID, false, null, null);
 
     // Assert
     assertThat(dto.enrollmentId()).isNull();
@@ -88,7 +90,7 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldCreateRecordWithChallengeRequestedTrue() {
     // Act
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true, null, null);
 
     // Assert
     assertThat(dto.enrollmentId()).isEqualTo(TEST_ENROLLMENT_ID);
@@ -100,7 +102,7 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldCreateRecordWithChallengeRequestedFalse() {
     // Act
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, false);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, false, null, null);
 
     // Assert
     assertThat(dto.enrollmentId()).isEqualTo(TEST_ENROLLMENT_ID);
@@ -112,7 +114,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldPassValidationWithEnrollmentId() {
     // Arrange
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     // Act
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
@@ -126,7 +129,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldPassValidationWithUserIdentifier() {
     // Arrange
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, TEST_USER_IDENTIFIER, TEST_INTEGRATION_ID, false);
+        new AuthAttemptCreateRequestDto(
+            null, TEST_USER_IDENTIFIER, TEST_INTEGRATION_ID, false, null, null);
 
     // Act
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
@@ -141,7 +145,7 @@ class AuthAttemptCreateRequestDtoTest {
     // Controller validates at least one identifier - DTO allows both null, challengeRequested only
     // required at DTO level
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(null, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(null, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
     assertThat(violations).isEmpty(); // DTO validation passes; controller rejects
@@ -152,7 +156,7 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldFailValidationWhenChallengeRequestedIsNull() {
     // Arrange
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, null);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, null, null, null);
 
     // Act
     Set<ConstraintViolation<AuthAttemptCreateRequestDto>> violations = validator.validate(dto);
@@ -169,13 +173,15 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldImplementEqualsCorrectly() {
     // Arrange
     AuthAttemptCreateRequestDto dto1 =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto2 =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto3 =
-        new AuthAttemptCreateRequestDto(999, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(999, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto4 =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true, null, null);
 
     // Assert
     assertThat(dto1).isEqualTo(dto2);
@@ -189,9 +195,11 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldImplementHashCodeCorrectly() {
     // Arrange
     AuthAttemptCreateRequestDto dto1 =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
     AuthAttemptCreateRequestDto dto2 =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     // Assert
     assertThat(dto1.hashCode()).isEqualTo(dto2.hashCode());
@@ -202,7 +210,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldHaveConsistentToStringRepresentation() {
     // Arrange
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     // Act
     String toString = dto.toString();
@@ -223,7 +232,8 @@ class AuthAttemptCreateRequestDtoTest {
     for (Integer enrollmentId : enrollmentIds) {
       // Act
       AuthAttemptCreateRequestDto dto =
-          new AuthAttemptCreateRequestDto(enrollmentId, null, null, TEST_CHALLENGE_REQUESTED);
+          new AuthAttemptCreateRequestDto(
+              enrollmentId, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
       // Assert
       assertThat(dto.enrollmentId()).isEqualTo(enrollmentId);
@@ -238,13 +248,13 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldHandleBothBooleanValuesForChallengeRequested() {
     // Test with true
     AuthAttemptCreateRequestDto dtoTrue =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, true, null, null);
     assertThat(dtoTrue.challengeRequested()).isTrue();
     assertThat(validator.validate(dtoTrue)).isEmpty();
 
     // Test with false
     AuthAttemptCreateRequestDto dtoFalse =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, false);
+        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, false, null, null);
     assertThat(dtoFalse.challengeRequested()).isFalse();
     assertThat(validator.validate(dtoFalse)).isEmpty();
   }
@@ -254,7 +264,8 @@ class AuthAttemptCreateRequestDtoTest {
   void shouldBeImmutable() {
     // Arrange
     AuthAttemptCreateRequestDto dto =
-        new AuthAttemptCreateRequestDto(TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED);
+        new AuthAttemptCreateRequestDto(
+            TEST_ENROLLMENT_ID, null, null, TEST_CHALLENGE_REQUESTED, null, null);
 
     // Assert - Records are immutable by design
     assertThat(dto.enrollmentId()).isEqualTo(TEST_ENROLLMENT_ID);
@@ -265,10 +276,14 @@ class AuthAttemptCreateRequestDtoTest {
   @DisplayName("Should support different combinations of enrollment ID and challenge")
   void shouldSupportDifferentCombinations() {
     // Test combinations
-    AuthAttemptCreateRequestDto dto1 = new AuthAttemptCreateRequestDto(123, null, null, true);
-    AuthAttemptCreateRequestDto dto2 = new AuthAttemptCreateRequestDto(123, null, null, false);
-    AuthAttemptCreateRequestDto dto3 = new AuthAttemptCreateRequestDto(456, null, null, true);
-    AuthAttemptCreateRequestDto dto4 = new AuthAttemptCreateRequestDto(456, null, null, false);
+    AuthAttemptCreateRequestDto dto1 =
+        new AuthAttemptCreateRequestDto(123, null, null, true, null, null);
+    AuthAttemptCreateRequestDto dto2 =
+        new AuthAttemptCreateRequestDto(123, null, null, false, null, null);
+    AuthAttemptCreateRequestDto dto3 =
+        new AuthAttemptCreateRequestDto(456, null, null, true, null, null);
+    AuthAttemptCreateRequestDto dto4 =
+        new AuthAttemptCreateRequestDto(456, null, null, false, null, null);
 
     // Assert all are valid
     assertThat(validator.validate(dto1)).isEmpty();

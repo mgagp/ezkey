@@ -31,6 +31,8 @@ import java.time.OffsetDateTime;
  * @param authAttemptChallenge numeric challenge code to display to the user (null if not requested)
  * @param timeoutSeconds duration in seconds before this attempt expires
  * @param expiresAt absolute expiration timestamp for this attempt
+ * @param contextTitle optional short title echoed back from the request
+ * @param contextMessage optional descriptive message echoed back from the request
  * @author Ezkey contributors
  * @since 2025
  */
@@ -62,4 +64,21 @@ public record AuthAttemptCreateResponseDto(
             description = "Absolute expiration timestamp with timezone",
             example = "2025-01-27T10:05:00+01:00",
             requiredMode = RequiredMode.REQUIRED)
-        OffsetDateTime expiresAt) {}
+        OffsetDateTime expiresAt,
+    /**
+     * Optional short title echoed back for confirmation. Null if no context was provided in the
+     * creation request.
+     */
+    @Schema(
+            description = "Context title echoed back (null if not provided)",
+            example = "Payment Approval",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextTitle,
+    /**
+     * Optional descriptive message echoed back for confirmation. Null if no context was provided.
+     */
+    @Schema(
+            description = "Context message echoed back (null if not provided)",
+            example = "Authorize payment batch #1497 to Acme Corp for $1,400",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextMessage) {}

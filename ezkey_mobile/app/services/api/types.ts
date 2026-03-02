@@ -58,6 +58,10 @@ export type PendingAuthResponse = {
   authAttemptProofToken: string;
   authAttemptProofTokenSignedByIntegration: string;
   authAttemptChallengeRequired: boolean;
+  /** Optional short title for the approval request (e.g. "Payment Approval"). */
+  contextTitle?: string;
+  /** Optional descriptive message for the approver. */
+  contextMessage?: string;
 };
 
 export type AuthAttemptDecision = 'APPROVED' | 'REJECTED' | 'FAILED';

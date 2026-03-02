@@ -142,8 +142,9 @@ class AuthAttemptControllerTest {
             456, // authAttemptId
             "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofToken
             "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofTokenSignedByIntegration
-            true // authAttemptChallengeRequired
-            );
+            true, // authAttemptChallengeRequired
+            null, // contextTitle
+            null); // contextMessage
 
     // Setup respond request test data - Using record constructor
     respondRequestDto =

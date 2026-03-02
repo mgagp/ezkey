@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for creating authorization attempts in admin API.
@@ -32,7 +33,7 @@ import jakarta.validation.constraints.NotNull;
  * the same enrollment (consistency check). If they conflict, returns 400.
  *
  * <p><b>Multi-device:</b> When userIdentifier matches multiple enrollments (user has multiple
- * devices), the API returns 400 with a message to specify enrollmentId or deviceHint.
+ * devices), the API returns 400 with a message to specify enrollmentId.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -44,6 +45,10 @@ import jakarta.validation.constraints.NotNull;
  * @param integrationId Required when userIdentifier is used with admin token; ignored when API key
  *     (derived from key)
  * @param challengeRequested Whether a challenge is requested for this attempt
+ * @param contextTitle Optional short title displayed as the card header on the mobile device (max
+ *     200 chars). Example: "Payment Approval", "Deploy Confirmation".
+ * @param contextMessage Optional descriptive message for the approver (max 2 000 chars). Example:
+ *     "Authorize payment batch #1497 to Acme Corp for $1,400".
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.authattempt.domain.AuthAttemptCreateRequest
@@ -52,7 +57,9 @@ import jakarta.validation.constraints.NotNull;
 @Schema(
     description =
         "Request to create an auth attempt. Provide enrollmentId OR userIdentifier. "
-            + "When userIdentifier is used with admin token, integrationId is required.")
+            + "When userIdentifier is used with admin token, integrationId is required. "
+            + "Optional context fields (contextTitle, contextMessage) attach business context "
+            + "visible to the approver on the mobile device.")
 public record AuthAttemptCreateRequestDto(
     @Schema(
             description =
@@ -80,4 +87,30 @@ public record AuthAttemptCreateRequestDto(
             requiredMode = RequiredMode.REQUIRED)
         @NotNull(message = "Challenge requested flag is required")
         @JsonProperty("challengeRequested")
-        Boolean challengeRequested) {}
+        Boolean challengeRequested,
+    /**
+     * Optional short title displayed as the card header on the mobile device (max 200 characters).
+     * When present, replaces the generic "PENDING" label in the mobile UI.
+     */
+    @Schema(
+            description =
+                "Optional short title for the approval request, displayed as the mobile card"
+                    + " header. Max 200 characters. Example: \"Payment Approval\"",
+            example = "Payment Approval",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 200, message = "contextTitle must not exceed 200 characters")
+        @JsonProperty("contextTitle")
+        String contextTitle,
+    /**
+     * Optional descriptive message providing the approver with full business context (max 2 000
+     * characters). Displayed as the card body on the mobile device.
+     */
+    @Schema(
+            description =
+                "Optional descriptive message explaining what the approver is authorizing."
+                    + " Max 2000 characters.",
+            example = "Authorize payment batch #1497 to Acme Corp for $1,400",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 2000, message = "contextMessage must not exceed 2000 characters")
+        @JsonProperty("contextMessage")
+        String contextMessage) {}

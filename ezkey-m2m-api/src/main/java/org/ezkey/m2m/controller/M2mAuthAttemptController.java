@@ -232,6 +232,8 @@ public class M2mAuthAttemptController {
       AuthAttemptCreateRequest createRequest = new AuthAttemptCreateRequest();
       createRequest.setEnrollmentId(effectiveEnrollmentId);
       createRequest.setChallengeRequested(request.challengeRequested());
+      createRequest.setContextTitle(request.contextTitle());
+      createRequest.setContextMessage(request.contextMessage());
 
       AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 

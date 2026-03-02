@@ -83,6 +83,7 @@ An MFA authentication flow, validated via cryptographic signature. Each attempt 
 - User decision (approve/deny)
 - Challenge response (if required)
 - Cryptographic validation
+- **Optional contextual metadata** (title and message) surfaced on the approver's mobile device for business approval workflows
 
 ### Administration & Tenancy
 
@@ -132,6 +133,7 @@ On first startup, Ezkey automatically creates:
 - **Minimalist APIs**: Easy-to-understand REST endpoints
 - **Clear Documentation**: Comprehensive guides and examples
 - **Intuitive Flows**: Logical authentication processes
+- **Contextual Authentication**: Optional context fields turn a binary MFA into a rich business approval — no protocol complexity, pure REST
 
 ### ⚡ Pragmatism
 - **80/20 Rule**: Solves 90% of the problem with 10% of the effort

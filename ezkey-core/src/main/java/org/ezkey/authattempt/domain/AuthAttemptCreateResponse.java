@@ -85,6 +85,18 @@ public class AuthAttemptCreateResponse {
   private OffsetDateTime expiresAt;
 
   /**
+   * Optional short title echoed back for confirmation (max 200 characters). Null if no context was
+   * provided in the creation request.
+   */
+  private String contextTitle;
+
+  /**
+   * Optional descriptive message echoed back for confirmation (max 2 000 characters). Null if no
+   * context was provided in the creation request.
+   */
+  private String contextMessage;
+
+  /**
    * Gets the authentication attempt ID.
    *
    * @return the unique identifier of the created authentication attempt
@@ -172,5 +184,41 @@ public class AuthAttemptCreateResponse {
    */
   public void setExpiresAt(OffsetDateTime expiresAt) {
     this.expiresAt = expiresAt;
+  }
+
+  /**
+   * Gets the optional short context title echoed back from the creation request.
+   *
+   * @return the context title, or null if not provided
+   */
+  public String getContextTitle() {
+    return contextTitle;
+  }
+
+  /**
+   * Sets the optional short context title.
+   *
+   * @param contextTitle the context title to set
+   */
+  public void setContextTitle(String contextTitle) {
+    this.contextTitle = contextTitle;
+  }
+
+  /**
+   * Gets the optional descriptive context message echoed back from the creation request.
+   *
+   * @return the context message, or null if not provided
+   */
+  public String getContextMessage() {
+    return contextMessage;
+  }
+
+  /**
+   * Sets the optional descriptive context message.
+   *
+   * @param contextMessage the context message to set
+   */
+  public void setContextMessage(String contextMessage) {
+    this.contextMessage = contextMessage;
   }
 }

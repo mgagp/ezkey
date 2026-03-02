@@ -34,6 +34,8 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @param authAttemptProofToken signed JWT proof token (present only when ACCEPTED)
  * @param createdAt timestamp when the authentication attempt was created
  * @param expiresAt timestamp when the authentication attempt expires
+ * @param contextTitle optional short title describing the action requiring approval
+ * @param contextMessage optional descriptive message explaining the approval request
  * @author Ezkey contributors
  * @since 2025
  */
@@ -83,4 +85,22 @@ public record AuthAttemptDto(
             description = "Expiration timestamp with timezone",
             example = "2025-01-27T10:05:00+01:00",
             requiredMode = RequiredMode.REQUIRED)
-        OffsetDateTime expiresAt) {}
+        OffsetDateTime expiresAt,
+    /**
+     * Optional short title describing the action requiring approval. Null if no context was
+     * attached (e.g. "Payment Approval", "Deploy Confirmation").
+     */
+    @Schema(
+            description = "Short title for the approval request (null if no context provided)",
+            example = "Payment Approval",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextTitle,
+    /**
+     * Optional descriptive message explaining what the approver is authorizing. Null if no context
+     * was attached.
+     */
+    @Schema(
+            description = "Descriptive approval message (null if no context provided)",
+            example = "Authorize payment batch #1497 to Acme Corp for $1,400",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextMessage) {}

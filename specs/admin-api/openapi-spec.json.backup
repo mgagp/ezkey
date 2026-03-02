@@ -1251,7 +1251,7 @@
           "Audit Logs"
         ],
         "summary": "Declare a downtime gap in the audit chain",
-        "description": "Creates a single GAP_DECLARATION checkpoint covering the specified period and signs it into the chain with the admin's justification. Use when the system was offline longer than the scheduler lookback window. Must be called before the scheduler fills the gap with regular checkpoints. Global Admin only.\n\n**Gap start — two alternative modes:**\n- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment the system went offline).\n- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the `checkpoint_id` of the last checkpoint recorded before the downtime. The service derives `gapStart = anchorCheckpoint.window_end` automatically. Ergonomic when working directly with the database — look up the last checkpoint ID before the gap and pass it directly, no timestamp extraction needed.\n\n`gapEnd` is always required as a timestamp (the moment the system came back online). Exactly one of `gapStart` or `anchorCheckpointId` must be provided.",
+        "description": "Creates a single GAP_DECLARATION checkpoint covering the specified period and signs it into the chain with the admin's justification. Use when the system was offline longer than the scheduler lookback window. Must be called before the scheduler fills the gap with regular checkpoints. Global Admin only.\n\n**Gap start — two alternative modes:**\n- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment the system went offline).\n- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the `checkpoint_id` of the last checkpoint recorded before the downtime. The service derives `gapStart = anchorCheckpoint.window_end` automatically. Ergonomic when working directly with the database — look up the last checkpoint ID before the gap and pass it directly, no timestamp extraction needed.\n\n`gapEnd` is always a timestamp when provided. In anchor checkpoint mode it is **optional**: if omitted, the service auto-derives it as the `window_start` of the first checkpoint that exists after the anchor (the boundary between the undeclared gap and the scheduler's catch-up checkpoints). If no such checkpoint exists yet, falls back to the start of the current 5-minute window. Exactly one of `gapStart` or `anchorCheckpointId` must be provided.",
         "operationId": "declareGap",
         "requestBody": {
           "content": {
@@ -2514,7 +2514,8 @@
                 "REENCRYPTION_RESUMED",
                 "REENCRYPTION_PAUSED",
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
-                "AUDIT_CHAIN_GAP_DECLARED"
+                "AUDIT_CHAIN_GAP_DECLARED",
+                "AUDIT_CHAIN_GAP_PENDING"
               ]
             }
           },
@@ -3820,7 +3821,6 @@
           }
         },
         "required": [
-          "gapEnd",
           "justification"
         ]
       },
@@ -4662,7 +4662,8 @@
               "REENCRYPTION_RESUMED",
               "REENCRYPTION_PAUSED",
               "AUDIT_CHAIN_ARCHIVE_SEALED",
-              "AUDIT_CHAIN_GAP_DECLARED"
+              "AUDIT_CHAIN_GAP_DECLARED",
+              "AUDIT_CHAIN_GAP_PENDING"
             ]
           },
           "eventAction": {

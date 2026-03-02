@@ -47,7 +47,7 @@ class AuthAttemptCreateResponseDtoTest {
 
     // Act
     AuthAttemptCreateResponseDto dto =
-        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isEqualTo(TEST_AUTH_ATTEMPT_ID);
@@ -63,7 +63,8 @@ class AuthAttemptCreateResponseDtoTest {
     OffsetDateTime expiresAt = OffsetDateTime.now().plusSeconds(120);
 
     // Act
-    AuthAttemptCreateResponseDto dto = new AuthAttemptCreateResponseDto(null, null, 120, expiresAt);
+    AuthAttemptCreateResponseDto dto =
+        new AuthAttemptCreateResponseDto(null, null, 120, expiresAt, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isNull();
@@ -80,7 +81,7 @@ class AuthAttemptCreateResponseDtoTest {
 
     // Act
     AuthAttemptCreateResponseDto dto =
-        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, 42, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, 42, 120, expiresAt, null, null);
 
     // Assert
     assertThat(dto.authAttemptId()).isEqualTo(TEST_AUTH_ATTEMPT_ID);
@@ -97,31 +98,31 @@ class AuthAttemptCreateResponseDtoTest {
 
     // Test with minimum value
     AuthAttemptCreateResponseDto dtoMin =
-        new AuthAttemptCreateResponseDto(Integer.MIN_VALUE, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(Integer.MIN_VALUE, null, 120, expiresAt, null, null);
     assertThat(dtoMin.authAttemptId()).isEqualTo(Integer.MIN_VALUE);
 
     // Test with maximum value
     AuthAttemptCreateResponseDto dtoMax =
-        new AuthAttemptCreateResponseDto(Integer.MAX_VALUE, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(Integer.MAX_VALUE, null, 120, expiresAt, null, null);
     assertThat(dtoMax.authAttemptId()).isEqualTo(Integer.MAX_VALUE);
 
     // Test with zero
     AuthAttemptCreateResponseDto dtoZero =
-        new AuthAttemptCreateResponseDto(0, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(0, null, 120, expiresAt, null, null);
     assertThat(dtoZero.authAttemptId()).isEqualTo(0);
 
     // Test with negative value
     AuthAttemptCreateResponseDto dtoNeg =
-        new AuthAttemptCreateResponseDto(-1, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(-1, null, 120, expiresAt, null, null);
     assertThat(dtoNeg.authAttemptId()).isEqualTo(-1);
 
     // Test challenge code edge cases
     AuthAttemptCreateResponseDto dtoChallengeMin =
-        new AuthAttemptCreateResponseDto(1, 0, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(1, 0, 120, expiresAt, null, null);
     assertThat(dtoChallengeMin.authAttemptChallenge()).isEqualTo(0);
 
     AuthAttemptCreateResponseDto dtoChallengeMax =
-        new AuthAttemptCreateResponseDto(1, 99, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(1, 99, 120, expiresAt, null, null);
     assertThat(dtoChallengeMax.authAttemptChallenge()).isEqualTo(99);
   }
 
@@ -131,12 +132,13 @@ class AuthAttemptCreateResponseDtoTest {
     // Arrange
     OffsetDateTime expiresAt = OffsetDateTime.now().plusSeconds(120);
     AuthAttemptCreateResponseDto dto1 =
-        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt, null, null);
     AuthAttemptCreateResponseDto dto2 =
-        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt);
-    AuthAttemptCreateResponseDto dto3 = new AuthAttemptCreateResponseDto(999, null, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, null, 120, expiresAt, null, null);
+    AuthAttemptCreateResponseDto dto3 =
+        new AuthAttemptCreateResponseDto(999, null, 120, expiresAt, null, null);
     AuthAttemptCreateResponseDto dto4 =
-        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, 42, 120, expiresAt);
+        new AuthAttemptCreateResponseDto(TEST_AUTH_ATTEMPT_ID, 42, 120, expiresAt, null, null);
 
     // Assert - Records provide correct equals/hashCode implementations
     assertThat(dto1).isEqualTo(dto2);

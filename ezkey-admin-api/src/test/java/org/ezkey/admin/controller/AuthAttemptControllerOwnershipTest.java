@@ -124,10 +124,11 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(
-            new AuthAttemptCreateResponseDto(1, null, 120, OffsetDateTime.now().plusSeconds(120)));
+            new AuthAttemptCreateResponseDto(
+                1, null, 120, OffsetDateTime.now().plusSeconds(120), null, null));
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
 
     // Act
     ResponseEntity<?> response = controller.create(request, null);
@@ -158,7 +159,7 @@ class AuthAttemptControllerOwnershipTest {
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
 
     // Act & Assert
     assertThrows(
@@ -187,7 +188,7 @@ class AuthAttemptControllerOwnershipTest {
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
 
     // Act & Assert
     assertThrows(
@@ -219,10 +220,11 @@ class AuthAttemptControllerOwnershipTest {
     when(authAttemptService.create(any(AuthAttemptCreateRequest.class))).thenReturn(mockResponse);
     when(authAttemptMapper.toAuthAttemptCreateResponseDto(mockResponse))
         .thenReturn(
-            new AuthAttemptCreateResponseDto(1, null, 120, OffsetDateTime.now().plusSeconds(120)));
+            new AuthAttemptCreateResponseDto(
+                1, null, 120, OffsetDateTime.now().plusSeconds(120), null, null));
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
 
     // Act
     ResponseEntity<?> response = controller.create(request, null);

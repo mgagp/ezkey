@@ -15,6 +15,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -41,6 +42,8 @@ type PendingAttempt = {
   tenantName: string;
   createdAt: string;
   challengeRequired: boolean;
+  contextTitle?: string;
+  contextMessage?: string;
 };
 
 /**
@@ -113,6 +116,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         integrationName: enrollment.integrationName,
         tenantName: enrollment.tenantName,
         createdAt: new Date().toISOString(),
+        contextTitle: response.contextTitle,
+        contextMessage: response.contextMessage,
       });
       setChallengeInput('');
       setFormError(undefined);
@@ -222,72 +227,95 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         </View>
       ) : (
         attempt && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{attempt.integrationName}</Text>
-              <Text style={styles.badge}>PENDING</Text>
-            </View>
-            <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Auth attempt ID</Text>
-              <Text style={styles.metaValue}>{attempt.authAttemptId}</Text>
-            </View>
-            {formattedWindow ? (
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Response window</Text>
-                <Text style={styles.metaValue}>{formattedWindow}</Text>
-              </View>
-            ) : null}
-            {attempt.challengeRequired ? (
-              <View style={styles.challengeSection}>
-                <Text style={styles.challengeLabel}>Challenge code</Text>
-                <Text style={styles.challengeHint}>Enter the two-digit code displayed in Console.</Text>
-                <TextInput
-                  value={challengeInput}
-                  onChangeText={text => {
-                    setChallengeInput(text.replace(/[^0-9]/g, '').slice(0, 2));
-                    setFormError(undefined);
-                  }}
-                  placeholder="00"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  style={styles.challengeInput}
-                  placeholderTextColor="#5f6780"
-                  editable={state === 'pending' && !isProcessing}
-                />
-                {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-              </View>
-            ) : null}
-            {state === 'pending' ? (
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={() => handleRespond(false)}
-                  style={[styles.actionButton, styles.rejectButton]}
-                  disabled={isProcessing}>
-                  <Text style={styles.rejectLabel}>Deny</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleRespond(true)}
-                  style={[styles.actionButton, styles.approveButton]}
-                  disabled={isProcessing}>
-                  <Text style={styles.approveLabel}>
-                    {isProcessing ? 'Sending…' : 'Approve'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.decisionBanner}>
-                <Text style={styles.decisionText}>
-                  {state === 'accepted'
-                    ? 'This authentication was approved.'
-                    : 'This authentication was rejected.'}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.card}>
+              {/* Card header: context title (when present) or integration name + PENDING badge */}
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>
+                  {attempt.contextTitle ?? attempt.integrationName}
                 </Text>
-                <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryLabel}>Await new request</Text>
-                </TouchableOpacity>
+                <Text style={[styles.badge, styles.badgeInfo]}>
+                  PENDING
+                </Text>
               </View>
-            )}
-          </View>
+
+              {/* Subtitle: tenant name; integration name shown below when context title overrides */}
+              <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
+              {attempt.contextTitle ? (
+                <Text style={styles.integrationLabel}>{attempt.integrationName}</Text>
+              ) : null}
+
+              {/* Context message */}
+              {attempt.contextMessage ? (
+                <View style={[styles.contextMessageBox, styles.borderInfo]}>
+                  <Text style={styles.contextMessageText}>{attempt.contextMessage}</Text>
+                </View>
+              ) : null}
+
+              {/* Standard meta rows */}
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Auth attempt ID</Text>
+                <Text style={styles.metaValue}>{attempt.authAttemptId}</Text>
+              </View>
+              {formattedWindow ? (
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Response window</Text>
+                  <Text style={styles.metaValue}>{formattedWindow}</Text>
+                </View>
+              ) : null}
+
+              {attempt.challengeRequired ? (
+                <View style={styles.challengeSection}>
+                  <Text style={styles.challengeLabel}>Challenge code</Text>
+                  <Text style={styles.challengeHint}>Enter the two-digit code displayed in Console.</Text>
+                  <TextInput
+                    value={challengeInput}
+                    onChangeText={text => {
+                      setChallengeInput(text.replace(/[^0-9]/g, '').slice(0, 2));
+                      setFormError(undefined);
+                    }}
+                    placeholder="00"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    style={styles.challengeInput}
+                    placeholderTextColor="#5f6780"
+                    editable={state === 'pending' && !isProcessing}
+                  />
+                  {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+                </View>
+              ) : null}
+
+              {state === 'pending' ? (
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    onPress={() => handleRespond(false)}
+                    style={[styles.actionButton, styles.rejectButton]}
+                    disabled={isProcessing}>
+                    <Text style={styles.rejectLabel}>Deny</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleRespond(true)}
+                    style={[styles.actionButton, styles.approveButton]}
+                    disabled={isProcessing}>
+                    <Text style={styles.approveLabel}>
+                      {isProcessing ? 'Sending…' : 'Approve'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.decisionBanner}>
+                  <Text style={styles.decisionText}>
+                    {state === 'accepted'
+                      ? 'This authentication was approved.'
+                      : 'This authentication was rejected.'}
+                  </Text>
+                  <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryLabel}>Await new request</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         )
       )}
     </View>
@@ -443,6 +471,44 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 14,
     color: '#9aa3b6',
+  },
+  integrationLabel: {
+    fontSize: 13,
+    color: '#9aa3b6',
+    marginTop: -8,
+  },
+  /* Context level badge variants */
+  badgeInfo: {
+    color: '#61d095',
+  },
+  badgeWarning: {
+    color: '#f5a623',
+  },
+  badgeCritical: {
+    color: '#ff6666',
+  },
+  /* Context message box */
+  contextMessageBox: {
+    borderLeftWidth: 3,
+    paddingLeft: 12,
+    paddingVertical: 8,
+    backgroundColor: '#1c2130',
+    borderRadius: 8,
+  },
+  contextMessageText: {
+    fontSize: 14,
+    color: '#e0e5f0',
+    lineHeight: 20,
+  },
+  /* Context level border accents */
+  borderInfo: {
+    borderLeftColor: '#61d095',
+  },
+  borderWarning: {
+    borderLeftColor: '#f5a623',
+  },
+  borderCritical: {
+    borderLeftColor: '#ff6666',
   },
   errorState: {
     flex: 1,

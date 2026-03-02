@@ -309,6 +309,15 @@
             "example": 1
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDeactivateRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "Tenant deactivated successfully"
@@ -769,6 +778,18 @@
         "summary": "Manually trigger key rotation",
         "description": "Immediately rotates the encryption key, creating a new primary key",
         "operationId": "rotateKey",
+        "parameters": [
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Key rotation completed successfully",
@@ -1441,6 +1462,17 @@
               "format": "int32"
             },
             "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the deactivation (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
           }
         ],
         "responses": {
@@ -1924,6 +1956,17 @@
               "format": "int32"
             },
             "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the deletion (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
           }
         ],
         "responses": {
@@ -2025,6 +2068,17 @@
               "format": "int32"
             },
             "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the deletion (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
           }
         ],
         "responses": {
@@ -2333,38 +2387,6 @@
             }
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "Auth Attempts"
-        ],
-        "summary": "Delete auth attempt",
-        "description": "Removes an authentication attempt from the system",
-        "operationId": "delete_2",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Auth attempt ID to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Auth attempt deleted successfully"
-          },
-          "404": {
-            "description": "Auth attempt not found"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        }
       }
     },
     "/api/v1/auth-attempts/{id}/wait": {
@@ -2487,6 +2509,8 @@
                 "ADMIN_LOGOUT",
                 "ADMIN_PASSWORD_CHANGE",
                 "ADMIN_RECOVERY_USE",
+                "ADMIN_CREATED",
+                "ADMIN_DEACTIVATED",
                 "ENROLLMENT_CREATED",
                 "ENROLLMENT_DELETED",
                 "ENROLLMENT_BIND",
@@ -2513,6 +2537,12 @@
                 "REENCRYPTION_FAILED",
                 "REENCRYPTION_RESUMED",
                 "REENCRYPTION_PAUSED",
+                "INTEGRATION_CREATED",
+                "INTEGRATION_UPDATED",
+                "INTEGRATION_DELETED",
+                "TENANT_CREATED",
+                "TENANT_UPDATED",
+                "TENANT_DEACTIVATED",
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_GAP_PENDING"
@@ -2924,6 +2954,17 @@
               "format": "int32"
             },
             "example": 42
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the revocation (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
           }
         ],
         "responses": {
@@ -3392,6 +3433,16 @@
           "tenantName"
         ]
       },
+      "TenantDeactivateRequestDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10
+          }
+        }
+      },
       "IntegrationCreateRequestDto": {
         "type": "object",
         "description": "Integration creation data including unique code and i18n",
@@ -3679,6 +3730,40 @@
             "type": "boolean",
             "description": "Whether a challenge code is requested for this attempt",
             "example": false
+          },
+          "contextTitle": {
+            "type": "string",
+            "description": "Optional short title for the approval request, displayed as the mobile card header. Max 200 characters. Example: \"Payment Approval\"",
+            "example": "Payment Approval",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "contextMessage": {
+            "type": "string",
+            "description": "Optional descriptive message explaining what the approver is authorizing. Max 2000 characters.",
+            "example": "Authorize payment batch #1497 to Acme Corp for $1,400",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "contextDetails": {
+            "type": "string",
+            "description": "Optional structured key-value context details as a JSON object. Forwarded to the mobile device for rich display.",
+            "example": {
+              "Amount": "$1,400.00",
+              "Vendor": "Acme Corp",
+              "Batch": "#1497"
+            }
+          },
+          "contextLevel": {
+            "type": "string",
+            "description": "Severity level for visual styling on the mobile device. Defaults to INFO.",
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "example": "WARNING",
+            "pattern": "^(INFO|WARNING|CRITICAL)$"
           }
         },
         "required": [
@@ -3735,6 +3820,34 @@
             "format": "date-time",
             "description": "Expiration timestamp with timezone",
             "example": "2025-01-27T10:05:00+01:00"
+          },
+          "contextTitle": {
+            "type": "string",
+            "description": "Short title for the approval request (null if no context provided)",
+            "example": "Payment Approval"
+          },
+          "contextMessage": {
+            "type": "string",
+            "description": "Descriptive approval message (null if no context provided)",
+            "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
+          },
+          "contextDetails": {
+            "type": "string",
+            "description": "Structured key-value context details as a JSON object (null if not provided)",
+            "example": {
+              "Amount": "$1,400.00",
+              "Vendor": "Acme Corp"
+            }
+          },
+          "contextLevel": {
+            "type": "string",
+            "description": "Severity level: INFO (default), WARNING, or CRITICAL",
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "example": "WARNING"
           }
         },
         "required": [
@@ -4054,6 +4167,11 @@
           "enrollmentId": {
             "type": "integer",
             "format": "int32"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10
           }
         },
         "required": [
@@ -4635,6 +4753,8 @@
               "ADMIN_LOGOUT",
               "ADMIN_PASSWORD_CHANGE",
               "ADMIN_RECOVERY_USE",
+              "ADMIN_CREATED",
+              "ADMIN_DEACTIVATED",
               "ENROLLMENT_CREATED",
               "ENROLLMENT_DELETED",
               "ENROLLMENT_BIND",
@@ -4661,6 +4781,12 @@
               "REENCRYPTION_FAILED",
               "REENCRYPTION_RESUMED",
               "REENCRYPTION_PAUSED",
+              "INTEGRATION_CREATED",
+              "INTEGRATION_UPDATED",
+              "INTEGRATION_DELETED",
+              "TENANT_CREATED",
+              "TENANT_UPDATED",
+              "TENANT_DEACTIVATED",
               "AUDIT_CHAIN_ARCHIVE_SEALED",
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_GAP_PENDING"
@@ -4726,6 +4852,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
           }
         }
       },

@@ -14,21 +14,13 @@ package org.ezkey.authattempt.domain;
  * Domain request object for creating authentication attempts.
  *
  * <p>This domain object represents the request data used internally by the service layer to create
- * new authentication attempts. It contains the enrollment information and challenge requirements
- * needed to initiate an authentication flow for a specific user enrollment.
+ * new authentication attempts. It contains the enrollment information, challenge requirements, and
+ * optional contextual fields that transform a binary approve/deny MFA event into a rich
+ * business-context request visible on the mobile device.
  *
- * <p><b>Usage Context:</b> Used by the AuthAttemptService to process authentication attempt
- * creation requests from both admin and auth APIs. The service layer transforms API DTOs into this
- * domain object for business logic processing.
- *
- * <p><b>Authentication Flow:</b> This request initiates the authentication process where an
- * external system (integration) requests user authentication through their enrolled mobile device.
- * The mobile device will receive a pending authentication notification and can approve or deny the
- * request.
- *
- * <p><b>Challenge System:</b> The challengeRequested flag determines whether additional user
- * verification is required beyond cryptographic signatures. When enabled, users must provide
- * additional verification codes during the authentication process.
+ * <p><b>Contextual Authentication (Phase 1):</b> The optional context fields ({@code contextTitle},
+ * {@code contextMessage}) allow integrating applications to attach human-readable context to an
+ * auth attempt so the approver sees exactly what they are approving on their mobile device.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -55,10 +47,21 @@ public class AuthAttemptCreateRequest {
    * Flag indicating whether additional challenge validation is requested.
    *
    * <p>When true, the authentication flow will require the user to provide additional verification
-   * (such as a numeric code) beyond the standard cryptographic signature. When false, only
-   * cryptographic validation is required for authentication completion.
+   * (such as a numeric code) beyond the standard cryptographic signature.
    */
   private Boolean challengeRequested;
+
+  /**
+   * Optional short title displayed as the card header on the mobile device (max 200 characters).
+   * Example: "Payment Approval", "Deploy Confirmation".
+   */
+  private String contextTitle;
+
+  /**
+   * Optional descriptive message providing the approver with full context (max 2 000 characters).
+   * Example: "Authorize payment batch #1497 to Acme Corp for $1,400".
+   */
+  private String contextMessage;
 
   /**
    * Gets the enrollment ID for this authentication attempt.
@@ -94,5 +97,41 @@ public class AuthAttemptCreateRequest {
    */
   public void setChallengeRequested(Boolean challengeRequested) {
     this.challengeRequested = challengeRequested;
+  }
+
+  /**
+   * Gets the optional short context title.
+   *
+   * @return the context title, or null if not provided
+   */
+  public String getContextTitle() {
+    return contextTitle;
+  }
+
+  /**
+   * Sets the optional short context title.
+   *
+   * @param contextTitle the context title to set
+   */
+  public void setContextTitle(String contextTitle) {
+    this.contextTitle = contextTitle;
+  }
+
+  /**
+   * Gets the optional descriptive context message.
+   *
+   * @return the context message, or null if not provided
+   */
+  public String getContextMessage() {
+    return contextMessage;
+  }
+
+  /**
+   * Sets the optional descriptive context message.
+   *
+   * @param contextMessage the context message to set
+   */
+  public void setContextMessage(String contextMessage) {
+    this.contextMessage = contextMessage;
   }
 }

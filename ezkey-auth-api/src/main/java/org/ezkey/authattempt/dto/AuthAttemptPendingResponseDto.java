@@ -20,22 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * authentication attempts. It contains the authentication challenge details that the user needs to
  * approve or deny, including cryptographic codes and challenge requirements.
  *
- * <p><b>Usage Context:</b> Returned by auth-api when mobile devices poll for pending authentication
- * requests. Contains all information needed by the mobile app to display the authentication request
- * to the user and proceed with the approval/denial flow.
- *
- * <p><b>Security Features:</b> Includes signed authentication codes that ensure the integrity of
- * the authentication request and prevent tampering during transmission to the mobile device.
- *
- * <p><b>Fields:</b>
- *
- * <ul>
- *   <li><b>authAttemptId:</b> Unique identifier of the authentication attempt
- *   <li><b>integrationProofToken:</b> Integration proof token for this attempt
- *   <li><b>integrationProofTokenSigned:</b> Cryptographically signed integration proof token
- *   <li><b>authAttemptChallengeRequired:</b> Whether additional challenge is required
- * </ul>
- *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
  * <p><b>License:</b> MIT
@@ -52,8 +36,7 @@ public record AuthAttemptPendingResponseDto(
      * Unique identifier of the authentication attempt.
      *
      * <p>Used by the mobile device to reference this specific authentication attempt when
-     * submitting a response. This ID links the pending request to the user's approval or denial
-     * decision.
+     * submitting a response.
      */
     @Schema(
             description = "Unique identifier of the authentication attempt",
@@ -78,8 +61,7 @@ public record AuthAttemptPendingResponseDto(
      * Integration-signed authentication proof token.
      *
      * <p>Contains the cryptographically signed version of the proof token, signed by the
-     * integration's private key. Provides integrity protection and prevents tampering with the
-     * authentication challenge data.
+     * integration's private key. Provides integrity protection and prevents tampering.
      */
     @Schema(
             description = "Integration-signed authentication proof token for integrity",
@@ -91,11 +73,34 @@ public record AuthAttemptPendingResponseDto(
      * Indicates whether additional challenge validation is required.
      *
      * <p>When true, the mobile device must collect and provide additional challenge responses from
-     * the user (e.g., numeric code verification). When false, only cryptographic signature
-     * validation is needed.
+     * the user (e.g., numeric code verification).
      */
     @Schema(
             description = "Whether additional challenge validation is required",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
-        Boolean authAttemptChallengeRequired) {}
+        Boolean authAttemptChallengeRequired,
+
+    /**
+     * Optional short title for the approval request, displayed as the card header on the mobile
+     * device. Null when no context was attached to this authentication attempt.
+     */
+    @Schema(
+            description =
+                "Optional short title for the approval request (null if no context provided)."
+                    + " Example: \"Payment Approval\"",
+            example = "Payment Approval",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextTitle,
+
+    /**
+     * Optional descriptive message providing the approver with full business context. Null when no
+     * context was attached to this authentication attempt.
+     */
+    @Schema(
+            description =
+                "Optional descriptive message for the approver (null if no context provided)."
+                    + " Example: \"Authorize payment batch #1497 to Acme Corp for $1,400\"",
+            example = "Authorize payment batch #1497 to Acme Corp for $1,400",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String contextMessage) {}
