@@ -169,9 +169,9 @@ public class BusinessApprovalController {
    * Performs a fast spot-check on a business-approval auth attempt and returns its current status.
    *
    * <p>Called by the dashboard JavaScript when the user clicks the <em>Check Status</em> button.
-   * Uses the {@code /wait} endpoint with the minimum acceptable parameters (timeout=2s, polling=1s);
-   * if the attempt is already in a terminal state the server returns immediately with the final
-   * status, otherwise it waits up to 2 seconds before returning the current state.
+   * Uses the {@code /wait} endpoint with the minimum acceptable parameters (timeout=2s,
+   * polling=1s); if the attempt is already in a terminal state the server returns immediately with
+   * the final status, otherwise it waits up to 2 seconds before returning the current state.
    *
    * <p>The {@code authAttemptId} query parameter is preferred; if omitted, the endpoint falls back
    * to the attempt ID stored in the HTTP session by {@link #startBusinessApproval}.

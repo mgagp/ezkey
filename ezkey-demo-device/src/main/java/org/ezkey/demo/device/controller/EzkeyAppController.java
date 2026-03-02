@@ -337,6 +337,8 @@ public class EzkeyAppController {
         model.addAttribute("authAttemptId", pendingResponse.getAuthAttemptId());
         model.addAttribute("authAttemptProofToken", pendingResponse.getAuthAttemptProofToken());
         model.addAttribute("challengeRequired", pendingResponse.getAuthAttemptChallengeRequired());
+        model.addAttribute("contextTitle", pendingResponse.getContextTitle());
+        model.addAttribute("contextMessage", pendingResponse.getContextMessage());
         model.addAttribute("hasPendingAuth", true);
 
         return "phone/ezkey/auth_pending";

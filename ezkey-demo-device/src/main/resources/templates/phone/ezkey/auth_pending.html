@@ -54,6 +54,26 @@
       color: #ccc; 
       margin-bottom: 16px; 
     }
+    .context-card {
+      margin: 0 16px 0 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      border-left: 4px solid #0d6efd;
+      padding: 14px 16px;
+    }
+    .context-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .context-message {
+      font-size: 0.875rem;
+      color: #ccc;
+      line-height: 1.5;
+      margin: 0;
+    }
     .challenge-input { 
       width: 100%; 
       padding: 12px 14px; 
@@ -140,12 +160,19 @@
         </div>
       </div>
       
+      <!-- Contextual card (shown when business context is attached to the attempt) -->
+      <div th:if="${contextTitle}" class="context-card">
+        <div class="context-title" th:text="${contextTitle}">Payment Authorization</div>
+        <p class="context-message" th:text="${contextMessage}">Authorize payment of $5,000 to Suppliers Ltd.</p>
+      </div>
+
       <!-- Authentication Request -->
       <div class="auth-request">
-        <div class="auth-title">Authentication Request</div>
+        <div class="auth-title" th:text="${contextTitle != null ? 'Review &amp; Respond' : 'Authentication Request'}">Authentication Request</div>
         <div class="auth-description">
-          An authentication request is pending for this enrollment. 
-          <span th:if="${challengeRequired}" style="color: #ffc107; font-weight: 600;">Challenge code required.</span>
+          <span th:if="${contextTitle == null}">An authentication request is pending for this enrollment.</span>
+          <span th:if="${contextTitle != null}">Read the request above carefully before approving.</span>
+          <span th:if="${challengeRequired}" style="color: #ffc107; font-weight: 600; display:block; margin-top:4px;">Challenge code required.</span>
         </div>
         
         <form id="authForm" th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}" method="post">
