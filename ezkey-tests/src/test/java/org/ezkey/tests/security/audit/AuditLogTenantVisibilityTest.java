@@ -13,6 +13,7 @@ package org.ezkey.tests.security.audit;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
+import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
 import org.ezkey.tests.util.RestAssuredTestConfig;
 import org.ezkey.tests.util.TenantAdminTestHelper;
 import org.junit.jupiter.api.Assumptions;
@@ -104,7 +106,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
           testDataFactory.createIntegrationForTenant(
               "IntAuditVis " + uniqueSuffix, tenantAId, tenantAdminAToken);
 
-      enrollmentAId = testDataFactory.createEnrollment(integrationAId);
+      enrollmentAId = createVerifiedEnrollment(integrationAId, tenantAdminAToken);
 
       log.info(
           "Test setup complete: tenantA={}, tenantB={}, integrationA={}, enrollmentA={}",
@@ -383,6 +385,76 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
   // ---------------------------------------------------------------------------
   // Helper methods
   // ---------------------------------------------------------------------------
+
+  /**
+   * Creates a fully verified enrollment (bind + verify) for use in auth-attempt tests.
+   *
+   * <p>Auth attempts require a VERIFIED enrollment per the enrollment lifecycle security gate.
+   *
+   * @param integrationId integration ID
+   * @param bearerToken bearer token for Admin API (tenant admin with access to the integration)
+   * @return Enrollment ID of the verified enrollment
+   */
+  private Integer createVerifiedEnrollment(Integer integrationId, String bearerToken) {
+    Integer enrollmentId =
+        testDataFactory.createEnrollment(integrationId, "AuditVis " + uniqueSuffix, false);
+
+    Response enrollmentResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + bearerToken)
+            .when()
+            .get("/enrollments/" + enrollmentId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+    Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+    assertThat(enrollmentProofToken).isNotNull().isNotEmpty();
+
+    EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+    configureForAuthApi(dockerStackConfig);
+
+    Map<String, Object> bindRequest = new HashMap<>();
+    bindRequest.put("enrollmentId", enrollmentId);
+    bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+    Response bindResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(bindRequest)
+            .when()
+            .post("/enrollments/bind")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
+    assertThat(bindProofToken).isNotNull().isNotEmpty();
+
+    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    configureForAuthApi(dockerStackConfig);
+
+    Map<String, Object> verifyRequest = new HashMap<>();
+    verifyRequest.put("enrollmentId", enrollmentId);
+    verifyRequest.put("challengeResponse", challengeCode);
+    verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
+    verifyRequest.put("enrollmentProofTokenSigned", signature);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(verifyRequest)
+        .when()
+        .post("/enrollments/verify")
+        .then()
+        .statusCode(200);
+
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+    return enrollmentId;
+  }
 
   /**
    * Creates an auth attempt using the specified bearer token.

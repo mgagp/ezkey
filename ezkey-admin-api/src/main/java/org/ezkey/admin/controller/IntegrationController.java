@@ -578,6 +578,109 @@ public class IntegrationController {
   }
 
   /**
+   * Bulk-deactivates all active VERIFIED enrollments for an integration (reversible lockdown).
+   *
+   * <p>Use for precautionary lockdowns (suspected threat, emergency maintenance). Status remains
+   * VERIFIED; enrollments can be restored via {@code POST .../enrollments/reactivate-all}.
+   *
+   * <p><b>System integration guard:</b> Cannot be applied to system integrations.
+   *
+   * @param id the integration ID whose enrollments should be bulk-deactivated
+   * @param reason optional justification (max 500 characters)
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Bulk-deactivate all enrollments for an integration",
+      description =
+          "Reversibly deactivates all active VERIFIED enrollments for the specified integration."
+              + " Use for precautionary lockdowns. Restore with POST"
+              + " .../enrollments/reactivate-all. Cannot be applied to system integrations.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "204",
+            description = "All enrollments deactivated successfully"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied or system integration guard triggered"),
+        @ApiResponse(responseCode = "404", description = "Integration not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/enrollments/deactivate-all")
+  public ResponseEntity<Void> deactivateAllEnrollments(
+      @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
+      @Parameter(description = "Optional justification for bulk deactivation")
+          @RequestParam(required = false)
+          @Size(max = 500, message = "Reason must be at most 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = extractTenantId(auth);
+
+    enrollmentRevocationService.deactivateAllByIntegration(
+        id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Bulk-reactivates all inactive VERIFIED enrollments for an integration.
+   *
+   * <p>Use after a precautionary deactivate-all when the threat is cleared or maintenance ends.
+   * Only VERIFIED + active=false enrollments are reactivated; REVOKED enrollments are unaffected.
+   *
+   * @param id the integration ID whose enrollments should be bulk-reactivated
+   * @param reason optional justification (max 500 characters)
+   * @param httpRequest the HTTP request
+   * @return 204 No Content on success
+   */
+  @Operation(
+      summary = "Bulk-reactivate all enrollments for an integration",
+      description =
+          "Reactivates all inactive VERIFIED enrollments for the specified integration."
+              + " Use after a precautionary deactivate-all.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "204",
+            description = "All enrollments reactivated successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Integration not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/enrollments/reactivate-all")
+  public ResponseEntity<Void> reactivateAllEnrollments(
+      @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
+      @Parameter(description = "Optional justification for bulk reactivation")
+          @RequestParam(required = false)
+          @Size(max = 500, message = "Reason must be at most 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    Integer tenantId = extractTenantId(auth);
+
+    enrollmentRevocationService.reactivateAllByIntegration(
+        id, principal, reason, context, tenantId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * Extracts tenant ID from authentication context for tenant scoping.
    *
    * <p>Returns the tenant ID from AdminPrincipal if present (for TenantAdmin), or null for

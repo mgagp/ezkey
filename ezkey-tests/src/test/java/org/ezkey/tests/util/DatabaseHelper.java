@@ -278,6 +278,20 @@ public class DatabaseHelper {
   }
 
   /**
+   * Gets the system integration ID (is_system_integration = true).
+   *
+   * <p>Used for tests that need to verify guards against bulk revocation of system integrations.
+   *
+   * @return System integration ID, or null if not found (bootstrap not yet run)
+   */
+  public Integer getSystemIntegrationId() {
+    String sqlQuery =
+        "SELECT integration_id FROM ezkey_integration WHERE is_system_integration = true LIMIT 1;";
+    String result = executeQuerySingleValue(sqlQuery);
+    return result != null ? Integer.parseInt(result.trim()) : null;
+  }
+
+  /**
    * Finds integration ID by name (i18n).
    *
    * <p>Note: This is a simple lookup. For more complex queries, use executeQuery directly.

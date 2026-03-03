@@ -438,6 +438,162 @@ public class EnrollmentRevocationService {
   }
 
   /**
+   * Bulk-deactivates all active VERIFIED enrollments for an integration (reversible lockdown).
+   *
+   * <p>Use this for precautionary lockdowns (suspected but unconfirmed threat, emergency
+   * maintenance). Status remains {@code VERIFIED}; only {@code active} is set to {@code false}.
+   * Enrollments can be restored with {@link #reactivateAllByIntegration}.
+   *
+   * <p><b>System integration guard:</b> Cannot be applied to system integrations ({@code
+   * is_system_integration=true}), which would lock out all administrators.
+   *
+   * <p>Each enrollment is deactivated with the self-revocation guard applied — the calling admin's
+   * own enrollment is skipped with a warning if encountered.
+   *
+   * @param integrationId the ID of the integration whose enrollments should be deactivated
+   * @param principal the admin principal performing the bulk deactivation
+   * @param reason optional justification for the bulk deactivation
+   * @param context client context for audit logging
+   * @param tenantId tenant ID for audit log association
+   * @throws ResourceNotFoundException if the integration is not found
+   * @throws SystemIntegrationRevocationException if the integration is a system integration
+   */
+  @Transactional
+  public void deactivateAllByIntegration(
+      Integer integrationId,
+      AdminPrincipal principal,
+      String reason,
+      ClientContext context,
+      Integer tenantId) {
+
+    Integration integration =
+        integrationRepository
+            .findById(integrationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", integrationId));
+
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new SystemIntegrationRevocationException(
+          "Bulk deactivation cannot be applied to a system integration."
+              + " Deactivating all system enrollments would lock out all administrators.");
+    }
+
+    List<Enrollment> activeEnrollments =
+        enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+            integrationId, EnrollmentStatus.VERIFIED, true);
+
+    int deactivatedCount = 0;
+    int skippedCount = 0;
+
+    for (Enrollment enrollment : activeEnrollments) {
+      if (isSelfEnrollment(principal, enrollment)) {
+        logger.warn(
+            "Bulk deactivate skipped enrollment {} — it is the calling admin's own MFA enrollment."
+                + " Use individual deactivate for self-revocation prevention enforcement.",
+            enrollment.getEnrollmentId());
+        skippedCount++;
+        continue;
+      }
+
+      enrollment.setActive(false);
+      enrollment.setDeactivatedAt(OffsetDateTime.now());
+      enrollment.setDeactivatedByAdminId(principal.adminId());
+      enrollmentRepository.save(enrollment);
+
+      invalidateAdminTokensIfAdminEnrollment(enrollment);
+      deactivatedCount++;
+    }
+
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context,
+                EventType.ENROLLMENT_DEACTIVATED,
+                AdminAuditConstants.ENROLLMENT_DEACTIVATE_ALL,
+                tenantId)
+            .eventStatus(EventStatus.SUCCESS)
+            .integrationId(integrationId)
+            .reason(reason)
+            .eventDetails(
+                "Bulk deactivation: "
+                    + deactivatedCount
+                    + " enrollments deactivated"
+                    + (skippedCount > 0 ? ", " + skippedCount + " skipped (self-guard)" : "")
+                    + " for integration "
+                    + integrationId)
+            .build());
+
+    logger.info(
+        "Bulk deactivation complete for integration {}: {} deactivated, {} skipped by admin {}",
+        integrationId,
+        deactivatedCount,
+        skippedCount,
+        principal.adminId());
+  }
+
+  /**
+   * Bulk-reactivates all inactive VERIFIED enrollments for an integration.
+   *
+   * <p>Use this after a precautionary {@link #deactivateAllByIntegration} when the threat is
+   * cleared or the maintenance window ends. Only enrollments with status {@code VERIFIED} and
+   * {@code active=false} are reactivated; permanently revoked enrollments are not affected.
+   *
+   * @param integrationId the ID of the integration whose enrollments should be reactivated
+   * @param principal the admin principal performing the bulk reactivation
+   * @param reason optional justification for the bulk reactivation
+   * @param context client context for audit logging
+   * @param tenantId tenant ID for audit log association
+   * @throws ResourceNotFoundException if the integration is not found
+   */
+  @Transactional
+  public void reactivateAllByIntegration(
+      Integer integrationId,
+      AdminPrincipal principal,
+      String reason,
+      ClientContext context,
+      Integer tenantId) {
+
+    Integration integration =
+        integrationRepository
+            .findById(integrationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", integrationId));
+
+    List<Enrollment> inactiveEnrollments =
+        enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+            integrationId, EnrollmentStatus.VERIFIED, false);
+
+    int reactivatedCount = 0;
+
+    for (Enrollment enrollment : inactiveEnrollments) {
+      enrollment.setActive(true);
+      enrollment.setDeactivatedAt(null);
+      enrollment.setDeactivatedByAdminId(null);
+      enrollmentRepository.save(enrollment);
+      reactivatedCount++;
+    }
+
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context,
+                EventType.ENROLLMENT_REACTIVATED,
+                AdminAuditConstants.ENROLLMENT_REACTIVATE_ALL,
+                tenantId)
+            .eventStatus(EventStatus.SUCCESS)
+            .integrationId(integrationId)
+            .reason(reason)
+            .eventDetails(
+                "Bulk reactivation: "
+                    + reactivatedCount
+                    + " enrollments reactivated for integration "
+                    + integrationId)
+            .build());
+
+    logger.info(
+        "Bulk reactivation complete for integration {}: {} reactivated by admin {}",
+        integrationId,
+        reactivatedCount,
+        principal.adminId());
+  }
+
+  /**
    * Asserts that the calling administrator is not attempting to revoke their own MFA enrollment.
    *
    * <p>This guard prevents self-inflicted lockout: if an admin revokes their own enrollment, their

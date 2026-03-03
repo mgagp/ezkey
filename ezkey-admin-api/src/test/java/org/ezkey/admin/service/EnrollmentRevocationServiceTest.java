@@ -110,7 +110,8 @@ class EnrollmentRevocationServiceTest {
       when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
       when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.empty());
 
-      service.revoke(1, globalAdminPrincipal, "Security incident - revocation required", clientContext, null);
+      service.revoke(
+          1, globalAdminPrincipal, "Security incident - revocation required", clientContext, null);
 
       assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
       assertThat(enrollment.getActive()).isFalse();
@@ -126,7 +127,9 @@ class EnrollmentRevocationServiceTest {
       when(enrollmentRepository.findById(99)).thenReturn(Optional.empty());
 
       assertThatThrownBy(
-              () -> service.revoke(99, globalAdminPrincipal, "Valid reason here", clientContext, null))
+              () ->
+                  service.revoke(
+                      99, globalAdminPrincipal, "Valid reason here", clientContext, null))
           .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -139,7 +142,8 @@ class EnrollmentRevocationServiceTest {
       when(ownerAdmin.getAdminId()).thenReturn(1); // Same as globalAdminPrincipal.adminId()
 
       assertThatThrownBy(
-              () -> service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null))
+              () ->
+                  service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null))
           .isInstanceOf(SelfRevocationNotAllowedException.class);
 
       verify(enrollmentRepository, never()).save(any());
@@ -199,7 +203,8 @@ class EnrollmentRevocationServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw SelfRevocationNotAllowedException when admin deactivates own enrollment")
+    @DisplayName(
+        "Should throw SelfRevocationNotAllowedException when admin deactivates own enrollment")
     void deactivate_shouldThrow_whenAdminDeactivatesOwnEnrollment() {
       Enrollment enrollment = activeVerifiedEnrollment(2);
       when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
@@ -238,7 +243,8 @@ class EnrollmentRevocationServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw IllegalStateException when trying to reactivate a REVOKED enrollment")
+    @DisplayName(
+        "Should throw IllegalStateException when trying to reactivate a REVOKED enrollment")
     void reactivate_shouldThrow_whenEnrollmentIsPermanentlyRevoked() {
       Enrollment enrollment = revokedEnrollment(3);
       when(enrollmentRepository.findById(3)).thenReturn(Optional.of(enrollment));
@@ -297,6 +303,161 @@ class EnrollmentRevocationServiceTest {
       assertThat(enrollmentB.getActive()).isFalse();
       verify(enrollmentRepository).save(enrollmentA);
       verify(enrollmentRepository).save(enrollmentB);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should be no-op when integration has no active enrollments")
+    void revokeAll_shouldBeNoOp_whenNoActiveEnrollments() {
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, true))
+          .thenReturn(List.of());
+
+      service.revokeAllByIntegration(
+          10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
+
+      verify(enrollmentRepository, never()).save(any());
+      verify(auditLogService).log(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // deactivateAllByIntegration()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("deactivateAllByIntegration()")
+  class DeactivateAllByIntegrationTests {
+
+    @Test
+    @DisplayName("Should throw SystemIntegrationRevocationException for system integrations")
+    void deactivateAll_shouldThrow_whenIntegrationIsSystemIntegration() {
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(true);
+
+      assertThatThrownBy(
+              () ->
+                  service.deactivateAllByIntegration(
+                      10, globalAdminPrincipal, "Optional reason", clientContext, null))
+          .isInstanceOf(SystemIntegrationRevocationException.class);
+
+      verify(enrollmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should deactivate all active VERIFIED enrollments for a normal integration")
+    void deactivateAll_shouldDeactivateAllActiveEnrollments_forNonSystemIntegration() {
+      Enrollment enrollmentA = activeVerifiedEnrollment(101);
+      Enrollment enrollmentB = activeVerifiedEnrollment(102);
+
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, true))
+          .thenReturn(List.of(enrollmentA, enrollmentB));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(any())).thenReturn(Optional.empty());
+
+      service.deactivateAllByIntegration(
+          10, globalAdminPrincipal, "Emergency lockdown", clientContext, null);
+
+      assertThat(enrollmentA.getStatus()).isEqualTo(EnrollmentStatus.VERIFIED);
+      assertThat(enrollmentA.getActive()).isFalse();
+      assertThat(enrollmentA.getDeactivatedAt()).isNotNull();
+      assertThat(enrollmentA.getDeactivatedByAdminId()).isEqualTo(1);
+      assertThat(enrollmentB.getStatus()).isEqualTo(EnrollmentStatus.VERIFIED);
+      assertThat(enrollmentB.getActive()).isFalse();
+      assertThat(enrollmentB.getDeactivatedByAdminId()).isEqualTo(1);
+      verify(enrollmentRepository).save(enrollmentA);
+      verify(enrollmentRepository).save(enrollmentB);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should skip calling admin's own enrollment and deactivate others")
+    void deactivateAll_shouldSkipSelfEnrollment_andDeactivateOthers() {
+      Enrollment selfEnrollment = activeVerifiedEnrollment(101);
+      Enrollment otherEnrollment = activeVerifiedEnrollment(102);
+
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, true))
+          .thenReturn(List.of(selfEnrollment, otherEnrollment));
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(101))
+          .thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(1);
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(102)).thenReturn(Optional.empty());
+
+      service.deactivateAllByIntegration(10, globalAdminPrincipal, "Lockdown", clientContext, null);
+
+      assertThat(selfEnrollment.getActive()).isTrue();
+      verify(enrollmentRepository, never()).save(selfEnrollment);
+      assertThat(otherEnrollment.getActive()).isFalse();
+      verify(enrollmentRepository).save(otherEnrollment);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should be no-op when integration has no active enrollments")
+    void deactivateAll_shouldBeNoOp_whenNoActiveEnrollments() {
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, true))
+          .thenReturn(List.of());
+
+      service.deactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
+
+      verify(enrollmentRepository, never()).save(any());
+      verify(auditLogService).log(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // reactivateAllByIntegration()
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("reactivateAllByIntegration()")
+  class ReactivateAllByIntegrationTests {
+
+    @Test
+    @DisplayName("Should reactivate all inactive VERIFIED enrollments")
+    void reactivateAll_shouldReactivateAllInactiveEnrollments() {
+      Enrollment enrollmentA = inactiveVerifiedEnrollment(201);
+      Enrollment enrollmentB = inactiveVerifiedEnrollment(202);
+
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, false))
+          .thenReturn(List.of(enrollmentA, enrollmentB));
+
+      service.reactivateAllByIntegration(
+          10, globalAdminPrincipal, "Threat cleared", clientContext, null);
+
+      assertThat(enrollmentA.getActive()).isTrue();
+      assertThat(enrollmentA.getDeactivatedAt()).isNull();
+      assertThat(enrollmentA.getDeactivatedByAdminId()).isNull();
+      assertThat(enrollmentB.getActive()).isTrue();
+      assertThat(enrollmentB.getDeactivatedAt()).isNull();
+      verify(enrollmentRepository).save(enrollmentA);
+      verify(enrollmentRepository).save(enrollmentB);
+      verify(auditLogService).log(any());
+    }
+
+    @Test
+    @DisplayName("Should be no-op when integration has no inactive VERIFIED enrollments")
+    void reactivateAll_shouldBeNoOp_whenNoInactiveEnrollments() {
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
+              10, EnrollmentStatus.VERIFIED, false))
+          .thenReturn(List.of());
+
+      service.reactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
+
+      verify(enrollmentRepository, never()).save(any());
       verify(auditLogService).log(any());
     }
   }

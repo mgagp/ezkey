@@ -64,8 +64,12 @@ import org.slf4j.LoggerFactory;
  * <p><b>Note:</b> These tests depend on the sync window configuration (default 10s for
  * docker-test). The tests use database queries to verify which key was used for encryption.
  *
+ * <p><b>Elective:</b> Tagged as elective because key rotation code is stable and rarely modified.
+ * Run with {@code mvn test -pl ezkey-tests -P elective-tests} for periodic spot-checks.
+ *
  * @since 2025
  */
+@Tag(TestTags.ELECTIVE)
 @Tag(TestTags.SLOW)
 @Tag(TestTags.TIME_DEPENDENT)
 @Tag(TestTags.ENCRYPTION)

@@ -45,6 +45,7 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
@@ -394,6 +395,9 @@ public class AuthAttemptController {
           ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
       pd.setTitle("Invalid Request");
       return ResponseEntity.badRequest().body(pd);
+    } catch (EnrollmentInactiveException e) {
+      // Rethrow so EnrollmentExceptionHandler returns 403 with enrollment-inactive ProblemDetail
+      throw e;
     } catch (Exception e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(

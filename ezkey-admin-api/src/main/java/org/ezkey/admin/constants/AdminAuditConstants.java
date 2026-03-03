@@ -120,6 +120,18 @@ public final class AdminAuditConstants {
   /** Audit action for failed bulk enrollment revocation. */
   public static final String ENROLLMENT_REVOKE_ALL_FAILED = "enrollment_revoke_all_failed";
 
+  /** Audit action for successful bulk enrollment deactivation for an integration. */
+  public static final String ENROLLMENT_DEACTIVATE_ALL = "enrollment_deactivate_all";
+
+  /** Audit action for failed bulk enrollment deactivation. */
+  public static final String ENROLLMENT_DEACTIVATE_ALL_FAILED = "enrollment_deactivate_all_failed";
+
+  /** Audit action for successful bulk enrollment reactivation for an integration. */
+  public static final String ENROLLMENT_REACTIVATE_ALL = "enrollment_reactivate_all";
+
+  /** Audit action for failed bulk enrollment reactivation. */
+  public static final String ENROLLMENT_REACTIVATE_ALL_FAILED = "enrollment_reactivate_all_failed";
+
   /**
    * Audit action when an auth attempt creation is blocked due to inactive or revoked enrollment.
    */
