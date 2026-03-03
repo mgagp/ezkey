@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.config.EnrollmentProperties;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -120,6 +121,7 @@ public class EnrollmentService {
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
   private final EzkeyCoreProperties ezkeyCoreProperties;
+  private final EnrollmentProperties enrollmentProperties;
   private final IntegrationRepository integrationRepository;
 
   // Specialized services for specific operations
@@ -132,6 +134,7 @@ public class EnrollmentService {
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param signatureService the cryptographic signature service
    * @param ezkeyCoreProperties the ezkey core configuration properties
+   * @param enrollmentProperties the enrollment expiration and cleanup configuration
    * @param integrationRepository the JPA repository for integration operations
    * @param bindService the specialized service for binding operations
    * @param verifyService the specialized service for verification operations
@@ -140,12 +143,14 @@ public class EnrollmentService {
       EnrollmentRepository enrollmentRepository,
       SignatureService signatureService,
       EzkeyCoreProperties ezkeyCoreProperties,
+      EnrollmentProperties enrollmentProperties,
       IntegrationRepository integrationRepository,
       EnrollmentBindService bindService,
       EnrollmentVerifyService verifyService) {
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
     this.ezkeyCoreProperties = ezkeyCoreProperties;
+    this.enrollmentProperties = enrollmentProperties;
     this.integrationRepository = integrationRepository;
     this.bindService = bindService;
     this.verifyService = verifyService;
@@ -377,7 +382,12 @@ public class EnrollmentService {
         request.getAuthAttemptChallengeRequired() != null
             ? request.getAuthAttemptChallengeRequired()
             : false);
-    enrollment.setCreatedAt(OffsetDateTime.now());
+    OffsetDateTime createdAt = OffsetDateTime.now();
+    enrollment.setCreatedAt(createdAt);
+    if (enrollmentProperties.getPendingExpirationDays() != null
+        && enrollmentProperties.getPendingExpirationDays() > 0) {
+      enrollment.setExpiresAt(createdAt.plusDays(enrollmentProperties.getPendingExpirationDays()));
+    }
     enrollment.setContactEmail(
         request.getContactEmail() != null && !request.getContactEmail().isBlank()
             ? request.getContactEmail().trim()

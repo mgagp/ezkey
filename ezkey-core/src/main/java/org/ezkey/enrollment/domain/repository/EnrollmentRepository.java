@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.domain.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -361,4 +362,17 @@ public interface EnrollmentRepository
    */
   List<Enrollment> findByIntegrationIdAndStatusAndActive(
       Integer integrationId, EnrollmentStatus status, Boolean active);
+
+  /**
+   * Finds CREATED enrollments that have expired (expires_at is set and expires_at &lt; now). Used
+   * by the scheduled job to mark them as EXPIRED and emit ENROLLMENT_EXPIRED audit events.
+   *
+   * @param now the current timestamp (expires_at must be before this)
+   * @return list of CREATED enrollments that are past their expiration time
+   */
+  @Query(
+      "SELECT e FROM Enrollment e WHERE e.status = :status AND e.expiresAt IS NOT NULL AND"
+          + " e.expiresAt < :now")
+  List<Enrollment> findCreatedEnrollmentsExpiredBefore(
+      @Param("status") EnrollmentStatus status, @Param("now") OffsetDateTime now);
 }

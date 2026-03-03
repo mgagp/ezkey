@@ -60,6 +60,10 @@ public class RestAssuredTestConfig {
   /**
    * Configures RestAssured with Crypto API base URL.
    *
+   * <p>Used by {@link CryptoApiClient}. After any Crypto API call, tests that then hit Auth API or
+   * Admin API must call {@link #configureForAuthApi} or {@link #configureForAdminApi} before the
+   * next request.
+   *
    * @param dockerStackConfig Docker stack configuration
    */
   public static void configureForCryptoApi(DockerStackConfig dockerStackConfig) {

@@ -82,7 +82,17 @@ public enum EnrollmentStatus {
    *
    * <p>SOC 2 CC6.3 — removal of access.
    */
-  REVOKED("REVOKED");
+  REVOKED("REVOKED"),
+
+  /**
+   * Pending enrollment expired before device completed bind/verify.
+   *
+   * <p>Set when a CREATED (or BOUND) enrollment has an {@code expires_at} in the past. Time-based
+   * expiration limits proof-token exposure and aligns with industry practice (e.g. Duo/Okta
+   * enrollment link validity). Distinct from {@link #REVOKED} (admin-initiated) and {@link
+   * #INVALID} (verification failure).
+   */
+  EXPIRED("EXPIRED");
 
   private final String value;
 

@@ -389,6 +389,11 @@ public class EnrollmentController {
       }
 
       throw e;
+    } catch (IllegalArgumentException e) {
+      // Re-throw so GlobalExceptionHandler returns 400 (e.g. enrollment expired, invalid args).
+      // Service layer already emitted ENROLLMENT_EXPIRED when applicable; avoid audit here to
+      // prevent 500 from audit in rollback-only transaction.
+      throw e;
     } catch (Exception e) {
       auditLogService.log(
           AuditLog.builder()

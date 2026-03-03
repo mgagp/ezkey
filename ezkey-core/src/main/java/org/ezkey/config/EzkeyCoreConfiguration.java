@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
  * @since 2025
  */
 @Configuration
-@EnableConfigurationProperties(EzkeyCoreProperties.class)
+@EnableConfigurationProperties({EzkeyCoreProperties.class, EnrollmentProperties.class})
 public class EzkeyCoreConfiguration {
   // Configuration class - no additional implementation needed
 }

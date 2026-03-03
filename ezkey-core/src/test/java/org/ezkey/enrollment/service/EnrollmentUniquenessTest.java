@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.config.EnrollmentProperties;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -64,6 +65,8 @@ class EnrollmentUniquenessTest {
 
   @Mock private EzkeyCoreProperties ezkeyCoreProperties;
 
+  @Mock private EnrollmentProperties enrollmentProperties;
+
   @Mock private IntegrationRepository integrationRepository;
 
   @Mock private EnrollmentBindService bindService;
@@ -98,6 +101,9 @@ class EnrollmentUniquenessTest {
     when(signatureService.generateProofToken()).thenReturn("test-proof-token");
     when(signatureService.generateECP256KeyPair()).thenReturn(testKeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
+
+    // No pending expiration for these tests (current behavior)
+    when(enrollmentProperties.getPendingExpirationDays()).thenReturn(null);
   }
 
   @Test

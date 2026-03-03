@@ -73,6 +73,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param authAttemptChallengeRequired Flag indicating if authentication attempts require challenge
  * @param integrationPublicKey Public key for integration communication
  * @param devicePublicKey Public key for the device
+ * @param verifiedAt When enrollment was verified (device completed binding)
+ * @param expiresAt Optional expiration for pending enrollment (null = no expiration)
+ * @param createdByAdminId Admin who created this enrollment (null when via API key)
+ * @param lastUsedAt When enrollment was last used for successful authentication
+ * @param contactEmail Optional contact email for the end-user
+ * @param userIdentifier Optional user identifier from the integrating application
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -92,7 +98,7 @@ public record EnrollmentResponseDto(
     @Schema(
             description = "Enrollment lifecycle status",
             example = "VERIFIED",
-            allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID"})
+            allowableValues = {"CREATED", "BOUND", "VERIFIED", "INVALID", "REVOKED", "EXPIRED"})
         String enrollmentStatus,
     @Schema(description = "Flag indicating if the enrollment is currently active", example = "true")
         Boolean enrollmentActive,
@@ -108,6 +114,10 @@ public record EnrollmentResponseDto(
     @Schema(description = "Public key for the device") String devicePublicKey,
     @Schema(description = "When enrollment was verified (device completed binding)")
         java.time.OffsetDateTime verifiedAt,
+    @Schema(
+            description =
+                "Optional expiration for pending enrollment (CREATED/BOUND); null = no expiration")
+        java.time.OffsetDateTime expiresAt,
     @Schema(description = "Admin who created this enrollment (null when via API key)")
         Integer createdByAdminId,
     @Schema(description = "When enrollment was last used for successful authentication")

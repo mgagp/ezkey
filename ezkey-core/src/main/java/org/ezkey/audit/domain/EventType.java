@@ -41,6 +41,7 @@ public enum EventType {
   ENROLLMENT_DEACTIVATED, // Admin deactivated an enrollment (reversible)
   ENROLLMENT_REACTIVATED, // Admin reactivated a previously deactivated enrollment
   ENROLLMENT_AUTH_ATTEMPT_BLOCKED, // Auth attempt rejected because enrollment is inactive/revoked
+  ENROLLMENT_EXPIRED, // Pending enrollment expired (expires_at passed); status set to EXPIRED
 
   // Authentication attempt events
   AUTH_ATTEMPT_CREATED,

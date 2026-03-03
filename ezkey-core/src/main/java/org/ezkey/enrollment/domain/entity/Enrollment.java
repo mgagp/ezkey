@@ -159,6 +159,15 @@ public class Enrollment implements Reencryptable {
   private OffsetDateTime createdAt;
 
   /**
+   * Optional expiration for pending enrollment (CREATED/BOUND). When set, bind/verify must complete
+   * before this time; after that the enrollment is treated as expired (status EXPIRED). Null means
+   * no expiration (current behavior). Set at creation when policy is enabled (e.g. created_at + 30
+   * days).
+   */
+  @Column(name = "expires_at")
+  private OffsetDateTime expiresAt;
+
+  /**
    * When the enrollment transitioned to VERIFIED status. Set once when device completes binding.
    * Used for audit trail and lifecycle metrics (SOC 2 CC7.2).
    */
@@ -468,6 +477,35 @@ public class Enrollment implements Reencryptable {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /**
+   * Gets the optional expiration timestamp for pending enrollment.
+   *
+   * @return expires_at or null if no expiration
+   */
+  public OffsetDateTime getExpiresAt() {
+    return expiresAt;
+  }
+
+  /**
+   * Sets the optional expiration timestamp for pending enrollment.
+   *
+   * @param expiresAt the expiration timestamp, or null for no expiration
+   */
+  public void setExpiresAt(OffsetDateTime expiresAt) {
+    this.expiresAt = expiresAt;
+  }
+
+  /**
+   * Returns true if this enrollment has an expiration set and it is in the past (now &gt;
+   * expires_at). Used by bind/verify and the cleanup job. Null expires_at means never expired.
+   *
+   * @param now the current time (typically OffsetDateTime.now())
+   * @return true if expired
+   */
+  public boolean isExpired(OffsetDateTime now) {
+    return expiresAt != null && !now.isBefore(expiresAt);
   }
 
   public OffsetDateTime getVerifiedAt() {

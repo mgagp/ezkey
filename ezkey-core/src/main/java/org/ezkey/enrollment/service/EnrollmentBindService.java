@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -66,6 +67,7 @@ public class EnrollmentBindService {
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
   private final EzkeyAdminRepository ezkeyAdminRepository;
+  private final EnrollmentTxHelper enrollmentTxHelper;
 
   /**
    * Constructs the bind service with required dependencies.
@@ -73,14 +75,18 @@ public class EnrollmentBindService {
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param integrationRepository the JPA repository for integration operations
    * @param ezkeyAdminRepository the JPA repository for admin lookup (admin MFA enrollments)
+   * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
+   *     separate transaction
    */
   public EnrollmentBindService(
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
-      EzkeyAdminRepository ezkeyAdminRepository) {
+      EzkeyAdminRepository ezkeyAdminRepository,
+      EnrollmentTxHelper enrollmentTxHelper) {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.ezkeyAdminRepository = ezkeyAdminRepository;
+    this.enrollmentTxHelper = enrollmentTxHelper;
   }
 
   /**
@@ -169,6 +175,29 @@ public class EnrollmentBindService {
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       throw new IllegalStateException("Enrollment already bound by a device");
+    }
+
+    // Reject if pending enrollment has expired (expires_at in the past)
+    OffsetDateTime now = OffsetDateTime.now();
+    if (enrollment.isExpired(now)) {
+      logger.warn(
+          "Validation failed: Enrollment invitation expired - ID: {}, expiresAt: {}",
+          enrollment.getEnrollmentId(),
+          enrollment.getExpiresAt());
+      try {
+        enrollmentTxHelper.markExpiredAndEmitAudit(
+            enrollment.getEnrollmentId(),
+            enrollment.getIntegrationId(),
+            enrollment.getExpiresAt(),
+            "enrollment_expired_bind_rejected");
+      } catch (Exception e) {
+        logger.warn(
+            "Failed to mark enrollment {} as EXPIRED and emit audit (client will still get 400):"
+                + " {}",
+            enrollment.getEnrollmentId(),
+            e.getMessage());
+      }
+      throw new IllegalArgumentException("Enrollment invitation has expired");
     }
 
     logger.debug("Enrollment status validation passed: Status is CREATED");

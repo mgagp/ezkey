@@ -12,6 +12,7 @@ package org.ezkey.enrollment.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.config.EnrollmentProperties;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -41,6 +43,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -90,6 +94,8 @@ class EnrollmentServiceTest {
 
   @Mock private EzkeyCoreProperties ezkeyCoreProperties;
 
+  @Mock private EnrollmentProperties enrollmentProperties;
+
   @Mock private IntegrationRepository integrationRepository;
 
   @Mock private EnrollmentBindService bindService;
@@ -97,6 +103,8 @@ class EnrollmentServiceTest {
   @Mock private EnrollmentVerifyService verifyService;
 
   @InjectMocks private EnrollmentService enrollmentService;
+
+  @Captor private ArgumentCaptor<Enrollment> enrollmentCaptor;
 
   private EnrollmentCreateRequest createRequest;
   private EnrollmentBindRequest bindRequest;
@@ -215,6 +223,43 @@ class EnrollmentServiceTest {
     // Assert
     assertNotNull(response);
     verify(enrollmentRepository, times(1)).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should set expiresAt when pendingExpirationDays is set")
+  void create_WhenPendingExpirationDaysSet_ShouldSetExpiresAt() {
+    when(enrollmentProperties.getPendingExpirationDays()).thenReturn(30);
+    when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
+    when(signatureService.generateECP256KeyPair()).thenReturn(ecp256KeyPair);
+    when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    enrollmentService.create(createRequest);
+
+    verify(enrollmentRepository).save(enrollmentCaptor.capture());
+    Enrollment saved = enrollmentCaptor.getValue();
+    assertNotNull(saved.getExpiresAt());
+    assertNotNull(saved.getCreatedAt());
+    assertTrue(
+        saved.getExpiresAt().isAfter(saved.getCreatedAt()), "expiresAt should be after createdAt");
+    assertTrue(
+        saved.getExpiresAt().isBefore(saved.getCreatedAt().plusDays(31)),
+        "expiresAt should be within 31 days");
+  }
+
+  @Test
+  @DisplayName("create() - Should not set expiresAt when pendingExpirationDays is null")
+  void create_WhenPendingExpirationDaysNull_ShouldNotSetExpiresAt() {
+    when(enrollmentProperties.getPendingExpirationDays()).thenReturn(null);
+    when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
+    when(signatureService.generateECP256KeyPair()).thenReturn(ecp256KeyPair);
+    when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    enrollmentService.create(createRequest);
+
+    verify(enrollmentRepository).save(enrollmentCaptor.capture());
+    assertNull(enrollmentCaptor.getValue().getExpiresAt());
   }
 
   // ===== BIND ENDPOINT TESTS =====

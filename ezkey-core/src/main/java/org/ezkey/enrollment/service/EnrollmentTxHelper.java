@@ -10,6 +10,13 @@
 
 package org.ezkey.enrollment.service;
 
+import java.time.OffsetDateTime;
+import org.ezkey.audit.domain.ApiName;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -74,20 +81,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class EnrollmentTxHelper {
 
   private final EnrollmentRepository enrollmentRepository;
+  private final AuditLogService auditLogService;
 
   /**
-   * Constructs the enrollment transactional helper with the required repository dependency.
-   *
-   * <p>This constructor initializes the service with the enrollment repository needed for database
-   * operations. The repository is injected through constructor injection to ensure immutability and
-   * proper dependency management.
+   * Constructs the enrollment transactional helper with the required dependencies.
    *
    * @param enrollmentRepository the JPA repository for enrollment entity operations
-   * @throws IllegalArgumentException if enrollmentRepository is null
-   * @since 2025
+   * @param auditLogService the audit log service for ENROLLMENT_EXPIRED events
    */
-  public EnrollmentTxHelper(EnrollmentRepository enrollmentRepository) {
+  public EnrollmentTxHelper(
+      EnrollmentRepository enrollmentRepository, AuditLogService auditLogService) {
     this.enrollmentRepository = enrollmentRepository;
+    this.auditLogService = auditLogService;
   }
 
   /**
@@ -151,5 +156,43 @@ public class EnrollmentTxHelper {
     e.setEnrollmentChallenge(null);
     e.setActive(false);
     enrollmentRepository.save(e);
+  }
+
+  /**
+   * Marks a pending enrollment as EXPIRED and emits ENROLLMENT_EXPIRED in a separate transaction.
+   *
+   * <p>Used when bind or verify rejects an expired enrollment. Runs in REQUIRES_NEW so the update
+   * and audit commit even when the caller's transaction rolls back, allowing the API to return 400
+   * without a follow-up 500 from rollback.
+   *
+   * @param enrollmentId enrollment ID
+   * @param integrationId integration ID (for audit)
+   * @param expiresAt expiration timestamp (for audit details)
+   * @param eventAction e.g. enrollment_expired_bind_rejected, enrollment_expired_verify_rejected
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markExpiredAndEmitAudit(
+      Integer enrollmentId, Integer integrationId, OffsetDateTime expiresAt, String eventAction) {
+    Enrollment e = enrollmentRepository.findById(enrollmentId).orElse(null);
+    if (e == null) {
+      return;
+    }
+    e.setStatus(EnrollmentStatus.EXPIRED);
+    enrollmentRepository.save(e);
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("enrollmentId", enrollmentId)
+            .custom("expiresAt", expiresAt != null ? expiresAt.toString() : null)
+            .toJson();
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.ENROLLMENT_EXPIRED)
+            .eventAction(eventAction)
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.AUTH_API)
+            .enrollmentId(enrollmentId)
+            .integrationId(integrationId)
+            .eventDetails(details)
+            .build());
   }
 }

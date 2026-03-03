@@ -70,7 +70,8 @@ public class EnrollmentVerifyService {
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param signatureService the signature service for cryptographic operations
-   * @param enrollmentTxHelper the transactional helper for enrollment operations
+   * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
+   *     separate transaction
    */
   public EnrollmentVerifyService(
       EnrollmentRepository enrollmentRepository,
@@ -168,6 +169,29 @@ public class EnrollmentVerifyService {
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
       throw new IllegalStateException("Enrollment must be bound before verification");
+    }
+
+    // Reject if pending enrollment has expired (expires_at in the past)
+    OffsetDateTime now = OffsetDateTime.now();
+    if (enrollment.isExpired(now)) {
+      logger.warn(
+          "Validation failed: Enrollment invitation expired - ID: {}, expiresAt: {}",
+          enrollment.getEnrollmentId(),
+          enrollment.getExpiresAt());
+      try {
+        enrollmentTxHelper.markExpiredAndEmitAudit(
+            enrollment.getEnrollmentId(),
+            enrollment.getIntegrationId(),
+            enrollment.getExpiresAt(),
+            "enrollment_expired_verify_rejected");
+      } catch (Exception e) {
+        logger.warn(
+            "Failed to mark enrollment {} as EXPIRED and emit audit (client will still get 400):"
+                + " {}",
+            enrollment.getEnrollmentId(),
+            e.getMessage());
+      }
+      throw new IllegalArgumentException("Enrollment invitation has expired");
     }
 
     logger.debug("Enrollment status validation passed: Status is BOUND");

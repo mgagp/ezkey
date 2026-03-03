@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -69,6 +70,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class EnrollmentTxHelperTest {
 
   @Mock private EnrollmentRepository enrollmentRepository;
+
+  @Mock private AuditLogService auditLogService;
 
   @InjectMocks private EnrollmentTxHelper enrollmentTxHelper;
 
