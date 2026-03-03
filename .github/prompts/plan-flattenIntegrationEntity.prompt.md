@@ -2,6 +2,8 @@
 
 Les deux changements partagent le même vecteur (simplification du modèle `Integration`) et peuvent être livrés en deux phases atomiques et validables indépendamment. Phase 1 est un échauffement à faible risque; Phase 2 est le vrai sujet.
 
+**Philosophie** : Mode full development. On brise les contrats (mobile, tenant UI) et on fait le modèle plat comme il aurait dû être dès le départ. Pas de pédaler en mode compatibilité. L'utilisateur fera les phases complémentaires de révision pour le TUI, le tenant UI et l'app mobile native. Clean start = base de référence unique ; si quelque chose casse, on arrange.
+
 ---
 
 ## Phase 1 — Supprimer le logo (faible risque, haute confiance)
@@ -29,11 +31,16 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 
 9. **Postman** — retirer le champ `logo` des request bodies dans `EZ Key Integrations admin.postman_collection.json`
 
+10. **Auth API / EnrollmentBindService** — Dans `EnrollmentBindService.buildBindResponse()`, retirer l'appel à `integration.getLogo()`. **Briser le contrat** : retirer le champ `integrationLogo` de `EnrollmentBindResponseDto` et de `EnrollmentBindResponse` (core). L'utilisateur mettra à niveau le mobile tout de suite après.
+
+11. **ezkey-demo-device** — Vérifier que le flux enrollment + auth fonctionne quand `integrationLogo` est null. Les templates Thymeleaf utilisent déjà `th:if="${integrationLogo}"` / `th:unless` — ajuster si régression constatée.
+
 ### Vérification Phase 1
 
 - `mvn clean verify` sans erreur de compilation
 - `IntegrationManagementSecurityTest` vert
 - CLI `ezkey admin integration create --code test --name "Test" --language en` retourne 201 sans champ logo
+- **Demo device** : test manuel du flux enrollment (bind) + auth pending avec logo absent — l'app affiche le fallback (🔐) sans erreur
 
 ---
 
@@ -48,12 +55,13 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 - `description` : nullable partout (DB, Java, DTO)
 - `integration_name` : nullable en DB (pas de NOT NULL en base pour la system integration), mais `@NotBlank` sur le DTO de création pour les cas non-système
 - Pas de période de coexistence des deux modèles — migration directe, aucun système en production
+- **Mode full development** : clean start = base de référence unique. Pas de données production. Migration simple, on arrange si quelque chose casse.
 
 ### Steps
 
 1. **Migration V31** — dans `ezkey-core/src/main/resources/db/migration/` :
    - `ADD COLUMN integration_name VARCHAR(255) NULL` et `ADD COLUMN integration_description VARCHAR(500) NULL` sur `ezkey_integration`
-   - Backfill depuis i18n :
+   - Backfill depuis i18n (simple, clean start — pas de gestion d'edge cases complexes) :
      ```sql
      UPDATE ezkey_integration ei
      SET
@@ -116,6 +124,8 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 
 7c. **`EnrollmentBindService.java`** ⚠️ *requis pour compilation* :
     - Un appel à `integrationRepository.findByIdWithI18nAndTenant(integrationId)` est présent — remplacer par `integrationRepository.findById(integrationId)` ; il n'y a plus de `PersistentBag` à protéger
+    - Remplacer `resolveIntegrationName(integration, language)` / `resolveIntegrationDescription(integration, language)` par `integration.getName()` / `integration.getDescription()`
+    - **Briser le contrat** : retirer le paramètre `language` de `EnrollmentBindRequest` et `EnrollmentBindRequestDto`. L'utilisateur mettra à niveau le mobile tout de suite après.
 
 8. **CLI** — `ezkey-cli-python/ezkey_cli/commands/admin.py` :
    - Commande `create` : retirer `--language`, conserver `--name`/`--description`, envoyer directement `{"code": ..., "name": ..., "description": ...}` sans encapsulation `i18n[]`
@@ -149,9 +159,11 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 | Composant | Éléments touchés |
 |---|---|
 | **DB** | V30: drop `integration_logo`; V31: add `integration_name`/`integration_description`, backfill, drop `ezkey_integration_i18n` |
-| **ezkey-core** | `Integration.java`, supprimer `IntegrationI18n.java`, supprimer `IntegrationI18nRepository.java`, `IntegrationCreateRequest.java`, `IntegrationResponse.java`, supprimer `IntegrationI18nCreate/Response.java`, `IntegrationServiceMapper.java`, `IntegrationService.java` |
+| **ezkey-core** | `Integration.java`, `EnrollmentBindService.java`, supprimer `IntegrationI18n.java`, supprimer `IntegrationI18nRepository.java`, `IntegrationCreateRequest.java`, `IntegrationResponse.java`, supprimer `IntegrationI18nCreate/Response.java`, `IntegrationServiceMapper.java`, `IntegrationService.java` |
 | **ezkey-admin-api** | `IntegrationCreateRequestDto.java`, `IntegrationResponseDto.java`, supprimer `IntegrationI18nCreateDto.java` et `IntegrationI18nResponseDto.java`, `IntegrationControllerMapper.java` |
-| **ezkey-cli-python** | `commands/admin.py`, `tui/screens/integrations.py`, `tui/screens/integration_detail.py`, `tui/screens/integration_create.py`, `tui/api_client.py` |
+| **ezkey-cli-python** | `commands/admin.py`, `tui/screens/integrations.py`, `tui/screens/integration_detail.py`, `tui/screens/integration_create.py`, `tests/util/database_helper.py`, `tests/integration/test_admin_api_basic.py` |
+| **ezkey-demo-device** | Phase 1: vérification flux enrollment+auth avec logo null; Phase 2: spec regen |
+| **ezkey-tenant-ui** | Phase 2: afficher correctement la liste (`name` au lieu de `i18n`). Refonte complète prévue par l'utilisateur séparément. |
 | **Postman** | `EZ Key Integrations admin.postman_collection.json` |
 | **Tests** | `TestDataFactory.java`, `DemoDeviceEnrollmentWriter.java`, `IntegrationManagementSecurityTest.java`, `IntegrationServiceTest.java`, `IntegrationRepositoryTest.java`, `IntegrationServiceMapperTest.java`, `IntegrationResponseDtoTest.java` — supprimer `IntegrationI18nResponseDtoTest.java` et `IntegrationI18nCreateDtoTest.java` |
 
@@ -162,7 +174,9 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 - **Bug de contrainte unique existant** : la contrainte UNIQUE sur `ezkey_integration_i18n` est `(integration_i18n_id, lang)` au lieu de `(integration_id, lang)` — elle ne protège rien. La migration V31 supprime entièrement cette table donc ce bug disparaît sans action spécifique.
 - **Concurrence sur la system integration** : le `PersistentBag` partagé et les deux requêtes read-only custom (`findByIdWithI18nAndTenant`, `findSystemIntegrationReadOnly`) deviennent inutiles après Phase 2 — les méthodes de repository peuvent être simplifiées ou supprimées.
 - **Filtre `integrationName`** : le nom du paramètre query API reste `integrationName` pour ne pas changer le contrat client.
-- **auth-api / m2m-api** : aucun impact — ces modules utilisent `integration_id` comme FK de scope mais ne lisent jamais les champs i18n.
+- **auth-api / EnrollmentBindService** : Phase 1 — retirer `response.setIntegrationLogo(integration.getLogo())` ; retirer `integrationLogo` du DTO (briser le contrat). Phase 2 — remplacer `resolveIntegrationName`/`resolveIntegrationDescription` par `integration.getName()`/`getDescription()` ; retirer `language` de `EnrollmentBindRequest` ; `loadIntegration` → `findById()`.
+- **ezkey_mobile, ezkey-tenant-ui** : on brise les contrats ; l'utilisateur fera les mises à niveau (mobile, tenant UI) tout de suite après. Mode full dev, pas de coexistence.
+- **ezkey-demo-device** : Phase 1 — vérifier le flux enrollment + auth avec logo null ; les templates gèrent déjà l'absence de logo. Ajuster si nécessaire pour les tests.
 - **ezkey-demo-app-acme** : pas de gestion directe de l'entité Integration — impact nul.
 - **`integration_name` nullable en base** : intentionnel pour la system integration. La contrainte NOT NULL est portée par le DTO (`@NotBlank`) côté création admin, pas par la DDL.
 

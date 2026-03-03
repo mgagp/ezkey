@@ -161,7 +161,7 @@ function EnrollmentCreateDialog({
               <option value="">Select an integration...</option>
               {integrations.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.code} — {i.i18n[0]?.name ?? i.code}
+                  {i.code} — {i.name ?? i.code}
                 </option>
               ))}
             </Select>

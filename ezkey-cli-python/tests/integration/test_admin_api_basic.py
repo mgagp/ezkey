@@ -114,24 +114,21 @@ class TestAdminIntegrationCommands:
         if login_result.exit_code != 0:
             pytest.skip(f"Failed to authenticate with recovery code: {login_result.output}")
 
-        # Generate unique name for idempotence
+        # Generate unique code and name for idempotence
         unique_suffix = uuid.uuid4().hex[:8]
-        integration_name = f"test-integration-{unique_suffix}"
+        integration_code = f"test-integration-{unique_suffix}"
+        integration_name = f"Test Integration {unique_suffix}"
 
-        # Create integration via CLI
-        create_data = json.dumps(
-            {
-                "i18n": [
-                    {
-                        "language": "en",
-                        "name": integration_name,
-                        "description": "Test integration for CLI testing",
-                    }
-                ]
-            }
+        # Create integration via CLI (code, name, description)
+        result = runner.invoke(
+            cli,
+            [
+                "admin", "integration", "create",
+                "--code", integration_code,
+                "--name", integration_name,
+                "--description", "Test integration for CLI testing",
+            ]
         )
-
-        result = runner.invoke(cli, ["admin", "integration", "create", "--data", create_data])
 
         assert result.exit_code == 0, f"Command failed: {result.output}"
 

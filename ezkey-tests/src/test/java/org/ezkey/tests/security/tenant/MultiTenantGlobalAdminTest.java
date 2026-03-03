@@ -402,15 +402,10 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     // Generate unique code using UUID
     String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-    Map<String, Object> i18n = new HashMap<>();
-    i18n.put("language", "en");
-    i18n.put("name", integrationName);
-    i18n.put("description", "Test integration: " + integrationName);
-
     Map<String, Object> request = new HashMap<>();
     request.put("code", code);
-    request.put("logo", "https://example.com/logo.png");
-    request.put("i18n", new Object[] {i18n});
+    request.put("name", integrationName);
+    request.put("description", "Test integration: " + integrationName);
 
     Response response =
         given()

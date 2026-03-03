@@ -113,16 +113,12 @@ class CreateIntegrationModal(ModalScreen):
         )
 
       with Vertical(classes="form_row"):
-        yield Label("Name (EN):", classes="label")
-        yield Input(placeholder="e.g., ACME Portal", id="name_en", validators=[Length(1, 100)])
+        yield Label("Name:", classes="label")
+        yield Input(placeholder="e.g., ACME Portal", id="name_en", validators=[Length(1, 255)])
 
       with Vertical(classes="form_row"):
-        yield Label("Description (EN):", classes="label")
+        yield Label("Description (optional):", classes="label")
         yield Input(placeholder="e.g., Main authentication portal", id="desc_en", validators=[Length(0, 500)])
-
-      with Vertical(classes="form_row"):
-        yield Label("Logo URL (optional):", classes="label")
-        yield Input(placeholder="https://example.com/logo.png", id="logo")
 
       yield Label("", id="error_label")
 
@@ -143,7 +139,6 @@ class CreateIntegrationModal(ModalScreen):
     code = self.query_one("#code", Input).value.strip()
     name_en = self.query_one("#name_en", Input).value.strip()
     desc_en = self.query_one("#desc_en", Input).value.strip()
-    logo = self.query_one("#logo", Input).value.strip()
 
     # Clear previous error
     self._show_error("")
@@ -159,17 +154,9 @@ class CreateIntegrationModal(ModalScreen):
     # Build payload
     payload = {
         "code": code,
-        "i18n": [
-            {
-                "language": "en",
-                "name": name_en,
-                "description": desc_en or ""
-            }
-        ]
+        "name": name_en,
+        "description": desc_en or ""
     }
-
-    if logo:
-      payload["logo"] = logo
 
     # Call API
     api_client = self.app.api_client

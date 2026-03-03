@@ -15,7 +15,7 @@ This document summarizes the comprehensive review and updates made to native com
 **Configuration Includes**:
 - **Application Main Class**: AdminApplication
 - **Controllers**: All 9 REST controllers (IntegrationController, AuthAttemptController, EnrollmentController, AdminEnrollmentController, AdminAuthController, ApiKeyController, EncryptionKeyController, AuditLogController, GlobalExceptionHandler)
-- **JPA Entities**: All database entities (AuthAttempt, Enrollment, Integration, IntegrationI18n, ApiKey, EzkeyAdmin, Tenant, AdminToken, EncryptionKey, ReencryptionBatch, KeysetBlob, AuditLog)
+- **JPA Entities**: All database entities (AuthAttempt, Enrollment, Integration, ApiKey, EzkeyAdmin, Tenant, AdminToken, EncryptionKey, ReencryptionBatch, KeysetBlob, AuditLog)
 - **DTOs**: All request/response DTOs (~30+ DTOs):
   - Integration DTOs (5)
   - AuthAttempt DTOs (5)
@@ -138,8 +138,6 @@ This document summarizes the comprehensive review and updates made to native com
 - IntegrationCreateRequestDto
 - IntegrationCreateResponseDto
 - IntegrationResponseDto
-- IntegrationI18nCreateDto
-- IntegrationI18nResponseDto
 
 #### AuthAttempt DTOs
 - AuthAttemptDto
@@ -197,7 +195,6 @@ This document summarizes the comprehensive review and updates made to native com
 - AuthAttempt
 - Enrollment
 - Integration
-- IntegrationI18n
 - ApiKey
 - EzkeyAdmin
 - Tenant

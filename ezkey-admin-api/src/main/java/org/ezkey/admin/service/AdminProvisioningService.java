@@ -253,7 +253,7 @@ public class AdminProvisioningService {
     // Get system integration (for admin enrollment)
     Integration systemIntegration =
         integrationRepository
-            .findSystemIntegrationReadOnly()
+            .findByIsSystemIntegrationAndActiveTrue(true)
             .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin
@@ -374,7 +374,7 @@ public class AdminProvisioningService {
     // Get system integration (for admin enrollment)
     Integration systemIntegration =
         integrationRepository
-            .findSystemIntegrationReadOnly()
+            .findByIsSystemIntegrationAndActiveTrue(true)
             .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin

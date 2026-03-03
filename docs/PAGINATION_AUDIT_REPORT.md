@@ -123,7 +123,7 @@ These are web applications with Thymeleaf views that return HTML pages. They are
 **Status:** ✅ **COMPLETED** (December 9, 2025)
 
 **Implemented Filters:**
-- `integrationName` (partial match, case-insensitive via i18n join)
+- `integrationName` (partial match, case-insensitive on `integration_name`)
 - `active` (boolean filter)
 - `createdAfter` / `createdBefore` (date range)
 

@@ -2,16 +2,10 @@
 export interface Integration {
   id: number;
   code: string;
-  logo?: string;
   active: boolean;
   createdAt: string;
   tenantId?: number;
-  i18n: IntegrationI18n[];
-}
-
-export interface IntegrationI18n {
-  language: string;
-  name: string;
+  name?: string;
   description?: string;
 }
 

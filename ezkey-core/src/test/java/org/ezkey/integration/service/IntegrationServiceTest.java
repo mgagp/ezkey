@@ -10,11 +10,9 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
-import org.ezkey.integration.domain.IntegrationI18nCreate;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.integration.domain.entity.IntegrationI18n;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
@@ -39,29 +37,23 @@ class IntegrationServiceTest {
 
   @InjectMocks private IntegrationService service;
 
-  private IntegrationCreateRequest buildRequest(boolean withI18n) {
+  private IntegrationCreateRequest buildRequest(boolean withName) {
     IntegrationCreateRequest req = new IntegrationCreateRequest();
-    req.setLogo("/logo.png");
-    if (withI18n) {
-      IntegrationI18nCreate i1 = new IntegrationI18nCreate();
-      i1.setLanguage("en");
-      i1.setName("Name EN");
-      i1.setDescription("Desc EN");
-      req.setI18n(List.of(i1));
+    req.setCode("test-code");
+    if (withName) {
+      req.setName("Name EN");
+      req.setDescription("Desc EN");
     }
     return req;
   }
 
-  private Integration buildMappedEntity(boolean withI18n) {
+  private Integration buildMappedEntity(boolean withName) {
     Integration entity = new Integration();
-    entity.setLogo("/logo.png");
-    entity.setActive(null); // will be forced to true
-    if (withI18n) {
-      IntegrationI18n child = new IntegrationI18n();
-      child.setLanguage("en");
-      child.setName("Name EN");
-      child.setDescription("Desc EN");
-      entity.setI18n(List.of(child));
+    entity.setActive(null);
+    entity.setCode("test-code");
+    if (withName) {
+      entity.setName("Name EN");
+      entity.setDescription("Desc EN");
     }
     return entity;
   }
@@ -85,14 +77,13 @@ class IntegrationServiceTest {
   class CreateIntegration {
     @Test
     @DisplayName(
-        "createIntegration with i18n should set audit + active + back references + tenant and"
-            + " return mapped response")
-    void create_withI18n() {
+        "createIntegration with name/description should set audit + active + tenant and return"
+            + " mapped response")
+    void create_withName() {
       IntegrationCreateRequest req = buildRequest(true);
       Integration mapped = buildMappedEntity(true);
       Integration saved = buildMappedEntity(true);
       saved.setId(42);
-      saved.getI18n().forEach(c -> c.setIntegration(saved));
       IntegrationCreateResponse expectedResponse = new IntegrationCreateResponse();
       expectedResponse.setId(42);
 
@@ -114,8 +105,8 @@ class IntegrationServiceTest {
       assertThat(toSave.getActive()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
       assertThat(toSave.getCreatedAt()).isBeforeOrEqualTo(OffsetDateTime.now());
-      assertThat(toSave.getI18n()).hasSize(1);
-      assertThat(toSave.getI18n().get(0).getIntegration()).isSameAs(toSave);
+      assertThat(toSave.getName()).isEqualTo("Name EN");
+      assertThat(toSave.getDescription()).isEqualTo("Desc EN");
       assertThat(toSave.getTenant()).isEqualTo(systemTenant);
       assertThat(toSave.getCreatedByAdmin()).isEqualTo(admin);
       verify(mapper).toEntity(req);
@@ -124,8 +115,8 @@ class IntegrationServiceTest {
 
     @Test
     @DisplayName(
-        "createIntegration without i18n should not fail and still set audit + active + tenant")
-    void create_withoutI18n() {
+        "createIntegration without name should not fail and still set audit + active + tenant")
+    void create_withoutName() {
       IntegrationCreateRequest req = buildRequest(false);
       Integration mapped = buildMappedEntity(false);
       Integration saved = buildMappedEntity(false);
@@ -146,7 +137,8 @@ class IntegrationServiceTest {
       ArgumentCaptor<Integration> captor = ArgumentCaptor.forClass(Integration.class);
       verify(repository).save(captor.capture());
       Integration toSave = captor.getValue();
-      assertThat(toSave.getI18n()).isNull();
+      assertThat(toSave.getName()).isNull();
+      assertThat(toSave.getDescription()).isNull();
       assertThat(toSave.getActive()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
       assertThat(toSave.getTenant()).isEqualTo(systemTenant);

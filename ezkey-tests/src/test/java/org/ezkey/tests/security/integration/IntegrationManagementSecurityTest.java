@@ -167,15 +167,10 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       // Generate unique code using UUID
       String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-      Map<String, Object> i18n = new HashMap<>();
-      i18n.put("language", "en");
-      i18n.put("name", "Test Integration");
-      i18n.put("description", "Test Description");
-
       Map<String, Object> request = new HashMap<>();
       request.put("code", code);
-      request.put("logo", "https://example.com/logo.png");
-      request.put("i18n", new Object[] {i18n});
+      request.put("name", "Test Integration");
+      request.put("description", "Test Description");
 
       Response response =
           given()
@@ -204,7 +199,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(getResponse.getStatusCode()).isEqualTo(200);
-      assertThat(getResponse.jsonPath().getString("i18n[0].name")).isEqualTo("Test Integration");
+      assertThat(getResponse.jsonPath().getString("name")).isEqualTo("Test Integration");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -410,14 +405,14 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       Integer integrationId = testDataFactory.createIntegration();
       String apiKey = createApiKeyForIntegration(integrationId, adminToken);
 
-      // Generate unique code using UUID
+      // Generate unique code using UUID; send valid payload so request reaches authorization
       String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
       Map<String, Object> request = new HashMap<>();
       request.put("code", code);
-      request.put("logo", "https://example.com/logo.png");
+      request.put("name", "API Key Blocked Integration");
 
-      // Try to create integration with API key
+      // Try to create integration with API key (expect 403 Forbidden)
       Response response =
           given()
               .contentType(ContentType.JSON)
@@ -528,19 +523,16 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(15)
-  @DisplayName("Create integration without i18n succeeds (i18n is optional)")
-  public void testCreateIntegrationWithoutI18nSucceeds() {
+  @DisplayName("Create integration with minimal required fields (code, name) succeeds")
+  public void testCreateIntegrationWithMinimalFieldsSucceeds() {
     try {
       String adminToken = authTokenManager.getAdminToken();
       configureForAdminApi(dockerStackConfig);
 
-      // Generate unique code using UUID
       String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
-
       Map<String, Object> request = new HashMap<>();
       request.put("code", code);
-      request.put("logo", "https://example.com/logo.png");
-      // i18n is optional - System Integration is created without i18n
+      request.put("name", "Minimal Integration");
 
       Response response =
           given()
@@ -553,12 +545,10 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      // i18n is optional, so creation should succeed
       assertThat(response.getStatusCode()).isEqualTo(201);
       Integer integrationId = response.jsonPath().getInt("id");
       assertThat(integrationId).isNotNull();
 
-      // Verify integration was created without i18n
       Response getResponse =
           given()
               .contentType(ContentType.JSON)
@@ -570,9 +560,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(getResponse.getStatusCode()).isEqualTo(200);
-      // i18n list should be empty or null
-      List<Map<String, Object>> i18n = getResponse.jsonPath().getList("i18n");
-      assertThat(i18n).isNullOrEmpty();
+      assertThat(getResponse.jsonPath().getString("name")).isEqualTo("Minimal Integration");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -581,19 +569,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(16)
-  @DisplayName("Create integration with invalid i18n data returns 400")
-  public void testCreateIntegrationInvalidI18nReturns400() {
+  @DisplayName("Create integration with blank name returns 400")
+  public void testCreateIntegrationBlankNameReturns400() {
     try {
       String adminToken = authTokenManager.getAdminToken();
       configureForAdminApi(dockerStackConfig);
 
-      Map<String, Object> i18n = new HashMap<>();
-      // Missing required fields: name, description
-      i18n.put("language", "en");
-
       Map<String, Object> request = new HashMap<>();
-      request.put("logo", "https://example.com/logo.png");
-      request.put("i18n", new Object[] {i18n});
+      request.put("code", "test-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+      request.put("name", "   ");
 
       Response response =
           given()

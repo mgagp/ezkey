@@ -102,24 +102,9 @@ class IntegrationDetailScreen(Screen):
     content.append(f"Active: {'✓' if data.get('active') else '✗'}")
     content.append(f"Created: {data.get('createdAt', 'N/A')}")
     content.append("")
-
-    # Logo
-    if data.get('logo'):
-      content.append(f"Logo: {data.get('logo')}")
-      content.append("")
-
-    # I18N
-    i18n_list = data.get('i18n', [])
-    if i18n_list:
-      content.append("📝 Localized Content:")
-      content.append("")
-      for i18n in i18n_list:
-        lang = i18n.get('language', 'unknown')
-        name = i18n.get('name', 'N/A')
-        desc = i18n.get('description', 'N/A')
-        content.append(f"  [{lang}] {name}")
-        content.append(f"       {desc}")
-        content.append("")
+    content.append(f"Name: {data.get('name') or 'N/A'}")
+    content.append(f"Description: {data.get('description') or 'N/A'}")
+    content.append("")
 
     detail_widget = self.query_one("#detail_content", Static)
     detail_widget.update("\n".join(content))
@@ -144,16 +129,7 @@ class IntegrationDetailScreen(Screen):
     log.debug(f"Deleting integration {self.integration_id}")
     from .confirmation_modal import ConfirmationModal
 
-    name = ""
-    if self.integration_data:
-      i18n_list = self.integration_data.get("i18n", [])
-      if i18n_list:
-        for i18n in i18n_list:
-          if i18n.get("language") == "en":
-            name = i18n.get("name", "Unknown")
-            break
-        if not name:
-          name = i18n_list[0].get("name", "Unknown") if i18n_list else "Unknown"
+    name = (self.integration_data.get("name") or self.integration_data.get("code") or "Unknown") if self.integration_data else "Unknown"
 
     def on_confirm(confirmed: bool) -> None:
       if confirmed:

@@ -104,8 +104,8 @@ public class IntegrationService {
    * <p><b>Use Case:</b> Administrators managing integrations, searching for specific applications,
    * and compliance reporting.
    *
-   * @param integrationName optional integration name filter (partial match, case-insensitive via
-   *     i18n)
+   * @param integrationName optional integration name filter (partial match, case-insensitive on
+   *     integration_name)
    * @param active optional active flag filter
    * @param createdAfter optional start of date range filter
    * @param createdBefore optional end of date range filter
@@ -127,13 +127,10 @@ public class IntegrationService {
         (root, query, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
 
-          // Filter by name via i18n join (partial match, case-insensitive)
+          // Filter by name (partial match, case-insensitive)
           if (integrationName != null && !integrationName.isBlank()) {
-            var i18nJoin = root.join("i18n");
             predicates.add(
-                cb.like(cb.lower(i18nJoin.get("name")), "%" + integrationName.toLowerCase() + "%"));
-            // Ensure distinct results due to join
-            query.distinct(true);
+                cb.like(cb.lower(root.get("name")), "%" + integrationName.toLowerCase() + "%"));
           }
 
           if (active != null) {
@@ -250,11 +247,6 @@ public class IntegrationService {
           tenant.getTenantId());
       throw new IllegalStateException(
           "Cannot create integration for inactive tenant. Contact your Ezkey administrator.");
-    }
-
-    // Set the parent reference for each i18n if present
-    if (integration.getI18n() != null) {
-      integration.getI18n().forEach(i18n -> i18n.setIntegration(integration));
     }
 
     var domResponse = integrationRepository.save(integration);

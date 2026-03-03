@@ -34,7 +34,6 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param enrollmentId The enrollment ID that was bound to the mobile device
  * @param integrationPublicKey The integration's public key for cryptographic verification
  * @param enrollmentProofToken The enrollment proof token to be signed by the device
- * @param integrationLogo The logo URL or base64-encoded image for the integration
  * @param integrationName The display name of the integration
  * @param integrationDescription The description of the integration
  * @param enrollmentName The human-readable name for the enrollment
@@ -65,11 +64,6 @@ public record EnrollmentBindResponseDto(
             example = "eyJhbGciOiJSUzI1NiJ9...",
             requiredMode = RequiredMode.REQUIRED)
         String enrollmentProofToken,
-    @Schema(
-            description = "Logo URL or base64-encoded image for the integration",
-            example = "https://acme.com/logo.png",
-            requiredMode = RequiredMode.NOT_REQUIRED)
-        String integrationLogo,
     @Schema(
             description = "Display name of the integration",
             example = "Acme Bank",

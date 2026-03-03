@@ -12,19 +12,16 @@ package org.ezkey.integration.mapper;
 
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
-import org.ezkey.integration.domain.IntegrationI18nCreate;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.integration.domain.entity.IntegrationI18n;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 /**
- * MapStruct mapper for converting between Integration domain objects, DTOs, and entities.
+ * MapStruct mapper for converting between Integration domain objects and entities.
  *
  * <p>This interface defines mapping methods for:
  *
  * <ul>
- *   <li>Mapping {@link IntegrationI18nCreate} to {@link IntegrationI18n}
  *   <li>Mapping {@link IntegrationCreateRequest} to {@link Integration}
  *   <li>Mapping {@link Integration} to {@link IntegrationCreateResponse}
  * </ul>
@@ -40,16 +37,6 @@ import org.mapstruct.Mapping;
  */
 @Mapper(componentModel = "spring")
 public interface IntegrationServiceMapper {
-
-  /**
-   * Maps a domain I18n create object to its entity representation.
-   *
-   * @param integrationI18nCreate the domain I18n create object
-   * @return the mapped entity with the parent integration ignored
-   */
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "integration", ignore = true)
-  IntegrationI18n map(IntegrationI18nCreate integrationI18nCreate);
 
   /**
    * Maps create request → entity. Ignores {@code id}, {@code createdAt}, {@code active}; those use

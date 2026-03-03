@@ -51,7 +51,8 @@ class PartitionSchedulerServiceTest {
   }
 
   @Test
-  @DisplayName("createNextMonthPartitions invokes create_monthly_partition for auth_attempt and audit_log")
+  @DisplayName(
+      "createNextMonthPartitions invokes create_monthly_partition for auth_attempt and audit_log")
   void createNextMonthPartitions_CallsFunctionForBothTables() {
     when(entityManager.createNativeQuery(any(String.class))).thenReturn(nativeQuery);
     when(nativeQuery.setParameter(any(String.class), any())).thenReturn(nativeQuery);
@@ -63,14 +64,18 @@ class PartitionSchedulerServiceTest {
 
     ArgumentCaptor<String> tableCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<String> partitionCaptor = ArgumentCaptor.forClass(String.class);
-    verify(nativeQuery, org.mockito.Mockito.times(2)).setParameter(eq("tableName"), tableCaptor.capture());
-    verify(nativeQuery, org.mockito.Mockito.times(2)).setParameter(eq("partitionName"), partitionCaptor.capture());
+    verify(nativeQuery, org.mockito.Mockito.times(2))
+        .setParameter(eq("tableName"), tableCaptor.capture());
+    verify(nativeQuery, org.mockito.Mockito.times(2))
+        .setParameter(eq("partitionName"), partitionCaptor.capture());
 
     assertEquals("ezkey_auth_attempt", tableCaptor.getAllValues().get(0));
     assertEquals("ezkey_audit_log", tableCaptor.getAllValues().get(1));
     assertTrue(partitionCaptor.getAllValues().get(0).startsWith("ezkey_auth_attempt_"));
     assertTrue(partitionCaptor.getAllValues().get(1).startsWith("ezkey_audit_log_"));
-    assertTrue(Pattern.matches("ezkey_auth_attempt_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(0)));
-    assertTrue(Pattern.matches("ezkey_audit_log_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(1)));
+    assertTrue(
+        Pattern.matches("ezkey_auth_attempt_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(0)));
+    assertTrue(
+        Pattern.matches("ezkey_audit_log_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(1)));
   }
 }

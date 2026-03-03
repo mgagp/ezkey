@@ -14,20 +14,15 @@ package org.ezkey.enrollment.domain;
  * Domain request object for retrieving enrollment binding information.
  *
  * <p>This domain object represents the request data used by the service layer to fetch enrollment
- * binding details for device configuration and display. It includes localization support to provide
- * appropriate integration and application names in the user's preferred language.
+ * binding details for device configuration and display.
  *
  * <p><b>Usage Context:</b> Used by the EnrollmentService when devices or applications request
  * enrollment binding information for display purposes. The service layer transforms API DTOs into
- * this domain object for business logic processing and localized data retrieval.
+ * this domain object for business logic processing.
  *
  * <p><b>Enrollment Flow:</b> This request typically occurs after enrollment creation and before
  * verification, allowing devices to display appropriate integration context and user-friendly
  * information about the enrollment they are about to complete.
- *
- * <p><b>Internationalization:</b> Supports language-specific requests to provide localized
- * integration names and descriptions, enhancing the user experience by displaying content in the
- * user's preferred language.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -61,15 +56,6 @@ public class EnrollmentBindRequest {
   private String enrollmentProofToken;
 
   /**
-   * The language code for internationalization of response fields.
-   *
-   * <p>Language code (e.g., "en", "fr", "es") requested for localized fields such as integration
-   * names and application descriptions. Used to fetch appropriate translations and provide a
-   * localized user experience during enrollment binding and device configuration.
-   */
-  private String language;
-
-  /**
    * Gets the unique identifier of the enrollment.
    *
    * @return the enrollment ID
@@ -85,24 +71,6 @@ public class EnrollmentBindRequest {
    */
   public void setEnrollmentId(Integer enrollmentId) {
     this.enrollmentId = enrollmentId;
-  }
-
-  /**
-   * Gets the language code for internationalization.
-   *
-   * @return the language code (e.g., "en", "fr")
-   */
-  public String getLanguage() {
-    return language;
-  }
-
-  /**
-   * Sets the language code for internationalization.
-   *
-   * @param language the language code to set
-   */
-  public void setLanguage(String language) {
-    this.language = language;
   }
 
   /**

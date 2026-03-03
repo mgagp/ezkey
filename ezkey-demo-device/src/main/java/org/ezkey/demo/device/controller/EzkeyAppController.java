@@ -122,10 +122,10 @@ public class EzkeyAppController {
         String integrationPublicKey = bindResponse.getIntegrationPublicKey();
         String responseProofToken = bindResponse.getEnrollmentProofToken();
 
-        // Get integration information from the response
+        // Get integration information from the response (logo removed from API)
         String integrationName = bindResponse.getIntegrationName();
         String integrationDescription = bindResponse.getIntegrationDescription();
-        String integrationLogo = bindResponse.getIntegrationLogo();
+        String integrationLogo = null;
         String enrollmentName = bindResponse.getEnrollmentName();
         Integer tenantId = bindResponse.getTenantId();
         String tenantName = bindResponse.getTenantName();

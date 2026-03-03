@@ -659,7 +659,7 @@ Integration Description
 - Utiliser le badge comme indicateur visuel principal pour le regroupement par tenant
 
 **Référence:**
-- Pattern similaire à `integrationLogo` dans `ezkey_integration_i18n`
+- (Historical: integration name/description are now on ezkey_integration.)
 - Pourrait être stocké dans `ezkey_tenant` ou dans une table `ezkey_tenant_i18n` si support multi-langue
 
 ### Prochaines étapes - Phase 1 (DemoDevice)

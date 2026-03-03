@@ -78,15 +78,6 @@ public class EnrollmentBindResponse {
   private String enrollmentProofToken;
 
   /**
-   * The logo URL or base64-encoded image for the integration.
-   *
-   * <p>Provides a visual identifier for the integration, allowing the mobile device to display the
-   * integration's logo during the enrollment process. This enhances user experience by providing
-   * visual context about the service being enrolled with.
-   */
-  private String integrationLogo;
-
-  /**
    * The localized display name of the integration.
    *
    * <p>Human-readable name of the integration in the requested language, shown to the user during
@@ -189,24 +180,6 @@ public class EnrollmentBindResponse {
    */
   public void setEnrollmentProofToken(String enrollmentProofToken) {
     this.enrollmentProofToken = enrollmentProofToken;
-  }
-
-  /**
-   * Gets the integration logo.
-   *
-   * @return the integration logo (URL or base64-encoded image)
-   */
-  public String getIntegrationLogo() {
-    return integrationLogo;
-  }
-
-  /**
-   * Sets the integration logo.
-   *
-   * @param integrationLogo the integration logo to set (URL or base64-encoded image)
-   */
-  public void setIntegrationLogo(String integrationLogo) {
-    this.integrationLogo = integrationLogo;
   }
 
   /**

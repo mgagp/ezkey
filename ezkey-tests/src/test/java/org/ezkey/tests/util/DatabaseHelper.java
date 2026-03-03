@@ -292,7 +292,7 @@ public class DatabaseHelper {
   }
 
   /**
-   * Finds integration ID by name (i18n).
+   * Finds integration ID by name.
    *
    * <p>Note: This is a simple lookup. For more complex queries, use executeQuery directly.
    *
@@ -302,9 +302,7 @@ public class DatabaseHelper {
   public Integer findIntegrationIdByName(String integrationName) {
     String sqlQuery =
         String.format(
-            "SELECT i.integration_id FROM ezkey_integration i "
-                + "JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id "
-                + "WHERE i18n.integration_i18n_name = '%s' LIMIT 1;",
+            "SELECT integration_id FROM ezkey_integration WHERE integration_name = '%s' LIMIT 1;",
             integrationName.replace("'", "''")); // SQL injection protection
     String result = executeQuerySingleValue(sqlQuery);
     return result != null ? Integer.parseInt(result.trim()) : null;

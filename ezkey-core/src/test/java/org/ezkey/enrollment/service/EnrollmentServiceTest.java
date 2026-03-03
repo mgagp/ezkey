@@ -129,7 +129,6 @@ class EnrollmentServiceTest {
     bindRequest = new EnrollmentBindRequest();
     bindRequest.setEnrollmentId(456);
     bindRequest.setEnrollmentProofToken("test-proof-token");
-    bindRequest.setLanguage("en");
 
     // Setup verify request
     verifyRequest = new EnrollmentVerifyRequest();
@@ -154,7 +153,6 @@ class EnrollmentServiceTest {
     // Setup integration entity
     integration = new Integration();
     integration.setId(123);
-    integration.setLogo("test-logo");
 
     // Setup EC P-256 key pair
     ecp256KeyPair = new ECP256KeyPair("private-key", "public-key");

@@ -38,7 +38,6 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * <ul>
  *   <li><b>enrollmentId:</b> The enrollment ID to bind to the mobile device
  *   <li><b>enrollmentProofToken:</b> The enrollment proof token for authentication
- *   <li><b>language:</b> Preferred language for internationalization
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -76,13 +75,4 @@ public record EnrollmentBindRequestDto(
             description = "Enrollment proof token for authentication",
             example = "abc123-def456-ghi789",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentProofToken,
-
-    /**
-     * Preferred language for internationalization.
-     *
-     * <p>Language code (e.g., "en", "fr", "es") requested for localized fields such as integration
-     * names and descriptions. Used to provide a localized user experience during enrollment binding
-     * and device configuration.
-     */
-    @Schema(description = "Preferred language for i18n fields", example = "en") String language) {}
+        String enrollmentProofToken) {}

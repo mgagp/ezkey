@@ -10,7 +10,6 @@
 
 package org.ezkey.integration.domain.entity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,17 +18,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 /**
  * JPA entity representing an integration in the Ezkey system.
  *
  * <p>An integration represents an application or system that is protected by Ezkey MFA. Each
- * integration can have multiple internationalization entries (i18n) for different languages.
+ * integration has a single name and optional description.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -51,12 +48,6 @@ public class Integration {
   private Integer id;
 
   /**
-   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
-   */
-  @Column(name = "integration_logo")
-  private String logo;
-
-  /**
    * Flag indicating whether the integration is active and available for use. Inactive integrations
    * cannot be used for authentication. Defaults to {@code true} (matches DB: {@code DEFAULT TRUE}).
    */
@@ -67,36 +58,16 @@ public class Integration {
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
+  /** Display name for the integration. Shown in admin interfaces and to users during enrollment. */
+  @Column(name = "integration_name")
+  private String name;
+
   /**
-   * Collection of internationalization entries for this integration. Each entry contains localized
-   * name and description for different languages. Uses lazy loading for performance optimization.
-   *
-   * <p><b>⚠ Concurrency hazard — CascadeType.ALL + orphanRemoval:</b> Because this collection is
-   * mapped with {@code cascade = CascadeType.ALL, orphanRemoval = true}, Hibernate tracks it as an
-   * <em>owned</em> {@code PersistentBag}. Under concurrent load, if multiple sessions independently
-   * load the same {@code Integration} row (e.g., the shared system integration used by all admin
-   * MFA enrollments) and then flush within the same persistence context, Hibernate may detect that
-   * two entity states reference the same collection object and throw:
-   *
-   * <pre>
-   * HibernateException: Found shared references to a collection:
-   *     org.ezkey.integration.domain.entity.Integration.i18n
-   * </pre>
-   *
-   * <p><b>Rule for callers:</b> Whenever you need to <em>read</em> this collection (e.g., to
-   * resolve localized names in the bind flow), always load the entity via {@link
-   * org.ezkey.integration.domain.repository.IntegrationRepository#findByIdWithI18nAndTenant} which
-   * applies {@code @QueryHints(readOnly=true)} to suppress cascade tracking. Only use {@code
-   * findById()} when you intend to persist changes to the integration or its i18n entries.
-   *
-   * <p>See {@code agents.md} §"CascadeType.ALL + orphanRemoval shared-reference hazard".
+   * Optional description of the integration. Shown in admin interfaces and to users during
+   * enrollment.
    */
-  @OneToMany(
-      mappedBy = "integration",
-      cascade = CascadeType.ALL,
-      orphanRemoval = true,
-      fetch = FetchType.LAZY)
-  private List<IntegrationI18n> i18n;
+  @Column(name = "integration_description")
+  private String description;
 
   /**
    * Reference to the tenant this integration belongs to.
@@ -173,24 +144,6 @@ public class Integration {
   }
 
   /**
-   * Gets the URL or path to the integration's logo.
-   *
-   * @return the logo URL/path
-   */
-  public String getLogo() {
-    return logo;
-  }
-
-  /**
-   * Sets the URL or path to the integration's logo.
-   *
-   * @param logo the logo URL/path to set
-   */
-  public void setLogo(String logo) {
-    this.logo = logo;
-  }
-
-  /**
    * Gets the active status of the integration.
    *
    * @return true if the integration is active, false otherwise
@@ -227,21 +180,39 @@ public class Integration {
   }
 
   /**
-   * Gets the collection of internationalization entries for this integration.
+   * Gets the display name of the integration.
    *
-   * @return the list of i18n entries
+   * @return the integration name
    */
-  public List<IntegrationI18n> getI18n() {
-    return i18n;
+  public String getName() {
+    return name;
   }
 
   /**
-   * Sets the collection of internationalization entries for this integration.
+   * Sets the display name of the integration.
    *
-   * @param i18n the list of i18n entries to set
+   * @param name the integration name to set
    */
-  public void setI18n(List<IntegrationI18n> i18n) {
-    this.i18n = i18n;
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  /**
+   * Gets the optional description of the integration.
+   *
+   * @return the integration description
+   */
+  public String getDescription() {
+    return description;
+  }
+
+  /**
+   * Sets the optional description of the integration.
+   *
+   * @param description the integration description to set
+   */
+  public void setDescription(String description) {
+    this.description = description;
   }
 
   /**

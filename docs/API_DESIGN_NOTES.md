@@ -38,10 +38,9 @@ This field was added during Phase 2 based on context (TUI column, create request
 backend does not actually return this field in `EnrollmentResponseDto`, the column will silently
 show "No" for everyone. **Needs verification.**
 
-## 6. `Integration.logo` is in the model but unused
+## 6. ~~`Integration.logo` is in the model but unused~~ [RESOLVED by Phase 1]
 
-The integration has a `logo?: string` field (likely a URL or base64). The UI ignores it entirely.
-Whether it should appear in the integration detail card or the sidebar is an open design question.
+Logo was removed from the integration model in the Flatten Integration Entity work.
 
 ## 7. `api.delete()` and 204 No Content — potential runtime issue
 
@@ -54,13 +53,10 @@ succeeds. This needs a guard:
 if (response.status === 204 || response.headers.get('content-length') === '0') return null;
 ```
 
-## 8. Integration i18n adds complexity for what is usually just a name
+## 8. ~~Integration i18n adds complexity~~ [RESOLVED by Phase 2]
 
-Requiring `i18n[]` for every integration means no single `name` field exists — you always need
-`getIntegrationName(integration)` to resolve one. If multi-language support is not a hard
-requirement for tenant admins, a simpler `name` + optional `description` on the integration itself
-would reduce friction significantly. If i18n is required, a `defaultLanguage` or `defaultName`
-computed field on the DTO would help.
+Integration now has a single `name` and optional `description` on the entity and DTOs; the
+`ezkey_integration_i18n` table was removed.
 
 ---
 

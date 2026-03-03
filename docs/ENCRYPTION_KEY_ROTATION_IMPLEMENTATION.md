@@ -1972,9 +1972,9 @@ class EncryptionSecurityTest {
 **Test Data Preparation:**
 ```sql
 -- Generate realistic test data
-INSERT INTO ezkey_integration (integration_logo, integration_active)
+INSERT INTO ezkey_integration (integration_name, integration_active)
 SELECT 
-    'https://test.example.com/logo' || i || '.png',
+    'Test Integration ' || i,
     true
 FROM generate_series(1, 100) AS i;
 

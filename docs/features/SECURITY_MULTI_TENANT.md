@@ -950,8 +950,11 @@ public class Integration {
     @Column(name = "integration_id")
     private Integer integrationId;
     
-    @Column(name = "integration_logo")
-    private String integrationLogo;
+    @Column(name = "integration_name")
+    private String integrationName;
+    
+    @Column(name = "integration_description")
+    private String integrationDescription;
     
     @Column(name = "integration_active")
     private Boolean integrationActive = true;

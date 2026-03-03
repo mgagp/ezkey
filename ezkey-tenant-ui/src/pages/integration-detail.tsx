@@ -79,14 +79,14 @@ export default function IntegrationDetailPage() {
                 <dl className="space-y-3">
                   <InfoRow label="ID"><span className="font-mono">{integration.id}</span></InfoRow>
                   <InfoRow label="Code"><span className="font-mono">{integration.code}</span></InfoRow>
-                  {integration.i18n.map((entry) => (
-                    <InfoRow key={entry.language} label={`Name (${entry.language.toUpperCase()})`}>
-                      <div>
-                        <div className="font-medium">{entry.name}</div>
-                        {entry.description && <div className="text-xs text-fg-muted mt-0.5">{entry.description}</div>}
-                      </div>
+                  <InfoRow label="Name">
+                    <span className="font-medium">{integration.name ?? integration.code}</span>
+                  </InfoRow>
+                  {integration.description && (
+                    <InfoRow label="Description">
+                      <span className="text-fg-muted">{integration.description}</span>
                     </InfoRow>
-                  ))}
+                  )}
                   <InfoRow label="Status">
                     <Badge variant={integration.active ? 'success' : 'muted'}>
                       {integration.active ? 'Active' : 'Inactive'}

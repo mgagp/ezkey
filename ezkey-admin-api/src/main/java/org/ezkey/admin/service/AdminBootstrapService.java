@@ -171,7 +171,7 @@ public class AdminBootstrapService {
     try {
       // 1. Check if System Integration already exists
       Optional<Integration> existingIntegration =
-          integrationRepository.findSystemIntegrationReadOnly();
+          integrationRepository.findByIsSystemIntegrationAndActiveTrue(true);
 
       if (existingIntegration.isPresent()) {
         logger.info(
@@ -232,7 +232,7 @@ public class AdminBootstrapService {
     // Create System Integration
     Integration systemIntegration = new Integration();
     systemIntegration.setCode("ezkey-system"); // Unique system integration code
-    systemIntegration.setLogo(null); // No logo for system integration
+    systemIntegration.setName("Ezkey System");
     systemIntegration.setActive(true);
     systemIntegration.setCreatedAt(OffsetDateTime.now());
     systemIntegration.setTenant(systemTenant);

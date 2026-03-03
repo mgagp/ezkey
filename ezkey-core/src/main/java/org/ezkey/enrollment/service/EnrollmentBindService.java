@@ -109,11 +109,10 @@ public class EnrollmentBindService {
     // Step 1: Validate enrollment and proof token
     Enrollment enrollment = validateEnrollment(request);
 
-    // Step 2: Load integration and resolve i18n
+    // Step 2: Load integration
     Integration integration = loadIntegration(enrollment.getIntegrationId());
-    String integrationName = resolveIntegrationName(integration, request.getLanguage());
-    String integrationDescription =
-        resolveIntegrationDescription(integration, request.getLanguage());
+    String integrationName = integration.getName();
+    String integrationDescription = integration.getDescription();
 
     // Step 3: Acquire lock and validate state
     Enrollment lockedEnrollment = acquireLockAndValidate(request);
@@ -205,37 +204,16 @@ public class EnrollmentBindService {
   }
 
   /**
-   * Loads the integration for the enrollment using a read-only, eagerly-fetched query.
-   *
-   * <p><b>Concurrency safety:</b> This method intentionally uses {@link
-   * IntegrationRepository#findByIdWithI18nAndTenant} instead of the standard {@code findById()}.
-   * The {@code Integration.i18n} association is mapped with {@code CascadeType.ALL + orphanRemoval
-   * = true}: if a standard managed entity is loaded by multiple concurrent sessions (e.g., all
-   * admin MFA enrollments share integration_id=1), Hibernate can detect that two entity states hold
-   * a reference to the same collection bag and raise:
-   *
-   * <pre>
-   * HibernateException: Found shared references to a collection:
-   *     org.ezkey.integration.domain.entity.Integration.i18n
-   * </pre>
-   *
-   * <p>The read-only hint prevents Hibernate from snapshotting or dirty-checking this entity,
-   * eliminating the ownership conflict. The JOIN FETCH also avoids separate lazy-load round-trips
-   * for {@code i18n} and {@code tenant}.
-   *
-   * <p><b>Rule:</b> Always use this method (or an equivalent read-only fetch) when the integration
-   * is only read. Only use {@code findById()} when you intend to persist changes to the integration
-   * record itself.
+   * Loads the integration for the enrollment.
    *
    * @param integrationId the integration ID
-   * @return the integration entity (read-only, with i18n and tenant fetched)
+   * @return the integration entity
    * @throws IllegalStateException if integration is not found
    */
   private Integration loadIntegration(Integer integrationId) {
-    logger.debug("Step 2: Loading integration (read-only) for ID: {}", integrationId);
+    logger.debug("Step 2: Loading integration for ID: {}", integrationId);
 
-    Optional<Integration> integrationOpt =
-        integrationRepository.findByIdWithI18nAndTenant(integrationId);
+    Optional<Integration> integrationOpt = integrationRepository.findById(integrationId);
     if (integrationOpt.isEmpty()) {
       logger.warn("Validation failed: Integration not found for integration ID: {}", integrationId);
       throw new IllegalStateException("Enrollment binding failed");
@@ -244,79 +222,6 @@ public class EnrollmentBindService {
     Integration integration = integrationOpt.get();
     logger.debug("Integration loaded successfully: ID={}", integration.getId());
     return integration;
-  }
-
-  /**
-   * Resolves the integration name based on language preference.
-   *
-   * <p>This method attempts to find the integration name in the requested language, falling back to
-   * the first available language if the requested language is not found.
-   *
-   * @param integration the integration entity
-   * @param language the requested language
-   * @return the resolved integration name
-   */
-  private String resolveIntegrationName(Integration integration, String language) {
-    logger.debug("Step 3: Resolving integration name for language: {}", language);
-
-    if (integration.getI18n() != null && !integration.getI18n().isEmpty()) {
-      // Try to find the requested language first
-      Optional<String> name =
-          integration.getI18n().stream()
-              .filter(i18n -> i18n.getLanguage().equals(language))
-              .map(i18n -> i18n.getName())
-              .findFirst();
-
-      if (name.isPresent()) {
-        logger.debug("Found integration name for language {}: {}", language, name.get());
-        return name.get();
-      }
-
-      // Fallback to first available language
-      String fallbackName = integration.getI18n().get(0).getName();
-      logger.debug("Using fallback integration name: {}", fallbackName);
-      return fallbackName;
-    }
-
-    logger.debug("No i18n entries found for integration");
-    return null;
-  }
-
-  /**
-   * Resolves the integration description based on language preference.
-   *
-   * <p>This method attempts to find the integration description in the requested language, falling
-   * back to the first available language if the requested language is not found.
-   *
-   * @param integration the integration entity
-   * @param language the requested language
-   * @return the resolved integration description
-   */
-  private String resolveIntegrationDescription(Integration integration, String language) {
-    logger.debug("Resolving integration description for language: {}", language);
-
-    if (integration.getI18n() != null && !integration.getI18n().isEmpty()) {
-      // Try to find the requested language first
-      Optional<String> description =
-          integration.getI18n().stream()
-              .filter(i18n -> i18n.getLanguage().equals(language))
-              .map(i18n -> i18n.getDescription())
-              .findFirst();
-
-      if (description.isPresent()) {
-        logger.debug(
-            "Found integration description for language {}: {}", language, description.get());
-        return description.get();
-      }
-
-      // Fallback to first available language
-      String fallbackDescription = integration.getI18n().get(0).getDescription();
-      logger.debug("Using fallback integration description: {}", fallbackDescription);
-      return fallbackDescription;
-    }
-
-    logger.debug("No i18n entries found for integration");
-    return null;
   }
 
   /**
@@ -407,7 +312,6 @@ public class EnrollmentBindService {
     response.setEnrollmentName(enrollment.getEnrollmentName());
     response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
-    response.setIntegrationLogo(integration.getLogo());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
 

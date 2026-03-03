@@ -5,20 +5,19 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * DTO: IntegrationResponse
- * Description: Response DTO for integration data including internationalization support.
+ * Description: Response DTO for integration data.
  */
 
 package org.ezkey.integration.domain;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
 /**
- * Response DTO for integration data including internationalization support.
+ * Response DTO for integration data.
  *
  * <p>This DTO represents the complete integration information returned by the API, including basic
- * integration details and localized content for multiple languages. It is used in GET operations to
- * return integration data to clients.
+ * integration details, name, and description. It is used in GET operations to return integration
+ * data to clients.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -35,12 +34,6 @@ public class IntegrationResponse {
   private Integer id;
 
   /**
-   * URL or path to the integration logo image. Used for displaying the integration brand in user
-   * interfaces.
-   */
-  private String logo;
-
-  /**
    * Integration status flag. Indicates whether the integration is currently active and available
    * for use.
    */
@@ -49,11 +42,11 @@ public class IntegrationResponse {
   /** Timestamp when the integration was created. Used for audit trails and sorting purposes. */
   private OffsetDateTime createdAt;
 
-  /**
-   * List of internationalized content for the integration. Contains localized names and
-   * descriptions in multiple languages.
-   */
-  private List<IntegrationI18nResponse> i18n;
+  /** Display name for the integration. */
+  private String name;
+
+  /** Optional description of the integration. */
+  private String description;
 
   /**
    * Gets the unique identifier for the integration.
@@ -71,24 +64,6 @@ public class IntegrationResponse {
    */
   public void setId(Integer id) {
     this.id = id;
-  }
-
-  /**
-   * Gets the URL or path to the integration logo image.
-   *
-   * @return the logo URL/path
-   */
-  public String getLogo() {
-    return logo;
-  }
-
-  /**
-   * Sets the URL or path to the integration logo image.
-   *
-   * @param logo the logo URL/path to set
-   */
-  public void setLogo(String logo) {
-    this.logo = logo;
   }
 
   /**
@@ -128,20 +103,38 @@ public class IntegrationResponse {
   }
 
   /**
-   * Gets the list of internationalized content for the integration.
+   * Gets the display name of the integration.
    *
-   * @return the list of i18n responses
+   * @return the integration name
    */
-  public List<IntegrationI18nResponse> getI18n() {
-    return i18n;
+  public String getName() {
+    return name;
   }
 
   /**
-   * Sets the list of internationalized content for the integration.
+   * Sets the display name of the integration.
    *
-   * @param i18n the list of i18n responses to set
+   * @param name the integration name to set
    */
-  public void setI18n(List<IntegrationI18nResponse> i18n) {
-    this.i18n = i18n;
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  /**
+   * Gets the optional description of the integration.
+   *
+   * @return the integration description
+   */
+  public String getDescription() {
+    return description;
+  }
+
+  /**
+   * Sets the optional description of the integration.
+   *
+   * @param description the integration description to set
+   */
+  public void setDescription(String description) {
+    this.description = description;
   }
 }

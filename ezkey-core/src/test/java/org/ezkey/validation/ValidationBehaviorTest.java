@@ -21,7 +21,6 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
-import org.ezkey.integration.domain.IntegrationI18nCreate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -444,129 +443,28 @@ class ValidationBehaviorTest {
   class IntegrationCreateRequestValidation {
 
     @Test
-    @DisplayName("Should accept null logo - no validation currently")
-    void shouldAcceptNullLogo() {
-      // Given
-      IntegrationCreateRequest request = new IntegrationCreateRequest();
-      request.setLogo(null);
-
-      // When
-      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should accept empty logo - no validation currently")
-    void shouldAcceptEmptyLogo() {
-      // Given
-      IntegrationCreateRequest request = new IntegrationCreateRequest();
-      request.setLogo("");
-
-      // When
-      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should accept null i18n list - no validation currently")
-    void shouldAcceptNullI18nList() {
-      // Given
-      IntegrationCreateRequest request = new IntegrationCreateRequest();
-      request.setLogo("logo.png");
-      request.setI18n(null);
-
-      // When
-      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should accept empty i18n list - no validation currently")
-    void shouldAcceptEmptyI18nList() {
-      // Given
-      IntegrationCreateRequest request = new IntegrationCreateRequest();
-      request.setLogo("logo.png");
-      request.setI18n(java.util.Collections.emptyList());
-
-      // When
-      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-  }
-
-  @Nested
-  @DisplayName("IntegrationI18nCreate Validation")
-  class IntegrationI18nCreateValidation {
-
-    @Test
-    @DisplayName("Should accept null language - no validation currently")
-    void shouldAcceptNullLanguage() {
-      // Given
-      IntegrationI18nCreate i18n = new IntegrationI18nCreate();
-      i18n.setLanguage(null);
-      i18n.setName("Test Integration");
-      i18n.setDescription("Test Description");
-
-      // When
-      Set<ConstraintViolation<IntegrationI18nCreate>> violations = validator.validate(i18n);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should accept empty language - no validation currently")
-    void shouldAcceptEmptyLanguage() {
-      // Given
-      IntegrationI18nCreate i18n = new IntegrationI18nCreate();
-      i18n.setLanguage("");
-      i18n.setName("Test Integration");
-      i18n.setDescription("Test Description");
-
-      // When
-      Set<ConstraintViolation<IntegrationI18nCreate>> violations = validator.validate(i18n);
-
-      // Then
-      assertThat(violations).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should accept null name - no validation currently")
+    @DisplayName("Should accept null name - validation in admin-api layer")
     void shouldAcceptNullName() {
-      // Given
-      IntegrationI18nCreate i18n = new IntegrationI18nCreate();
-      i18n.setLanguage("en");
-      i18n.setName(null);
-      i18n.setDescription("Test Description");
+      IntegrationCreateRequest request = new IntegrationCreateRequest();
+      request.setCode("test-code");
+      request.setName(null);
+      request.setDescription("Desc");
 
-      // When
-      Set<ConstraintViolation<IntegrationI18nCreate>> violations = validator.validate(i18n);
+      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
 
-      // Then
       assertThat(violations).isEmpty();
     }
 
     @Test
-    @DisplayName("Should accept null description - no validation currently")
+    @DisplayName("Should accept null description")
     void shouldAcceptNullDescription() {
-      // Given
-      IntegrationI18nCreate i18n = new IntegrationI18nCreate();
-      i18n.setLanguage("en");
-      i18n.setName("Test Integration");
-      i18n.setDescription(null);
+      IntegrationCreateRequest request = new IntegrationCreateRequest();
+      request.setCode("test-code");
+      request.setName("Test");
+      request.setDescription(null);
 
-      // When
-      Set<ConstraintViolation<IntegrationI18nCreate>> violations = validator.validate(i18n);
+      Set<ConstraintViolation<IntegrationCreateRequest>> violations = validator.validate(request);
 
-      // Then
       assertThat(violations).isEmpty();
     }
   }

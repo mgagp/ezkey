@@ -337,7 +337,7 @@ public class IntegrationController {
   @PostMapping
   public ResponseEntity<IntegrationCreateResponseDto> create(
       @Parameter(
-              description = "Integration creation data including unique code and i18n",
+              description = "Integration creation data including code, name, and description",
               required = true)
           @RequestBody
           @jakarta.validation.Valid

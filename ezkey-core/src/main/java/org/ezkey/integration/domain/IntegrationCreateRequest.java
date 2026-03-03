@@ -10,13 +10,11 @@
 
 package org.ezkey.integration.domain;
 
-import java.util.List;
-
 /**
  * Request DTO for creating new Integration entities.
  *
  * <p>This DTO contains the data required to create a new Integration in the system. It includes the
- * basic integration information and optional internationalization data.
+ * basic integration information: code, name, and optional description.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -34,16 +32,14 @@ public class IntegrationCreateRequest {
    */
   private String code;
 
-  /**
-   * URL or path to the integration's logo image. Displayed in the mobile app and web interfaces.
-   */
-  private String logo;
+  /** Display name for the integration. Shown in admin interfaces and to users during enrollment. */
+  private String name;
 
   /**
-   * Optional list of internationalization entries. Contains localized name and description for
-   * different languages.
+   * Optional description of the integration. Shown in admin interfaces and to users during
+   * enrollment.
    */
-  private List<IntegrationI18nCreate> i18n;
+  private String description;
 
   /**
    * Gets the unique business identifier code for the integration.
@@ -64,38 +60,38 @@ public class IntegrationCreateRequest {
   }
 
   /**
-   * Gets the URL or path to the integration's logo.
+   * Gets the display name for the integration.
    *
-   * @return the logo URL/path
+   * @return the integration name
    */
-  public String getLogo() {
-    return logo;
+  public String getName() {
+    return name;
   }
 
   /**
-   * Sets the URL or path to the integration's logo.
+   * Sets the display name for the integration.
    *
-   * @param logo the logo URL/path to set
+   * @param name the integration name to set
    */
-  public void setLogo(String logo) {
-    this.logo = logo;
+  public void setName(String name) {
+    this.name = name;
   }
 
   /**
-   * Gets the list of internationalization entries.
+   * Gets the optional description of the integration.
    *
-   * @return the list of i18n entries
+   * @return the integration description
    */
-  public List<IntegrationI18nCreate> getI18n() {
-    return i18n;
+  public String getDescription() {
+    return description;
   }
 
   /**
-   * Sets the list of internationalization entries.
+   * Sets the optional description of the integration.
    *
-   * @param i18n the list of i18n entries to set
+   * @param description the integration description to set
    */
-  public void setI18n(List<IntegrationI18nCreate> i18n) {
-    this.i18n = i18n;
+  public void setDescription(String description) {
+    this.description = description;
   }
 }

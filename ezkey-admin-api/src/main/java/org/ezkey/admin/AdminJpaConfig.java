@@ -38,7 +38,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
  * <p><b>Configured Entities:</b>
  *
  * <ul>
- *   <li><b>Integration Entities:</b> Integration, IntegrationI18n, EzkeyAdmin, AdminToken, ApiKey
+ *   <li><b>Integration Entities:</b> Integration, EzkeyAdmin, AdminToken, ApiKey
  *   <li><b>Auth Attempt Entities:</b> AuthAttempt and related entities
  *   <li><b>Enrollment Entities:</b> Enrollment and related entities
  *   <li><b>Audit Entities:</b> AuditLog and related entities

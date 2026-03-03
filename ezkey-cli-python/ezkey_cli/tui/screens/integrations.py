@@ -255,17 +255,8 @@ class IntegrationsScreen(Screen):
     self._load_integrations()
 
   def _extract_name(self, item: dict) -> str:
-    """Extract a display name from the i18n list."""
-    i18n = item.get("i18n", [])
-    if not isinstance(i18n, list) or not i18n:
-      return ""
-
-    for entry in i18n:
-      if entry.get("language") == "en" and entry.get("name"):
-        return entry.get("name")
-
-    first = i18n[0]
-    return first.get("name", "") if isinstance(first, dict) else ""
+    """Extract display name from integration (name or code fallback)."""
+    return item.get("name") or item.get("code") or ""
 
   def action_show_home(self) -> None:
     """Switch to home screen."""

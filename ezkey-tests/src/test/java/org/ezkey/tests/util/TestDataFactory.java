@@ -55,26 +55,20 @@ public class TestDataFactory {
    *
    * @param name Integration name
    * @param description Integration description
-   * @param logo Logo URL (optional)
    * @return Integration ID
    */
-  public Integer createIntegration(String name, String description, String logo) {
+  public Integer createIntegration(String name, String description) {
     log.debug("Creating integration: {}", name);
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
-
-    Map<String, Object> i18n = new HashMap<>();
-    i18n.put("language", "en"); // Fixed: DTO expects "language", not "lang"
-    i18n.put("name", name);
-    i18n.put("description", description);
 
     // Generate unique code using UUID to prevent conflicts across test runs
     String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
     Map<String, Object> request = new HashMap<>();
     request.put("code", code);
-    request.put("logo", logo != null ? logo : "https://example.com/logo.png");
-    request.put("i18n", new Object[] {i18n});
+    request.put("name", name);
+    request.put("description", description);
 
     Response response =
         given()
@@ -100,7 +94,7 @@ public class TestDataFactory {
    * @return Integration ID
    */
   public Integer createIntegration() {
-    return createIntegration("Test Integration", "Test Description", null);
+    return createIntegration("Test Integration", "Test Description");
   }
 
   /**
@@ -293,19 +287,13 @@ public class TestDataFactory {
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
-    Map<String, Object> i18n = new HashMap<>();
-    i18n.put("language", "en");
-    i18n.put("name", name);
-    i18n.put("description", "Test integration for tenant: " + tenantId);
-
     // Generate unique code using UUID to prevent conflicts across test runs
     String code = "test-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
     Map<String, Object> request = new HashMap<>();
     request.put("code", code);
-    request.put("logo", "https://example.com/logo.png");
-    request.put("tenantId", tenantId);
-    request.put("i18n", new Object[] {i18n});
+    request.put("name", name);
+    request.put("description", "Test integration for tenant: " + tenantId);
 
     Response response =
         given()
@@ -450,23 +438,18 @@ public class TestDataFactory {
         if (integration == null) {
           continue;
         }
-        // Get i18n array and extract name
-        java.util.List<Map<String, Object>> i18nList =
-            (java.util.List<Map<String, Object>>) integration.get("i18n");
-        if (i18nList != null && !i18nList.isEmpty()) {
-          String integrationName = (String) i18nList.get(0).get("name");
-          Integer integrationTenantId = (Integer) integration.get("tenantId");
+        String integrationName = (String) integration.get("name");
+        Integer integrationTenantId = (Integer) integration.get("tenantId");
 
-          // Match name and tenant
-          boolean tenantMatch =
-              (tenantId == null && integrationTenantId == null)
-                  || (tenantId != null && tenantId.equals(integrationTenantId));
+        // Match name and tenant
+        boolean tenantMatch =
+            (tenantId == null && integrationTenantId == null)
+                || (tenantId != null && tenantId.equals(integrationTenantId));
 
-          if (name.equals(integrationName) && tenantMatch) {
-            Integer integrationId = (Integer) integration.get("id");
-            log.debug("Found existing integration: {} with ID: {}", name, integrationId);
-            return integrationId;
-          }
+        if (name.equals(integrationName) && tenantMatch) {
+          Integer integrationId = (Integer) integration.get("id");
+          log.debug("Found existing integration: {} with ID: {}", name, integrationId);
+          return integrationId;
         }
       }
     }
@@ -476,7 +459,7 @@ public class TestDataFactory {
     if (tenantId != null) {
       return createIntegrationForTenant(name, tenantId, adminToken);
     } else {
-      return createIntegration(name, "Test integration", null);
+      return createIntegration(name, "Test integration");
     }
   }
 }

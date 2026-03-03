@@ -116,17 +116,11 @@ class EnrollmentControllerTest {
   @BeforeEach
   void setUp() {
     // Setup bind request test data - Using record constructor
-    bindRequestDto =
-        new EnrollmentBindRequestDto(
-            123, // enrollmentId
-            "test-proof-token", // enrollmentProofToken
-            "en" // language
-            );
+    bindRequestDto = new EnrollmentBindRequestDto(123, "test-proof-token");
 
     bindRequest = new EnrollmentBindRequest();
     bindRequest.setEnrollmentId(123);
     bindRequest.setEnrollmentProofToken("test-proof-token");
-    bindRequest.setLanguage("en");
 
     bindResponse = new EnrollmentBindResponse();
     bindResponse.setEnrollmentId(123);
@@ -135,7 +129,7 @@ class EnrollmentControllerTest {
 
     bindResponseDto =
         new EnrollmentBindResponseDto(
-            123, "test-public-key", "test-proof-token", null, null, null, null, null, null, null);
+            123, "test-public-key", "test-proof-token", null, null, null, null, null, null);
 
     // Setup verify request test data
     verifyRequestDto =
@@ -181,11 +175,7 @@ class EnrollmentControllerTest {
   void bind_WhenInvalidEnrollmentId_ShouldReturn400() throws Exception {
     // Arrange - Using record constructor
     EnrollmentBindRequestDto invalidRequestDto =
-        new EnrollmentBindRequestDto(
-            999, // enrollmentId
-            "invalid-proof-token", // enrollmentProofToken
-            "en" // language
-            );
+        new EnrollmentBindRequestDto(999, "invalid-proof-token");
 
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
@@ -226,8 +216,8 @@ class EnrollmentControllerTest {
   }
 
   @Test
-  @DisplayName("POST /api/v1/enrollments/bind - Should handle default language when not specified")
-  void bind_WhenMissingAcceptLanguage_ShouldUseDefaultLanguage() throws Exception {
+  @DisplayName("POST /api/v1/enrollments/bind - Should return 200 with valid bind request")
+  void bind_WhenValidRequest_ShouldReturn200() throws Exception {
     // Arrange
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);

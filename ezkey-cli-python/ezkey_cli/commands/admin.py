@@ -154,8 +154,7 @@ def get_integration(ctx, id):
     """
     Get detailed information about a specific integration.
 
-    Returns integration details including name, description, logo,
-    public key, and active status for all configured languages.
+    Returns integration details including name, description, and active status.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -177,13 +176,11 @@ def get_integration(ctx, id):
 @integration_group.command('create')
 @click.option('--code', type=str, required=True,
               help='Unique code for the integration (alphanumeric, hyphens, underscores). Example: web-portal, mobile-app')
-@click.option('--logo', help='Logo URL or path')
-@click.option('--name', type=str, help='Integration name (single language)')
-@click.option('--description', type=str, help='Integration description (single language)')
-@click.option('--language', type=str, default='en', help='Language code (default: en)')
-@click.option('--data', help='JSON data (or @filename for file input)')
+@click.option('--name', type=str, help='Integration display name')
+@click.option('--description', type=str, help='Integration description (optional)')
+@click.option('--data', help='JSON data (or @filename for file input). Overrides: code, name, description')
 @click.pass_context
-def create_integration(ctx, code, logo, name, description, language, data):
+def create_integration(ctx, code, name, description, data):
     """
     Create a new integration for MFA protection.
 
@@ -191,17 +188,8 @@ def create_integration(ctx, code, logo, name, description, language, data):
     by Ezkey MFA. Each integration has its own cryptographic keys and can have
     multiple enrollments (users/devices).
 
-    Example JSON:
-      {
-        "logo": "https://example.com/logo.png",
-        "i18n": [
-          {
-            "language": "en",
-            "name": "My Application",
-            "description": "My application description"
-          }
-        ]
-      }
+    Example JSON (--data):
+      {"code": "my-app", "name": "My Application", "description": "Optional description"}
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -223,25 +211,10 @@ def create_integration(ctx, code, logo, name, description, language, data):
     else:
         json_data = {}
 
-    # Add code (required)
-    json_data['code'] = code
-
-    # Add logo if provided
-    if logo:
-        json_data['logo'] = logo
-
-    if name or description:
-        i18n_entry = {
-            'language': language or 'en',
-            'name': name or '',
-            'description': description or ''
-        }
-        json_data.setdefault('i18n', [])
-        if isinstance(json_data.get('i18n'), list):
-            json_data['i18n'].append(i18n_entry)
-        else:
-            OutputUtils.error("Invalid i18n format in --data; expected a list")
-            return
+    # Required code (from option or --data)
+    json_data['code'] = json_data.get('code') or code
+    json_data['name'] = json_data.get('name') or name or ''
+    json_data['description'] = json_data.get('description') if json_data.get('description') is not None else description
 
     url = f"{admin_url}/api/v1/integrations"
     OutputUtils.verbose(f"POST {url}", verbose)

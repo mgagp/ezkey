@@ -6,12 +6,7 @@ import type { Integration } from '@/types/models';
 
 /** Returns the best display name for an integration, trying English first, then French, then code. */
 export function getIntegrationName(integration: Integration): string {
-  return (
-    integration.i18n.find((i) => i.language === 'en')?.name ??
-    integration.i18n.find((i) => i.language === 'fr')?.name ??
-    integration.i18n[0]?.name ??
-    integration.code
-  );
+  return integration.name ?? integration.code;
 }
 
 /**

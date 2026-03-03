@@ -52,8 +52,6 @@ The dashboard works with the standard Ezkey database schema:
 - `ezkey_integration` - Application integrations
 - `ezkey_enrollment` - Device enrollments  
 - `ezkey_auth_attempt` - Authentication attempts
-- `ezkey_integration_i18n` - Internationalization data
-
 ## 🔧 Customization
 
 All SQL queries are easily customizable:

@@ -170,7 +170,7 @@ class DatabaseHelper:
 
     def find_integration_id_by_name(self, integration_name: str) -> Optional[int]:
         """
-        Find integration ID by name (i18n).
+        Find integration ID by name.
 
         Note: This is a simple lookup. For more complex queries, use execute_query directly.
 
@@ -183,9 +183,8 @@ class DatabaseHelper:
         # SQL injection protection
         safe_name = integration_name.replace("'", "''")
         sql_query = (
-            f"SELECT i.integration_id FROM ezkey_integration i "
-            f"JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id "
-            f"WHERE i18n.integration_i18n_name = '{safe_name}' LIMIT 1;"
+            f"SELECT integration_id FROM ezkey_integration "
+            f"WHERE integration_name = '{safe_name}' LIMIT 1;"
         )
         result = self.execute_query_single_value(sql_query)
         return int(result) if result else None

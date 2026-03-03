@@ -20,7 +20,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Instant;
-import java.util.Map;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,7 +234,6 @@ public class DemoDeviceEnrollmentWriter {
       // Step 2: Get integration details if integrationId is present
       String integrationName = null;
       String integrationDescription = null;
-      String integrationLogo = null;
 
       if (integrationId != null && integrationId > 0) {
         log.info("   Fetching integration details from Admin API...");
@@ -250,19 +248,8 @@ public class DemoDeviceEnrollmentWriter {
                 .response();
 
         if (integrationResponse.getStatusCode() == 200) {
-          // Extract i18n fields for language "en"
-          var i18nList = integrationResponse.jsonPath().getList("i18n");
-          if (i18nList != null && !i18nList.isEmpty()) {
-            // Find first i18n entry (or filter by language "en" if available)
-            var firstI18n = i18nList.get(0);
-            if (firstI18n instanceof Map) {
-              @SuppressWarnings("unchecked")
-              Map<String, Object> i18nMap = (Map<String, Object>) firstI18n;
-              integrationName = (String) i18nMap.get("name");
-              integrationDescription = (String) i18nMap.get("description");
-              integrationLogo = (String) i18nMap.get("logo");
-            }
-          }
+          integrationName = integrationResponse.jsonPath().getString("name");
+          integrationDescription = integrationResponse.jsonPath().getString("description");
           log.info("   Integration Name: {}", integrationName);
         } else {
           log.warn(
@@ -289,7 +276,6 @@ public class DemoDeviceEnrollmentWriter {
       enrollmentJson.put("createdAt", Instant.now().toString());
       enrollmentJson.putNull("integrationName");
       enrollmentJson.putNull("integrationDescription");
-      enrollmentJson.putNull("integrationLogo");
 
       // Override integration fields if integration details were fetched
       if (integrationId != null && integrationId > 0) {
@@ -299,9 +285,6 @@ public class DemoDeviceEnrollmentWriter {
         }
         if (integrationDescription != null) {
           enrollmentJson.put("integrationDescription", integrationDescription);
-        }
-        if (integrationLogo != null) {
-          enrollmentJson.put("integrationLogo", integrationLogo);
         }
       }
 

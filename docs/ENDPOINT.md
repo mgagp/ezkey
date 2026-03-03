@@ -199,7 +199,6 @@ Content-Type: application/json
   "integrationPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
-  "integrationLogo": "https://acme.com/logo.png",
   "enrollmentName": "John's iPhone"
 }
 ```

@@ -42,8 +42,6 @@ import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationCreateResponseDto;
-import org.ezkey.integration.dto.IntegrationI18nCreateDto;
-import org.ezkey.integration.dto.IntegrationI18nResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -110,7 +108,6 @@ public class AdminNativeConfiguration {
           .registerType(org.ezkey.authattempt.domain.entity.AuthAttempt.class)
           .registerType(org.ezkey.enrollment.domain.entity.Enrollment.class)
           .registerType(org.ezkey.integration.domain.entity.Integration.class)
-          .registerType(org.ezkey.integration.domain.entity.IntegrationI18n.class)
           .registerType(org.ezkey.integration.domain.entity.ApiKey.class)
           .registerType(org.ezkey.integration.domain.entity.EzkeyAdmin.class)
           .registerType(org.ezkey.integration.domain.entity.Tenant.class)
@@ -125,9 +122,7 @@ public class AdminNativeConfiguration {
           .reflection()
           .registerType(IntegrationCreateRequestDto.class)
           .registerType(IntegrationCreateResponseDto.class)
-          .registerType(IntegrationResponseDto.class)
-          .registerType(IntegrationI18nCreateDto.class)
-          .registerType(IntegrationI18nResponseDto.class);
+          .registerType(IntegrationResponseDto.class);
 
       // Register AuthAttempt DTOs for reflection
       hints
@@ -211,11 +206,8 @@ public class AdminNativeConfiguration {
               org.springframework.aot.hint.TypeReference.of(IntegrationCreateRequestDto.class))
           .registerType(
               org.springframework.aot.hint.TypeReference.of(IntegrationCreateResponseDto.class))
-          .registerType(org.springframework.aot.hint.TypeReference.of(IntegrationResponseDto.class))
           .registerType(
-              org.springframework.aot.hint.TypeReference.of(IntegrationI18nCreateDto.class))
-          .registerType(
-              org.springframework.aot.hint.TypeReference.of(IntegrationI18nResponseDto.class));
+              org.springframework.aot.hint.TypeReference.of(IntegrationResponseDto.class));
 
       // Register serialization hints for Jackson - AuthAttempt DTOs
       hints
@@ -310,9 +302,6 @@ public class AdminNativeConfiguration {
           .registerType(
               org.springframework.aot.hint.TypeReference.of(
                   org.ezkey.integration.domain.entity.Integration.class))
-          .registerType(
-              org.springframework.aot.hint.TypeReference.of(
-                  org.ezkey.integration.domain.entity.IntegrationI18n.class))
           .registerType(
               org.springframework.aot.hint.TypeReference.of(
                   org.ezkey.integration.domain.entity.ApiKey.class))

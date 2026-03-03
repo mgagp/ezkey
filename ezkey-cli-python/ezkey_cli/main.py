@@ -96,7 +96,7 @@ def cli(ctx, admin_url, auth_url, crypto_url, no_pretty, timeout, verbose, tui):
         click.echo(ctx.get_help())
         click.echo("\nExamples:")
         click.echo("  $ ezkey configure --admin-url http://localhost:9080 --auth-url http://localhost:8080")
-        click.echo("  $ ezkey admin integration create --name \"Test App\" --logo \"logo.png\"")
+        click.echo("  $ ezkey admin integration create --name \"Test App\" --code test-app")
         click.echo("  $ ezkey admin integration list")
         click.echo(
             "  $ ezkey auth enrollment bind --enrollment-id 123 "
