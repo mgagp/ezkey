@@ -31,6 +31,7 @@ public enum EventType {
   ADMIN_RECOVERY_USE,
   ADMIN_CREATED, // New administrator provisioned (global or tenant)
   ADMIN_DEACTIVATED, // Administrator deactivated + tokens revoked (+ reason when provided)
+  ADMIN_ACTIVATED, // Administrator reactivated (reversible after deactivation)
 
   // Enrollment events
   ENROLLMENT_CREATED,

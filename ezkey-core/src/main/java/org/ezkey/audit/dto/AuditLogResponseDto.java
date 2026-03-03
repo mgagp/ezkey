@@ -42,6 +42,7 @@ public class AuditLogResponseDto {
   private Integer enrollmentId;
   private Integer authAttemptId;
   private Integer tenantId;
+  private Integer targetAdminId;
   private String eventDetails;
   private String errorMessage;
   private String instanceId;
@@ -149,6 +150,14 @@ public class AuditLogResponseDto {
 
   public void setTenantId(Integer tenantId) {
     this.tenantId = tenantId;
+  }
+
+  public Integer getTargetAdminId() {
+    return targetAdminId;
+  }
+
+  public void setTargetAdminId(Integer targetAdminId) {
+    this.targetAdminId = targetAdminId;
   }
 
   public String getEventDetails() {

@@ -238,6 +238,12 @@ public final class AdminAuditConstants {
    */
   public static final String ADMIN_DEACTIVATION_FAILED = "admin_deactivation_failed";
 
+  /** Audit action for successful administrator activation (reactivation). */
+  public static final String ADMIN_ACTIVATED = "admin_activated";
+
+  /** Audit action for failed administrator activation (not found). */
+  public static final String ADMIN_ACTIVATION_FAILED = "admin_activation_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Encryption Key Actions
   // ═══════════════════════════════════════════════════════════════════════════════════════════════

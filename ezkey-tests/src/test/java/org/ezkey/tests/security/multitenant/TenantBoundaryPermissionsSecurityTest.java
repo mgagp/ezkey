@@ -293,6 +293,34 @@ public class TenantBoundaryPermissionsSecurityTest extends AbstractSecurityTest 
             .isEqualTo(tenantAId);
       }
     }
+
+    // Opportunistic: GET /admins/{id} returns same shape (adminId, lastLoginAt) for TenantAdmin
+    // scope
+    Map<String, Object> firstInTenant = null;
+    for (Map<String, Object> a : admins) {
+      if (tenantAId.equals(a.get("tenantId"))) {
+        firstInTenant = a;
+        break;
+      }
+    }
+    if (firstInTenant != null) {
+      Object adminIdObj = firstInTenant.get("adminId");
+      Integer firstAdminId = adminIdObj instanceof Number n ? n.intValue() : (Integer) adminIdObj;
+      Response getOne =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + tenantAdminAToken)
+              .when()
+              .get("/admins/" + firstAdminId)
+              .then()
+              .extract()
+              .response();
+      assertThat(getOne.getStatusCode()).isEqualTo(200);
+      assertThat(getOne.jsonPath().getInt("adminId")).isEqualTo(firstAdminId);
+      assertThat(getOne.jsonPath().getMap("$"))
+          .as("GET /admins/{id} response should include lastLoginAt (value may be null)")
+          .containsKey("lastLoginAt");
+    }
   }
 
   // ========== SCOPE VERIFICATION TESTS ==========

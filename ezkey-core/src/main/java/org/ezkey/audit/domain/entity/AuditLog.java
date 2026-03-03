@@ -100,6 +100,14 @@ public class AuditLog {
   @Column(name = "tenant_id")
   private Integer tenantId;
 
+  /**
+   * Admin ID that is the subject of the event (e.g. created, deactivated, or activated). Used for
+   * querying all events affecting a given administrator. Null for non-admin-lifecycle events.
+   * Included in HMAC canonical form as field 16.
+   */
+  @Column(name = "target_admin_id")
+  private Integer targetAdminId;
+
   @Column(name = "event_details", columnDefinition = "TEXT")
   private String eventDetails;
 
@@ -208,6 +216,11 @@ public class AuditLog {
 
     public Builder tenantId(Integer tenantId) {
       auditLog.tenantId = tenantId;
+      return this;
+    }
+
+    public Builder targetAdminId(Integer targetAdminId) {
+      auditLog.targetAdminId = targetAdminId;
       return this;
     }
 
@@ -379,6 +392,14 @@ public class AuditLog {
 
   public void setTenantId(Integer tenantId) {
     this.tenantId = tenantId;
+  }
+
+  public Integer getTargetAdminId() {
+    return targetAdminId;
+  }
+
+  public void setTargetAdminId(Integer targetAdminId) {
+    this.targetAdminId = targetAdminId;
   }
 
   public String getEventDetails() {

@@ -552,6 +552,42 @@ public class AdminProvisioningService {
   }
 
   /**
+   * Retrieves a single administrator by ID with tenant-based authorization.
+   *
+   * <p>GlobalAdmin can retrieve any admin. TenantAdmin can only retrieve admins from their own
+   * tenant.
+   *
+   * @param adminId the administrator ID to retrieve
+   * @param requesterPrincipal the principal of the requesting administrator
+   * @return the administrator entity
+   * @throws ResourceNotFoundException if admin not found
+   * @throws IllegalArgumentException if requester does not have permission to access this admin
+   */
+  @Transactional(readOnly = true)
+  public EzkeyAdmin getAdminById(Integer adminId, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    if (requesterPrincipal.isGlobalAdmin()) {
+      return admin;
+    }
+    if (requesterPrincipal.isTenantAdmin()) {
+      Integer requesterTenantId = requesterPrincipal.tenantId();
+      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
+        throw new IllegalArgumentException(
+            "Tenant administrators can only access admins in their tenant");
+      }
+    }
+    // Force-load lazy associations and fields used by the controller while still in transaction
+    admin.getTenant();
+    admin.getLastLoginAt();
+    return admin;
+  }
+
+  /**
    * Retrieves onboarding credentials for an administrator.
    *
    * <p>This method retrieves sensitive onboarding credentials (enrollment proof token, challenge
@@ -720,6 +756,35 @@ public class AdminProvisioningService {
         adminToDeactivate.getUsername(),
         principal.adminId(),
         tokensRevoked);
+  }
+
+  /**
+   * Activates (reactivates) an administrator account.
+   *
+   * <p>Only global administrators can activate. The operation sets {@code active = true}. It is
+   * idempotent if the admin is already active. No tokens are re-created; the admin must log in
+   * again to obtain a new bearer token.
+   *
+   * @param adminId the ID of the administrator to activate
+   * @param principal the admin principal performing the activation (must be GlobalAdmin)
+   * @throws ResourceNotFoundException if the administrator is not found (404)
+   */
+  @Transactional
+  public void activateAdmin(Integer adminId, AdminPrincipal principal) {
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    if (admin.getActive()) {
+      logger.info("Admin {} is already active", adminId);
+      return; // Idempotent
+    }
+
+    admin.setActive(true);
+    adminRepository.save(admin);
+
+    logger.info("✅ Admin {} activated by admin {}", admin.getUsername(), principal.adminId());
   }
 
   /**

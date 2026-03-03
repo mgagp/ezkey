@@ -13,6 +13,9 @@ package org.ezkey.admin.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -23,7 +26,9 @@ import java.util.List;
 import org.ezkey.admin.config.AdminSecurityProperties;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -485,6 +490,110 @@ class AdminProvisioningServiceTest {
       verify(tokenRepository).deactivateAllTokensForAdmin(2);
       assertFalse(target.getActive());
       // Note: No check for min tenant admin limit - this is allowed per requirements
+    }
+  }
+
+  @Nested
+  @DisplayName("Get Admin By ID Tests")
+  class GetAdminByIdTests {
+
+    @Test
+    @DisplayName("GlobalAdmin can get any admin")
+    void globalAdminCanGetAnyAdmin() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+
+      EzkeyAdmin result = service.getAdminById(2, principal);
+
+      assertNotNull(result);
+      assertSame(tenantAdmin1, result);
+      verify(adminRepository).findById(2);
+    }
+
+    @Test
+    @DisplayName("TenantAdmin can get admin in own tenant")
+    void tenantAdminCanGetAdminInOwnTenant() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+
+      EzkeyAdmin result = service.getAdminById(2, principal);
+
+      assertNotNull(result);
+      assertSame(tenantAdmin1, result);
+      verify(adminRepository).findById(2);
+    }
+
+    @Test
+    @DisplayName("TenantAdmin cannot get admin from other tenant")
+    void tenantAdminCannotGetAdminFromOtherTenant() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(4)).thenReturn(java.util.Optional.of(otherTenantAdmin));
+
+      assertThrows(IllegalArgumentException.class, () -> service.getAdminById(4, principal));
+      verify(adminRepository).findById(4);
+    }
+
+    @Test
+    @DisplayName("getAdminById throws when admin not found")
+    void getAdminByIdThrowsWhenNotFound() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      when(adminRepository.findById(999)).thenReturn(java.util.Optional.empty());
+
+      assertThrows(ResourceNotFoundException.class, () -> service.getAdminById(999, principal));
+      verify(adminRepository).findById(999);
+    }
+  }
+
+  @Nested
+  @DisplayName("Activate Admin Tests")
+  class ActivateAdminTests {
+
+    @Test
+    @DisplayName("activateAdmin sets active true when admin was inactive")
+    void activateAdminSetsActiveWhenInactive() {
+      EzkeyAdmin target = new EzkeyAdmin();
+      target.setAdminId(2);
+      target.setUsername("admin2");
+      target.setAdminType(AdminType.GLOBAL_ADMIN);
+      target.setActive(false);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
+
+      service.activateAdmin(2, principal);
+
+      assertTrue(target.getActive());
+      verify(adminRepository).findById(2);
+      verify(adminRepository).save(target);
+    }
+
+    @Test
+    @DisplayName("activateAdmin is idempotent when already active")
+    void activateAdminIdempotentWhenAlreadyActive() {
+      EzkeyAdmin target = new EzkeyAdmin();
+      target.setAdminId(2);
+      target.setUsername("admin2");
+      target.setAdminType(AdminType.GLOBAL_ADMIN);
+      target.setActive(true);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
+
+      service.activateAdmin(2, principal);
+
+      assertTrue(target.getActive());
+      verify(adminRepository).findById(2);
+      verify(adminRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("activateAdmin throws when admin not found")
+    void activateAdminThrowsWhenNotFound() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      when(adminRepository.findById(999)).thenReturn(java.util.Optional.empty());
+
+      assertThrows(ResourceNotFoundException.class, () -> service.activateAdmin(999, principal));
+      verify(adminRepository).findById(999);
     }
   }
 }

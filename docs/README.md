@@ -24,6 +24,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[../SECURITY.md](../SECURITY.md)** - Security policy and vulnerability disclosure
 - **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** - SOC2 compliance preparation roadmap
 - **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** - Quick wins for first 30 days of SOC2 preparation
+- **[ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md](ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md)** - Admin provisioning, deactivation, reactivation, and audit (SOC 2–oriented)
 
 ---
 

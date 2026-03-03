@@ -52,6 +52,7 @@ CREATE TABLE ezkey_audit_log (
     auth_attempt_id INT,
     auth_attempt_created_at TIMESTAMPTZ,
     tenant_id INT REFERENCES ezkey_tenant(tenant_id) ON DELETE SET NULL,
+    target_admin_id INT REFERENCES ezkey_admin(admin_id) ON DELETE SET NULL,
     -- Foreign key to partitioned table requires composite key reference
     -- PostgreSQL requires FK to partitioned table to reference composite primary key
     FOREIGN KEY (auth_attempt_id, auth_attempt_created_at)
@@ -97,6 +98,8 @@ COMMENT ON COLUMN ezkey_audit_log.auth_attempt_created_at IS
 'Foreign key (part 2) to authentication attempt - created_at timestamp from referenced auth_attempt. Required for FK to partitioned table (ezkey_auth_attempt) which uses composite primary key (auth_attempt_id, created_at). SET NULL on auth attempt deletion to preserve audit trail';
 COMMENT ON COLUMN ezkey_audit_log.tenant_id IS
 'Foreign key to tenant involved in the event - SET NULL on tenant deletion to preserve audit trail';
+COMMENT ON COLUMN ezkey_audit_log.target_admin_id IS
+'Admin ID that is the subject of the event (e.g. created, deactivated, or activated). Used for querying all events affecting a given administrator. NULL for non-admin-lifecycle events. SET NULL on admin deletion to preserve audit trail.';
 COMMENT ON COLUMN ezkey_audit_log.event_details IS
 'Additional event-specific details in structured format - used for forensic analysis and debugging';
 COMMENT ON COLUMN ezkey_audit_log.error_message IS
@@ -175,6 +178,11 @@ WHERE enrollment_id IS NOT NULL;
 CREATE INDEX idx_audit_log_admin
 ON ezkey_audit_log(admin_id, created_at DESC)
 WHERE admin_id IS NOT NULL;
+
+-- Index for target admin tracking (admin lifecycle events)
+CREATE INDEX idx_audit_log_target_admin
+ON ezkey_audit_log(target_admin_id)
+WHERE target_admin_id IS NOT NULL;
 
 -- JSONB GIN indexes for encryption operations (added by V19)
 -- These indexes enable efficient queries on event_details JSONB field

@@ -147,7 +147,9 @@ public class AuditLogService {
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
-   * @param adminId optional admin ID filter
+   * @param adminId optional admin ID filter (actor who performed the action)
+   * @param targetAdminId optional target admin ID filter (admin who is the subject of the event,
+   *     e.g. created, deactivated, or activated)
    * @param requesterTenantId the tenant ID of the requesting admin; {@code null} for Global Admin
    *     (no tenant restriction), non-null for Tenant Admin (strict tenant filtering)
    * @param filterTenantId optional explicit tenant filter for Global Admin; ignored when {@code
@@ -162,6 +164,7 @@ public class AuditLogService {
       ApiName apiName,
       Integer enrollmentId,
       Integer adminId,
+      Integer targetAdminId,
       Integer requesterTenantId,
       Integer filterTenantId,
       Pageable pageable) {
@@ -196,6 +199,10 @@ public class AuditLogService {
 
           if (adminId != null) {
             predicates.add(cb.equal(root.get("adminId"), adminId));
+          }
+
+          if (targetAdminId != null) {
+            predicates.add(cb.equal(root.get("targetAdminId"), targetAdminId));
           }
 
           // Force ordering by createdAt DESC if not specified in pageable

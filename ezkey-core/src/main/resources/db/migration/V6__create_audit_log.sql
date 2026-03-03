@@ -38,6 +38,7 @@ CREATE TABLE ezkey_audit_log (
     enrollment_id INT REFERENCES ezkey_enrollment(enrollment_id) ON DELETE SET NULL,
     auth_attempt_id INT REFERENCES ezkey_auth_attempt(auth_attempt_id) ON DELETE SET NULL,
     tenant_id INT REFERENCES ezkey_tenant(tenant_id) ON DELETE SET NULL,
+    target_admin_id INT REFERENCES ezkey_admin(admin_id) ON DELETE SET NULL,
 
     -- Event details and errors
     event_details TEXT,
@@ -66,6 +67,7 @@ COMMENT ON COLUMN ezkey_audit_log.integration_id IS 'Foreign key to integration 
 COMMENT ON COLUMN ezkey_audit_log.enrollment_id IS 'Foreign key to enrollment involved in the event - SET NULL on enrollment deletion to preserve audit trail';
 COMMENT ON COLUMN ezkey_audit_log.auth_attempt_id IS 'Foreign key to authentication attempt involved in the event - SET NULL on auth attempt deletion to preserve audit trail';
 COMMENT ON COLUMN ezkey_audit_log.tenant_id IS 'Foreign key to tenant involved in the event - SET NULL on tenant deletion to preserve audit trail';
+COMMENT ON COLUMN ezkey_audit_log.target_admin_id IS 'Admin ID that is the subject of the event (e.g. created, deactivated, or activated). Used for querying all events affecting a given administrator. NULL for non-admin-lifecycle events. SET NULL on admin deletion to preserve audit trail.';
 COMMENT ON COLUMN ezkey_audit_log.event_details IS 'Additional event-specific details in structured format - used for forensic analysis and debugging';
 COMMENT ON COLUMN ezkey_audit_log.error_message IS 'Error message for failed or error status events - used for troubleshooting and security analysis';
 COMMENT ON COLUMN ezkey_audit_log.created_at IS 'Timestamp with timezone when the event was recorded - immutable value for compliance tracking';
@@ -94,6 +96,9 @@ CREATE INDEX idx_audit_log_enrollment ON ezkey_audit_log(enrollment_id) WHERE en
 
 -- Index for admin tracking
 CREATE INDEX idx_audit_log_admin ON ezkey_audit_log(admin_id) WHERE admin_id IS NOT NULL;
+
+-- Index for target admin tracking (admin lifecycle events)
+CREATE INDEX idx_audit_log_target_admin ON ezkey_audit_log(target_admin_id) WHERE target_admin_id IS NOT NULL;
 
 -- ============================================================================
 -- Migration Complete

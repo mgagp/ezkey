@@ -55,3 +55,4 @@ mvn -DskipTests package -pl ezkey-admin-api
 - Keep REST semantics consistent with `docs/ENDPOINT.md`.
 - Update any Postman collections if they are impacted (`postman/collections/`).
 - Prefer adding focused docs to an existing README rather than creating a new `.md`.
+- **OpenAPI spec files under `specs/` are generated.** Do not edit `specs/**/openapi-spec.json` (or other generated spec files) manually. The workflow is: implement in Java + annotations → run tests → clean start (Docker) → run `scripts/update-specs.sh` (or `.bat`). See the project Cursor rule **OpenAPI Specifications — Do Not Edit Manually** (`.cursor/rules/openapi-specs.mdc`).

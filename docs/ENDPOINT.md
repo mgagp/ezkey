@@ -819,7 +819,8 @@ Authorization: Bearer ezkey_admin_token...
       "adminType": "GLOBAL_ADMIN",
       "tenantId": null,
       "active": true,
-      "createdAt": "2025-12-26T10:00:00Z"
+      "createdAt": "2025-12-26T10:00:00Z",
+      "lastLoginAt": "2025-12-28T09:15:00Z"
     }
   ],
   "totalElements": 1,
@@ -831,10 +832,87 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
+**Response fields:** `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). Useful for access reviews and SOC 2 procedures.
+
 **Status Codes:**
 - 200: List of administrators retrieved successfully
 - 401: Unauthorized - admin token required
 - 403: Forbidden - not an administrator
+- 500: Internal server error
+
+---
+
+### e2) Get Administrator by ID
+
+**GET /api/v1/admins/{id}**
+
+Returns a single administrator by ID. Same shape as a list item (including `lastLoginAt`).
+
+**Permissions:** GlobalAdmin can access any admin. TenantAdmin can only access admins in their own tenant.
+
+**Request:**
+```http
+GET /api/v1/admins/2
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `active`, `createdAt`, `lastLoginAt`.
+
+**Status Codes:**
+- 200: Administrator retrieved successfully
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not authorized for this admin
+- 404: Administrator not found
+- 500: Internal server error
+
+---
+
+### e3) Deactivate Administrator
+
+**POST /api/v1/admins/{id}/deactivate**
+
+Deactivates an administrator account and revokes all active tokens. GlobalAdmin only. Enforces minimum global admin count; self-deactivation is not allowed. Idempotent if the admin is already inactive.
+
+**Query Parameters:**
+- `reason` (optional, 10–500 characters): Audit justification for the deactivation.
+
+**Request:**
+```http
+POST /api/v1/admins/2/deactivate?reason=Offboarding%20per%20HR%20request
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response:** 204 No Content.
+
+**Status Codes:**
+- 204: Administrator deactivated successfully
+- 400: Self-deactivation attempted or would violate minimum global admin limit (RFC 9457 Problem Detail)
+- 401: Unauthorized - admin token required
+- 403: Forbidden - caller is not a global administrator
+- 404: Administrator not found
+- 500: Internal server error
+
+---
+
+### e4) Activate Administrator
+
+**POST /api/v1/admins/{id}/activate**
+
+Reactivates a previously deactivated administrator. GlobalAdmin only. Sets `active = true`. Idempotent if the admin is already active. The admin must log in again to obtain a new bearer token.
+
+**Request:**
+```http
+POST /api/v1/admins/2/activate
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response:** 204 No Content.
+
+**Status Codes:**
+- 204: Administrator activated successfully
+- 401: Unauthorized - admin token required
+- 403: Forbidden - caller is not a global administrator
+- 404: Administrator not found
 - 500: Internal server error
 
 ---

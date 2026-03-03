@@ -46,6 +46,7 @@ import java.time.OffsetDateTime;
  * <ul>
  *   <li><b>active:</b> Flag indicating if the administrator is currently active
  *   <li><b>createdAt:</b> Timestamp when the administrator was created
+ *   <li><b>lastLoginAt:</b> Timestamp of last successful login (null if never logged in)
  * </ul>
  *
  * <p><b>Security Note:</b> This DTO excludes sensitive information like recovery codes, enrollment
@@ -64,6 +65,7 @@ import java.time.OffsetDateTime;
  * @param tenantId Tenant ID (null for global admins)
  * @param active Flag indicating if the administrator is currently active
  * @param createdAt Timestamp when the administrator was created (with timezone)
+ * @param lastLoginAt Timestamp of last successful login (null if never logged in)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.EzkeyAdmin
@@ -88,4 +90,9 @@ public record AdminResponseDto(
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")
-        OffsetDateTime createdAt) {}
+        OffsetDateTime createdAt,
+    @Schema(
+            description = "Timestamp of last successful login (null if never logged in)",
+            example = "2025-10-20T09:15:00Z",
+            nullable = true)
+        OffsetDateTime lastLoginAt) {}

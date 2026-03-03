@@ -175,6 +175,7 @@ public class AdminProvisioningController {
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
               .adminId(principal.adminId())
+              .targetAdminId(result.admin().getAdminId())
               .eventDetails(
                   "Admin ID: "
                       + result.admin().getAdminId()
@@ -277,6 +278,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_TENANT_CREATED,
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
+              .targetAdminId(result.admin().getAdminId())
               .adminId(principal.adminId())
               .eventDetails(
                   "Admin ID: "
@@ -367,9 +369,62 @@ public class AdminProvisioningController {
                     admin.getAdminType().name(),
                     admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
                     admin.getActive(),
-                    admin.getCreatedAt()));
+                    admin.getCreatedAt(),
+                    admin.getLastLoginAt()));
 
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retrieves a single administrator by ID.
+   *
+   * <p><b>Authorization:</b> GlobalAdmin can retrieve any admin. TenantAdmin can only retrieve
+   * admins from their own tenant.
+   *
+   * @param id the administrator ID
+   * @param auth the authentication context
+   * @return ResponseEntity with administrator details (200 OK) or 404 Not Found
+   */
+  @GetMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get administrator by ID",
+      description =
+          "Returns a single administrator by ID. GlobalAdmin can access any admin. "
+              + "TenantAdmin can only access admins in their tenant.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Administrator retrieved successfully"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found")
+  })
+  public ResponseEntity<AdminResponseDto> getAdminById(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth) {
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      EzkeyAdmin admin = provisioningService.getAdminById(id, principal);
+      AdminResponseDto response =
+          new AdminResponseDto(
+              admin.getAdminId(),
+              admin.getUsername(),
+              admin.getEmail(),
+              admin.getFirstName(),
+              admin.getLastName(),
+              admin.getAdminType().name(),
+              admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
+              admin.getActive(),
+              admin.getCreatedAt(),
+              admin.getLastLoginAt());
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.notFound().build();
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
   }
 
   /**
@@ -593,6 +648,7 @@ public class AdminProvisioningController {
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
               .adminId(principal.adminId())
+              .targetAdminId(id)
               .reason(reason)
               .eventDetails("Admin ID: " + id)
               .build());
@@ -606,6 +662,7 @@ public class AdminProvisioningController {
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
               .adminId(principal.adminId())
+              .targetAdminId(id)
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -618,6 +675,72 @@ public class AdminProvisioningController {
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
               .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage("Admin not found: " + id)
+              .build());
+      throw e;
+    }
+  }
+
+  /**
+   * Activates (reactivates) an administrator account.
+   *
+   * <p>Only global administrators can activate. Sets {@code active = true}. Idempotent if already
+   * active. The admin must log in again to obtain a new bearer token.
+   *
+   * @param id the administrator ID to activate
+   * @param auth the authentication context
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity with 204 No Content on success
+   */
+  @PostMapping("/{id}/activate")
+  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
+  @Operation(
+      summary = "Activate an administrator",
+      description =
+          "Reactivates a deactivated administrator account. GlobalAdmin only. Idempotent if already"
+              + " active. Admin must log in again to obtain a new token.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "Administrator activated successfully"),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - caller is not a global administrator"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found")
+  })
+  public ResponseEntity<Void> activateAdmin(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || !principal.isGlobalAdmin()) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      provisioningService.activateAdmin(id, principal);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATED,
+                  AdminAuditConstants.ADMIN_ACTIVATED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .eventDetails("Admin ID: " + id)
+              .build());
+      return ResponseEntity.noContent().build();
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATED,
+                  AdminAuditConstants.ADMIN_ACTIVATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
               .errorMessage("Admin not found: " + id)
               .build());
       throw e;

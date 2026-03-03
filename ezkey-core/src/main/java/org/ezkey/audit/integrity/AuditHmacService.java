@@ -257,6 +257,9 @@ public class AuditHmacService {
     // empty string)
     sb.append(FIELD_SEPARATOR);
     sb.append(nullSafe(entry.getReason()));
+    // Field 16 — target_admin_id (admin who is the subject of the event; null → empty string)
+    sb.append(FIELD_SEPARATOR);
+    sb.append(nullSafe(entry.getTargetAdminId()));
     return sb.toString();
   }
 

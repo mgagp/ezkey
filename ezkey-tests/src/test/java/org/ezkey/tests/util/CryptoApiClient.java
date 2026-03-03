@@ -27,12 +27,12 @@ import org.slf4j.LoggerFactory;
  * cryptographic operations needed in tests. All operations use the Crypto API REST endpoints, not
  * the ezkey-core crypto module.
  *
- * <p><b>RestAssured base URL:</b> Each method calls {@link RestAssuredTestConfig#configureForCryptoApi},
- * so RestAssured is left pointing at the Crypto API. If the test then performs Auth API or Admin API
- * requests (e.g. POST /enrollments/verify, POST /auth-attempts), it must call {@link
- * RestAssuredTestConfig#configureForAuthApi} or {@link RestAssuredTestConfig#configureForAdminApi}
- * before those requests; otherwise they will be sent to the Crypto API and fail (e.g. 500 / "No
- * static resource").
+ * <p><b>RestAssured base URL:</b> Each method calls {@link
+ * RestAssuredTestConfig#configureForCryptoApi}, so RestAssured is left pointing at the Crypto API.
+ * If the test then performs Auth API or Admin API requests (e.g. POST /enrollments/verify, POST
+ * /auth-attempts), it must call {@link RestAssuredTestConfig#configureForAuthApi} or {@link
+ * RestAssuredTestConfig#configureForAdminApi} before those requests; otherwise they will be sent to
+ * the Crypto API and fail (e.g. 500 / "No static resource").
  *
  * <p>Supported operations:
  *

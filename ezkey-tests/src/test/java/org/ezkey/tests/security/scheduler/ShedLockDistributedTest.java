@@ -48,9 +48,9 @@ import org.slf4j.LoggerFactory;
  *   <li>Test C: Verify failover - test recovery when instance crashes
  * </ul>
  *
- * <p><b>Elective:</b> Tagged as elective because ShedLock/scheduler code is stable and HA is not the
- * default run mode. Run on demand for spot-checks or before an HA deployment. Invocation: {@code
- * mvn test -pl ezkey-tests -P elective-tests} or {@code -Dgroups=elective}.
+ * <p><b>Elective:</b> Tagged as elective because ShedLock/scheduler code is stable and HA is not
+ * the default run mode. Run on demand for spot-checks or before an HA deployment. Invocation:
+ * {@code mvn test -pl ezkey-tests -P elective-tests} or {@code -Dgroups=elective}.
  *
  * @since 2025
  */
