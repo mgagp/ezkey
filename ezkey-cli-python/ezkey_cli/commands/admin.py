@@ -46,6 +46,7 @@ def integration_group(ctx):
               help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
 @click.option('--created-before', type=str,
               help='Filter by created timestamp (ISO-8601, e.g., 2025-01-31T12:00:00Z)')
+@click.option('--tenant-id', type=int, help='Filter by tenant ID (GlobalAdmin only)')
 @click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
 @click.option('--size', type=int, default=20, help='Results per page (default: 20)')
 @click.option('--sort', type=str, default='createdAt,desc',
@@ -58,6 +59,7 @@ def list_integrations(
     active,
     created_after,
     created_before,
+    tenant_id,
     page,
     size,
     sort,
@@ -76,6 +78,7 @@ def list_integrations(
     - Use --integration-name to filter by name
     - Use --active to filter by active flag
     - Use --created-after / --created-before for created timestamp range
+    - Use --tenant-id to filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)
 
     Sortable fields:
       id              - Integration ID
@@ -122,6 +125,8 @@ def list_integrations(
             query_params['createdAfter'] = created_after
         if created_before:
             query_params['createdBefore'] = created_before
+        if tenant_id is not None:
+            query_params['tenantId'] = tenant_id
 
         url = f"{admin_url}/api/v1/integrations"
         OutputUtils.verbose(f"GET {url}", verbose)

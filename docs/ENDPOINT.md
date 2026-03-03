@@ -505,6 +505,28 @@ GET /api/v1/admin/integrations
 Authorization: Bearer ezkey_abc123def456...
 ```
 
+#### Search Integrations
+
+**GET /api/v1/integrations**
+
+Retrieves integrations with optional filters and pagination. All filter parameters are optional.
+
+**Query Parameters:**
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Page size (default: 20)
+- `sort` (optional): Sort field and direction (e.g., `createdAt,desc`). Sortable fields: `id`, `createdAt`, `active`
+- `integrationName` (optional): Filter by integration name (partial match, case-insensitive)
+- `active` (optional): Filter by active flag (true/false)
+- `createdAfter` (optional): Filter integrations created after this timestamp (ISO-8601)
+- `createdBefore` (optional): Filter integrations created before this timestamp (ISO-8601)
+- `tenantId` (optional): Filter by tenant ID. **GlobalAdmin only**; when provided, limits results to that tenant. **Ignored for TenantAdmin** (they always see only their tenant).
+
+**Multi-Tenancy:**
+- **GlobalAdmin**: Sees all integrations by default; use `tenantId` to restrict to a specific tenant.
+- **TenantAdmin**: Sees only integrations in their tenant; `tenantId` query parameter is ignored.
+
+**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. System integrations are excluded from the listing.
+
 ---
 
 ## 👥 Administrator Provisioning

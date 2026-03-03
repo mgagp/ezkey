@@ -75,6 +75,15 @@ class FilterModal(ModalScreen):
         )
 
       with Vertical(classes="form_row"):
+        yield Label("Tenant ID (GlobalAdmin only):", classes="label")
+        tid = self.current_filters.get("tenant_id")
+        yield Input(
+            value=str(tid) if tid is not None else "",
+            placeholder="e.g., 1 or 2",
+            id="filter_tenant_id"
+        )
+
+      with Vertical(classes="form_row"):
         yield Checkbox(
             "Active Only",
             value=self.current_filters.get("active", False),
@@ -98,11 +107,17 @@ class FilterModal(ModalScreen):
   def _apply_filters(self) -> None:
     """Gather and return filter values."""
     name = self.query_one("#filter_name", Input).value.strip()
+    tenant_id_str = self.query_one("#filter_tenant_id", Input).value.strip()
     active = self.query_one("#filter_active", Checkbox).value
 
     filters = {}
     if name:
       filters["name"] = name
+    if tenant_id_str:
+      try:
+        filters["tenant_id"] = int(tenant_id_str)
+      except ValueError:
+        pass  # Skip invalid tenant ID
     if active:
       filters["active"] = True
 

@@ -270,7 +270,14 @@ class ApiClient:
       log.error(f"Logout failed: {e}", exc_info=True)
       return False
 
-  def get_integrations(self, page: int = 0, size: int = 100, name: str = None, active: bool = None) -> Optional[Dict[str, Any]]:
+  def get_integrations(
+      self,
+      page: int = 0,
+      size: int = 100,
+      name: str = None,
+      active: bool = None,
+      tenant_id: Optional[int] = None
+  ) -> Optional[Dict[str, Any]]:
     """
     Get list of integrations with optional filters.
 
@@ -279,6 +286,7 @@ class ApiClient:
         size: Page size
         name: Filter by name (partial match)
         active: Filter by active status
+        tenant_id: Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)
 
     Returns:
         Response with 'content' array and 'page' metadata
@@ -288,6 +296,8 @@ class ApiClient:
       params["integrationName"] = name
     if active is not None:
       params["active"] = active
+    if tenant_id is not None:
+      params["tenantId"] = tenant_id
 
     return self._get("/api/v1/integrations", params=params)
 

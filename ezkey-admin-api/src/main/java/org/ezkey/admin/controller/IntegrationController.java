@@ -159,6 +159,7 @@ public class IntegrationController {
    * @param active optional filter by active flag
    * @param createdAfter optional filter for integrations created after this timestamp
    * @param createdBefore optional filter for integrations created before this timestamp
+   * @param tenantId optional filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)
    * @param pageable pagination and sorting parameters (default: page=0, size=20,
    *     sort=createdAt,DESC)
    * @return ResponseEntity containing page of integration response DTOs with HTTP 200 status
@@ -168,7 +169,8 @@ public class IntegrationController {
       description =
           "Retrieves integrations with optional filters and pagination for administration "
               + "and compliance reporting. Supports dynamic sorting via ?sort=field,direction "
-              + "(e.g., ?sort=id,asc). Default sort is by creation date descending (newest first).")
+              + "(e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). "
+              + "Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Search completed successfully"),
@@ -196,17 +198,25 @@ public class IntegrationController {
       @Parameter(description = "Filter integrations created before this timestamp (ISO-8601)")
           @RequestParam(required = false)
           OffsetDateTime createdBefore,
+      @Parameter(
+              description =
+                  "Filter by tenant ID. GlobalAdmin only; when provided limits results to that tenant. Ignored for TenantAdmin.")
+          @RequestParam(required = false)
+          Integer tenantId,
       @ParameterObject
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
-    // Extract tenant ID from authentication for tenant scoping
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    Integer tenantId = extractTenantId(auth);
+    Integer authTenantId = extractTenantId(auth);
+    // TenantAdmin: always scope to their tenant (ignore request tenantId). GlobalAdmin: use request tenantId when provided.
+    Integer effectiveTenantId =
+        (authTenantId != null) ? authTenantId : tenantId;
 
     Page<IntegrationResponseDto> integrations =
         service
-            .findByFilters(integrationName, active, createdAfter, createdBefore, tenantId, pageable)
+            .findByFilters(
+                integrationName, active, createdAfter, createdBefore, effectiveTenantId, pageable)
             .map(mapper::toResponse);
 
     return ResponseEntity.ok(integrations);

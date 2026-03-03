@@ -130,11 +130,18 @@ class IntegrationsScreen(Screen):
       return
 
     # Build request params with active filters
+    tenant_id = self.filters.get("tenant_id")
+    if tenant_id is not None and not isinstance(tenant_id, int):
+      try:
+        tenant_id = int(tenant_id)
+      except (ValueError, TypeError):
+        tenant_id = None
     response = api_client.get_integrations(
         page=self.current_page,
         size=self.page_size,
         name=self.filters.get("name"),
-        active=self.filters.get("active")
+        active=self.filters.get("active"),
+        tenant_id=tenant_id
     )
     if not response:
       log.warning("No integrations response")
