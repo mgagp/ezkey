@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "10b98cba-3317-4291-b1a5-fb8af399a77f",
     "name": "EZ Key Tenants admin",
-    "description": "Collection for tenant management operations in the Admin API.\n\n## Endpoints\n\n- **Create Tenant** (POST): Create a new tenant with organizational identity (GlobalAdmin only)\n- **List Tenants** (GET): List all tenants (GlobalAdmin only)\n- **Get Tenant** (GET): Get details of a specific tenant by ID (GlobalAdmin only)\n- **Update Tenant** (PUT): Partial update of tenant identity and governance fields (GlobalAdmin only)\n- **Deactivate Tenant** (POST): Deactivate a tenant with audit trail (GlobalAdmin only)\n\n## Authentication\n\nAll endpoints require GlobalAdmin authentication via Bearer token.\n\n## Multi-Tenancy\n\n### Permissions\n- **GlobalAdmin only**: All tenant management operations require GlobalAdmin role\n- **TenantAdmin**: Cannot access tenant management endpoints (returns 403 Forbidden)\n\n### Tenant Lifecycle\n1. **Create**: GlobalAdmin creates a new tenant with organizational identity\n2. **Active**: Tenant is active and can be used for resource creation\n3. **Update**: Tenant identity and governance fields can be updated (partial update)\n4. **Deactivate**: Tenant can be deactivated (preserves data for audit with full audit trail)\n\n### Tenant Identity & Governance (Tier 1)\nTenants now carry enriched organizational identity for SOC 2 compliance:\n- **Organizational Identity**: Organization name, domain, country code, timezone\n- **Operational Contact**: Primary contact name and email\n- **Audit Trail**: updatedAt/updatedBy tracked on every modification, deactivatedAt/deactivatedBy on deactivation\n- **System Tenant Flag**: Indicates if the tenant is the system tenant (ID=1)\n\n### Tenant Deactivation\n- Sets `active = false` on the tenant\n- Records `deactivatedAt` timestamp and `deactivatedByAdminId` for audit\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n## Usage\n\nTenants represent organizational boundaries in the multi-tenant Ezkey system. Each tenant can have:\n- Multiple TenantAdmins\n- Multiple Integrations\n- Multiple Enrollments and API Keys\n- Complete data isolation from other tenants\n\n## Response DTO Fields\n\nAll read/write endpoints return a `TenantResponseDto` with:\n- `tenantId` (Integer): Unique identifier\n- `tenantName` (String): Unique name\n- `tenantDescription` (String, nullable): Description\n- `organizationName` (String, nullable): Legal organization name\n- `organizationDomain` (String, nullable): Primary domain (e.g., acme.com)\n- `countryCode` (String, nullable): ISO 3166-1 alpha-2 (e.g., CA, US)\n- `timezone` (String, nullable): IANA timezone (e.g., America/Montreal)\n- `primaryContactName` (String, nullable): Contact full name\n- `primaryContactEmail` (String, nullable): Contact email\n- `createdAt` (OffsetDateTime): Creation timestamp\n- `updatedAt` (OffsetDateTime, nullable): Last modification timestamp\n- `active` (Boolean): Active flag\n- `isSystemTenant` (Boolean): System tenant flag",
+    "description": "Collection for tenant management operations in the Admin API.\n\n## Endpoints\n\n- **Create Tenant** (POST): Create a new tenant with organizational identity (GlobalAdmin only)\n- **List Tenants** (GET): List all tenants (GlobalAdmin only)\n- **Get Tenant** (GET): Get details of a specific tenant by ID (GlobalAdmin only)\n- **Update Tenant** (PUT): Partial update of tenant identity and governance fields (GlobalAdmin only)\n- **Deactivate Tenant** (POST): Deactivate a tenant with audit trail (GlobalAdmin only)\n- **Activate Tenant** (POST): Activate a previously deactivated tenant (GlobalAdmin only)\n\n## Authentication\n\nAll endpoints require GlobalAdmin authentication via Bearer token.\n\n## Multi-Tenancy\n\n### Permissions\n- **GlobalAdmin only**: All tenant management operations require GlobalAdmin role\n- **TenantAdmin**: Cannot access tenant management endpoints (returns 403 Forbidden)\n\n### Tenant Lifecycle\n1. **Create**: GlobalAdmin creates a new tenant with organizational identity\n2. **Active**: Tenant is active and can be used for resource creation\n3. **Update**: Tenant identity and governance fields can be updated (partial update)\n4. **Deactivate**: Tenant can be deactivated (preserves data for audit with full audit trail)\n5. **Activate**: Tenant can be reactivated (idempotent if already active; deactivation metadata preserved for audit)\n\n### Tenant Identity & Governance (Tier 1)\nTenants now carry enriched organizational identity for SOC 2 compliance:\n- **Organizational Identity**: Organization name, domain, country code, timezone\n- **Operational Contact**: Primary contact name and email\n- **Audit Trail**: updatedAt/updatedBy tracked on every modification, deactivatedAt/deactivatedBy on deactivation\n- **System Tenant Flag**: Indicates if the tenant is the system tenant (ID=1)\n\n### Tenant Deactivation\n- Sets `active = false` on the tenant\n- Records `deactivatedAt` timestamp and `deactivatedByAdminId` for audit\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Data is preserved for audit purposes\n\n## Usage\n\nTenants represent organizational boundaries in the multi-tenant Ezkey system. Each tenant can have:\n- Multiple TenantAdmins\n- Multiple Integrations\n- Multiple Enrollments and API Keys\n- Complete data isolation from other tenants\n\n## Response DTO Fields\n\nAll read/write endpoints return a `TenantResponseDto` with:\n- `tenantId` (Integer): Unique identifier\n- `tenantName` (String): Unique name\n- `tenantDescription` (String, nullable): Description\n- `organizationName` (String, nullable): Legal organization name\n- `organizationDomain` (String, nullable): Primary domain (e.g., acme.com)\n- `countryCode` (String, nullable): ISO 3166-1 alpha-2 (e.g., CA, US)\n- `timezone` (String, nullable): IANA timezone (e.g., America/Montreal)\n- `primaryContactName` (String, nullable): Contact full name\n- `primaryContactEmail` (String, nullable): Contact email\n- `createdAt` (OffsetDateTime): Creation timestamp\n- `updatedAt` (OffsetDateTime, nullable): Last modification timestamp\n- `active` (Boolean): Active flag\n- `isSystemTenant` (Boolean): System tenant flag",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -518,6 +518,60 @@
           ]
         },
         "description": "Deactivates a tenant, preventing further operations for that tenant while preserving data for audit purposes. Only GlobalAdmin can deactivate tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate any tenant\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Effects of Deactivation:**\n- Sets `active = false` on the tenant\n- Records `deactivatedAt` timestamp for audit trail\n- Records `deactivatedByAdminId` identifying the admin who performed the action\n- Sets `updatedAt` and `updatedByAdminId` audit fields\n- Revokes all active tokens for admins in that tenant\n- Prevents further resource creation for that tenant\n- Prevents further updates to the tenant (returns 400 with RFC 9457 ProblemDetail)\n- Data is preserved for audit purposes\n\n**System Tenant Protection:**\n- The system tenant (ID=1) cannot be deactivated\n- Attempting to deactivate the system tenant returns 400 with RFC 9457 ProblemDetail\n\n**Path Parameters:**\n- `id` (required): Tenant ID to deactivate\n\n**Response (204 No Content):**\n- No response body\n- Tenant is deactivated with full audit trail\n- All admin tokens for that tenant are revoked\n\n**Status Codes:**\n- 204: Tenant deactivated successfully\n- 400: Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Tenant not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "activate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204 or 404\", function () {",
+              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Activation successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"reason\": \"Reactivation after temporary pause\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/tenants/:id/activate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            ":id",
+            "activate"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{tenantId}}",
+              "description": "The tenant ID to activate"
+            }
+          ]
+        },
+        "description": "Activates a previously deactivated tenant. Sets active = true. Idempotent if the tenant is already active. GlobalAdmin only. Deactivation metadata (deactivatedAt, deactivatedByAdminId) is preserved for audit traceability.\n\n**Path Parameters:**\n- id (required): Tenant ID to activate\n\n**Request Body (optional):**\n- reason (optional): Audit reason, 10-500 characters\n\n**Response (204 No Content):**\n- 204: Tenant activated successfully\n- 404: Tenant not found\n- 403: Forbidden - not a GlobalAdmin"
       },
       "response": []
     }

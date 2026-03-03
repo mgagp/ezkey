@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.request.TenantActivateRequestDto;
 import org.ezkey.admin.dto.request.TenantCreateRequestDto;
 import org.ezkey.admin.dto.request.TenantDeactivateRequestDto;
 import org.ezkey.admin.dto.request.TenantUpdateRequestDto;
@@ -63,7 +64,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><b>GET /api/v1/tenants</b> - List all tenants
  *   <li><b>GET /api/v1/tenants/{id}</b> - Get tenant by ID
  *   <li><b>PUT /api/v1/tenants/{id}</b> - Update a tenant
- *   <li><b>POST /api/v1/tenants/{id}/deactivate</b> - Deactivate
+ *   <li><b>POST /api/v1/tenants/{id}/deactivate</b> - Deactivate a tenant
+ *   <li><b>POST /api/v1/tenants/{id}/activate</b> - Activate a tenant (reactivation)
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -351,6 +353,57 @@ public class TenantController {
     auditLogService.log(
         AuditHelper.createAdminAudit(
                 context, EventType.TENANT_DEACTIVATED, AdminAuditConstants.TENANT_DEACTIVATED, id)
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(principal.adminId())
+            .reason(reason)
+            .eventDetails("Tenant ID: " + id)
+            .build());
+
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Activates a tenant (reactivation after deactivation).
+   *
+   * <p>Only global administrators can activate tenants. Activation is idempotent: if the tenant is
+   * already active, the request succeeds with no change. Deactivation metadata (deactivatedAt,
+   * deactivatedByAdmin) is preserved for audit traceability.
+   *
+   * @param id the tenant ID
+   * @param body optional request body with reason for audit
+   * @param auth the authentication context
+   * @return ResponseEntity with no content (204 No Content)
+   * @throws org.ezkey.exception.ResourceNotFoundException if the tenant is not found (404)
+   */
+  @PostMapping("/{id}/activate")
+  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
+  @Operation(
+      summary = "Activate a tenant",
+      description =
+          "Activates a previously deactivated tenant. GlobalAdmin only. Idempotent if already"
+              + " active.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "Tenant activated successfully"),
+    @ApiResponse(responseCode = "404", description = "Tenant not found"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
+  })
+  public ResponseEntity<Void> activateTenant(
+      @Parameter(description = "Tenant ID", example = "1") @PathVariable("id") Integer id,
+      @RequestBody(required = false) @Valid TenantActivateRequestDto body,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || !principal.isGlobalAdmin()) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    tenantService.activateTenant(id, principal);
+
+    String reason = body != null ? body.reason() : null;
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context, EventType.TENANT_ACTIVATED, AdminAuditConstants.TENANT_ACTIVATED, id)
             .eventStatus(EventStatus.SUCCESS)
             .adminId(principal.adminId())
             .reason(reason)

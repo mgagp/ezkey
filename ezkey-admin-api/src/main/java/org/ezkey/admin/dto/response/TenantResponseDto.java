@@ -36,6 +36,8 @@ import java.time.OffsetDateTime;
  * @param updatedAt timestamp of last modification
  * @param active flag indicating if the tenant is active
  * @param isSystemTenant flag indicating if this is the system tenant
+ * @param deactivatedAt timestamp when the tenant was deactivated (null if never deactivated or
+ *     reactivated; preserved for audit traceability)
  * @author Ezkey contributors
  * @since 2025
  */
@@ -65,4 +67,10 @@ public record TenantResponseDto(
     @Schema(description = "Flag indicating if the tenant is active", example = "true")
         Boolean active,
     @Schema(description = "Flag indicating if this is the system tenant", example = "false")
-        Boolean isSystemTenant) {}
+        Boolean isSystemTenant,
+    @Schema(
+            description =
+                "Timestamp when the tenant was deactivated (null if never deactivated; preserved"
+                    + " for audit traceability)",
+            example = "2025-11-15T10:00:00Z")
+        OffsetDateTime deactivatedAt) {}

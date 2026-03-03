@@ -211,6 +211,9 @@ public final class AdminAuditConstants {
   /** Audit action for successful tenant deactivation. */
   public static final String TENANT_DEACTIVATED = "tenant_deactivated";
 
+  /** Audit action for successful tenant activation (reactivation). */
+  public static final String TENANT_ACTIVATED = "tenant_activated";
+
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Admin Provisioning Actions
   // ═══════════════════════════════════════════════════════════════════════════════════════════════

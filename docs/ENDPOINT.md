@@ -529,6 +529,70 @@ Retrieves integrations with optional filters and pagination. All filter paramete
 
 ---
 
+## Tenant management
+
+Tenant management endpoints allow GlobalAdmins to create, list, update, deactivate, and activate tenants. TenantAdmins can list and get only their own tenant.
+
+**Lifecycle:** A tenant is either **active** or **inactive**. Deactivation sets `active = false`, revokes all admin tokens for that tenant, and blocks new integrations, enrollments, and API keys; data is preserved for audit. Activation sets `active = true` and restores full access; deactivation metadata (who/when) is preserved for traceability. The **system tenant** cannot be deactivated.
+
+**Base path:** `http://localhost:9080/api/v1/tenants` (Admin API). All endpoints require Bearer token (GlobalAdmin for create/update/deactivate/activate; GlobalAdmin or TenantAdmin for list/get).
+
+### Create tenant
+
+**POST /api/v1/tenants**
+
+Creates a new tenant. GlobalAdmin only.
+
+**Request body:** `tenantName` (required), `tenantDescription`, `organizationName`, `organizationDomain`, `countryCode`, `timezone`, `primaryContactName`, `primaryContactEmail` (all optional except tenantName).
+
+**Response (201 Created):** Tenant object with `tenantId`, `tenantName`, `active`, `isSystemTenant`, etc.
+
+### List tenants
+
+**GET /api/v1/tenants**
+
+Lists tenants. GlobalAdmin sees all; TenantAdmin sees only their own tenant.
+
+**Response (200 OK):** Array of tenant objects.
+
+### Get tenant by ID
+
+**GET /api/v1/tenants/{id}**
+
+Returns a tenant by ID. GlobalAdmin can access any tenant; TenantAdmin only their own.
+
+**Response (200 OK):** Tenant object. **404** if not found or not authorized.
+
+### Update tenant
+
+**PUT /api/v1/tenants/{id}**
+
+Partial update of tenant (name, description, organization fields, contact). Only non-null fields are applied. GlobalAdmin only. Blocked if tenant is inactive (returns 400 with RFC 9457 ProblemDetail).
+
+**Response (200 OK):** Updated tenant object.
+
+### Deactivate tenant
+
+**POST /api/v1/tenants/{id}/deactivate**
+
+Deactivates a tenant: sets `active = false`, records `deactivatedAt` and `deactivatedByAdmin`, revokes all active admin tokens for that tenant. GlobalAdmin only. The system tenant cannot be deactivated (400).
+
+**Request body (optional):** `{ "reason": "Optional audit reason (10–500 chars)" }`
+
+**Response (204 No Content).**
+
+### Activate tenant
+
+**POST /api/v1/tenants/{id}/activate**
+
+Activates a previously deactivated tenant: sets `active = true`. Idempotent if the tenant is already active. GlobalAdmin only. Deactivation metadata is preserved for audit.
+
+**Request body (optional):** `{ "reason": "Optional audit reason (10–500 chars)" }`
+
+**Response (204 No Content).**
+
+---
+
 ## 👥 Administrator Provisioning
 
 ### **Overview**

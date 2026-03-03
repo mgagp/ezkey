@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -187,6 +188,71 @@ class TenantServiceTest {
 
       // Assert
       verify(tokenRepository).deactivateAllTokensForTenant(2);
+    }
+  }
+
+  @Nested
+  @DisplayName("Tenant Activation Tests")
+  class TenantActivationTests {
+
+    @Test
+    @DisplayName("Global admin can activate a deactivated tenant")
+    void globalAdminCanActivateDeactivatedTenant() {
+      // Arrange
+      Tenant tenant = new Tenant();
+      tenant.setTenantId(2);
+      tenant.setTenantName("Acme Corp");
+      tenant.setActive(false);
+      tenant.setIsSystemTenant(false);
+      tenant.setCreatedAt(OffsetDateTime.now());
+      tenant.setDeactivatedAt(OffsetDateTime.now().minusDays(1));
+
+      EzkeyAdmin actor = new EzkeyAdmin();
+      actor.setAdminId(1);
+
+      when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
+      when(adminRepository.findById(1)).thenReturn(Optional.of(actor));
+      when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      // Act
+      tenantService.activateTenant(2, globalAdminPrincipal);
+
+      // Assert
+      assertTrue(tenant.getActive());
+      assertNotNull(tenant.getUpdatedAt());
+      assertEquals(actor, tenant.getUpdatedByAdmin());
+      verify(tenantRepository).save(tenant);
+      verify(tokenRepository, never()).deactivateAllTokensForTenant(anyInt());
+    }
+
+    @Test
+    @DisplayName("Activation is idempotent - already active tenant")
+    void activationIsIdempotent() {
+      // Arrange
+      Tenant tenant = new Tenant();
+      tenant.setTenantId(2);
+      tenant.setTenantName("Acme Corp");
+      tenant.setActive(true);
+      tenant.setIsSystemTenant(false);
+      tenant.setCreatedAt(OffsetDateTime.now());
+
+      when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
+
+      // Act
+      tenantService.activateTenant(2, globalAdminPrincipal);
+
+      // Assert
+      verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Activation throws ResourceNotFoundException for unknown tenant")
+    void activationThrowsForUnknownTenant() {
+      when(tenantRepository.findById(999)).thenReturn(Optional.empty());
+
+      assertThrows(
+          ResourceNotFoundException.class,
+          () -> tenantService.activateTenant(999, globalAdminPrincipal));
     }
   }
 

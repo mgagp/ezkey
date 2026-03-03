@@ -252,4 +252,67 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
 
     log.info("✅ Test 3 PASSED: Tenants listed successfully");
   }
+
+  /**
+   * Test 4: Deactivate then activate tenant
+   *
+   * <p>Validates that a GlobalAdmin can deactivate a tenant and then activate it again. After
+   * activation the tenant is active and can be used (e.g. get returns active=true).
+   */
+  @Test
+  @Order(4)
+  @DisplayName("Test 4: GlobalAdmin can deactivate then activate tenant")
+  void test04_deactivate_then_activate_tenant() {
+    log.info("=== Test 4: Deactivate then Activate Tenant ===");
+
+    if (createdTenantId == null) {
+      log.warn("createdTenantId is null, creating tenant first");
+      test01_create_tenant_returns_valid_response();
+    }
+    assertThat(createdTenantId).as("Tenant ID should be available").isNotNull();
+
+    // Deactivate
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body("{\"reason\": \"Test deactivation for lifecycle test\"}")
+        .when()
+        .post("/tenants/" + createdTenantId + "/deactivate")
+        .then()
+        .statusCode(204);
+
+    Response getAfterDeactivate =
+        given()
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .when()
+            .get("/tenants/" + createdTenantId)
+            .then()
+            .extract()
+            .response();
+    assertThat(getAfterDeactivate.statusCode()).isEqualTo(200);
+    assertThat(getAfterDeactivate.jsonPath().getBoolean("active")).isFalse();
+
+    // Activate
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .body("{\"reason\": \"Test reactivation for lifecycle test\"}")
+        .when()
+        .post("/tenants/" + createdTenantId + "/activate")
+        .then()
+        .statusCode(204);
+
+    Response getAfterActivate =
+        given()
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .when()
+            .get("/tenants/" + createdTenantId)
+            .then()
+            .extract()
+            .response();
+    assertThat(getAfterActivate.statusCode()).isEqualTo(200);
+    assertThat(getAfterActivate.jsonPath().getBoolean("active")).isTrue();
+
+    log.info("✅ Test 4 PASSED: Deactivate then activate succeeded");
+  }
 }

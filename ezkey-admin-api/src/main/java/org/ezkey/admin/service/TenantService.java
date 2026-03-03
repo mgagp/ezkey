@@ -233,6 +233,48 @@ public class TenantService {
   }
 
   /**
+   * Activates a tenant (reactivation after deactivation).
+   *
+   * <p>This method is idempotent: if the tenant is already active, it returns without change. Sets
+   * {@code active = true} and updates audit fields ({@code updatedAt}, {@code updatedByAdmin}).
+   * Does not clear {@code deactivatedAt} or {@code deactivatedByAdmin} so that the audit history of
+   * the previous deactivation is preserved.
+   *
+   * <p>No token or child-entity changes: integrations, enrollments, and API keys are unchanged and
+   * become usable again as soon as the tenant is active.
+   *
+   * @param tenantId the ID of the tenant to activate
+   * @param principal the admin principal performing the activation
+   * @throws ResourceNotFoundException if the tenant is not found
+   */
+  @Transactional
+  public void activateTenant(Integer tenantId, AdminPrincipal principal) {
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+
+    if (tenant.getActive()) {
+      logger.info("Tenant {} is already active", tenantId);
+      return;
+    }
+
+    tenant.setActive(true);
+    OffsetDateTime now = OffsetDateTime.now();
+    tenant.setUpdatedAt(now);
+    EzkeyAdmin actor = adminRepository.findById(principal.adminId()).orElse(null);
+    tenant.setUpdatedByAdmin(actor);
+
+    tenantRepository.save(tenant);
+
+    logger.info(
+        "Tenant '{}' (ID: {}) activated by admin {}",
+        tenant.getTenantName(),
+        tenantId,
+        principal.adminId());
+  }
+
+  /**
    * Ensures a tenant is active, throwing an exception if it is not.
    *
    * <p>This method is a reusable guard intended to be called by other services before performing

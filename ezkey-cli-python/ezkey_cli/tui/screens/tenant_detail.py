@@ -24,6 +24,7 @@ class TenantDetailScreen(Screen):
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
       Binding("d", "deactivate", "Deactivate"),
+      Binding("a", "activate", "Activate"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -145,6 +146,41 @@ class TenantDetailScreen(Screen):
       self.app.set_timer(1.0, self._load_tenant)
     else:
       self._show_error("Failed to deactivate tenant")
+
+  def action_activate(self) -> None:
+    """Activate tenant with confirmation."""
+    from .confirmation_modal import ConfirmationModal
+
+    name = self.tenant_data.get("tenantName") if self.tenant_data else ""
+    message = f"Activate tenant '{name}'?\nAccess will be restored for this tenant."
+
+    def on_confirm(confirmed: bool) -> None:
+      if confirmed:
+        self._perform_activate()
+
+    self.app.push_screen(
+        ConfirmationModal(
+            title="Activate Tenant",
+            message=message
+        ),
+        on_confirm
+    )
+
+  def _perform_activate(self) -> None:
+    api_client = self.app.api_client
+    if not api_client:
+      self._show_error("No API client available")
+      return
+
+    success = api_client.activate_tenant(self.tenant_id)
+    if success:
+      if self.tenant_data:
+        self.tenant_data["active"] = True
+      detail_widget = self.query_one("#detail_content", Static)
+      detail_widget.update("✓ Tenant activated")
+      self.app.set_timer(1.0, self._load_tenant)
+    else:
+      self._show_error("Failed to activate tenant")
 
   def action_quit(self) -> None:
     self.app.exit()

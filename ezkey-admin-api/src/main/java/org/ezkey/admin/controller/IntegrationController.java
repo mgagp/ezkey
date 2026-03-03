@@ -167,10 +167,11 @@ public class IntegrationController {
   @Operation(
       summary = "Search integrations",
       description =
-          "Retrieves integrations with optional filters and pagination for administration "
-              + "and compliance reporting. Supports dynamic sorting via ?sort=field,direction "
-              + "(e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). "
-              + "Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.")
+          "Retrieves integrations with optional filters and pagination for administration and"
+              + " compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g.,"
+              + " ?sort=id,asc). Default sort is by creation date descending (newest first)."
+              + " Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their"
+              + " tenant.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Search completed successfully"),
@@ -200,7 +201,8 @@ public class IntegrationController {
           OffsetDateTime createdBefore,
       @Parameter(
               description =
-                  "Filter by tenant ID. GlobalAdmin only; when provided limits results to that tenant. Ignored for TenantAdmin.")
+                  "Filter by tenant ID. GlobalAdmin only; when provided limits results to that"
+                      + " tenant. Ignored for TenantAdmin.")
           @RequestParam(required = false)
           Integer tenantId,
       @ParameterObject
@@ -209,9 +211,9 @@ public class IntegrationController {
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Integer authTenantId = extractTenantId(auth);
-    // TenantAdmin: always scope to their tenant (ignore request tenantId). GlobalAdmin: use request tenantId when provided.
-    Integer effectiveTenantId =
-        (authTenantId != null) ? authTenantId : tenantId;
+    // TenantAdmin: always scope to their tenant (ignore request tenantId). GlobalAdmin: use request
+    // tenantId when provided.
+    Integer effectiveTenantId = (authTenantId != null) ? authTenantId : tenantId;
 
     Page<IntegrationResponseDto> integrations =
         service

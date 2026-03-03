@@ -135,8 +135,9 @@ class AuthAttemptControllerOwnershipTest {
 
     // Assert
     assert response.getStatusCode() == HttpStatus.CREATED;
-    // Called twice: once in validateEnrollmentOwnership, once in resolveTenantIdFromEnrollment
-    verify(enrollmentRepository, times(2)).findById(enrollmentId);
+    // Called three times: validateEnrollmentOwnership, resolveTenantIdFromEnrollment,
+    // resolveIntegrationIdFromEnrollment
+    verify(enrollmentRepository, times(3)).findById(enrollmentId);
   }
 
   @Test

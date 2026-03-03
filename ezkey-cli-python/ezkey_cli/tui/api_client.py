@@ -445,6 +445,11 @@ class ApiClient:
     response = self._post(f"/api/v1/tenants/{tenant_id}/deactivate", data={})
     return response is not None
 
+  def activate_tenant(self, tenant_id: int) -> bool:
+    """Activate a tenant by ID (reactivation after deactivation)."""
+    response = self._post(f"/api/v1/tenants/{tenant_id}/activate", data={})
+    return response is not None
+
   def get_api_keys(self) -> Optional[List[Dict[str, Any]]]:
     """List all API keys visible to the admin."""
     return self._get("/api/v1/api-keys")

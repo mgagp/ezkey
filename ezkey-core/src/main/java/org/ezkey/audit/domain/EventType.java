@@ -83,6 +83,7 @@ public enum EventType {
   TENANT_CREATED, // New tenant provisioned
   TENANT_UPDATED, // Tenant metadata updated
   TENANT_DEACTIVATED, // Tenant deactivated (+ reason when provided)
+  TENANT_ACTIVATED, // Tenant reactivated (+ reason when provided)
 
   // Audit chain lifecycle events
   AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop
