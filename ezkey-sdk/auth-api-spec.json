@@ -371,11 +371,6 @@
             "type": "string",
             "description": "Enrollment proof token for authentication",
             "example": "abc123-def456-ghi789"
-          },
-          "language": {
-            "type": "string",
-            "description": "Preferred language for i18n fields",
-            "example": "en"
           }
         },
         "required": [
@@ -402,11 +397,6 @@
             "type": "string",
             "description": "Enrollment proof token to be signed by the device",
             "example": "eyJhbGciOiJSUzI1NiJ9..."
-          },
-          "integrationLogo": {
-            "type": "string",
-            "description": "Logo URL or base64-encoded image for the integration",
-            "example": "https://acme.com/logo.png"
           },
           "integrationName": {
             "type": "string",

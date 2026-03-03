@@ -99,19 +99,13 @@ def display_page_summary(response_data: Any, verbose: bool = False) -> None:
         response_data: The decoded JSON response (Spring Boot Page object)
         verbose: Whether to display additional debug information
 
-    Expected response_data structure:
-        {
-            "content": [...],
-            "pageable": {"pageNumber": 0, "pageSize": 20, ...},
-            "totalPages": 10,
-            "totalElements": 187,
-            "number": 0,
-            "size": 20,
-            "numberOfElements": 20,
-            "first": true,
-            "last": false,
-            "empty": false
-        }
+    Expected response_data structure (supports both formats):
+
+    Flat format (DIRECT):
+        {"content": [...], "totalPages": 10, "totalElements": 187, "number": 0, "size": 20, ...}
+
+    Nested format (VIA_DTO - Admin API default):
+        {"content": [...], "page": {"size": 20, "number": 0, "totalElements": 187, "totalPages": 5}}
 
     Examples:
         >>> data = {"number": 2, "totalPages": 10, "totalElements": 187,
@@ -133,15 +127,32 @@ def display_page_summary(response_data: Any, verbose: bool = False) -> None:
             )
         return
 
-    # Extract pagination metadata
-    total_elements = response_data.get('totalElements', 0)
-    total_pages = response_data.get('totalPages', 0)
-    current_page = response_data.get('number', 0)
-    page_size = response_data.get('size', 20)
-    number_of_elements = response_data.get('numberOfElements', 0)
-    is_first = response_data.get('first', False)
-    is_last = response_data.get('last', False)
+    # Support both flat format (DIRECT) and nested format (VIA_DTO - Admin API default)
+    page_obj = response_data.get('page', {}) if isinstance(response_data.get('page'), dict) else {}
+
+    def _get(key: str, default: Any = 0) -> Any:
+        val = response_data.get(key)
+        if val is not None:
+            return val
+        return page_obj.get(key, default)
+
+    total_elements = _get('totalElements', 0)
+    total_pages = _get('totalPages', 0)
+    current_page = _get('number', 0)
+    page_size = _get('size', 20)
+    number_of_elements = _get('numberOfElements', 0)
+    if number_of_elements == 0 and 'content' in response_data:
+        number_of_elements = len(response_data.get('content', []))
+    is_first = response_data.get('first')
+    is_last = response_data.get('last')
     is_empty = response_data.get('empty', False)
+    if is_first is None and is_last is None and total_pages > 0:
+        is_first = current_page == 0
+        is_last = current_page >= total_pages - 1
+    elif is_first is None:
+        is_first = current_page == 0
+    elif is_last is None:
+        is_last = current_page >= total_pages - 1
 
     if verbose:
         click.echo(

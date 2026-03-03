@@ -334,13 +334,56 @@
         }
       }
     },
+    "/api/v1/tenants/{id}/activate": {
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Activate a tenant",
+        "description": "Activates a previously deactivated tenant. GlobalAdmin only. Idempotent if already active.",
+        "operationId": "activateTenant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantActivateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Tenant activated successfully"
+          },
+          "404": {
+            "description": "Tenant not found"
+          },
+          "403": {
+            "description": "Forbidden - not a global administrator"
+          }
+        }
+      }
+    },
     "/api/v1/integrations": {
       "get": {
         "tags": [
           "Integrations"
         ],
         "summary": "Search integrations",
-        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first).",
+        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.",
         "operationId": "search",
         "parameters": [
           {
@@ -379,6 +422,16 @@
             "schema": {
               "type": "string",
               "format": "date-time"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Filter by tenant ID. GlobalAdmin only; when provided limits results to that tenant. Ignored for TenantAdmin.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -564,6 +617,102 @@
         }
       }
     },
+    "/api/v1/integrations/{id}/enrollments/reactivate-all": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Bulk-reactivate all enrollments for an integration",
+        "description": "Reactivates all inactive VERIFIED enrollments for the specified integration. Use after a precautionary deactivate-all.",
+        "operationId": "reactivateAllEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 5
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Optional justification for bulk reactivation",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "All enrollments reactivated successfully"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Integration not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/{id}/enrollments/deactivate-all": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Bulk-deactivate all enrollments for an integration",
+        "description": "Reversibly deactivates all active VERIFIED enrollments for the specified integration. Use for precautionary lockdowns. Restore with POST .../enrollments/reactivate-all. Cannot be applied to system integrations.",
+        "operationId": "deactivateAllEnrollments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 5
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Optional justification for bulk deactivation",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "All enrollments deactivated successfully"
+          },
+          "403": {
+            "description": "Access denied or system integration guard triggered"
+          },
+          "404": {
+            "description": "Integration not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/v1/enrollments": {
       "get": {
         "tags": [
@@ -585,7 +734,8 @@
                 "BOUND",
                 "VERIFIED",
                 "INVALID",
-                "REVOKED"
+                "REVOKED",
+                "EXPIRED"
               ]
             }
           },
@@ -1644,47 +1794,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/admins/{id}": {
-      "get": {
-        "tags": [
-          "Administrator Provisioning"
-        ],
-        "summary": "Get administrator by ID",
-        "description": "Returns a single administrator by ID. GlobalAdmin can access any admin. TenantAdmin can only access admins in their tenant.",
-        "operationId": "getAdminById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Administrator ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Administrator retrieved successfully",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminResponseDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - not authorized"
-          },
-          "404": {
-            "description": "Administrator not found"
           }
         }
       }
@@ -2800,6 +2909,7 @@
                 "ENROLLMENT_DEACTIVATED",
                 "ENROLLMENT_REACTIVATED",
                 "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
+                "ENROLLMENT_EXPIRED",
                 "AUTH_ATTEMPT_CREATED",
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
@@ -2828,6 +2938,7 @@
                 "TENANT_CREATED",
                 "TENANT_UPDATED",
                 "TENANT_DEACTIVATED",
+                "TENANT_ACTIVATED",
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_GAP_PENDING"
@@ -2875,7 +2986,17 @@
           {
             "name": "adminId",
             "in": "query",
-            "description": "Filter by admin ID",
+            "description": "Filter by admin ID (actor)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "targetAdminId",
+            "in": "query",
+            "description": "Filter by target admin ID (subject of event, e.g. created/deactivated/activated)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -3384,6 +3505,61 @@
         }
       }
     },
+    "/api/v1/admins/{id}": {
+      "get": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Get administrator by ID",
+        "description": "Returns a single administrator by ID. GlobalAdmin can access any admin. TenantAdmin can only access admins in their tenant.",
+        "operationId": "getAdminById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Administrator retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admins/{id}/onboarding": {
       "get": {
         "tags": [
@@ -3647,6 +3823,12 @@
             "type": "boolean",
             "description": "Flag indicating if this is the system tenant",
             "example": false
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the tenant was deactivated (null if never deactivated; preserved for audit traceability)",
+            "example": "2025-11-15T10:00:00Z"
           }
         }
       },
@@ -3719,6 +3901,16 @@
         ]
       },
       "TenantDeactivateRequestDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10
+          }
+        }
+      },
+      "TenantActivateRequestDto": {
         "type": "object",
         "properties": {
           "reason": {
@@ -4747,7 +4939,9 @@
               "CREATED",
               "BOUND",
               "VERIFIED",
-              "INVALID"
+              "INVALID",
+              "REVOKED",
+              "EXPIRED"
             ],
             "example": "VERIFIED"
           },
@@ -4784,6 +4978,11 @@
             "type": "string",
             "format": "date-time",
             "description": "When enrollment was verified (device completed binding)"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiration for pending enrollment (CREATED/BOUND); null = no expiration"
           },
           "createdByAdminId": {
             "type": "integer",
@@ -5011,6 +5210,7 @@
               "ENROLLMENT_DEACTIVATED",
               "ENROLLMENT_REACTIVATED",
               "ENROLLMENT_AUTH_ATTEMPT_BLOCKED",
+              "ENROLLMENT_EXPIRED",
               "AUTH_ATTEMPT_CREATED",
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
@@ -5039,6 +5239,7 @@
               "TENANT_CREATED",
               "TENANT_UPDATED",
               "TENANT_DEACTIVATED",
+              "TENANT_ACTIVATED",
               "AUDIT_CHAIN_ARCHIVE_SEALED",
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_GAP_PENDING"
@@ -5086,6 +5287,10 @@
             "format": "int32"
           },
           "tenantId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetAdminId": {
             "type": "integer",
             "format": "int32"
           },
@@ -5322,8 +5527,7 @@
             "type": "string",
             "format": "date-time",
             "description": "Timestamp of last successful login (null if never logged in)",
-            "example": "2025-10-20T09:15:00Z",
-            "nullable": true
+            "example": "2025-10-20T09:15:00Z"
           }
         }
       },

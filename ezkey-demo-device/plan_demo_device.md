@@ -21,7 +21,7 @@
 - ✅ Thymeleaf templates for all pages
 
 #### 3. **Enrollment Workflow**
-- ✅ New enrollment page with language selection
+- ✅ New enrollment page
 - ✅ Binding process (BIND API)
 - ✅ Verification process (VERIFY API)
 - ✅ Enrollment challenge handling

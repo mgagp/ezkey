@@ -10,7 +10,7 @@ export interface Integration {
 }
 
 /** Enrollment status values from the API. */
-export type EnrollmentStatus = 'CREATED' | 'BOUND' | 'VERIFIED' | 'INVALID';
+export type EnrollmentStatus = 'CREATED' | 'BOUND' | 'VERIFIED' | 'INVALID' | 'REVOKED' | 'EXPIRED';
 
 /** Enrollment — the association between a user device and an integration. */
 export interface Enrollment {

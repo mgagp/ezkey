@@ -3922,7 +3922,7 @@
       },
       "IntegrationCreateRequestDto": {
         "type": "object",
-        "description": "Integration creation data including unique code and i18n",
+        "description": "Integration creation data including code, name, and description",
         "properties": {
           "code": {
             "type": "string",
@@ -3932,45 +3932,22 @@
             "minLength": 2,
             "pattern": "^[a-zA-Z0-9_-]+$"
           },
-          "logo": {
-            "type": "string",
-            "description": "URL or path to the integration's logo image",
-            "example": "https://example.com/logo.png"
-          },
-          "i18n": {
-            "type": "array",
-            "description": "List of internationalization entries for multi-language support",
-            "items": {
-              "$ref": "#/components/schemas/IntegrationI18nCreateDto"
-            }
-          }
-        },
-        "required": [
-          "code"
-        ]
-      },
-      "IntegrationI18nCreateDto": {
-        "type": "object",
-        "description": "Create DTO for integration internationalization data",
-        "properties": {
-          "language": {
-            "type": "string",
-            "description": "Language code for the localized content",
-            "example": "en"
-          },
           "name": {
             "type": "string",
-            "description": "Localized name of the integration",
-            "example": "ACME Corporation"
+            "description": "Display name for the integration",
+            "example": "Web Portal",
+            "maxLength": 255,
+            "minLength": 0
           },
           "description": {
             "type": "string",
-            "description": "Localized description of the integration",
-            "example": "Secure authentication system for ACME applications"
+            "description": "Optional description of the integration",
+            "maxLength": 500,
+            "minLength": 0
           }
         },
         "required": [
-          "language",
+          "code",
           "name"
         ]
       },
@@ -4803,33 +4780,6 @@
           "username"
         ]
       },
-      "IntegrationI18nResponseDto": {
-        "type": "object",
-        "description": "Response DTO for integration internationalization data",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the internationalization record",
-            "example": 1
-          },
-          "language": {
-            "type": "string",
-            "description": "Language code for the localized content",
-            "example": "en"
-          },
-          "name": {
-            "type": "string",
-            "description": "Localized name of the integration",
-            "example": "ACME Corporation"
-          },
-          "description": {
-            "type": "string",
-            "description": "Localized description of the integration",
-            "example": "Secure authentication system for ACME applications"
-          }
-        }
-      },
       "IntegrationResponseDto": {
         "type": "object",
         "description": "Response DTO containing complete integration details",
@@ -4851,11 +4801,6 @@
             "description": "Tenant ID that owns this integration",
             "example": 2
           },
-          "logo": {
-            "type": "string",
-            "description": "URL or path to the integration logo image",
-            "example": "https://example.com/logo.png"
-          },
           "active": {
             "type": "boolean",
             "description": "Integration status flag",
@@ -4867,12 +4812,14 @@
             "description": "Timestamp when the integration was created (with timezone)",
             "example": "2025-01-15T10:30:00+01:00"
           },
-          "i18n": {
-            "type": "array",
-            "description": "List of internationalized content for multiple languages",
-            "items": {
-              "$ref": "#/components/schemas/IntegrationI18nResponseDto"
-            }
+          "name": {
+            "type": "string",
+            "description": "Display name for the integration",
+            "example": "Web Portal"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description of the integration"
           }
         }
       },

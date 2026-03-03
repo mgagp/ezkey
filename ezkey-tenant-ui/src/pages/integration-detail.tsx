@@ -53,7 +53,7 @@ export default function IntegrationDetailPage() {
   const enrollmentColumns: ColumnDef<Enrollment>[] = [
     { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
     { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: 'Status', key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: 'Status', key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
     { header: 'Active', key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
     { header: 'Verified', key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
   ];
@@ -79,6 +79,9 @@ export default function IntegrationDetailPage() {
                 <dl className="space-y-3">
                   <InfoRow label="ID"><span className="font-mono">{integration.id}</span></InfoRow>
                   <InfoRow label="Code"><span className="font-mono">{integration.code}</span></InfoRow>
+                  {integration.tenantId != null && (
+                    <InfoRow label="Tenant ID"><span className="font-mono">{integration.tenantId}</span></InfoRow>
+                  )}
                   <InfoRow label="Name">
                     <span className="font-medium">{integration.name ?? integration.code}</span>
                   </InfoRow>

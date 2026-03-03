@@ -61,5 +61,7 @@ public record IntegrationCreateRequestDto(
         @Schema(description = "Display name for the integration", example = "Web Portal")
         String name,
     @Size(max = 500, message = "description must be at most 500 characters")
-        @Schema(description = "Optional description of the integration")
+        @Schema(
+            description = "Optional description of the integration",
+            example = "Administration console")
         String description) {}

@@ -6,6 +6,8 @@ const config: Record<EnrollmentStatus, { label: string; variant: 'success' | 'wa
   BOUND: { label: 'Bound', variant: 'warning' },
   CREATED: { label: 'Created', variant: 'muted' },
   INVALID: { label: 'Invalid', variant: 'error' },
+  REVOKED: { label: 'Revoked', variant: 'error' },
+  EXPIRED: { label: 'Expired', variant: 'muted' },
 };
 
 export function EnrollmentStatusBadge({ status }: { status: EnrollmentStatus }) {

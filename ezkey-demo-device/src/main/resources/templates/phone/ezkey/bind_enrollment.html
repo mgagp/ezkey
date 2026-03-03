@@ -111,11 +111,8 @@
                    th:text="${integrationDescription}">Demo integration for testing purposes</div>
             </div>
           </div>
-          <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">
-            <div th:if="${enrollmentName != null and enrollmentName != integrationName}">
-              <strong>Enrollment:</strong> <span th:text="${enrollmentName}">Enrollment Name</span>
-            </div>
-            Language: <span th:text="${language}">en</span>
+          <div th:if="${enrollmentName != null and enrollmentName != integrationName}" style="font-size: 0.8rem; color: #888; margin-top: 4px;">
+            <strong>Enrollment:</strong> <span th:text="${enrollmentName}">Enrollment Name</span>
           </div>
         </div>
         

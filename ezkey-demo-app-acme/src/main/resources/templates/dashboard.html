@@ -32,7 +32,7 @@
 
             <!-- Welcome Section -->
             <section class="welcome-section">
-                <h1 class="welcome-title">WELCOME, <span th:text="${user?.displayName?.toUpperCase() ?: user?.username?.toUpperCase()}">USER</span>!</h1>
+                <h1 class="welcome-title">WELCOME, <span th:text="${user?.username?.toUpperCase()}">USER</span>!</h1>
                 <p class="welcome-subtitle">You are now authenticated via EZKey passwordless login</p>
             </section>
 
@@ -44,10 +44,6 @@
                         <div class="profile-item">
                             <span class="profile-label">USERNAME</span>
                             <span class="profile-value" th:text="${user?.username}">-</span>
-                        </div>
-                        <div class="profile-item">
-                            <span class="profile-label">DISPLAY NAME</span>
-                            <span class="profile-value" th:text="${user?.displayName ?: '-'}">-</span>
                         </div>
                         <div class="profile-item" th:if="${user?.enrollmentId != null}">
                             <span class="profile-label">ENROLLMENT ID</span>

@@ -72,6 +72,19 @@ export interface PasswordlessWaitRequest {
   challengeCode?: number;
 }
 
+/** Request body for POST /api/v1/integrations. */
+export interface IntegrationCreateRequest {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+/** Response from POST /api/v1/integrations (201 Created). */
+export interface IntegrationCreateResponse {
+  id: number;
+  code: string;
+}
+
 /** Request body for POST /api/v1/enrollments. */
 export interface EnrollmentCreateRequest {
   integrationId: number;

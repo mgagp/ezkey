@@ -105,14 +105,13 @@ public class EzkeyAppController {
   public String bindEnrollment(
       @RequestParam("enrollmentId") Integer enrollmentId,
       @RequestParam("enrollmentProofToken") String enrollmentProofToken,
-      @RequestParam(value = "language", defaultValue = "en") String language,
       Model model) {
     model.addAttribute("pageTitle", "Enrollment - Bind");
     model.addAttribute("enrollmentId", enrollmentId);
     try {
       // Call the bind API with proof token
       EnrollmentBindResponseDto bindResponse =
-          authApiService.bind(enrollmentId, enrollmentProofToken, language).block();
+          authApiService.bind(enrollmentId, enrollmentProofToken).block();
       if (bindResponse != null) {
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
@@ -132,10 +131,9 @@ public class EzkeyAppController {
         String tenantDescription = bindResponse.getTenantDescription();
 
         logger.info(
-            "Using integration info for enrollment {} with language {}: name={}, description={},"
+            "Using integration info for enrollment {}: name={}, description={},"
                 + " logo={}, enrollmentName={}, tenantId={}, tenantName={}",
             enrollmentId,
-            language,
             integrationName,
             integrationDescription,
             integrationLogo,
@@ -175,7 +173,6 @@ public class EzkeyAppController {
         model.addAttribute("tenantId", tenantId);
         model.addAttribute("tenantName", tenantName);
         model.addAttribute("tenantDescription", tenantDescription);
-        model.addAttribute("language", language);
         model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
       } else {
         model.addAttribute("error", "Bind failed: No response from server");

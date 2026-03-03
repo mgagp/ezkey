@@ -39,19 +39,17 @@ public class AuthApiService {
    *
    * @param enrollmentId id to bind
    * @param enrollmentProofToken proof token for authentication
-   * @param language preferred language for i18n fields
    * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
    */
   public Mono<EnrollmentBindResponseDto> bind(
-      Integer enrollmentId, String enrollmentProofToken, String language) {
+      Integer enrollmentId, String enrollmentProofToken) {
     String uri = "/api/v1/enrollments/bind";
 
     // Create request DTO
     EnrollmentBindRequestDto requestDto =
         new EnrollmentBindRequestDto()
             .enrollmentId(enrollmentId)
-            .enrollmentProofToken(enrollmentProofToken)
-            .language(language);
+            .enrollmentProofToken(enrollmentProofToken);
 
     WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
     WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);

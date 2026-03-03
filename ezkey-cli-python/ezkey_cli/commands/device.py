@@ -30,9 +30,8 @@ def device_group(ctx):
 @click.option('--enrollment-id', required=True, type=int, help='Enrollment ID from QR code or admin API')
 @click.option('--enrollment-proof-token', required=True, help='Enrollment proof token from QR code or admin API')
 @click.option('--challenge', required=True, type=int, help='Challenge response for enrollment verification')
-@click.option('--language', default='en', show_default=True, help='Preferred language for enrollment')
 @click.pass_context
-def enroll_device(ctx, enrollment_id, enrollment_proof_token, challenge, language):
+def enroll_device(ctx, enrollment_id, enrollment_proof_token, challenge):
     """
     Enroll device by binding and verifying with integration.
 
@@ -73,8 +72,7 @@ def enroll_device(ctx, enrollment_id, enrollment_proof_token, challenge, languag
         bind_url = f"{auth_url}/api/v1/enrollments/bind"
         bind_payload = {
             "enrollmentId": enrollment_id,
-            "enrollmentProofToken": enrollment_proof_token,
-            "language": language
+            "enrollmentProofToken": enrollment_proof_token
         }
 
         OutputUtils.verbose(f"POST {bind_url}", verbose)
