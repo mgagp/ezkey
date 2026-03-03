@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
@@ -40,6 +41,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -99,8 +101,10 @@ class EnrollmentControllerAuditTest {
 
     clientContext = ClientContext.from(httpRequest);
 
-    // Mock SecurityContext
+    // Mock SecurityContext with AdminPrincipal so audit logs get adminId
     Authentication auth = org.mockito.Mockito.mock(Authentication.class);
+    when(auth.getPrincipal())
+        .thenReturn(new AdminPrincipal(42, EzkeyAdmin.AdminType.TENANT_ADMIN, 1, null));
     SecurityContextHolder.getContext().setAuthentication(auth);
 
     // Mock mapper
@@ -221,6 +225,7 @@ class EnrollmentControllerAuditTest {
     assertEquals(AdminAuditConstants.ENROLLMENT_CREATED, auditLog.getEventAction());
     assertEquals(Integer.valueOf(200), auditLog.getEnrollmentId()); // New enrollment ID
     assertEquals(Integer.valueOf(1), auditLog.getIntegrationId());
+    assertEquals(Integer.valueOf(42), auditLog.getAdminId()); // From mocked AdminPrincipal
     assertNotNull(auditLog.getEventDetails());
     assertTrue(auditLog.getEventDetails().contains("Replacing inactive VERIFIED enrollment"));
     assertTrue(auditLog.getEventDetails().contains("ID: 100")); // Inactive enrollment ID
@@ -259,6 +264,7 @@ class EnrollmentControllerAuditTest {
     assertEquals(AdminAuditConstants.ENROLLMENT_CREATED, auditLog.getEventAction());
     assertEquals(Integer.valueOf(200), auditLog.getEnrollmentId());
     assertEquals(Integer.valueOf(1), auditLog.getIntegrationId());
+    assertEquals(Integer.valueOf(42), auditLog.getAdminId()); // From mocked AdminPrincipal
     assertNotNull(auditLog.getEventDetails());
     assertTrue(auditLog.getEventDetails().contains("Enrollment name: Test Enrollment"));
     // Should not contain replacement context

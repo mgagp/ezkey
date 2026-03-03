@@ -174,6 +174,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_GLOBAL_CREATED,
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
               .eventDetails(
                   "Admin ID: "
                       + result.admin().getAdminId()
@@ -191,6 +192,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_GLOBAL_CREATION_FAILED,
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -275,6 +277,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_TENANT_CREATED,
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
               .eventDetails(
                   "Admin ID: "
                       + result.admin().getAdminId()
@@ -294,6 +297,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_TENANT_CREATION_FAILED,
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -588,6 +592,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_DEACTIVATED,
                   principal.tenantId())
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
               .reason(reason)
               .eventDetails("Admin ID: " + id)
               .build());
@@ -600,6 +605,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_DEACTIVATION_FAILED,
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -611,6 +617,7 @@ public class AdminProvisioningController {
                   AdminAuditConstants.ADMIN_DEACTIVATION_FAILED,
                   principal.tenantId())
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
               .errorMessage("Admin not found: " + id)
               .build());
       throw e;

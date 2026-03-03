@@ -201,6 +201,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .integrationId(resolveIntegrationId(request.enrollmentId()))
               .tenantId(validationTenantId)
               .errorMessage("Enrollment ID and enrollment proof token are required")
               .build());
@@ -223,6 +224,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .integrationId(resolveIntegrationId(request.enrollmentId()))
               .tenantId(auditTenantId)
               .build());
 
@@ -237,6 +239,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(request.enrollmentId())
+              .integrationId(resolveIntegrationId(request.enrollmentId()))
               .tenantId(auditTenantId)
               .errorMessage(e.getMessage())
               .build());
@@ -317,6 +320,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(req.enrollmentId())
+              .integrationId(resolveIntegrationId(req.enrollmentId()))
               .tenantId(verifyTenantId)
               .eventDetails("Enrollment activated")
               .build());
@@ -351,6 +355,10 @@ public class EnrollmentController {
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
                 .enrollmentId(req.enrollmentId())
+                .integrationId(
+                    attemptedEnrollment != null
+                        ? attemptedEnrollment.getIntegrationId()
+                        : resolveIntegrationId(req.enrollmentId()))
                 .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .eventDetails(
@@ -374,6 +382,7 @@ public class EnrollmentController {
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
                 .enrollmentId(req.enrollmentId())
+                .integrationId(resolveIntegrationId(req.enrollmentId()))
                 .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .build());
@@ -390,6 +399,7 @@ public class EnrollmentController {
               .ipAddress(clientIp)
               .userAgent(userAgent)
               .enrollmentId(req.enrollmentId())
+              .integrationId(resolveIntegrationId(req.enrollmentId()))
               .tenantId(verifyTenantId)
               .errorMessage(e.getMessage())
               .build());
@@ -417,6 +427,22 @@ public class EnrollmentController {
         .findById(enrollmentId)
         .map(Enrollment::getIntegrationId)
         .flatMap(integrationRepository::findTenantIdByIntegrationId)
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the integration ID for an enrollment (for audit log enrichment).
+   *
+   * @param enrollmentId the enrollment ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationId(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(Enrollment::getIntegrationId)
         .orElse(null);
   }
 }

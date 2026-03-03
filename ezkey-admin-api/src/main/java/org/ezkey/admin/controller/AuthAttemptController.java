@@ -24,6 +24,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.RateLimitService;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -293,6 +294,10 @@ public class AuthAttemptController {
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    AdminPrincipal principal =
+        auth != null ? AdminProvisioningService.extractAdminPrincipal(auth) : null;
+    Integer adminIdForAudit = principal != null ? principal.adminId() : null;
 
     // Check rate limiting for API keys
     String apiKeyId = extractApiKeyId(httpRequest);
@@ -311,6 +316,7 @@ public class AuthAttemptController {
                   EventType.AUTH_ATTEMPT_CREATED,
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
               .errorMessage(e.getMessage())
               .build());
       ProblemDetail pd =
@@ -325,7 +331,6 @@ public class AuthAttemptController {
     }
 
     // Validate tenant scoping for admins: admin must have access to the enrollment
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null
         && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
       if (!accessControlService.canAccessEnrollment(auth, effectiveEnrollmentId)) {
@@ -335,6 +340,9 @@ public class AuthAttemptController {
                     EventType.AUTH_ATTEMPT_CREATED,
                     AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
                 .eventStatus(EventStatus.FAILURE)
+                .adminId(adminIdForAudit)
+                .enrollmentId(effectiveEnrollmentId)
+                .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
                 .errorMessage(
                     "Access denied: admin does not have access to enrollment "
                         + effectiveEnrollmentId)
@@ -368,9 +376,11 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CREATED,
                   auditTenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(adminIdForAudit)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
               .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .eventDetails(
                   "Auth Type: "
                       + authType
@@ -388,6 +398,9 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
                   auditTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .errorMessage(e.getMessage())
               .build());
 
@@ -406,6 +419,9 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CREATION_ERROR,
                   auditTenantId)
               .eventStatus(EventStatus.ERROR)
+              .adminId(adminIdForAudit)
+              .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .errorMessage(e.getMessage())
               .build());
 
@@ -558,6 +574,10 @@ public class AuthAttemptController {
       HttpServletRequest httpRequest) {
 
     ClientContext context = ClientContext.from(httpRequest);
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    AdminPrincipal principal =
+        auth != null ? AdminProvisioningService.extractAdminPrincipal(auth) : null;
+    Integer adminIdForAudit = principal != null ? principal.adminId() : null;
 
     // Check rate limiting for API keys
     String apiKeyId = extractApiKeyId(httpRequest);
@@ -583,8 +603,10 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CANCELLED,
                   cancelTenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(adminIdForAudit)
               .authAttemptId(id)
               .enrollmentId(cancelledAttempt.getEnrollmentId())
+              .integrationId(resolveIntegrationIdFromEnrollment(cancelledAttempt.getEnrollmentId()))
               .eventDetails("Auth Type: " + authType + ", Status: EXPIRED")
               .build());
 
@@ -599,7 +621,9 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
                   cancelTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
               .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage("Authentication attempt not found")
               .build());
 
@@ -613,7 +637,9 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
                   cancelTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
               .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage(e.getMessage())
               .build());
 
@@ -627,7 +653,9 @@ public class AuthAttemptController {
                   AdminAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
                   cancelTenantId)
               .eventStatus(EventStatus.ERROR)
+              .adminId(adminIdForAudit)
               .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage(e.getMessage())
               .build());
 
@@ -894,6 +922,40 @@ public class AuthAttemptController {
     try {
       AuthAttempt attempt = authAttemptService.getById(authAttemptId);
       return resolveTenantIdFromEnrollment(attempt.getEnrollmentId());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Resolves the integration ID for an enrollment (for audit log enrichment).
+   *
+   * @param enrollmentId the enrollment ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationIdFromEnrollment(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(Enrollment::getIntegrationId)
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the integration ID for an auth attempt (for audit log enrichment).
+   *
+   * @param authAttemptId the auth attempt ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    try {
+      AuthAttempt attempt = authAttemptService.getById(authAttemptId);
+      return resolveIntegrationIdFromEnrollment(attempt.getEnrollmentId());
     } catch (Exception e) {
       return null;
     }

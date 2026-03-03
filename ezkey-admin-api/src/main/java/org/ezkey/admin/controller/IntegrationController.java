@@ -354,6 +354,7 @@ public class IntegrationController {
                   AdminAuditConstants.INTEGRATION_CREATED,
                   tenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(currentAdmin.getAdminId())
               .integrationId(savedIntegration.getId())
               .eventDetails("Integration code: " + savedIntegration.getCode())
               .build());
@@ -369,6 +370,7 @@ public class IntegrationController {
                   EventType.INTEGRATION_CREATED,
                   AdminAuditConstants.INTEGRATION_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -444,6 +446,7 @@ public class IntegrationController {
                 AdminAuditConstants.INTEGRATION_DELETED,
                 tenantId)
             .eventStatus(EventStatus.SUCCESS)
+            .adminId(currentAdmin.getAdminId())
             .integrationId(id)
             .reason(reason)
             .build());

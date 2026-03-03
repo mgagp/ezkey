@@ -557,6 +557,26 @@ public class AdminAuthService {
   }
 
   /**
+   * Returns the admin ID associated with an active bearer token for audit purposes.
+   *
+   * <p>Read-only lookup; does not update last-used or invalidate the token. Use before calling
+   * {@link #logout(String)} when audit logging the logout event with adminId.
+   *
+   * @param bearerToken the bearer token
+   * @return the admin ID, or null if token not found or inactive
+   */
+  public Integer getAdminIdForToken(String bearerToken) {
+    if (bearerToken == null || bearerToken.isBlank()) {
+      return null;
+    }
+    return tokenRepository
+        .findByBearerTokenAndActiveTrue(bearerToken)
+        .map(AdminToken::getAdmin)
+        .map(EzkeyAdmin::getAdminId)
+        .orElse(null);
+  }
+
+  /**
    * Logout administrator by invalidating token.
    *
    * <p>This method invalidates the bearer token, effectively logging out the administrator from the

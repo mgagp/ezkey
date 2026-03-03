@@ -213,6 +213,7 @@ public class AuthAttemptController {
           authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
 
       Integer pendingTenantId = resolveTenantIdFromAuthAttempt(response.getAuthAttemptId());
+      Integer pendingAuthAttemptId = response.getAuthAttemptId();
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_PENDING)
@@ -221,8 +222,10 @@ public class AuthAttemptController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .authAttemptId(response.getAuthAttemptId())
+              .authAttemptId(pendingAuthAttemptId)
               .authAttemptCreatedAt(response.getCreatedAt())
+              .enrollmentId(resolveEnrollmentIdFromAuthAttempt(pendingAuthAttemptId))
+              .integrationId(resolveIntegrationIdFromAuthAttempt(pendingAuthAttemptId))
               .tenantId(pendingTenantId)
               .build());
 
@@ -316,6 +319,8 @@ public class AuthAttemptController {
               .userAgent(userAgent)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
+              .enrollmentId(resolveEnrollmentIdFromAuthAttempt(request.authAttemptId()))
+              .integrationId(resolveIntegrationIdFromAuthAttempt(request.authAttemptId()))
               .tenantId(respondTenantId)
               .eventDetails(
                   "User "
@@ -335,6 +340,8 @@ public class AuthAttemptController {
               .userAgent(userAgent)
               .authAttemptId(request.authAttemptId())
               .authAttemptCreatedAt(null)
+              .enrollmentId(resolveEnrollmentIdFromAuthAttempt(request.authAttemptId()))
+              .integrationId(resolveIntegrationIdFromAuthAttempt(request.authAttemptId()))
               .tenantId(respondTenantId)
               .errorMessage(e.getMessage())
               .build());
@@ -362,6 +369,40 @@ public class AuthAttemptController {
         .flatMap(integrationRepository::findById)
         .map(Integration::getTenant)
         .map(tenant -> tenant.getTenantId())
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the enrollment ID for an auth attempt (for audit log enrichment).
+   *
+   * @param authAttemptId the auth attempt ID
+   * @return the enrollment ID, or null if not found
+   */
+  private Integer resolveEnrollmentIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    return authAttemptRepository
+        .findById(authAttemptId)
+        .map(AuthAttempt::getEnrollmentId)
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the integration ID for an auth attempt (for audit log enrichment).
+   *
+   * @param authAttemptId the auth attempt ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    return authAttemptRepository
+        .findById(authAttemptId)
+        .map(AuthAttempt::getEnrollmentId)
+        .flatMap(enrollmentRepository::findById)
+        .map(Enrollment::getIntegrationId)
         .orElse(null);
   }
 }

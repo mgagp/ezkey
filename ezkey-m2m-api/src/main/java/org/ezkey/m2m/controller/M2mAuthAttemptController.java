@@ -221,6 +221,8 @@ public class M2mAuthAttemptController {
                   EventType.AUTH_ATTEMPT_CREATED,
                   M2mAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -252,6 +254,7 @@ public class M2mAuthAttemptController {
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
               .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .eventDetails(
                   "Challenge: "
                       + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
@@ -263,12 +266,16 @@ public class M2mAuthAttemptController {
 
     } catch (IllegalArgumentException e) {
       auditLogService.log(
-          AuditHelper.logFailure(
-              context,
-              EventType.AUTH_ATTEMPT_CREATED,
-              M2mAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
-              e.getMessage(),
-              auditTenantId));
+          AuditHelper.createM2mAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  M2mAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .errorMessage(e.getMessage())
+              .build());
       ProblemDetail pd =
           ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
       pd.setTitle("Invalid Request");
@@ -276,12 +283,16 @@ public class M2mAuthAttemptController {
 
     } catch (Exception e) {
       auditLogService.log(
-          AuditHelper.logError(
-              context,
-              EventType.AUTH_ATTEMPT_CREATED,
-              M2mAuditConstants.AUTH_ATTEMPT_CREATION_ERROR,
-              e.getMessage(),
-              auditTenantId));
+          AuditHelper.createM2mAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  M2mAuditConstants.AUTH_ATTEMPT_CREATION_ERROR,
+                  auditTenantId)
+              .eventStatus(EventStatus.ERROR)
+              .enrollmentId(effectiveEnrollmentId)
+              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .errorMessage(e.getMessage())
+              .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
@@ -434,6 +445,7 @@ public class M2mAuthAttemptController {
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(id)
               .enrollmentId(cancelled.getEnrollmentId())
+              .integrationId(resolveIntegrationIdFromEnrollment(cancelled.getEnrollmentId()))
               .eventDetails("Status: EXPIRED")
               .build());
 
@@ -441,32 +453,44 @@ public class M2mAuthAttemptController {
 
     } catch (ResourceNotFoundException e) {
       auditLogService.log(
-          AuditHelper.logFailure(
-              context,
-              EventType.AUTH_ATTEMPT_CANCELLED,
-              M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
-              "Authentication attempt not found",
-              cancelTenantId));
+          AuditHelper.createM2mAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
+                  cancelTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
+              .errorMessage("Authentication attempt not found")
+              .build());
       return ResponseEntity.notFound().build();
 
     } catch (IllegalArgumentException e) {
       auditLogService.log(
-          AuditHelper.logFailure(
-              context,
-              EventType.AUTH_ATTEMPT_CANCELLED,
-              M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
-              e.getMessage(),
-              cancelTenantId));
+          AuditHelper.createM2mAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_FAILED,
+                  cancelTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
+              .errorMessage(e.getMessage())
+              .build());
       return ResponseEntity.badRequest().build();
 
     } catch (Exception e) {
       auditLogService.log(
-          AuditHelper.logError(
-              context,
-              EventType.AUTH_ATTEMPT_CANCELLED,
-              M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_ERROR,
-              e.getMessage(),
-              cancelTenantId));
+          AuditHelper.createM2mAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CANCELLED,
+                  M2mAuditConstants.AUTH_ATTEMPT_CANCELLATION_ERROR,
+                  cancelTenantId)
+              .eventStatus(EventStatus.ERROR)
+              .authAttemptId(id)
+              .integrationId(resolveIntegrationIdFromAuthAttempt(id))
+              .errorMessage(e.getMessage())
+              .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
@@ -686,6 +710,40 @@ public class M2mAuthAttemptController {
         .map(Integration::getTenant)
         .map(tenant -> tenant.getTenantId())
         .orElse(null);
+  }
+
+  /**
+   * Resolves the integration ID for an enrollment (for audit log enrichment).
+   *
+   * @param enrollmentId the enrollment ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationIdFromEnrollment(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return enrollmentRepository
+        .findById(enrollmentId)
+        .map(Enrollment::getIntegrationId)
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the integration ID for an auth attempt (for audit log enrichment).
+   *
+   * @param authAttemptId the auth attempt ID
+   * @return the integration ID, or null if not found
+   */
+  private Integer resolveIntegrationIdFromAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    try {
+      AuthAttempt attempt = authAttemptService.getById(authAttemptId);
+      return resolveIntegrationIdFromEnrollment(attempt.getEnrollmentId());
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   /**

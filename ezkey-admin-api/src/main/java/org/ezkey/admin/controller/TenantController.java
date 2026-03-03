@@ -152,6 +152,7 @@ public class TenantController {
                   AdminAuditConstants.TENANT_CREATED,
                   tenant.getTenantId())
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
               .eventDetails("Tenant name: " + tenant.getTenantName())
               .build());
 
@@ -165,6 +166,7 @@ public class TenantController {
           AuditHelper.createAdminAudit(
                   context, EventType.TENANT_CREATED, AdminAuditConstants.TENANT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -296,6 +298,7 @@ public class TenantController {
         AuditHelper.createAdminAudit(
                 context, EventType.TENANT_UPDATED, AdminAuditConstants.TENANT_UPDATED, id)
             .eventStatus(EventStatus.SUCCESS)
+            .adminId(principal.adminId())
             .eventDetails("Tenant ID: " + id)
             .build());
 
@@ -349,6 +352,7 @@ public class TenantController {
         AuditHelper.createAdminAudit(
                 context, EventType.TENANT_DEACTIVATED, AdminAuditConstants.TENANT_DEACTIVATED, id)
             .eventStatus(EventStatus.SUCCESS)
+            .adminId(principal.adminId())
             .reason(reason)
             .eventDetails("Tenant ID: " + id)
             .build());

@@ -302,6 +302,7 @@ public class EnrollmentController {
 
     // Validate tenant scoping: admin must have access to the integration
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (!accessControlService.canAccessIntegration(auth, request.integrationId())) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -309,6 +310,7 @@ public class EnrollmentController {
                   EventType.ENROLLMENT_CREATED,
                   AdminAuditConstants.ENROLLMENT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
               .errorMessage(
                   "Access denied: admin does not have access to integration "
                       + request.integrationId())
@@ -321,7 +323,6 @@ public class EnrollmentController {
 
     try {
       EnrollmentCreateRequest createRequest = enrollmentMapper.toCreateRequest(request);
-      AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
       if (principal != null) {
         createRequest.setCreatedByAdminId(principal.adminId());
       }
@@ -345,6 +346,7 @@ public class EnrollmentController {
                     AdminAuditConstants.ENROLLMENT_CREATED,
                     auditTenantId)
                 .eventStatus(EventStatus.SUCCESS)
+                .adminId(principal != null ? principal.adminId() : null)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
                 .eventDetails(
@@ -362,6 +364,7 @@ public class EnrollmentController {
                     AdminAuditConstants.ENROLLMENT_CREATED,
                     auditTenantId)
                 .eventStatus(EventStatus.SUCCESS)
+                .adminId(principal != null ? principal.adminId() : null)
                 .enrollmentId(response.getEnrollmentId())
                 .integrationId(request.integrationId())
                 .eventDetails("Enrollment name: " + request.name())
@@ -390,6 +393,7 @@ public class EnrollmentController {
                     AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
                     auditTenantId)
                 .eventStatus(EventStatus.FAILURE)
+                .adminId(principal != null ? principal.adminId() : null)
                 .integrationId(request.integrationId())
                 .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
                 .errorMessage(e.getMessage())
@@ -408,6 +412,7 @@ public class EnrollmentController {
                     AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
                     auditTenantId)
                 .eventStatus(EventStatus.FAILURE)
+                .adminId(principal != null ? principal.adminId() : null)
                 .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
                 .build());
       }
@@ -425,6 +430,7 @@ public class EnrollmentController {
                   AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
                   auditTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
               .errorMessage(
                   "Invalid integration ID or constraint violation: "
                       + e.getMostSpecificCause().getMessage())
@@ -439,6 +445,7 @@ public class EnrollmentController {
                   AdminAuditConstants.ENROLLMENT_CREATION_ERROR,
                   auditTenantId)
               .eventStatus(EventStatus.ERROR)
+              .adminId(principal != null ? principal.adminId() : null)
               .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
               .build());
 
@@ -478,6 +485,7 @@ public class EnrollmentController {
     try {
       // Validate tenant access for enrollment
       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(authentication);
       if (!accessControlService.canAccessEnrollment(authentication, id)) {
         // Return 404 to hide existence of cross-tenant resource
         throw new ResourceNotFoundException("Enrollment", id);
@@ -495,6 +503,7 @@ public class EnrollmentController {
                   AdminAuditConstants.ENROLLMENT_DELETED,
                   deleteTenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal != null ? principal.adminId() : null)
               .enrollmentId(id)
               .integrationId(enrollment.getIntegrationId())
               .eventDetails("Enrollment name: " + enrollment.getEnrollmentName())
@@ -509,12 +518,15 @@ public class EnrollmentController {
       // Audit not found - do not include enrollmentId as it doesn't exist (would
       // violate FK
       // constraint)
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(authentication);
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.ENROLLMENT_DELETED,
                   AdminAuditConstants.ENROLLMENT_DELETION_FAILED)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
               // enrollmentId omitted - enrollment doesn't exist, would violate FK constraint
               .errorMessage("Enrollment not found: " + id)
               .build());

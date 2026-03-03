@@ -240,6 +240,7 @@ public class ApiKeyController {
                   AdminAuditConstants.API_KEY_CREATED,
                   adminTenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(currentAdmin.getAdminId())
               .integrationId(request.integrationId())
               .eventDetails("API key ID: " + result.getApiKeyId())
               .build());
@@ -255,6 +256,7 @@ public class ApiKeyController {
                   AdminAuditConstants.API_KEY_CREATION_FAILED,
                   adminTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
@@ -268,6 +270,7 @@ public class ApiKeyController {
                   AdminAuditConstants.API_KEY_CREATION_FAILED,
                   adminTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
@@ -490,6 +493,7 @@ public class ApiKeyController {
                   AdminAuditConstants.API_KEY_REVOKED,
                   adminTenantId)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(currentAdmin.getAdminId())
               .reason(reason)
               .eventDetails("API key ID: " + keyId)
               .build());
@@ -503,6 +507,7 @@ public class ApiKeyController {
                   AdminAuditConstants.API_KEY_REVOCATION_NOT_FOUND,
                   adminTenantId)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
               .errorMessage("API key not found: " + keyId)
               .build());
       return ResponseEntity.notFound().build();

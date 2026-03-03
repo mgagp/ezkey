@@ -109,3 +109,38 @@ Ce n'est pas de la complexité inutile — c'est de la **valeur analytique diff�
 | Projets similaires font-ils ça ? | ✅ Keycloak, Okta, Duo — tous enrichis |
 | Complexité inutile ? | ❌ Non — contexte gratuit disponible via FK existantes |
 | Ça dénature la stratégie ? | ❌ Non — ça matérialise la Phase 2 |
+
+---
+
+## 7. Implementation status and enrichment rules (completed)
+
+The phased implementation from the **Audit Log Enrichment Phases** plan has been completed. The following rules are now applied at audit emission points.
+
+### 7.1 Enrichment rules
+
+| Rule | Scope | Behaviour |
+|------|--------|-----------|
+| **adminId** | Admin API, Bearer auth | When the caller is authenticated with a Bearer token, `AdminPrincipal` is in `SecurityContext`; `adminId` is set on the audit log. When the caller uses an API key, `adminId` remains null (no admin actor). |
+| **adminId** | Admin API, login/logout | For `ADMIN_LOGIN` and `ADMIN_LOGOUT`, `adminId` is set when the admin is known (from login response or from token resolution before logout). |
+| **integrationId** | Auth API | For enrollment bind/verify and auth attempt pending/respond, `integrationId` is set from the enrollment (or auth attempt → enrollment) already in context. |
+| **integrationId** | M2M API | For auth attempt create/wait/cancel, `integrationId` is set from the enrollment or API key context. |
+| **integrationId** | Admin API AuthAttemptController | For `AUTH_ATTEMPT_CREATED` and `AUTH_ATTEMPT_CANCELLED`, `integrationId` is derived from the enrollment (via `resolveIntegrationIdFromEnrollment` / `resolveIntegrationIdFromAuthAttempt`). |
+| **tenantId** | All | Unchanged: set where already resolved for visibility and filtering. |
+| **enrollmentId** | All | Set when the audited entity or action involves an enrollment (already in place; reinforced where needed for consistency). |
+
+### 7.2 Phase completion status
+
+| Phase | Description | Status |
+|-------|--------------|--------|
+| Phase 1a | adminId on IntegrationController, EnrollmentController, TenantController | ✅ Done |
+| Phase 1b | adminId on AuthAttemptController, ApiKeyController, AdminProvisioningController | ✅ Done |
+| Phase 1c | adminId on AdminAuthController login/logout | ✅ Done |
+| Phase 2 | integrationId on Auth API and M2M API audit events | ✅ Done |
+| Phase 2b | integrationId on Admin API AuthAttemptController | ✅ Done |
+| Phase 3 | Verification: AuditLogTenantVisibilityTest, EnrollmentControllerAuditTest (adminId assertions) | ✅ Done |
+| Phase 4 | Documentation (this section) | ✅ Done |
+
+### 7.3 Tests
+
+- **EnrollmentControllerAuditTest**: Success-path tests now mock `AdminPrincipal` and assert `auditLog.getAdminId()` (e.g. 42).
+- **AuditLogTenantVisibilityTest**: Functional tests for `tenant_id` population and tenant-scoped visibility; no regression after enrichment.

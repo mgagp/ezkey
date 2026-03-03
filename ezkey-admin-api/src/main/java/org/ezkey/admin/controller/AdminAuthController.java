@@ -272,12 +272,12 @@ public class AdminAuthController {
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       auditLogService.log(
-          AuditHelper.logSuccess(
-              context,
-              EventType.ADMIN_LOGIN,
-              AdminAuditConstants.LOGIN_SUCCESS,
-              "Username: " + request.username(),
-              adminTenantId));
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_SUCCESS, adminTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(resolveAdminId(request.username()))
+              .eventDetails("Username: " + request.username())
+              .build());
 
       return ResponseEntity.ok(response);
     } else if ("pending".equals(response.status())) {
@@ -289,12 +289,12 @@ public class AdminAuthController {
       rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
 
       auditLogService.log(
-          AuditHelper.logSuccess(
-              context,
-              EventType.ADMIN_LOGIN,
-              AdminAuditConstants.LOGIN_PENDING,
-              "Username: " + request.username() + ", Challenge required",
-              adminTenantId));
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_PENDING, adminTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(resolveAdminId(request.username()))
+              .eventDetails("Username: " + request.username() + ", Challenge required")
+              .build());
 
       return ResponseEntity.ok(response);
     } else {
@@ -306,12 +306,12 @@ public class AdminAuthController {
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
       auditLogService.log(
-          AuditHelper.logFailure(
-              context,
-              EventType.ADMIN_LOGIN,
-              AdminAuditConstants.LOGIN_FAILURE,
-              "Unexpected response status: " + response.status(),
-              adminTenantId));
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_FAILURE, adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(resolveAdminId(request.username()))
+              .errorMessage("Unexpected response status: " + response.status())
+              .build());
 
       throw new IllegalStateException("Unexpected authentication response: " + response.status());
     }
@@ -333,6 +333,8 @@ public class AdminAuthController {
     try {
       // Extract bearer token from authorization header
       String bearerToken = authorization.replace(AdminAuditConstants.BEARER_PREFIX, "");
+      // Resolve admin ID for audit before invalidating the token
+      Integer adminIdForAudit = authService.getAdminIdForToken(bearerToken);
       authService.logout(bearerToken);
 
       // Extract client context for audit logging
@@ -340,8 +342,11 @@ public class AdminAuthController {
 
       // Audit logout
       auditLogService.log(
-          AuditHelper.logSuccess(
-              context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null));
+          AuditHelper.createAdminAudit(
+                  context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(adminIdForAudit)
+              .build());
 
       return ResponseEntity.ok().build();
     } catch (Exception e) {
@@ -612,5 +617,18 @@ public class AdminAuthController {
         .map(EzkeyAdmin::getTenant)
         .map(tenant -> tenant.getTenantId())
         .orElse(null);
+  }
+
+  /**
+   * Resolves the admin ID for an administrator by username (for audit logging).
+   *
+   * @param username the admin username
+   * @return the admin ID, or null if not found
+   */
+  private Integer resolveAdminId(String username) {
+    if (username == null || username.isBlank()) {
+      return null;
+    }
+    return adminRepository.findByUsername(username).map(EzkeyAdmin::getAdminId).orElse(null);
   }
 }
