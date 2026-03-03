@@ -45,7 +45,8 @@ BEGIN
         RAISE EXCEPTION 'Invalid partition name format: %. Expected format: ezkey_<table>_YYYY_MM', p_partition_name;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = p_partition_name AND relkind = 'r') THEN
+    -- relkind 'r' = regular table (ezkey_auth_attempt monthly partition), 'p' = partitioned table (ezkey_audit_log monthly parent)
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = p_partition_name AND relkind IN ('r', 'p')) THEN
         RAISE NOTICE 'Partition % already exists, skipping creation', p_partition_name;
         RETURN false;
     END IF;
