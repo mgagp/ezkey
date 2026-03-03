@@ -16,8 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.ezkey.tests.config.DockerStackConfig;
+import org.ezkey.tests.tags.TestTags;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
@@ -46,8 +48,15 @@ import org.slf4j.LoggerFactory;
  *   <li>Test C: Verify failover - test recovery when instance crashes
  * </ul>
  *
+ * <p><b>Elective:</b> Tagged as elective because ShedLock/scheduler code is stable and HA is not the
+ * default run mode. Run on demand for spot-checks or before an HA deployment. Invocation: {@code
+ * mvn test -pl ezkey-tests -P elective-tests} or {@code -Dgroups=elective}.
+ *
  * @since 2025
  */
+@Tag(TestTags.ELECTIVE)
+@Tag(TestTags.SLOW)
+@Tag(TestTags.CROSS_INSTANCE)
 @DisplayName("ShedLock Distributed Locking Tests")
 public class ShedLockDistributedTest {
 
