@@ -39,7 +39,12 @@ export const enrollmentsApi = {
    */
   bind: async (payload: BindEnrollmentRequest, authUrl?: string) => {
     const config = authUrl ? {baseURL: authUrl} : undefined;
-    const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, payload, config);
+    const body = {
+      enrollmentId: Number(payload.enrollmentId),
+      enrollmentProofToken: payload.enrollmentProofToken,
+      ...(payload.language ? {language: payload.language} : {}),
+    };
+    const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, body, config);
     return response.data;
   },
   /**
@@ -54,7 +59,13 @@ export const enrollmentsApi = {
    */
   verify: async (payload: VerifyEnrollmentRequest, authUrl?: string) => {
     const config = authUrl ? {baseURL: authUrl} : undefined;
-    const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, payload, config);
+    const body = {
+      enrollmentId: Number(payload.enrollmentId),
+      challengeResponse: payload.challengeResponse ? Number(payload.challengeResponse) : undefined,
+      devicePublicKey: payload.devicePublicKey,
+      enrollmentProofTokenSigned: payload.enrollmentProofTokenSigned,
+    };
+    const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, body, config);
     return response.data;
   },
 };

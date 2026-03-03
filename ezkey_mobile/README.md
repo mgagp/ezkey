@@ -105,6 +105,28 @@ yarn test                  # Jest unit/component tests
 # yarn detox:test          # Optional end-to-end suite (requires Detox setup)
 ```
 
+### Android build troubleshooting
+
+If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.76 requires **JDK 17 or 21**.
+
+**Option 1 – Use the helper script (Git Bash or terminal):**
+```bash
+yarn android:jdk17
+```
+
+**Option 2 – Set JAVA_HOME manually:**
+```powershell
+# Windows (Android Studio bundled JBR)
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+yarn android
+```
+
+```bash
+# macOS
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+yarn android
+```
+
 ## Native Modules Summary
 
 - `EzkeyCryptoModule` (Kotlin/Swift) exposes EC P-256 key generation, retrieval, and signing with hardware-backed storage (Android Keystore, iOS Secure Enclave)

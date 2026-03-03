@@ -23,7 +23,7 @@ export type BindEnrollmentRequest = {
 };
 
 export type BindEnrollmentResponse = {
-  enrollmentId: string;
+  enrollmentId: number | string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
   integrationName: string;
@@ -47,14 +47,14 @@ export type VerifyEnrollmentResponse = {
 };
 
 export type PendingAuthRequest = {
-  enrollmentId: string;
+  enrollmentId: string | number;
   enrollmentProofToken: string;
   deviceProofToken: string;
   deviceProofTokenSigned: string;
 };
 
 export type PendingAuthResponse = {
-  authAttemptId: string;
+  authAttemptId: string | number;
   authAttemptProofToken: string;
   authAttemptProofTokenSignedByIntegration: string;
   authAttemptChallengeRequired: boolean;
@@ -67,10 +67,10 @@ export type PendingAuthResponse = {
 export type AuthAttemptDecision = 'APPROVED' | 'REJECTED' | 'FAILED';
 
 export type RespondAuthRequest = {
-  authAttemptId: string;
+  authAttemptId: string | number;
   authAttemptAccepted: boolean;
   authAttemptProofTokenSignedByDevice: string;
-  authAttemptChallengeResponse?: string;
+  authAttemptChallengeResponse?: string | number;
 };
 
 export type RespondAuthResponse = {

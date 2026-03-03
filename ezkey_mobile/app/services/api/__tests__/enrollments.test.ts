@@ -16,14 +16,14 @@ describe('enrollmentsApi', () => {
     mockedPost.mockReset();
   });
 
-  it('bind calls the correct endpoint with payload', async () => {
+  it('bind calls the correct endpoint with normalized payload', async () => {
     const payload: BindEnrollmentRequest = {
-      enrollmentId: 'enr_123',
+      enrollmentId: '123',
       enrollmentProofToken: 'proof-token',
       language: 'en',
     };
     const responseData: BindEnrollmentResponse = {
-      enrollmentId: 'enr_123',
+      enrollmentId: 123,
       enrollmentProofToken: 'proof-token-updated',
       integrationPublicKey: 'public-key',
       integrationName: 'Acme Bank',
@@ -32,17 +32,21 @@ describe('enrollmentsApi', () => {
 
     const result = await enrollmentsApi.bind(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/enrollments/bind', payload, undefined);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/enrollments/bind',
+      {enrollmentId: 123, enrollmentProofToken: 'proof-token', language: 'en'},
+      undefined,
+    );
     expect(result).toEqual(responseData);
   });
 
   it('bind passes authUrl as baseURL config when provided', async () => {
     const payload: BindEnrollmentRequest = {
-      enrollmentId: 'enr_456',
+      enrollmentId: '456',
       enrollmentProofToken: 'proof-token-2',
     };
     const responseData: BindEnrollmentResponse = {
-      enrollmentId: 'enr_456',
+      enrollmentId: 456,
       enrollmentProofToken: 'proof-token-2',
       integrationPublicKey: 'pk',
       integrationName: 'Globex Corp',
@@ -51,13 +55,17 @@ describe('enrollmentsApi', () => {
 
     const result = await enrollmentsApi.bind(payload, 'https://ezkey.globex.com');
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/enrollments/bind', payload, {baseURL: 'https://ezkey.globex.com'});
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/enrollments/bind',
+      {enrollmentId: 456, enrollmentProofToken: 'proof-token-2'},
+      {baseURL: 'https://ezkey.globex.com'},
+    );
     expect(result).toEqual(responseData);
   });
 
-  it('verify calls the correct endpoint with payload', async () => {
+  it('verify calls the correct endpoint with normalized payload', async () => {
     const payload: VerifyEnrollmentRequest = {
-      enrollmentId: 'enr_123',
+      enrollmentId: '123',
       challengeResponse: '654321',
       devicePublicKey: 'device-public-key',
       enrollmentProofTokenSigned: 'signed-proof',
@@ -69,13 +77,22 @@ describe('enrollmentsApi', () => {
 
     const result = await enrollmentsApi.verify(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/enrollments/verify', payload, undefined);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/enrollments/verify',
+      {
+        enrollmentId: 123,
+        challengeResponse: 654321,
+        devicePublicKey: 'device-public-key',
+        enrollmentProofTokenSigned: 'signed-proof',
+      },
+      undefined,
+    );
     expect(result).toEqual(responseData);
   });
 
   it('verify passes authUrl as baseURL config when provided', async () => {
     const payload: VerifyEnrollmentRequest = {
-      enrollmentId: 'enr_789',
+      enrollmentId: '789',
       devicePublicKey: 'device-pk',
       enrollmentProofTokenSigned: 'signed',
     };
@@ -84,7 +101,16 @@ describe('enrollmentsApi', () => {
 
     const result = await enrollmentsApi.verify(payload, 'https://ezkey.initech.com');
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/enrollments/verify', payload, {baseURL: 'https://ezkey.initech.com'});
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/enrollments/verify',
+      {
+        enrollmentId: 789,
+        challengeResponse: undefined,
+        devicePublicKey: 'device-pk',
+        enrollmentProofTokenSigned: 'signed',
+      },
+      {baseURL: 'https://ezkey.initech.com'},
+    );
     expect(result).toEqual(responseData);
   });
 });

@@ -153,7 +153,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       response: BindEnrollmentResponse,
       request: {enrollmentId: string; enrollmentProofToken: string; language?: string},
     ): EnrollmentDraft => {
-      const enrollmentId = response.enrollmentId ?? request.enrollmentId;
+      const rawId = response.enrollmentId ?? request.enrollmentId;
+      const enrollmentId = String(rawId);
       return {
         id: enrollmentId,
         integrationId: enrollmentId,

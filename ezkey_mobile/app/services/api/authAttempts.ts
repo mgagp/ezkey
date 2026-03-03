@@ -40,7 +40,13 @@ export const authAttemptsApi = {
    */
   pending: async (payload: PendingAuthRequest, authUrl?: string) => {
     const config = authUrl ? {baseURL: authUrl} : undefined;
-    const response = await httpClient.post<PendingAuthResponse>(`${basePath}/pending`, payload, config);
+    const body = {
+      enrollmentId: Number(payload.enrollmentId),
+      enrollmentProofToken: payload.enrollmentProofToken,
+      deviceProofToken: payload.deviceProofToken,
+      deviceProofTokenSigned: payload.deviceProofTokenSigned,
+    };
+    const response = await httpClient.post<PendingAuthResponse>(`${basePath}/pending`, body, config);
     return response.data;
   },
   /**
@@ -56,7 +62,15 @@ export const authAttemptsApi = {
    */
   respond: async (payload: RespondAuthRequest, authUrl?: string) => {
     const config = authUrl ? {baseURL: authUrl} : undefined;
-    const response = await httpClient.post<RespondAuthResponse>(`${basePath}/respond`, payload, config);
+    const body = {
+      authAttemptId: Number(payload.authAttemptId),
+      authAttemptAccepted: payload.authAttemptAccepted,
+      authAttemptProofTokenSignedByDevice: payload.authAttemptProofTokenSignedByDevice,
+      ...(payload.authAttemptChallengeResponse != null
+        ? {authAttemptChallengeResponse: Number(payload.authAttemptChallengeResponse)}
+        : {}),
+    };
+    const response = await httpClient.post<RespondAuthResponse>(`${basePath}/respond`, body, config);
     return response.data;
   },
 };

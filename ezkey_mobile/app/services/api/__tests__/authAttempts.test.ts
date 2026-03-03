@@ -21,15 +21,15 @@ describe('authAttemptsApi', () => {
     mockedPost.mockReset();
   });
 
-  it('pending hits the pending endpoint with payload', async () => {
+  it('pending hits the pending endpoint with normalized payload', async () => {
     const payload: PendingAuthRequest = {
-      enrollmentId: 'enr_123',
+      enrollmentId: '123',
       enrollmentProofToken: 'proof-token',
       deviceProofToken: 'device-proof-token',
       deviceProofTokenSigned: 'signed-device-proof',
     };
     const responseData: PendingAuthResponse = {
-      authAttemptId: 'auth_123',
+      authAttemptId: 123,
       authAttemptProofToken: 'attempt-proof-token',
       authAttemptProofTokenSignedByIntegration: 'signed-proof',
       authAttemptChallengeRequired: true,
@@ -40,19 +40,28 @@ describe('authAttemptsApi', () => {
 
     const result = await authAttemptsApi.pending(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/auth-attempts/pending', payload, undefined);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/auth-attempts/pending',
+      {
+        enrollmentId: 123,
+        enrollmentProofToken: 'proof-token',
+        deviceProofToken: 'device-proof-token',
+        deviceProofTokenSigned: 'signed-device-proof',
+      },
+      undefined,
+    );
     expect(result).toEqual(responseData);
   });
 
   it('pending passes authUrl as baseURL config when provided', async () => {
     const payload: PendingAuthRequest = {
-      enrollmentId: 'enr_456',
+      enrollmentId: 456,
       enrollmentProofToken: 'proof',
       deviceProofToken: 'dpt',
       deviceProofTokenSigned: 'signed-dpt',
     };
     const responseData: PendingAuthResponse = {
-      authAttemptId: 'auth_456',
+      authAttemptId: 456,
       authAttemptProofToken: 'apt',
       authAttemptProofTokenSignedByIntegration: 'signed-apt',
       authAttemptChallengeRequired: false,
@@ -63,13 +72,22 @@ describe('authAttemptsApi', () => {
 
     const result = await authAttemptsApi.pending(payload, 'https://ezkey.globex.com');
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/auth-attempts/pending', payload, {baseURL: 'https://ezkey.globex.com'});
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/auth-attempts/pending',
+      {
+        enrollmentId: 456,
+        enrollmentProofToken: 'proof',
+        deviceProofToken: 'dpt',
+        deviceProofTokenSigned: 'signed-dpt',
+      },
+      {baseURL: 'https://ezkey.globex.com'},
+    );
     expect(result).toEqual(responseData);
   });
 
-  it('respond hits the respond endpoint with payload', async () => {
+  it('respond hits the respond endpoint with normalized payload', async () => {
     const payload: RespondAuthRequest = {
-      authAttemptId: 'auth_123',
+      authAttemptId: '123',
       authAttemptAccepted: true,
       authAttemptProofTokenSignedByDevice: 'signed-proof',
       authAttemptChallengeResponse: '123456',
@@ -84,13 +102,22 @@ describe('authAttemptsApi', () => {
 
     const result = await authAttemptsApi.respond(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/auth-attempts/respond', payload, undefined);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/auth-attempts/respond',
+      {
+        authAttemptId: 123,
+        authAttemptAccepted: true,
+        authAttemptProofTokenSignedByDevice: 'signed-proof',
+        authAttemptChallengeResponse: 123456,
+      },
+      undefined,
+    );
     expect(result).toEqual(responseData);
   });
 
   it('respond passes authUrl as baseURL config when provided', async () => {
     const payload: RespondAuthRequest = {
-      authAttemptId: 'auth_789',
+      authAttemptId: 789,
       authAttemptAccepted: false,
       authAttemptProofTokenSignedByDevice: 'signed',
     };
@@ -104,7 +131,15 @@ describe('authAttemptsApi', () => {
 
     const result = await authAttemptsApi.respond(payload, 'https://ezkey.initech.com');
 
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/auth-attempts/respond', payload, {baseURL: 'https://ezkey.initech.com'});
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/auth-attempts/respond',
+      {
+        authAttemptId: 789,
+        authAttemptAccepted: false,
+        authAttemptProofTokenSignedByDevice: 'signed',
+      },
+      {baseURL: 'https://ezkey.initech.com'},
+    );
     expect(result).toEqual(responseData);
   });
 });
