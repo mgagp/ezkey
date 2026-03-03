@@ -22,8 +22,10 @@
 -- STEP 1: Create Partition Management Function
 -- ============================================================================
 
--- Function to create monthly partitions for partitioned tables
--- Uses SECURITY DEFINER to execute with owner privileges
+-- Function to create monthly partitions for partitioned tables.
+-- For ezkey_audit_log: creates monthly partition and three LIST (api_name) sub-partitions.
+-- For ezkey_auth_attempt: creates a single monthly partition.
+-- Uses SECURITY DEFINER to execute with owner privileges.
 CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_table_name TEXT,
     p_partition_name TEXT,
@@ -31,41 +33,46 @@ CREATE OR REPLACE FUNCTION create_monthly_partition(
     p_end_date TIMESTAMPTZ
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql
-SECURITY DEFINER  -- Execute with owner privileges (not caller privileges)
-SET search_path = public  -- Prevent search_path injection attacks
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
-    -- Validate table name (whitelist to prevent injection)
-    -- Only allow creation of partitions for known partitioned tables
     IF p_table_name NOT IN ('ezkey_auth_attempt', 'ezkey_audit_log') THEN
         RAISE EXCEPTION 'Invalid table name: %. Only ezkey_auth_attempt and ezkey_audit_log are allowed.', p_table_name;
     END IF;
-    
-    -- Validate partition name format (security: prevent injection)
+
     IF p_partition_name !~ '^ezkey_(auth_attempt|audit_log)_\d{4}_\d{2}$' THEN
         RAISE EXCEPTION 'Invalid partition name format: %. Expected format: ezkey_<table>_YYYY_MM', p_partition_name;
     END IF;
-    
-    -- Check if partition already exists (idempotent operation)
-    IF EXISTS (
-        SELECT 1 FROM pg_class 
-        WHERE relname = p_partition_name AND relkind = 'r'
-    ) THEN
+
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = p_partition_name AND relkind = 'r') THEN
         RAISE NOTICE 'Partition % already exists, skipping creation', p_partition_name;
         RETURN false;
     END IF;
-    
-    -- Create partition using dynamic SQL
-    -- Note: format() with %I and %L prevents SQL injection
-    EXECUTE format(
-        'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
-        p_partition_name,
-        p_table_name,
-        p_start_date,
-        p_end_date
-    );
-    
-    RAISE NOTICE 'Created partition: % for table: %', p_partition_name, p_table_name;
+
+    IF p_table_name = 'ezkey_audit_log' THEN
+        -- Composite: monthly partition then LIST (api_name) sub-partitions
+        EXECUTE format(
+            'CREATE TABLE %I PARTITION OF ezkey_audit_log FOR VALUES FROM (%L) TO (%L) PARTITION BY LIST (api_name)',
+            p_partition_name,
+            p_start_date,
+            p_end_date
+        );
+        EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', p_partition_name || '_admin', p_partition_name);
+        EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', p_partition_name || '_auth', p_partition_name);
+        EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', p_partition_name || '_m2m', p_partition_name);
+        RAISE NOTICE 'Created partition % and sub-partitions _admin, _auth, _m2m for table ezkey_audit_log', p_partition_name;
+    ELSE
+        -- ezkey_auth_attempt: single monthly partition
+        EXECUTE format(
+            'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+            p_partition_name,
+            p_table_name,
+            p_start_date,
+            p_end_date
+        );
+        RAISE NOTICE 'Created partition: % for table: %', p_partition_name, p_table_name;
+    END IF;
     RETURN true;
 END;
 $$;
@@ -92,12 +99,8 @@ REVOKE EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIM
 -- ============================================================================
 
 COMMENT ON FUNCTION create_monthly_partition IS 
-'Creates monthly partition for partitioned tables (ezkey_auth_attempt, ezkey_audit_log). '
-'Executes with owner privileges via SECURITY DEFINER, allowing application role to create '
-'partitions without requiring CREATE TABLE privilege. This maintains security best practices '
-'by separating DDL privileges (owner role) from DML privileges (application role). '
-'Function is idempotent - safely skips creation if partition already exists. '
-'Returns BOOLEAN: true if partition was created, false if partition already existed.';
+'Creates monthly partition for ezkey_auth_attempt (single partition) or ezkey_audit_log (monthly partition plus LIST(api_name) sub-partitions _admin, _auth, _m2m). '
+'Executes with owner privileges via SECURITY DEFINER. Idempotent - returns BOOLEAN: true if created, false if already existed.';
 
 -- ============================================================================
 -- Migration Complete

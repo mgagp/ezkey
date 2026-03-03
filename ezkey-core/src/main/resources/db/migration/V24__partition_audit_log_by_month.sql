@@ -1,14 +1,13 @@
 -- ============================================================================
--- Ezkey Migration V24: Partition ezkey_audit_log by Month
+-- Ezkey Migration V24: Partition ezkey_audit_log by Month and API
 -- ============================================================================
--- Description: Converts ezkey_audit_log table to monthly range partitioning
---              for improved query performance, efficient data archival, and
---              SOC2 compliance support.
+-- Description: Converts ezkey_audit_log table to composite partitioning:
+--              RANGE (created_at) by month, then LIST (api_name) per month
+--              with sub-partitions ADMIN_API, AUTH_API, M2M_API.
 --
--- Context: High-volume table that will grow rapidly in production. Monthly
---          partitioning enables efficient partition pruning for date-range
---          queries, simplifies compliance reporting, and supports 7-year
---          retention requirements for SOC2.
+-- Context: High-volume table with three distinct event streams (Admin API,
+--          Auth API, M2M API). Sub-partitioning by api_name enables partition
+--          pruning when filtering by API and natural segregation of traffic.
 --
 -- Development Mode: This migration assumes an empty or non-existent table.
 --                   No data migration is performed.
@@ -69,7 +68,7 @@ CREATE TABLE ezkey_audit_log (
 
 -- Add table-level comment
 COMMENT ON TABLE ezkey_audit_log IS
-'Comprehensive audit logging partitioned by month for security monitoring, forensic analysis, and SOC2 compliance. Tracks all critical operations across admin-api and auth-api with full context including IP addresses, user agents, and entity references. Partitioned by created_at for efficient query performance, compliance reporting, and 7-year retention management.';
+'Comprehensive audit logging with composite partitioning: RANGE (created_at) by month, LIST (api_name) per month (ADMIN_API, AUTH_API, M2M_API). Enables partition pruning by date and API for security monitoring, forensic analysis, and SOC2 compliance.';
 
 -- Add column-level comments (same as original, with partitioning note)
 COMMENT ON COLUMN ezkey_audit_log.audit_log_id IS
@@ -108,40 +107,42 @@ COMMENT ON COLUMN ezkey_audit_log.created_at IS
 'Timestamp with timezone when the event was recorded - immutable value for compliance tracking. Used as partitioning key for monthly partitions.';
 
 -- ============================================================================
--- STEP 3: Create Initial Partitions
+-- STEP 3: Create Initial Partitions (composite: month + api_name sub-partitions)
 -- ============================================================================
 
--- Create partition for current month
--- Note: Using first day of current month to first day of next month
+-- Helper: create one monthly partition with three LIST (api_name) sub-partitions
 DO $$
 DECLARE
     current_month_start TIMESTAMPTZ;
     next_month_start TIMESTAMPTZ;
-    partition_name TEXT;
+    month_partition_name TEXT;
 BEGIN
-    -- Calculate current month boundaries (using TIMESTAMPTZ for partition boundaries)
     current_month_start := DATE_TRUNC('month', CURRENT_TIMESTAMP);
     next_month_start := current_month_start + INTERVAL '1 month';
 
-    -- Create partition name (e.g., ezkey_audit_log_2025_01)
-    partition_name := 'ezkey_audit_log_' || TO_CHAR(current_month_start, 'YYYY_MM');
-
-    -- Create partition for current month
+    -- Current month: create partition partitioned by LIST (api_name)
+    month_partition_name := 'ezkey_audit_log_' || TO_CHAR(current_month_start, 'YYYY_MM');
     EXECUTE format(
-        'CREATE TABLE %I PARTITION OF ezkey_audit_log FOR VALUES FROM (%L) TO (%L)',
-        partition_name,
+        'CREATE TABLE %I PARTITION OF ezkey_audit_log FOR VALUES FROM (%L) TO (%L) PARTITION BY LIST (api_name)',
+        month_partition_name,
         current_month_start,
         next_month_start
     );
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', month_partition_name || '_admin', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', month_partition_name || '_auth', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', month_partition_name || '_m2m', month_partition_name);
 
-    -- Create partition for next month (pre-create for seamless transition)
-    partition_name := 'ezkey_audit_log_' || TO_CHAR(next_month_start, 'YYYY_MM');
+    -- Next month (pre-create for seamless transition)
+    month_partition_name := 'ezkey_audit_log_' || TO_CHAR(next_month_start, 'YYYY_MM');
     EXECUTE format(
-        'CREATE TABLE %I PARTITION OF ezkey_audit_log FOR VALUES FROM (%L) TO (%L)',
-        partition_name,
+        'CREATE TABLE %I PARTITION OF ezkey_audit_log FOR VALUES FROM (%L) TO (%L) PARTITION BY LIST (api_name)',
+        month_partition_name,
         next_month_start,
         next_month_start + INTERVAL '1 month'
     );
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', month_partition_name || '_admin', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', month_partition_name || '_auth', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', month_partition_name || '_m2m', month_partition_name);
 END $$;
 
 -- ============================================================================
@@ -200,10 +201,10 @@ WHERE event_type IN ('REENCRYPTION_STARTED', 'REENCRYPTION_COMPLETED', 'REENCRYP
 -- ============================================================================
 -- Migration Complete
 -- ============================================================================
--- ezkey_audit_log table is now partitioned by month (created_at).
+-- ezkey_audit_log is now composite partitioned: RANGE (created_at) by month,
+-- each month partition is LIST (api_name) with sub-partitions _admin, _auth, _m2m.
 --
 -- Next Steps:
--- 1. Test partition pruning with queries
--- 2. Set up scheduled job to create future partitions (see PartitionSchedulerService)
--- 3. Plan for 7-year retention policy (SOC2 compliance)
+-- 1. Partition scheduler creates future months via create_monthly_partition (with sub-partitions)
+-- 2. Plan for 7-year retention policy (SOC2 compliance)
 -- ============================================================================

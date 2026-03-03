@@ -85,11 +85,10 @@ Ezkey has two high-volume tables that grow continuously in production:
 │  └────────────────────────────────────────────────────────┘     │
 │                                                                   │
 │  ┌────────────────────────────────────────────────────────┐     │
-│  │        ezkey_audit_log (partitioned parent)            │     │
+│  │   ezkey_audit_log (RANGE created_at, LIST api_name)   │     │
 │  ├────────────────────────────────────────────────────────┤     │
-│  │  ▶ ezkey_audit_log_2025_01  (Jan 2025 partition)      │     │
-│  │  ▶ ezkey_audit_log_2025_02  (Feb 2025 partition)      │     │
-│  │  ▶ ezkey_audit_log_2025_03  (Mar 2025 partition)      │     │
+│  │  ▶ ezkey_audit_log_2025_01 (+ _admin, _auth, _m2m)    │     │
+│  │  ▶ ezkey_audit_log_2025_02 (+ _admin, _auth, _m2m)   │     │
 │  │  ▶ ...                                                 │     │
 │  └────────────────────────────────────────────────────────┘     │
 │                                                                   │
@@ -105,9 +104,9 @@ Ezkey has two high-volume tables that grow continuously in production:
 ### Tables Partitioned
 
 | Table | Partition Key | Naming Convention | Rationale |
-|-------|--------------|-------------------|-----------|
+|-------|----------------|-------------------|-----------|
 | `ezkey_auth_attempt` | `created_at` | `ezkey_auth_attempt_YYYY_MM` | High insert volume, time-based queries |
-| `ezkey_audit_log` | `created_at` | `ezkey_audit_log_YYYY_MM` | SOC2 compliance, 7-year retention |
+| `ezkey_audit_log` | `created_at` then `api_name` | `ezkey_audit_log_YYYY_MM` + `_admin`, `_auth`, `_m2m` | SOC2, 7-year retention; sub-partition by API for pruning |
 
 ### Key Design Principles
 
@@ -133,7 +132,7 @@ Ezkey has two high-volume tables that grow continuously in production:
 **When:** During deployment/migration  
 **Migrations:**
 - **V23** - Create `ezkey_auth_attempt` partitioned table + initial partitions
-- **V24** - Create `ezkey_audit_log` partitioned table + initial partitions
+- **V24** - Create `ezkey_audit_log` composite (RANGE + LIST api_name) + initial partitions and sub-partitions
 - **V25** - Create `create_monthly_partition()` SECURITY DEFINER function
 
 **Key Files:**
@@ -690,9 +689,8 @@ grep "partition" /var/log/ezkey/admin-api.log
    - Legal hold support for audit logs
 
 2. **Sub-Partitioning**
-   - For extremely high-volume tables (> 100M rows/month)
-   - Sub-partition by hash (enrollment_id, tenant_id)
-   - Requires careful design and testing
+   - **ezkey_audit_log:** ✅ Implemented — LIST(api_name) per month (_admin, _auth, _m2m) for partition pruning by API.
+   - **ezkey_auth_attempt:** Only if >100M rows/month; sub-partition by hash (enrollment_id) if needed.
 
 3. **Partition Monitoring Dashboard**
    - Grafana dashboard showing partition sizes over time
@@ -742,7 +740,8 @@ grep "partition" /var/log/ezkey/admin-api.log
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
+**Last Updated:** March 2025  
 **Author:** Ezkey contributors  
 **License:** MIT  
 **Related Documents:**

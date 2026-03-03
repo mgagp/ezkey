@@ -37,7 +37,7 @@ import org.ezkey.audit.domain.EventType;
  *   <li>{@code entryHmac} - HMAC-SHA256 of canonical entry content (tamper-evidence)
  * </ul>
  *
- * <p><b>Database Table:</b> ezkey_audit_log (partitioned by month on created_at)
+ * <p><b>Database Table:</b> ezkey_audit_log (composite: RANGE created_at by month, LIST api_name per month)
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

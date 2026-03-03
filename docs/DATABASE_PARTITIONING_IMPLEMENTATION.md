@@ -26,9 +26,9 @@ This document summarizes the implementation of database table partitioning for E
 
 #### 2. ezkey_audit_log
 
-- **Partitioning Strategy:** Monthly range partitioning by `created_at`
+- **Partitioning Strategy:** Composite: RANGE by `created_at` (monthly), then LIST by `api_name` per month (ADMIN_API, AUTH_API, M2M_API)
 - **Migration:** V24__partition_audit_log_by_month.sql
-- **Partition Naming:** `ezkey_audit_log_YYYY_MM` (e.g., `ezkey_audit_log_2025_01`)
+- **Partition Naming:** `ezkey_audit_log_YYYY_MM` (monthly parent), then `ezkey_audit_log_YYYY_MM_admin`, `_auth`, `_m2m` (sub-partitions)
 - **Indexes Created:**
   - `idx_audit_log_event_type` - for event type queries
   - `idx_audit_log_status` - for status queries
@@ -67,7 +67,8 @@ This document summarizes the implementation of database table partitioning for E
 - Runs daily at 1 AM (configurable)
 - Uses SECURITY DEFINER function (no DDL privileges needed)
 - Idempotent - function checks if partition exists before creating
-- Supports both `ezkey_auth_attempt` and `ezkey_audit_log` tables
+- For `ezkey_auth_attempt`: creates one monthly partition
+- For `ezkey_audit_log`: creates one monthly partition plus three LIST(api_name) sub-partitions (_admin, _auth, _m2m)
 
 **Configuration Properties:**
 ```properties
@@ -98,14 +99,11 @@ ezkey.database.partition.scheduler.cron=0 0 1 * * ?
 5. ✅ Swapped tables (renamed old to backup, new to original name)
 6. ✅ Dropped old table
 
-### V24: Partition ezkey_audit_log
+### V24: Partition ezkey_audit_log (composite)
 
-1. ✅ Created partitioned table structure (`ezkey_audit_log_partitioned`)
-2. ✅ Created initial partitions for current month and next month
-3. ✅ Migrated existing data from old table
-4. ✅ Created indexes on partitioned table
-5. ✅ Swapped tables (renamed old to backup, new to original name)
-6. ✅ Dropped old table
+1. ✅ Created partitioned table structure (RANGE by created_at)
+2. ✅ Created initial monthly partitions for current month and next month, each with LIST(api_name) sub-partitions (_admin, _auth, _m2m)
+3. ✅ Created indexes on partitioned table (propagated to all sub-partitions)
 
 ---
 
@@ -123,7 +121,7 @@ FROM pg_tables
 WHERE tablename LIKE 'ezkey_auth_attempt_%'
 ORDER BY tablename;
 
--- Check partitions for ezkey_audit_log
+-- Check partitions for ezkey_audit_log (monthly parents and api_name sub-partitions)
 SELECT 
     schemaname,
     tablename,
@@ -131,17 +129,24 @@ SELECT
 FROM pg_tables
 WHERE tablename LIKE 'ezkey_audit_log_%'
 ORDER BY tablename;
+-- Expect: ezkey_audit_log_YYYY_MM, ezkey_audit_log_YYYY_MM_admin, _auth, _m2m per month
 ```
 
 ### 2. Verify Partition Pruning
 
 ```sql
--- Test partition pruning with EXPLAIN ANALYZE
-EXPLAIN ANALYZE
+-- ezkey_auth_attempt: prune by created_at
+EXPLAIN (ANALYZE, COSTS OFF)
 SELECT * FROM ezkey_auth_attempt
 WHERE created_at >= '2025-01-01' AND created_at < '2025-02-01';
+-- Expect: Partition Pruning in plan, only the matching monthly partition scanned
 
--- Should show "Partition Pruning: true" in the query plan
+-- ezkey_audit_log: prune by created_at and api_name (sub-partition pruning)
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT * FROM ezkey_audit_log
+WHERE created_at >= '2025-01-01' AND created_at < '2025-02-01'
+  AND api_name = 'AUTH_API';
+-- Expect: Only the ezkey_audit_log_YYYY_MM_auth sub-partition scanned (month + api_name pruning)
 ```
 
 ### 3. Verify Data Integrity
@@ -185,14 +190,19 @@ ORDER BY month;
 If needed, partitions can be created manually:
 
 ```sql
--- Create partition for specific month
+-- ezkey_auth_attempt: single monthly partition
 CREATE TABLE ezkey_auth_attempt_2025_03
 PARTITION OF ezkey_auth_attempt
 FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
 
+-- ezkey_audit_log: monthly partition + LIST(api_name) sub-partitions
 CREATE TABLE ezkey_audit_log_2025_03
 PARTITION OF ezkey_audit_log
-FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+FOR VALUES FROM ('2025-03-01') TO ('2025-04-01')
+PARTITION BY LIST (api_name);
+CREATE TABLE ezkey_audit_log_2025_03_admin PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('ADMIN_API');
+CREATE TABLE ezkey_audit_log_2025_03_auth PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('AUTH_API');
+CREATE TABLE ezkey_audit_log_2025_03_m2m PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('M2M_API');
 ```
 
 ### Archiving Old Partitions
@@ -287,17 +297,16 @@ ezkey.database.partition.scheduler.enabled=false
 
 ### Partition Pruning Not Working
 
-**Symptoms:** Queries scan all partitions even with date filters
+**Symptoms:** Queries scan all partitions even with date (or api_name) filters
 
 **Possible Causes:**
-- Query doesn't include `created_at` filter
-- Date filter uses wrong format
-- Partition boundaries don't match query range
+- Query doesn't include `created_at` filter (required for both tables)
+- For audit_log: adding `api_name` filter prunes to a single sub-partition per month
+- Date filter uses wrong format or partition boundaries don't match query range
 
 **Solution:**
-- Ensure queries include `created_at` filter
-- Use `EXPLAIN ANALYZE` to verify partition pruning
-- Check partition boundaries match query date range
+- Ensure queries include `created_at` filter; for audit_log, add `api_name` when filtering by API
+- Use `EXPLAIN (ANALYZE, COSTS OFF)` to verify partition pruning in the plan
 
 ---
 
@@ -305,12 +314,8 @@ ezkey.database.partition.scheduler.enabled=false
 
 ### Sub-Partitioning
 
-For extremely high-volume deployments, consider sub-partitioning:
-
-- **ezkey_auth_attempt:** Sub-partition by `enrollment_id` (hash) if >100M records/month
-- **ezkey_audit_log:** Sub-partition by `event_type` (list) if very diverse event types
-
-**Status:** Documented for future evaluation, not needed initially
+- **ezkey_audit_log:** ✅ Implemented. Each month is sub-partitioned by LIST(api_name) into _admin, _auth, _m2m for partition pruning when filtering by API.
+- **ezkey_auth_attempt:** Sub-partition by `enrollment_id` (hash) only if >100M records/month; not needed initially.
 
 ### Tenant-Based Partitioning
 
@@ -354,8 +359,8 @@ For multi-tenant SaaS deployments:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** January 2025  
-**Status:** Implementation Complete  
+**Document Version:** 1.1  
+**Last Updated:** March 2025  
+**Status:** Implementation Complete (audit_log composite RANGE+LIST(api_name))  
 **Next Review:** After production deployment
 
