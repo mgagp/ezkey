@@ -200,7 +200,7 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.enrollmentId())
+              .enrollmentId(null)
               .integrationId(resolveIntegrationId(request.enrollmentId()))
               .tenantId(validationTenantId)
               .errorMessage("Enrollment ID and enrollment proof token are required")
@@ -238,8 +238,8 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(request.enrollmentId())
-              .integrationId(resolveIntegrationId(request.enrollmentId()))
+              .enrollmentId(null)
+              .integrationId(null)
               .tenantId(auditTenantId)
               .errorMessage(e.getMessage())
               .build());
@@ -354,11 +354,9 @@ public class EnrollmentController {
                 .apiName(ApiName.AUTH_API)
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
-                .enrollmentId(req.enrollmentId())
+                .enrollmentId(attemptedEnrollment != null ? req.enrollmentId() : null)
                 .integrationId(
-                    attemptedEnrollment != null
-                        ? attemptedEnrollment.getIntegrationId()
-                        : resolveIntegrationId(req.enrollmentId()))
+                    attemptedEnrollment != null ? attemptedEnrollment.getIntegrationId() : null)
                 .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .eventDetails(
@@ -381,8 +379,8 @@ public class EnrollmentController {
                 .apiName(ApiName.AUTH_API)
                 .ipAddress(clientIp)
                 .userAgent(userAgent)
-                .enrollmentId(req.enrollmentId())
-                .integrationId(resolveIntegrationId(req.enrollmentId()))
+                .enrollmentId(null)
+                .integrationId(null)
                 .tenantId(verifyTenantId)
                 .errorMessage(e.getMessage())
                 .build());
@@ -403,8 +401,8 @@ public class EnrollmentController {
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)
-              .enrollmentId(req.enrollmentId())
-              .integrationId(resolveIntegrationId(req.enrollmentId()))
+              .enrollmentId(null)
+              .integrationId(null)
               .tenantId(verifyTenantId)
               .errorMessage(e.getMessage())
               .build());

@@ -41,8 +41,7 @@ public class AuthApiService {
    * @param enrollmentProofToken proof token for authentication
    * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
    */
-  public Mono<EnrollmentBindResponseDto> bind(
-      Integer enrollmentId, String enrollmentProofToken) {
+  public Mono<EnrollmentBindResponseDto> bind(Integer enrollmentId, String enrollmentProofToken) {
     String uri = "/api/v1/enrollments/bind";
 
     // Create request DTO

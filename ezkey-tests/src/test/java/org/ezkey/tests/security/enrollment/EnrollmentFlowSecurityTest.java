@@ -168,4 +168,163 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
     }
   }
+
+  @Test
+  @DisplayName("Verify with wrong challenge returns 400 Invalid challenge response")
+  public void verify_WhenWrongChallenge_FirstAttempt_Returns400InvalidChallengeResponse() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+
+      configureForAdminApi(dockerStackConfig);
+      Integer integrationId = testDataFactory.createIntegration();
+      Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+
+      Response enrollmentResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + enrollmentId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+      Integer correctChallenge = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+      assertThat(enrollmentProofToken).isNotNull().isNotEmpty();
+
+      EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> bindRequest = new HashMap<>();
+      bindRequest.put("enrollmentId", enrollmentId);
+      bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+      Response bindResp =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bindRequest)
+              .when()
+              .post("/enrollments/bind")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String bindProofToken = bindResp.jsonPath().getString("enrollmentProofToken");
+      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      configureForAuthApi(dockerStackConfig);
+
+      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
+      Map<String, Object> verifyRequest = new HashMap<>();
+      verifyRequest.put("enrollmentId", enrollmentId);
+      verifyRequest.put("challengeResponse", wrongChallenge);
+      verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
+      verifyRequest.put("enrollmentProofTokenSigned", signature);
+
+      Response verifyResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .body(verifyRequest)
+              .when()
+              .post("/enrollments/verify")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(verifyResponse.getStatusCode()).isEqualTo(400);
+      assertThat(verifyResponse.jsonPath().getString("message"))
+          .contains("Invalid challenge response");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName("Verify retry after wrong challenge returns 409 with invalidated message")
+  public void verify_WhenWrongChallenge_Retry_Returns409WithInvalidatedMessage() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+
+      configureForAdminApi(dockerStackConfig);
+      Integer integrationId = testDataFactory.createIntegration();
+      Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+
+      Response enrollmentResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + enrollmentId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+      Integer correctChallenge = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+      assertThat(enrollmentProofToken).isNotNull().isNotEmpty();
+
+      EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> bindRequest = new HashMap<>();
+      bindRequest.put("enrollmentId", enrollmentId);
+      bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+      Response bindResp =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bindRequest)
+              .when()
+              .post("/enrollments/bind")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String bindProofToken = bindResp.jsonPath().getString("enrollmentProofToken");
+      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      configureForAuthApi(dockerStackConfig);
+
+      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
+      Map<String, Object> verifyRequest = new HashMap<>();
+      verifyRequest.put("enrollmentId", enrollmentId);
+      verifyRequest.put("challengeResponse", wrongChallenge);
+      verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
+      verifyRequest.put("enrollmentProofTokenSigned", signature);
+
+      // First attempt: wrong challenge -> 400
+      given()
+          .contentType(ContentType.JSON)
+          .body(verifyRequest)
+          .when()
+          .post("/enrollments/verify")
+          .then()
+          .statusCode(400);
+
+      // Retry: enrollment is now INVALID -> 409 with invalidated message
+      Response retryResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .body(verifyRequest)
+              .when()
+              .post("/enrollments/verify")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(retryResponse.getStatusCode()).isEqualTo(409);
+      String message = retryResponse.jsonPath().getString("message");
+      assertThat(message)
+          .as("Message should state enrollment was invalidated, not 'must be bound'")
+          .contains("invalidated")
+          .contains("previous failed verification");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
 }

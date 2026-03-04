@@ -230,6 +230,10 @@ Content-Type: application/json
 }
 ```
 
+**Error responses**
+- **400 Bad Request**: Invalid verification data. For example, wrong `challengeResponse` returns message "Invalid challenge response". The enrollment is then invalidated; a subsequent verify call for the same enrollment will return 409.
+- **409 Conflict**: Enrollment not in a state that allows verification. If the enrollment was invalidated due to a previous failed verification attempt (e.g. wrong challenge), the message states that the enrollment was invalidated due to a previous failed verification attempt.
+
 ---
 
 ## 2. Admin API Endpoints (internal)

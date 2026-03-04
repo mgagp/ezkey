@@ -163,12 +163,13 @@ public class EnrollmentVerifyService {
     logger.debug("Enrollment status validation passed: Status is not VERIFIED");
 
     if (enrollment.getStatus() != EnrollmentStatus.BOUND) {
+      String message = resolveNotBoundMessage(enrollment.getStatus());
       logger.warn(
-          "Validation failed: Enrollment must be bound before verification - ID: {}, Status: {}",
+          "Validation failed: Enrollment not in BOUND state - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalStateException("Enrollment must be bound before verification");
+      throw new IllegalStateException(message);
     }
 
     // Reject if pending enrollment has expired (expires_at in the past)
@@ -318,13 +319,13 @@ public class EnrollmentVerifyService {
     logger.debug("Lock acquired successfully for enrollment ID: {}", enrollment.getEnrollmentId());
 
     if (enrollment.getStatus() != EnrollmentStatus.BOUND) {
+      String message = resolveNotBoundMessage(enrollment.getStatus());
       logger.warn(
-          "Validation failed: Enrollment must be bound before verification after lock - ID: {},"
-              + " Status: {}",
+          "Validation failed: Enrollment not in BOUND state after lock - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalStateException("Enrollment must be bound before verification");
+      throw new IllegalStateException(message);
     }
 
     logger.debug("Post-lock status validation passed: Status is BOUND");
@@ -421,6 +422,27 @@ public class EnrollmentVerifyService {
             + " DevicePublicKeyHash: {}",
         enrollment.getEnrollmentId(),
         devicePublicKeyHash);
+  }
+
+  /**
+   * Resolves the user-facing error message when enrollment is not in BOUND state.
+   *
+   * <p>Differentiates between CREATED (never bound), INVALID (invalidated by failed verification),
+   * REVOKED, and EXPIRED so the client receives an accurate message.
+   *
+   * @param status the current enrollment status
+   * @return the appropriate error message for the status
+   */
+  private static String resolveNotBoundMessage(EnrollmentStatus status) {
+    return switch (status) {
+      case CREATED -> "Enrollment must be bound before verification";
+      case INVALID ->
+          "Enrollment verification failed. The enrollment was invalidated due to a previous failed"
+              + " verification attempt.";
+      case REVOKED -> "Enrollment has been revoked and cannot be verified.";
+      case EXPIRED -> "Enrollment invitation has expired.";
+      default -> "Enrollment is not available for verification";
+    };
   }
 
   /**
