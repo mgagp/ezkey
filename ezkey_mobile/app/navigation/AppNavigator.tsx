@@ -6,6 +6,7 @@ import {PendingAuthScreen} from '../screens/PendingAuth';
 import {EnrollmentWizardScreen} from '../screens/EnrollmentWizard';
 import {RootStackParamList} from './types';
 import {DiagnosticsScreen} from '../screens/Diagnostics';
+import {DangerZoneScreen} from '../screens/DangerZone';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -35,6 +36,11 @@ export const AppNavigator: React.FC = () => (
         name="Diagnostics"
         component={DiagnosticsScreen}
         options={{title: 'Diagnostics'}}
+      />
+      <Stack.Screen
+        name="DangerZone"
+        component={DangerZoneScreen}
+        options={{title: 'Danger Zone'}}
       />
     </Stack.Navigator>
 );

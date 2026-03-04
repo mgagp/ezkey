@@ -72,12 +72,20 @@ export const HomeScreen: React.FC = () => {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Diagnostics')}
-          style={styles.diagnosticsButton}
-          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Text style={styles.diagnosticsLabel}>Diagnostics</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('DangerZone')}
+            style={styles.headerButton}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.headerButtonLabel}>Manage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Diagnostics')}
+            style={styles.headerButton}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.diagnosticsLabel}>Diagnostics</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation]);
@@ -221,9 +229,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#f4f7ff',
   },
-  diagnosticsButton: {
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerButton: {
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  headerButtonLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5a9cf7',
   },
   diagnosticsLabel: {
     fontSize: 12,

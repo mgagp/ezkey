@@ -10,9 +10,13 @@
  * @since 2025
  */
 
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -51,14 +55,138 @@ type EnrollmentDraft = {
   tenantDescription?: string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
-  logoUri?: string;
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
   status: EnrollmentStatus;
 };
 
-const MOCK_DEVICE_NAME = 'Pixel 7 Pro';
+type EnrollmentInfoCardProps = {
+  draft: EnrollmentDraft;
+  showServerUrl?: boolean;
+  serverUrl?: string;
+  compact?: boolean;
+};
+
+/**
+ * Displays user-relevant enrollment info from the bind response.
+ * Omits technical fields (enrollmentId, publicKey, proofToken).
+ * Uses Ezkey blue palette for subtle visual hierarchy.
+ *
+ * @since 2025
+ */
+const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
+  draft,
+  showServerUrl,
+  serverUrl,
+  compact,
+}) => (
+  <View style={[styles.infoCard, compact && styles.infoCardCompact]}>
+    <View style={[styles.infoCardHeader, compact && styles.infoCardHeaderCompact]}>
+      <Text style={styles.infoCardTitle}>{draft.integrationName}</Text>
+    </View>
+    <View style={[styles.infoCardBody, compact && styles.infoCardBodyCompact]}>
+      {draft.integrationDescription ? (
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Description</Text>
+          <Text style={styles.infoValue}>{draft.integrationDescription}</Text>
+        </View>
+      ) : null}
+      <View style={styles.infoDivider} />
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Organization</Text>
+        <Text style={styles.infoValue}>{draft.tenantName}</Text>
+      </View>
+      {draft.tenantDescription ? (
+        <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
+      ) : null}
+      {draft.enrollmentName ? (
+        <>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Device</Text>
+            <Text style={styles.infoValue}>{draft.enrollmentName}</Text>
+          </View>
+        </>
+      ) : null}
+      {showServerUrl && serverUrl ? (
+        <>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Server</Text>
+            <Text style={styles.infoValueSmall}>{serverUrl}</Text>
+          </View>
+        </>
+      ) : null}
+    </View>
+  </View>
+);
+
+type ChallengeCodeInputProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+  onClearError?: () => void;
+  editable?: boolean;
+};
+
+const CHALLENGE_LENGTH = 6;
+
+/**
+ * Six-box challenge code input with paste support.
+ * Hidden TextInput overlaid for keyboard; digits displayed in boxes.
+ *
+ * @since 2025
+ */
+const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
+  value,
+  onChangeText,
+  onClearError,
+  editable = true,
+}) => {
+  const inputRef = useRef<TextInput>(null);
+  const digits = value.split('').concat(Array(CHALLENGE_LENGTH).fill('')).slice(0, CHALLENGE_LENGTH);
+
+  const handleChange = useCallback(
+    (text: string) => {
+      onClearError?.();
+      const digitsOnly = text.replace(/[^0-9]/g, '');
+      const next = digitsOnly.length > 1 ? digitsOnly.slice(0, CHALLENGE_LENGTH) : digitsOnly;
+      onChangeText(next);
+    },
+    [onChangeText, onClearError],
+  );
+
+  return (
+    <Pressable
+      onPress={() => editable && inputRef.current?.focus()}
+      style={styles.challengeContainer}
+      accessibilityLabel="Challenge code input"
+      accessibilityHint="Enter the 6-digit code shown in the admin console">
+      <View style={styles.challengeBoxes}>
+        {digits.map((digit, i) => (
+          <View
+            key={i}
+            style={[
+              styles.challengeBox,
+              digit ? styles.challengeBoxFilled : undefined,
+            ]}>
+            <Text style={styles.challengeDigit}>{digit || ''}</Text>
+          </View>
+        ))}
+      </View>
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={handleChange}
+        keyboardType="number-pad"
+        maxLength={CHALLENGE_LENGTH}
+        editable={editable}
+        caretHidden
+        style={styles.challengeInputHidden}
+      />
+    </Pressable>
+  );
+};
 
 /**
  * Walks the user through the Ezkey device enrollment workflow.
@@ -73,6 +201,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBinding, setIsBinding] = useState(false);
   const [bindError, setBindError] = useState<string | undefined>();
+  const [cameraError, setCameraError] = useState<string | undefined>();
   const [bindForm, setBindForm] = useState({
     enrollmentId: '',
     enrollmentProofToken: '',
@@ -86,9 +215,12 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 
   const extractErrorMessage = useCallback((error: unknown) => {
     if (axios.isAxiosError(error)) {
+      const data = error.response?.data as Record<string, unknown> | undefined;
       const message =
-        error.response?.data?.message ??
-        error.response?.data?.error ??
+        (typeof data?.message === 'string' ? data.message : null) ??
+        (typeof data?.detail === 'string' ? data.detail : null) ??
+        (typeof data?.error === 'string' ? data.error : null) ??
+        (typeof data?.code === 'string' ? data.code : null) ??
         error.message ??
         'Request failed.';
       return message;
@@ -102,47 +234,24 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const steps = useMemo<WizardStep[]>(
     () => [
       {
-        id: 'introduction',
-        title: 'Get ready to enroll',
-        description:
-          'We will capture the QR code from the integration portal and exchange a proof token to bind this device. Make sure you have the enrollment QR visible on your workstation.',
-        actionLabel: 'Begin',
-      },
-      {
-        id: 'permissions',
-        title: 'Enable camera access',
-        description: hasCameraPermission
-          ? 'Camera permission is already granted. Continue to scan the enrollment QR code.'
-          : 'The camera is required to scan the enrollment QR code. Grant permission when prompted. You can also open the system settings later if you deny it by mistake.',
-        actionLabel: hasCameraPermission ? 'Start scanning' : 'Grant permission',
-        secondaryLabel: 'Learn more',
-      },
-      {
         id: 'scan',
         title: 'Scan the QR code',
-        description: 'Align the enrollment QR code within the frame to populate the enrollment details.',
+        description:
+          'Have the enrollment QR visible on your workstation. Tap the button below to open the camera.',
         actionLabel: 'Open scanner',
+        secondaryLabel: 'Learn more',
       },
       {
         id: 'challenge',
         title: 'Enter enrollment challenge',
         description: draft
-          ? `Review ${draft.integrationName} and enter the 6-digit enrollment challenge displayed in the admin console.`
-          : 'Review the enrollment details and enter the 6-digit challenge shown in the admin console.',
-        actionLabel: 'Continue',
+          ? `Enter the 6-digit code from the admin console. Tap Complete enrollment to link this device to ${draft.integrationName}.`
+          : 'Enter the 6-digit code from the admin console. Tap Complete enrollment to finish.',
+        actionLabel: 'Complete enrollment',
         secondaryLabel: 'Cancel',
       },
-      {
-        id: 'confirm',
-        title: 'Review and finish',
-        description: draft
-          ? `You are about to bind ${MOCK_DEVICE_NAME} to ${draft.integrationName}. We will generate an Ed25519 key pair derived from the root key, and verify the proof token before activating.`
-          : `You are about to bind ${MOCK_DEVICE_NAME} to your Ezkey enrollment. On the real flow, we generate an Ed25519 key pair derived from the root key, and verify the proof token before activating.`,
-        actionLabel: 'Finish',
-        secondaryLabel: 'Back to Home',
-      },
     ],
-    [draft, hasCameraPermission],
+    [draft],
   );
 
   const currentStep = steps[stepIndex];
@@ -165,7 +274,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         tenantDescription: response.tenantDescription,
         enrollmentProofToken: response.enrollmentProofToken ?? request.enrollmentProofToken,
         integrationPublicKey: response.integrationPublicKey,
-        logoUri: response.integrationLogo,
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
         deviceLabel: response.enrollmentName,
@@ -213,6 +321,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setScannerVisible(false);
       } catch (error) {
         setBindError(extractErrorMessage(error));
+        setScannerVisible(false);
       } finally {
         setIsBinding(false);
       }
@@ -261,9 +370,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         createdAt: now,
         lastActivityAt: now,
         status,
-        logoUri:
-          draft.logoUri ??
-          `https://placehold.co/128x128?text=${draft.integrationName.charAt(0).toUpperCase()}`,
         favorited: false,
         enrollmentProofToken: draft.enrollmentProofToken,
         enrollmentId: enrollmentId,
@@ -273,16 +379,17 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         authUrl,
       };
       await saveEnrollment.mutateAsync(record);
-      const successMessage = verifyResponse.active
-        ? `${draft.integrationName} is now available.`
-        : `${draft.integrationName} was saved in pending state.`;
-      Alert.alert('Enrollment completed', successMessage);
       setDraft(undefined);
       setEnrollmentChallenge('');
       navigation.popToTop();
     } catch (error) {
-      console.error('[EnrollmentWizard] Failed to finalize enrollment', error);
-      Alert.alert('Enrollment failed', extractErrorMessage(error));
+      const message = extractErrorMessage(error);
+      setChallengeError(message);
+      setEnrollmentChallenge('');
+      setStepIndex(() => {
+        const challengeIndex = steps.findIndex(step => step.id === 'challenge');
+        return challengeIndex >= 0 ? challengeIndex : 0;
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -298,28 +405,20 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 
   const handlePrimary = useCallback(() => {
     const step = steps[stepIndex];
-    if (step.id === 'confirm') {
-      finalizeEnrollment();
-      return;
-    }
-    if (step.id === 'permissions') {
-      const proceed = () => {
-        setStepIndex(index => Math.min(index + 1, steps.length - 1));
-        setScannerVisible(true);
-      };
+    if (step.id === 'scan') {
+      setBindError(undefined);
+      setCameraError(undefined);
       if (hasCameraPermission) {
-        proceed();
+        setScannerVisible(true);
       } else {
         requestPermission().then(granted => {
           if (granted) {
-            proceed();
+            setScannerVisible(true);
+          } else {
+            setCameraError('Camera access is required. Enable it in Settings to scan the QR code.');
           }
         });
       }
-      return;
-    }
-    if (step.id === 'scan') {
-      setScannerVisible(true);
       return;
     }
     if (step.id === 'challenge') {
@@ -328,6 +427,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         return;
       }
       setChallengeError(undefined);
+      finalizeEnrollment();
+      return;
     }
     setStepIndex(index => Math.min(index + 1, steps.length - 1));
   }, [
@@ -344,7 +445,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     if (!currentStep.secondaryLabel) {
       return;
     }
-    if (currentStep.id === 'permissions') {
+    if (currentStep.id === 'scan') {
       Alert.alert(
         'Why we need camera access',
         'The QR holds temporary enrollment credentials. The app never stores raw images; it only processes the encoded payload locally.',
@@ -377,9 +478,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       return;
     }
     const step = steps[stepIndex];
-    if (step.id === 'confirm') {
-      setDraft(undefined);
-    }
     if (step.id === 'challenge') {
       setChallengeError(undefined);
       setEnrollmentChallenge('');
@@ -390,98 +488,84 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
 
   const challengeMissing = currentStep.id === 'challenge' && enrollmentChallenge.trim().length !== 6;
   const primaryDisabled =
-    (currentStep.id === 'confirm' && isSubmitting) ||
+    (currentStep.id === 'challenge' && isSubmitting) ||
     (currentStep.id === 'scan' && isBinding) ||
     challengeMissing;
   const secondaryDisabled =
-    (currentStep.id === 'confirm' && isSubmitting) ||
+    (currentStep.id === 'challenge' && isSubmitting) ||
     (currentStep.id === 'scan' && isBinding);
   const primaryLabel =
-    currentStep.id === 'confirm'
-      ? isSubmitting
-        ? 'Finishing…'
-        : currentStep.actionLabel
+    currentStep.id === 'challenge' && isSubmitting
+      ? 'Finishing…'
       : currentStep.id === 'scan' && isBinding
         ? 'Binding…'
         : currentStep.actionLabel;
 
+  const isChallengeStep = currentStep.id === 'challenge' && !!draft;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backLabel}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add enrollment</Text>
-        <View style={styles.backButton} />
-      </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressBar, {flex: progress}]} />
-        <View style={[styles.progressRemaining, {flex: 1 - progress}]} />
-      </View>
-      <View style={styles.stepContainer}>
-        <Text style={styles.stepTitle}>{currentStep.title}</Text>
-        <Text style={styles.stepDescription}>{currentStep.description}</Text>
-        {currentStep.id === 'scan' ? (
-          <View style={styles.scanInstructions}>
-            <Text style={styles.scanHint}>
-              Tap below to open the camera and scan the enrollment QR code. We will automatically fill in the details
-              once the scan succeeds.
-            </Text>
-            {bindError ? <Text style={styles.formError}>{bindError}</Text> : null}
-            <TouchableOpacity
-              style={styles.scanButton}
-              onPress={() => {
-                if (isBinding) {
-                  return;
-                }
-                setScannerVisible(true);
-              }}>
-              <Text style={styles.scanButtonLabel}>Open scanner</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-        {currentStep.id === 'challenge' && draft ? (
-          <>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>{draft.integrationName}</Text>
-              {draft.integrationDescription ? (
-                <Text style={styles.summarySubtitle}>{draft.integrationDescription}</Text>
+    <>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Text style={styles.backLabel}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add enrollment</Text>
+          <View style={styles.backButton} />
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressBar, {flex: progress}]} />
+          <View style={[styles.progressRemaining, {flex: 1 - progress}]} />
+        </View>
+        <View style={styles.stepContainer}>
+          {!isChallengeStep ? (
+            <>
+              <Text style={styles.stepTitle}>{currentStep.title}</Text>
+              <Text style={styles.stepDescription}>{currentStep.description}</Text>
+            </>
+          ) : null}
+          {currentStep.id === 'scan' ? (
+            <View style={styles.scanInstructions}>
+              {(bindError || cameraError) ? (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
+                </View>
               ) : null}
-              <Text style={styles.summaryMeta}>Enrollment ID: {draft.id}</Text>
             </View>
-            <Text style={styles.inputLabel}>Challenge code</Text>
-            <TextInput
-              value={enrollmentChallenge}
-              onChangeText={value => {
-                setChallengeError(undefined);
-                setEnrollmentChallenge(value.replace(/[^0-9]/g, '').slice(0, 6));
-              }}
-              keyboardType="number-pad"
-              style={styles.input}
-              placeholder="000000"
-              placeholderTextColor="#5f6780"
-              editable={!isSubmitting}
-            />
-            {challengeError ? <Text style={styles.formError}>{challengeError}</Text> : null}
-          </>
-        ) : null}
-        {currentStep.id === 'confirm' && draft ? (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>{draft.integrationName}</Text>
-            <Text style={styles.summarySubtitle}>{draft.tenantName}</Text>
-            {authUrl ? (
-              <View style={styles.serverRow}>
-                <Text style={styles.serverLabel}>Server</Text>
-                <Text style={styles.serverValue}>{authUrl}</Text>
+          ) : null}
+          {isChallengeStep ? (
+            <>
+              <View style={styles.challengeSection}>
+                <Text style={styles.challengeHeading}>Enter the 6-digit code from the admin console</Text>
+                <Text style={styles.challengeHint}>
+                  Tap Complete enrollment below to finish linking this device.
+                </Text>
+                <ChallengeCodeInput
+                  value={enrollmentChallenge}
+                  onChangeText={value => setEnrollmentChallenge(value)}
+                  onClearError={() => setChallengeError(undefined)}
+                  editable={!isSubmitting}
+                />
+                {challengeError ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>{challengeError}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-            <Text style={styles.summaryMeta}>Status: {draft.status.toUpperCase()}</Text>
-            <Text style={styles.summaryMeta}>
-              Created {new Date().toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+              <Text style={styles.enrollmentDetailsLabel}>Enrollment details</Text>
+              <EnrollmentInfoCard draft={draft} compact />
+            </>
+          ) : null}
+        </View>
+      </ScrollView>
       <View style={styles.actions}>
         {currentStep.secondaryLabel ? (
           <TouchableOpacity
@@ -500,7 +584,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           <Text style={styles.primaryLabel}>{primaryLabel}</Text>
         </TouchableOpacity>
       </View>
-
+    </KeyboardAvoidingView>
       <EnrollmentScannerModal
         visible={scannerVisible}
         onDismiss={() => setScannerVisible(false)}
@@ -524,7 +608,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           }
         }}
       />
-    </View>
+    </>
   );
 };
 
@@ -532,8 +616,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0b0d11',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -545,7 +636,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   backLabel: {
-    color: '#61d095',
+    color: '#5a9cf7',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -563,14 +654,39 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   progressBar: {
-    backgroundColor: '#61d095',
+    backgroundColor: '#3076df',
   },
   progressRemaining: {
     backgroundColor: 'transparent',
   },
   stepContainer: {
-    flex: 1,
+    flexGrow: 1,
     marginTop: 24,
+  },
+  challengeSection: {
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  challengeHeading: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  challengeHint: {
+    fontSize: 14,
+    color: '#9aa3b6',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  enrollmentDetailsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#5a7aa8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   stepTitle: {
     fontSize: 20,
@@ -600,66 +716,128 @@ const styles = StyleSheet.create({
     color: '#f4f7ff',
     fontSize: 16,
   },
+  challengeContainer: {
+    position: 'relative',
+  },
+  challengeBoxes: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  challengeBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#151923',
+    borderWidth: 3,
+    borderColor: 'rgba(54, 115, 223, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengeBoxFilled: {
+    borderColor: 'rgba(54, 115, 223, 0.85)',
+  },
+  challengeDigit: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  challengeInputHidden: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    fontSize: 1,
+  },
   formError: {
     fontSize: 13,
     color: '#ff7878',
   },
+  errorBanner: {
+    backgroundColor: 'rgba(255, 120, 120, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff6666',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  errorBannerText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#ff7878',
+    lineHeight: 22,
+  },
   scanInstructions: {
     gap: 12,
   },
-  scanHint: {
-    fontSize: 14,
-    color: '#c2c8d5',
-  },
-  summaryCard: {
+  infoCard: {
     marginTop: 24,
-    backgroundColor: '#151923',
     borderRadius: 12,
-    padding: 16,
-    gap: 8,
+    overflow: 'hidden',
+    backgroundColor: '#0f1628',
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.2)',
   },
-  summaryTitle: {
+  infoCardCompact: {
+    marginTop: 0,
+  },
+  infoCardHeader: {
+    backgroundColor: 'rgba(18, 39, 92, 0.6)',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(54, 115, 223, 0.15)',
+  },
+  infoCardHeaderCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  infoCardTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: '#d6e6ff',
   },
-  summarySubtitle: {
-    fontSize: 14,
-    color: '#c2c8d5',
+  infoCardBody: {
+    padding: 18,
+    gap: 10,
   },
-  summaryMeta: {
-    fontSize: 12,
-    color: '#9aa3b6',
-  },
-  serverRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  infoCardBodyCompact: {
+    padding: 14,
     gap: 8,
   },
-  serverLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9aa3b6',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+  infoRow: {
+    gap: 4,
   },
-  serverValue: {
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#5a7aa8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontSize: 15,
+    color: '#f4f7ff',
+    lineHeight: 22,
+  },
+  infoValueMuted: {
     fontSize: 13,
-    color: '#61d095',
+    color: '#9aa3b6',
+    lineHeight: 20,
+    marginTop: -4,
+  },
+  infoValueSmall: {
+    fontSize: 12,
+    color: '#5a9cf7',
     flexShrink: 1,
   },
-  scanButton: {
-    marginTop: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#61d095',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  scanButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#61d095',
+  infoDivider: {
+    height: 1,
+    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    marginVertical: 8,
   },
   actions: {
     flexDirection: 'row',
@@ -670,7 +848,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#61d095',
+    backgroundColor: '#3076df',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -697,7 +875,7 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0b0d11',
+    color: '#ffffff',
   },
 });
 

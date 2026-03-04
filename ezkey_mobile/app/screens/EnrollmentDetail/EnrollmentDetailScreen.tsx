@@ -5,34 +5,29 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: EnrollmentDetailScreen
- * Description: Displays enrollment metadata and supports secure deletion flows.
- * Security Context: Reinforces lifecycle expectations from docs/features/AUTH_SECURITY.md by revoking device keys when
- *                   enrollments are removed and highlighting the binding between device alias and proof tokens.
+ * Description: Displays enrollment metadata and routes to pending auth. Optimized for the primary action: Check pending.
+ * Delete enrollment moved to Danger Zone (Manage screen).
  * @since 2025
  */
 
-import React, {useCallback, useEffect, useMemo} from 'react';
-import {ActivityIndicator, Alert, Button, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useMemo} from 'react';
+import {ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
+import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
-import {cryptoService} from '../../services/crypto';
-import {env} from '../../config/env';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 /**
- * Screen that surfaces enrollment metadata and allows users to manage their device bindings.
+ * Screen that surfaces enrollment metadata and routes to pending auth.
+ * Primary action: Check pending. Delete moved to Danger Zone.
  *
- * @param route Navigation route containing the requested enrollment identifier.
- * @param navigation Navigation helpers for stack transitions.
  * @since 2025
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
-  const deleteEnrollment = useDeleteEnrollment();
   const selectedId = useEnrollmentStore(store => store.selectedId);
   const targetId = enrollmentId ?? selectedId;
 
@@ -53,33 +48,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     navigation.navigate('PendingAuth', {enrollmentId});
   };
 
-  const confirmDelete = useCallback(() => {
-    if (!enrollment || deleteEnrollment.isPending) {
-      return;
-    }
-    Alert.alert(
-      'Delete enrollment',
-      `Are you sure you want to delete the enrollment for ${enrollment.integrationName}? This will remove the stored keys on this device.`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteEnrollment.mutateAsync(enrollment.id);
-              // With Ed25519, keys are derived on-demand, so no need to delete specific keys
-              navigation.popToTop();
-            } catch (error) {
-              console.error('[EnrollmentDetail] Failed to delete enrollment', error);
-              Alert.alert('Deletion failed', 'Unable to delete the enrollment. Please try again.');
-            }
-          },
-        },
-      ],
-    );
-  }, [deleteEnrollment, enrollment, navigation]);
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -99,57 +67,45 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     );
   }
 
+  const createdStr = new Date(enrollment.createdAt).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const lastStr = new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const hasCustomServer = !!enrollment.authUrl;
+
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.label}>Integration</Text>
-        <Text style={styles.value}>{enrollment.integrationName}</Text>
-
-        <Text style={styles.label}>Tenant</Text>
-        <Text style={styles.value}>{enrollment.tenantName}</Text>
-
+      <View style={styles.identityZone}>
+        <View style={styles.identityRow}>
+          <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
+          <Text style={styles.statusBadge}>{enrollment.status.toUpperCase()}</Text>
+        </View>
+        <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
         {enrollment.enrollmentName ? (
-          <>
-            <Text style={styles.label}>Device label</Text>
-            <Text style={styles.value}>{enrollment.enrollmentName}</Text>
-          </>
-        ) : null}
-
-        <Text style={styles.label}>Enrollment state</Text>
-        <Text style={styles.value}>{enrollment.status.toUpperCase()}</Text>
-
-        <Text style={styles.label}>Created</Text>
-        <Text style={styles.value}>
-          {new Date(enrollment.createdAt).toLocaleString(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          })}
-        </Text>
-
-        <Text style={styles.label}>Last activity</Text>
-        <Text style={styles.value}>
-          {new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          })}
-        </Text>
-
-        <Text style={styles.label}>Auth API server</Text>
-        <Text style={[styles.value, styles.serverUrl]}>
-          {enrollment.authUrl ?? env.apiBaseUrl}
-        </Text>
-        {!enrollment.authUrl ? (
-          <Text style={styles.fallbackHint}>(default fallback)</Text>
+          <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
         ) : null}
       </View>
 
-      <Button title="Check pending" onPress={navigateToPending} />
-      <Button
-        title={deleteEnrollment.isPending ? 'Deleting…' : 'Delete enrollment'}
-        onPress={confirmDelete}
-        color="#ff6666"
-        disabled={deleteEnrollment.isPending}
-      />
+      <View style={styles.metaZone}>
+        <Text style={styles.metaLine}>
+          Created {createdStr} · Last {lastStr}
+        </Text>
+      </View>
+
+      {hasCustomServer ? (
+        <View style={styles.serverZone}>
+          <Text style={styles.serverLabel}>Server</Text>
+          <Text style={styles.serverValue}>{enrollment.authUrl}</Text>
+        </View>
+      ) : null}
+
+      <TouchableOpacity style={styles.primaryButton} onPress={navigateToPending}>
+        <Text style={styles.primaryLabel}>Check pending</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -157,36 +113,80 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    gap: 24,
+    padding: 20,
+    gap: 16,
     backgroundColor: '#0b0d11',
   },
-  card: {
+  identityZone: {
     backgroundColor: '#151923',
     borderRadius: 12,
-    padding: 20,
-    gap: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.15)',
   },
-  label: {
+  identityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  integrationName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  statusBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#61d095',
+    letterSpacing: 0.5,
+  },
+  tenantLine: {
+    fontSize: 14,
+    color: '#9aa3b6',
+    marginTop: 6,
+  },
+  deviceLine: {
+    fontSize: 13,
+    color: '#c2c8d5',
+    marginTop: 2,
+  },
+  metaZone: {
+    paddingHorizontal: 4,
+  },
+  metaLine: {
     fontSize: 12,
     color: '#9aa3b6',
+  },
+  serverZone: {
+    backgroundColor: '#0f1628',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.2)',
+  },
+  serverLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#5a7aa8',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  value: {
-    fontSize: 16,
-    color: '#f4f7ff',
-    fontWeight: '500',
+  serverValue: {
+    fontSize: 12,
+    color: '#5a9cf7',
   },
-  serverUrl: {
-    fontSize: 13,
-    color: '#61d095',
+  primaryButton: {
+    backgroundColor: '#3076df',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
   },
-  fallbackHint: {
-    fontSize: 11,
-    color: '#5f6780',
-    fontStyle: 'italic',
-    marginTop: -8,
+  primaryLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   missingContainer: {
     flex: 1,

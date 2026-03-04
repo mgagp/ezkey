@@ -38,7 +38,6 @@ export const DiagnosticsScreen: React.FC = () => {
             try {
               await enrollmentStorage.clearAll();
               await refetch();
-              Alert.alert('Success', 'All enrollment data has been cleared.');
             } catch (error) {
               Alert.alert(
                 'Error',

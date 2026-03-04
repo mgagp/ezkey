@@ -4,4 +4,5 @@ export type RootStackParamList = {
   PendingAuth: {enrollmentId: string};
   EnrollmentWizard: undefined;
   Diagnostics: undefined;
+  DangerZone: undefined;
 };

@@ -90,12 +90,13 @@ android {
         }
     }
     packagingOptions {
-        exclude "lib/armeabi/*"
-        exclude "lib/armeabi-v7a/*"
-        exclude "lib/x86/*"
-        exclude "lib/mips/*"
-        pickFirst "lib/arm64-v8a/libc++_shared.so"
-        pickFirst "lib/x86_64/libc++_shared.so"
+        jniLibs {
+            excludes += ['lib/armeabi/*', 'lib/armeabi-v7a/*', 'lib/x86/*', 'lib/mips/*']
+            pickFirsts += ['lib/arm64-v8a/libc++_shared.so', 'lib/x86_64/libc++_shared.so']
+        }
+        resources {
+            excludes += ['lib/armeabi/*', 'lib/armeabi-v7a/*', 'lib/x86/*', 'lib/mips/*']
+        }
     }
     signingConfigs {
         debug {

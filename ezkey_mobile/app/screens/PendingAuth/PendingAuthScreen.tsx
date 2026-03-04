@@ -11,10 +11,10 @@
  * @since 2025
  */
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,7 +32,7 @@ import {cryptoService} from '../../services/crypto';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
-type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired';
+type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired' | 'failed';
 
 type PendingAttempt = {
   authAttemptId: string;
@@ -44,6 +44,72 @@ type PendingAttempt = {
   challengeRequired: boolean;
   contextTitle?: string;
   contextMessage?: string;
+};
+
+const AUTH_CHALLENGE_LENGTH = 2;
+
+type AuthChallengeCodeInputProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+  onClearError?: () => void;
+  editable?: boolean;
+};
+
+/**
+ * Two-box challenge code input with paste support.
+ * Same pattern as enrollment 6-digit input for consistency.
+ *
+ * @since 2025
+ */
+const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
+  value,
+  onChangeText,
+  onClearError,
+  editable = true,
+}) => {
+  const inputRef = useRef<TextInput>(null);
+  const digits = value.split('').concat(Array(AUTH_CHALLENGE_LENGTH).fill('')).slice(0, AUTH_CHALLENGE_LENGTH);
+
+  const handleChange = useCallback(
+    (text: string) => {
+      onClearError?.();
+      const digitsOnly = text.replace(/[^0-9]/g, '');
+      const next = digitsOnly.length > 1 ? digitsOnly.slice(0, AUTH_CHALLENGE_LENGTH) : digitsOnly;
+      onChangeText(next);
+    },
+    [onChangeText, onClearError],
+  );
+
+  return (
+    <Pressable
+      onPress={() => editable && inputRef.current?.focus()}
+      style={styles.challengeContainer}
+      accessibilityLabel="Challenge code input"
+      accessibilityHint="Enter the 2-digit code shown in the admin console">
+      <View style={styles.challengeBoxes}>
+        {digits.map((digit, i) => (
+          <View
+            key={i}
+            style={[
+              styles.challengeBox,
+              digit ? styles.challengeBoxFilled : undefined,
+            ]}>
+            <Text style={styles.challengeDigit}>{digit || ''}</Text>
+          </View>
+        ))}
+      </View>
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={handleChange}
+        keyboardType="number-pad"
+        maxLength={AUTH_CHALLENGE_LENGTH}
+        editable={editable}
+        caretHidden
+        style={styles.challengeInputHidden}
+      />
+    </Pressable>
+  );
 };
 
 /**
@@ -64,6 +130,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const [challengeInput, setChallengeInput] = useState('');
   const [formError, setFormError] = useState<string | undefined>();
   const [globalError, setGlobalError] = useState<string | undefined>();
+  const [challengeFailedMessage, setChallengeFailedMessage] = useState<string | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -89,6 +156,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
     setLoading(true);
     setGlobalError(undefined);
+    setChallengeFailedMessage(undefined);
     try {
       const enrollmentId = enrollment.id.toString();
       // Ensure EC P-256 key pair exists for this enrollment
@@ -153,8 +221,12 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         return;
       }
       // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
-      if (attempt.challengeRequired && !challengeInput.trim()) {
-        setFormError('Challenge code is required.');
+      if (
+        accepted &&
+        attempt.challengeRequired &&
+        challengeInput.trim().length !== AUTH_CHALLENGE_LENGTH
+      ) {
+        setFormError('Enter the 2-digit code from the admin console.');
         return;
       }
       setIsProcessing(true);
@@ -168,17 +240,24 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           enrollmentId,
           attempt.authAttemptProofToken,
         );
-        await authAttemptsApi.respond({
+        const response = await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
           authAttemptAccepted: accepted,
           authAttemptProofTokenSignedByDevice: proofTokenSigned,
           authAttemptChallengeResponse: challengeInput.trim() || undefined,
         }, enrollment.authUrl);
-        setState(accepted ? 'accepted' : 'rejected');
-        Alert.alert(
-          accepted ? 'Authentication approved' : 'Authentication rejected',
-          accepted ? 'Response submitted successfully.' : 'The request was denied.',
-        );
+        if (response?.result === 'APPROVED') {
+          setState('accepted');
+        } else if (response?.result === 'DENIED' || response?.result === 'REJECTED') {
+          setState('rejected');
+        } else {
+          setAttempt(undefined);
+          setChallengeInput('');
+          setState('failed');
+          setChallengeFailedMessage(
+            response?.message ?? 'Challenge code did not match. This attempt is final.',
+          );
+        }
       } catch (error) {
         setGlobalError(extractErrorMessage(error));
       } finally {
@@ -189,19 +268,26 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   );
 
   const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
+  const showChallengeFailed = state === 'failed' && !!challengeFailedMessage;
   const showEmptyState =
     !loading &&
     !attempt &&
     !globalError &&
+    !challengeFailedMessage &&
     !isEnrollmentLoading &&
     hasSecureInfo;
+
+  const showResultState = (state === 'accepted' || state === 'rejected') && enrollment;
 
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Pending authentication</Text>
-      <Text style={styles.subtitle}>
-        Enrollment ID <Text style={styles.emphasis}>{enrollmentId}</Text>
-      </Text>
+      {enrollment && !showResultState && !attempt?.contextTitle ? (
+        <View style={styles.enrollmentBox}>
+          <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
+          <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+        </View>
+      ) : null}
       {isEnrollmentLoading || loading ? (
         <View style={styles.loading}>
           <ActivityIndicator />
@@ -215,34 +301,79 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
             <Text style={styles.secondaryLabel}>Try again</Text>
           </TouchableOpacity>
         </View>
+      ) : showChallengeFailed ? (
+        <View style={styles.challengeFailedState}>
+          <Text style={styles.challengeFailedTitle}>Authentication failed</Text>
+          <Text style={styles.challengeFailedBody}>{challengeFailedMessage}</Text>
+          <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
+            <Text style={styles.checkAgainLabel}>Check again</Text>
+          </TouchableOpacity>
+        </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No pending requests</Text>
-          <Text style={styles.emptyBody}>
-            Pull to refresh or wait for a new authentication attempt to arrive.
-          </Text>
-          <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>Check again</Text>
+          <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
+            <Text style={styles.checkAgainLabel}>Check again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : showResultState ? (
+        <View style={styles.resultContainer}>
+          <View style={styles.identityZone}>
+            <Text style={styles.resultTitleLine}>
+              {attempt?.contextTitle ?? enrollment.integrationName}
+              <Text
+                style={[
+                  styles.resultStatusSuffix,
+                  state === 'accepted' ? styles.badgeApproved : styles.badgeRejected,
+                ]}>
+                {' '}
+                {state === 'accepted' ? 'Approved' : 'Rejected'}
+              </Text>
+            </Text>
+            {attempt?.contextMessage ? (
+              <Text style={styles.contextMessageLine}>{attempt.contextMessage}</Text>
+            ) : (
+              <>
+                <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+                {enrollment.enrollmentName ? (
+                  <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
+                ) : null}
+              </>
+            )}
+          </View>
+          <View style={styles.metaZone}>
+            <Text style={styles.metaLine}>
+              Created {new Date(enrollment.createdAt).toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}{' '}
+              · Last {new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={loadPendingAttempt}
+            style={[styles.checkAgainButton, styles.checkAgainButtonFull]}>
+            <Text style={styles.checkAgainLabel}>Check again</Text>
           </TouchableOpacity>
         </View>
       ) : (
         attempt && (
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
-              {/* Card header: context title (when present) or integration name + PENDING badge */}
+              {/* Card header: context title (when present) or integration name + Pending */}
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>
                   {attempt.contextTitle ?? attempt.integrationName}
-                </Text>
-                <Text style={[styles.badge, styles.badgeInfo]}>
-                  PENDING
+                  <Text style={styles.cardTitlePending}> Pending</Text>
                 </Text>
               </View>
 
-              {/* Subtitle: tenant name; integration name shown below when context title overrides */}
-              <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
-              {attempt.contextTitle ? (
-                <Text style={styles.integrationLabel}>{attempt.integrationName}</Text>
+              {/* Subtitle: tenant name only when no context (context card is self-contained) */}
+              {!attempt.contextTitle ? (
+                <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
               ) : null}
 
               {/* Context message */}
@@ -252,68 +383,39 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
                 </View>
               ) : null}
 
-              {/* Standard meta rows */}
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Auth attempt ID</Text>
-                <Text style={styles.metaValue}>{attempt.authAttemptId}</Text>
-              </View>
-              {formattedWindow ? (
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Response window</Text>
-                  <Text style={styles.metaValue}>{formattedWindow}</Text>
-                </View>
-              ) : null}
-
               {attempt.challengeRequired ? (
                 <View style={styles.challengeSection}>
-                  <Text style={styles.challengeLabel}>Challenge code</Text>
-                  <Text style={styles.challengeHint}>Enter the two-digit code displayed in Console.</Text>
-                  <TextInput
+                  <Text style={styles.challengeHeading}>Enter the 2-digit code from the admin console</Text>
+                  <AuthChallengeCodeInput
                     value={challengeInput}
-                    onChangeText={text => {
-                      setChallengeInput(text.replace(/[^0-9]/g, '').slice(0, 2));
-                      setFormError(undefined);
-                    }}
-                    placeholder="00"
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    style={styles.challengeInput}
-                    placeholderTextColor="#5f6780"
+                    onChangeText={setChallengeInput}
+                    onClearError={() => setFormError(undefined)}
                     editable={state === 'pending' && !isProcessing}
                   />
-                  {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+                  {formError ? (
+                    <View style={styles.errorBanner}>
+                      <Text style={styles.errorBannerText}>{formError}</Text>
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
 
-              {state === 'pending' ? (
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    onPress={() => handleRespond(false)}
-                    style={[styles.actionButton, styles.rejectButton]}
-                    disabled={isProcessing}>
-                    <Text style={styles.rejectLabel}>Deny</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleRespond(true)}
-                    style={[styles.actionButton, styles.approveButton]}
-                    disabled={isProcessing}>
-                    <Text style={styles.approveLabel}>
-                      {isProcessing ? 'Sending…' : 'Approve'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.decisionBanner}>
-                  <Text style={styles.decisionText}>
-                    {state === 'accepted'
-                      ? 'This authentication was approved.'
-                      : 'This authentication was rejected.'}
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  onPress={() => handleRespond(false)}
+                  style={[styles.actionButton, styles.rejectButton]}
+                  disabled={isProcessing}>
+                  <Text style={styles.rejectLabel}>Deny</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRespond(true)}
+                  style={[styles.actionButton, styles.approveButton]}
+                  disabled={isProcessing}>
+                  <Text style={styles.approveLabel}>
+                    {isProcessing ? 'Sending…' : 'Approve'}
                   </Text>
-                  <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
-                    <Text style={styles.secondaryLabel}>Await new request</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                </TouchableOpacity>
+              </View>
             </View>
           </ScrollView>
         )
@@ -334,13 +436,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#f4f7ff',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#c2c8d5',
+  enrollmentBox: {
+    backgroundColor: '#151923',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.15)',
   },
-  emphasis: {
+  enrollmentIntegration: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#f4f7ff',
+  },
+  enrollmentTenant: {
+    fontSize: 14,
+    color: '#9aa3b6',
+    marginTop: 4,
   },
   loading: {
     flex: 1,
@@ -352,6 +463,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9aa3b6',
   },
+  challengeFailedState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 24,
+  },
+  challengeFailedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ff7878',
+    textAlign: 'center',
+  },
+  challengeFailedBody: {
+    fontSize: 15,
+    color: '#9aa3b6',
+    textAlign: 'center',
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -359,14 +488,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#f4f7ff',
-  },
-  emptyBody: {
-    fontSize: 14,
-    color: '#9aa3b6',
     textAlign: 'center',
+  },
+  checkAgainButton: {
+    backgroundColor: '#3076df',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    marginTop: 12,
+  },
+  checkAgainButtonFull: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 0,
+  },
+  checkAgainLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   card: {
     backgroundColor: '#151923',
@@ -374,20 +517,21 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  cardHeader: {},
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#f4f7ff',
   },
+  cardTitlePending: {
+    color: '#61d095',
+    fontWeight: '700',
+  },
   badge: {
     fontSize: 12,
     fontWeight: '700',
     color: '#61d095',
+    flexShrink: 0,
   },
   cardSubtitle: {
     fontSize: 14,
@@ -408,27 +552,59 @@ const styles = StyleSheet.create({
     color: '#f4f7ff',
   },
   challengeSection: {
-    gap: 8,
+    gap: 12,
   },
-  challengeLabel: {
-    fontSize: 14,
+  challengeHeading: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+    lineHeight: 24,
+  },
+  challengeContainer: {
+    position: 'relative',
+  },
+  challengeBoxes: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  challengeBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#151923',
+    borderWidth: 3,
+    borderColor: 'rgba(54, 115, 223, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengeBoxFilled: {
+    borderColor: 'rgba(54, 115, 223, 0.85)',
+  },
+  challengeDigit: {
+    fontSize: 28,
     fontWeight: '600',
     color: '#f4f7ff',
   },
-  challengeHint: {
-    fontSize: 13,
-    color: '#9aa3b6',
+  challengeInputHidden: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    fontSize: 1,
   },
-  challengeInput: {
-    backgroundColor: '#0b0d11',
-    borderRadius: 10,
+  errorBanner: {
+    backgroundColor: 'rgba(255, 120, 120, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff6666',
+    borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    color: '#f4f7ff',
-    fontSize: 16,
   },
-  formError: {
-    fontSize: 12,
+  errorBannerText: {
+    fontSize: 14,
     color: '#ff6666',
   },
   actions: {
@@ -458,11 +634,68 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0b0d11',
   },
-  decisionBanner: {
-    gap: 12,
+  resultContainer: {
+    flex: 1,
+    paddingTop: 8,
+    gap: 16,
   },
-  decisionText: {
-    fontSize: 15,
+  identityZone: {
+    backgroundColor: '#151923',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.15)',
+  },
+  identityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  integrationName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  resultTitleLine: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  resultStatusSuffix: {
+    fontWeight: '700',
+  },
+  statusBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  badgeApproved: {
+    color: '#61d095',
+  },
+  badgeRejected: {
+    color: '#ff7878',
+  },
+  tenantLine: {
+    fontSize: 14,
+    color: '#9aa3b6',
+    marginTop: 6,
+  },
+  contextMessageLine: {
+    fontSize: 14,
+    color: '#c2c8d5',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  deviceLine: {
+    fontSize: 13,
+    color: '#c2c8d5',
+    marginTop: 2,
+  },
+  metaZone: {
+    paddingHorizontal: 4,
+  },
+  metaLine: {
+    fontSize: 12,
     color: '#9aa3b6',
   },
   secondaryButton: {
@@ -471,11 +704,6 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 14,
     color: '#9aa3b6',
-  },
-  integrationLabel: {
-    fontSize: 13,
-    color: '#9aa3b6',
-    marginTop: -8,
   },
   /* Context level badge variants */
   badgeInfo: {

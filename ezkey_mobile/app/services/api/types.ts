@@ -10,7 +10,6 @@ export type EnrollmentSummary = {
   createdAt: string;
   lastActivityAt: string;
   status: EnrollmentStatus;
-  logoUri?: string;
   favorited?: boolean;
   /** Base URL of the Ezkey Auth API for this enrollment (e.g. "https://ezkey.acme.com"). */
   authUrl?: string;
@@ -28,7 +27,6 @@ export type BindEnrollmentResponse = {
   integrationPublicKey: string;
   integrationName: string;
   integrationDescription?: string;
-  integrationLogo?: string;
   enrollmentName?: string;
   tenantId?: number;
   tenantName?: string;
@@ -64,7 +62,7 @@ export type PendingAuthResponse = {
   contextMessage?: string;
 };
 
-export type AuthAttemptDecision = 'APPROVED' | 'REJECTED' | 'FAILED';
+export type AuthAttemptDecision = 'APPROVED' | 'DENIED' | 'REJECTED' | 'FAILED' | 'EXPIRED';
 
 export type RespondAuthRequest = {
   authAttemptId: string | number;

@@ -19,7 +19,7 @@ Deliver a cross-platform (iOS + Android) React Native mobile application that ma
 - Device authentication (PIN/biometric) is out-of-scope for the first iteration but must remain extensible.
 - Push notifications are out-of-scope; polling and in-app refresh cover pending auth attempts.
 - The ngrok URL may change; it must be isolated behind configuration to swap environments quickly.
-- Enrollment logos are provided by the Admin API and may be remote URLs or base64 data.
+- Integration logo has been removed from the platform; the app does not display or store logos.
 - The app targets a single Ezkey instance at a time; multi-instance or environment switching is explicitly out of scope for v1.
 - The mobile client interacts only with the Auth API; any admin-facing capabilities (metadata, deletion) remain server-side concerns.
 
@@ -29,7 +29,7 @@ Deliver a cross-platform (iOS + Android) React Native mobile application that ma
 3. **Help & education** – No in-app help center; outbound links may be added post-v1.
 4. **Pending checks** – Absolutely no background polling; the user must deliberately trigger each pending check.
 5. **Offline feedback** – Backend outages surface as toast notifications; no persistent banners for v1.
-6. **Displayed metadata** – UI shows only what is required for enrollment/authentication (name, logo, challenge info).
+6. **Displayed metadata** – UI shows only what is required for enrollment/authentication (name, challenge info).
 7. **Operational docs** – No shared documentation or credentials distribution is needed (single maintainer scenario).
 8. **Mocking** – No mock mode; the app always talks to real endpoints.
 9. **Destructive actions** – Enrollment deletion, reset, or destructive flows are deferred; v1 provides read-only management.
@@ -39,7 +39,7 @@ Deliver a cross-platform (iOS + Android) React Native mobile application that ma
 
 ## 2. Target Users & Personas
 
-- **End User (Primary)**: Employees or customers who need to approve authentication requests. Non-technical, expects quick trust signals (logo, integration name) before acting.
+- **End User (Primary)**: Employees or customers who need to approve authentication requests. Non-technical, expects quick trust signals (integration name) before acting.
 - **Security/IT Administrator (Secondary)**: Technical stakeholder testing the Ezkey experience before wide rollout. Needs confidence that flows follow the documented protocol.
 - **Developer Advocate / Demo Operator (Secondary)**: Uses the app in demos to showcase Ezkey capabilities.
 
@@ -110,7 +110,7 @@ sequenceDiagram
 
 ### 5.1 Home – Enrollment List
 - Displays all stored enrollments sorted by `favorited` flag then `createdAt`.
-- Each list item shows logo (if provided), integration name, tenant/app label, and status badge.
+- Each list item shows integration name, tenant/app label, and status badge.
 - Cards expose quick actions: `View` and `Check pending` (manual trigger only).
 - Empty state conveys CTA to add first enrollment and links to Ezkey docs.
 - Pull-to-refresh simply refreshes the locally cached state; no remote sync is attempted automatically.
@@ -135,7 +135,7 @@ sequenceDiagram
 - After submission, returns to enrollment detail with toast summarizing action.
 
 ### 5.5 Local Storage & State Sync
-- Persisted attributes per enrollment: `enrollmentId`, `integrationId`, `integrationName`, `tenantName`, `logoUri`, `publicKey`, `privateKeyRef`, `createdAt`, `lastSyncedAt`.
+- Persisted attributes per enrollment: `enrollmentId`, `integrationId`, `integrationName`, `tenantName`, `publicKey`, `privateKeyRef`, `createdAt`, `lastSyncedAt`.
 - Uses device-secure storage for private key reference (`react-native-keychain` or custom native module) and AsyncStorage/SQLite for metadata.
 - Background sync relies solely on user-triggered refreshes; no automated polling or admin metadata fetch occurs.
 - Enrollment activity snapshots (challenge outcomes, timestamps) are cached locally for convenience and automatically purged after 30 days; this does not affect server-side audit logs or compliance records.
