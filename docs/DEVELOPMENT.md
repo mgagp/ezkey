@@ -94,7 +94,7 @@ public class OpenApiConfig {
 ```properties
 # OpenAPI/Swagger Configuration
 springdoc.api-docs.path=/api-docs
-springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.path=/swagger-ui/index.html
 springdoc.swagger-ui.operationsSorter=method
 springdoc.swagger-ui.tagsSorter=alpha
 springdoc.swagger-ui.doc-expansion=none
@@ -232,7 +232,7 @@ class OpenApiIntegrationTest {
 
     @Test
     void shouldServeSwaggerUI() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/swagger-ui.html", String.class);
+        ResponseEntity<String> response = restTemplate.getForEntity("/swagger-ui/index.html", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("Swagger UI");

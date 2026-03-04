@@ -21,13 +21,13 @@ class CryptoHomeScreen(Screen):
   """Crypto tools home screen."""
 
   BINDINGS = [
+      Binding("h", "home", "Home"),
       Binding("1", "proof_token", "Proof Token"),
       Binding("2", "key_pair", "Key Pair"),
       Binding("3", "sign", "Sign"),
       Binding("4", "validate", "Validate"),
       Binding("5", "encrypt", "Encrypt"),
       Binding("6", "decrypt", "Decrypt"),
-      Binding("h", "home", "Home"),
       Binding("q", "quit", "Quit"),
   ]
 

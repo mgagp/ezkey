@@ -254,7 +254,7 @@ Decrypts an encrypted database column value for debugging purposes. This endpoin
 
 ## API Documentation
 
-Swagger UI is available at: `http://localhost:8080/swagger-ui.html`
+Swagger UI is available at: `http://localhost:8080/swagger-ui/index.html`
 
 ## Running the Application
 

@@ -73,9 +73,9 @@ Once started, you can access:
 - **Demo Device**: http://localhost:8083
 
 **API Documentation (Swagger UI):**
-- Admin API: http://localhost:9080/swagger-ui.html
-- Auth API: http://localhost:8080/swagger-ui.html
-- Crypto API: http://localhost:9090/swagger-ui.html
+- Admin API: http://localhost:9080/swagger-ui/index.html
+- Auth API: http://localhost:8080/swagger-ui/index.html
+- Crypto API: http://localhost:9090/swagger-ui/index.html
 
 ## Architecture
 
@@ -689,7 +689,7 @@ ports:
    ```
 
 3. **Access Swagger UI:**
-   - Open http://localhost:9080/swagger-ui.html in browser
+   - Open http://localhost:9080/swagger-ui/index.html in browser
 
 ## Production Considerations
 

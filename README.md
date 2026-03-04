@@ -139,7 +139,7 @@ ezkey/
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080)
 ├── ezkey-crypto-api/        # Crypto API for testing and integration (port 8080)
-├── ezkey-cli/               # Command Line Interface tool
+├── ezkey-cli-python/        # Python CLI for interacting with APIs
 ├── ezkey_mobile/            # Mobile application
 ├── ezkey-demo-app-acme/     # Demo integration application
 ├── ezkey-demo-device/       # Demo device application
@@ -543,8 +543,8 @@ cd ezkey_mobile
 - **Admin API**: http://localhost:9080/api/v1/
 - **Auth API**: http://localhost:8080/api/v1/
 - **API Documentation**:
-  - Admin: http://localhost:9080/swagger-ui.html
-  - Auth: http://localhost:8080/swagger-ui.html
+  - Admin: http://localhost:9080/swagger-ui/index.html
+  - Auth: http://localhost:8080/swagger-ui/index.html
 
 ## 📚 Documentation
 
@@ -569,7 +569,7 @@ cd ezkey_mobile
 ### 📱 Module Documentation
 - **[Core Module](ezkey-core/README.md)** - Business logic and shared library
 - **[Migration Module](ezkey-migration/)** - Database migration application
-- **[CLI Tool](ezkey-cli/README.md)** - Command-line interface documentation
+- **[CLI Tool](ezkey-cli-python/README.md)** - Python CLI documentation
 - **[SDK Documentation](ezkey-sdk/README.md)** - Multi-language SDK guides
 
 ## API Overview
@@ -630,22 +630,21 @@ GET /api/v1/auth-attempts/123/wait?timeout=60&polling=5
 
 ## Command Line Interface
 
-Ezkey includes a comprehensive CLI tool for interacting with all APIs and managing the system:
+Ezkey includes a comprehensive Python CLI tool for interacting with all APIs and managing the system:
 
 ```bash
-# Install CLI dependencies
-cd ezkey-cli
-npm install
-npm run build
+# Install CLI
+cd ezkey-cli-python
+pip install -e .
 
 # Configure the CLI
-./bin/ezkey configure interactive
+ezkey configure interactive
 
 # Example usage
-./bin/ezkey admin integration list
-./bin/ezkey auth enrollment bind --enrollment-id 123 --proof-token EZK-ABC123-DEF456
-./bin/ezkey sim keypair
-./bin/ezkey database migrate
+ezkey admin integration list
+ezkey auth enrollment bind --enrollment-id 123 --proof-token EZK-ABC123-DEF456
+ezkey sim keypair
+ezkey database migrate
 ```
 
 ### CLI Features
@@ -657,7 +656,7 @@ npm run build
 - **OpenAPI Management**: Refresh demo application specifications
 - **Help System**: Comprehensive help for all commands and subcommands
 
-See `ezkey-cli/README.md` for complete documentation and examples.
+See [ezkey-cli-python/README.md](ezkey-cli-python/README.md) for complete documentation and examples.
 
 ## Development
 

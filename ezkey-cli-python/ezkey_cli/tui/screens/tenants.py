@@ -26,8 +26,8 @@ class TenantsScreen(Screen):
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
-      Binding("f", "filter", "Filter"),
       Binding("c", "create", "Create"),
+      Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
       Binding("p", "prev_page", "Prev"),
