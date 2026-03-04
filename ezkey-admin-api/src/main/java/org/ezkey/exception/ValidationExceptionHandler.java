@@ -19,6 +19,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -203,6 +204,43 @@ public class ValidationExceptionHandler {
     ErrorResponseDto errorResponse =
         new ErrorResponseDto(
             "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  }
+
+  /**
+   * Handles ObjectOptimisticLockingFailureException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when an update request uses a stale version (optimistic locking). The resource was
+   * modified by another request since the client last fetched it. The client must re-fetch the
+   * resource and retry the update with the new version.
+   *
+   * <p><b>HTTP Status:</b> 409 Conflict
+   *
+   * <p><b>Example:</b>
+   *
+   * <pre>
+   * Input: PATCH /api/v1/tenants/1 with version=5, but current version is 6
+   * Response: {
+   *   "code": "OPTIMISTIC_LOCK_CONFLICT",
+   *   "message": "Resource was modified by another request. Re-fetch and retry.",
+   *   "path": "/api/v1/tenants/1"
+   * }
+   * </pre>
+   *
+   * @param ex the ObjectOptimisticLockingFailureException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 409 status
+   * @since 2025
+   */
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  public ResponseEntity<ErrorResponseDto> handleOptimisticLockingFailure(
+      ObjectOptimisticLockingFailureException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "OPTIMISTIC_LOCK_CONFLICT",
+            "Resource was modified by another request. Re-fetch and retry.",
+            request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
   }

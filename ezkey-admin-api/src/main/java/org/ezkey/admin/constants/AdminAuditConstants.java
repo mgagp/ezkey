@@ -230,6 +230,12 @@ public final class AdminAuditConstants {
   /** Audit action for failed tenant administrator creation. */
   public static final String ADMIN_TENANT_CREATION_FAILED = "admin_tenant_creation_failed";
 
+  /** Audit action for successful administrator profile update. */
+  public static final String ADMIN_PROFILE_UPDATED = "admin_profile_updated";
+
+  /** Audit action for failed administrator profile update. */
+  public static final String ADMIN_PROFILE_UPDATE_FAILED = "admin_profile_update_failed";
+
   /** Audit action for successful administrator deactivation. */
   public static final String ADMIN_DEACTIVATED = "admin_deactivated";
 

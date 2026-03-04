@@ -11,9 +11,11 @@
 package org.ezkey.integration.domain.repository;
 
 import java.util.Optional;
+import jakarta.persistence.QueryHint;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -83,4 +85,41 @@ public interface IntegrationRepository
    */
   @Query("SELECT i.tenant.tenantId FROM Integration i WHERE i.id = :id")
   Optional<Integer> findTenantIdByIntegrationId(@Param("id") Integer id);
+
+  /**
+   * Returns tenant info (id, name, description) for the given integration ID without loading any
+   * entity.
+   *
+   * <p>Use this in bind/verify flows to avoid loading the {@link Tenant} entity and its
+   * {@code administrators} collection, which causes "Found shared references to a collection:
+   * Tenant.administrators" when the same Tenant is loaded through multiple paths.
+   *
+   * @param id the integration ID
+   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if not found
+   */
+  @Query(
+      value =
+          "SELECT t.tenant_id, t.tenant_name, t.tenant_description FROM ezkey_tenant t"
+              + " JOIN ezkey_integration i ON i.tenant_id = t.tenant_id WHERE i.integration_id = :id",
+      nativeQuery = true)
+  Optional<Object[]> findTenantInfoByIntegrationId(@Param("id") Integer id);
+
+  /**
+   * Loads Integration with Tenant for read-only display (e.g., bind/verify response).
+   *
+   * <p>Uses {@code org.hibernate.readOnly=true} so Hibernate does not track the entity or its
+   * associations for dirty-checking. This avoids the "Found shared references to a collection:
+   * Tenant.administrators" hazard when multiple concurrent requests load the same Integration/Tenant
+   * (e.g., system integration id=1 used by all admin MFA enrollments).
+   *
+   * <p>Use this for bind/verify flows that only read integration and tenant data. Use {@link
+   * #findById(Object)} when mutating the integration or its associations.
+   *
+   * @param id the integration ID
+   * @return Optional containing the integration with tenant loaded, or empty if not found
+   * @see ezkey-core/AGENTS.md CascadeType.ALL + orphanRemoval shared-reference hazard
+   */
+  @Query("SELECT i FROM Integration i LEFT JOIN FETCH i.tenant WHERE i.id = :id")
+  @QueryHints(@QueryHint(name = "org.hibernate.readOnly", value = "true"))
+  Optional<Integration> findByIdWithTenantReadOnly(@Param("id") Integer id);
 }

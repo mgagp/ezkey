@@ -19,6 +19,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 
 /**
@@ -84,6 +85,16 @@ public class ApiKey {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "api_key_id")
   private Integer apiKeyId;
+
+  /**
+   * Optimistic locking version for concurrent update protection.
+   *
+   * <p>Used by JPA to detect concurrent modifications. When a PATCH request includes a stale
+   * version, the update fails and the API returns 409 Conflict. Client must re-fetch and retry.
+   */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version = 0L;
 
   /**
    * Reference to the integration this API key belongs to.
@@ -442,6 +453,24 @@ public class ApiKey {
    */
   public void setRevokedByAdmin(EzkeyAdmin revokedByAdmin) {
     this.revokedByAdmin = revokedByAdmin;
+  }
+
+  /**
+   * Gets the optimistic lock version.
+   *
+   * @return the version
+   */
+  public Long getVersion() {
+    return version;
+  }
+
+  /**
+   * Sets the optimistic lock version (used by JPA; do not set manually).
+   *
+   * @param version the version
+   */
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   /**

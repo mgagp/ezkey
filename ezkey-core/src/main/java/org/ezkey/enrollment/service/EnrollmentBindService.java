@@ -17,9 +17,7 @@ import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
-import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
-import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.security.SensitiveDataHasher;
@@ -315,29 +313,48 @@ public class EnrollmentBindService {
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
 
-    // Tenant resolution:
-    // - For regular (non-system) integrations, use the integration's tenant.
-    // - For system integrations (used by admin passwordless MFA), the integration
-    // belongs to the
-    // system tenant, but the enrollment logically belongs to the admin's tenant (if
-    // any).
-    Tenant tenantToReturn = integration.getTenant();
+    // Tenant resolution: use scalar queries only to avoid loading Tenant entity and its
+    // administrators collection (prevents "Found shared references to collection:
+    // Tenant.administrators").
+    // - For system integrations (admin MFA): try admin's tenant first; if empty (global admin),
+    //   use integration's tenant via scalar query.
+    // - For non-system integrations: use integration's tenant via scalar query.
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
-      Optional<EzkeyAdmin> adminOpt =
-          ezkeyAdminRepository.findByMfaEnrollmentEnrollmentId(enrollment.getEnrollmentId());
-      if (adminOpt.isPresent() && adminOpt.get().getTenant() != null) {
-        tenantToReturn = adminOpt.get().getTenant();
+      Optional<Object[]> tenantInfo =
+          ezkeyAdminRepository.findTenantInfoByAdminMfaEnrollmentId(enrollment.getEnrollmentId());
+      if (tenantInfo.isPresent()) {
+        applyTenantInfoFromRow(response, tenantInfo.get());
+      } else {
+        // Global admin (no tenant): use integration's tenant (system tenant) via scalar query
+        integrationRepository
+            .findTenantInfoByIntegrationId(integration.getId())
+            .ifPresent(row -> applyTenantInfoFromRow(response, row));
       }
-    }
-
-    if (tenantToReturn != null) {
-      response.setTenantId(tenantToReturn.getTenantId());
-      response.setTenantName(tenantToReturn.getTenantName());
-      response.setTenantDescription(tenantToReturn.getTenantDescription());
+    } else {
+      integrationRepository
+          .findTenantInfoByIntegrationId(integration.getId())
+          .ifPresent(row -> applyTenantInfoFromRow(response, row));
     }
 
     logger.info(
         "Enrollment bind process completed successfully for ID: {}", enrollment.getEnrollmentId());
     return response;
+  }
+
+  /**
+   * Applies tenant info from a native query row [tenantId, tenantName, tenantDescription].
+   *
+   * <p>Uses safe extraction for tenantId since PostgreSQL JDBC may return Integer, Long, or
+   * BigDecimal depending on column type and driver version.
+   */
+  private void applyTenantInfoFromRow(EnrollmentBindResponse response, Object[] row) {
+    if (row == null || row.length == 0) {
+      return;
+    }
+    Object tenantIdVal = row[0];
+    Integer tenantId = tenantIdVal instanceof Number n ? n.intValue() : null;
+    response.setTenantId(tenantId);
+    response.setTenantName(row.length > 1 ? (String) row[1] : null);
+    response.setTenantDescription(row.length > 2 ? (String) row[2] : null);
   }
 }

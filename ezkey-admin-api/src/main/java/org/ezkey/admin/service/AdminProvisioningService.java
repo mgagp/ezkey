@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -518,6 +520,83 @@ public class AdminProvisioningService {
         enrollmentProofToken,
         enrollmentChallenge,
         recoveryCodes.getPlainCodes());
+  }
+
+  /**
+   * Partially updates an administrator profile.
+   *
+   * <p>Only non-null fields are applied. GlobalAdmin can update any admin. TenantAdmin can update
+   * admins in their own tenant. Admins can update their own profile (firstName, lastName, email,
+   * challengeRequired).
+   *
+   * <p><b>Authorization:</b>
+   *
+   * <ul>
+   *   <li>GlobalAdmin: can update any admin
+   *   <li>TenantAdmin: can update admins in their tenant
+   *   <li>Self-update: admin can update their own profile
+   * </ul>
+   *
+   * @param adminId the administrator ID to update
+   * @param request the partial update request
+   * @param requesterPrincipal the principal of the requesting administrator
+   * @return the updated administrator
+   * @throws ResourceNotFoundException if admin not found
+   * @throws IllegalArgumentException if unauthorized or email already exists
+   * @throws ObjectOptimisticLockingFailureException if version mismatch (stale)
+   */
+  @Transactional
+  public EzkeyAdmin updateAdmin(
+      Integer adminId, AdminUpdateRequestDto request, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    // Authorization: GlobalAdmin any, TenantAdmin own tenant, or self-update
+    boolean canUpdate = false;
+    if (requesterPrincipal.isGlobalAdmin()) {
+      canUpdate = true;
+    } else if (requesterPrincipal.isTenantAdmin()) {
+      Integer requesterTenantId = requesterPrincipal.tenantId();
+      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      canUpdate = requesterTenantId != null && requesterTenantId.equals(adminTenantId);
+    }
+    if (!canUpdate && requesterPrincipal.adminId().equals(adminId)) {
+      canUpdate = true; // Self-update
+    }
+    if (!canUpdate) {
+      throw new IllegalArgumentException(
+          "Not authorized to update this administrator. GlobalAdmin can update any admin."
+              + " TenantAdmin can update admins in their tenant. Admins can update their own"
+              + " profile.");
+    }
+
+    // Optimistic lock check
+    if (request.version() != null && !request.version().equals(admin.getVersion())) {
+      throw new ObjectOptimisticLockingFailureException(EzkeyAdmin.class, adminId);
+    }
+
+    // Apply non-null fields
+    if (request.firstName() != null) {
+      admin.setFirstName(request.firstName());
+    }
+    if (request.lastName() != null) {
+      admin.setLastName(request.lastName());
+    }
+    if (request.email() != null) {
+      if (adminRepository.existsByEmailAndAdminIdNot(request.email(), adminId)) {
+        throw new IllegalArgumentException("Email already exists: " + request.email());
+      }
+      admin.setEmail(request.email());
+    }
+    if (request.challengeRequired() != null) {
+      admin.setChallengeRequired(request.challengeRequired());
+    }
+
+    admin = adminRepository.save(admin);
+    logger.info("Admin {} profile updated by admin {}", adminId, requesterPrincipal.adminId());
+    return admin;
   }
 
   /**

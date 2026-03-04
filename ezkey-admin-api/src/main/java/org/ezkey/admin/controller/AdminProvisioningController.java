@@ -21,6 +21,7 @@ import jakarta.validation.constraints.Size;
 import java.net.URI;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
+import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
 import org.ezkey.admin.dto.response.AdminResponseDto;
@@ -52,6 +53,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -362,6 +364,7 @@ public class AdminProvisioningController {
             admin ->
                 new AdminResponseDto(
                     admin.getAdminId(),
+                    admin.getVersion(),
                     admin.getUsername(),
                     admin.getEmail(),
                     admin.getFirstName(),
@@ -410,6 +413,7 @@ public class AdminProvisioningController {
       AdminResponseDto response =
           new AdminResponseDto(
               admin.getAdminId(),
+              admin.getVersion(),
               admin.getUsername(),
               admin.getEmail(),
               admin.getFirstName(),
@@ -424,6 +428,121 @@ public class AdminProvisioningController {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+  }
+
+  /**
+   * Partially updates an administrator profile.
+   *
+   * <p>Only non-null fields are applied. GlobalAdmin can update any admin. TenantAdmin can update
+   * admins in their own tenant. Admins can update their own profile (firstName, lastName, email).
+   *
+   * <p><b>Updatable Fields:</b> firstName, lastName, email, challengeRequired
+   *
+   * <p><b>Optimistic Locking:</b> Include version from GET response. Stale version returns 409.
+   *
+   * @param id the administrator ID
+   * @param request the partial update request
+   * @param auth the authentication context
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity with updated admin (200 OK)
+   */
+  @PatchMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Update administrator profile",
+      description =
+          "Partial update of administrator profile (firstName, lastName, email, challengeRequired)."
+              + " GlobalAdmin can update any admin. TenantAdmin can update admins in their tenant."
+              + " Admins can update their own profile. Include version for optimistic locking.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Administrator profile updated successfully"),
+    @ApiResponse(responseCode = "400", description = "Invalid data or email already exists"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found"),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
+  })
+  public ResponseEntity<AdminResponseDto> updateAdmin(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      @Valid @RequestBody AdminUpdateRequestDto request,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      EzkeyAdmin admin = provisioningService.updateAdmin(id, request, principal);
+      AdminResponseDto response =
+          new AdminResponseDto(
+              admin.getAdminId(),
+              admin.getVersion(),
+              admin.getUsername(),
+              admin.getEmail(),
+              admin.getFirstName(),
+              admin.getLastName(),
+              admin.getAdminType().name(),
+              admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
+              admin.getActive(),
+              admin.getCreatedAt(),
+              admin.getLastLoginAt());
+
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_PROFILE_UPDATED,
+                  AdminAuditConstants.ADMIN_PROFILE_UPDATED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .eventDetails("Admin ID: " + id)
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_PROFILE_UPDATED,
+                  AdminAuditConstants.ADMIN_PROFILE_UPDATE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage("Admin not found: " + id)
+              .build());
+      throw e;
+    } catch (IllegalArgumentException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_PROFILE_UPDATED,
+                  AdminAuditConstants.ADMIN_PROFILE_UPDATE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_PROFILE_UPDATED,
+                  AdminAuditConstants.ADMIN_PROFILE_UPDATE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage("Optimistic lock conflict")
+              .build());
+      throw e;
     }
   }
 

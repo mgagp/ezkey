@@ -24,6 +24,7 @@ import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -181,6 +182,11 @@ public class TenantService {
         tenantRepository
             .findById(tenantId)
             .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+
+    // Optimistic lock check: when version provided, must match current
+    if (request.version() != null && !request.version().equals(tenant.getVersion())) {
+      throw new ObjectOptimisticLockingFailureException(Tenant.class, tenant.getTenantId());
+    }
 
     // Block updates on inactive tenants
     ensureTenantActive(tenantId);

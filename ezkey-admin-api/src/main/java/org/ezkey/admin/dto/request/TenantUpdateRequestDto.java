@@ -40,6 +40,13 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Request DTO for updating a tenant (partial update)")
 public record TenantUpdateRequestDto(
     @Schema(
+            description =
+                "Optimistic lock version from GET response. When provided, update fails with 409 if"
+                    + " resource was modified since last fetch.",
+            example = "0",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Long version,
+    @Schema(
             description = "New unique name for the tenant",
             example = "Acme Corporation",
             requiredMode = RequiredMode.NOT_REQUIRED)

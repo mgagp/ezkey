@@ -20,6 +20,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,6 +56,16 @@ public class Enrollment implements Reencryptable {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "enrollment_id")
   private Integer enrollmentId;
+
+  /**
+   * Optimistic locking version for concurrent update protection.
+   *
+   * <p>Used by JPA to detect concurrent modifications. When a PATCH request includes a stale
+   * version, the update fails and the API returns 409 Conflict. Client must re-fetch and retry.
+   */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version = 0L;
 
   /** Foreign key reference to the integration. Links this enrollment to a specific integration. */
   @Column(name = "integration_id", nullable = false)
@@ -394,13 +405,18 @@ public class Enrollment implements Reencryptable {
   /**
    * Sets the integration private key in plaintext.
    *
-   * <p>This method stores the plaintext value in the transient field. The value will be
-   * automatically encrypted before persistence by {@link EncryptionEntityListener}.
+   * <p>This method stores the plaintext in both the transient field and the persisted field. The
+   * {@link EncryptionEntityListener} will overwrite the persisted field with an encrypted value
+   * before persistence when encryption is available. Storing plaintext in the persisted field
+   * ensures the column is never null when the listener runs in contexts where transient fields may
+   * not be copied (e.g. merge flow). This matches the pattern used by {@link
+   * #setEnrollmentProofToken(String)}.
    *
    * @param integrationPrivateKey the plaintext integration private key to set
    */
   public void setIntegrationPrivateKey(String integrationPrivateKey) {
     this.integrationPrivateKey = integrationPrivateKey;
+    this.encryptedIntegrationPrivateKey = integrationPrivateKey;
   }
 
   /**
@@ -578,6 +594,24 @@ public class Enrollment implements Reencryptable {
 
   public void setRevokedByAdminId(Integer revokedByAdminId) {
     this.revokedByAdminId = revokedByAdminId;
+  }
+
+  /**
+   * Gets the optimistic lock version.
+   *
+   * @return the version
+   */
+  public Long getVersion() {
+    return version;
+  }
+
+  /**
+   * Sets the optimistic lock version (used by JPA; do not set manually).
+   *
+   * @param version the version
+   */
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   // ===== Reencryptable Interface Implementation =====

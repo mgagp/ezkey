@@ -30,6 +30,8 @@ public enum EventType {
   ADMIN_PASSWORD_CHANGE,
   ADMIN_RECOVERY_USE,
   ADMIN_CREATED, // New administrator provisioned (global or tenant)
+  ADMIN_PROFILE_UPDATED, // Administrator profile fields updated (firstName, lastName, email,
+  // challengeRequired)
   ADMIN_DEACTIVATED, // Administrator deactivated + tokens revoked (+ reason when provided)
   ADMIN_ACTIVATED, // Administrator reactivated (reversible after deactivation)
 

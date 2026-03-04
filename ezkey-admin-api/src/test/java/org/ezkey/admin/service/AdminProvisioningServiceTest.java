@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -47,6 +48,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Unit tests for AdminProvisioningService listAdmins method.
@@ -594,6 +596,66 @@ class AdminProvisioningServiceTest {
 
       assertThrows(ResourceNotFoundException.class, () -> service.activateAdmin(999, principal));
       verify(adminRepository).findById(999);
+    }
+  }
+
+  @Nested
+  @DisplayName("Update Admin Profile Tests")
+  class UpdateAdminTests {
+
+    @Test
+    @DisplayName("GlobalAdmin can update any admin profile")
+    void globalAdminCanUpdateAnyAdmin() {
+      EzkeyAdmin target = new EzkeyAdmin("target", AdminType.TENANT_ADMIN);
+      target.setAdminId(2);
+      target.setTenant(testTenant);
+      target.setVersion(0L);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
+      when(adminRepository.existsByEmailAndAdminIdNot("new@example.com", 2)).thenReturn(false);
+      when(adminRepository.save(any(EzkeyAdmin.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      AdminUpdateRequestDto request =
+          new AdminUpdateRequestDto(0L, "New", "Name", "new@example.com", null);
+
+      EzkeyAdmin result = service.updateAdmin(2, request, principal);
+
+      assertEquals("New", result.getFirstName());
+      assertEquals("Name", result.getLastName());
+      assertEquals("new@example.com", result.getEmail());
+      verify(adminRepository).save(target);
+    }
+
+    @Test
+    @DisplayName("Stale version throws ObjectOptimisticLockingFailureException")
+    void staleVersionThrowsOptimisticLockConflict() {
+      EzkeyAdmin target = new EzkeyAdmin("target", AdminType.TENANT_ADMIN);
+      target.setAdminId(2);
+      target.setTenant(testTenant);
+      target.setVersion(5L);
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
+
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null);
+
+      assertThrows(
+          ObjectOptimisticLockingFailureException.class,
+          () -> service.updateAdmin(2, request, principal));
+      verify(adminRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateAdmin throws when admin not found")
+    void updateAdminThrowsWhenNotFound() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      when(adminRepository.findById(999)).thenReturn(java.util.Optional.empty());
+
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(null, "New", null, null, null);
+
+      assertThrows(
+          ResourceNotFoundException.class, () -> service.updateAdmin(999, request, principal));
     }
   }
 }

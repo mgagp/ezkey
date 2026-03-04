@@ -44,6 +44,12 @@ import java.time.OffsetDateTime;
 @Schema(description = "Response DTO containing tenant information")
 public record TenantResponseDto(
     @Schema(description = "Unique identifier for the tenant", example = "1") Integer tenantId,
+    @Schema(
+            description =
+                "Optimistic lock version. Include in PATCH/PUT requests to prevent concurrent"
+                    + " update conflicts.",
+            example = "0")
+        Long version,
     @Schema(description = "Unique name of the tenant", example = "Acme Corporation")
         String tenantName,
     @Schema(

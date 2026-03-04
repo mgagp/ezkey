@@ -42,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Unit tests for TenantService.
@@ -275,7 +276,7 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
 
       // Act
       Tenant result = tenantService.updateTenant(2, request, globalAdminPrincipal);
@@ -303,6 +304,7 @@ class TenantServiceTest {
 
       TenantUpdateRequestDto request =
           new TenantUpdateRequestDto(
+              null,
               "New Name",
               "New desc",
               "Acme Inc.",
@@ -336,7 +338,7 @@ class TenantServiceTest {
       when(tenantRepository.existsByTenantNameAndTenantIdNot("Taken Name", 2)).thenReturn(true);
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto("Taken Name", null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(null, "Taken Name", null, null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -358,7 +360,7 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto("Acme Corp", null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(null, "Acme Corp", null, null, null, null, null, null, null);
 
       // Act
       tenantService.updateTenant(2, request, globalAdminPrincipal);
@@ -377,7 +379,7 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -392,12 +394,55 @@ class TenantServiceTest {
       when(tenantRepository.findById(999)).thenReturn(Optional.empty());
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(null, null, null, null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
           ResourceNotFoundException.class,
           () -> tenantService.updateTenant(999, request, globalAdminPrincipal));
+    }
+
+    @Test
+    @DisplayName("Stale version throws ObjectOptimisticLockingFailureException (409)")
+    void staleVersionThrowsOptimisticLockConflict() {
+      // Arrange: tenant has version 5 in DB, client sends version 3 (stale)
+      Tenant tenant = createActiveTenant(2, "Acme Corp");
+      tenant.setVersion(5L);
+
+      when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
+
+      TenantUpdateRequestDto request =
+          new TenantUpdateRequestDto(3L, null, null, "Acme Inc.", null, null, null, null, null);
+
+      // Act & Assert
+      assertThrows(
+          ObjectOptimisticLockingFailureException.class,
+          () -> tenantService.updateTenant(2, request, globalAdminPrincipal));
+      verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Matching version allows update")
+    void matchingVersionAllowsUpdate() {
+      // Arrange
+      Tenant tenant = createActiveTenant(2, "Acme Corp");
+      tenant.setVersion(5L);
+      EzkeyAdmin actor = new EzkeyAdmin();
+      actor.setAdminId(1);
+
+      when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
+      when(adminRepository.findById(1)).thenReturn(Optional.of(actor));
+      when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      TenantUpdateRequestDto request =
+          new TenantUpdateRequestDto(5L, null, null, "Acme Inc.", null, null, null, null, null);
+
+      // Act
+      Tenant result = tenantService.updateTenant(2, request, globalAdminPrincipal);
+
+      // Assert
+      assertEquals("Acme Inc.", result.getOrganizationName());
+      verify(tenantRepository).save(tenant);
     }
 
     private Tenant createActiveTenant(Integer id, String name) {

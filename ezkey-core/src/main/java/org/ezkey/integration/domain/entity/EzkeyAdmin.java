@@ -10,6 +10,7 @@
 
 package org.ezkey.integration.domain.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,6 +23,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -101,6 +103,16 @@ public class EzkeyAdmin {
   private Integer adminId;
 
   /**
+   * Optimistic locking version for concurrent update protection.
+   *
+   * <p>Used by JPA to detect concurrent modifications. When a PATCH request includes a stale
+   * version, the update fails and the API returns 409 Conflict. Client must re-fetch and retry.
+   */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version = 0L;
+
+  /**
    * Unique username for the administrator.
    *
    * <p>This field is required and must be unique across all administrators. Used for authentication
@@ -176,7 +188,7 @@ public class EzkeyAdmin {
    * <p>This field links to the enrollment record used for MFA authentication using the Ezkey
    * system.
    */
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
   @JoinColumn(name = "mfa_enrollment_id")
   private Enrollment mfaEnrollment;
 
@@ -561,6 +573,24 @@ public class EzkeyAdmin {
    */
   public void setTokens(List<AdminToken> tokens) {
     this.tokens = tokens;
+  }
+
+  /**
+   * Gets the optimistic lock version.
+   *
+   * @return the version
+   */
+  public Long getVersion() {
+    return version;
+  }
+
+  /**
+   * Sets the optimistic lock version (used by JPA; do not set manually).
+   *
+   * @param version the version
+   */
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   /**

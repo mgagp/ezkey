@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -68,6 +69,16 @@ public class Tenant {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "tenant_id")
   private Integer tenantId;
+
+  /**
+   * Optimistic locking version for concurrent update protection.
+   *
+   * <p>Used by JPA to detect concurrent modifications. When a PATCH/PUT request includes a stale
+   * version, the update fails and the API returns 409 Conflict. Client must re-fetch and retry.
+   */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version = 0L;
 
   /**
    * Unique name of the tenant organization.
@@ -620,6 +631,24 @@ public class Tenant {
    */
   public void setDeactivatedByAdmin(EzkeyAdmin deactivatedByAdmin) {
     this.deactivatedByAdmin = deactivatedByAdmin;
+  }
+
+  /**
+   * Gets the optimistic lock version.
+   *
+   * @return the version
+   */
+  public Long getVersion() {
+    return version;
+  }
+
+  /**
+   * Sets the optimistic lock version (used by JPA; do not set manually).
+   *
+   * @param version the version
+   */
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   /**

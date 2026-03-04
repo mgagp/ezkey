@@ -181,6 +181,18 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
   boolean existsByEmail(String email);
 
   /**
+   * Checks if an email exists for another administrator (excluding the given admin ID).
+   *
+   * <p>Used when updating an admin's email to ensure uniqueness while allowing the same admin to
+   * keep their current email.
+   *
+   * @param email the email to check
+   * @param excludeAdminId the admin ID to exclude from the check (the admin being updated)
+   * @return true if another administrator with this email exists, false otherwise
+   */
+  boolean existsByEmailAndAdminIdNot(String email, Integer excludeAdminId);
+
+  /**
    * Counts administrators by tenant and type.
    *
    * <p>This method is used for statistics and monitoring of administrator distribution across
@@ -245,4 +257,24 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    */
   @Query("SELECT a FROM EzkeyAdmin a WHERE a.mfaEnrollment.enrollmentId = :enrollmentId")
   Optional<EzkeyAdmin> findByMfaEnrollmentEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+
+  /**
+   * Returns tenant info (id, name, description) for the admin whose MFA enrollment matches.
+   *
+   * <p>Uses a native scalar query to avoid loading the Tenant entity. This prevents the "Found
+   * shared references to a collection: Tenant.administrators" hazard when building bind responses
+   * for system integrations (admin MFA enrollments).
+   *
+   * @param enrollmentId the MFA enrollment ID
+   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if admin has no tenant
+   */
+  @Query(
+      value =
+          "SELECT t.tenant_id, t.tenant_name, t.tenant_description FROM ezkey_tenant t"
+              + " JOIN ezkey_admin a ON a.tenant_id = t.tenant_id"
+              + " JOIN ezkey_enrollment e ON e.enrollment_id = a.mfa_enrollment_id"
+              + " WHERE e.enrollment_id = :enrollmentId",
+      nativeQuery = true)
+  Optional<Object[]> findTenantInfoByAdminMfaEnrollmentId(
+      @Param("enrollmentId") Integer enrollmentId);
 }

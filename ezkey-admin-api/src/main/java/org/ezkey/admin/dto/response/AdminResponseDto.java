@@ -57,6 +57,7 @@ import java.time.OffsetDateTime;
  * <p><b>License:</b> MIT
  *
  * @param adminId Unique identifier for the administrator (auto-generated primary key)
+ * @param version Optimistic lock version for PATCH concurrency control
  * @param username Username for the administrator
  * @param email Email address (optional, required for GLOBAL_ADMIN)
  * @param firstName First name (optional, required for GLOBAL_ADMIN)
@@ -73,6 +74,12 @@ import java.time.OffsetDateTime;
 @Schema(description = "Response DTO containing administrator information for listing purposes")
 public record AdminResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
+    @Schema(
+            description =
+                "Optimistic lock version. Include in PATCH requests to prevent concurrent update"
+                    + " conflicts.",
+            example = "0")
+        Long version,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
     @Schema(description = "Email address", example = "john.doe@example.com") String email,
     @Schema(description = "First name", example = "John") String firstName,
