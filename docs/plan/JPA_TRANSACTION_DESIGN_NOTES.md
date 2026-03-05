@@ -33,3 +33,35 @@ Brief design notes for JPA transaction and persistence context usage in Ezkey. I
 - [ ] Scan for self-invocation of `@Transactional` methods (e.g. `this::`, lambdas capturing `this`)
 - [ ] Scan for `@Transactional` on multiple service layers in the same call chain
 - [ ] Document transaction boundary policy (where `@Transactional` is allowed)
+
+---
+
+## Implementation Notes (Optimistic Locking / Partial Update — March 2026)
+
+### Phase 0: Version Column + PATCH Admin
+
+**Scope:** Add `@Version` to updatable entities (Tenant, EzkeyAdmin, Enrollment, ApiKey), implement `PATCH /api/v1/admins/{id}` for partial profile update with optimistic locking.
+
+### Issues Encountered
+
+1. **Bootstrap-init broken** — `AdminBootstrapService.bootstrapAdminMfa()` passed `this::doBootstrapAdminMfa` to `LockingTaskExecutor`. The lambda invokes the method on `this`, bypassing the proxy. If `@Transactional` was only on `doBootstrapAdminMfa`, it was never applied. Result: enrollment and admin saved in separate auto-commit sessions → `TransientPropertyValueException` when linking admin to enrollment.
+   - **Fix:** Place `@Transactional` on the entry point `bootstrapAdminMfa()` so the entire flow (including the executor’s task) runs in one transaction.
+
+2. **Enrollment status constraint** — `EnrollmentBindService` / `EnrollmentVerifyService` mark expired enrollments as `EXPIRED` via `EnrollmentTxHelper.markExpiredAndEmitAudit()`. V1’s check constraint only allowed `CREATED`, `BOUND`, `VERIFIED`, `INVALID`, `REVOKED`. Constraint violation on `UPDATE`.
+   - **Fix:** V45 adds `EXPIRED` to `ezkey_enrollment_enrollment_status_check`.
+
+3. **Entity version defaults** — New `version` columns must have `DEFAULT 0` in migration so existing rows get a valid version. JPA `@Version` expects non-null.
+
+### Test Gaps (Phase 0)
+
+- **Unit:** `AdminProvisioningServiceTest` covers `updateAdmin` (success, stale version, not found). ✅
+- **Controller:** `AdminProvisioningControllerTest` — PATCH tests added (success, stale version, not found). ✅
+- **Integration:** `AdminProvisioningSecurityTest` — happy path (200) and stale version (409). ✅
+
+### Proposed Next Action
+
+1. **Close Phase 0 test gaps** (before extending to other entities):
+   - Add controller-level tests for `PATCH /api/v1/admins/{id}` in `AdminProvisioningControllerTest`.
+   - Add at least one integration test in `ezkey-tests` (e.g. happy path + 409 on stale version).
+2. **Optional:** Run the Audit TODO (scan for self-invocation, nested `@Transactional`) to baseline the codebase.
+3. **Phase 1 (future):** Extend partial update + optimistic locking to Tenant, Enrollment, or ApiKey if needed.

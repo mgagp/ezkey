@@ -29,6 +29,7 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
   - a system integration (`isSystemIntegration=true`)
   - a global admin enrollment (EC P-256 keys)
   - recovery codes (hashed in DB; plain text is only available at generation time)
+- **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
 
 ## Running and testing
 

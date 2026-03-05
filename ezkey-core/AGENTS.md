@@ -8,6 +8,14 @@ For agents working in `ezkey-core/`.
 - **Other defaults** (`active`, status): field init. No `@PrePersist` for these.
 - **MapStruct** create→entity: ignore `id`, `createdAt`, `active` (etc.). Example: `IntegrationServiceMapper.toEntity`.
 
+## Audit event_details — JSON required
+
+**Critical:** The `event_details` column is indexed with `event_details::jsonb` (V19). Plain strings (e.g. `"Username: john"`) cause PostgreSQL cast failures on INSERT for event types covered by those indexes (KEY_*, REENCRYPTION_*).
+
+- **Always use valid JSON** for `eventDetails(...)`. Prefer `AuditDetailsBuilder.builder().custom("key", value).toJson()` or the builder’s typed methods.
+- **Never pass** concatenated plain strings like `"New key ID: " + id` — they are not valid JSON.
+- **Event types affected:** `KEY_INTRODUCED`, `KEY_PROMOTED_PRIMARY`, `KEY_DEMOTED`, `KEY_DISABLED`, `REENCRYPTION_*`.
+
 ## Non-negotiables
 
 - All project content **in English**.
@@ -108,3 +116,11 @@ manifest. For high-concurrency endpoints, consider disabling OSIV in `applicatio
 ```properties
 spring.jpa.open-in-view=false
 ```
+
+---
+
+## Transaction boundaries (JPA / Spring)
+
+- **Self-invocation bypasses proxy:** Calling `this::method` or `this.helper()` does not go through the Spring proxy. `@Transactional` on the called method is ignored. Place `@Transactional` on the entry point (e.g. event listener, controller-called service) so the whole flow runs in one transaction.
+- **Avoid nested @Transactional:** Prefer a single transactional boundary at the top-level use case. Inner services should not declare `@Transactional` unless they need `REQUIRES_NEW`.
+- **See:** `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md` for full lessons learned.

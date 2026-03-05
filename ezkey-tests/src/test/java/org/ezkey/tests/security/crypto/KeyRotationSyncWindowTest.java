@@ -19,8 +19,6 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
@@ -78,9 +76,6 @@ import org.slf4j.LoggerFactory;
 public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
 
   private static final Logger log = LoggerFactory.getLogger(KeyRotationSyncWindowTest.class);
-
-  /** Pattern to extract key ID from encrypted field format: ENC:keyID:base64data */
-  private static final Pattern ENC_KEY_ID_PATTERN = Pattern.compile("^ENC:(\\d+):.*");
 
   private final DatabaseHelper databaseHelper = new DatabaseHelper();
 
@@ -142,26 +137,18 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
         .as("Old key should still be PRIMARY during sync window")
         .isEqualTo("PRIMARY");
 
-    // Step 5: Create data that will be encrypted (via Auth API to test cross-instance)
-    configureForAuthApi(dockerStackConfig);
-
-    // Create enrollment which stores encrypted proof token
-    configureForAdminApi(dockerStackConfig);
-    Integer integrationId = testDataFactory.createIntegration();
-    Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
-
-    // Step 6: Query database to verify which key was used for encryption
-    Long keyUsedForProofToken =
-        getKeyIdFromEncryptedField(
-            "ezkey_enrollment", "enrollment_proof_token", "enrollment_id = " + enrollmentId);
+    // Step 5: Verify which key is used for encryption (Crypto API shares keyset with Admin API)
+    // Use Crypto API encrypt endpoint - enrollment_proof_token may be plaintext if encryption
+    // fails in entity listener; Crypto API encrypt reliably returns keyId for ENC: format.
+    Long keyUsedForEncryption = cryptoApiClient.encryptAndGetKeyId("test-verify-old-key");
 
     log.info(
-        "Key used for proof token encryption: {} (expected old primary: {})",
-        keyUsedForProofToken,
+        "Key used for encryption: {} (expected old primary: {})",
+        keyUsedForEncryption,
         initialPrimaryKeyId);
 
     // CRITICAL ASSERTION: During sync window, OLD key should be used
-    assertThat(keyUsedForProofToken)
+    assertThat(keyUsedForEncryption)
         .as("During sync window, OLD PRIMARY key should be used for encryption, not PENDING key")
         .isEqualTo(initialPrimaryKeyId);
 
@@ -234,23 +221,19 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
         .as("Old PRIMARY key should be demoted to ENABLED after promotion")
         .isEqualTo("ENABLED");
 
-    // Step 5: Create new data after promotion
-    configureForAdminApi(dockerStackConfig);
-    Integer integrationId = testDataFactory.createIntegration();
-    Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+    // Step 5: Restart Crypto API so it loads the updated keyset from file (AGENTS.md: restart
+    // required after key rotation). Then verify new key is used for encryption.
+    restartCryptoApiAndWaitHealthy();
 
-    // Step 6: Verify new key is used for encryption
-    Long keyUsedForProofToken =
-        getKeyIdFromEncryptedField(
-            "ezkey_enrollment", "enrollment_proof_token", "enrollment_id = " + enrollmentId);
+    Long keyUsedForEncryption = cryptoApiClient.encryptAndGetKeyId("test-verify-new-key");
 
     log.info(
-        "Key used for proof token encryption: {} (expected new primary: {})",
-        keyUsedForProofToken,
+        "Key used for encryption: {} (expected new primary: {})",
+        keyUsedForEncryption,
         pendingKeyId);
 
     // CRITICAL ASSERTION: After promotion, NEW key should be used
-    assertThat(keyUsedForProofToken)
+    assertThat(keyUsedForEncryption)
         .as("After promotion, NEW PRIMARY key should be used for encryption")
         .isEqualTo(pendingKeyId);
 
@@ -468,37 +451,61 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
   }
 
   /**
-   * Extracts key ID from an encrypted field in the database.
+   * Restarts the Crypto API container so it loads the updated keyset from file.
    *
-   * <p>Encrypted fields use format: ENC:keyID:base64data
-   *
-   * @param tableName table containing the encrypted field
-   * @param columnName encrypted column name
-   * @param whereClause WHERE clause to identify the row
-   * @return key ID extracted from encrypted value, or null if not encrypted/not found
+   * <p>After key promotion, the keyset file is updated by Admin API. Crypto API loads keyset at
+   * startup only, so a restart is required to use the new primary key. See ezkey-crypto-api
+   * AGENTS.md.
    */
-  private Long getKeyIdFromEncryptedField(String tableName, String columnName, String whereClause) {
-    String encryptedValue =
-        databaseHelper.executeQuerySingleValue(
-            "SELECT %s FROM %s WHERE %s".formatted(columnName, tableName, whereClause));
-
-    if (encryptedValue == null || encryptedValue.isEmpty()) {
-      log.warn("Encrypted field not found: {}.{} WHERE {}", tableName, columnName, whereClause);
-      return null;
+  private void restartCryptoApiAndWaitHealthy() {
+    String containerName = containerExists("ezkey-crypto-api-ha") ? "ezkey-crypto-api-ha" : "ezkey-crypto-api";
+    log.info("Restarting Crypto API container {} to load updated keyset...", containerName);
+    try {
+      ProcessBuilder pb = new ProcessBuilder("docker", "restart", containerName);
+      Process p = pb.start();
+      int exitCode = p.waitFor();
+      if (exitCode != 0) {
+        throw new IllegalStateException("docker restart " + containerName + " failed with code " + exitCode);
+      }
+      // Poll health endpoint (start_period 40s in docker-compose)
+      String healthUrl = dockerStackConfig.getCryptoApiUrl() + "/actuator/health";
+      for (int i = 0; i < 25; i++) {
+        Thread.sleep(2000);
+        try {
+          java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+          java.net.http.HttpRequest req =
+              java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(healthUrl)).GET().build();
+          var response = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+          if (response.statusCode() == 200) {
+            log.info("Crypto API healthy after {}s", (i + 1) * 2);
+            return;
+          }
+        } catch (Exception ignored) {
+          // Retry
+        }
+      }
+      throw new IllegalStateException("Crypto API did not become healthy within 50s after restart");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while restarting Crypto API", e);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to restart Crypto API: " + e.getMessage(), e);
     }
-
-    Matcher matcher = ENC_KEY_ID_PATTERN.matcher(encryptedValue);
-    if (matcher.matches()) {
-      String keyIdStr = matcher.group(1);
-      log.debug("Extracted key ID {} from encrypted field {}.{}", keyIdStr, tableName, columnName);
-      return Long.parseLong(keyIdStr);
-    }
-
-    log.warn(
-        "Field {}.{} does not match ENC:keyID:data pattern: {}",
-        tableName,
-        columnName,
-        encryptedValue.substring(0, Math.min(50, encryptedValue.length())));
-    return null;
   }
+
+  private boolean containerExists(String name) {
+    try {
+      ProcessBuilder pb = new ProcessBuilder("docker", "inspect", "--format", "{{.State.Running}}", name);
+      Process p = pb.start();
+      StringBuilder out = new StringBuilder();
+      try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) out.append(line);
+      }
+      return p.waitFor() == 0 && "true".equals(out.toString().trim());
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
 }

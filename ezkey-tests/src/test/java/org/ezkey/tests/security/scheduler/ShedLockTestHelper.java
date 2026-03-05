@@ -274,6 +274,29 @@ public class ShedLockTestHelper {
   }
 
   /**
+   * Gets the database server's current time (PostgreSQL NOW()).
+   *
+   * <p>Use this for assertions that compare lock timestamps, to avoid host-vs-container clock skew.
+   * Both locked_at and this value come from the same PostgreSQL instance.
+   *
+   * @return Current time from PostgreSQL, or host time if query fails
+   */
+  public OffsetDateTime getDatabaseNow() {
+    String sqlQuery = "SELECT NOW();";
+    List<String> results = executeQuery(sqlQuery);
+    if (results.isEmpty()) {
+      log.warn("Could not get database NOW(), falling back to host time");
+      return OffsetDateTime.now();
+    }
+    try {
+      return parseTimestamp(results.get(0).trim());
+    } catch (Exception e) {
+      log.warn("Failed to parse database NOW(): {}", results.get(0), e);
+      return OffsetDateTime.now();
+    }
+  }
+
+  /**
    * Gets all active locks from the ezkey_shedlock table.
    *
    * @return List of active lock entries (where lock_until > NOW())

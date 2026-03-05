@@ -1,0 +1,8 @@
+---
+description: Shell and script preferences for this project
+alwaysApply: true
+---
+
+# Shell preferences
+
+- **Bash over PowerShell:** The maintainer uses Git Bash on Windows. Always propose Bash commands and scripts (e.g. `./scripts/foo.sh`), never PowerShell. Git Bash is installed with Git and is the preferred shell for this project.

@@ -266,7 +266,8 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * for system integrations (admin MFA enrollments).
    *
    * @param enrollmentId the MFA enrollment ID
-   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if admin has no tenant
+   * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if admin has no
+   *     tenant
    */
   @Query(
       value =

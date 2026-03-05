@@ -171,6 +171,51 @@ public class CryptoApiClient {
   }
 
   /**
+   * Encrypts plaintext via Crypto API and returns the key ID used for encryption.
+   *
+   * <p>Calls POST /api/v1/crypto/encrypt. Returns the primary key ID that was used to encrypt the
+   * value, or null if encryption failed or is unavailable.
+   *
+   * @param plaintext plaintext to encrypt
+   * @return key ID used for encryption, or null if encryption failed/unavailable
+   */
+  public Long encryptAndGetKeyId(String plaintext) {
+    log.debug("Encrypting plaintext to get key ID");
+
+    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
+
+    Map<String, String> requestBody = new HashMap<>();
+    requestBody.put("plaintext", plaintext);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .body(requestBody)
+            .when()
+            .post("/encrypt")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    Boolean encryptionSuccessful = response.jsonPath().getBoolean("encryptionSuccessful");
+    String keyIdStr = response.jsonPath().getString("keyId");
+
+    if (!Boolean.TRUE.equals(encryptionSuccessful) || keyIdStr == null || keyIdStr.isBlank()) {
+      log.debug("Encryption failed or keyId not returned: encryptionSuccessful={}, keyId={}",
+          encryptionSuccessful, keyIdStr);
+      return null;
+    }
+
+    try {
+      return Long.parseUnsignedLong(keyIdStr);
+    } catch (NumberFormatException e) {
+      log.warn("Failed to parse keyId from Crypto API: {}", keyIdStr, e);
+      return null;
+    }
+  }
+
+  /**
    * Validates a signature against data and public key using the Crypto API.
    *
    * <p>Calls POST /api/v1/crypto/validate with data, signature, and public key.

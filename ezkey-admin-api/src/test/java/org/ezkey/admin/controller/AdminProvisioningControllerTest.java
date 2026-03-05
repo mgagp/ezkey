@@ -12,6 +12,7 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,16 +20,19 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -45,6 +49,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,6 +66,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * <ul>
  *   <li><b>listAdmins:</b> GlobalAdmin sees all admins, TenantAdmin sees only own tenant admins,
  *       pagination works correctly, tenant isolation is enforced
+ *   <li><b>updateAdmin (PATCH):</b> GlobalAdmin success, stale version (409), not found
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -81,6 +87,8 @@ class AdminProvisioningControllerTest {
   @Mock private QrCodePayloadService qrCodePayloadService;
 
   @Mock private AuditLogService auditLogService;
+
+  @Mock private HttpServletRequest httpRequest;
 
   private AdminProvisioningController controller;
 
@@ -125,6 +133,7 @@ class AdminProvisioningControllerTest {
     tenantAdmin1.setFirstName("Tenant");
     tenantAdmin1.setLastName("Admin1");
     tenantAdmin1.setTenant(testTenant);
+    tenantAdmin1.setVersion(0L);
     tenantAdmin1.setCreatedAt(OffsetDateTime.now());
     tenantAdmin1.setActive(true);
 
@@ -318,6 +327,84 @@ class AdminProvisioningControllerTest {
       assertEquals(0, responseBody.getTotalElements());
       assertTrue(responseBody.getContent().isEmpty());
       verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+  }
+
+  @Nested
+  @DisplayName("Update Admin (PATCH) Tests")
+  class UpdateAdminTests {
+
+    @BeforeEach
+    void setUpGlobalAdmin() {
+      setupGlobalAdminAuthentication();
+    }
+
+    @Test
+    @DisplayName("GlobalAdmin can update admin profile and returns 200")
+    void globalAdminCanUpdateAdminProfile() {
+      EzkeyAdmin updated = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      updated.setAdminId(2);
+      updated.setTenant(testTenant);
+      updated.setEmail("updated@example.com");
+      updated.setFirstName("Updated");
+      updated.setLastName("Name");
+      updated.setVersion(1L);
+      updated.setCreatedAt(OffsetDateTime.now());
+      updated.setActive(true);
+
+      AdminUpdateRequestDto request =
+          new AdminUpdateRequestDto(0L, "Updated", "Name", "updated@example.com", null);
+
+      when(provisioningService.updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any()))
+          .thenReturn(updated);
+
+      ResponseEntity<AdminResponseDto> response =
+          controller.updateAdmin(
+              2, request, SecurityContextHolder.getContext().getAuthentication(), httpRequest);
+
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      AdminResponseDto body = response.getBody();
+      assertNotNull(body);
+      assertEquals("Updated", body.firstName());
+      assertEquals("Name", body.lastName());
+      assertEquals("updated@example.com", body.email());
+      assertEquals(1L, body.version());
+      verify(provisioningService).updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any());
+    }
+
+    @Test
+    @DisplayName("Stale version throws ObjectOptimisticLockingFailureException")
+    void staleVersionThrowsOptimisticLockConflict() {
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null);
+
+      when(provisioningService.updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any()))
+          .thenThrow(new ObjectOptimisticLockingFailureException(EzkeyAdmin.class, 2));
+
+      assertThrows(
+          ObjectOptimisticLockingFailureException.class,
+          () ->
+              controller.updateAdmin(
+                  2, request, SecurityContextHolder.getContext().getAuthentication(), httpRequest));
+      verify(provisioningService).updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any());
+    }
+
+    @Test
+    @DisplayName("Admin not found throws ResourceNotFoundException")
+    void adminNotFoundThrowsResourceNotFoundException() {
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(null, "New", null, null, null);
+
+      when(provisioningService.updateAdmin(eq(999), any(AdminUpdateRequestDto.class), any()))
+          .thenThrow(new ResourceNotFoundException("Administrator", 999));
+
+      assertThrows(
+          ResourceNotFoundException.class,
+          () ->
+              controller.updateAdmin(
+                  999,
+                  request,
+                  SecurityContextHolder.getContext().getAuthentication(),
+                  httpRequest));
     }
   }
 

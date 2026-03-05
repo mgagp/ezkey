@@ -242,8 +242,9 @@ public class ShedLockDistributedTest {
       return;
     }
 
-    // Verify lock structure for each active lock
-    OffsetDateTime now = OffsetDateTime.now();
+    // Use database clock for assertions (avoids host-vs-container clock skew).
+    // Both locked_at and dbNow come from PostgreSQL; ShedLock uses usingDbTime().
+    OffsetDateTime dbNow = shedLockHelper.getDatabaseNow();
 
     for (ShedLockTestHelper.ShedLockEntry lock : activeLocks) {
       log.info(
@@ -263,32 +264,39 @@ public class ShedLockDistributedTest {
         throw new AssertionError("Lock locked_by is empty for lock: " + lock.name());
       }
 
-      // Verify locked_at is in the past (lock was acquired)
-      if (lock.lockedAt().isAfter(now)) {
+      // Verify locked_at is not unreasonably in the future (from DB perspective).
+      // Use DB clock for both values to avoid host-vs-container skew (see SHEDLOCK_LOCKED_AT_ANALYSIS.md).
+      // Allow 2s tolerance for query execution jitter.
+      Duration skew = Duration.between(dbNow, lock.lockedAt());
+      if (skew.toSeconds() > 2) {
         throw new AssertionError(
-            "Lock locked_at is in the future for lock: "
+            "Lock locked_at is too far in the future for lock: "
                 + lock.name()
                 + " (locked_at="
                 + lock.lockedAt()
-                + ")");
+                + ", db_now="
+                + dbNow
+                + ", skew="
+                + skew.toSeconds()
+                + "s, tolerance=2s)");
       }
 
       // Verify lock_until is in the future for active locks
       if (!lock.isActive()) {
         log.warn(
-            "Lock '{}' is not active (lock_until={} <= now={})",
+            "Lock '{}' is not active (lock_until={} <= db_now={})",
             lock.name(),
             lock.lockUntil(),
-            now);
+            dbNow);
       } else {
-        if (lock.lockUntil().isBefore(now) || lock.lockUntil().isEqual(now)) {
+        if (lock.lockUntil().isBefore(dbNow) || lock.lockUntil().isEqual(dbNow)) {
           throw new AssertionError(
               "Active lock has lock_until in the past or present: "
                   + lock.name()
                   + " (lock_until="
                   + lock.lockUntil()
-                  + ", now="
-                  + now
+                  + ", db_now="
+                  + dbNow
                   + ")");
         }
 

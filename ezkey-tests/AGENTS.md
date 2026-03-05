@@ -53,6 +53,9 @@ This file is UTF-8 without BOM.
 - Logs: use Docker CLI (`docker logs ezkey-admin-api`, `docker logs ezkey-auth-api`) to confirm auth-attempt flows, integration creation, and access control decisions.
 - Assume docker stack from `./clean-start.sh` is a prerequisite for functional tests; relaunch if in doubt.
 
+### Debugging approach — lesson learned (Mar 2026)
+When tests that were previously stable start failing, **first ask: what changed recently?** Do not jump to technical hypotheses (e.g. time skew, environment differences). If the full test suite was green before, the cause is almost certainly in recent code changes. Work from that hypothesis: inspect `git log`, identify the last known-good state, then examine startup logs and errors for the failing path. Challenging "was it stable recently?" saves time versus pursuing speculative technical fixes.
+
 ## Watchouts
 
 ### Multi-Tenant Pitfalls
