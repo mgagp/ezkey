@@ -91,6 +91,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record EnrollmentResponseDto(
     @Schema(description = "Unique identifier for the enrollment", example = "123")
         Integer enrollmentId,
+    @Schema(
+            description =
+                "Optimistic lock version. Include in PATCH requests to prevent concurrent update",
+            example = "0")
+        Long version,
     @Schema(description = "Integration identifier this enrollment belongs to", example = "1")
         Integer integrationId,
     @Schema(description = "Human-readable name for the enrollment", example = "John's iPhone")

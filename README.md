@@ -587,6 +587,8 @@ cd ezkey_mobile
 #### Enrollments (Admin)
 - `GET /api/v1/enrollments` - List all enrollments
 - `POST /api/v1/enrollments` - Create enrollment
+- `GET /api/v1/enrollments/{id}` - Get enrollment details
+- `PATCH /api/v1/enrollments/{id}` - Partially update enrollment metadata
 - `DELETE /api/v1/enrollments/{id}` - Delete enrollment
 
 #### Auth Attempts (Admin)

@@ -90,6 +90,12 @@ public final class AdminAuditConstants {
   /** Audit action for unexpected error during enrollment creation. */
   public static final String ENROLLMENT_CREATION_ERROR = "enrollment_creation_error";
 
+  /** Audit action for successful enrollment metadata update. */
+  public static final String ENROLLMENT_UPDATED = "enrollment_updated";
+
+  /** Audit action for failed enrollment update (validation, not found, optimistic lock). */
+  public static final String ENROLLMENT_UPDATE_FAILED = "enrollment_update_failed";
+
   /** Audit action for successful enrollment deletion. */
   public static final String ENROLLMENT_DELETED = "enrollment_deleted";
 

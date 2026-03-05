@@ -26,6 +26,7 @@ import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.EnrollmentRevocationService;
+import org.ezkey.admin.service.EnrollmentUpdateService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.domain.EventStatus;
@@ -84,6 +85,8 @@ class EnrollmentControllerAuditTest {
 
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
 
+  @Mock private EnrollmentUpdateService enrollmentUpdateService;
+
   @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
@@ -134,7 +137,8 @@ class EnrollmentControllerAuditTest {
             accessControlService,
             enrollmentRepository,
             integrationRepository,
-            enrollmentRevocationService);
+            enrollmentRevocationService,
+            enrollmentUpdateService);
   }
 
   @Test

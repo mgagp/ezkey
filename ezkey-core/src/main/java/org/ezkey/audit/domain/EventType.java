@@ -37,6 +37,8 @@ public enum EventType {
 
   // Enrollment events
   ENROLLMENT_CREATED,
+  ENROLLMENT_UPDATED, // Enrollment metadata updated (enrollmentName, contactEmail, expiresAt,
+  // authAttemptChallengeRequired)
   ENROLLMENT_DELETED,
   ENROLLMENT_BIND,
   ENROLLMENT_VERIFY,

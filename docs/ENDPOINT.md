@@ -968,6 +968,39 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
+#### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
+
+Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
+
+**Request:**
+```http
+PATCH /api/v1/enrollments/123
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "version": 0,
+  "enrollmentName": "John's iPhone",
+  "contactEmail": "john@example.com",
+  "expiresAt": "2026-12-31T23:59:59Z",
+  "authAttemptChallengeRequired": false
+}
+```
+
+**Response (200 OK):** Updated enrollment object (same shape as GET response, including new `version`).
+
+**Status Codes:**
+- 200: Enrollment updated successfully
+- 400: Invalid data, enrollment not updatable (revoked/inactive), or validation failed (e.g. duplicate name, expiresAt in past)
+- 403: Access denied
+- 404: Enrollment not found
+- 409: Optimistic lock conflict — resource was modified, re-fetch and retry
+
+**Constraints:**
+- `enrollmentName`: must be unique per integration for VERIFIED status
+- `expiresAt`: must be in the future if provided; null = no expiration
+- Only VERIFIED and active enrollments can be updated
+
 #### **Summary Table**
 
 | Scenario | Use This API | Why |

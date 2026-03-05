@@ -26,6 +26,7 @@ import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.EnrollmentRevocationService;
+import org.ezkey.admin.service.EnrollmentUpdateService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.domain.EventStatus;
@@ -95,6 +96,7 @@ class AuditReasonPropagationTest {
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
+  @Mock private EnrollmentUpdateService enrollmentUpdateService;
 
   // --- EncryptionKeyController mocks ---
 
@@ -205,7 +207,8 @@ class AuditReasonPropagationTest {
             accessControlService,
             enrollmentRepository,
             integrationRepository,
-            enrollmentRevocationService);
+            enrollmentRevocationService,
+            enrollmentUpdateService);
 
     // Act
     controller.delete(42, "Decommissioned device returned", httpRequest);

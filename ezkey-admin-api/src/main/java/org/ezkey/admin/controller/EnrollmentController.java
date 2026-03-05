@@ -16,14 +16,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.EnrollmentRevocationService;
+import org.ezkey.admin.service.EnrollmentUpdateService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
@@ -58,6 +61,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -111,6 +115,7 @@ public class EnrollmentController {
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
   private final EnrollmentRevocationService enrollmentRevocationService;
+  private final EnrollmentUpdateService enrollmentUpdateService;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -124,6 +129,7 @@ public class EnrollmentController {
    * @param enrollmentRepository the enrollment repository for audit queries
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param enrollmentRevocationService the service for enrollment revocation lifecycle
+   * @param enrollmentUpdateService the service for enrollment metadata partial updates
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -134,7 +140,8 @@ public class EnrollmentController {
       AccessControlService accessControlService,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
-      EnrollmentRevocationService enrollmentRevocationService) {
+      EnrollmentRevocationService enrollmentRevocationService,
+      EnrollmentUpdateService enrollmentUpdateService) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
@@ -144,6 +151,7 @@ public class EnrollmentController {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.enrollmentRevocationService = enrollmentRevocationService;
+    this.enrollmentUpdateService = enrollmentUpdateService;
   }
 
   /**
@@ -267,6 +275,121 @@ public class EnrollmentController {
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
+    }
+  }
+
+  /**
+   * Partially updates an enrollment's metadata.
+   *
+   * <p>Only non-null fields in the request body are applied. Supports enrollmentName, contactEmail,
+   * expiresAt, authAttemptChallengeRequired. Only active, non-revoked VERIFIED enrollments can be
+   * updated. Include {@code version} from the GET response for optimistic locking.
+   *
+   * @param id the enrollment ID to update
+   * @param request the partial update request
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity containing updated enrollment with HTTP 200, or error status
+   */
+  @Operation(
+      summary = "Partially update enrollment metadata",
+      description =
+          "Updates enrollment metadata (name, contactEmail, expiresAt,"
+              + " authAttemptChallengeRequired). Only active VERIFIED enrollments. Include version"
+              + " from GET for optimistic locking.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Enrollment updated successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid data, enrollment not updatable (revoked/inactive), or validation failed"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PatchMapping("/{id}")
+  public ResponseEntity<EnrollmentResponseDto> update(
+      @Parameter(description = "Enrollment ID to update", example = "1") @PathVariable("id")
+          Integer id,
+      @Valid @RequestBody EnrollmentUpdateRequestDto request,
+      HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+
+    if (!accessControlService.canAccessEnrollment(auth, id)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      Enrollment updated = enrollmentUpdateService.updateEnrollment(id, request);
+      EnrollmentResponseDto response = enrollmentMapper.toResponse(updated);
+      Integer tenantId = resolveTenantId(updated.getIntegrationId());
+
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_UPDATED,
+                  AdminAuditConstants.ENROLLMENT_UPDATED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal != null ? principal.adminId() : null)
+              .enrollmentId(id)
+              .integrationId(updated.getIntegrationId())
+              .eventDetails("Enrollment name: " + updated.getEnrollmentName())
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      if (principal != null) {
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_UPDATED,
+                    AdminAuditConstants.ENROLLMENT_UPDATE_FAILED)
+                .eventStatus(EventStatus.FAILURE)
+                .adminId(principal.adminId())
+                .enrollmentId(id)
+                .errorMessage("Enrollment not found: " + id)
+                .build());
+      }
+      throw e;
+    } catch (IllegalArgumentException e) {
+      if (principal != null) {
+        Integer tenantId = resolveTenantIdFromEnrollment(id);
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_UPDATED,
+                    AdminAuditConstants.ENROLLMENT_UPDATE_FAILED,
+                    tenantId)
+                .eventStatus(EventStatus.FAILURE)
+                .adminId(principal.adminId())
+                .enrollmentId(id)
+                .errorMessage(e.getMessage())
+                .build());
+      }
+      throw e;
+    } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+      if (principal != null) {
+        Integer tenantId = resolveTenantIdFromEnrollment(id);
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ENROLLMENT_UPDATED,
+                    AdminAuditConstants.ENROLLMENT_UPDATE_FAILED,
+                    tenantId)
+                .eventStatus(EventStatus.FAILURE)
+                .adminId(principal.adminId())
+                .enrollmentId(id)
+                .errorMessage("Optimistic lock conflict")
+                .build());
+      }
+      throw e;
     }
   }
 

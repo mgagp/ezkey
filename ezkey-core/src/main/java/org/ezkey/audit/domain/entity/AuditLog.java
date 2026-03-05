@@ -226,9 +226,9 @@ public class AuditLog {
     }
 
     /**
-     * Sets event-specific details. Must be valid JSON for event types covered by
-     * JSONB indexes (KEY_*, REENCRYPTION_*). Use {@link org.ezkey.audit.util.AuditDetailsBuilder}
-     * to produce compliant JSON.
+     * Sets event-specific details. Must be valid JSON for event types covered by JSONB indexes
+     * (KEY_*, REENCRYPTION_*). Use {@link org.ezkey.audit.util.AuditDetailsBuilder} to produce
+     * compliant JSON.
      *
      * @param eventDetails JSON string (e.g. from AuditDetailsBuilder.toJson())
      * @return this builder

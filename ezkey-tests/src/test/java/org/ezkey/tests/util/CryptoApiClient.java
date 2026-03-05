@@ -202,8 +202,10 @@ public class CryptoApiClient {
     String keyIdStr = response.jsonPath().getString("keyId");
 
     if (!Boolean.TRUE.equals(encryptionSuccessful) || keyIdStr == null || keyIdStr.isBlank()) {
-      log.debug("Encryption failed or keyId not returned: encryptionSuccessful={}, keyId={}",
-          encryptionSuccessful, keyIdStr);
+      log.debug(
+          "Encryption failed or keyId not returned: encryptionSuccessful={}, keyId={}",
+          encryptionSuccessful,
+          keyIdStr);
       return null;
     }
 

@@ -265,7 +265,8 @@ public class ShedLockDistributedTest {
       }
 
       // Verify locked_at is not unreasonably in the future (from DB perspective).
-      // Use DB clock for both values to avoid host-vs-container skew (see SHEDLOCK_LOCKED_AT_ANALYSIS.md).
+      // Use DB clock for both values to avoid host-vs-container skew (see
+      // SHEDLOCK_LOCKED_AT_ANALYSIS.md).
       // Allow 2s tolerance for query execution jitter.
       Duration skew = Duration.between(dbNow, lock.lockedAt());
       if (skew.toSeconds() > 2) {

@@ -458,14 +458,16 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
    * AGENTS.md.
    */
   private void restartCryptoApiAndWaitHealthy() {
-    String containerName = containerExists("ezkey-crypto-api-ha") ? "ezkey-crypto-api-ha" : "ezkey-crypto-api";
+    String containerName =
+        containerExists("ezkey-crypto-api-ha") ? "ezkey-crypto-api-ha" : "ezkey-crypto-api";
     log.info("Restarting Crypto API container {} to load updated keyset...", containerName);
     try {
       ProcessBuilder pb = new ProcessBuilder("docker", "restart", containerName);
       Process p = pb.start();
       int exitCode = p.waitFor();
       if (exitCode != 0) {
-        throw new IllegalStateException("docker restart " + containerName + " failed with code " + exitCode);
+        throw new IllegalStateException(
+            "docker restart " + containerName + " failed with code " + exitCode);
       }
       // Poll health endpoint (start_period 40s in docker-compose)
       String healthUrl = dockerStackConfig.getCryptoApiUrl() + "/actuator/health";
@@ -474,7 +476,10 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
         try {
           java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
           java.net.http.HttpRequest req =
-              java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(healthUrl)).GET().build();
+              java.net.http.HttpRequest.newBuilder()
+                  .uri(java.net.URI.create(healthUrl))
+                  .GET()
+                  .build();
           var response = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
           if (response.statusCode() == 200) {
             log.info("Crypto API healthy after {}s", (i + 1) * 2);
@@ -495,10 +500,12 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
 
   private boolean containerExists(String name) {
     try {
-      ProcessBuilder pb = new ProcessBuilder("docker", "inspect", "--format", "{{.State.Running}}", name);
+      ProcessBuilder pb =
+          new ProcessBuilder("docker", "inspect", "--format", "{{.State.Running}}", name);
       Process p = pb.start();
       StringBuilder out = new StringBuilder();
-      try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+      try (var reader =
+          new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) out.append(line);
       }
@@ -507,5 +514,4 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
       return false;
     }
   }
-
 }

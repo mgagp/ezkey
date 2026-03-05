@@ -213,10 +213,7 @@ public class EncryptionKeyController {
                   AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
               .eventStatus(EventStatus.SUCCESS)
               .reason(reason)
-              .eventDetails(
-                  AuditDetailsBuilder.builder()
-                      .encryptionKeyId(newPrimaryKeyId)
-                      .toJson())
+              .eventDetails(AuditDetailsBuilder.builder().encryptionKeyId(newPrimaryKeyId).toJson())
               .build());
       return ResponseEntity.ok(
           new KeyRotationResponse(newPrimaryKeyId, "Key rotation completed successfully"));
