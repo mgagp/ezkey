@@ -402,7 +402,7 @@ public class DemoDeviceEnrollmentWriter {
         log.debug("Parent directory permissions fixed successfully");
       }
 
-      // Now create the enrollments directory as spring user
+      // Create the enrollments directory (container already runs as spring user)
       ProcessBuilder processBuilder =
           new ProcessBuilder(
               "docker",
@@ -410,7 +410,7 @@ public class DemoDeviceEnrollmentWriter {
               containerName,
               "sh",
               "-c",
-              "su-exec spring:spring mkdir -p " + ENROLLMENTS_DIR);
+              "mkdir -p " + ENROLLMENTS_DIR);
       processBuilder.redirectErrorStream(true);
 
       Process process = processBuilder.start();
@@ -449,9 +449,8 @@ public class DemoDeviceEnrollmentWriter {
   /**
    * Writes JSON content to a file in the demo-device container using docker exec.
    *
-   * <p>Uses stdin redirection: writes JSON to stdin of a shell command that creates the file. Uses
-   * su-exec to write file as spring user (matching application runtime user) to ensure correct
-   * permissions.
+   * <p>Uses stdin redirection: writes JSON to stdin of a shell command that creates the file.
+   * The container runs directly as the spring user, so no privilege escalation is needed.
    *
    * @param filePath Path to file inside container
    * @param jsonContent JSON content to write
@@ -460,11 +459,10 @@ public class DemoDeviceEnrollmentWriter {
   private void writeFileToContainer(String filePath, String jsonContent) {
     try {
       String containerName = detectDemoDeviceContainer();
-      // Use su-exec to write file as spring user (matching application runtime user)
-      // Simple approach: use double quotes for outer shell, single quotes for inner shell path
+      // Write file directly (container already runs as spring user)
       // Escape any single quotes in filePath by replacing ' with '\''
       String escapedPath = filePath.replace("'", "'\\''");
-      String command = "su-exec spring:spring sh -c 'cat > " + escapedPath + "'";
+      String command = "sh -c 'cat > " + escapedPath + "'";
       log.debug("Executing command: {}", command);
       ProcessBuilder processBuilder =
           new ProcessBuilder("docker", "exec", "-i", containerName, "sh", "-c", command);

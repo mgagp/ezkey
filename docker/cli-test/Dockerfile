@@ -23,19 +23,25 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir pexpect \
     && python -m pip install --no-cache-dir -e .
 
-RUN mkdir -p /work /root/.ezkey \
-    && chmod -R 0775 /work /root/.ezkey
+# Create non-root user and set up home/work directories with correct ownership
+RUN useradd --system --create-home --shell /bin/bash --uid 1000 ezkey \
+    && mkdir -p /work /home/ezkey/.ezkey \
+    && chown -R ezkey:ezkey /work /home/ezkey/.ezkey /opt/ezkey-cli \
+    && chmod 0775 /work /home/ezkey/.ezkey
 
 COPY docker/cli-test/entrypoint.sh /usr/local/bin/ezkey-cli-entrypoint.sh
 RUN chmod +x /usr/local/bin/ezkey-cli-entrypoint.sh
 
 # Configure bash for better interactive experience
-RUN echo 'set -o emacs' >> /root/.bashrc \
-    && echo 'set -o history' >> /root/.bashrc \
-    && echo 'export HISTFILE=/root/.bash_history' >> /root/.bashrc \
-    && echo 'export HISTSIZE=1000' >> /root/.bashrc \
-    && echo 'export HISTFILESIZE=2000' >> /root/.bashrc \
-    && touch /root/.bash_history
+RUN echo 'set -o emacs' >> /home/ezkey/.bashrc \
+    && echo 'set -o history' >> /home/ezkey/.bashrc \
+    && echo 'export HISTFILE=/home/ezkey/.bash_history' >> /home/ezkey/.bashrc \
+    && echo 'export HISTSIZE=1000' >> /home/ezkey/.bashrc \
+    && echo 'export HISTFILESIZE=2000' >> /home/ezkey/.bashrc \
+    && touch /home/ezkey/.bash_history \
+    && chown -R ezkey:ezkey /home/ezkey
+
+USER ezkey:ezkey
 
 WORKDIR /work
 

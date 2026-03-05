@@ -105,8 +105,7 @@ if ! docker run --rm \
     "$TEMP_IMAGE" \
     sh -c "
         set -e
-        # Install openssl (required for key generation)
-        apk add --no-cache openssl > /dev/null 2>&1
+        # No package installation needed: head + base64 are available in base alpine
 
         # Create spring user/group to match runtime container (UID 100, GID 101)
         addgroup -g 101 -S spring 2>/dev/null || true
@@ -117,7 +116,8 @@ if ! docker run --rm \
         mkdir -p /etc/ezkey/keysets
 
         # Generate 32 bytes (256 bits) of cryptographically secure random data
-        MASTER_KEY=\$(openssl rand -base64 32)
+        # Uses /dev/urandom via head + base64 - no external dependencies
+        MASTER_KEY=\$(head -c 32 /dev/urandom | base64)
 
         # Verify key was generated (should be 44 characters for base64-encoded 32 bytes)
         if [ -z \"\$MASTER_KEY\" ] || [ \${#MASTER_KEY} -lt 40 ]; then

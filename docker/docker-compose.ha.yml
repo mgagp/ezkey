@@ -312,9 +312,9 @@ services:
       EZKEY_AUTH_API_URL: http://haproxy-auth:8080
       EZKEY_CRYPTO_API_URL: http://crypto-api:9090
     volumes:
-      - cli-config:/root/.ezkey
+      - cli-config:/home/ezkey/.ezkey
       - cli-work:/work
-      - cli-bash-history:/root
+      - cli-bash-history:/home/ezkey
       - ../ezkey.json.docker-init:/tmp/ezkey.json.docker-init:ro
     working_dir: /work
     command: tail -f /dev/null

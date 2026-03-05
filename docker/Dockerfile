@@ -75,156 +75,116 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Stage 3: Runtime image for admin-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS admin-api
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create all required directories with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
+    chmod 700 /etc/ezkey/secrets && \
+    chmod 755 /etc/ezkey/keysets /var/lib/ezkey/bootstrap && \
+    chown -R spring:spring /app /etc/ezkey /var/lib/ezkey
 WORKDIR /app
-COPY --from=build /build/ezkey-admin-api/target/*.jar app.jar
-COPY --from=build /build/ezkey-admin-api/config ./config
-# Create entrypoint script that ensures encryption directories exist with correct permissions
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Only create directories if they do not exist (avoid masking volume mounts)' >> /app/entrypoint.sh && \
-    echo 'if [ ! -d /etc/ezkey/secrets ]; then mkdir -p /etc/ezkey/secrets; fi' >> /app/entrypoint.sh && \
-    echo 'if [ ! -d /etc/ezkey/keysets ]; then mkdir -p /etc/ezkey/keysets; fi' >> /app/entrypoint.sh && \
-    echo '# Create bootstrap directory structure if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
-    echo 'mkdir -p /var/lib/ezkey/bootstrap' >> /app/entrypoint.sh && \
-    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
-    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
-    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '# Fix directory permissions' >> /app/entrypoint.sh && \
-    echo 'chmod 700 /etc/ezkey/secrets 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'chmod 755 /etc/ezkey/keysets 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'chmod 755 /var/lib/ezkey/bootstrap 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'chown spring:spring /etc/ezkey/secrets /etc/ezkey/keysets /var/lib/ezkey/bootstrap 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+COPY --chown=spring:spring --from=build /build/ezkey-admin-api/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-admin-api/config ./config
+USER spring:spring
 EXPOSE 9080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:9080/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 4: Runtime image for auth-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS auth-api
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create all required directories with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
+    chmod 700 /etc/ezkey/secrets && \
+    chmod 755 /etc/ezkey/keysets && \
+    chown -R spring:spring /app /etc/ezkey
 WORKDIR /app
-COPY --from=build /build/ezkey-auth-api/target/*.jar app.jar
-COPY --from=build /build/ezkey-auth-api/config ./config
-# Create entrypoint script that fixes permissions without creating directories
-# Note: Directories should already exist from volume mount, creating them would mask volume content
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
-    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
-    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '# Fix directory permissions (only if directories exist from volume)' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chmod 700 /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chmod 755 /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chown spring:spring /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chown spring:spring /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+COPY --chown=spring:spring --from=build /build/ezkey-auth-api/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-auth-api/config ./config
+USER spring:spring
 EXPOSE 8080
 EXPOSE 8085
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
     CMD curl -f http://localhost:8085/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 5: Runtime image for m2m-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS m2m-api
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create all required directories with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
+    chmod 700 /etc/ezkey/secrets && \
+    chmod 755 /etc/ezkey/keysets && \
+    chown -R spring:spring /app /etc/ezkey
 WORKDIR /app
-COPY --from=build /build/ezkey-m2m-api/target/*.jar app.jar
-COPY --from=build /build/ezkey-m2m-api/config ./config
-# Create entrypoint script that fixes permissions without creating directories
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
-    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
-    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '# Fix directory permissions (only if directories exist from volume)' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chmod 700 /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chmod 755 /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chown spring:spring /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chown spring:spring /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+COPY --chown=spring:spring --from=build /build/ezkey-m2m-api/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-m2m-api/config ./config
+USER spring:spring
 EXPOSE 7080
 EXPOSE 7081
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
     CMD curl -f http://localhost:7081/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 6: Runtime image for crypto-api service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS crypto-api
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create all required directories with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /etc/ezkey/secrets /etc/ezkey/keysets && \
+    chmod 700 /etc/ezkey/secrets && \
+    chmod 755 /etc/ezkey/keysets && \
+    chown -R spring:spring /app /etc/ezkey
 WORKDIR /app
-COPY --from=build /build/ezkey-crypto-api/target/*.jar app.jar
-COPY --from=build /build/ezkey-crypto-api/config ./config
-# Create entrypoint script that fixes permissions without creating directories
-# Note: Directories should already exist from volume mount, creating them would mask volume content
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Fix permissions and ownership for master key if it exists' >> /app/entrypoint.sh && \
-    echo 'if [ -f /etc/ezkey/secrets/master.key ]; then' >> /app/entrypoint.sh && \
-    echo '  chown spring:spring /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo '  chmod 600 /etc/ezkey/secrets/master.key 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '# Fix directory permissions (only if directories exist from volume)' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chmod 700 /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chmod 755 /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/secrets ]; then chown spring:spring /etc/ezkey/secrets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'if [ -d /etc/ezkey/keysets ]; then chown spring:spring /etc/ezkey/keysets 2>/dev/null || true; fi' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-crypto-api/config ./config
+USER spring:spring
 EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:9090/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 6: Runtime image for demo-device service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-device
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create data directory with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /app/data/enrollments && \
+    chown -R spring:spring /app
 WORKDIR /app
-COPY --from=build /build/ezkey-demo-device/target/*.jar app.jar
-# Create entrypoint script that ensures directory exists with correct permissions
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo 'mkdir -p /app/data/enrollments' >> /app/entrypoint.sh && \
-    echo 'chown -R spring:spring /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+COPY --chown=spring:spring --from=build /build/ezkey-demo-device/target/*.jar app.jar
+USER spring:spring
 EXPOSE 8083
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8083/actuator/health || exit 1
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
 # Stage 7: Runtime image for demo-app-acme service
 # ============================================
 FROM eclipse-temurin:25-jre-alpine AS demo-app-acme
-RUN apk add --no-cache curl su-exec && \
-    addgroup -S spring && adduser -S spring -G spring
+# Create non-root user and pre-create all required directories with correct ownership at build time
+RUN apk add --no-cache curl && \
+    addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app /app/config /app/data && \
+    chown -R spring:spring /app
 WORKDIR /app
-COPY --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-demo-app-acme/target/*.jar app.jar
 # Copy config template
-COPY ezkey-demo-app-acme/config/application.properties.example /app/config-template.properties
-# Create entrypoint script that initializes config directory
+COPY --chown=spring:spring ezkey-demo-app-acme/config/application.properties.example /app/config-template.properties
+# Create entrypoint script (runs as spring: no chown/chmod needed)
 RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo '# Initialize config directory if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
-    echo 'mkdir -p /app/config' >> /app/entrypoint.sh && \
     echo '# Create application.properties from template if it does not exist' >> /app/entrypoint.sh && \
     echo '# Note: If volume persists, existing file will NOT be overwritten' >> /app/entrypoint.sh && \
     echo '# To reset: Delete /app/config/application.properties before starting container' >> /app/entrypoint.sh && \
@@ -235,19 +195,13 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'else' >> /app/entrypoint.sh && \
     echo '  echo "Config file exists, skipping template copy (volume persistence)"' >> /app/entrypoint.sh && \
     echo 'fi' >> /app/entrypoint.sh && \
-    echo '# Initialize data directory if it does not exist (volume mount point)' >> /app/entrypoint.sh && \
-    echo 'mkdir -p /app/data' >> /app/entrypoint.sh && \
-    echo '# Fix permissions' >> /app/entrypoint.sh && \
-    echo 'chown -R spring:spring /app/config /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo 'chmod 755 /app/config /app/data 2>/dev/null || true' >> /app/entrypoint.sh && \
-    echo '# Ensure we are in /app directory' >> /app/entrypoint.sh && \
-    echo 'cd /app' >> /app/entrypoint.sh && \
-    echo '# Debug: Log environment variable and working directory' >> /app/entrypoint.sh && \
     echo 'echo "SPRING_CONFIG_ADDITIONAL_LOCATION=$SPRING_CONFIG_ADDITIONAL_LOCATION"' >> /app/entrypoint.sh && \
     echo 'echo "Working directory: $(pwd)"' >> /app/entrypoint.sh && \
     echo 'echo "Config file exists: $([ -f /app/config/application.properties ] && echo yes || echo no)"' >> /app/entrypoint.sh && \
-    echo 'exec su-exec spring:spring java -jar app.jar' >> /app/entrypoint.sh && \
+    echo 'exec java -jar /app/app.jar' >> /app/entrypoint.sh && \
+    chown spring:spring /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
+USER spring:spring
 EXPOSE 8082
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8082/actuator/health || exit 1
