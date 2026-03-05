@@ -56,6 +56,7 @@ public enum EventType {
 
   // API key events
   API_KEY_CREATED,
+  API_KEY_UPDATED, // API key config updated (ipWhitelist, description)
   API_KEY_REVOKED,
   API_KEY_EXPIRED,
   API_KEY_AUTH_SUCCESS,

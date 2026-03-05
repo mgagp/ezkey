@@ -41,6 +41,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
@@ -91,6 +92,7 @@ class ApiKeyServiceTest {
     // Generated with: new BCryptPasswordEncoder().encode("testSecret")
     testApiKey = new ApiKey();
     testApiKey.setApiKeyId(42);
+    testApiKey.setVersion(0L);
     testApiKey.setIntegration(testIntegration);
     testApiKey.setIntegrationKey("ezkey_ikey_test123456789ab");
     testApiKey.setSecretKeyHash("$2a$10$N9qo8uLOickgx2ZMRZoMye");
@@ -464,6 +466,75 @@ class ApiKeyServiceTest {
 
       // Assert
       assertFalse(result);
+    }
+  }
+
+  @Nested
+  @DisplayName("API Key Update Tests")
+  class UpdateApiKeyTests {
+
+    @Test
+    @DisplayName("Should update API key description and ipWhitelist successfully")
+    void updateApiKey_WhenValid_ShouldApplyChanges() {
+      // Arrange
+      when(apiKeyRepository.findById(42)).thenReturn(Optional.of(testApiKey));
+      when(apiKeyRepository.save(any(ApiKey.class))).thenAnswer(i -> i.getArgument(0));
+      String[] newIpWhitelist = {"192.168.1.0/24", "10.0.0.100"};
+
+      // Act
+      ApiKey result = apiKeyService.updateApiKey(42, "Updated Description", newIpWhitelist, 0L);
+
+      // Assert
+      assertNotNull(result);
+      assertEquals("Updated Description", result.getDescription());
+      assertNotNull(result.getIpWhitelist());
+      assertEquals(2, result.getIpWhitelist().length);
+      verify(apiKeyRepository).save(testApiKey);
+    }
+
+    @Test
+    @DisplayName("Should throw when key not found")
+    void updateApiKey_WhenNotFound_ShouldThrow() {
+      when(apiKeyRepository.findById(999)).thenReturn(Optional.empty());
+
+      assertThrows(
+          org.ezkey.exception.ResourceNotFoundException.class,
+          () -> apiKeyService.updateApiKey(999, "Desc", null, null));
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
+    }
+
+    @Test
+    @DisplayName("Should throw when key is revoked")
+    void updateApiKey_WhenRevoked_ShouldThrow() {
+      testApiKey.setActive(false);
+      when(apiKeyRepository.findById(42)).thenReturn(Optional.of(testApiKey));
+
+      assertThrows(
+          IllegalArgumentException.class, () -> apiKeyService.updateApiKey(42, "Desc", null, 0L));
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
+    }
+
+    @Test
+    @DisplayName("Should throw when version mismatch")
+    void updateApiKey_WhenStaleVersion_ShouldThrow() {
+      when(apiKeyRepository.findById(42)).thenReturn(Optional.of(testApiKey));
+
+      assertThrows(
+          ObjectOptimisticLockingFailureException.class,
+          () -> apiKeyService.updateApiKey(42, "Desc", null, 99L));
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
+    }
+
+    @Test
+    @DisplayName("Should reject invalid CIDR in ipWhitelist")
+    void updateApiKey_WhenInvalidCidr_ShouldThrow() {
+      when(apiKeyRepository.findById(42)).thenReturn(Optional.of(testApiKey));
+      String[] invalidWhitelist = {"not-an-ip", "192.168.1.0/24"};
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> apiKeyService.updateApiKey(42, null, invalidWhitelist, 0L));
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
     }
   }
 

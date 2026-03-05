@@ -21,9 +21,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
+import org.ezkey.admin.dto.request.ApiKeyUpdateRequestDto;
 import org.ezkey.admin.dto.response.ApiKeyCreateResponseDto;
 import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.admin.security.AccessControlService;
@@ -49,6 +51,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,6 +71,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><b>POST /api/v1/api-keys:</b> Create new API key pair
  *   <li><b>GET /api/v1/api-keys/integration/{integrationId}:</b> List keys for integration
  *   <li><b>GET /api/v1/api-keys/{keyId}:</b> Get specific key details
+ *   <li><b>PATCH /api/v1/api-keys/{keyId}:</b> Partially update API key config (ipWhitelist,
+ *       description)
  *   <li><b>DELETE /api/v1/api-keys/{keyId}:</b> Revoke API key
  * </ul>
  *
@@ -390,6 +395,134 @@ public class ApiKeyController {
   }
 
   /**
+   * Partially updates an API key's configuration.
+   *
+   * <p>Only non-null fields in the request body are applied. Supports ipWhitelist and description.
+   * Only active (non-revoked) keys can be updated. Include {@code version} from the GET response
+   * for optimistic locking.
+   *
+   * @param keyId the API key ID to update
+   * @param request the partial update request
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity containing updated API key with HTTP 200, or error status
+   */
+  @PreAuthorize("hasRole('ADMIN')")
+  @PatchMapping("/{keyId}")
+  @Operation(
+      summary = "Partially update API key configuration",
+      description =
+          "Updates API key config (ipWhitelist, description). Only active keys. "
+              + "Include version from GET for optimistic locking.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "API key updated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiKeyResponseDto.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid data, key revoked, or ipWhitelist validation failed (invalid CIDR)"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "API key not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
+      })
+  public ResponseEntity<ApiKeyResponseDto> updateApiKey(
+      @Parameter(description = "API key ID to update", example = "42") @PathVariable("keyId")
+          Integer keyId,
+      @Valid @RequestBody ApiKeyUpdateRequestDto request,
+      HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+    Integer adminTenantId =
+        currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN
+            ? currentAdmin.getTenant().getTenantId()
+            : null;
+
+    Optional<ApiKey> existingOpt = apiKeyService.getApiKey(keyId);
+    if (existingOpt.isEmpty()) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_UPDATED,
+                  AdminAuditConstants.API_KEY_UPDATE_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage("API key not found: " + keyId)
+              .build());
+      return ResponseEntity.notFound().build();
+    }
+
+    ApiKey existing = existingOpt.get();
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, existing.getIntegration().getId())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      ApiKey updated =
+          apiKeyService.updateApiKey(
+              keyId, request.description(), request.ipWhitelist(), request.version());
+
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_UPDATED,
+                  AdminAuditConstants.API_KEY_UPDATED,
+                  adminTenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(currentAdmin.getAdminId())
+              .eventDetails("API key ID: " + keyId)
+              .build());
+
+      return ResponseEntity.ok(mapToResponseDto(updated));
+    } catch (org.ezkey.exception.ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_UPDATED,
+                  AdminAuditConstants.API_KEY_UPDATE_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage("API key not found: " + keyId)
+              .build());
+      throw e;
+    } catch (IllegalArgumentException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_UPDATED,
+                  AdminAuditConstants.API_KEY_UPDATE_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+    } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_UPDATED,
+                  AdminAuditConstants.API_KEY_UPDATE_FAILED,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage("Optimistic lock conflict")
+              .build());
+      throw e;
+    }
+  }
+
+  /**
    * Gets details of a specific API key.
    *
    * <p>This endpoint returns the details of a specific API key. The secret key is never included in
@@ -530,6 +663,7 @@ public class ApiKeyController {
 
     return new ApiKeyResponseDto(
         apiKey.getApiKeyId(),
+        apiKey.getVersion(),
         apiKey.getIntegration().getId(),
         apiKey.getIntegrationKey(),
         apiKey.getDescription(),

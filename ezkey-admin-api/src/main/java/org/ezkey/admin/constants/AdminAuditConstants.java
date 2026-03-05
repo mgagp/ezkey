@@ -182,6 +182,12 @@ public final class AdminAuditConstants {
   /** Audit action for failed API key creation. */
   public static final String API_KEY_CREATION_FAILED = "api_key_creation_failed";
 
+  /** Audit action for successful API key config update. */
+  public static final String API_KEY_UPDATED = "api_key_updated";
+
+  /** Audit action for failed API key update (validation, not found, optimistic lock). */
+  public static final String API_KEY_UPDATE_FAILED = "api_key_update_failed";
+
   /** Audit action for successful API key revocation. */
   public static final String API_KEY_REVOKED = "api_key_revoked";
 

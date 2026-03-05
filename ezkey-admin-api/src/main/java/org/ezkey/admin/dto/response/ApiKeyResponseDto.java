@@ -61,6 +61,11 @@ import java.time.OffsetDateTime;
 public record ApiKeyResponseDto(
     @Schema(description = "Unique identifier for the API key record", example = "42")
         Integer apiKeyId,
+    @Schema(
+            description =
+                "Optimistic lock version. Include in PATCH requests to prevent concurrent update",
+            example = "0")
+        Long version,
     @Schema(description = "Integration ID this API key authenticates for", example = "123")
         Integer integrationId,
     @Schema(

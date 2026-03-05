@@ -601,6 +601,7 @@ cd ezkey_mobile
 - `POST /api/v1/api-keys` - Create new API key pair
 - `GET /api/v1/api-keys/integration/{id}` - List keys for integration
 - `GET /api/v1/api-keys/{id}` - Get API key details
+- `PATCH /api/v1/api-keys/{id}` - Partially update API key config (ipWhitelist, description)
 - `DELETE /api/v1/api-keys/{id}` - Revoke API key
 
 ### Auth API Endpoints (`localhost:8080`)

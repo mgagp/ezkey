@@ -66,6 +66,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -102,6 +103,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -126,6 +128,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             null, // no description
@@ -159,6 +162,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -183,6 +187,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -206,6 +211,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -228,6 +234,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto1 =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -242,6 +249,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto2 =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -256,6 +264,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto3 =
         new ApiKeyResponseDto(
             999, // different ID
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -280,6 +289,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto1 =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -294,6 +304,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto2 =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -319,6 +330,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -344,6 +356,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
@@ -370,6 +383,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             "Compromised key - emergency revocation",
@@ -395,6 +409,7 @@ class ApiKeyResponseDtoTest {
     ApiKeyResponseDto dto =
         new ApiKeyResponseDto(
             TEST_API_KEY_ID,
+            0L, // version
             TEST_INTEGRATION_ID,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,

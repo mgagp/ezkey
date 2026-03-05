@@ -1149,9 +1149,45 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
+**Response fields:** `version` is included for optimistic locking. Include it in PATCH requests.
+
 ---
 
-### d) Revoke API Key
+### d) Partially Update API Key Configuration
+
+**PATCH /api/v1/api-keys/{keyId}**
+
+Partially updates API key configuration (ipWhitelist, description). Only active (non-revoked) keys can be updated. Include `version` from the GET response for optimistic locking.
+
+**Request:**
+```http
+PATCH /api/v1/api-keys/42
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "version": 0,
+  "description": "Updated Production Server",
+  "ipWhitelist": ["192.168.1.0/24", "10.0.0.100"]
+}
+```
+
+**Response (200 OK):** Updated API key object (same shape as GET response, including new `version`).
+
+**Status Codes:**
+- 200: API key updated successfully
+- 400: Invalid data, key revoked, or ipWhitelist validation failed (invalid CIDR)
+- 403: Access denied
+- 404: API key not found
+- 409: Optimistic lock conflict — resource was modified, re-fetch and retry
+
+**Constraints:**
+- `ipWhitelist`: each entry must be valid IP or CIDR; null or empty array = removes restrictions
+- Only active keys can be updated
+
+---
+
+### e) Revoke API Key
 
 **DELETE /api/v1/api-keys/{keyId}**
 

@@ -365,6 +365,57 @@ public class ApiKeyService {
   }
 
   /**
+   * Partially updates an API key's configuration.
+   *
+   * <p>Only non-null fields in the request are applied. Supports ipWhitelist and description. Only
+   * active (non-revoked) keys can be updated.
+   *
+   * @param keyId the API key ID to update
+   * @param description new description (null = don't change)
+   * @param ipWhitelist new IP whitelist (null = don't change; empty array = remove restrictions)
+   * @param version optimistic lock version (null = skip check)
+   * @return the updated API key
+   * @throws org.ezkey.exception.ResourceNotFoundException if key not found
+   * @throws IllegalArgumentException if key is revoked or ipWhitelist validation fails
+   * @throws org.springframework.orm.ObjectOptimisticLockingFailureException if version mismatch
+   */
+  @Transactional
+  public ApiKey updateApiKey(
+      Integer keyId, String description, String[] ipWhitelist, Long version) {
+
+    ApiKey apiKey =
+        apiKeyRepository
+            .findById(keyId)
+            .orElseThrow(() -> new org.ezkey.exception.ResourceNotFoundException("API key", keyId));
+
+    if (!Boolean.TRUE.equals(apiKey.getActive())) {
+      throw new IllegalArgumentException(
+          "API key cannot be updated: key has been revoked. Create a new key instead.");
+    }
+
+    if (version != null && !version.equals(apiKey.getVersion())) {
+      throw new org.springframework.orm.ObjectOptimisticLockingFailureException(
+          ApiKey.class, keyId);
+    }
+
+    if (description != null) {
+      apiKey.setDescription(description);
+    }
+
+    if (ipWhitelist != null) {
+      if (ipWhitelist.length > 0) {
+        validateIpWhitelist(ipWhitelist);
+      }
+      apiKey.setIpWhitelist(ipWhitelist.length == 0 ? null : ipWhitelist);
+    }
+
+    apiKey = apiKeyRepository.save(apiKey);
+    logger.info(
+        "API key {} config updated (integration: {})", keyId, apiKey.getIntegration().getId());
+    return apiKey;
+  }
+
+  /**
    * Revokes an API key immediately.
    *
    * <p>This method performs immediate revocation of an API key, making it unusable for

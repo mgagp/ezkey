@@ -359,6 +359,7 @@ class ApiKeyControllerTest {
   private ApiKey createMockApiKey(Integer keyId) {
     ApiKey apiKey = new ApiKey();
     apiKey.setApiKeyId(keyId);
+    apiKey.setVersion(0L);
     apiKey.setIntegrationKey("integration-key-" + keyId);
     apiKey.setDescription("Test API Key " + keyId);
     apiKey.setActive(true);
