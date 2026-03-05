@@ -1228,8 +1228,9 @@ Content-Type: application/json
 ```
 
 **Rate Limiting:**
-- 1000 requests per hour per integration key
-- Higher than admin login (designed for server usage)
+- Create auth attempt: 10 requests per minute per API key (Admin API); M2M API uses higher defaults (e.g. 100/min)
+- Wait and cancel: 20 requests per minute per API key (Admin API); M2M API uses higher defaults (e.g. 200/min)
+- Limits are per instance (no distributed coordination); higher than admin login (designed for server usage)
 - Returns 429 Too Many Requests when limit exceeded
 
 ---

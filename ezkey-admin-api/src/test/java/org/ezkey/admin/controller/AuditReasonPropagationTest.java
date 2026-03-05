@@ -125,6 +125,7 @@ class AuditReasonPropagationTest {
   void revokeApiKey_withReason_propagatesReasonToAuditLog() {
     // Arrange
     setupAdminSecurityContext();
+    when(adminOpsRateLimitService.canRevokeApiKey(any())).thenReturn(true);
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,
@@ -153,6 +154,7 @@ class AuditReasonPropagationTest {
   void revokeApiKey_withoutReason_auditReasonIsNull() {
     // Arrange
     setupAdminSecurityContext();
+    when(adminOpsRateLimitService.canRevokeApiKey(any())).thenReturn(true);
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,

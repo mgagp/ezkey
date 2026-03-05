@@ -430,7 +430,10 @@ public class ApiKeyController {
         @ApiResponse(responseCode = "404", description = "API key not found"),
         @ApiResponse(
             responseCode = "409",
-            description = "Optimistic lock conflict - resource was modified, re-fetch and retry")
+            description = "Optimistic lock conflict - resource was modified, re-fetch and retry"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many update requests - rate limit exceeded")
       })
   public ResponseEntity<ApiKeyResponseDto> updateApiKey(
       @Parameter(description = "API key ID to update", example = "42") @PathVariable("keyId")
@@ -466,11 +469,18 @@ public class ApiKeyController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    // Check rate limiting for admin operations
+    String adminId = currentAdmin.getUsername();
+    if (!adminOpsRateLimitService.canUpdateApiKey(adminId)) {
+      throw new RateLimitExceededException("API_KEY_UPDATE", 20, 0, 15);
+    }
+
     try {
       ApiKey updated =
           apiKeyService.updateApiKey(
               keyId, request.description(), request.ipWhitelist(), request.version());
 
+      adminOpsRateLimitService.recordUpdateApiKey(adminId);
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -592,7 +602,10 @@ public class ApiKeyController {
       value = {
         @ApiResponse(responseCode = "204", description = "API key revoked successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
-        @ApiResponse(responseCode = "404", description = "API key not found")
+        @ApiResponse(responseCode = "404", description = "API key not found"),
+        @ApiResponse(
+            responseCode = "429",
+            description = "Too many revoke requests - rate limit exceeded")
       })
   public ResponseEntity<Void> revokeApiKey(
       @Parameter(description = "API key ID to revoke", example = "42") @PathVariable("keyId")
@@ -614,9 +627,16 @@ public class ApiKeyController {
             ? currentAdmin.getTenant().getTenantId()
             : null;
 
+    // Check rate limiting for admin operations
+    String adminId = currentAdmin.getUsername();
+    if (!adminOpsRateLimitService.canRevokeApiKey(adminId)) {
+      throw new RateLimitExceededException("API_KEY_REVOKE", 10, 0, 15);
+    }
+
     boolean revoked = apiKeyService.revokeApiKey(keyId, currentAdmin);
 
     if (revoked) {
+      adminOpsRateLimitService.recordRevokeApiKey(adminId);
       logger.info(
           "API key revoked successfully: {} by admin: {}", keyId, currentAdmin.getUsername());
       auditLogService.log(

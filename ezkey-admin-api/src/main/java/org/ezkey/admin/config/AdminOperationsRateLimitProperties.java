@@ -30,6 +30,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * ezkey.admin-operations.rate-limit.api-key-create.window-minutes=15
  * ezkey.admin-operations.rate-limit.enrollment-reset.requests=3
  * ezkey.admin-operations.rate-limit.enrollment-reset.window-minutes=30
+ * ezkey.admin-operations.rate-limit.api-key-revoke.requests=10
+ * ezkey.admin-operations.rate-limit.api-key-revoke.window-minutes=15
+ * ezkey.admin-operations.rate-limit.api-key-update.requests=20
+ * ezkey.admin-operations.rate-limit.api-key-update.window-minutes=15
  * </pre>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -54,6 +58,12 @@ public class AdminOperationsRateLimitProperties {
   /** Rate limiting configuration for enrollment reset operations. */
   private EnrollmentResetConfig enrollmentReset = new EnrollmentResetConfig();
 
+  /** Rate limiting configuration for API key revocation operations. */
+  private ApiKeyRevokeConfig apiKeyRevoke = new ApiKeyRevokeConfig();
+
+  /** Rate limiting configuration for API key update operations. */
+  private ApiKeyUpdateConfig apiKeyUpdate = new ApiKeyUpdateConfig();
+
   /** Configuration for API key creation rate limiting behavior. */
   public static class ApiKeyCreateConfig {
     /**
@@ -61,6 +71,64 @@ public class AdminOperationsRateLimitProperties {
      * requests per 15 minutes.
      */
     private int requests = 5;
+
+    /** Time window in minutes for the rate limit. Default: 15 minutes. */
+    private int windowMinutes = 15;
+
+    // Getters and Setters
+    public int getRequests() {
+      return requests;
+    }
+
+    public void setRequests(int requests) {
+      this.requests = requests;
+    }
+
+    public int getWindowMinutes() {
+      return windowMinutes;
+    }
+
+    public void setWindowMinutes(int windowMinutes) {
+      this.windowMinutes = windowMinutes;
+    }
+  }
+
+  /** Configuration for API key revocation rate limiting behavior. */
+  public static class ApiKeyRevokeConfig {
+    /**
+     * Maximum number of API key revocation requests allowed within the time window. Default: 10
+     * requests per 15 minutes.
+     */
+    private int requests = 10;
+
+    /** Time window in minutes for the rate limit. Default: 15 minutes. */
+    private int windowMinutes = 15;
+
+    // Getters and Setters
+    public int getRequests() {
+      return requests;
+    }
+
+    public void setRequests(int requests) {
+      this.requests = requests;
+    }
+
+    public int getWindowMinutes() {
+      return windowMinutes;
+    }
+
+    public void setWindowMinutes(int windowMinutes) {
+      this.windowMinutes = windowMinutes;
+    }
+  }
+
+  /** Configuration for API key update rate limiting behavior. */
+  public static class ApiKeyUpdateConfig {
+    /**
+     * Maximum number of API key update requests allowed within the time window. Default: 20
+     * requests per 15 minutes.
+     */
+    private int requests = 20;
 
     /** Time window in minutes for the rate limit. Default: 15 minutes. */
     private int windowMinutes = 15;
@@ -136,5 +204,21 @@ public class AdminOperationsRateLimitProperties {
 
   public void setEnrollmentReset(EnrollmentResetConfig enrollmentReset) {
     this.enrollmentReset = enrollmentReset;
+  }
+
+  public ApiKeyRevokeConfig getApiKeyRevoke() {
+    return apiKeyRevoke;
+  }
+
+  public void setApiKeyRevoke(ApiKeyRevokeConfig apiKeyRevoke) {
+    this.apiKeyRevoke = apiKeyRevoke;
+  }
+
+  public ApiKeyUpdateConfig getApiKeyUpdate() {
+    return apiKeyUpdate;
+  }
+
+  public void setApiKeyUpdate(ApiKeyUpdateConfig apiKeyUpdate) {
+    this.apiKeyUpdate = apiKeyUpdate;
   }
 }

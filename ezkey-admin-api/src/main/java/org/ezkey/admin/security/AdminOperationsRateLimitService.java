@@ -37,6 +37,8 @@ import org.springframework.stereotype.Service;
  *
  * <ul>
  *   <li><b>API_KEY_CREATE:</b> Configurable via ezkey.admin-operations.rate-limit.api-key-create.*
+ *   <li><b>API_KEY_REVOKE:</b> Configurable via ezkey.admin-operations.rate-limit.api-key-revoke.*
+ *   <li><b>API_KEY_UPDATE:</b> Configurable via ezkey.admin-operations.rate-limit.api-key-update.*
  *   <li><b>ENROLLMENT_RESET:</b> Configurable via
  *       ezkey.admin-operations.rate-limit.enrollment-reset.*
  * </ul>
@@ -67,6 +69,8 @@ public class AdminOperationsRateLimitService {
 
   // Bucket4j-based rate limiting with Caffeine cache
   private final Cache<String, Bucket> apiKeyCreateBuckets;
+  private final Cache<String, Bucket> apiKeyRevokeBuckets;
+  private final Cache<String, Bucket> apiKeyUpdateBuckets;
   private final Cache<String, Bucket> enrollmentResetBuckets;
 
   /**
@@ -84,6 +88,12 @@ public class AdminOperationsRateLimitService {
     this.apiKeyCreateBuckets =
         Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
 
+    this.apiKeyRevokeBuckets =
+        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+
+    this.apiKeyUpdateBuckets =
+        Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
+
     this.enrollmentResetBuckets =
         Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
 
@@ -92,6 +102,14 @@ public class AdminOperationsRateLimitService {
         "API key create limit: {} requests per {} minutes",
         properties.getApiKeyCreate().getRequests(),
         properties.getApiKeyCreate().getWindowMinutes());
+    logger.info(
+        "API key revoke limit: {} requests per {} minutes",
+        properties.getApiKeyRevoke().getRequests(),
+        properties.getApiKeyRevoke().getWindowMinutes());
+    logger.info(
+        "API key update limit: {} requests per {} minutes",
+        properties.getApiKeyUpdate().getRequests(),
+        properties.getApiKeyUpdate().getWindowMinutes());
     logger.info(
         "Enrollment reset limit: {} requests per {} minutes",
         properties.getEnrollmentReset().getRequests(),
@@ -171,6 +189,86 @@ public class AdminOperationsRateLimitService {
   }
 
   /**
+   * Checks if an admin can perform an API key revocation operation.
+   *
+   * <p>This method implements rate limiting for API key revocation using Bucket4j token bucket
+   * algorithm. It checks if the admin has sufficient tokens in its bucket.
+   *
+   * @param adminId the admin identifier
+   * @return true if the operation is allowed, false if rate limit exceeded
+   */
+  public boolean canRevokeApiKey(String adminId) {
+    String bucketKey = "api_key_revoke:" + adminId;
+    Bucket bucket = apiKeyRevokeBuckets.get(bucketKey, key -> createApiKeyRevokeBucket());
+
+    boolean allowed = bucket.tryConsume(1);
+
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "api_key_revoke", "type", "admin")
+        .increment();
+
+    if (!allowed) {
+      meterRegistry
+          .counter("rate_limit.exceeded.total", "operation", "api_key_revoke", "type", "admin")
+          .increment();
+    }
+
+    return allowed;
+  }
+
+  /**
+   * Records a successful API key revocation operation for rate limiting tracking.
+   *
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
+   *
+   * @param adminId the admin identifier
+   */
+  public void recordRevokeApiKey(String adminId) {
+    logger.debug("Recorded API key revocation for admin: {}", adminId);
+  }
+
+  /**
+   * Checks if an admin can perform an API key update operation.
+   *
+   * <p>This method implements rate limiting for API key updates using Bucket4j token bucket
+   * algorithm. It checks if the admin has sufficient tokens in its bucket.
+   *
+   * @param adminId the admin identifier
+   * @return true if the operation is allowed, false if rate limit exceeded
+   */
+  public boolean canUpdateApiKey(String adminId) {
+    String bucketKey = "api_key_update:" + adminId;
+    Bucket bucket = apiKeyUpdateBuckets.get(bucketKey, key -> createApiKeyUpdateBucket());
+
+    boolean allowed = bucket.tryConsume(1);
+
+    meterRegistry
+        .counter("rate_limit.checks.total", "operation", "api_key_update", "type", "admin")
+        .increment();
+
+    if (!allowed) {
+      meterRegistry
+          .counter("rate_limit.exceeded.total", "operation", "api_key_update", "type", "admin")
+          .increment();
+    }
+
+    return allowed;
+  }
+
+  /**
+   * Records a successful API key update operation for rate limiting tracking.
+   *
+   * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
+   * method is kept for API compatibility but doesn't need to do additional work.
+   *
+   * @param adminId the admin identifier
+   */
+  public void recordUpdateApiKey(String adminId) {
+    logger.debug("Recorded API key update for admin: {}", adminId);
+  }
+
+  /**
    * Records a successful enrollment reset operation for rate limiting tracking.
    *
    * <p>Note: With Bucket4j token bucket algorithm, tokens are consumed during the check, so this
@@ -191,6 +289,40 @@ public class AdminOperationsRateLimitService {
    */
   private Bucket createApiKeyCreateBucket() {
     AdminOperationsRateLimitProperties.ApiKeyCreateConfig config = properties.getApiKeyCreate();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
+  }
+
+  /**
+   * Creates a new Bucket4j bucket for API key revocation operations.
+   *
+   * @return configured rate limiting bucket for API key revocation operations
+   */
+  private Bucket createApiKeyRevokeBucket() {
+    AdminOperationsRateLimitProperties.ApiKeyRevokeConfig config = properties.getApiKeyRevoke();
+
+    Bandwidth limit =
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
+
+    return Bucket.builder().addLimit(limit).build();
+  }
+
+  /**
+   * Creates a new Bucket4j bucket for API key update operations.
+   *
+   * @return configured rate limiting bucket for API key update operations
+   */
+  private Bucket createApiKeyUpdateBucket() {
+    AdminOperationsRateLimitProperties.ApiKeyUpdateConfig config = properties.getApiKeyUpdate();
 
     Bandwidth limit =
         Bandwidth.builder()

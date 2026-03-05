@@ -77,6 +77,8 @@ public class NoOpAdminOperationsRateLimitService {
     logger.warn("");
     logger.warn("⚠️  PRODUCTION RISK: Rate limiting is disabled!");
     logger.warn("   - API key creation: NO rate limits");
+    logger.warn("   - API key revoke: NO rate limits");
+    logger.warn("   - API key update: NO rate limits");
     logger.warn("   - Enrollment reset: NO rate limits");
     logger.warn("");
     logger.warn("To enable rate limiting, set: ezkey.admin-operations.rate-limit.enabled=true");
@@ -109,6 +111,44 @@ public class NoOpAdminOperationsRateLimitService {
    * @param adminId the admin identifier (unused)
    */
   public void recordCreateApiKey(String adminId) {
+    // No-op
+  }
+
+  /**
+   * No-op implementation: always returns true (operation allowed).
+   *
+   * @param adminId the admin identifier (unused)
+   * @return always true (operation allowed)
+   */
+  public boolean canRevokeApiKey(String adminId) {
+    return true;
+  }
+
+  /**
+   * No-op implementation: does nothing.
+   *
+   * @param adminId the admin identifier (unused)
+   */
+  public void recordRevokeApiKey(String adminId) {
+    // No-op
+  }
+
+  /**
+   * No-op implementation: always returns true (operation allowed).
+   *
+   * @param adminId the admin identifier (unused)
+   * @return always true (operation allowed)
+   */
+  public boolean canUpdateApiKey(String adminId) {
+    return true;
+  }
+
+  /**
+   * No-op implementation: does nothing.
+   *
+   * @param adminId the admin identifier (unused)
+   */
+  public void recordUpdateApiKey(String adminId) {
     // No-op
   }
 

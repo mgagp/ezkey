@@ -110,6 +110,8 @@ class ApiKeyControllerTest {
 
     // Mock rate limiting to always allow operations (bypass complexity)
     lenient().when(adminOpsRateLimitService.canCreateApiKey(anyString())).thenReturn(true);
+    lenient().when(adminOpsRateLimitService.canRevokeApiKey(anyString())).thenReturn(true);
+    lenient().when(adminOpsRateLimitService.canUpdateApiKey(anyString())).thenReturn(true);
 
     // Mock access control to always allow (for tests)
     lenient().when(accessControlService.canAccessIntegration(any(), anyInt())).thenReturn(true);

@@ -59,6 +59,26 @@ public class NoOpAdminOperationsRateLimitServiceWrapper extends AdminOperationsR
   }
 
   @Override
+  public boolean canRevokeApiKey(String adminId) {
+    return noOpService.canRevokeApiKey(adminId);
+  }
+
+  @Override
+  public void recordRevokeApiKey(String adminId) {
+    noOpService.recordRevokeApiKey(adminId);
+  }
+
+  @Override
+  public boolean canUpdateApiKey(String adminId) {
+    return noOpService.canUpdateApiKey(adminId);
+  }
+
+  @Override
+  public void recordUpdateApiKey(String adminId) {
+    noOpService.recordUpdateApiKey(adminId);
+  }
+
+  @Override
   public void recordResetEnrollment(String tokenOrAdminId) {
     noOpService.recordResetEnrollment(tokenOrAdminId);
   }
