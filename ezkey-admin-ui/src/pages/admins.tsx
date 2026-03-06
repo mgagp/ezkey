@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, QrCode, RefreshCw, UserX } from 'lucide-react';
@@ -17,12 +17,13 @@ import { useAuth } from '@/context/auth-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { AdminCreateRequest, PageResponse } from '@/types/api';
-import type { Admin, AdminOnboarding, AdminProvisioning } from '@/types/models';
+import type { AdminCreateRequestDto } from '@/generated/admin-api/model';
+import type { AdminOnboardingResponseDto, AdminProvisioningResponseDto, AdminResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Admin type badge ───────────────────────────────────────────────────────────
 
-function AdminTypeBadge({ type }: { type: Admin['adminType'] }) {
+function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
   if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">Global</Badge>;
   if (type === 'INTEGRATION_ADMIN') return <Badge variant="muted">Integration</Badge>;
   return <Badge variant="muted">Tenant</Badge>;
@@ -47,7 +48,7 @@ function OnboardingDialog({
 
   const { data: onboarding, isLoading, isError } = useQuery({
     queryKey: ['admin-onboarding', adminId],
-    queryFn: () => api.get<AdminOnboarding>(`/api/v1/admins/${adminId}/onboarding`),
+    queryFn: () => api.get<AdminOnboardingResponseDto>(`/api/v1/admins/${adminId}/onboarding`),
     enabled: open && adminId !== null,
   });
 
@@ -149,7 +150,7 @@ function DeactivateAdminDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  admin: Admin | null;
+  admin: AdminResponseDto | null;
 }) {
   const queryClient = useQueryClient();
 
@@ -191,7 +192,7 @@ function DeactivateAdminDialog({
             <Button
               variant="destructive"
               isLoading={deactivateMutation.isPending}
-              onClick={() => admin && deactivateMutation.mutate(admin.adminId)}
+              onClick={() => admin && deactivateMutation.mutate(admin.adminId!)}
             >
               <UserX className="size-3.5 mr-1.5" />
               Deactivate
@@ -215,15 +216,15 @@ type AdminFormValues = z.infer<typeof adminSchema>;
 
 function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioning | null>(null);
+  const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningResponseDto | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: AdminCreateRequest) =>
-      api.post<AdminProvisioning>('/api/v1/admins/tenant', data),
+    mutationFn: (data: AdminCreateRequestDto) =>
+      api.post<AdminProvisioningResponseDto>('/api/v1/admins/tenant', data),
     onSuccess: (admin) => {
       setCreatedAdmin(admin);
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
@@ -305,15 +306,15 @@ export default function AdminsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
-  const [deactivateTarget, setDeactivateTarget] = useState<Admin | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<Admin>({
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AdminResponseDto>({
     queryKey: ['admins'],
     queryFn: ({ page, size, sort }) =>
-      api.get<PageResponse<Admin>>(`/api/v1/admins?page=${page}&size=${size}&sort=${sort}`),
+      api.get<PageResponse<AdminResponseDto>>(`/api/v1/admins?page=${page}&size=${size}&sort=${sort}`),
   });
 
-  const columns: ColumnDef<Admin>[] = [
+  const columns: ColumnDef<AdminResponseDto>[] = [
     { header: 'ID', key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
     { header: 'Username', key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
     {
@@ -328,7 +329,7 @@ export default function AdminsPage() {
     { header: 'Email', key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
     { header: 'Type', key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
     { header: 'Active', key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt)}</span> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
     {
       header: 'Actions',
       key: 'actions',
@@ -338,7 +339,7 @@ export default function AdminsPage() {
             variant="secondary"
             size="sm"
             className="gap-1"
-            onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId, username: r.username }); }}
+            onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId!, username: r.username! }); }}
           >
             <KeyRound className="size-3" />
             Credentials
@@ -380,7 +381,7 @@ export default function AdminsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            keyExtractor={(r) => r.adminId}
+            keyExtractor={(r, i) => r.adminId ?? i}
             emptyMessage="No admins found."
             currentSort={pagination.sort}
             onSort={pagination.setSort}

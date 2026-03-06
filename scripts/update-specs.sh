@@ -115,6 +115,7 @@ update_project_links() {
             print_status "Updating admin-api links..."
             update_link "$spec_file" "ezkey-demo-app-acme/openapi-spec.json"
             update_link "$spec_file" "ezkey-sdk/admin-api-spec.json"
+            update_link "$spec_file" "ezkey-admin-ui/openapi-spec.json"
             ;;
         "auth-api")
             print_status "Updating auth-api links..."

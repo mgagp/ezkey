@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
@@ -12,8 +12,8 @@ import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { PageResponse } from '@/types/api';
-import type { Enrollment, Integration } from '@/types/models';
+import type { PageResponse } from '@/hooks/use-paginated-query';
+import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -37,20 +37,20 @@ export default function IntegrationDetailPage() {
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ['integration', integrationId],
-    queryFn: () => api.get<Integration>(`/api/v1/integrations/${integrationId}`),
+    queryFn: () => api.get<IntegrationResponseDto>(`/api/v1/integrations/${integrationId}`),
     enabled: !isNaN(integrationId),
   });
 
-  const { data: enrollments, pagination: enrPagination, isLoading: loadingEnr } = usePaginatedQuery<Enrollment>({
+  const { data: enrollments, pagination: enrPagination, isLoading: loadingEnr } = usePaginatedQuery<EnrollmentResponseDto>({
     queryKey: ['enrollments', 'for-integration', integrationId],
     queryFn: ({ page, size, sort }) =>
-      api.get<PageResponse<Enrollment>>(
+      api.get<PageResponse<EnrollmentResponseDto>>(
         `/api/v1/enrollments?integrationId=${integrationId}&page=${page}&size=${size}&sort=${sort}`,
       ),
     defaultSize: 10,
   });
 
-  const enrollmentColumns: ColumnDef<Enrollment>[] = [
+  const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = [
     { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
     { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
     { header: 'Status', key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
@@ -96,7 +96,7 @@ export default function IntegrationDetailPage() {
                     </Badge>
                   </InfoRow>
                   <InfoRow label="Created">
-                    <span className="text-fg-muted">{formatDate(integration.createdAt)}</span>
+                    <span className="text-fg-muted">{formatDate(integration.createdAt ?? '')}</span>
                   </InfoRow>
                 </dl>
               </CardContent>
@@ -140,7 +140,7 @@ export default function IntegrationDetailPage() {
             data={enrollments}
             isLoading={loadingEnr}
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
-            keyExtractor={(row) => row.enrollmentId}
+            keyExtractor={(row, i) => row.enrollmentId ?? i}
             emptyMessage="No enrollments for this integration yet."
             currentSort={enrPagination.sort}
             onSort={enrPagination.setSort}

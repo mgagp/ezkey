@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api } from '@/lib/api-client';
-import type { PageResponse } from '@/types/api';
-import type { Integration } from '@/types/models';
+import type { IntegrationResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 /** Returns the best display name for an integration, trying English first, then French, then code. */
-export function getIntegrationName(integration: Integration): string {
-  return integration.name ?? integration.code;
+export function getIntegrationName(integration: IntegrationResponseDto): string {
+  return integration.name ?? integration.code ?? '';
 }
 
 /**
@@ -14,13 +14,13 @@ export function getIntegrationName(integration: Integration): string {
  * Results are cached by TanStack Query (60s stale). Shared across all consumers.
  */
 export function useIntegrations(): {
-  list: Integration[];
+  list: IntegrationResponseDto[];
   lookup: Map<number, string>;
   isLoading: boolean;
 } {
   const { data, isLoading } = useQuery({
     queryKey: ['integrations-all'],
-    queryFn: () => api.get<PageResponse<Integration>>('/api/v1/integrations?size=100'),
+    queryFn: () => api.get<PageResponse<IntegrationResponseDto>>('/api/v1/integrations?size=100'),
     staleTime: 60_000,
   });
 
@@ -28,7 +28,11 @@ export function useIntegrations(): {
 
   const lookup = useMemo(() => {
     const map = new Map<number, string>();
-    list.forEach((integration) => map.set(integration.id, getIntegrationName(integration)));
+    list.forEach((integration) => {
+      if (integration.id !== undefined) {
+        map.set(integration.id, getIntegrationName(integration));
+      }
+    });
     return map;
   }, [list]);
 

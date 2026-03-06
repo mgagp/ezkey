@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,8 +20,9 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { IntegrationCreateRequest, IntegrationCreateResponse, PageResponse } from '@/types/api';
-import type { Integration } from '@/types/models';
+import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto } from '@/generated/admin-api/model';
+import type { IntegrationResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -45,8 +46,8 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: IntegrationCreateRequest) =>
-      api.post<IntegrationCreateResponse>('/api/v1/integrations', data),
+    mutationFn: (data: IntegrationCreateRequestDto) =>
+      api.post<IntegrationCreateResponseDto>('/api/v1/integrations', data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['integrations'] });
       void queryClient.invalidateQueries({ queryKey: ['integrations-all'] });
@@ -129,18 +130,18 @@ export default function IntegrationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const debouncedName = useDebounce(nameInput, 300);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<Integration>({
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<IntegrationResponseDto>({
     queryKey: ['integrations', debouncedName, activeFilter],
     queryFn: ({ page, size, sort }) => {
       const p = new URLSearchParams({ page: String(page), size: String(size), sort });
       if (debouncedName) p.set('integrationName', debouncedName);
       if (activeFilter === 'active') p.set('active', 'true');
       if (activeFilter === 'inactive') p.set('active', 'false');
-      return api.get<PageResponse<Integration>>(`/api/v1/integrations?${p.toString()}`);
+      return api.get<PageResponse<IntegrationResponseDto>>(`/api/v1/integrations?${p.toString()}`);
     },
   });
 
-  const columns: ColumnDef<Integration>[] = [
+  const columns: ColumnDef<IntegrationResponseDto>[] = [
     { header: 'ID', key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
     { header: 'Code', key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
     { header: 'Name', key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
@@ -151,7 +152,7 @@ export default function IntegrationsPage() {
       render: (row) => <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? 'Active' : 'Inactive'}</Badge>,
     },
     { header: 'Tenant', key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt)}</span> },
+    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span> },
   ];
 
   return (
@@ -196,7 +197,7 @@ export default function IntegrationsPage() {
             data={data}
             isLoading={isLoading}
             onRowClick={(row) => navigate(`/integrations/${row.id}`)}
-            keyExtractor={(row) => row.id}
+            keyExtractor={(row, i) => row.id ?? i}
             emptyMessage="No integrations found. Create your first integration to get started."
             currentSort={pagination.sort}
             onSort={pagination.setSort}

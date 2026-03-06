@@ -24,7 +24,7 @@ interface FetchOptions extends RequestInit {
   requireAuth?: boolean;
 }
 
-async function fetchApi<T>(path: string, options: FetchOptions = {}): Promise<T> {
+export async function fetchApi<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { requireAuth = true, headers: extraHeaders, ...init } = options;
 
   const headers: Record<string, string> = {

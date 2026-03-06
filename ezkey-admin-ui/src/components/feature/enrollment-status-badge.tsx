@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import type { EnrollmentStatus } from '@/types/models';
+import type { EnrollmentResponseDtoEnrollmentStatus } from '@/generated/admin-api/model';
 
-const config: Record<EnrollmentStatus, { label: string; variant: 'success' | 'warning' | 'muted' | 'error' }> = {
+const config: Record<EnrollmentResponseDtoEnrollmentStatus, { label: string; variant: 'success' | 'warning' | 'muted' | 'error' }> = {
   VERIFIED: { label: 'Verified', variant: 'success' },
   BOUND: { label: 'Bound', variant: 'warning' },
   CREATED: { label: 'Created', variant: 'muted' },
@@ -10,7 +10,8 @@ const config: Record<EnrollmentStatus, { label: string; variant: 'success' | 'wa
   EXPIRED: { label: 'Expired', variant: 'muted' },
 };
 
-export function EnrollmentStatusBadge({ status }: { status: EnrollmentStatus }) {
+export function EnrollmentStatusBadge({ status }: { status: EnrollmentResponseDtoEnrollmentStatus | undefined }) {
+  if (!status) return <Badge variant="muted">—</Badge>;
   const { label, variant } = config[status] ?? { label: status, variant: 'muted' as const };
   return <Badge variant={variant}>{label}</Badge>;
 }

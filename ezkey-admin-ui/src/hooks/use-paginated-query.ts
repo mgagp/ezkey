@@ -1,6 +1,19 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
-import type { PageResponse } from '@/types/api';
+
+/**
+ * Structural page response type that matches all PagedModel* DTOs generated
+ * from the Admin API OpenAPI spec. Import this when typing paginated API calls.
+ */
+export interface PageResponse<T> {
+  content?: T[];
+  page?: {
+    size?: number;
+    totalElements?: number;
+    totalPages?: number;
+    number?: number;
+  };
+}
 
 export interface PaginationState {
   page: number;

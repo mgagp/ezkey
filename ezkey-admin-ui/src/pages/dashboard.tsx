@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
-import type { PageResponse } from '@/types/api';
-import type { AuditLog } from '@/types/models';
+import type { AuditLogResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ export default function DashboardPage() {
       // 9 — pending auth attempts (live, short stale)
       { queryKey: ['stats', 'auth-pending'], queryFn: () => api.get<StatsPage>('/api/v1/auth-attempts?size=1&status=PENDING'), staleTime: 10_000, refetchInterval: 10_000 },
       // 10 — recent audit logs
-      { queryKey: ['stats', 'recent-activity'], queryFn: () => api.get<PageResponse<AuditLog>>('/api/v1/audit-logs?size=5&sort=createdAt,DESC'), staleTime: 30_000, refetchInterval: 30_000 },
+      { queryKey: ['stats', 'recent-activity'], queryFn: () => api.get<PageResponse<AuditLogResponseDto>>('/api/v1/audit-logs?size=5&sort=createdAt,DESC'), staleTime: 30_000, refetchInterval: 30_000 },
     ],
   });
 
@@ -105,7 +105,7 @@ export default function DashboardPage() {
       ? Math.round((authRejected / authTotal) * 100)
       : undefined;
 
-  const recentLogs = (results[10].data as PageResponse<AuditLog> | undefined)?.content ?? [];
+  const recentLogs = (results[10].data as PageResponse<AuditLogResponseDto> | undefined)?.content ?? [];
 
   return (
     <AppShell title="Dashboard">
@@ -196,13 +196,13 @@ export default function DashboardPage() {
                             : 'muted'
                           }
                         >
-                          {log.eventType.replaceAll('_', ' ')}
+                          {(log.eventType ?? '').replaceAll('_', ' ')}
                         </Badge>
                         <span className="text-xs text-fg-muted flex-1 truncate min-w-0">
                           {log.eventAction ?? log.apiName ?? (log.adminId ? `Admin ${log.adminId}` : '—')}
                         </span>
                         <span className="text-[10px] text-fg-muted font-mono shrink-0">
-                          {formatRelativeTime(log.createdAt)}
+                          {formatRelativeTime(log.createdAt ?? '')}
                         </span>
                       </div>
                     ))}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { ShieldCheck, Info } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
@@ -12,8 +12,8 @@ import { Select } from '@/components/ui/select';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { api } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import type { PageResponse } from '@/types/api';
-import type { AuditLog } from '@/types/models';
+import type { AuditLogResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Event type options (from EventType.java enum) ─────────────────────────────
 
@@ -45,7 +45,7 @@ function formatEventType(et: string): string {
 
 // ── Event status badge ────────────────────────────────────────────────────────
 
-function EventStatusBadge({ status }: { status: AuditLog['eventStatus'] }) {
+function EventStatusBadge({ status }: { status: AuditLogResponseDto['eventStatus'] }) {
   if (status === 'SUCCESS') return <Badge variant="success">Success</Badge>;
   if (status === 'FAILURE') return <Badge variant="error">Failure</Badge>;
   return <Badge variant="error">Error</Badge>;
@@ -53,7 +53,7 @@ function EventStatusBadge({ status }: { status: AuditLog['eventStatus'] }) {
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
-function AuditLogDetailDialog({ log, onClose }: { log: AuditLog | null; onClose: () => void }) {
+function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | null; onClose: () => void }) {
   if (!log) return null;
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -90,7 +90,7 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLog | null; onClose:
             <span className="text-xs text-error">{log.errorMessage}</span>
           </InfoRow>
         )}
-        <InfoRow label="Created"><span className="text-fg-muted">{formatDate(log.createdAt)}</span></InfoRow>
+        <InfoRow label="Created"><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
         <InfoRow label="HMAC Integrity">
           {log.entryHmac ? (
             <div className="flex items-center gap-1.5">
@@ -120,9 +120,9 @@ export default function AuditLogsPage() {
   const [apiNameFilter, setApiNameFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogResponseDto | null>(null);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuditLog>({
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuditLogResponseDto>({
     queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateFrom, dateTo],
     queryFn: ({ page, size, sort }) => {
       const p = new URLSearchParams({ page: String(page), size: String(size), sort });
@@ -131,18 +131,18 @@ export default function AuditLogsPage() {
       if (apiNameFilter) p.set('apiName', apiNameFilter);
       if (dateFrom) p.set('createdAfter', new Date(dateFrom).toISOString());
       if (dateTo) p.set('createdBefore', new Date(dateTo + 'T23:59:59').toISOString());
-      return api.get<PageResponse<AuditLog>>(`/api/v1/audit-logs?${p.toString()}`);
+      return api.get<PageResponse<AuditLogResponseDto>>(`/api/v1/audit-logs?${p.toString()}`);
     },
   });
 
-  const columns: ColumnDef<AuditLog>[] = [
+  const columns: ColumnDef<AuditLogResponseDto>[] = [
     { header: 'ID', key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
     {
       header: 'Event',
       key: 'eventType',
       sortKey: 'eventType',
       render: (r) => (
-        <span className="font-mono text-xs">{formatEventType(r.eventType)}</span>
+        <span className="font-mono text-xs">{formatEventType(r.eventType ?? '')}</span>
       ),
     },
     { header: 'Status', key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
@@ -168,7 +168,7 @@ export default function AuditLogsPage() {
           <span className="text-fg-muted text-xs">—</span>
         ),
     },
-    { header: 'Time', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
+    { header: 'Time', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt ?? '')}</span> },
     {
       header: '',
       key: 'detail',
@@ -240,7 +240,7 @@ export default function AuditLogsPage() {
             data={data}
             isLoading={isLoading}
             onRowClick={(row) => setSelectedLog(row)}
-            keyExtractor={(r) => r.auditLogId}
+            keyExtractor={(r, i) => r.auditLogId ?? i}
             emptyMessage="No audit log entries found for the selected filters."
             currentSort={pagination.sort}
             onSort={pagination.setSort}

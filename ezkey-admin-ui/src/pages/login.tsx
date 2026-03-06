@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatChallengeCode, formatCountdown } from '@/lib/utils';
-import type { AdminLoginResponse } from '@/types/api';
+import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 
@@ -92,7 +92,7 @@ export default function LoginPage() {
           signal: controller.signal,
         });
 
-        const data: AdminLoginResponse = await res.json();
+        const data: AdminLoginResponseDto = await res.json();
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
@@ -131,7 +131,7 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: data.username.trim(), challengeRequested: data.challengeRequested, nonBlocking: true }),
       });
-      const result: AdminLoginResponse = await res.json();
+      const result: AdminLoginResponseDto = await res.json();
       if (res.ok && result.authAttemptId && result.expiresAt) {
         setWaitingData({
           authAttemptId: result.authAttemptId,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Shield } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
@@ -15,8 +15,8 @@ import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { api } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import type { PageResponse } from '@/types/api';
-import type { AuthAttempt } from '@/types/models';
+import type { AuthAttemptDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ function AttemptDetailDialog({
   attempt,
   onClose,
 }: {
-  attempt: AuthAttempt | null;
+  attempt: AuthAttemptDto | null;
   onClose: () => void;
 }) {
   if (!attempt) return null;
@@ -75,12 +75,12 @@ export default function AuthAttemptsPage() {
   const [integrationFilter, setIntegrationFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [selectedAttempt, setSelectedAttempt] = useState<AuthAttempt | null>(null);
+  const [selectedAttempt, setSelectedAttempt] = useState<AuthAttemptDto | null>(null);
 
   const debouncedEnrollmentId = useDebounce(enrollmentIdInput, 400);
   const { list: integrations, lookup } = useIntegrations();
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuthAttempt>({
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuthAttemptDto>({
     queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateFrom, dateTo],
     queryFn: ({ page, size, sort }) => {
       const p = new URLSearchParams({ page: String(page), size: String(size), sort });
@@ -89,11 +89,11 @@ export default function AuthAttemptsPage() {
       if (integrationFilter) p.set('integrationId', integrationFilter);
       if (dateFrom) p.set('createdAfter', new Date(dateFrom).toISOString());
       if (dateTo) p.set('createdBefore', new Date(dateTo + 'T23:59:59').toISOString());
-      return api.get<PageResponse<AuthAttempt>>(`/api/v1/auth-attempts?${p.toString()}`);
+      return api.get<PageResponse<AuthAttemptDto>>(`/api/v1/auth-attempts?${p.toString()}`);
     },
   });
 
-  const columns: ColumnDef<AuthAttempt>[] = [
+  const columns: ColumnDef<AuthAttemptDto>[] = [
     { header: 'ID', key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
     { header: 'Status', key: 'authAttemptStatus', sortKey: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
     {

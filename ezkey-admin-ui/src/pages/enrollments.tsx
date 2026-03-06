@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,8 +21,9 @@ import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { EnrollmentCreateRequest, PageResponse } from '@/types/api';
-import type { Enrollment } from '@/types/models';
+import type { EnrollmentCreateRequestDto } from '@/generated/admin-api/model';
+import type { EnrollmentResponseDto } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ function EnrollmentCreateDialog({
 }) {
   const queryClient = useQueryClient();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
-  const [createdEnrollment, setCreatedEnrollment] = useState<Enrollment | null>(null);
+  const [createdEnrollment, setCreatedEnrollment] = useState<EnrollmentResponseDto | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
 
   const {
@@ -65,7 +66,7 @@ function EnrollmentCreateDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: EnrollmentCreateRequest) => api.post<Enrollment>('/api/v1/enrollments', data),
+    mutationFn: (data: EnrollmentCreateRequestDto) => api.post<EnrollmentResponseDto>('/api/v1/enrollments', data),
     onSuccess: (enrollment) => {
       setCreatedEnrollment(enrollment);
       void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
@@ -248,7 +249,7 @@ export default function EnrollmentsPage() {
   const debouncedName = useDebounce(nameInput, 300);
   const { list: integrations } = useIntegrations();
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<Enrollment>({
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<EnrollmentResponseDto>({
     queryKey: ['enrollments', debouncedName, statusFilter, integrationFilter, activeFilter],
     queryFn: ({ page, size, sort }) => {
       const p = new URLSearchParams({ page: String(page), size: String(size), sort });
@@ -256,11 +257,11 @@ export default function EnrollmentsPage() {
       if (statusFilter) p.set('status', statusFilter);
       if (integrationFilter) p.set('integrationId', integrationFilter);
       if (activeFilter) p.set('active', activeFilter);
-      return api.get<PageResponse<Enrollment>>(`/api/v1/enrollments?${p.toString()}`);
+      return api.get<PageResponse<EnrollmentResponseDto>>(`/api/v1/enrollments?${p.toString()}`);
     },
   });
 
-  const columns: ColumnDef<Enrollment>[] = [
+  const columns: ColumnDef<EnrollmentResponseDto>[] = [
     { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
     { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
     { header: 'Status', key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
@@ -278,7 +279,7 @@ export default function EnrollmentsPage() {
       },
     },
     { header: 'Challenge', key: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
+    { header: 'Verified', key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
   ];
 
   return (
@@ -342,7 +343,7 @@ export default function EnrollmentsPage() {
             data={data}
             isLoading={isLoading}
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
-            keyExtractor={(row) => row.enrollmentId}
+            keyExtractor={(row, i) => row.enrollmentId ?? i}
             emptyMessage="No enrollments found. Create your first enrollment to get started."
             currentSort={pagination.sort}
             onSort={pagination.setSort}

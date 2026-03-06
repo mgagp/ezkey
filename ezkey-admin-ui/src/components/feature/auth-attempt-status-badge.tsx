@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import type { AuthAttemptStatus } from '@/types/models';
+import type { AuthAttemptDtoAuthAttemptStatus } from '@/generated/admin-api/model';
 
-const config: Record<AuthAttemptStatus, { label: string; variant: 'success' | 'warning' | 'muted' | 'error' }> = {
+const config: Record<AuthAttemptDtoAuthAttemptStatus, { label: string; variant: 'success' | 'warning' | 'muted' | 'error' }> = {
   PENDING: { label: 'Pending', variant: 'warning' },
   READ: { label: 'Read', variant: 'muted' },
   ACCEPTED: { label: 'Accepted', variant: 'success' },
@@ -10,7 +10,7 @@ const config: Record<AuthAttemptStatus, { label: string; variant: 'success' | 'w
   INVALID: { label: 'Invalid', variant: 'error' },
 };
 
-export function AuthAttemptStatusBadge({ status }: { status: AuthAttemptStatus }) {
+export function AuthAttemptStatusBadge({ status }: { status: AuthAttemptDtoAuthAttemptStatus }) {
   const { label, variant } = config[status] ?? { label: status, variant: 'muted' as const };
   return <Badge variant={variant}>{label}</Badge>;
 }

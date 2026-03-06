@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
-import type { AdminType } from '@/types/models';
+import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
 import {
   FileText,
   Key,
@@ -18,7 +18,7 @@ interface NavItem {
   path: string;
   icon: typeof LayoutDashboard;
   /** If set, the item is only shown when the logged-in admin has one of these roles. */
-  roles?: AdminType[];
+  roles?: AdminResponseDtoAdminType[];
 }
 
 const navItems: NavItem[] = [
@@ -43,7 +43,7 @@ export function Sidebar() {
   const { session } = useAuth();
 
   const visibleItems = navItems.filter(
-    (item) => !item.roles || item.roles.includes(session?.adminType as AdminType),
+    (item) => !item.roles || item.roles.includes(session?.adminType as AdminResponseDtoAdminType),
   );
 
   return (

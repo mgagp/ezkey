@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, Copy, Eye, EyeOff, QrCode, Trash2, Zap } from 'lucide-react';
@@ -12,8 +12,18 @@ import { Dialog } from '@/components/ui/dialog';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
-import type { AuthAttemptCreateRequest, AuthAttemptCreateResponse } from '@/types/api';
-import type { AuthAttempt, AuthAttemptStatus, Enrollment } from '@/types/models';
+import type { AuthAttemptCreateRequestDto } from '@/generated/admin-api/model';
+import type { AuthAttemptDto, AuthAttemptDtoAuthAttemptStatus, EnrollmentResponseDto } from '@/generated/admin-api/model';
+
+// ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
+
+/** Response from POST /api/v1/auth-attempts — not yet specified in the OpenAPI schema. */
+interface AuthAttemptCreateResponse {
+  authAttemptId: number;
+  authAttemptChallenge?: number;
+  timeoutSeconds: number;
+  expiresAt: string;
+}
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -30,16 +40,16 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 // ── Test Auth Dialog ──────────────────────────────────────────────────────────
 
-const FINAL_STATUSES: AuthAttemptStatus[] = ['ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'];
+const FINAL_STATUSES: AuthAttemptDtoAuthAttemptStatus[] = ['ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'];
 
-function authStatusVariant(s: AuthAttemptStatus): 'success' | 'error' | 'warning' | 'muted' {
+function authStatusVariant(s: AuthAttemptDtoAuthAttemptStatus): 'success' | 'error' | 'warning' | 'muted' {
   if (s === 'ACCEPTED') return 'success';
   if (s === 'REJECTED' || s === 'INVALID') return 'error';
   if (s === 'READ') return 'warning';
   return 'muted';
 }
 
-function authStatusLabel(s: AuthAttemptStatus): string {
+function authStatusLabel(s: AuthAttemptDtoAuthAttemptStatus): string {
   switch (s) {
     case 'PENDING': return 'Waiting for device…';
     case 'READ':    return 'Device is reading…';
@@ -57,7 +67,7 @@ function TestAuthDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  enrollment: Enrollment;
+  enrollment: EnrollmentResponseDto;
 }) {
   type Step = 'configure' | 'live' | 'done';
   type DoneReason = 'accepted' | 'rejected' | 'expired' | 'invalid' | 'cancelled';
@@ -90,7 +100,7 @@ function TestAuthDialog({
   const { data: liveStatus } = useQuery({
     queryKey: ['test-auth', createdAttempt?.authAttemptId],
     queryFn: () =>
-      api.get<AuthAttempt>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}`),
+      api.get<AuthAttemptDto>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}`),
     enabled: step === 'live' && createdAttempt !== null,
     refetchInterval: isFinal ? false : 3_000,
   });
@@ -106,7 +116,7 @@ function TestAuthDialog({
   }, [liveStatus, isFinal]);
 
   const createMutation = useMutation({
-    mutationFn: (req: AuthAttemptCreateRequest) =>
+    mutationFn: (req: AuthAttemptCreateRequestDto) =>
       api.post<AuthAttemptCreateResponse>('/api/v1/auth-attempts', req),
     onSuccess: (data) => {
       setCreatedAttempt(data);
@@ -117,7 +127,7 @@ function TestAuthDialog({
 
   const cancelMutation = useMutation({
     mutationFn: () =>
-      api.post<AuthAttempt>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}/cancel`, {}),
+      api.post<AuthAttemptDto>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}/cancel`, {}),
     onSuccess: () => {
       setIsFinal(true);
       setDoneReason('cancelled');
@@ -321,7 +331,7 @@ export default function EnrollmentDetailPage() {
 
   const { data: enrollment, isLoading } = useQuery({
     queryKey: ['enrollment', enrollmentId],
-    queryFn: () => api.get<Enrollment>(`/api/v1/enrollments/${enrollmentId}`),
+    queryFn: () => api.get<EnrollmentResponseDto>(`/api/v1/enrollments/${enrollmentId}`),
     enabled: !isNaN(enrollmentId),
   });
 
@@ -419,7 +429,7 @@ export default function EnrollmentDetailPage() {
                       className="font-mono text-sm text-accent hover:underline"
                       onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
                     >
-                      {lookup.get(enrollment.integrationId) ?? `#${enrollment.integrationId}`}
+                      {lookup.get(enrollment.integrationId!) ?? `#${enrollment.integrationId ?? '?'}`}
                     </button>
                   </InfoRow>
                   <InfoRow label="Challenge">
@@ -439,9 +449,7 @@ export default function EnrollmentDetailPage() {
                   {enrollment.lastUsedAt && (
                     <InfoRow label="Last Used"><span className="text-fg-muted">{formatDate(enrollment.lastUsedAt)}</span></InfoRow>
                   )}
-                  {enrollment.createdAt && (
-                    <InfoRow label="Created"><span className="text-fg-muted">{formatDate(enrollment.createdAt)}</span></InfoRow>
-                  )}
+
                 </dl>
               </CardContent>
             </Card>

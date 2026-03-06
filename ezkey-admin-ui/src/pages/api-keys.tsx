@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, ShieldOff } from 'lucide-react';
@@ -17,8 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { ApiKeyCreateRequest } from '@/types/api';
-import type { ApiKey, ApiKeyCreateResponse } from '@/types/models';
+import type { ApiKeyCreateRequestDto } from '@/generated/admin-api/model';
+import type { ApiKeyCreateResponseDto, ApiKeyResponseDto } from '@/generated/admin-api/model';
 
 // ── Create API key dialog ──────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
 function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
-  const [createdKey, setCreatedKey] = useState<ApiKeyCreateResponse | null>(null);
+  const [createdKey, setCreatedKey] = useState<ApiKeyCreateResponseDto | null>(null);
   const [integrationKeyCopied, setIntegrationKeyCopied] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
   const [savedConfirmed, setSavedConfirmed] = useState(false);
@@ -43,8 +43,8 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: ApiKeyCreateRequest) =>
-      api.post<ApiKeyCreateResponse>('/api/v1/api-keys', data),
+    mutationFn: (data: ApiKeyCreateRequestDto) =>
+      api.post<ApiKeyCreateResponseDto>('/api/v1/api-keys', data),
     onSuccess: (key) => {
       setCreatedKey(key);
       void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
@@ -224,7 +224,7 @@ function RevokeDialog({
   apiKey,
   onClose,
 }: {
-  apiKey: ApiKey | null;
+  apiKey: ApiKeyResponseDto | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -243,7 +243,7 @@ function RevokeDialog({
     <Dialog open={apiKey !== null} onClose={onClose} title="Revoke API Key" size="sm">
       <div className="space-y-4">
         <p className="text-sm text-fg">
-          Are you sure you want to revoke key <span className="font-mono text-xs">{apiKey.integrationKey.slice(0, 18)}…</span>?
+          Are you sure you want to revoke key <span className="font-mono text-xs">{(apiKey.integrationKey ?? '').slice(0, 18)}…</span>?
         </p>
         <p className="text-xs text-fg-muted">
           Revoking is permanent. Any service using this key will lose access immediately.
@@ -275,7 +275,7 @@ function RevokeDialog({
 
 export default function ApiKeysPage() {
   const [createOpen, setCreateOpen] = useState(false);
-  const [revokeTarget, setRevokeTarget] = useState<ApiKey | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<ApiKeyResponseDto | null>(null);
   const [integrationFilter, setIntegrationFilter] = useState('');
 
   const { list: integrations, lookup } = useIntegrations();
@@ -287,18 +287,18 @@ export default function ApiKeysPage() {
       const url = integrationFilter
         ? `/api/v1/api-keys/integration/${integrationFilter}`
         : '/api/v1/api-keys';
-      return api.get<ApiKey[]>(url);
+      return api.get<ApiKeyResponseDto[]>(url);
     },
     staleTime: 30_000,
   });
 
-  const columns: ColumnDef<ApiKey>[] = [
+  const columns: ColumnDef<ApiKeyResponseDto>[] = [
     { header: 'ID', key: 'apiKeyId', className: 'w-12', render: (r) => <span className="font-mono text-xs">{r.apiKeyId}</span> },
     {
       header: 'Integration',
       key: 'integrationId',
       render: (r) => (
-        <span className="text-xs">{lookup.get(r.integrationId) ?? `#${r.integrationId}`}</span>
+        <span className="text-xs">{lookup.get(r.integrationId!) ?? `#${r.integrationId ?? '?'}`}</span>
       ),
     },
     {
@@ -306,7 +306,7 @@ export default function ApiKeysPage() {
       key: 'integrationKey',
       render: (r) => (
         <span className="font-mono text-xs">
-          {r.integrationKey.slice(0, 22)}<span className="text-fg-muted">…</span>
+          {(r.integrationKey ?? '').slice(0, 22)}<span className="text-fg-muted">…</span>
         </span>
       ),
     },
@@ -374,7 +374,7 @@ export default function ApiKeysPage() {
             columns={columns}
             data={apiKeys}
             isLoading={isLoading}
-            keyExtractor={(r) => r.apiKeyId}
+            keyExtractor={(r, i) => r.apiKeyId ?? i}
             emptyMessage="No API keys found. Create your first key to enable M2M access."
           />
           {!isLoading && apiKeys.length > 0 && (
