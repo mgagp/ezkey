@@ -13,6 +13,7 @@ const AdminsPage = lazy(() => import('@/pages/admins'));
 const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
 const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
+const EncryptionKeysPage = lazy(() => import('@/pages/encryption-keys'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 
 // ── Guards ───────────────────────────────────────────────────────────────────
@@ -138,6 +139,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <SuspensePage>
           <ApiKeysPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/encryption-keys',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <EncryptionKeysPage />
         </SuspensePage>
       </ProtectedRoute>
     ),

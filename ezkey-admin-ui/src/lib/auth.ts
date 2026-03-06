@@ -7,7 +7,7 @@ export interface AuthSession {
   expiresAt: string;
 }
 
-const AUTH_KEY = 'ezkey_tenant_auth';
+const AUTH_KEY = 'ezkey_admin_auth';
 
 /** Retrieve the current session, validating expiration. Returns null if absent or expired. */
 export function getSession(): AuthSession | null {

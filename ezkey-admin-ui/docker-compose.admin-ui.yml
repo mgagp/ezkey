@@ -1,11 +1,11 @@
-name: ezkey-tenant-ui
+name: ezkey-admin-ui
 
 services:
-  tenant-ui:
+  admin-ui:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: ezkey-tenant-ui
+    container_name: ezkey-admin-ui
     ports:
       - "3000:8080"
     extra_hosts:

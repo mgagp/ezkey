@@ -1,11 +1,12 @@
-# EZKey Tenant UI — Agent Notes
+# EZKey Admin UI — Agent Notes
 
-For agents working in `ezkey-tenant-ui/`.
+For agents working in `ezkey-admin-ui/`.
 
 ## Purpose
 
-Web-based SPA for **EZKey administrators** — primarily Tenant Admins, but Global Admins
-can also log in and benefit from role-appropriate feature gating.
+Web-based SPA for **EZKey administrators** — supports both **Global Admins** and **Tenant Admins**.
+The UI adapts dynamically based on the `adminType` returned at login: navigation items and
+features are shown or hidden accordingly.
 Calls the **Admin API** on port 9080. All tenant scoping is automatic via the bearer token.
 
 
@@ -157,7 +158,7 @@ prevents stale data from a previous user appearing on the next login.
 ## Docker Deployment
 
 ```
-docker compose -f docker-compose.tenant-ui.yml up --build
+docker compose -f docker-compose.admin-ui.yml up --build
 ```
 
 - Served by **Caddy** on port 8080 inside the container, exposed as **3000** on the host

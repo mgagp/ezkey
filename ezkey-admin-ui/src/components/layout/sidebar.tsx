@@ -1,8 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
+import type { AdminType } from '@/types/models';
 import {
   FileText,
   Key,
+  KeyRound,
   LayoutDashboard,
   Puzzle,
   ShieldCheck,
@@ -14,6 +17,8 @@ interface NavItem {
   label: string;
   path: string;
   icon: typeof LayoutDashboard;
+  /** If set, the item is only shown when the logged-in admin has one of these roles. */
+  roles?: AdminType[];
 }
 
 const navItems: NavItem[] = [
@@ -24,10 +29,22 @@ const navItems: NavItem[] = [
   { label: 'Audit Logs', path: '/audit-logs', icon: FileText },
   { label: 'Admins', path: '/admins', icon: UserCog },
   { label: 'API Keys', path: '/api-keys', icon: Key },
+  { label: 'Encryption Keys', path: '/encryption-keys', icon: KeyRound, roles: ['GLOBAL_ADMIN'] },
 ];
+
+function adminTagline(adminType: string | undefined): string {
+  if (adminType === 'GLOBAL_ADMIN') return 'Global Admin';
+  if (adminType === 'TENANT_ADMIN') return 'Tenant Admin';
+  return 'Admin Console';
+}
 
 export function Sidebar() {
   const { pathname } = useLocation();
+  const { session } = useAuth();
+
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || item.roles.includes(session?.adminType as AdminType),
+  );
 
   return (
     <aside className="w-52 shrink-0 h-screen bg-sidebar-bg flex flex-col border-r-2 border-fg sticky top-0">
@@ -36,13 +53,15 @@ export function Sidebar() {
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sidebar-active">
           EZKey
         </p>
-        <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">Tenant Admin</p>
+        <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">
+          {adminTagline(session?.adminType)}
+        </p>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto">
         <ul className="space-y-0.5 px-2">
-          {navItems.map(({ label, path, icon: Icon }) => {
+          {visibleItems.map(({ label, path, icon: Icon }) => {
             const isActive = pathname === path || pathname.startsWith(`${path}/`);
             return (
               <li key={path}>
