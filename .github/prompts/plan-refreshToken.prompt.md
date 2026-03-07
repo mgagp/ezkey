@@ -275,3 +275,131 @@ Modifier `AdminAuditConstants.java` dans `ezkey-admin-api` :
 | Pas de changement | `AdminPrincipal.java`, `AdminEnrollmentController.java`, API Keys, `TestDataFactory.java`, `TenantAdminTestHelper.java`, `DemoDeviceEnrollmentWriter.java`, Requestly configs | Aucun |
 
 **Total : ~22 fichiers à modifier, ~6 à vérifier, ~2 à créer**
+
+---
+
+## Addendum — Analyse stratégique croisée (mars 2026)
+
+> Cette section confronte le plan Refresh Token aux conclusions de l'analyse stratégique du système de jetons (`plan-adminAuthTokenStrategyAudit.prompt.md`), qui a évalué l'ensemble de l'approche d'authentification admin d'ezkey.
+
+### Contexte : ce que l'audit stratégique a conclu
+
+L'audit a statué que le système actuel (token opaque unique, 24h TTL, DB-backed) est :
+
+- **Moderne** — utilisé par GitHub, GitLab, Grafana, Vault, Bitwarden
+- **Aligné avec les best practices** — OWASP et NIST recommandent les sessions server-side pour les interfaces admin
+- **Suffisant** — sécurisé, testé, couvre tous les flux
+- **Pas un cul-de-sac** — chemin d'évolution clair (OIDC, cache, JWT optionnel)
+- **Pas de l'escalation of commitment** — décision pragmatique documentée
+
+La recommandation était : **stay the course**, avec trois améliorations optionnelles de priorité supérieure (token hashing en DB, OIDC admin login, cache de validation).
+
+### Le Refresh Token est-il une bonification substantielle ?
+
+#### Ce qu'il apporte réellement
+
+| Bénéfice | Poids | Commentaire |
+|----------|-------|-------------|
+| **Réduction de la fenêtre d'exposition** (15 min vs 24h) | **Fort** | Si un Access Token est volé, l'impact est limité à 15 min. C'est le seul argument de sécurité solide. |
+| **UX CLI : QUIT préserve la session** | **Moyen** | Relancer le CLI sans re-MFA est un vrai gain d'ergonomie pour les utilisateurs fréquents. |
+| **Alignement terminologique OAuth 2.0** | **Faible** | Les développeurs reconnaissent le pattern, mais ezkey n'est pas un serveur OAuth. C'est cosmétique. |
+| **Fondation pour OIDC futur** | **Faible** | L'OIDC peut émettre un token opaque interne sans pré-requis de refresh token. L'un n'implique pas l'autre. |
+
+#### Ce qu'il coûte
+
+| Coût | Poids | Commentaire |
+|------|-------|-------------|
+| **22 fichiers modifiés, 2 créés** | **Élevé** | Surface de changement très large pour un projet en développement actif. |
+| **Complexité du filtre de sécurité** | **Moyen** | Le filtre doit distinguer ACCESS/REFRESH/RECOVERY. Trois chemins de validation au lieu d'un. |
+| **Deux tokens dans la réponse de login** | **Moyen** | Breaking change pour le Tenant UI, le CLI, les tests d'intégration, Postman, le SDK. |
+| **Endpoint `/token/refresh` hors filtre auth** | **Moyen** | Surface d'attaque additionnelle (endpoint public qui accepte un token dans le body). |
+| **Parent-child token en DB** | **Faible** | Self-referencing FK + cascade logique = modèle de données plus complexe. |
+| **Tests : régression transversale** | **Élevé** | Les tests d'intégration (`ezkey-tests`) casseront. Effort de mise à jour non trivial. |
+
+### La fenêtre d'exposition de 15 min peut-elle être obtenue plus simplement ?
+
+**Oui.** Il existe une alternative beaucoup plus légère qui produit 80% du bénéfice sécuritaire :
+
+| Approche | Effort | Fenêtre d'exposition | Fichiers touchés |
+|----------|--------|---------------------|-----------------|
+| **Statu quo** (token 24h) | Aucun | 24 heures | 0 |
+| **Réduire le TTL à 1-2h + sliding expiration** | Faible (~4 fichiers) | 1-2 heures d'inactivité | AdminAuthService, AdminTokenValidationService, config, tests |
+| **Plan Refresh Token complet** | Élevé (~24 fichiers) | 15 minutes | 22 modifiés + 2 créés |
+
+La **sliding expiration** (prolonger le TTL à chaque requête validée) élimine le problème "session expire pendant que je travaille" sans nécessiter un deuxième token. C'est le pattern utilisé par la majorité des admin consoles comparables (Grafana, GitLab, Jenkins).
+
+### Le QUIT vs LOGOUT du CLI peut-il être découplé ?
+
+**Oui.** Le cas d'usage CLI (QUIT conserve la session, LOGOUT invalide tout) ne requiert pas de Refresh Token. Il suffit de :
+
+1. QUIT : ne pas appeler `/logout` côté serveur, conserver le token en config locale
+2. LOGOUT : appeler `/logout` + effacer la config locale
+3. Relance : vérifier si le token local est encore valide (non expiré) → accès direct
+
+Avec un TTL de 2h + sliding expiration, un développeur qui fait QUIT et revient dans l'heure reprend sans re-MFA. C'est exactement l'UX souhaitée, sans la machinerie Refresh Token.
+
+### Comparaison avec les projets comparables
+
+L'audit a identifié que les projets comparables à ezkey (Grafana, GitLab, privacyIDEA, Vault, Bitwarden) **n'utilisent PAS le pattern Access/Refresh pour leurs sessions admin**. Ce pattern est caractéristique de :
+
+- **Serveurs OAuth 2.0 / OIDC** (Keycloak, Auth0) — ezkey n'en est pas un
+- **APIs publiques avec des millions de clients** — ezkey sert des dizaines d'admins
+- **Mobile apps avec des sessions de plusieurs semaines** — pas le cas d'usage d'ezkey
+
+Implémenter Access/Refresh pour une console admin et un CLI est **techniquement correct mais disproportionné** par rapport au profil du produit.
+
+### Risque de sur-ingénierie
+
+L'audit identifie spécifiquement que JWT + refresh tokens serait "over-engineering for ezkey's current and near-term needs". Le plan Refresh Token, même avec des tokens opaques (pas JWT), hérite de la même critique :
+
+- Il ajoute un mécanisme OAuth 2.0 à un produit dont la proposition de valeur est la **simplicité**
+- Le PRD d'ezkey dit : "solves 90% of the problem with 10% of the effort" — le Refresh Token fait l'inverse ici (10% de gain pour 90% d'effort supplémentaire)
+- Les développeurs évaluant ezkey ne seront pas impressionnés par un Refresh Token ; ils seront impressionnés par la simplicité du login passwordless
+
+### Timing : faut-il le faire avant la sortie initiale ?
+
+**Non.** Arguments :
+
+1. **Le système actuel est jugé suffisant** par l'audit stratégique
+2. **Aucun comparable** ne l'exige à ce stade
+3. **22 fichiers modifiés** = risque de régression élevé juste avant une release
+4. **Le sliding expiration** (4 fichiers) donne 80% du bénéfice pour 15% de l'effort
+5. **Le Refresh Token ne sera pas un critère d'adoption** — la qualité du MFA passwordless et la simplicité d'intégration le seront
+
+### Verdict
+
+| Question | Réponse |
+|----------|---------|
+| Le plan est-il bien conçu ? | **Oui** — exhaustif, couvre les edge cases, terminologie correcte |
+| Apporte-t-il une valeur substantielle ? | **Marginale** — le gain sécuritaire est réel mais atteignable plus simplement |
+| Est-il pragmatique ? | **Non** — 22 fichiers pour un bénéfice marginal viole le principe de pragmatisme d'ezkey |
+| Est-il suffisamment simple ? | **Non** — il complexifie le modèle de données, le filtre de sécurité, et les tests |
+| Faut-il le faire avant la release initiale ? | **Non** — risque de régression disproportionné |
+| Faut-il le faire rapidement après ? | **Non** — prioriser token hashing en DB et sliding expiration |
+| Faut-il le faire un jour ? | **Peut-être** — si le CLI devient un outil quotidien à grande échelle, le pattern pourrait se justifier |
+| Est-ce de l'escalation of commitment de l'abandonner ? | **Non** — c'est un plan, pas du code livré. L'abandonner est pragmatique |
+
+### Recommandation
+
+**Différer le plan Refresh Token.** À la place, pour la prochaine itération :
+
+1. **Sliding expiration** (~4 fichiers, 1-2 jours d'effort) — prolonger le TTL du token à chaque requête validée. Résout le problème "session expire pendant que je travaille" sans token additionnel.
+2. **TTL configurable réduit** (déjà supporté) — passer le défaut de 24h à 2-4h. Réduit la fenêtre d'exposition de 85-92% sans aucun changement d'architecture.
+3. **CLI QUIT/LOGOUT découplé** (~2 fichiers CLI) — QUIT conserve le token, LOGOUT appelle `/logout`. Fonctionne avec le token unique actuel.
+4. **Token hashing en DB** (~3 fichiers) — stocker `SHA-256(token)` au lieu du token en clair. Priorité sécuritaire supérieure au Refresh Token selon l'audit.
+
+Ces quatre actions combinées coûtent ~10 fichiers (vs 24) et produisent un résultat équivalent ou supérieur en termes de sécurité et d'UX.
+
+**Le plan Refresh Token reste un document de référence valide** si les besoins évoluent (adoption massive du CLI, intégration OIDC, exigences de conformité spécifiques). Il n'est pas invalidé — il est différé.
+
+---
+
+## Implementation — Sliding expiration (March 2026)
+
+The recommended **sliding expiration** and **configurable TTL** have been implemented:
+
+- **Config:** `ezkey.admin.token.expiration-hours=2` (default 2h). Used for initial token TTL at login and for the sliding window on each validated request.
+- **AdminTokenRotationProperties:** New `expirationHours` (default 2); `AdminAuthService` uses it in `generateAndPersistToken()`.
+- **AdminTokenValidationService:** `updateTokenLastUsed()` now extends `expiresAt` to `now + expirationHours` for normal admin tokens; recovery tokens (prefix `ezkey_recovery_`) are not extended.
+- **Application config:** Property added in `application.properties`, `application-docker.properties`, `application-windows.properties`, `application-native.properties`.
+- **Tests:** `AdminTokenValidationServiceTest` updated (constructor + sliding tests: normal token extended, recovery token not extended).

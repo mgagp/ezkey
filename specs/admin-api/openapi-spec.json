@@ -2273,118 +2273,6 @@
         }
       }
     },
-    "/api/v1/integrations/{id}": {
-      "get": {
-        "tags": [
-          "Integrations"
-        ],
-        "summary": "Retrieve integration by ID",
-        "description": "Returns details of a specific integration",
-        "operationId": "getById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Unique integration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Integration found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/IntegrationResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Integration not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Integrations"
-        ],
-        "summary": "Delete integration",
-        "description": "Removes an integration from the system",
-        "operationId": "delete",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Integration ID to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          },
-          {
-            "name": "reason",
-            "in": "query",
-            "description": "Audit justification for the deletion (min 10 characters)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 500,
-              "minLength": 10
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Integration deleted successfully"
-          },
-          "404": {
-            "description": "Integration not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/enrollments/{id}": {
       "get": {
         "tags": [
@@ -2392,7 +2280,7 @@
         ],
         "summary": "Retrieve enrollment by ID",
         "description": "Returns details of a specific enrollment",
-        "operationId": "getById_1",
+        "operationId": "getById",
         "parameters": [
           {
             "name": "id",
@@ -2445,7 +2333,7 @@
         ],
         "summary": "Delete enrollment",
         "description": "Removes an enrollment from the system",
-        "operationId": "delete_1",
+        "operationId": "delete",
         "parameters": [
           {
             "name": "id",
@@ -2479,6 +2367,533 @@
           },
           "500": {
             "description": "Internal server error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Partially update enrollment metadata",
+        "description": "Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired). Only active VERIFIED enrollments. Include version from GET for optimistic locking.",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Enrollment ID to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentUpdateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Enrollment updated successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid data, enrollment not updatable (revoked/inactive), or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enrollment not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Optimistic lock conflict - resource was modified, re-fetch and retry",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/api-keys/{keyId}": {
+      "get": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Get API key details",
+        "description": "Returns details of a specific API key. Secret key is never included.",
+        "operationId": "getApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "API key ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API key not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Revoke API key",
+        "description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes.",
+        "operationId": "revokeApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "API key ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the revocation (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API key revoked successfully"
+          },
+          "401": {
+            "description": "Unauthorized - admin token required"
+          },
+          "404": {
+            "description": "API key not found"
+          },
+          "429": {
+            "description": "Too many revoke requests - rate limit exceeded"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Partially update API key configuration",
+        "description": "Updates API key config (ipWhitelist, description). Only active keys. Include version from GET for optimistic locking.",
+        "operationId": "updateApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "API key ID to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyUpdateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "API key updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid data, key revoked, or ipWhitelist validation failed (invalid CIDR)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API key not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Optimistic lock conflict - resource was modified, re-fetch and retry",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many update requests - rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admins/{id}": {
+      "get": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Get administrator by ID",
+        "description": "Returns a single administrator by ID. GlobalAdmin can access any admin. TenantAdmin can only access admins in their tenant.",
+        "operationId": "getAdminById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Administrator retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Update administrator profile",
+        "description": "Partial update of administrator profile (firstName, lastName, email, challengeRequired). GlobalAdmin can update any admin. TenantAdmin can update admins in their tenant. Admins can update their own profile. Include version for optimistic locking.",
+        "operationId": "updateAdmin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Administrator profile updated successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid data or email already exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Optimistic lock conflict - resource was modified, re-fetch and retry",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/{id}": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Retrieve integration by ID",
+        "description": "Returns details of a specific integration",
+        "operationId": "getById_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique integration ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integration found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Delete integration",
+        "description": "Removes an integration from the system",
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the deletion (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Integration deleted successfully"
+          },
+          "404": {
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         }
       }
@@ -2899,9 +3314,11 @@
                 "ADMIN_PASSWORD_CHANGE",
                 "ADMIN_RECOVERY_USE",
                 "ADMIN_CREATED",
+                "ADMIN_PROFILE_UPDATED",
                 "ADMIN_DEACTIVATED",
                 "ADMIN_ACTIVATED",
                 "ENROLLMENT_CREATED",
+                "ENROLLMENT_UPDATED",
                 "ENROLLMENT_DELETED",
                 "ENROLLMENT_BIND",
                 "ENROLLMENT_VERIFY",
@@ -2915,6 +3332,7 @@
                 "AUTH_ATTEMPT_RESPOND",
                 "AUTH_ATTEMPT_CANCELLED",
                 "API_KEY_CREATED",
+                "API_KEY_UPDATED",
                 "API_KEY_REVOKED",
                 "API_KEY_EXPIRED",
                 "API_KEY_AUTH_SUCCESS",
@@ -3288,104 +3706,6 @@
         }
       }
     },
-    "/api/v1/api-keys/{keyId}": {
-      "get": {
-        "tags": [
-          "API Keys"
-        ],
-        "summary": "Get API key details",
-        "description": "Returns details of a specific API key. Secret key is never included.",
-        "operationId": "getApiKey",
-        "parameters": [
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "API key ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 42
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "API key details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiKeyResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - admin token required",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiKeyResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "API key not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiKeyResponseDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "API Keys"
-        ],
-        "summary": "Revoke API key",
-        "description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes.",
-        "operationId": "revokeApiKey",
-        "parameters": [
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "API key ID to revoke",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 42
-          },
-          {
-            "name": "reason",
-            "in": "query",
-            "description": "Audit justification for the revocation (min 10 characters)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 500,
-              "minLength": 10
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "API key revoked successfully"
-          },
-          "401": {
-            "description": "Unauthorized - admin token required"
-          },
-          "404": {
-            "description": "API key not found"
-          }
-        }
-      }
-    },
     "/api/v1/api-keys/integration/{integrationId}": {
       "get": {
         "tags": [
@@ -3498,61 +3818,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedModelAdminResponseDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admins/{id}": {
-      "get": {
-        "tags": [
-          "Administrator Provisioning"
-        ],
-        "summary": "Get administrator by ID",
-        "description": "Returns a single administrator by ID. GlobalAdmin can access any admin. TenantAdmin can only access admins in their tenant.",
-        "operationId": "getAdminById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Administrator ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 1
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Administrator retrieved successfully",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminResponseDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - not authorized",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Administrator not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminResponseDto"
                 }
               }
             }
@@ -3691,6 +3956,12 @@
         "type": "object",
         "description": "Request DTO for updating a tenant (partial update)",
         "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version from GET response. When provided, update fails with 409 if resource was modified since last fetch.",
+            "example": 0
+          },
           "tenantName": {
             "type": "string",
             "description": "New unique name for the tenant",
@@ -3761,6 +4032,12 @@
             "format": "int32",
             "description": "Unique identifier for the tenant",
             "example": 1
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version. Include in PATCH/PUT requests to prevent concurrent update conflicts.",
+            "example": 0
           },
           "tenantName": {
             "type": "string",
@@ -4781,81 +5058,40 @@
           "username"
         ]
       },
-      "IntegrationResponseDto": {
+      "EnrollmentUpdateRequestDto": {
         "type": "object",
-        "description": "Response DTO containing complete integration details",
+        "description": "Request DTO for partial update of enrollment metadata",
         "properties": {
-          "id": {
+          "version": {
             "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the integration",
-            "example": 1
+            "format": "int64",
+            "description": "Optimistic lock version from GET response. When provided, update fails with 409 if resource was modified since last fetch.",
+            "example": 0
           },
-          "code": {
+          "enrollmentName": {
             "type": "string",
-            "description": "Unique business identifier code for the integration",
-            "example": "web-portal"
+            "description": "Human-readable name for the enrollment",
+            "example": "John's iPhone",
+            "maxLength": 255,
+            "minLength": 0
           },
-          "tenantId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Tenant ID that owns this integration",
-            "example": 2
+          "contactEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Optional contact email for the end-user",
+            "example": "john@example.com",
+            "maxLength": 255,
+            "minLength": 0
           },
-          "active": {
-            "type": "boolean",
-            "description": "Integration status flag",
-            "example": true
-          },
-          "createdAt": {
+          "expiresAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp when the integration was created (with timezone)",
-            "example": "2025-01-15T10:30:00+01:00"
+            "description": "Optional expiration timestamp (must be in future). Null = no expiration."
           },
-          "name": {
-            "type": "string",
-            "description": "Display name for the integration",
-            "example": "Web Portal"
-          },
-          "description": {
-            "type": "string",
-            "description": "Optional description of the integration"
-          }
-        }
-      },
-      "PageMetadata": {
-        "type": "object",
-        "properties": {
-          "size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "number": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "PagedModelIntegrationResponseDto": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/IntegrationResponseDto"
-            }
-          },
-          "page": {
-            "$ref": "#/components/schemas/PageMetadata"
+          "authAttemptChallengeRequired": {
+            "type": "boolean",
+            "description": "Whether authentication attempts require challenge",
+            "example": false
           }
         }
       },
@@ -4868,6 +5104,12 @@
             "format": "int32",
             "description": "Unique identifier for the enrollment",
             "example": 123
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version. Include in PATCH requests to prevent concurrent update",
+            "example": 0
           },
           "integrationId": {
             "type": "integer",
@@ -4949,6 +5191,303 @@
           "userIdentifier": {
             "type": "string",
             "description": "Optional user identifier from the integrating application"
+          }
+        }
+      },
+      "ApiKeyUpdateRequestDto": {
+        "type": "object",
+        "description": "Request DTO for partial update of API key configuration",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version from GET response. When provided, update fails with 409 if resource was modified since last fetch.",
+            "example": 0
+          },
+          "ipWhitelist": {
+            "type": "array",
+            "description": "IP whitelist (null or empty = no restrictions). Each entry: IP address or CIDR (e.g. 192.168.1.0/24)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.100"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description for this API key",
+            "example": "Production Server API Key",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiKeyResponseDto": {
+        "type": "object",
+        "description": "Response containing API key details (secret key NOT included)",
+        "properties": {
+          "apiKeyId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the API key record",
+            "example": 42
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version. Include in PATCH requests to prevent concurrent update",
+            "example": 0
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID this API key authenticates for",
+            "example": 123
+          },
+          "integrationKey": {
+            "type": "string",
+            "description": "Public integration key (safe to display)",
+            "example": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description to identify this API key",
+            "example": "Production Server API Key"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the key is active (false if revoked)",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp in UTC",
+            "example": "2025-10-17T10:30:00Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiration date (null = no expiration)",
+            "example": "2025-12-31T23:59:59Z"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last successful authentication timestamp (null if never used)",
+            "example": "2025-10-17T15:45:30Z"
+          },
+          "ipWhitelist": {
+            "type": "array",
+            "description": "Optional IP whitelist (null = no restrictions)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.100"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Revocation timestamp (null if active)",
+            "example": "2025-10-17T16:00:00Z"
+          },
+          "revokedByUsername": {
+            "type": "string",
+            "description": "Admin who revoked this key (null if active)",
+            "example": "admin"
+          }
+        }
+      },
+      "AdminUpdateRequestDto": {
+        "type": "object",
+        "description": "Request DTO for partial update of administrator profile",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version from GET response. When provided, update fails with 409 if resource was modified since last fetch.",
+            "example": 0
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name of the administrator",
+            "example": "John",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name of the administrator",
+            "example": "Doe",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address (must be unique)",
+            "example": "john.doe@example.com",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "challengeRequired": {
+            "type": "boolean",
+            "description": "Whether challenge verification is required during passwordless login",
+            "example": false
+          }
+        }
+      },
+      "AdminResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing administrator information for listing purposes",
+        "properties": {
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the administrator",
+            "example": 1
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version. Include in PATCH requests to prevent concurrent update conflicts.",
+            "example": 0
+          },
+          "username": {
+            "type": "string",
+            "description": "Username for the administrator",
+            "example": "john.doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address",
+            "example": "john.doe@example.com"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name",
+            "example": "Doe"
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Type of administrator",
+            "enum": [
+              "GLOBAL_ADMIN",
+              "TENANT_ADMIN",
+              "INTEGRATION_ADMIN"
+            ],
+            "example": "TENANT_ADMIN"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (null for global admins)",
+            "example": 1
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Flag indicating if the administrator is currently active",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the administrator was created",
+            "example": "2025-10-15T14:30:00Z"
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of last successful login (null if never logged in)",
+            "example": "2025-10-20T09:15:00Z"
+          }
+        }
+      },
+      "IntegrationResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing complete integration details",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier for the integration",
+            "example": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "Unique business identifier code for the integration",
+            "example": "web-portal"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID that owns this integration",
+            "example": 2
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Integration status flag",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the integration was created (with timezone)",
+            "example": "2025-01-15T10:30:00+01:00"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for the integration",
+            "example": "Web Portal"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description of the integration"
+          }
+        }
+      },
+      "PageMetadata": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PagedModelIntegrationResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntegrationResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -5148,9 +5687,11 @@
               "ADMIN_PASSWORD_CHANGE",
               "ADMIN_RECOVERY_USE",
               "ADMIN_CREATED",
+              "ADMIN_PROFILE_UPDATED",
               "ADMIN_DEACTIVATED",
               "ADMIN_ACTIVATED",
               "ENROLLMENT_CREATED",
+              "ENROLLMENT_UPDATED",
               "ENROLLMENT_DELETED",
               "ENROLLMENT_BIND",
               "ENROLLMENT_VERIFY",
@@ -5164,6 +5705,7 @@
               "AUTH_ATTEMPT_RESPOND",
               "AUTH_ATTEMPT_CANCELLED",
               "API_KEY_CREATED",
+              "API_KEY_UPDATED",
               "API_KEY_REVOKED",
               "API_KEY_EXPIRED",
               "API_KEY_AUTH_SUCCESS",
@@ -5338,144 +5880,6 @@
           },
           "status": {
             "type": "string"
-          }
-        }
-      },
-      "ApiKeyResponseDto": {
-        "type": "object",
-        "description": "Response containing API key details (secret key NOT included)",
-        "properties": {
-          "apiKeyId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the API key record",
-            "example": 42
-          },
-          "integrationId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Integration ID this API key authenticates for",
-            "example": 123
-          },
-          "integrationKey": {
-            "type": "string",
-            "description": "Public integration key (safe to display)",
-            "example": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0"
-          },
-          "description": {
-            "type": "string",
-            "description": "Optional description to identify this API key",
-            "example": "Production Server API Key"
-          },
-          "active": {
-            "type": "boolean",
-            "description": "Whether the key is active (false if revoked)",
-            "example": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Creation timestamp in UTC",
-            "example": "2025-10-17T10:30:00Z"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Optional expiration date (null = no expiration)",
-            "example": "2025-12-31T23:59:59Z"
-          },
-          "lastUsedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Last successful authentication timestamp (null if never used)",
-            "example": "2025-10-17T15:45:30Z"
-          },
-          "ipWhitelist": {
-            "type": "array",
-            "description": "Optional IP whitelist (null = no restrictions)",
-            "example": [
-              "192.168.1.0/24",
-              "10.0.0.100"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "revokedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Revocation timestamp (null if active)",
-            "example": "2025-10-17T16:00:00Z"
-          },
-          "revokedByUsername": {
-            "type": "string",
-            "description": "Admin who revoked this key (null if active)",
-            "example": "admin"
-          }
-        }
-      },
-      "AdminResponseDto": {
-        "type": "object",
-        "description": "Response DTO containing administrator information for listing purposes",
-        "properties": {
-          "adminId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the administrator",
-            "example": 1
-          },
-          "username": {
-            "type": "string",
-            "description": "Username for the administrator",
-            "example": "john.doe"
-          },
-          "email": {
-            "type": "string",
-            "description": "Email address",
-            "example": "john.doe@example.com"
-          },
-          "firstName": {
-            "type": "string",
-            "description": "First name",
-            "example": "John"
-          },
-          "lastName": {
-            "type": "string",
-            "description": "Last name",
-            "example": "Doe"
-          },
-          "adminType": {
-            "type": "string",
-            "description": "Type of administrator",
-            "enum": [
-              "GLOBAL_ADMIN",
-              "TENANT_ADMIN",
-              "INTEGRATION_ADMIN"
-            ],
-            "example": "TENANT_ADMIN"
-          },
-          "tenantId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Tenant ID (null for global admins)",
-            "example": 1
-          },
-          "active": {
-            "type": "boolean",
-            "description": "Flag indicating if the administrator is currently active",
-            "example": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the administrator was created",
-            "example": "2025-10-15T14:30:00Z"
-          },
-          "lastLoginAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp of last successful login (null if never logged in)",
-            "example": "2025-10-20T09:15:00Z"
           }
         }
       },

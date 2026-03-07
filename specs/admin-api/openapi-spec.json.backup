@@ -3942,6 +3942,7 @@
           "description": {
             "type": "string",
             "description": "Optional description of the integration",
+            "example": "Administration console",
             "maxLength": 500,
             "minLength": 0
           }
