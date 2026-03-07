@@ -3805,6 +3805,16 @@
                 "type": "string"
               }
             }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Filter by tenant ID. GlobalAdmin only; when provided, limits results to that tenant. Ignored for TenantAdmin.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {

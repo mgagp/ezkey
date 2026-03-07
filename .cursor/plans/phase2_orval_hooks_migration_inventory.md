@@ -79,7 +79,7 @@ Aucun changement de contrat des composants UI n’est nécessaire si on introdui
 - **Conséquence :** Aujourd’hui, le paramètre `tenantId` envoyé par l’UI est **ignoré** par le serveur. Un Global Admin sur la page « Tenant detail » voit donc tous les admins, pas seulement ceux du tenant affiché.
 - **Recommandation :**
   - **Option A (court terme, Phase 2) :** Migrer quand même vers le hook généré `useListAdmins(page, size, sort)` sans `tenantId`. Comportement identique à aujourd’hui (pas de régression). Traiter l’ajout de `tenantId` côté backend + spec comme une évolution séparée.
-  - **Option B (avant Phase 2) :** Faire évoluer le backend pour accepter un `tenantId` optionnel (Global Admin only), mettre à jour le spec via `update-specs.sh`, puis utiliser le hook généré avec ce paramètre sur la page tenant-detail.
+  - **Option B a été implémentée :** le backend accepte désormais `tenantId` optionnel, le spec est à jour ; la page tenant-detail pourra utiliser le hook généré avec ce paramètre.
 
 ### 4.2 Spec et build (openapi-spec.json versionné)
 
@@ -89,11 +89,11 @@ Aucun changement de contrat des composants UI n’est nécessaire si on introdui
 
 - Le spec définit souvent `sort` comme **array** de strings (ex. `["createdAt,DESC"]`), alors que l’UI et `usePaginatedQuery` utilisent une **chaîne unique** (ex. `"createdAt,DESC"`). Vérifier comment Orval sérialise le paramètre (array → `sort=createdAt,DESC` ou `sort=createdAt&sort=DESC`) et adapter soit le hook, soit les paramètres passés depuis les pages, pour rester compatible avec le backend.
 
-### 4.3 Fichiers générés absents au check-out
+### 4.4 Fichiers générés (Orval)
 
-- `src/generated/admin-api/` est **gitignored**. Pour que le build et la Phase 2 soient reproductibles, il faut que le spec soit disponible avant `npm run build` (ex. via `scripts/update-specs.sh --admin-only` ou copie du spec dans `ezkey-admin-ui/openapi-spec.json`). Documenter ou automatiser cette étape en CI (comme indiqué dans le plan).
+- `src/generated/admin-api/` est **gitignored** ; il est régénéré à chaque build (`prebuild` / `generate:api`). L'entrée du build ne dépend que de la présence de `openapi-spec.json`, qui est versionné.
 
-### 4.4 Noms d’opérations générés (search vs list)
+### 4.5 Noms d’opérations générés (search vs list)
 
 - Les opérations du spec ont des noms comme `search`, `search_1`, `search_2`, `listAdmins`, `getAuditLogs`. Orval génère les noms de hooks à partir de ces `operationId`. Vérifier après la première génération les noms exacts (`useSearch`, `useSearch_1`, etc.) et prévoir des alias ou un mapping clair dans la doc interne pour éviter la confusion.
 

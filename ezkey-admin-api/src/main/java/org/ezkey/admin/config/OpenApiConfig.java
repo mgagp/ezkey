@@ -17,8 +17,10 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -106,5 +108,39 @@ public class OpenApiConfig {
                         .bearerFormat("JWT")
                         .description("JWT authentication token for admin API")))
         .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
+  }
+
+  /**
+   * Ensures the Pageable {@code sort} query parameter is emitted with {@code style: form} and
+   * {@code explode: true} in the OpenAPI spec, so clients (e.g. Orval) serialize multiple sort
+   * criteria as repeated {@code sort=...} query params, matching Spring's behaviour.
+   *
+   * <p>Springdoc generates the {@code sort} parameter from {@code @ParameterObject} + {@code
+   * Pageable} but does not set style/explode. This customizer patches every query parameter named
+   * {@code sort} with an array schema so that the spec aligns with the project convention (see
+   * docs/SORT_PARAMETER_CONVENTION.md).
+   *
+   * @return the OperationCustomizer that sets form style and explode on sort parameters
+   */
+  @Bean
+  public OperationCustomizer sortParameterExplodeCustomizer() {
+    return (operation, handlerMethod) -> {
+      if (operation.getParameters() == null) {
+        return operation;
+      }
+      for (Parameter parameter : operation.getParameters()) {
+        if (parameter == null) {
+          continue;
+        }
+        if (!"query".equals(parameter.getIn()) || !"sort".equals(parameter.getName())) {
+          continue;
+        }
+        // At customizer time Springdoc may not yet have set the schema on the sort parameter
+        // (getSchema() is null). We still set style/explode so the emitted spec is correct.
+        parameter.setStyle(Parameter.StyleEnum.FORM);
+        parameter.setExplode(true);
+      }
+      return operation;
+    };
   }
 }

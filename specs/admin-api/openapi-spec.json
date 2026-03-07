@@ -461,6 +461,8 @@
             "in": "query",
             "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
             "required": false,
+            "style": "form",
+            "explode": true,
             "schema": {
               "type": "array",
               "default": [
@@ -814,6 +816,8 @@
             "in": "query",
             "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
             "required": false,
+            "style": "form",
+            "explode": true,
             "schema": {
               "type": "array",
               "default": [
@@ -1389,6 +1393,8 @@
             "in": "query",
             "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
             "required": false,
+            "style": "form",
+            "explode": true,
             "schema": {
               "type": "array",
               "default": [
@@ -3464,6 +3470,8 @@
             "in": "query",
             "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
             "required": false,
+            "style": "form",
+            "explode": true,
             "schema": {
               "type": "array",
               "default": [
@@ -3796,6 +3804,8 @@
             "in": "query",
             "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
             "required": false,
+            "style": "form",
+            "explode": true,
             "schema": {
               "type": "array",
               "default": [
