@@ -8,6 +8,8 @@ interface DialogProps {
   title: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  /** When false, backdrop click and Escape key will not close the dialog. Defaults to true. */
+  dismissible?: boolean;
 }
 
 const sizeClasses: Record<NonNullable<DialogProps['size']>, string> = {
@@ -18,15 +20,15 @@ const sizeClasses: Record<NonNullable<DialogProps['size']>, string> = {
 
 /**
  * Modal dialog with neo-brutalism styling.
- * Closes on backdrop click or Escape key.
+ * Closes on backdrop click or Escape key unless `dismissible` is set to false.
  */
-export function Dialog({ open, onClose, title, children, size = 'md' }: DialogProps) {
+export function Dialog({ open, onClose, title, children, size = 'md', dismissible = true }: DialogProps) {
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissible) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  }, [open, onClose, dismissible]);
 
   if (!open) return null;
 
@@ -35,7 +37,7 @@ export function Dialog({ open, onClose, title, children, size = 'md' }: DialogPr
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-fg/40"
-        onClick={onClose}
+        onClick={dismissible ? onClose : undefined}
         aria-hidden="true"
       />
       {/* Panel */}

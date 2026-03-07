@@ -89,6 +89,9 @@ export const api = {
   put: <T>(path: string, body: unknown): Promise<T> =>
     fetchApi<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
 
+  patch: <T>(path: string, body: unknown): Promise<T> =>
+    fetchApi<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+
   delete: <T = void>(path: string): Promise<T> =>
     fetchApi<T>(path, { method: 'DELETE' }),
 };

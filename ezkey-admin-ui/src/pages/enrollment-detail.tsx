@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, Copy, Eye, EyeOff, QrCode, Trash2, Zap } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
@@ -325,8 +328,11 @@ export default function EnrollmentDetailPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [revokeConfirm, setRevokeConfirm] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
   const [testAuthOpen, setTestAuthOpen] = useState(false);
 
+  const { toast } = useToast();
   const { lookup } = useIntegrations();
 
   const { data: enrollment, isLoading } = useQuery({
@@ -340,7 +346,40 @@ export default function EnrollmentDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       void queryClient.invalidateQueries({ queryKey: ['stats'] });
+      toast('Enrollment deleted.');
       navigate('/enrollments');
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (reason: string) =>
+      api.post<void>(`/api/v1/enrollments/${enrollmentId}/deactivate?reason=${encodeURIComponent(reason)}`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+      toast('Enrollment deactivated.');
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (reason: string) =>
+      api.post<void>(`/api/v1/enrollments/${enrollmentId}/reactivate?reason=${encodeURIComponent(reason)}`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+      toast('Enrollment reactivated.');
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (reason: string) =>
+      api.post<void>(`/api/v1/enrollments/${enrollmentId}/revoke?reason=${encodeURIComponent(reason)}`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+      toast('Enrollment permanently revoked.', 'error');
+      setRevokeConfirm(false);
+      setRevokeReason('');
     },
   });
 
@@ -380,15 +419,19 @@ export default function EnrollmentDetailPage() {
   };
 
   return (
-    <AppShell title={enrollment?.enrollmentName ?? 'Enrollment Detail'}>
+    <AppShell
+      title={enrollment?.enrollmentName ?? 'Enrollment Detail'}
+      breadcrumb={[
+        { label: 'Enrollments', path: '/enrollments' },
+        ...(enrollment?.integrationId
+          ? [{ label: lookup.get(enrollment.integrationId) ?? `Integration #${enrollment.integrationId}`, path: `/integrations/${enrollment.integrationId}` }]
+          : []),
+      ]}
+    >
       <div className="space-y-6">
 
-        {/* Back + Test Auth */}
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 -ml-2">
-            <ArrowLeft className="size-3.5" />
-            Back
-          </Button>
+        {/* Test Auth */}
+        <div className="flex items-center justify-end">
           {enrollment?.enrollmentStatus === 'VERIFIED' && (
             <Button
               variant="secondary"
@@ -534,7 +577,126 @@ export default function EnrollmentDetailPage() {
               {/* Danger Zone */}
               <Card className="border-error">
                 <CardHeader><CardTitle>Danger Zone</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
+
+                  {/* Deactivate / Reactivate */}
+                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                    <div className="space-y-2">
+                      {enrollment.enrollmentActive ? (
+                        <>
+                          <p className="text-xs text-fg-muted">
+                            Deactivating temporarily prevents authentication. The enrollment can be reactivated later.
+                          </p>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1.5"
+                            isLoading={deactivateMutation.isPending}
+                            onClick={() => deactivateMutation.mutate('Deactivated from admin console')}
+                          >
+                            <PowerOff className="size-3.5" />
+                            Deactivate Enrollment
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-fg-muted">
+                            This enrollment is inactive. Reactivating will restore authentication capabilities.
+                          </p>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="gap-1.5"
+                            isLoading={reactivateMutation.isPending}
+                            onClick={() => reactivateMutation.mutate('Reactivated from admin console')}
+                          >
+                            <Power className="size-3.5" />
+                            Reactivate Enrollment
+                          </Button>
+                        </>
+                      )}
+                      {deactivateMutation.isError && (
+                        <Alert variant="error">
+                          {deactivateMutation.error instanceof ApiError ? deactivateMutation.error.message : 'Failed to deactivate.'}
+                        </Alert>
+                      )}
+                      {reactivateMutation.isError && (
+                        <Alert variant="error">
+                          {reactivateMutation.error instanceof ApiError ? reactivateMutation.error.message : 'Failed to reactivate.'}
+                        </Alert>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                    <div className="border-t-2 border-error/20" />
+                  )}
+
+                  {/* Revoke */}
+                  {enrollment.enrollmentStatus !== 'REVOKED' && (
+                    <div className="space-y-2">
+                      {!revokeConfirm ? (
+                        <>
+                          <p className="text-xs text-fg-muted">
+                            <strong className="text-error">Irreversible.</strong> Revoking permanently disables this enrollment. A new enrollment must be created for re-enrolment.
+                          </p>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => setRevokeConfirm(true)}
+                          >
+                            <ShieldOff className="size-3.5" />
+                            Revoke Enrollment
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-error">
+                            This action is PERMANENT. The enrollment will be irreversibly revoked.
+                          </p>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="revoke-reason">Reason (min 10 chars, required for audit)</Label>
+                            <Input
+                              id="revoke-reason"
+                              value={revokeReason}
+                              onChange={(e) => setRevokeReason(e.target.value)}
+                              placeholder="Security incident — enrollment compromised..."
+                            />
+                          </div>
+                          {revokeMutation.isError && (
+                            <Alert variant="error">
+                              {revokeMutation.error instanceof ApiError ? revokeMutation.error.message : 'Failed to revoke.'}
+                            </Alert>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              isLoading={revokeMutation.isPending}
+                              disabled={revokeReason.length < 10}
+                              onClick={() => revokeMutation.mutate(revokeReason)}
+                              className="gap-1.5"
+                            >
+                              <ShieldOff className="size-3.5" />
+                              Yes, Revoke Permanently
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setRevokeConfirm(false); setRevokeReason(''); }}>Cancel</Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {enrollment.enrollmentStatus === 'REVOKED' && (
+                    <Alert variant="error">This enrollment has been permanently revoked.</Alert>
+                  )}
+
+                  {/* Divider */}
+                  <div className="border-t-2 border-error/20" />
+
+                  {/* Delete */}
                   {!deleteConfirm ? (
                     <>
                       <p className="text-xs text-fg-muted">

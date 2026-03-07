@@ -71,7 +71,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Create Integration" size="md">
+    <Dialog open={open} onClose={handleClose} title="Create Integration" size="md" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <Label htmlFor="create-code">Code</Label>

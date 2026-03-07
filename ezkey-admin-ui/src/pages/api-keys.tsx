@@ -1,8 +1,9 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, ShieldOff } from 'lucide-react';
+import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
@@ -19,6 +20,46 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { ApiKeyCreateRequestDto } from '@/generated/admin-api/model';
 import type { ApiKeyCreateResponseDto, ApiKeyResponseDto } from '@/generated/admin-api/model';
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+type KeyStatus = 'active' | 'expiring-soon' | 'expired' | 'revoked' | 'inactive';
+
+const EXPIRING_SOON_DAYS = 7;
+
+function getKeyStatus(key: ApiKeyResponseDto): KeyStatus {
+  if (key.revokedAt) return 'revoked';
+  if (key.expiresAt && new Date(key.expiresAt) < new Date()) return 'expired';
+  if (key.active && key.expiresAt) {
+    const daysLeft = (new Date(key.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (daysLeft <= EXPIRING_SOON_DAYS) return 'expiring-soon';
+  }
+  return key.active ? 'active' : 'inactive';
+}
+
+function KeyStatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
+  const status = getKeyStatus(apiKey);
+  const hasIpRestriction = apiKey.ipWhitelist && apiKey.ipWhitelist.length > 0;
+
+  const badge = (() => {
+    switch (status) {
+      case 'revoked': return <Badge variant="error">Revoked</Badge>;
+      case 'expired': return <Badge variant="muted">Expired</Badge>;
+      case 'expiring-soon': return <Badge variant="warning">Expiring Soon</Badge>;
+      case 'active': return <Badge variant="success">Active</Badge>;
+      default: return <Badge variant="muted">Inactive</Badge>;
+    }
+  })();
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {badge}
+      {hasIpRestriction && (
+        <Shield className="size-3 text-fg-muted" title="IP restricted" />
+      )}
+    </span>
+  );
+}
 
 // ── Create API key dialog ──────────────────────────────────────────────────────
 
@@ -220,45 +261,80 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
 
 // ── Revoke confirmation dialog ─────────────────────────────────────────────────
 
-function RevokeDialog({
+export function RevokeApiKeyDialog({
   apiKey,
   onClose,
+  onRevoked,
 }: {
   apiKey: ApiKeyResponseDto | null;
   onClose: () => void;
+  onRevoked?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
 
   const revokeMutation = useMutation({
-    mutationFn: () => api.delete(`/api/v1/api-keys/${apiKey!.apiKeyId}`),
+    mutationFn: () => {
+      const reasonParam = reason.trim().length >= 10
+        ? `?reason=${encodeURIComponent(reason.trim())}`
+        : '';
+      return api.delete(`/api/v1/api-keys/${apiKey!.apiKeyId}${reasonParam}`);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+      void queryClient.invalidateQueries({ queryKey: ['api-key'] });
+      setReason('');
+      onRevoked?.();
       onClose();
     },
   });
 
+  const handleClose = () => {
+    setReason('');
+    revokeMutation.reset();
+    onClose();
+  };
+
   if (!apiKey) return null;
 
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+
   return (
-    <Dialog open={apiKey !== null} onClose={onClose} title="Revoke API Key" size="sm">
+    <Dialog open={apiKey !== null} onClose={handleClose} title="Revoke API Key" size="sm">
       <div className="space-y-4">
         <p className="text-sm text-fg">
-          Are you sure you want to revoke key <span className="font-mono text-xs">{(apiKey.integrationKey ?? '').slice(0, 18)}…</span>?
+          Are you sure you want to revoke key{' '}
+          <span className="font-mono text-xs">{(apiKey.integrationKey ?? '').slice(0, 18)}…</span>?
         </p>
         <p className="text-xs text-fg-muted">
           Revoking is permanent. Any service using this key will lose access immediately.
         </p>
+        <div className="space-y-1">
+          <Label htmlFor="revoke-reason">
+            Reason <span className="text-fg-muted font-normal">(optional — min 10 chars for audit trail)</span>
+          </Label>
+          <Input
+            id="revoke-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Key compromised, rotating credentials"
+          />
+          {reasonTooShort && (
+            <p className="text-xs text-error">Reason must be at least 10 characters.</p>
+          )}
+        </div>
         {revokeMutation.isError && (
           <Alert variant="error">
             {revokeMutation.error instanceof ApiError ? revokeMutation.error.message : 'Failed to revoke key.'}
           </Alert>
         )}
         <div className="flex gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={handleClose}>Cancel</Button>
           <Button
             variant="destructive"
             size="sm"
             isLoading={revokeMutation.isPending}
+            disabled={reasonTooShort}
             onClick={() => revokeMutation.mutate()}
             className="gap-1.5"
           >
@@ -271,12 +347,60 @@ function RevokeDialog({
   );
 }
 
+// ── Client-side sort helper ──────────────────────────────────────────────────
+
+function sortKeys(
+  keys: ApiKeyResponseDto[],
+  sortStr: string,
+): ApiKeyResponseDto[] {
+  if (!sortStr) return keys;
+  const [field = '', dir = 'DESC'] = sortStr.split(',');
+  const mult = dir === 'ASC' ? 1 : -1;
+
+  return [...keys].sort((a, b) => {
+    let cmp = 0;
+    switch (field) {
+      case 'status': {
+        const order: Record<KeyStatus, number> = { active: 0, 'expiring-soon': 1, inactive: 2, expired: 3, revoked: 4 };
+        cmp = order[getKeyStatus(a)] - order[getKeyStatus(b)];
+        break;
+      }
+      case 'createdAt': {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        cmp = ta - tb;
+        break;
+      }
+      case 'expiresAt': {
+        const ta = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
+        const tb = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
+        cmp = ta - tb;
+        break;
+      }
+      case 'lastUsedAt': {
+        const ta = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
+        const tb = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
+        cmp = ta - tb;
+        break;
+      }
+      default:
+        return 0;
+    }
+    return cmp * mult;
+  });
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+type StatusFilter = '' | 'active' | 'revoked' | 'expired';
+
 export default function ApiKeysPage() {
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyResponseDto | null>(null);
   const [integrationFilter, setIntegrationFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
+  const [sort, setSort] = useState('status,ASC');
 
   const { list: integrations, lookup } = useIntegrations();
 
@@ -292,59 +416,103 @@ export default function ApiKeysPage() {
     staleTime: 30_000,
   });
 
+  // Client-side status filter + sort
+  const filteredKeys = useMemo(() => {
+    let result = apiKeys;
+    if (statusFilter) {
+      result = result.filter((k) => {
+        const s = getKeyStatus(k);
+        switch (statusFilter) {
+          case 'active': return s === 'active' || s === 'expiring-soon';
+          case 'revoked': return s === 'revoked';
+          case 'expired': return s === 'expired';
+          default: return true;
+        }
+      });
+    }
+    return sortKeys(result, sort);
+  }, [apiKeys, statusFilter, sort]);
+
+  // Status breakdown counts
+  const counts = useMemo(() => {
+    let active = 0, expired = 0, revoked = 0;
+    for (const k of apiKeys) {
+      const s = getKeyStatus(k);
+      if (s === 'active' || s === 'expiring-soon') active++;
+      else if (s === 'expired') expired++;
+      else if (s === 'revoked') revoked++;
+    }
+    return { total: apiKeys.length, active, expired, revoked };
+  }, [apiKeys]);
+
   const columns: ColumnDef<ApiKeyResponseDto>[] = [
-    { header: 'ID', key: 'apiKeyId', className: 'w-12', render: (r) => <span className="font-mono text-xs">{r.apiKeyId}</span> },
     {
       header: 'Integration',
       key: 'integrationId',
       render: (r) => (
-        <span className="text-xs">{lookup.get(r.integrationId!) ?? `#${r.integrationId ?? '?'}`}</span>
+        <span className="text-xs font-medium">{lookup.get(r.integrationId!) ?? `#${r.integrationId ?? '?'}`}</span>
       ),
     },
     {
-      header: 'Key',
-      key: 'integrationKey',
+      header: 'Description',
+      key: 'description',
       render: (r) => (
-        <span className="font-mono text-xs">
-          {(r.integrationKey ?? '').slice(0, 22)}<span className="text-fg-muted">…</span>
-        </span>
+        <span className="text-xs text-fg-muted">{r.description ?? '—'}</span>
       ),
     },
-    { header: 'Description', key: 'description', render: (r) => <span className="text-xs text-fg-muted">{r.description ?? '—'}</span> },
     {
       header: 'Status',
-      key: 'active',
-      render: (r) => {
-        if (r.revokedAt) return <Badge variant="error">Revoked</Badge>;
-        if (r.expiresAt && new Date(r.expiresAt) < new Date()) return <Badge variant="muted">Expired</Badge>;
-        return <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Active' : 'Inactive'}</Badge>;
-      },
+      key: 'status',
+      sortKey: 'status',
+      render: (r) => <KeyStatusBadge apiKey={r} />,
     },
-    { header: 'Expires', key: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{r.expiresAt ? formatDate(r.expiresAt) : '—'}</span> },
-    { header: 'Last Used', key: 'lastUsedAt', render: (r) => <span className="text-xs text-fg-muted">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span> },
+    {
+      header: 'Created',
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted">{r.createdAt ? formatDate(r.createdAt) : '—'}</span>
+      ),
+    },
+    {
+      header: 'Expires',
+      key: 'expiresAt',
+      sortKey: 'expiresAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted">{r.expiresAt ? formatDate(r.expiresAt) : '—'}</span>
+      ),
+    },
+    {
+      header: 'Last Used',
+      key: 'lastUsedAt',
+      sortKey: 'lastUsedAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span>
+      ),
+    },
     {
       header: '',
       key: 'actions',
+      className: 'w-10',
       render: (r) =>
         r.active && !r.revokedAt ? (
           <Button
             variant="destructive"
             size="sm"
-            className="gap-1"
+            title="Revoke this key"
             onClick={(e) => { e.stopPropagation(); setRevokeTarget(r); }}
+            className="gap-1 px-2"
           >
             <ShieldOff className="size-3" />
-            Revoke
           </Button>
-        ) : (
-          <span className="text-xs text-fg-muted italic">{r.revokedByUsername ?? '—'}</span>
-        ),
+        ) : null,
     },
   ];
 
   return (
     <AppShell title="API Keys">
       <div className="space-y-4">
+        {/* Toolbar */}
         <div className="flex gap-3 items-center flex-wrap">
           <div className="w-44">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
@@ -352,6 +520,14 @@ export default function ApiKeysPage() {
               {integrations.map((i) => (
                 <option key={i.id} value={String(i.id)}>{i.code}</option>
               ))}
+            </Select>
+          </div>
+          <div className="w-36">
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="revoked">Revoked</option>
+              <option value="expired">Expired</option>
             </Select>
           </div>
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
@@ -364,29 +540,37 @@ export default function ApiKeysPage() {
           </Button>
         </div>
 
+        {/* Info banner */}
         <div className="flex items-center gap-2">
           <Key className="size-3.5 text-fg-muted" />
           <p className="text-xs text-fg-muted italic">Max 5 active keys per integration. Secret keys are shown only at creation and cannot be retrieved later.</p>
         </div>
 
+        {/* Table */}
         <div>
           <DataTable
             columns={columns}
-            data={apiKeys}
+            data={filteredKeys}
             isLoading={isLoading}
             keyExtractor={(r, i) => r.apiKeyId ?? i}
             emptyMessage="No API keys found. Create your first key to enable M2M access."
+            onRowClick={(row) => navigate(`/api-keys/${row.apiKeyId}`)}
+            currentSort={sort}
+            onSort={setSort}
           />
           {!isLoading && apiKeys.length > 0 && (
             <p className="text-xs text-fg-muted px-3 py-2 border-t border-fg/10">
-              {apiKeys.length} key{apiKeys.length !== 1 ? 's' : ''}
+              {counts.total} key{counts.total !== 1 ? 's' : ''}
+              {' · '}{counts.active} active
+              {counts.expired > 0 && <> · {counts.expired} expired</>}
+              {counts.revoked > 0 && <> · {counts.revoked} revoked</>}
             </p>
           )}
         </div>
       </div>
 
       <CreateApiKeyDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <RevokeDialog apiKey={revokeTarget} onClose={() => setRevokeTarget(null)} />
+      <RevokeApiKeyDialog apiKey={revokeTarget} onClose={() => setRevokeTarget(null)} />
     </AppShell>
   );
 }

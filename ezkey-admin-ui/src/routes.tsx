@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 
 const LoginPage = lazy(() => import('@/pages/login'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
+const TenantsPage = lazy(() => import('@/pages/tenants'));
+const TenantDetailPage = lazy(() => import('@/pages/tenant-detail'));
 const IntegrationsPage = lazy(() => import('@/pages/integrations'));
 const IntegrationDetailPage = lazy(() => import('@/pages/integration-detail'));
 const EnrollmentsPage = lazy(() => import('@/pages/enrollments'));
@@ -13,6 +15,7 @@ const AdminsPage = lazy(() => import('@/pages/admins'));
 const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
 const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
+const ApiKeyDetailPage = lazy(() => import('@/pages/api-key-detail'));
 const EncryptionKeysPage = lazy(() => import('@/pages/encryption-keys'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 
@@ -59,6 +62,26 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <SuspensePage>
           <DashboardPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/tenants',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <TenantsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/tenants/:id',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <TenantDetailPage />
         </SuspensePage>
       </ProtectedRoute>
     ),
@@ -139,6 +162,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <SuspensePage>
           <ApiKeysPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/api-keys/:id',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <ApiKeyDetailPage />
         </SuspensePage>
       </ProtectedRoute>
     ),

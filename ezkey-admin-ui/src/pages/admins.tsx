@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, KeyRound, Plus, QrCode, RefreshCw, UserX } from 'lucide-react';
+import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
@@ -14,9 +14,10 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/context/toast-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatRelativeTime } from '@/lib/utils';
 import type { AdminCreateRequestDto } from '@/generated/admin-api/model';
 import type { AdminOnboardingResponseDto, AdminProvisioningResponseDto, AdminResponseDto } from '@/generated/admin-api/model';
 import type { PageResponse } from '@/hooks/use-paginated-query';
@@ -204,6 +205,141 @@ function DeactivateAdminDialog({
   );
 }
 
+// ── Admin detail dialog ────────────────────────────────────────────────────────
+
+function AdminDetailDialog({
+  admin,
+  onClose,
+  onShowCredentials,
+}: {
+  admin: AdminResponseDto | null;
+  onClose: () => void;
+  onShowCredentials: (id: number, username: string) => void;
+}) {
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Fetch live detail from API to ensure fresh data
+  const { data: detail } = useQuery({
+    queryKey: ['admin-detail', admin?.adminId],
+    queryFn: () => api.get<AdminResponseDto>(`/api/v1/admins/${admin!.adminId}`),
+    enabled: admin !== null,
+  });
+
+  const adm = detail ?? admin;
+
+  const activateMutation = useMutation({
+    mutationFn: () => api.post<void>(`/api/v1/admins/${adm!.adminId}/activate`, {}),
+    onSuccess: () => {
+      toast(`Admin "${adm!.username}" activated.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['admins'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : 'Activation failed', 'error'),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: () => api.post<void>(`/api/v1/admins/${adm!.adminId}/deactivate`, {}),
+    onSuccess: () => {
+      toast(`Admin "${adm!.username}" deactivated.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['admins'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : 'Deactivation failed', 'error'),
+  });
+
+  if (!adm) return null;
+
+  const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
+
+  function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div className="flex gap-4">
+        <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
+        <dd className="text-sm break-all">{children}</dd>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={admin !== null} onClose={onClose} title={`Admin — ${adm.username}`} size="lg">
+      <div className="space-y-5">
+        {/* Info section */}
+        <dl className="space-y-2.5">
+          <InfoRow label="Admin ID"><span className="font-mono">{adm.adminId}</span></InfoRow>
+          <InfoRow label="Username"><span className="font-medium">{adm.username}</span></InfoRow>
+          <InfoRow label="Name">{fullName || <span className="text-fg-muted">—</span>}</InfoRow>
+          <InfoRow label="Email">{adm.email || <span className="text-fg-muted">—</span>}</InfoRow>
+          <InfoRow label="Type"><AdminTypeBadge type={adm.adminType} /></InfoRow>
+          {adm.tenantId != null && (
+            <InfoRow label="Tenant ID"><span className="font-mono">{adm.tenantId}</span></InfoRow>
+          )}
+          <InfoRow label="Status"><Badge variant={adm.active ? 'success' : 'muted'}>{adm.active ? 'Active' : 'Inactive'}</Badge></InfoRow>
+          <InfoRow label="Created">{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>
+          <InfoRow label="Last Login">
+            {adm.lastLoginAt ? (
+              <span>
+                {formatDate(adm.lastLoginAt)}
+                <span className="text-fg-muted text-xs ml-1.5">({formatRelativeTime(adm.lastLoginAt)})</span>
+              </span>
+            ) : (
+              <span className="text-fg-muted italic">Never</span>
+            )}
+          </InfoRow>
+        </dl>
+
+        {/* Actions */}
+        <div className="border-t-2 border-fg/10 pt-4 space-y-3">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Actions</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
+            >
+              <KeyRound className="size-3.5" />
+              Credentials
+            </Button>
+
+            {isGlobalAdmin && adm.active && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                isLoading={deactivateMutation.isPending}
+                onClick={() => deactivateMutation.mutate()}
+              >
+                <PowerOff className="size-3.5" />
+                Deactivate
+              </Button>
+            )}
+
+            {isGlobalAdmin && !adm.active && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5 text-success border-success/30 hover:bg-success/10"
+                isLoading={activateMutation.isPending}
+                onClick={() => activateMutation.mutate()}
+              >
+                <Power className="size-3.5" />
+                Activate
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 // ── Create admin dialog ────────────────────────────────────────────────────────
 
 const adminSchema = z.object({
@@ -214,26 +350,34 @@ const adminSchema = z.object({
 });
 type AdminFormValues = z.infer<typeof adminSchema>;
 
-function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boolean; onClose: () => void; defaultGlobal?: boolean }) {
+  const { session } = useAuth();
+  const callerIsGlobal = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningResponseDto | null>(null);
+  const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: AdminCreateRequestDto) =>
-      api.post<AdminProvisioningResponseDto>('/api/v1/admins/tenant', data),
+    mutationFn: (data: AdminCreateRequestDto) => {
+      const endpoint = isGlobalType ? '/api/v1/admins/global' : '/api/v1/admins/tenant';
+      return api.post<AdminProvisioningResponseDto>(endpoint, data);
+    },
     onSuccess: (admin) => {
       setCreatedAdmin(admin);
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
+      toast(`${isGlobalType ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
     },
   });
 
   const handleClose = () => {
     reset();
     setCreatedAdmin(null);
+    setIsGlobalType(defaultGlobal);
     createMutation.reset();
     onClose();
   };
@@ -248,7 +392,7 @@ function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => vo
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="New Tenant Admin" size="md">
+    <Dialog open={open} onClose={handleClose} title={isGlobalType ? 'New Global Admin' : 'New Tenant Admin'} size="md">
       {createdAdmin ? (
         <div className="space-y-4">
           <Alert variant="success">
@@ -263,6 +407,31 @@ function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Admin type toggle — only visible when the caller is a GLOBAL_ADMIN */}
+          {callerIsGlobal && (
+            <div className="flex items-center gap-3 p-3 border-2 border-fg/20 bg-bg">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="adminType"
+                  checked={!isGlobalType}
+                  onChange={() => setIsGlobalType(false)}
+                  className="accent-accent"
+                />
+                <span className="text-sm font-medium">Tenant Admin</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="adminType"
+                  checked={isGlobalType}
+                  onChange={() => setIsGlobalType(true)}
+                  className="accent-accent"
+                />
+                <span className="text-sm font-medium">Global Admin</span>
+              </label>
+            </div>
+          )}
           <div className="space-y-1">
             <Label htmlFor="adm-username">Username *</Label>
             <Input id="adm-username" placeholder="jsmith" error={errors.username?.message} {...register('username')} />
@@ -305,6 +474,7 @@ export default function AdminsPage() {
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminResponseDto | null>(null);
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
@@ -381,6 +551,7 @@ export default function AdminsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
+            onRowClick={(row) => setSelectedAdmin(row)}
             keyExtractor={(r, i) => r.adminId ?? i}
             emptyMessage="No admins found."
             currentSort={pagination.sort}
@@ -400,6 +571,14 @@ export default function AdminsPage() {
         </div>
       </div>
 
+      <AdminDetailDialog
+        admin={selectedAdmin}
+        onClose={() => setSelectedAdmin(null)}
+        onShowCredentials={(id, username) => {
+          setSelectedAdmin(null);
+          setOnboardingTarget({ id, username });
+        }}
+      />
       <CreateAdminDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <OnboardingDialog
         open={onboardingTarget !== null}

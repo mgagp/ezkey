@@ -3,6 +3,7 @@ import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
 import {
+  Building2,
   FileText,
   Key,
   KeyRound,
@@ -23,6 +24,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Tenants', path: '/tenants', icon: Building2, roles: ['GLOBAL_ADMIN'] },
   { label: 'Integrations', path: '/integrations', icon: Puzzle },
   { label: 'Enrollments', path: '/enrollments', icon: Users },
   { label: 'Auth Attempts', path: '/auth-attempts', icon: ShieldCheck },
