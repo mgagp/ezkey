@@ -69,19 +69,46 @@ def download_and_save_spec(http_client: HttpClient, url: str, target_path: Path,
 
 
 def refresh_admin_spec(config: ConfigManager, project_root: Path, verbose: bool = False) -> bool:
-    """Refresh Admin API specification for demo-app-acme."""
-    OutputUtils.info("Refreshing Admin API specification for demo-app-acme...")
-    
+    """Refresh Admin API specification for demo-app-acme and ezkey-admin-ui."""
+    OutputUtils.info("Refreshing Admin API specification...")
+
     admin_url = config.get('adminUrl')
     if not admin_url:
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return False
-    
+
     http_client = HttpClient(config)
     spec_url = f"{admin_url}/v3/api-docs"
-    target_path = project_root / 'ezkey-demo-app-acme' / 'openapi-spec.json'
-    
-    return download_and_save_spec(http_client, spec_url, target_path, "Admin API", verbose)
+
+    # Propagate to all Admin API consumers
+    targets = [
+        (project_root / 'ezkey-demo-app-acme' / 'openapi-spec.json', 'Admin API (demo-app-acme)'),
+        (project_root / 'ezkey-admin-ui' / 'openapi-spec.json', 'Admin API (admin-ui)'),
+    ]
+
+    # Download once, save to all targets
+    OutputUtils.verbose(f"Downloading Admin API spec from {spec_url}", verbose)
+    response = http_client.get(spec_url)
+    if not response.success:
+        OutputUtils.error(f"Failed to download Admin API spec: {response.error}")
+        return False
+
+    success = True
+    for target_path, label in targets:
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(target_path, 'w', encoding='utf-8') as f:
+                import json as _json
+                if isinstance(response.data, dict):
+                    _json.dump(response.data, f, indent=2)
+                else:
+                    f.write(str(response.data))
+            OutputUtils.success(f"{label} spec saved to {target_path}")
+        except Exception as e:
+            OutputUtils.error(f"Failed to save {label} spec: {str(e)}")
+            success = False
+
+    return success
 
 
 def refresh_auth_spec(config: ConfigManager, project_root: Path, verbose: bool = False) -> bool:

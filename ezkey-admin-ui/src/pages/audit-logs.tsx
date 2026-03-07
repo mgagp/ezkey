@@ -1,0 +1,747 @@
+﻿import { useState } from 'react';
+import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AppShell } from '@/components/layout/app-shell';
+import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
+import { Pagination } from '@/components/data-table/pagination';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { api, ApiError } from '@/lib/api-client';
+import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/context/toast-context';
+import type { AuditLogResponseDto, ChainVerificationReport, IntegrityReport, ArchiveSealResult, GapDeclarationResult } from '@/generated/admin-api/model';
+import type { PageResponse } from '@/hooks/use-paginated-query';
+
+// ── Event type options (from EventType.java enum) ─────────────────────────────
+
+const EVENT_TYPES = [
+  ['ADMIN_LOGIN', 'Admin Login'],
+  ['ADMIN_LOGOUT', 'Admin Logout'],
+  ['ADMIN_PASSWORD_CHANGE', 'Admin Password Change'],
+  ['ADMIN_RECOVERY_USE', 'Admin Recovery Use'],
+  ['ENROLLMENT_CREATED', 'Enrollment Created'],
+  ['ENROLLMENT_DELETED', 'Enrollment Deleted'],
+  ['ENROLLMENT_BIND', 'Enrollment Bind'],
+  ['ENROLLMENT_VERIFY', 'Enrollment Verify'],
+  ['AUTH_ATTEMPT_CREATED', 'Auth Attempt Created'],
+  ['AUTH_ATTEMPT_PENDING', 'Auth Attempt Pending'],
+  ['AUTH_ATTEMPT_RESPOND', 'Auth Attempt Respond'],
+  ['AUTH_ATTEMPT_CANCELLED', 'Auth Attempt Cancelled'],
+  ['API_KEY_CREATED', 'API Key Created'],
+  ['API_KEY_REVOKED', 'API Key Revoked'],
+  ['API_KEY_EXPIRED', 'API Key Expired'],
+  ['API_KEY_AUTH_SUCCESS', 'API Key Auth Success'],
+  ['API_KEY_AUTH_FAILED', 'API Key Auth Failed'],
+  ['API_KEY_IP_BLOCKED', 'API Key IP Blocked'],
+  ['SYSTEM_ERROR', 'System Error'],
+] as const;
+
+function formatEventType(et: string): string {
+  return et.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+}
+
+// ── Event status badge ────────────────────────────────────────────────────────
+
+function EventStatusBadge({ status }: { status: AuditLogResponseDto['eventStatus'] }) {
+  if (status === 'SUCCESS') return <Badge variant="success">Success</Badge>;
+  if (status === 'FAILURE') return <Badge variant="error">Failure</Badge>;
+  return <Badge variant="error">Error</Badge>;
+}
+
+// ── Detail dialog ─────────────────────────────────────────────────────────────
+
+function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | null; onClose: () => void }) {
+  if (!log) return null;
+
+  function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div className="flex gap-4">
+        <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
+        <dd className="text-sm break-all">{children}</dd>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={log !== null} onClose={onClose} title={`Log #${log.auditLogId}`} size="lg">
+      <dl className="space-y-2.5">
+        <InfoRow label="ID"><span className="font-mono">{log.auditLogId}</span></InfoRow>
+        <InfoRow label="Event Type">
+          <span className="font-mono text-xs bg-fg/5 px-1.5 py-0.5">{log.eventType}</span>
+        </InfoRow>
+        <InfoRow label="Status"><EventStatusBadge status={log.eventStatus} /></InfoRow>
+        {log.apiName && <InfoRow label="API"><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
+        {log.adminId && <InfoRow label="Admin ID"><span className="font-mono">#{log.adminId}</span></InfoRow>}
+        {log.integrationId && <InfoRow label="Integration"><span className="font-mono">#{log.integrationId}</span></InfoRow>}
+        {log.enrollmentId && <InfoRow label="Enrollment"><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
+        {log.authAttemptId && <InfoRow label="Auth Attempt"><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
+        {log.ipAddress && <InfoRow label="IP Address"><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
+        {log.userAgent && <InfoRow label="User Agent"><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
+        {log.eventDetails && (
+          <InfoRow label="Details">
+            <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.eventDetails}</pre>
+          </InfoRow>
+        )}
+        {log.errorMessage && (
+          <InfoRow label="Error">
+            <span className="text-xs text-error">{log.errorMessage}</span>
+          </InfoRow>
+        )}
+        <InfoRow label="Created"><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
+        <InfoRow label="HMAC Integrity">
+          {log.entryHmac ? (
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5 text-success" />
+              <span className="text-xs text-success font-bold">Chain intact</span>
+            </div>
+          ) : (
+            <span className="text-xs text-fg-muted">Not available</span>
+          )}
+        </InfoRow>
+        {log.instanceId && (
+          <InfoRow label="Instance"><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
+        )}
+      </dl>
+      <div className="flex justify-end pt-4">
+        <Button onClick={onClose}>Close</Button>
+      </div>
+    </Dialog>
+  );
+}
+
+// ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
+
+function IntegrityPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+
+  // ── Check results ──
+  const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
+  const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
+  const [chainLoading, setChainLoading] = useState(false);
+  const [integrityLoading, setIntegrityLoading] = useState(false);
+
+  // ── Date range for checks ──
+  const [checkFrom, setCheckFrom] = useState('');
+  const [checkTo, setCheckTo] = useState('');
+  const [preset, setPreset] = useState('');
+
+  function applyPreset(value: string) {
+    setPreset(value);
+    if (!value) {
+      setCheckFrom('');
+      setCheckTo('');
+      return;
+    }
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+    switch (value) {
+      case 'today': {
+        setCheckFrom(fmt(today));
+        setCheckTo(fmt(today));
+        break;
+      }
+      case 'yesterday': {
+        const y = new Date(today);
+        y.setDate(y.getDate() - 1);
+        setCheckFrom(fmt(y));
+        setCheckTo(fmt(y));
+        break;
+      }
+      case 'last-24h': {
+        const h24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        setCheckFrom(fmt(h24));
+        setCheckTo(fmt(today));
+        break;
+      }
+      case 'last-7d': {
+        const d7 = new Date(today);
+        d7.setDate(d7.getDate() - 7);
+        setCheckFrom(fmt(d7));
+        setCheckTo(fmt(today));
+        break;
+      }
+      case 'last-30d': {
+        const d30 = new Date(today);
+        d30.setDate(d30.getDate() - 30);
+        setCheckFrom(fmt(d30));
+        setCheckTo(fmt(today));
+        break;
+      }
+      case 'last-week': {
+        const dayOfWeek = today.getDay();
+        const lastMonday = new Date(today);
+        lastMonday.setDate(today.getDate() - dayOfWeek - 6);
+        const lastSunday = new Date(lastMonday);
+        lastSunday.setDate(lastMonday.getDate() + 6);
+        setCheckFrom(fmt(lastMonday));
+        setCheckTo(fmt(lastSunday));
+        break;
+      }
+      case 'last-month': {
+        const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        setCheckFrom(fmt(firstOfLastMonth));
+        setCheckTo(fmt(lastOfLastMonth));
+        break;
+      }
+      case 'last-quarter': {
+        const currentQ = Math.floor(today.getMonth() / 3);
+        const qStart = new Date(today.getFullYear(), (currentQ - 1) * 3, 1);
+        const qEnd = new Date(today.getFullYear(), currentQ * 3, 0);
+        setCheckFrom(fmt(qStart));
+        setCheckTo(fmt(qEnd));
+        break;
+      }
+      case 'full':
+      default:
+        setCheckFrom('');
+        setCheckTo('');
+        break;
+    }
+  }
+
+  // ── Dialogs ──
+  const [sealOpen, setSealOpen] = useState(false);
+  const [gapOpen, setGapOpen] = useState(false);
+  const [sealResult, setSealResult] = useState<ArchiveSealResult | null>(null);
+  const [gapResult, setGapResult] = useState<GapDeclarationResult | null>(null);
+
+  // ── Seal archive form state ──
+  const [sealPeriodStart, setSealPeriodStart] = useState('');
+  const [sealPeriodEnd, setSealPeriodEnd] = useState('');
+  const [sealCheckpointFrom, setSealCheckpointFrom] = useState('');
+  const [sealCheckpointTo, setSealCheckpointTo] = useState('');
+  const [sealJustification, setSealJustification] = useState('');
+
+  // ── Gap declaration form state ──
+  const [gapStart, setGapStart] = useState('');
+  const [gapEnd, setGapEnd] = useState('');
+  const [gapAnchorId, setGapAnchorId] = useState('');
+  const [gapJustification, setGapJustification] = useState('');
+
+  async function runChainCheck() {
+    setChainLoading(true);
+    setChainReport(null);
+    try {
+      const p = new URLSearchParams();
+      if (checkFrom) p.set('from', new Date(checkFrom).toISOString());
+      if (checkTo) p.set('to', new Date(checkTo + 'T23:59:59').toISOString());
+      const qs = p.toString();
+      const report = await api.get<ChainVerificationReport>(
+        `/api/v1/audit-logs/chain-integrity${qs ? `?${qs}` : ''}`,
+      );
+      setChainReport(report);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Chain integrity check failed', 'error');
+    } finally {
+      setChainLoading(false);
+    }
+  }
+
+  async function runIntegrityCheck() {
+    setIntegrityLoading(true);
+    setIntegrityReport(null);
+    try {
+      const p = new URLSearchParams();
+      if (checkFrom) p.set('from', new Date(checkFrom).toISOString());
+      if (checkTo) p.set('to', new Date(checkTo + 'T23:59:59').toISOString());
+      const qs = p.toString();
+      const report = await api.get<IntegrityReport>(
+        `/api/v1/audit-logs/integrity-check${qs ? `?${qs}` : ''}`,
+      );
+      setIntegrityReport(report);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Integrity check failed', 'error');
+    } finally {
+      setIntegrityLoading(false);
+    }
+  }
+
+  const sealMutation = useMutation({
+    mutationFn: () =>
+      api.post<ArchiveSealResult>('/api/v1/audit-logs/lifecycle/seal-archive', {
+        periodStart: sealPeriodStart ? new Date(sealPeriodStart).toISOString() : undefined,
+        periodEnd: sealPeriodEnd ? new Date(sealPeriodEnd).toISOString() : undefined,
+        checkpointIdFrom: sealCheckpointFrom ? Number(sealCheckpointFrom) : undefined,
+        checkpointIdTo: sealCheckpointTo ? Number(sealCheckpointTo) : undefined,
+        justification: sealJustification,
+      }),
+    onSuccess: (data) => {
+      setSealResult(data);
+      toast(`Archive sealed — ${data.checkpointsSealed} checkpoints`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : 'Seal failed', 'error'),
+  });
+
+  const gapMutation = useMutation({
+    mutationFn: () =>
+      api.post<GapDeclarationResult>('/api/v1/audit-logs/lifecycle/declare-gap', {
+        gapStart: gapStart ? new Date(gapStart).toISOString() : undefined,
+        gapEnd: gapEnd ? new Date(gapEnd).toISOString() : undefined,
+        anchorCheckpointId: gapAnchorId ? Number(gapAnchorId) : undefined,
+        justification: gapJustification,
+      }),
+    onSuccess: (data) => {
+      setGapResult(data);
+      toast('Gap declared successfully', 'success');
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : 'Gap declaration failed', 'error'),
+  });
+
+  function resetSealForm() {
+    setSealPeriodStart('');
+    setSealPeriodEnd('');
+    setSealCheckpointFrom('');
+    setSealCheckpointTo('');
+    setSealJustification('');
+    setSealResult(null);
+  }
+
+  function resetGapForm() {
+    setGapStart('');
+    setGapEnd('');
+    setGapAnchorId('');
+    setGapJustification('');
+    setGapResult(null);
+  }
+
+  function ReportBadge({ intact }: { intact?: boolean }) {
+    if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />Intact</Badge>;
+    if (intact === false) return <Badge variant="error"><XCircle className="size-3 mr-1" />Violation</Badge>;
+    return null;
+  }
+
+  return (
+    <div className="border-2 border-fg/20 bg-main shadow-brutal">
+      {/* Header — always visible */}
+      <button
+        type="button"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-fg/5 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="size-5 text-accent" />
+          <h2 className="font-black text-sm uppercase tracking-wider">Integrity &amp; Lifecycle</h2>
+          <Badge variant="muted">Global Admin</Badge>
+        </div>
+        {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t-2 border-fg/20 p-4 space-y-6">
+          {/* ── Verification section ── */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Verification</h3>
+
+            {/* Date range filter */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="w-44">
+                <Select value={preset} onChange={(e) => applyPreset(e.target.value)}>
+                  <option value="">Full range</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="last-24h">Last 24 hours</option>
+                  <option value="last-7d">Last 7 days</option>
+                  <option value="last-30d">Last 30 days</option>
+                  <option value="last-week">Last week (Mon–Sun)</option>
+                  <option value="last-month">Last month</option>
+                  <option value="last-quarter">Last quarter</option>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs shrink-0">From</Label>
+                <Input type="date" value={checkFrom} onChange={(e) => { setCheckFrom(e.target.value); setPreset(''); }} className="w-36" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs shrink-0">To</Label>
+                <Input type="date" value={checkTo} onChange={(e) => { setCheckTo(e.target.value); setPreset(''); }} className="w-36" />
+              </div>
+              {(checkFrom || checkTo) && (
+                <button
+                  type="button"
+                  className="text-[10px] text-accent underline hover:text-accent/80"
+                  onClick={() => applyPreset('')}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button size="sm" variant="secondary" onClick={runChainCheck} disabled={chainLoading} className="gap-1.5">
+                <ShieldCheck className="size-3.5" />
+                {chainLoading ? 'Checking…' : 'Chain Integrity'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={runIntegrityCheck} disabled={integrityLoading} className="gap-1.5">
+                <ShieldCheck className="size-3.5" />
+                {integrityLoading ? 'Checking…' : 'Entry Integrity'}
+              </Button>
+            </div>
+
+            {/* Chain report */}
+            {chainReport && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider">Chain Verification</span>
+                  <ReportBadge intact={chainReport.intact} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat label="Total" value={chainReport.totalCheckpoints} />
+                  <Stat label="Valid" value={chainReport.validCheckpoints} ok />
+                  <Stat label="Invalid" value={chainReport.invalidCheckpoints} bad />
+                  <Stat label="Archived" value={chainReport.archivedCheckpoints} />
+                </div>
+                {chainReport.gapDeclaredCheckpoints != null && chainReport.gapDeclaredCheckpoints > 0 && (
+                  <p className="text-xs text-fg-muted">Gap-declared checkpoints: {chainReport.gapDeclaredCheckpoints}</p>
+                )}
+                {chainReport.violations && chainReport.violations.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-error mb-1">Violations:</p>
+                    <ul className="text-xs text-error list-disc pl-4 space-y-0.5">
+                      {chainReport.violations.map((v, i) => <li key={i}>{v}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Entry integrity report */}
+            {integrityReport && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider">Entry Integrity</span>
+                  <ReportBadge intact={integrityReport.intact} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat label="Total" value={integrityReport.totalEntries} />
+                  <Stat label="Valid" value={integrityReport.validEntries} ok />
+                  <Stat label="Invalid" value={integrityReport.invalidEntries} bad />
+                  <Stat label="Unsigned" value={integrityReport.unsignedEntries} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Lifecycle section ── */}
+          <div className="space-y-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Lifecycle Operations</h3>
+            <div className="flex gap-3">
+              <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
+                <Archive className="size-3.5" />
+                Seal Archive
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
+                <AlertTriangle className="size-3.5" />
+                Declare Gap
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Seal Archive Dialog ── */}
+      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title="Seal Archive" size="lg">
+        {sealResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">Archive sealed successfully</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair label="Period" value={`${sealResult.periodStart ?? '—'} → ${sealResult.periodEnd ?? '—'}`} />
+              <InfoPair label="Checkpoints sealed" value={String(sealResult.checkpointsSealed ?? 0)} />
+              <InfoPair label="Seal HMAC" value={sealResult.sealChainHmac ?? '—'} mono />
+              <InfoPair label="Audit log ID" value={String(sealResult.auditLogId ?? '—')} />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setSealOpen(false)}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => { e.preventDefault(); sealMutation.mutate(); }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">
+              Seal an archive period before dropping an audit log partition.
+              A pre-flight integrity check is mandatory — the API will reject if any violation is detected.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="seal-start" className="text-xs">Period Start</Label>
+                <Input id="seal-start" type="datetime-local" value={sealPeriodStart} onChange={(e) => setSealPeriodStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="seal-end" className="text-xs">Period End</Label>
+                <Input id="seal-end" type="datetime-local" value={sealPeriodEnd} onChange={(e) => setSealPeriodEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="seal-cp-from" className="text-xs">Checkpoint ID From</Label>
+                <Input id="seal-cp-from" type="number" placeholder="optional" value={sealCheckpointFrom} onChange={(e) => setSealCheckpointFrom(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="seal-cp-to" className="text-xs">Checkpoint ID To</Label>
+                <Input id="seal-cp-to" type="number" placeholder="optional" value={sealCheckpointTo} onChange={(e) => setSealCheckpointTo(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="seal-just">Justification *</Label>
+              <Input id="seal-just" placeholder="Monthly rotation — backing up to cold storage" value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length === 0}>
+                {sealMutation.isPending ? 'Sealing…' : 'Seal Archive'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+
+      {/* ── Gap Declaration Dialog ── */}
+      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title="Declare Gap" size="lg">
+        {gapResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">Gap declared successfully</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair label="Gap period" value={`${gapResult.gapStart ?? '—'} → ${gapResult.gapEnd ?? '—'}`} />
+              <InfoPair label="Gap checkpoint" value={String(gapResult.gapCheckpointId ?? '—')} />
+              <InfoPair label="Gap HMAC" value={gapResult.gapChainHmac ?? '—'} mono />
+              <InfoPair label="Audit log ID" value={String(gapResult.auditLogId ?? '—')} />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setGapOpen(false)}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => { e.preventDefault(); gapMutation.mutate(); }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">
+              Declare a gap when the system was offline longer than the scheduler lookback window (default 60 min).
+              Must be called before the scheduler creates regular checkpoints for the gap period.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="gap-start" className="text-xs">Gap Start</Label>
+                <Input id="gap-start" type="datetime-local" value={gapStart} onChange={(e) => setGapStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="gap-end" className="text-xs">Gap End</Label>
+                <Input id="gap-end" type="datetime-local" value={gapEnd} onChange={(e) => setGapEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="gap-anchor" className="text-xs">Anchor Checkpoint ID</Label>
+              <Input id="gap-anchor" type="number" placeholder="optional — last checkpoint before outage" value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="gap-just">Justification *</Label>
+              <Input id="gap-just" placeholder="Planned maintenance window — DB migration" value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length === 0}>
+                {gapMutation.isPending ? 'Declaring…' : 'Declare Gap'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+    </div>
+  );
+}
+
+function Stat({ label, value, ok, bad }: { label: string; value?: number; ok?: boolean; bad?: boolean }) {
+  const color = bad && value ? 'text-error font-bold' : ok ? 'text-success' : 'text-fg';
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{label}</p>
+      <p className={`font-mono font-bold ${color}`}>{value ?? 0}</p>
+    </div>
+  );
+}
+
+function InfoPair({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted shrink-0">{label}</dt>
+      <dd className={`text-sm break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function AuditLogsPage() {
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [eventStatusFilter, setEventStatusFilter] = useState('');
+  const [apiNameFilter, setApiNameFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [selectedLog, setSelectedLog] = useState<AuditLogResponseDto | null>(null);
+
+  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuditLogResponseDto>({
+    queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateFrom, dateTo],
+    queryFn: ({ page, size, sort }) => {
+      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
+      if (eventTypeFilter) p.set('eventType', eventTypeFilter);
+      if (eventStatusFilter) p.set('eventStatus', eventStatusFilter);
+      if (apiNameFilter) p.set('apiName', apiNameFilter);
+      if (dateFrom) p.set('createdAfter', new Date(dateFrom).toISOString());
+      if (dateTo) p.set('createdBefore', new Date(dateTo + 'T23:59:59').toISOString());
+      return api.get<PageResponse<AuditLogResponseDto>>(`/api/v1/audit-logs?${p.toString()}`);
+    },
+  });
+
+  const columns: ColumnDef<AuditLogResponseDto>[] = [
+    { header: 'ID', key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
+    {
+      header: 'Event',
+      key: 'eventType',
+      sortKey: 'eventType',
+      render: (r) => (
+        <span className="font-mono text-xs">{formatEventType(r.eventType ?? '')}</span>
+      ),
+    },
+    { header: 'Status', key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
+    {
+      header: 'API',
+      key: 'apiName',
+      render: (r) => r.apiName
+        ? <Badge variant="muted">{r.apiName.replace('_API', '')}</Badge>
+        : <span className="text-fg-muted">—</span>,
+    },
+    {
+      header: 'Admin',
+      key: 'adminId',
+      render: (r) => r.adminId ? <span className="font-mono text-xs">#{r.adminId}</span> : <span className="text-fg-muted">—</span>,
+    },
+    {
+      header: 'HMAC',
+      key: 'entryHmac',
+      render: (r) =>
+          r.entryHmac ? (
+            <ShieldCheck className="size-3.5 text-success" />
+          ) : (
+          <span className="text-fg-muted text-xs">—</span>
+        ),
+    },
+    { header: 'Time', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt ?? '')}</span> },
+    {
+      header: '',
+      key: 'detail',
+      render: (r) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="p-1"
+          onClick={(e) => { e.stopPropagation(); setSelectedLog(r); }}
+          title="View details"
+        >
+          <Info className="size-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <AppShell title="Audit Logs">
+      <div className="space-y-4">
+
+        {/* Filter bar */}
+        <div className="flex gap-3 items-center flex-wrap">
+          <div className="w-52">
+            <Select value={eventTypeFilter} onChange={(e) => setEventTypeFilter(e.target.value)}>
+              <option value="">All Event Types</option>
+              {EVENT_TYPES.map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-32">
+            <Select value={eventStatusFilter} onChange={(e) => setEventStatusFilter(e.target.value)}>
+              <option value="">All Status</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILURE">Failure</option>
+              <option value="ERROR">Error</option>
+            </Select>
+          </div>
+          <div className="w-36">
+            <Select value={apiNameFilter} onChange={(e) => setApiNameFilter(e.target.value)}>
+              <option value="">All APIs</option>
+              <option value="ADMIN_API">Admin API</option>
+              <option value="AUTH_API">Auth API</option>
+              <option value="M2M_API">M2M API</option>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">From</Label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">To</Label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
+            <ShieldCheck className="size-3.5" />
+            Refresh
+          </Button>
+        </div>
+
+        <p className="text-xs text-fg-muted italic">
+          Read-only · Tenant-scoped · <span className="inline-flex items-center gap-1"><ShieldCheck className="size-3 text-success inline" /> HMAC</span> = tamper-evident chain intact for that entry.
+        </p>
+
+        <div>
+          <DataTable
+            columns={columns}
+            data={data}
+            isLoading={isLoading}
+            onRowClick={(row) => setSelectedLog(row)}
+            keyExtractor={(r, i) => r.auditLogId ?? i}
+            emptyMessage="No audit log entries found for the selected filters."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalElements={pagination.totalElements}
+            isFirst={pagination.isFirst}
+            isLast={pagination.isLast}
+            onPrevPage={pagination.prevPage}
+            onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </div>
+      </div>
+
+      {/* Integrity panel — visible only for GLOBAL_ADMIN */}
+      {isGlobalAdmin && <IntegrityPanel />}
+
+      <AuditLogDetailDialog log={selectedLog} onClose={() => setSelectedLog(null)} />
+    </AppShell>
+  );
+}

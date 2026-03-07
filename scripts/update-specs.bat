@@ -156,6 +156,7 @@ if "%API_NAME%"=="admin-api" (
     echo [INFO] Updating admin-api links...
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-demo-app-acme\openapi-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-sdk\admin-api-spec.json"
+    call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-admin-ui\openapi-spec.json"
 ) else if "%API_NAME%"=="auth-api" (
     echo [INFO] Updating auth-api links...
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-demo-device\openapi-spec.json"
