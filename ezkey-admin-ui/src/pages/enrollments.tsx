@@ -1,8 +1,8 @@
-﻿import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus, QrCode, RefreshCw, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
@@ -19,11 +19,17 @@ import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { EnrollmentCreateRequestDto } from '@/generated/admin-api/model';
 import type { EnrollmentResponseDto } from '@/generated/admin-api/model';
 import type { PageResponse } from '@/hooks/use-paginated-query';
+
+/** API create response: only enrollmentId and enrollmentChallenge. */
+type EnrollmentCreateResponseDto = {
+  enrollmentId: number;
+  enrollmentChallenge?: number | null;
+};
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -48,9 +54,12 @@ function EnrollmentCreateDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
-  const [createdEnrollment, setCreatedEnrollment] = useState<EnrollmentResponseDto | null>(null);
-  const [tokenCopied, setTokenCopied] = useState(false);
+  const [createdEnrollment, setCreatedEnrollment] = useState<EnrollmentCreateResponseDto | null>(null);
+  const [createdEnrollmentName, setCreatedEnrollmentName] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const {
     register,
@@ -66,18 +75,22 @@ function EnrollmentCreateDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: EnrollmentCreateRequestDto) => api.post<EnrollmentResponseDto>('/api/v1/enrollments', data),
-    onSuccess: (enrollment) => {
+    mutationFn: (data: EnrollmentCreateRequestDto) => api.post<EnrollmentCreateResponseDto>('/api/v1/enrollments', data),
+    onSuccess: (enrollment, variables) => {
       setCreatedEnrollment(enrollment);
+      setCreatedEnrollmentName(variables?.name ?? null);
       void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       void queryClient.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 
   const handleClose = () => {
+    if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
     reset();
     setCreatedEnrollment(null);
-    setTokenCopied(false);
+    setCreatedEnrollmentName(null);
+    setQrCodeUrl(null);
+    setQrLoading(false);
     createMutation.reset();
     onClose();
   };
@@ -92,43 +105,65 @@ function EnrollmentCreateDialog({
     });
   };
 
-  const handleCopyToken = async () => {
-    if (!createdEnrollment?.enrollmentProofToken) return;
+  // Revoke blob URL on unmount or when QR is hidden
+  useEffect(() => {
+    return () => {
+      if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
+    };
+  }, [qrCodeUrl]);
+
+  const handleToggleQr = async () => {
+    if (!createdEnrollment) return;
+    if (qrCodeUrl) {
+      URL.revokeObjectURL(qrCodeUrl);
+      setQrCodeUrl(null);
+      return;
+    }
+    setQrLoading(true);
     try {
-      await navigator.clipboard.writeText(createdEnrollment.enrollmentProofToken);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
+      const url = await fetchBlobUrl(`/api/v1/enrollments/${createdEnrollment.enrollmentId}/qrcode`);
+      setQrCodeUrl(url);
     } catch {
-      // ignore clipboard API errors
+      // QR load failed — silently ignore, user can retry
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleViewEnrollment = () => {
+    if (createdEnrollment) {
+      navigate(`/enrollments/${createdEnrollment.enrollmentId}`);
+      handleClose();
     }
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="New Enrollment" size="md">
+    <Dialog open={open} onClose={handleClose} title="New Enrollment" size="md" dismissible={false}>
       {createdEnrollment ? (
-        /* ── Success state: show token ───────────────────── */
+        /* ── Success state: QR on demand + challenge ───────── */
         <div className="space-y-4">
           <Alert variant="success">
-            Enrollment <strong>{createdEnrollment.enrollmentName}</strong> created successfully.
+            Enrollment <strong>{createdEnrollmentName ?? 'created'}</strong> created successfully.
           </Alert>
 
-          <div className="space-y-1">
+          <div className="space-y-3">
             <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
-              Share this token with the user to set up their device.
+              User can scan the QR code below to set up their device.
             </p>
-            <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-              {createdEnrollment.enrollmentProofToken ?? '(token not available)'}
-            </div>
-            {createdEnrollment.enrollmentProofToken && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleCopyToken}
-                className="gap-1.5"
-              >
-                {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                {tokenCopied ? 'Copied!' : 'Copy Token'}
-              </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              isLoading={qrLoading}
+              onClick={handleToggleQr}
+              className="gap-1.5"
+            >
+              <QrCode className="size-3.5" />
+              {qrCodeUrl ? 'Hide QR Code' : 'Show QR Code'}
+            </Button>
+            {qrCodeUrl && (
+              <div className="border-2 border-fg p-3 inline-block">
+                <img src={qrCodeUrl} alt="Enrollment QR Code" className="size-48" />
+              </div>
             )}
           </div>
 
@@ -143,7 +178,10 @@ function EnrollmentCreateDialog({
             </div>
           )}
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={handleViewEnrollment}>
+              View enrollment
+            </Button>
             <Button onClick={handleClose}>Done</Button>
           </div>
         </div>

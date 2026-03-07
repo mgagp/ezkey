@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ApiError, api } from '@/lib/api-client';
+import { getCountryOptionsGrouped } from '@/lib/countries';
+import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
 import type { TenantCreateRequestDto, TenantResponseDto } from '@/generated/admin-api/model';
 
@@ -49,6 +51,8 @@ type CreateFormValues = z.infer<typeof createSchema>;
 function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const countryGrouped = getCountryOptionsGrouped();
+  const timezoneGrouped = getTimeZoneOptionsGrouped();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
   });
@@ -84,7 +88,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Create Tenant" size="lg">
+    <Dialog open={open} onClose={handleClose} title="Create Tenant" size="lg" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Row 1 */}
         <div>
@@ -111,12 +115,46 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         {/* Row 3 — Location */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="t-country">Country Code</Label>
-            <Input id="t-country" placeholder="US" maxLength={2} error={errors.countryCode?.message} {...register('countryCode')} />
+            <Label htmlFor="t-country">Country</Label>
+            <Select id="t-country" error={errors.countryCode?.message} {...register('countryCode')}>
+              <option value="">—</option>
+              <optgroup label="North America">
+                {countryGrouped.quickNorthAmerica.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Europe (France &amp; nearby)">
+                {countryGrouped.quickEurope.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+              <optgroup label="All countries">
+                {countryGrouped.all.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+            </Select>
           </div>
           <div>
             <Label htmlFor="t-tz">Timezone</Label>
-            <Input id="t-tz" placeholder="America/New_York" {...register('timezone')} />
+            <Select id="t-tz" {...register('timezone')}>
+              <option value="">—</option>
+              <optgroup label="North America">
+                {timezoneGrouped.quickNorthAmerica.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Europe (France &amp; nearby)">
+                {timezoneGrouped.quickEurope.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+              <optgroup label="All time zones">
+                {timezoneGrouped.all.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+            </Select>
           </div>
         </div>
 

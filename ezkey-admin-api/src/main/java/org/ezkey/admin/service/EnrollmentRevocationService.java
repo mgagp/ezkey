@@ -613,9 +613,32 @@ public class EnrollmentRevocationService {
             ownerAdmin -> {
               if (ownerAdmin.getAdminId().equals(principal.adminId())) {
                 throw new SelfRevocationNotAllowedException(
-                    "Cannot revoke or deactivate your own MFA enrollment."
-                        + " Use the recovery flow to reset it:"
-                        + " POST /api/v1/admin/enrollments/reset");
+                    "Cannot revoke or deactivate your own MFA enrollment. Use the recovery flow to"
+                        + " reset it.");
+              }
+            });
+  }
+
+  /**
+   * Asserts that the calling administrator is not attempting to delete their own MFA enrollment.
+   *
+   * <p>Same guard as {@link #assertNotSelfRevocation} but for the delete operation, with a
+   * delete-specific message. Call this before performing enrollment deletion so that the API
+   * returns RFC 9457 instead of a database constraint violation.
+   *
+   * @param principal the admin principal performing the operation
+   * @param enrollmentId the target enrollment ID to delete
+   * @throws SelfRevocationNotAllowedException if the enrollment is the calling admin's MFA
+   *     enrollment
+   */
+  public void assertNotSelfDeletion(AdminPrincipal principal, Integer enrollmentId) {
+    adminRepository
+        .findByMfaEnrollmentEnrollmentId(enrollmentId)
+        .ifPresent(
+            ownerAdmin -> {
+              if (ownerAdmin.getAdminId().equals(principal.adminId())) {
+                throw new SelfRevocationNotAllowedException(
+                    "Cannot delete your own MFA enrollment. Use the recovery flow to reset it.");
               }
             });
   }

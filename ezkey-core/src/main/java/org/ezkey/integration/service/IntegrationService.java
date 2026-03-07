@@ -201,15 +201,14 @@ public class IntegrationService {
     // Determine tenant based on admin type
     Tenant tenant;
     if (createdByAdmin.getAdminType() == AdminType.GLOBAL_ADMIN) {
-      // Global admins create integrations in the system tenant
+      // Global admins create integrations in the system tenant (identified by is_system_tenant)
       tenant =
           tenantRepository
-              .findByTenantName("Ezkey System")
+              .findByIsSystemTenantTrue()
               .orElseThrow(
                   () ->
                       new IllegalStateException(
-                          "System tenant 'Ezkey System' not found. Database may not be properly"
-                              + " initialized."));
+                          "System tenant not found. Database may not be properly initialized."));
       logger.debug("Associating integration with system tenant: {}", tenant.getTenantName());
     } else if (createdByAdmin.getAdminType() == AdminType.TENANT_ADMIN) {
       // Tenant admins create integrations in their own tenant

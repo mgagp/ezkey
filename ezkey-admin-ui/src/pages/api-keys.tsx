@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
@@ -135,7 +135,7 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="New API Key" size="md">
+    <Dialog open={open} onClose={handleClose} title="New API Key" size="md" dismissible={false}>
       {createdKey ? (
         /* ── Secret key — SHOWN ONCE ────────────────────── */
         <div className="space-y-4">

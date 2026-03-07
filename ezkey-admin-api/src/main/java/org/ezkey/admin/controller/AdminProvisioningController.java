@@ -47,6 +47,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -105,6 +106,29 @@ public class AdminProvisioningController {
   }
 
   /**
+   * Builds an RFC 9457 Problem Detail response for bad request (400).
+   *
+   * @param request the HTTP request (for path)
+   * @param detail human-readable detail message
+   * @param typeSuffix suffix for type URI (e.g. "missing-tenant-id")
+   * @param title short title (e.g. "Invalid Request")
+   * @return ResponseEntity with status 400 and ProblemDetail body
+   */
+  private static ResponseEntity<ProblemDetail> badRequest(
+      HttpServletRequest request, String detail, String typeSuffix, String title) {
+    return badRequest(request.getRequestURI(), detail, typeSuffix, title);
+  }
+
+  private static ResponseEntity<ProblemDetail> badRequest(
+      String path, String detail, String typeSuffix, String title) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    problem.setType(URI.create("https://ezkey.io/problems/admin-provisioning/" + typeSuffix));
+    problem.setTitle(title);
+    problem.setProperty("path", path);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  /**
    * Creates a new global administrator (peer admin).
    *
    * <p>Only global administrators can create other global administrators. The operation enforces
@@ -127,7 +151,7 @@ public class AdminProvisioningController {
         description = "Invalid request, limit exceeded, or username exists"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
-  public ResponseEntity<AdminProvisioningResponseDto> createGlobalAdmin(
+  public ResponseEntity<?> createGlobalAdmin(
       @Valid @RequestBody AdminCreateRequestDto request,
       Authentication auth,
       HttpServletRequest httpRequest) {
@@ -139,13 +163,25 @@ public class AdminProvisioningController {
 
     // Validate required fields for global admin (SOC 2 compliance)
     if (request.email() == null || request.email().isBlank()) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          "Email is required for global administrator creation.",
+          "missing-email",
+          "Invalid Request");
     }
     if (request.firstName() == null || request.firstName().isBlank()) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          "First name is required for global administrator creation.",
+          "missing-first-name",
+          "Invalid Request");
     }
     if (request.lastName() == null || request.lastName().isBlank()) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          "Last name is required for global administrator creation.",
+          "missing-last-name",
+          "Invalid Request");
     }
 
     try {
@@ -230,7 +266,7 @@ public class AdminProvisioningController {
         description =
             "Forbidden - not authorized or tenant admin trying to create for different tenant")
   })
-  public ResponseEntity<AdminProvisioningResponseDto> createTenantAdmin(
+  public ResponseEntity<?> createTenantAdmin(
       @Valid @RequestBody AdminCreateRequestDto request,
       Authentication auth,
       HttpServletRequest httpRequest) {
@@ -248,7 +284,12 @@ public class AdminProvisioningController {
       effectiveTenantId = principal.tenantId();
     }
     if (effectiveTenantId == null) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          "Tenant ID is required for tenant administrator creation. Global admins must supply"
+              + " tenantId in the request body.",
+          "missing-tenant-id",
+          "Invalid Request");
     }
 
     try {
@@ -582,9 +623,10 @@ public class AdminProvisioningController {
     @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
     @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found")
   })
-  public ResponseEntity<AdminOnboardingResponseDto> getAdminOnboarding(
+  public ResponseEntity<?> getAdminOnboarding(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
-      Authentication auth) {
+      Authentication auth,
+      HttpServletRequest httpRequest) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -604,7 +646,11 @@ public class AdminProvisioningController {
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          e.getMessage() != null ? e.getMessage() : "Invalid request.",
+          "invalid-request",
+          "Invalid Request");
     }
   }
 
@@ -646,9 +692,10 @@ public class AdminProvisioningController {
     @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
     @ApiResponse(responseCode = "404", description = "Administrator or enrollment not found")
   })
-  public ResponseEntity<byte[]> getAdminOnboardingQrCode(
+  public ResponseEntity<?> getAdminOnboardingQrCode(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
-      Authentication auth) {
+      Authentication auth,
+      HttpServletRequest httpRequest) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -659,7 +706,11 @@ public class AdminProvisioningController {
 
       // Validate enrollment has proof token
       if (result.enrollmentProofToken() == null || result.enrollmentProofToken().isEmpty()) {
-        return ResponseEntity.badRequest().build();
+        return badRequest(
+            httpRequest,
+            "Enrollment proof token is not available for this administrator.",
+            "missing-proof-token",
+            "Invalid Request");
       }
 
       // Compose JSON payload with optional authUrl
@@ -679,7 +730,11 @@ public class AdminProvisioningController {
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      return badRequest(
+          httpRequest,
+          e.getMessage() != null ? e.getMessage() : "Invalid request.",
+          "invalid-request",
+          "Invalid Request");
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }

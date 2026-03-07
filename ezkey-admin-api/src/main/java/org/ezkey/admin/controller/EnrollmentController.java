@@ -22,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
+import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
@@ -34,6 +35,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -116,6 +118,7 @@ public class EnrollmentController {
   private final IntegrationRepository integrationRepository;
   private final EnrollmentRevocationService enrollmentRevocationService;
   private final EnrollmentUpdateService enrollmentUpdateService;
+  private final AuthAttemptRepository authAttemptRepository;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -130,6 +133,7 @@ public class EnrollmentController {
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param enrollmentRevocationService the service for enrollment revocation lifecycle
    * @param enrollmentUpdateService the service for enrollment metadata partial updates
+   * @param authAttemptRepository the repository to check for auth attempts before enrollment delete
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -141,7 +145,8 @@ public class EnrollmentController {
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
       EnrollmentRevocationService enrollmentRevocationService,
-      EnrollmentUpdateService enrollmentUpdateService) {
+      EnrollmentUpdateService enrollmentUpdateService,
+      AuthAttemptRepository authAttemptRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
@@ -152,6 +157,7 @@ public class EnrollmentController {
     this.integrationRepository = integrationRepository;
     this.enrollmentRevocationService = enrollmentRevocationService;
     this.enrollmentUpdateService = enrollmentUpdateService;
+    this.authAttemptRepository = authAttemptRepository;
   }
 
   /**
@@ -271,7 +277,12 @@ public class EnrollmentController {
       }
 
       var enrollment = enrollmentService.getById(id);
-      EnrollmentResponseDto response = enrollmentMapper.toResponse(enrollment);
+      var integration =
+          enrollment.getIntegrationId() != null
+              ? integrationRepository.findById(enrollment.getIntegrationId())
+              : java.util.Optional.<Integration>empty();
+      EnrollmentResponseDto response =
+          enrollmentMapper.toResponseWithIntegration(enrollment, integration.orElse(null));
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
@@ -589,7 +600,13 @@ public class EnrollmentController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "204", description = "Enrollment deleted successfully"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Cannot delete your own MFA enrollment (RFC 9457)"),
         @ApiResponse(responseCode = "404", description = "Enrollment not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Enrollment has authentication history; revoke instead (RFC 9457)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -617,6 +634,14 @@ public class EnrollmentController {
       // Get enrollment details after access validation
       var enrollment = enrollmentService.getById(id);
       Integer deleteTenantId = resolveTenantId(enrollment.getIntegrationId());
+
+      // Business guards: return RFC 9457 instead of DB constraint violation
+      enrollmentRevocationService.assertNotSelfDeletion(principal, id);
+      if (authAttemptRepository.existsByEnrollmentId(id)) {
+        throw new EnrollmentCannotBeDeletedException(
+            "Enrollment cannot be deleted because it has authentication history. Revoke the"
+                + " enrollment instead.");
+      }
 
       // Create audit log BEFORE deletion to avoid foreign key constraint violation
       auditLogService.log(

@@ -18,6 +18,7 @@ import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
@@ -236,6 +237,43 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       assertThat(verifyResponse.getStatusCode()).isEqualTo(400);
       assertThat(verifyResponse.jsonPath().getString("message"))
           .contains("Invalid challenge response");
+
+      // Assert audit log contains enrollment_verify_failed for this enrollment
+      configureForAdminApi(dockerStackConfig);
+      Response auditResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("eventType", "ENROLLMENT_VERIFY")
+              .queryParam("eventStatus", "FAILURE")
+              .queryParam("enrollmentId", enrollmentId)
+              .queryParam("page", 0)
+              .queryParam("size", 100)
+              .queryParam("sort", "createdAt,DESC")
+              .when()
+              .get("/audit-logs")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      List<Map<String, Object>> auditContent = auditResponse.jsonPath().getList("content");
+      assertThat(auditContent)
+          .as(
+              "Audit log should contain enrollment_verify_failed entry for enrollment %s",
+              enrollmentId)
+          .isNotEmpty();
+      boolean hasVerifyFailed =
+          auditContent.stream()
+              .anyMatch(
+                  e ->
+                      "enrollment_verify_failed".equals(e.get("eventAction"))
+                          && enrollmentId.equals(e.get("enrollmentId")));
+      assertThat(hasVerifyFailed)
+          .as(
+              "At least one audit entry must have eventAction=enrollment_verify_failed and"
+                  + " enrollmentId=%s",
+              enrollmentId)
+          .isTrue();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

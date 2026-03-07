@@ -388,9 +388,25 @@ public class EnrollmentController {
 
       throw e;
     } catch (IllegalArgumentException e) {
-      // Re-throw so GlobalExceptionHandler returns 400 (e.g. enrollment expired, invalid args).
-      // Service layer already emitted ENROLLMENT_EXPIRED when applicable; avoid audit here to
-      // prevent 500 from audit in rollback-only transaction.
+      // Log verification failure (invalid challenge, invalid signature, duplicate device key,
+      // etc.).
+      // AuditLogService.log() uses REQUIRES_NEW so the audit commits independently; the service
+      // already emits ENROLLMENT_EXPIRED for expired enrollments, and having both that and
+      // enrollment_verify_failed for the same request is acceptable for traceability.
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ENROLLMENT_VERIFY)
+              .eventAction("enrollment_verify_failed")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.AUTH_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .enrollmentId(req.enrollmentId())
+              .integrationId(resolveIntegrationId(req.enrollmentId()))
+              .tenantId(verifyTenantId)
+              .errorMessage(e.getMessage())
+              .build());
+
       throw e;
     } catch (Exception e) {
       auditLogService.log(

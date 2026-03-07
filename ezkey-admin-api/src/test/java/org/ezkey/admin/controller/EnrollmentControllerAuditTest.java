@@ -34,6 +34,7 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -87,6 +88,8 @@ class EnrollmentControllerAuditTest {
 
   @Mock private EnrollmentUpdateService enrollmentUpdateService;
 
+  @Mock private AuthAttemptRepository authAttemptRepository;
+
   @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
@@ -138,7 +141,8 @@ class EnrollmentControllerAuditTest {
             enrollmentRepository,
             integrationRepository,
             enrollmentRevocationService,
-            enrollmentUpdateService);
+            enrollmentUpdateService,
+            authAttemptRepository);
   }
 
   @Test

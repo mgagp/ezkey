@@ -61,7 +61,8 @@ class IntegrationResponseDtoTest {
             TEST_ACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.code()).isEqualTo(TEST_CODE);
@@ -70,6 +71,7 @@ class IntegrationResponseDtoTest {
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.name()).isEqualTo(TEST_NAME);
     assertThat(dto.description()).isEqualTo(TEST_DESCRIPTION);
+    assertThat(dto.isSystemIntegration()).isNull();
   }
 
   @Test
@@ -77,7 +79,7 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithNullNameAndDescription() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, TEST_CREATED_AT, null, null);
+            TEST_ID, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, TEST_CREATED_AT, null, null, null);
 
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.name()).isNull();
@@ -89,7 +91,14 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithNullDescription() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, TEST_CREATED_AT, TEST_NAME, null);
+            TEST_ID,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            TEST_CREATED_AT,
+            TEST_NAME,
+            null,
+            null);
 
     assertThat(dto.name()).isEqualTo(TEST_NAME);
     assertThat(dto.description()).isNull();
@@ -106,7 +115,8 @@ class IntegrationResponseDtoTest {
             false,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dto.active()).isFalse();
   }
@@ -122,7 +132,8 @@ class IntegrationResponseDtoTest {
             TEST_ACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
     IntegrationResponseDto dto2 =
         new IntegrationResponseDto(
             TEST_ID,
@@ -131,7 +142,8 @@ class IntegrationResponseDtoTest {
             TEST_ACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
     IntegrationResponseDto dto3 =
         new IntegrationResponseDto(
             2,
@@ -140,7 +152,8 @@ class IntegrationResponseDtoTest {
             TEST_ACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dto1).isEqualTo(dto2);
     assertThat(dto1).isNotEqualTo(dto3);
@@ -158,7 +171,8 @@ class IntegrationResponseDtoTest {
             TEST_ACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
-            TEST_DESCRIPTION);
+            TEST_DESCRIPTION,
+            null);
 
     String toString = dto.toString();
 
@@ -174,13 +188,13 @@ class IntegrationResponseDtoTest {
 
     IntegrationResponseDto dtoUtc =
         new IntegrationResponseDto(
-            1, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, utcTime, TEST_NAME, TEST_DESCRIPTION);
+            1, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, utcTime, TEST_NAME, TEST_DESCRIPTION, null);
     IntegrationResponseDto dtoEst =
         new IntegrationResponseDto(
-            2, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, estTime, TEST_NAME, TEST_DESCRIPTION);
+            2, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, estTime, TEST_NAME, TEST_DESCRIPTION, null);
     IntegrationResponseDto dtoJst =
         new IntegrationResponseDto(
-            3, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, jstTime, TEST_NAME, TEST_DESCRIPTION);
+            3, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, jstTime, TEST_NAME, TEST_DESCRIPTION, null);
 
     assertThat(dtoUtc.createdAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(dtoEst.createdAt().getOffset()).isEqualTo(ZoneOffset.ofHours(-5));
@@ -201,7 +215,8 @@ class IntegrationResponseDtoTest {
               TEST_ACTIVE,
               TEST_CREATED_AT,
               TEST_NAME,
-              TEST_DESCRIPTION);
+              TEST_DESCRIPTION,
+              null);
       assertThat(dto.id()).isEqualTo(id);
     }
   }
@@ -211,7 +226,14 @@ class IntegrationResponseDtoTest {
   void shouldHandleNullCreatedAt() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, null, TEST_NAME, TEST_DESCRIPTION);
+            TEST_ID,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            null,
+            TEST_NAME,
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dto.createdAt()).isNull();
   }
@@ -221,7 +243,14 @@ class IntegrationResponseDtoTest {
   void shouldHandleNullActiveStatus() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_CODE, TEST_TENANT_ID, null, TEST_CREATED_AT, TEST_NAME, TEST_DESCRIPTION);
+            TEST_ID,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            null,
+            TEST_CREATED_AT,
+            TEST_NAME,
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dto.active()).isNull();
   }

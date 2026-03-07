@@ -91,7 +91,7 @@ class IntegrationServiceTest {
       Tenant systemTenant = createSystemTenant();
 
       when(mapper.toEntity(req)).thenReturn(mapped);
-      when(tenantRepository.findByTenantName("Ezkey System")).thenReturn(Optional.of(systemTenant));
+      when(tenantRepository.findByIsSystemTenantTrue()).thenReturn(Optional.of(systemTenant));
       when(repository.save(any(Integration.class))).thenReturn(saved);
       when(mapper.toCreateResponse(saved)).thenReturn(expectedResponse);
 
@@ -128,7 +128,7 @@ class IntegrationServiceTest {
       Tenant systemTenant = createSystemTenant();
 
       when(mapper.toEntity(req)).thenReturn(mapped);
-      when(tenantRepository.findByTenantName("Ezkey System")).thenReturn(Optional.of(systemTenant));
+      when(tenantRepository.findByIsSystemTenantTrue()).thenReturn(Optional.of(systemTenant));
       when(repository.save(any(Integration.class))).thenReturn(saved);
       when(mapper.toCreateResponse(saved)).thenReturn(expectedResponse);
 

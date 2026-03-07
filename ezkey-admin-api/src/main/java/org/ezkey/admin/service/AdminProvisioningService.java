@@ -246,10 +246,10 @@ public class AdminProvisioningService {
             .findById(creatorPrincipal.adminId())
             .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
 
-    // Get system tenant (global admins belong to system tenant)
+    // Get system tenant (global admins belong to system tenant; identified by is_system_tenant)
     Tenant systemTenant =
         tenantRepository
-            .findByTenantName("Ezkey System")
+            .findByIsSystemTenantTrue()
             .orElseThrow(() -> new RuntimeException("System tenant not found"));
 
     // Get system integration (for admin enrollment)

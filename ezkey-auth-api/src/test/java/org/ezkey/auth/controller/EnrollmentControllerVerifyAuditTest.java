@@ -160,6 +160,36 @@ class EnrollmentControllerVerifyAuditTest {
   }
 
   @Test
+  @DisplayName(
+      "verify() - Should log enrollment_verify_failed when service throws IllegalArgumentException")
+  void verify_WhenInvalidChallenge_ShouldLogEnrollmentVerifyFailed() {
+    // Arrange: service throws IllegalArgumentException (e.g. invalid challenge response)
+    when(enrollmentService.verify(verifyRequest))
+        .thenThrow(new IllegalArgumentException("Invalid challenge response"));
+    when(enrollmentRepository.findById(200)).thenReturn(Optional.of(attemptedEnrollment));
+
+    // Act
+    try {
+      enrollmentController.verify(requestDto, httpRequest);
+    } catch (IllegalArgumentException e) {
+      // Expected
+    }
+
+    // Assert: audit log written with enrollment_verify_failed
+    ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(auditLogCaptor.capture());
+
+    AuditLog auditLog = auditLogCaptor.getValue();
+    assertEquals(EventType.ENROLLMENT_VERIFY, auditLog.getEventType());
+    assertEquals(EventStatus.FAILURE, auditLog.getEventStatus());
+    assertEquals("enrollment_verify_failed", auditLog.getEventAction());
+    assertEquals(ApiName.AUTH_API, auditLog.getApiName());
+    assertEquals(Integer.valueOf(200), auditLog.getEnrollmentId());
+    assertNotNull(auditLog.getErrorMessage());
+    assertTrue(auditLog.getErrorMessage().contains("Invalid challenge response"));
+  }
+
+  @Test
   @DisplayName("verify() - Should log standard success audit when verification succeeds")
   void verify_WhenSucceeds_ShouldLogStandardSuccessAudit() {
     // Arrange

@@ -15,10 +15,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { ApiError, api } from '@/lib/api-client';
+import { getCountryOptionsGrouped } from '@/lib/countries';
+import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
 import type {
   AdminResponseDto,
@@ -68,6 +71,8 @@ function EditTenantDialog({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const countryGrouped = getCountryOptionsGrouped();
+  const timezoneGrouped = getTimeZoneOptionsGrouped();
   const { register, handleSubmit, formState: { errors } } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -107,7 +112,7 @@ function EditTenantDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title="Edit Tenant" size="lg">
+    <Dialog open={open} onClose={onClose} title="Edit Tenant" size="lg" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <Label htmlFor="e-name">Tenant Name</Label>
@@ -129,12 +134,46 @@ function EditTenantDialog({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="e-country">Country Code</Label>
-            <Input id="e-country" maxLength={2} error={errors.countryCode?.message} {...register('countryCode')} />
+            <Label htmlFor="e-country">Country</Label>
+            <Select id="e-country" error={errors.countryCode?.message} {...register('countryCode')}>
+              <option value="">—</option>
+              <optgroup label="North America">
+                {countryGrouped.quickNorthAmerica.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Europe (France &amp; nearby)">
+                {countryGrouped.quickEurope.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+              <optgroup label="All countries">
+                {countryGrouped.all.map(({ code, name }) => (
+                  <option key={code} value={code}>{name} ({code})</option>
+                ))}
+              </optgroup>
+            </Select>
           </div>
           <div>
             <Label htmlFor="e-tz">Timezone</Label>
-            <Input id="e-tz" {...register('timezone')} />
+            <Select id="e-tz" {...register('timezone')}>
+              <option value="">—</option>
+              <optgroup label="North America">
+                {timezoneGrouped.quickNorthAmerica.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Europe (France &amp; nearby)">
+                {timezoneGrouped.quickEurope.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+              <optgroup label="All time zones">
+                {timezoneGrouped.all.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </optgroup>
+            </Select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -347,15 +386,17 @@ export default function TenantDetailPage() {
                 <Card>
                   <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="w-full justify-start gap-2"
-                      onClick={() => setEditOpen(true)}
-                    >
-                      <Edit className="size-3.5" />
-                      Edit Tenant
-                    </Button>
+                    {!tenant.isSystemTenant && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full justify-start gap-2"
+                        onClick={() => setEditOpen(true)}
+                      >
+                        <Edit className="size-3.5" />
+                        Edit Tenant
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"

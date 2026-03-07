@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -452,7 +452,7 @@ function IntegrityPanel() {
       )}
 
       {/* ── Seal Archive Dialog ── */}
-      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title="Seal Archive" size="lg">
+      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title="Seal Archive" size="lg" dismissible={false}>
         {sealResult ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">
@@ -513,7 +513,7 @@ function IntegrityPanel() {
       </Dialog>
 
       {/* ── Gap Declaration Dialog ── */}
-      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title="Declare Gap" size="lg">
+      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title="Declare Gap" size="lg" dismissible={false}>
         {gapResult ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">

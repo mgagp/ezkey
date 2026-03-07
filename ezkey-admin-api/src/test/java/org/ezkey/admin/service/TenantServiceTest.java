@@ -388,6 +388,32 @@ class TenantServiceTest {
     }
 
     @Test
+    @DisplayName("Cannot update the system tenant")
+    void cannotUpdateSystemTenant() {
+      // Arrange
+      Tenant systemTenant = new Tenant();
+      systemTenant.setTenantId(1);
+      systemTenant.setTenantName("Ezkey System");
+      systemTenant.setActive(true);
+      systemTenant.setIsSystemTenant(true);
+      systemTenant.setCreatedAt(OffsetDateTime.now());
+
+      when(tenantRepository.findById(1)).thenReturn(Optional.of(systemTenant));
+
+      TenantUpdateRequestDto request =
+          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
+
+      // Act & Assert
+      TenantNotAllowedException exception =
+          assertThrows(
+              TenantNotAllowedException.class,
+              () -> tenantService.updateTenant(1, request, globalAdminPrincipal));
+
+      assertEquals("Cannot update the system tenant", exception.getMessage());
+      verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Update unknown tenant throws ResourceNotFoundException")
     void updateUnknownTenantThrows() {
       // Arrange

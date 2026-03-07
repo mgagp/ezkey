@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
+import { api, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import type { AuthAttemptCreateRequestDto } from '@/generated/admin-api/model';
 import type { AuthAttemptDto, AuthAttemptDtoAuthAttemptStatus, EnrollmentResponseDto } from '@/generated/admin-api/model';
@@ -152,7 +152,7 @@ function TestAuthDialog({
   const handleClose = () => { resetState(); onClose(); };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Test Authentication" size="md">
+    <Dialog open={open} onClose={handleClose} title="Test Authentication" size="md" dismissible={false}>
 
       {/* ── Step 1: Configure ── */}
       {step === 'configure' && (
@@ -181,9 +181,7 @@ function TestAuthDialog({
 
           {createMutation.isError && (
             <Alert variant="error">
-              {createMutation.error instanceof ApiError
-                ? createMutation.error.message
-                : 'Failed to create auth attempt.'}
+              {getApiErrorMessage(createMutation.error, 'Failed to create auth attempt.')}
             </Alert>
           )}
 
@@ -424,7 +422,15 @@ export default function EnrollmentDetailPage() {
       breadcrumb={[
         { label: 'Enrollments', path: '/enrollments' },
         ...(enrollment?.integrationId
-          ? [{ label: lookup.get(enrollment.integrationId) ?? `Integration #${enrollment.integrationId}`, path: `/integrations/${enrollment.integrationId}` }]
+          ? [{
+              label:
+                (enrollment as { integrationName?: string }).integrationName ??
+                lookup.get(enrollment.integrationId) ??
+                `Integration #${enrollment.integrationId}`,
+              ...((enrollment as { isSystemIntegration?: boolean }).isSystemIntegration
+                ? {}
+                : { path: `/integrations/${enrollment.integrationId}` }),
+            }]
           : []),
       ]}
     >
@@ -468,12 +474,22 @@ export default function EnrollmentDetailPage() {
                     </Badge>
                   </InfoRow>
                   <InfoRow label="Integration">
-                    <button
-                      className="font-mono text-sm text-accent hover:underline"
-                      onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
-                    >
-                      {lookup.get(enrollment.integrationId!) ?? `#${enrollment.integrationId ?? '?'}`}
-                    </button>
+                    {(enrollment as { isSystemIntegration?: boolean }).isSystemIntegration ? (
+                      <span className="font-medium">
+                        {(enrollment as { integrationName?: string }).integrationName ??
+                          lookup.get(enrollment.integrationId!) ??
+                          `#${enrollment.integrationId ?? '?'}`}
+                      </span>
+                    ) : (
+                      <button
+                        className="font-mono text-sm text-accent hover:underline"
+                        onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
+                      >
+                        {(enrollment as { integrationName?: string }).integrationName ??
+                          lookup.get(enrollment.integrationId!) ??
+                          `#${enrollment.integrationId ?? '?'}`}
+                      </button>
+                    )}
                   </InfoRow>
                   <InfoRow label="Challenge">
                     <Badge variant={enrollment.authAttemptChallengeRequired ? 'warning' : 'muted'}>
@@ -617,12 +633,12 @@ export default function EnrollmentDetailPage() {
                       )}
                       {deactivateMutation.isError && (
                         <Alert variant="error">
-                          {deactivateMutation.error instanceof ApiError ? deactivateMutation.error.message : 'Failed to deactivate.'}
+                          {getApiErrorMessage(deactivateMutation.error, 'Failed to deactivate.')}
                         </Alert>
                       )}
                       {reactivateMutation.isError && (
                         <Alert variant="error">
-                          {reactivateMutation.error instanceof ApiError ? reactivateMutation.error.message : 'Failed to reactivate.'}
+                          {getApiErrorMessage(reactivateMutation.error, 'Failed to reactivate.')}
                         </Alert>
                       )}
                     </div>
@@ -667,7 +683,7 @@ export default function EnrollmentDetailPage() {
                           </div>
                           {revokeMutation.isError && (
                             <Alert variant="error">
-                              {revokeMutation.error instanceof ApiError ? revokeMutation.error.message : 'Failed to revoke.'}
+                              {getApiErrorMessage(revokeMutation.error, 'Failed to revoke.')}
                             </Alert>
                           )}
                           <div className="flex gap-2">
@@ -719,9 +735,7 @@ export default function EnrollmentDetailPage() {
                       </p>
                       {deleteMutation.isError && (
                         <Alert variant="error">
-                          {deleteMutation.error instanceof ApiError
-                            ? deleteMutation.error.message
-                            : 'Failed to delete enrollment.'}
+                          {getApiErrorMessage(deleteMutation.error, 'Failed to delete enrollment.')}
                         </Alert>
                       )}
                       <div className="flex gap-2">

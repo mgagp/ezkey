@@ -65,6 +65,16 @@ public interface TenantRepository extends JpaRepository<Tenant, Integer> {
   Optional<Tenant> findByTenantNameAndActiveTrue(String tenantName);
 
   /**
+   * Finds the system tenant (the single tenant with {@code is_system_tenant = true}).
+   *
+   * <p>The system tenant represents the organization hosting this Ezkey instance and hosts global
+   * administrators. At most one tenant has this flag set (enforced by database unique index).
+   *
+   * @return Optional containing the system tenant if found, empty otherwise
+   */
+  Optional<Tenant> findByIsSystemTenantTrue();
+
+  /**
    * Finds all active tenants.
    *
    * <p>This method returns all tenants that are currently active in the system.

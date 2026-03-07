@@ -28,7 +28,7 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 ```
 src/
   lib/
-    api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses ProblemDetail
+    api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses RFC 9457 ProblemDetail, getApiErrorMessage()
     auth.ts             sessionStorage session management (AuthSession)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
@@ -52,6 +52,18 @@ src/
 ```
 
 ## Critical Patterns
+
+### Error display (RFC 9457)
+
+The Admin API returns errors as **RFC 9457 Problem Details** (`type`, `title`, `status`, `detail`, `path`). The client parses these and exposes them on `ApiError`. **Always** use `getApiErrorMessage(error, fallback)` when showing mutation/query errors (Alert or toast) so users see the API’s `detail` or `title` instead of a raw "HTTP 403".
+
+```tsx
+import { getApiErrorMessage } from '@/lib/api-client';
+
+{ mutation.isError && (
+  <Alert variant="error">{getApiErrorMessage(mutation.error, 'Operation failed.')}</Alert>
+)}
+```
 
 ### PageResponse<T> — Pattern B (nested `page` object)
 
@@ -154,6 +166,13 @@ prevents stale data from a previous user appearing on the next login.
 2. Wrap content in `<AppShell title="Screen Name">`
 3. Add a lazy route in `routes.tsx`
 4. Use `usePaginatedQuery` + `DataTable` + `Pagination` for list views
+
+### Dialog (modal) — dismissible
+
+The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (default `true`). When `dismissible={false}`, backdrop click and Escape do **not** close the dialog; only the close button (X) and explicit actions (Cancel, Submit, Done) do.
+
+- **Use `dismissible={false}`** for any dialog that contains a **form** (create/edit) or **critical state** (e.g. secret shown once, live test in progress). This prevents accidental data loss when the user clicks outside.
+- **Leave default** (`dismissible` unspecified) for read-only detail dialogs and simple confirmations (yes/no, no form fields).
 
 ## Docker Deployment
 

@@ -39,6 +39,8 @@ import java.time.OffsetDateTime;
  *     purposes, with timezone)
  * @param name Display name for the integration
  * @param description Optional description of the integration
+ * @param isSystemIntegration Whether this is the system integration (e.g. admin MFA); used by UI to
+ *     hide or adapt actions on the integration detail page
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.Integration
@@ -58,4 +60,9 @@ public record IntegrationResponseDto(
             example = "2025-01-15T10:30:00+01:00")
         OffsetDateTime createdAt,
     @Schema(description = "Display name for the integration", example = "Web Portal") String name,
-    @Schema(description = "Optional description of the integration") String description) {}
+    @Schema(description = "Optional description of the integration") String description,
+    @Schema(
+            description =
+                "Whether this is the system integration (e.g. admin MFA); used by UI to adapt"
+                    + " detail page")
+        Boolean isSystemIntegration) {}

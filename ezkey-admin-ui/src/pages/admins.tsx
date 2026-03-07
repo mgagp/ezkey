@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
-import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
+import { api, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import type { AdminCreateRequestDto } from '@/generated/admin-api/model';
 import type { AdminOnboardingResponseDto, AdminProvisioningResponseDto, AdminResponseDto } from '@/generated/admin-api/model';
@@ -180,9 +180,7 @@ function DeactivateAdminDialog({
 
           {deactivateMutation.isError && (
             <Alert variant="error">
-              {deactivateMutation.error instanceof ApiError
-                ? deactivateMutation.error.message
-                : 'Failed to deactivate admin.'}
+              {getApiErrorMessage(deactivateMutation.error, 'Failed to deactivate admin.')}
             </Alert>
           )}
 
@@ -237,7 +235,7 @@ function AdminDetailDialog({
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Activation failed', 'error'),
+    onError: (e) => toast(getApiErrorMessage(e, 'Activation failed'), 'error'),
   });
 
   const deactivateMutation = useMutation({
@@ -247,7 +245,7 @@ function AdminDetailDialog({
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Deactivation failed', 'error'),
+    onError: (e) => toast(getApiErrorMessage(e, 'Deactivation failed'), 'error'),
   });
 
   if (!adm) return null;
@@ -363,14 +361,14 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: AdminCreateRequestDto) => {
-      const endpoint = isGlobalType ? '/api/v1/admins/global' : '/api/v1/admins/tenant';
-      return api.post<AdminProvisioningResponseDto>(endpoint, data);
+    mutationFn: ({ body, isGlobal }: { body: AdminCreateRequestDto; isGlobal: boolean }) => {
+      const endpoint = isGlobal ? '/api/v1/admins/global' : '/api/v1/admins/tenant';
+      return api.post<AdminProvisioningResponseDto>(endpoint, body);
     },
-    onSuccess: (admin) => {
+    onSuccess: (admin, { isGlobal }) => {
       setCreatedAdmin(admin);
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      toast(`${isGlobalType ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
+      toast(`${isGlobal ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
     },
   });
 
@@ -384,15 +382,18 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
   const onSubmit = (values: AdminFormValues) => {
     createMutation.mutate({
-      username: values.username.trim(),
-      email: values.email || undefined,
-      firstName: values.firstName || undefined,
-      lastName: values.lastName || undefined,
+      body: {
+        username: values.username.trim(),
+        email: values.email || undefined,
+        firstName: values.firstName || undefined,
+        lastName: values.lastName || undefined,
+      },
+      isGlobal: isGlobalType,
     });
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title={isGlobalType ? 'New Global Admin' : 'New Tenant Admin'} size="md">
+    <Dialog open={open} onClose={handleClose} title={isGlobalType ? 'New Global Admin' : 'New Tenant Admin'} size="md" dismissible={false}>
       {createdAdmin ? (
         <div className="space-y-4">
           <Alert variant="success">
@@ -453,7 +454,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
           {createMutation.isError && (
             <Alert variant="error">
-              {createMutation.error instanceof ApiError ? createMutation.error.message : 'Failed to create admin.'}
+              {getApiErrorMessage(createMutation.error, 'Failed to create admin.')}
             </Alert>
           )}
 
@@ -579,7 +580,11 @@ export default function AdminsPage() {
           setOnboardingTarget({ id, username });
         }}
       />
-      <CreateAdminDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateAdminDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        defaultGlobal={isGlobalAdmin}
+      />
       <OnboardingDialog
         open={onboardingTarget !== null}
         onClose={() => setOnboardingTarget(null)}

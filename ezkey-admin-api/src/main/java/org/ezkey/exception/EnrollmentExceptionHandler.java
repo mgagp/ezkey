@@ -12,6 +12,7 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.springframework.core.annotation.Order;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p><b>Responsibility:</b> Intercepts exceptions thrown during enrollment revocation, deactivation
  * and reactivation operations and converts them into RFC 9457 ProblemDetail responses.
  *
- * <p><b>Exceptions Handled (3 total):</b>
+ * <p><b>Exceptions Handled (4 total):</b>
  *
  * <ul>
  *   <li><b>EnrollmentInactiveException (403):</b> Auth attempt rejected — enrollment is not active
@@ -37,6 +38,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *       their own MFA enrollment.
  *   <li><b>SystemIntegrationRevocationException (403):</b> Bulk revocation targeted a system
  *       integration, which is not permitted.
+ *   <li><b>EnrollmentCannotBeDeletedException (409):</b> Enrollment cannot be deleted because it
+ *       has authentication history; revoke instead.
  * </ul>
  *
  * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs).
@@ -61,6 +64,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @see EnrollmentInactiveException
  * @see SelfRevocationNotAllowedException
  * @see SystemIntegrationRevocationException
+ * @see EnrollmentCannotBeDeletedException
  */
 @RestControllerAdvice
 @Component
@@ -171,6 +175,41 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.FORBIDDEN,
         "https://ezkey.io/problems/enrollment/system-integration-revocation",
         "System Integration Revocation Not Allowed",
+        request);
+  }
+
+  /**
+   * Handles EnrollmentCannotBeDeletedException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when an enrollment has authentication history (or other dependent data) and cannot
+   * be physically deleted. The client should use revoke instead.
+   *
+   * <p><b>HTTP Status:</b> 409 Conflict
+   *
+   * <p><b>Example Response:</b>
+   *
+   * <pre>{@code
+   * {
+   *   "type": "https://ezkey.io/problems/enrollment/cannot-delete-with-history",
+   *   "title": "Enrollment Cannot Be Deleted",
+   *   "status": 409,
+   *   "detail": "Enrollment cannot be deleted because it has authentication history. Revoke the enrollment instead.",
+   *   "path": "/api/v1/enrollments/42"
+   * }
+   * }</pre>
+   *
+   * @param ex the EnrollmentCannotBeDeletedException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(EnrollmentCannotBeDeletedException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentCannotBeDeletedException(
+      EnrollmentCannotBeDeletedException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/enrollment/cannot-delete-with-history",
+        "Enrollment Cannot Be Deleted",
         request);
   }
 }

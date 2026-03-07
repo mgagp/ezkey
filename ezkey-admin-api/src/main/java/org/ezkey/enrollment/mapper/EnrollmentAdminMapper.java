@@ -17,6 +17,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
+import org.ezkey.integration.domain.entity.Integration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -79,7 +80,48 @@ public interface EnrollmentAdminMapper {
    */
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
+  @Mapping(target = "integrationName", ignore = true)
+  @Mapping(target = "isSystemIntegration", ignore = true)
   EnrollmentResponseDto toResponse(Enrollment entity);
+
+  /**
+   * Converts an Enrollment entity to an EnrollmentResponseDto with integration display fields
+   * populated from the given Integration (used for GET by ID to support breadcrumb and
+   * non-clickable system integration segment).
+   *
+   * @param entity the Enrollment entity to convert
+   * @param integration the Integration for this enrollment, or null (integrationName and
+   *     isSystemIntegration will be null)
+   * @return the corresponding EnrollmentResponseDto with optional integrationName and
+   *     isSystemIntegration set
+   */
+  default EnrollmentResponseDto toResponseWithIntegration(
+      Enrollment entity, Integration integration) {
+    EnrollmentResponseDto base = toResponse(entity);
+    String name = integration != null ? integration.getName() : null;
+    Boolean isSystem =
+        integration != null ? Boolean.TRUE.equals(integration.getIsSystemIntegration()) : null;
+    return new EnrollmentResponseDto(
+        base.enrollmentId(),
+        base.version(),
+        base.integrationId(),
+        base.enrollmentName(),
+        base.enrollmentStatus(),
+        base.enrollmentActive(),
+        base.enrollmentChallenge(),
+        base.enrollmentProofToken(),
+        base.authAttemptChallengeRequired(),
+        base.integrationPublicKey(),
+        base.devicePublicKey(),
+        base.verifiedAt(),
+        base.expiresAt(),
+        base.createdByAdminId(),
+        base.lastUsedAt(),
+        base.contactEmail(),
+        base.userIdentifier(),
+        name,
+        isSystem);
+  }
 
   /**
    * Converts a list of Enrollment entities to a list of EnrollmentResponseDto.

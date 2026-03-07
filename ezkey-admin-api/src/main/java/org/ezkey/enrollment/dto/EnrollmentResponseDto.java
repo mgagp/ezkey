@@ -79,6 +79,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param lastUsedAt When enrollment was last used for successful authentication
  * @param contactEmail Optional contact email for the end-user
  * @param userIdentifier Optional user identifier from the integrating application
+ * @param integrationName Display name for the enrollment's integration (e.g. "Ezkey System"); set
+ *     when enrichment is used (e.g. GET by ID)
+ * @param isSystemIntegration Whether this enrollment's integration is the system integration; set
+ *     when enrichment is used (e.g. GET by ID)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -129,4 +133,14 @@ public record EnrollmentResponseDto(
         java.time.OffsetDateTime lastUsedAt,
     @Schema(description = "Optional contact email for the end-user") String contactEmail,
     @Schema(description = "Optional user identifier from the integrating application")
-        String userIdentifier) {}
+        String userIdentifier,
+    @Schema(
+            description =
+                "Display name for the enrollment's integration (e.g. Ezkey System); populated on"
+                    + " GET by ID")
+        String integrationName,
+    @Schema(
+            description =
+                "Whether this enrollment's integration is the system integration; populated on GET"
+                    + " by ID")
+        Boolean isSystemIntegration) {}

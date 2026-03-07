@@ -99,7 +99,7 @@ function EditApiKeyDialog({
   const is409 = updateMutation.error instanceof ApiError && updateMutation.error.status === 409;
 
   return (
-    <Dialog open={open} onClose={onClose} title="Edit API Key" size="md">
+    <Dialog open={open} onClose={onClose} title="Edit API Key" size="md" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="edit-desc">

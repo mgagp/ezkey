@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedQuery } from '@/hooks/use-paginated-query';
 import { getIntegrationName } from '@/hooks/use-integrations';
-import { ApiError, api } from '@/lib/api-client';
+import { api, getApiErrorMessage } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { PageResponse } from '@/hooks/use-paginated-query';
 import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
@@ -133,6 +133,7 @@ export default function IntegrationDetailPage() {
   ];
 
   const name = integration ? getIntegrationName(integration) : '...';
+  const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
 
   return (
     <AppShell
@@ -140,6 +141,12 @@ export default function IntegrationDetailPage() {
       breadcrumb={[{ label: 'Integrations', path: '/integrations' }]}
     >
       <div className="space-y-6">
+
+        {integration && isSystemIntegration && (
+          <Alert variant="info">
+            This is the Ezkey system integration used for admin MFA. Admin enrollments are managed via the dedicated admin provisioning flow (Admins screen). Bulk actions and integration deletion are not available for this integration.
+          </Alert>
+        )}
 
         {/* Details */}
         {integration && (
@@ -198,13 +205,15 @@ export default function IntegrationDetailPage() {
             <h3 className="text-xs font-black uppercase tracking-widest text-fg-muted">
               Enrollments for this Integration
             </h3>
-            <Button
-              size="sm"
-              onClick={() => navigate(`/enrollments?integrationId=${integrationId}`)}
-            >
-              <Users className="size-3.5" />
-              New Enrollment
-            </Button>
+            {!isSystemIntegration && (
+              <Button
+                size="sm"
+                onClick={() => navigate(`/enrollments?integrationId=${integrationId}`)}
+              >
+                <Users className="size-3.5" />
+                New Enrollment
+              </Button>
+            )}
           </div>
           <DataTable
             columns={enrollmentColumns}
@@ -229,8 +238,8 @@ export default function IntegrationDetailPage() {
           />
         </div>
 
-        {/* Danger Zone */}
-        {integration && (
+        {/* Danger Zone — hidden for system integration */}
+        {integration && !isSystemIntegration && (
           <Card className="border-error">
             <CardHeader><CardTitle>Danger Zone</CardTitle></CardHeader>
             <CardContent>
@@ -285,7 +294,7 @@ export default function IntegrationDetailPage() {
               toast('All enrollments deactivated.');
               setDangerAction(null);
             })
-            .catch((e) => toast(e instanceof ApiError ? e.message : 'Failed.', 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -305,7 +314,7 @@ export default function IntegrationDetailPage() {
               toast('All enrollments reactivated.');
               setDangerAction(null);
             })
-            .catch((e) => toast(e instanceof ApiError ? e.message : 'Failed.', 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -325,7 +334,7 @@ export default function IntegrationDetailPage() {
               toast('All enrollments permanently revoked.', 'error');
               setDangerAction(null);
             })
-            .catch((e) => toast(e instanceof ApiError ? e.message : 'Failed.', 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -344,7 +353,7 @@ export default function IntegrationDetailPage() {
               toast('Integration deleted.');
               navigate('/integrations');
             })
-            .catch((e) => toast(e instanceof ApiError ? e.message : 'Failed to delete.', 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, 'Failed to delete.'), 'error'));
         }}
       />
     </AppShell>

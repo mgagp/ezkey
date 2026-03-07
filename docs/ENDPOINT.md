@@ -570,7 +570,7 @@ Returns a tenant by ID. GlobalAdmin can access any tenant; TenantAdmin only thei
 
 **PUT /api/v1/tenants/{id}**
 
-Partial update of tenant (name, description, organization fields, contact). Only non-null fields are applied. GlobalAdmin only. Blocked if tenant is inactive (returns 400 with RFC 9457 ProblemDetail).
+Partial update of tenant (name, description, organization fields, contact). Only non-null fields are applied. GlobalAdmin only. Blocked if tenant is inactive (returns 400 with RFC 9457 ProblemDetail). **The system tenant cannot be updated** (returns 400 with RFC 9457 ProblemDetail, type `tenant-not-allowed`).
 
 **Response (200 OK):** Updated tenant object.
 

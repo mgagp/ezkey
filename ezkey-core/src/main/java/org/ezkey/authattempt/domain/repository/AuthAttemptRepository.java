@@ -185,6 +185,17 @@ public interface AuthAttemptRepository
   List<AuthAttempt> findAllByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
   /**
+   * Returns whether any authentication attempt exists for the given enrollment.
+   *
+   * <p>Used to prevent enrollment deletion when authentication history exists (e.g. admin API
+   * returns RFC 9457 instead of a database constraint violation).
+   *
+   * @param enrollmentId the enrollment ID to check
+   * @return true if at least one auth attempt exists for this enrollment
+   */
+  boolean existsByEnrollmentId(Integer enrollmentId);
+
+  /**
    * Checks if a device proof token already exists in any authorization attempt using its hash.
    *
    * <p>This method is used to ensure device proof token uniqueness across all authorization

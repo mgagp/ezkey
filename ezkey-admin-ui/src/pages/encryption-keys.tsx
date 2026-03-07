@@ -308,7 +308,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Rotate Encryption Key" size="md">
+    <Dialog open={open} onClose={handleClose} title="Rotate Encryption Key" size="md" dismissible={false}>
       {result ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-success">

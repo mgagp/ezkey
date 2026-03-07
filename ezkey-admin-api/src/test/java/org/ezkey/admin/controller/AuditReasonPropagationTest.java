@@ -33,6 +33,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
@@ -97,6 +98,7 @@ class AuditReasonPropagationTest {
   @Mock private IntegrationRepository integrationRepository;
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
   @Mock private EnrollmentUpdateService enrollmentUpdateService;
+  @Mock private AuthAttemptRepository authAttemptRepository;
 
   // --- EncryptionKeyController mocks ---
 
@@ -210,7 +212,8 @@ class AuditReasonPropagationTest {
             enrollmentRepository,
             integrationRepository,
             enrollmentRevocationService,
-            enrollmentUpdateService);
+            enrollmentUpdateService,
+            authAttemptRepository);
 
     // Act
     controller.delete(42, "Decommissioned device returned", httpRequest);

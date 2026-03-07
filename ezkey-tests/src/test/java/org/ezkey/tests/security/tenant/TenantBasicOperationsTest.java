@@ -315,4 +315,48 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
 
     log.info("✅ Test 4 PASSED: Deactivate then activate succeeded");
   }
+
+  /**
+   * Test 5: System tenant cannot be updated (RFC 9457 ProblemDetail).
+   *
+   * <p>The system tenant (ID 1, isSystemTenant=true) is protected against updates. The API returns
+   * 400 Bad Request with RFC 9457 ProblemDetail.
+   */
+  @Test
+  @Order(5)
+  @DisplayName("Test 5: System tenant update blocked → 400 RFC 9457")
+  void test05_system_tenant_update_blocked() {
+    log.info("=== Test 5: System tenant update protection ===");
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("tenantDescription", "Should not be updated");
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .body(request)
+            .when()
+            .put("/tenants/1")
+            .then()
+            .extract()
+            .response();
+
+    log.info("Response status: {}", response.statusCode());
+    log.info("Response body: {}", response.asString());
+
+    assertThat(response.statusCode()).as("System tenant update should return 400").isEqualTo(400);
+
+    String type = response.jsonPath().getString("type");
+    assertThat(type)
+        .as("ProblemDetail type should indicate tenant-not-allowed")
+        .isEqualTo("https://ezkey.io/problems/authorization/tenant-not-allowed");
+
+    String detail = response.jsonPath().getString("detail");
+    assertThat(detail)
+        .as("ProblemDetail detail should mention system tenant")
+        .containsIgnoringCase("system tenant");
+
+    log.info("✅ Test 5 PASSED: System tenant update protected with RFC 9457 ProblemDetail");
+  }
 }

@@ -171,6 +171,7 @@ public class TenantService {
    * @param principal the admin performing the update
    * @return the updated tenant
    * @throws ResourceNotFoundException if tenant not found
+   * @throws TenantNotAllowedException if attempting to update the system tenant
    * @throws TenantInactiveException if tenant is inactive
    * @throws IllegalArgumentException if new name already exists
    */
@@ -182,6 +183,13 @@ public class TenantService {
         tenantRepository
             .findById(tenantId)
             .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId));
+
+    // Safety check: cannot update the system tenant
+    if (Boolean.TRUE.equals(tenant.getIsSystemTenant())) {
+      logger.warn(
+          "Admin {} attempted to update the system tenant (ID: {})", principal.adminId(), tenantId);
+      throw new TenantNotAllowedException("Cannot update the system tenant");
+    }
 
     // Optimistic lock check: when version provided, must match current
     if (request.version() != null && !request.version().equals(tenant.getVersion())) {

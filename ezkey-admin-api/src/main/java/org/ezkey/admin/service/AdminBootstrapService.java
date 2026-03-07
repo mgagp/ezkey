@@ -211,14 +211,11 @@ public class AdminBootstrapService {
   private Integration createSystemIntegration() {
     logger.info("🔧 Creating System Integration...");
 
-    // Get System Tenant
+    // Get System Tenant (identified by is_system_tenant flag, not by name)
     Tenant systemTenant =
         tenantRepository
-            .findByTenantName(organizationProperties.getName())
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "System tenant not found: " + organizationProperties.getName()));
+            .findByIsSystemTenantTrue()
+            .orElseThrow(() -> new RuntimeException("System tenant not found"));
 
     // Get Initial Global Admin (using configured username)
     EzkeyAdmin globalAdmin =

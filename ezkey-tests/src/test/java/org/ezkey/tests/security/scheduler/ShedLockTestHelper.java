@@ -297,8 +297,8 @@ public class ShedLockTestHelper {
   }
 
   /**
-   * Result of {@link #getActiveLocksWithDbNow()}: active locks and the database time used to
-   * filter them. Both come from a single query, ensuring lock_until and db_now are consistent.
+   * Result of {@link #getActiveLocksWithDbNow()}: active locks and the database time used to filter
+   * them. Both come from a single query, ensuring lock_until and db_now are consistent.
    *
    * @param locks active lock entries (where lock_until &gt; db_now at query time)
    * @param dbNow database NOW() at query time (null when no locks returned)

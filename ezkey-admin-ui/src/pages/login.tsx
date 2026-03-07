@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -171,15 +171,15 @@ export default function LoginPage() {
 
         {/* Brand header */}
         <div className="mb-8 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent mb-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sidebar-bg mb-2">
             EZKey
           </p>
-          <h1 className="text-3xl font-black text-fg tracking-tight">TENANT ADMIN</h1>
+          <h1 className="text-3xl font-black text-sidebar-bg tracking-tight">Admin Console</h1>
           <p className="text-sm text-fg-muted mt-1">Passwordless · Secure · Simple</p>
         </div>
 
         {/* Main card */}
-        <div className="bg-surface border-2 border-fg shadow-brutal-lg p-6">
+        <div className="bg-surface border-2 border-sidebar-bg shadow-brutal-lg p-6">
 
           {/* ── Idle / Submitting ── Login Form */}
           {(loginState === 'idle' || loginState === 'submitting') && (
@@ -200,7 +200,7 @@ export default function LoginPage() {
                 <input
                   id="challengeRequested"
                   type="checkbox"
-                  className="size-4 border-2 border-fg accent-accent cursor-pointer"
+                  className="size-4 border-2 border-sidebar-bg accent-sidebar-bg cursor-pointer"
                   {...register('challengeRequested')}
                 />
                 <label
@@ -232,7 +232,7 @@ export default function LoginPage() {
 
               {/* Challenge code — displayed only when challengeRequested */}
               {waitingData.challengeCode != null && (
-                <div className="border-2 border-fg bg-bg p-5">
+                <div className="border-2 border-sidebar-bg bg-bg p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
                     Challenge Code
                   </p>
@@ -298,7 +298,7 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-fg-muted mt-5">
           Powered by{' '}
-          <span className="font-bold text-fg">EZKey</span>
+          <span className="font-bold text-sidebar-bg">EZKey</span>
           {' '}— Eat Your Own Dog Food
         </p>
       </div>
