@@ -1,8 +1,8 @@
 # Override root .gitignore: package-lock.json must be committed for reproducible Docker builds
 !package-lock.json
 
-# OpenAPI spec — generated via scripts/update-specs.sh, never committed
-openapi-spec.json
+# OpenAPI spec — generated via scripts/update-specs.sh, always committed
+# openapi-spec.json
 
 # Orval-generated API client code — regenerated at build time
 src/generated/

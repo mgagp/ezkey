@@ -19,11 +19,13 @@ alwaysApply: true
 
 The script fetches the live API docs (e.g. from `http://localhost:9080/api-docs` and `http://localhost:8080/api-docs`) and writes the JSON/YAML into `specs/`. That is the single source of truth for the *generated* spec files.
 
+**Agents must not run the update-specs script.** The maintainer runs it when doing functional testing with a clean Docker start; the agent only updates Java code and annotations so that the next spec generation will reflect the changes.
+
 ## Why this matters
 
 - Manual edits to `openapi-spec.json` (or other files under `specs/`) are overwritten the next time the script runs.
 - Keeping the workflow (code + annotations → tests → clean start → update-specs) avoids drift and ensures specs match the running APIs.
-- If you add or change an endpoint or DTO, update the Java code and the annotations; then the maintainer will run the script after tests and Docker start.
+- If you add or change an endpoint or DTO, update the Java code and the annotations; the maintainer runs the update-specs script after tests and clean Docker start (agents do not run it).
 
 ## What you may do
 

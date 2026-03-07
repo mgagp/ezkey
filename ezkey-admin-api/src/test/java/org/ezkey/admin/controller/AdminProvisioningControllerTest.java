@@ -178,7 +178,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(isNull(), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -188,6 +188,36 @@ class AdminProvisioningControllerTest {
       assertEquals(4, responseBody.getTotalElements());
       assertEquals(4, responseBody.getContent().size());
       verify(provisioningService).listAdmins(isNull(), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("GlobalAdmin with tenantId filter sees only that tenant's admins")
+    void globalAdminWithTenantIdFilterSeesOnlyThatTenantsAdmins() {
+      // Arrange
+      Pageable pageable = PageRequest.of(0, 20);
+      List<EzkeyAdmin> tenantOneAdmins = List.of(tenantAdmin1, tenantAdmin2);
+      Page<EzkeyAdmin> expectedPage =
+          new PageImpl<>(tenantOneAdmins, pageable, tenantOneAdmins.size());
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, 1);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      Page<AdminResponseDto> responseBody = response.getBody();
+      assertNotNull(responseBody);
+      assertEquals(2, responseBody.getTotalElements());
+      responseBody
+          .getContent()
+          .forEach(
+              admin -> {
+                assertNotNull(admin.tenantId());
+                assertEquals(1, admin.tenantId());
+              });
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
     }
 
     @Test
@@ -201,7 +231,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(isNull(), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -234,7 +264,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -257,6 +287,25 @@ class AdminProvisioningControllerTest {
     }
 
     @Test
+    @DisplayName("TenantAdmin ignores request tenantId and sees only own tenant admins")
+    void tenantAdminIgnoresRequestTenantId() {
+      // Arrange: TenantAdmin (tenant 1) sends tenantId=999; must be ignored
+      Pageable pageable = PageRequest.of(0, 20);
+      List<EzkeyAdmin> tenantOneAdmins = List.of(tenantAdmin1, tenantAdmin2);
+      Page<EzkeyAdmin> expectedPage =
+          new PageImpl<>(tenantOneAdmins, pageable, tenantOneAdmins.size());
+
+      when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
+
+      // Act
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, 999);
+
+      // Assert: service was called with auth tenant (1), not request tenant (999)
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+
+    @Test
     @DisplayName("TenantAdmin does not see admins from other tenants")
     void tenantAdminDoesNotSeeOtherTenantAdmins() {
       // Arrange
@@ -267,7 +316,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -295,7 +344,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -317,7 +366,7 @@ class AdminProvisioningControllerTest {
       when(provisioningService.listAdmins(eq(1), any(Pageable.class))).thenReturn(expectedPage);
 
       // Act
-      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable);
+      ResponseEntity<Page<AdminResponseDto>> response = controller.listAdmins(pageable, null);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());

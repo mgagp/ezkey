@@ -1904,7 +1904,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1914,7 +1914,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1924,7 +1924,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1956,7 +1956,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1966,7 +1966,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -1976,7 +1976,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminProvisioningResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -2362,8 +2362,14 @@
           "204": {
             "description": "Enrollment deleted successfully"
           },
+          "403": {
+            "description": "Cannot delete your own MFA enrollment (RFC 9457)"
+          },
           "404": {
             "description": "Enrollment not found"
+          },
+          "409": {
+            "description": "Enrollment has authentication history; revoke instead (RFC 9457)"
           },
           "500": {
             "description": "Internal server error"
@@ -3852,7 +3858,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -3862,7 +3868,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -3872,7 +3878,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOnboardingResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -3907,8 +3913,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "string",
-                  "format": "byte"
+                  "type": "object"
                 }
               }
             }
@@ -3918,8 +3923,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "string",
-                  "format": "byte"
+                  "type": "object"
                 }
               }
             }
@@ -3929,8 +3933,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "string",
-                  "format": "byte"
+                  "type": "object"
                 }
               }
             }
@@ -3940,8 +3943,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "string",
-                  "format": "byte"
+                  "type": "object"
                 }
               }
             }
@@ -4796,65 +4798,6 @@
           "username"
         ]
       },
-      "AdminProvisioningResponseDto": {
-        "type": "object",
-        "description": "Response DTO containing administrator provisioning information (without sensitive credentials). Use GET /api/v1/admins/{id}/onboarding to retrieve onboarding credentials.",
-        "properties": {
-          "adminId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Unique identifier for the administrator",
-            "example": 1
-          },
-          "username": {
-            "type": "string",
-            "description": "Username for the administrator",
-            "example": "john.doe"
-          },
-          "email": {
-            "type": "string",
-            "description": "Email address",
-            "example": "john.doe@example.com"
-          },
-          "firstName": {
-            "type": "string",
-            "description": "First name",
-            "example": "John"
-          },
-          "lastName": {
-            "type": "string",
-            "description": "Last name",
-            "example": "Doe"
-          },
-          "adminType": {
-            "type": "string",
-            "description": "Type of administrator",
-            "enum": [
-              "GLOBAL_ADMIN",
-              "TENANT_ADMIN"
-            ],
-            "example": "GLOBAL_ADMIN"
-          },
-          "tenantId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Tenant ID (null for global admins)",
-            "example": 1
-          },
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment ID for passwordless authentication. Use this ID to retrieve onboarding credentials via GET /api/v1/admins/{id}/onboarding",
-            "example": 123
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the administrator was created",
-            "example": "2025-10-15T14:30:00Z"
-          }
-        }
-      },
       "EnrollmentResetRequestDto": {
         "type": "object",
         "properties": {
@@ -5191,6 +5134,14 @@
           "userIdentifier": {
             "type": "string",
             "description": "Optional user identifier from the integrating application"
+          },
+          "integrationName": {
+            "type": "string",
+            "description": "Display name for the enrollment's integration (e.g. Ezkey System); populated on GET by ID"
+          },
+          "isSystemIntegration": {
+            "type": "boolean",
+            "description": "Whether this enrollment's integration is the system integration; populated on GET by ID"
           }
         }
       },
@@ -5453,6 +5404,10 @@
           "description": {
             "type": "string",
             "description": "Optional description of the integration"
+          },
+          "isSystemIntegration": {
+            "type": "boolean",
+            "description": "Whether this is the system integration (e.g. admin MFA); used by UI to adapt detail page"
           }
         }
       },
@@ -5894,39 +5849,6 @@
           },
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
-          }
-        }
-      },
-      "AdminOnboardingResponseDto": {
-        "type": "object",
-        "description": "Response DTO containing administrator onboarding credentials for passwordless enrollment",
-        "properties": {
-          "enrollmentId": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment ID for passwordless authentication",
-            "example": 123
-          },
-          "enrollmentProofToken": {
-            "type": "string",
-            "description": "Enrollment proof token (shown once - save securely)",
-            "example": "EZK-ABC123-DEF456"
-          },
-          "enrollmentChallenge": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Enrollment challenge code (6 digits, shown once - save securely)",
-            "example": 654321
-          },
-          "recoveryCodes": {
-            "type": "array",
-            "description": "List of recovery codes (shown once, single-use - save securely)",
-            "example": [
-              "1234-5678-9012-3456-7890-1234-5678-9012"
-            ],
-            "items": {
-              "type": "string"
-            }
           }
         }
       }

@@ -393,12 +393,20 @@ public class AdminProvisioningController {
   public ResponseEntity<Page<AdminResponseDto>> listAdmins(
       @ParameterObject
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
-          Pageable pageable) {
-    // Extract tenant ID from authentication for tenant scoping
+          Pageable pageable,
+      @Parameter(
+              description =
+                  "Filter by tenant ID. GlobalAdmin only; when provided, limits results to that"
+                      + " tenant. Ignored for TenantAdmin.")
+          @RequestParam(required = false)
+          Integer tenantId) {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    Integer tenantId = extractTenantId(auth);
+    Integer authTenantId = extractTenantId(auth);
+    // TenantAdmin: always scope to their tenant (ignore request tenantId). GlobalAdmin: use request
+    // tenantId when provided.
+    Integer effectiveTenantId = (authTenantId != null) ? authTenantId : tenantId;
 
-    Page<EzkeyAdmin> admins = provisioningService.listAdmins(tenantId, pageable);
+    Page<EzkeyAdmin> admins = provisioningService.listAdmins(effectiveTenantId, pageable);
 
     Page<AdminResponseDto> response =
         admins.map(
