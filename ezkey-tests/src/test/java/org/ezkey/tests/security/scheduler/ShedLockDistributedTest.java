@@ -217,8 +217,10 @@ public class ShedLockDistributedTest {
   void testLocksInDatabase() {
     log.info("=== Test B: Vérification Locks DB ===");
 
-    // Get all active locks
-    List<ShedLockTestHelper.ShedLockEntry> activeLocks = shedLockHelper.getActiveLocks();
+    // Get all active locks and db_now in a single query (avoids two-query race where
+    // lock_until expires between getActiveLocks and getDatabaseNow).
+    ShedLockTestHelper.ActiveLocksWithDbNow result = shedLockHelper.getActiveLocksWithDbNow();
+    List<ShedLockTestHelper.ShedLockEntry> activeLocks = result.locks();
 
     log.info("Found {} active lock(s) in database", activeLocks.size());
 
@@ -230,7 +232,8 @@ public class ShedLockDistributedTest {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      activeLocks = shedLockHelper.getActiveLocks();
+      result = shedLockHelper.getActiveLocksWithDbNow();
+      activeLocks = result.locks();
     }
 
     // Verify at least one lock exists (scheduled jobs should be running)
@@ -242,9 +245,12 @@ public class ShedLockDistributedTest {
       return;
     }
 
-    // Use database clock for assertions (avoids host-vs-container clock skew).
-    // Both locked_at and dbNow come from PostgreSQL; ShedLock uses usingDbTime().
-    OffsetDateTime dbNow = shedLockHelper.getDatabaseNow();
+    // dbNow comes from the same query as the locks; lock_until and db_now are consistent.
+    OffsetDateTime dbNow = result.dbNow();
+    if (dbNow == null) {
+      throw new AssertionError(
+          "Active locks returned but db_now is null (internal error in getActiveLocksWithDbNow)");
+    }
 
     for (ShedLockTestHelper.ShedLockEntry lock : activeLocks) {
       log.info(

@@ -297,40 +297,69 @@ public class ShedLockTestHelper {
   }
 
   /**
+   * Result of {@link #getActiveLocksWithDbNow()}: active locks and the database time used to
+   * filter them. Both come from a single query, ensuring lock_until and db_now are consistent.
+   *
+   * @param locks active lock entries (where lock_until &gt; db_now at query time)
+   * @param dbNow database NOW() at query time (null when no locks returned)
+   */
+  public record ActiveLocksWithDbNow(List<ShedLockEntry> locks, OffsetDateTime dbNow) {}
+
+  /**
    * Gets all active locks from the ezkey_shedlock table.
    *
    * @return List of active lock entries (where lock_until > NOW())
    */
   public List<ShedLockEntry> getActiveLocks() {
+    return getActiveLocksWithDbNow().locks();
+  }
+
+  /**
+   * Gets all active locks and database time in a single query.
+   *
+   * <p>Uses a CTE so NOW() is evaluated once. This avoids a race where getActiveLocks() and
+   * getDatabaseNow() are separate queries: between them, time advances and lock_until can become
+   * past by the time db_now is read, causing intermittent test failures (lock_until ~4ms before
+   * db_now for KEY_PROMOTION with lockAtLeastFor=4s).
+   *
+   * @return Active locks and db_now from the same query; dbNow is null when no locks
+   */
+  public ActiveLocksWithDbNow getActiveLocksWithDbNow() {
     String sqlQuery =
-        "SELECT name, locked_by, locked_at, lock_until, "
-            + "CASE WHEN lock_until > NOW() THEN 'true' ELSE 'false' END as is_active "
-            + "FROM ezkey_shedlock "
-            + "WHERE lock_until > NOW() "
+        "WITH ts AS (SELECT NOW() AS n) "
+            + "SELECT name, locked_by, locked_at, lock_until, "
+            + "CASE WHEN lock_until > ts.n THEN 'true' ELSE 'false' END as is_active, "
+            + "ts.n as db_now "
+            + "FROM ezkey_shedlock, ts "
+            + "WHERE lock_until > ts.n "
             + "ORDER BY locked_at DESC;";
 
     List<String> rows = executeQuery(sqlQuery);
     List<ShedLockEntry> locks = new ArrayList<>();
+    OffsetDateTime dbNow = null;
 
     for (String row : rows) {
-      // Parse pipe-separated values (psql -A format)
       String[] parts = row.split("\\|");
-      if (parts.length >= 5) {
+      if (parts.length >= 6) {
         try {
           String name = parts[0].trim();
           String lockedBy = parts[1].trim();
           OffsetDateTime lockedAt = parseTimestamp(parts[2].trim());
           OffsetDateTime lockUntil = parseTimestamp(parts[3].trim());
           boolean isActive = "true".equalsIgnoreCase(parts[4].trim());
+          OffsetDateTime rowDbNow = parseTimestamp(parts[5].trim());
 
           locks.add(new ShedLockEntry(name, lockedBy, lockedAt, lockUntil, isActive));
+          if (dbNow == null) {
+            dbNow = rowDbNow;
+          }
         } catch (Exception e) {
           log.warn("Failed to parse lock entry: {}", row, e);
         }
       }
     }
 
-    return locks;
+    return new ActiveLocksWithDbNow(locks, dbNow);
   }
 
   /**

@@ -10,14 +10,12 @@
 
 package org.ezkey.integration.domain.repository;
 
-import jakarta.persistence.QueryHint;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -103,24 +101,4 @@ public interface IntegrationRepository
               + " ezkey_integration i ON i.tenant_id = t.tenant_id WHERE i.integration_id = :id",
       nativeQuery = true)
   Optional<Object[]> findTenantInfoByIntegrationId(@Param("id") Integer id);
-
-  /**
-   * Loads Integration with Tenant for read-only display (e.g., bind/verify response).
-   *
-   * <p>Uses {@code org.hibernate.readOnly=true} so Hibernate does not track the entity or its
-   * associations for dirty-checking. This avoids the "Found shared references to a collection:
-   * Tenant.administrators" hazard when multiple concurrent requests load the same
-   * Integration/Tenant (e.g., system integration id=1 used by all admin MFA enrollments).
-   *
-   * <p>Use this for bind/verify flows that only read integration and tenant data. Use {@link
-   * #findById(Object)} when mutating the integration or its associations.
-   *
-   * <p>See ezkey-core AGENTS.md for CascadeType.ALL + orphanRemoval shared-reference hazard.
-   *
-   * @param id the integration ID
-   * @return Optional containing the integration with tenant loaded, or empty if not found
-   */
-  @Query("SELECT i FROM Integration i LEFT JOIN FETCH i.tenant WHERE i.id = :id")
-  @QueryHints(@QueryHint(name = "org.hibernate.readOnly", value = "true"))
-  Optional<Integration> findByIdWithTenantReadOnly(@Param("id") Integer id);
 }

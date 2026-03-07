@@ -12,6 +12,8 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -40,9 +42,12 @@ public class AdminTokenValidationService {
   private static final Logger logger = LoggerFactory.getLogger(AdminTokenValidationService.class);
 
   private final AdminTokenRepository tokenRepository;
+  private final AdminTokenRotationProperties rotationProperties;
 
-  public AdminTokenValidationService(AdminTokenRepository tokenRepository) {
+  public AdminTokenValidationService(
+      AdminTokenRepository tokenRepository, AdminTokenRotationProperties rotationProperties) {
     this.tokenRepository = tokenRepository;
+    this.rotationProperties = rotationProperties;
   }
 
   /**
@@ -125,9 +130,12 @@ public class AdminTokenValidationService {
   }
 
   /**
-   * Updates the last used timestamp for a token.
+   * Updates the last used timestamp and, for non-recovery tokens, extends expiration (sliding
+   * expiration).
    *
-   * <p>This method requires a separate transaction for the update operation.
+   * <p>This method requires a separate transaction for the update. For normal admin tokens, the
+   * token's expiration is extended to now + expirationHours on each validated request, so the
+   * session stays valid as long as the user is active. Recovery tokens are not extended.
    *
    * @param token the bearer token to update
    */
@@ -137,9 +145,16 @@ public class AdminTokenValidationService {
       Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenAndActiveTrue(token);
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
-        adminToken.setLastUsedAt(OffsetDateTime.now());
+        OffsetDateTime now = OffsetDateTime.now();
+        adminToken.setLastUsedAt(now);
+        // Sliding expiration: extend expiresAt for normal admin tokens (not recovery tokens)
+        if (adminToken.getBearerToken() != null
+            && !adminToken.getBearerToken().startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
+          int hours = Math.max(1, rotationProperties.getExpirationHours());
+          adminToken.setExpiresAt(now.plusHours(hours));
+        }
         tokenRepository.save(adminToken);
-        logger.debug("✅ Updated last used timestamp for token");
+        logger.debug("✅ Updated last used and expiration for token");
       }
     } catch (Exception e) {
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());

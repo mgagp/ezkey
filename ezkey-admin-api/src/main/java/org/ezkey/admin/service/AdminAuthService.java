@@ -466,7 +466,8 @@ public class AdminAuthService {
    */
   private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
     String bearerToken = generateBearerToken();
-    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(24);
+    int hours = Math.max(1, rotationProperties.getExpirationHours());
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(hours);
 
     AdminToken token = new AdminToken();
     token.setBearerToken(bearerToken);
