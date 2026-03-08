@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -27,11 +29,13 @@ import {
   useGetAdminById,
   useGetAdminOnboarding,
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
+import { useListTenants } from '@/generated/admin-api/tenants/tenants';
 import type {
   AdminCreateRequestDto,
   AdminResponseDto,
   PagedModelAdminResponseDto,
 } from '@/generated/admin-api/model';
+import type { TenantResponseDto } from '@/generated/admin-api/model';
 
 /** UI-facing shape for admin onboarding (API returns GetAdminOnboarding200). */
 interface AdminOnboardingShape {
@@ -378,13 +382,13 @@ function AdminDetailDialog({
 
 // ── Create admin dialog ────────────────────────────────────────────────────────
 
-const adminSchema = z.object({
+const adminSchemaBase = z.object({
   username: z.string().min(3, 'Min 3 characters').max(50, 'Max 50 characters'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   firstName: z.string().max(100).optional().or(z.literal('')),
   lastName: z.string().max(100).optional().or(z.literal('')),
+  tenantId: z.union([z.number(), z.string()]).optional().or(z.literal('')),
 });
-type AdminFormValues = z.infer<typeof adminSchema>;
 
 function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boolean; onClose: () => void; defaultGlobal?: boolean }) {
   const { session } = useAuth();
@@ -394,9 +398,60 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<AdminFormValues>({
+  const [tenantFilter, setTenantFilter] = useState('');
+
+  const { data: tenantsData } = useListTenants<TenantResponseDto[]>();
+  const allTenants = tenantsData ?? [];
+  const eligibleTenants = useMemo(
+    () => allTenants.filter((t) => !t.isSystemTenant),
+    [allTenants],
+  );
+
+  const adminSchema = useMemo(
+    () =>
+      adminSchemaBase.refine(
+        (data) => !(callerIsGlobal && !isGlobalType) || (data.tenantId != null && data.tenantId !== ''),
+        { message: 'Select a tenant', path: ['tenantId'] },
+      ),
+    [callerIsGlobal, isGlobalType],
+  );
+  type AdminFormValues = z.infer<typeof adminSchema>;
+
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
+    defaultValues: { tenantId: '' },
   });
+
+  const watchedTenantId = watch('tenantId');
+  const tenantAdminNeedsTenant = callerIsGlobal && !isGlobalType;
+
+  const filteredTenants = useMemo(() => {
+    const q = tenantFilter.trim().toLowerCase();
+    if (!q) return eligibleTenants;
+    const matches = (t: TenantResponseDto) => {
+      const displayLabel = `${t.tenantName ?? ''} (ID: ${t.tenantId ?? ''})`;
+      const searchable = [
+        t.tenantName,
+        t.organizationName,
+        t.organizationDomain,
+        t.tenantId?.toString(),
+        displayLabel,
+      ];
+      return searchable.some((v) => v != null && String(v).toLowerCase().includes(q));
+    };
+    const list = eligibleTenants.filter(matches);
+    const selected = watchedTenantId != null && watchedTenantId !== ''
+      ? eligibleTenants.find((t) => t.tenantId === Number(watchedTenantId))
+      : undefined;
+    if (selected != null && !list.some((t) => t.tenantId === selected.tenantId)) {
+      return [selected, ...list];
+    }
+    return list;
+  }, [eligibleTenants, tenantFilter, watchedTenantId]);
+
+  const canSubmitTenantAdmin =
+    !tenantAdminNeedsTenant ||
+    (eligibleTenants.length > 0 && watchedTenantId != null && watchedTenantId !== '');
 
   const onCreated = (admin: AdminProvisioningShape, isGlobal: boolean) => {
     setCreatedAdmin(admin);
@@ -438,17 +493,23 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     reset();
     setCreatedAdmin(null);
     setIsGlobalType(defaultGlobal);
+    setTenantFilter('');
     createMutation.reset();
     onClose();
   };
 
   const onSubmit = (values: AdminFormValues) => {
+    const tenantId =
+      callerIsGlobal && !isGlobalType && values.tenantId != null && values.tenantId !== ''
+        ? Number(values.tenantId)
+        : undefined;
     createMutation.mutate({
       body: {
         username: values.username.trim(),
         email: values.email || undefined,
         firstName: values.firstName || undefined,
         lastName: values.lastName || undefined,
+        ...(tenantId !== undefined ? { tenantId } : {}),
       },
       isGlobal: isGlobalType,
     });
@@ -488,12 +549,57 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                   type="radio"
                   name="adminType"
                   checked={isGlobalType}
-                  onChange={() => setIsGlobalType(true)}
+                  onChange={() => {
+                    setIsGlobalType(true);
+                    setValue('tenantId', '');
+                    setTenantFilter('');
+                  }}
                   className="accent-accent"
                 />
                 <span className="text-sm font-medium">Global Admin</span>
               </label>
             </div>
+          )}
+          {tenantAdminNeedsTenant && (
+            <>
+              {eligibleTenants.length === 0 ? (
+                <Alert variant="warning">
+                  No tenant available. <Link to="/tenants" className="font-medium text-accent underline">Create a tenant first</Link>.
+                </Alert>
+              ) : (
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="adm-tenant-filter">Filter tenants</Label>
+                    <Input
+                      id="adm-tenant-filter"
+                      type="text"
+                      placeholder="By name, organization or domain..."
+                      value={tenantFilter}
+                      onChange={(e) => setTenantFilter(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="adm-tenant">Assign to tenant *</Label>
+                    <Select
+                      id="adm-tenant"
+                      error={errors.tenantId?.message}
+                      {...register('tenantId')}
+                    >
+                      <option value="">Select a tenant</option>
+                      {filteredTenants.map((t) => (
+                        <option key={t.tenantId} value={t.tenantId}>
+                          {t.tenantName ?? ''} (ID: {t.tenantId})
+                        </option>
+                      ))}
+                      {filteredTenants.length === 0 && tenantFilter.trim() !== '' && (
+                        <option value="" disabled>No tenant matches your filter</option>
+                      )}
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <div className="space-y-1">
             <Label htmlFor="adm-username">Username *</Label>
@@ -522,7 +628,13 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
-            <Button type="submit" isLoading={createMutation.isPending}>Create Admin</Button>
+            <Button
+              type="submit"
+              isLoading={createMutation.isPending}
+              disabled={!canSubmitTenantAdmin}
+            >
+              Create Admin
+            </Button>
           </div>
         </form>
       )}
