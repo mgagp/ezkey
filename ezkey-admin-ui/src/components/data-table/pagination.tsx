@@ -18,14 +18,14 @@ interface PaginationProps {
   pageSize?: number;
   /**
    * Called with the new page size. Connect to `pagination.setPageSize` from
-   * usePaginatedQuery. If omitted, the size selector is hidden.
+   * usePaginatedFromOrval. If omitted, the size selector is hidden.
    */
   onPageSizeChange?: (size: number) => void;
 }
 
 /**
  * Pagination controls for use below a <DataTable>.
- * Connect directly to the `pagination` object from usePaginatedQuery.
+ * Connect directly to the `pagination` object from usePaginatedFromOrval.
  */
 export function Pagination({
   page,

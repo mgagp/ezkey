@@ -18,18 +18,17 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
-import { ApiError, api, fetchBlobUrl } from '@/lib/api-client';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { EnrollmentCreateRequestDto } from '@/generated/admin-api/model';
-import type { EnrollmentResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
-
-/** API create response: only enrollmentId and enrollmentChallenge. */
-type EnrollmentCreateResponseDto = {
-  enrollmentId: number;
-  enrollmentChallenge?: number | null;
-};
+import { create1, search1 } from '@/generated/admin-api/enrollments/enrollments';
+import type {
+  EnrollmentCreateRequestDto,
+  EnrollmentCreateResponseDto,
+  EnrollmentResponseDto,
+  PagedModelEnrollmentResponseDto,
+  Search1Params,
+} from '@/generated/admin-api/model';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -75,7 +74,10 @@ function EnrollmentCreateDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: EnrollmentCreateRequestDto) => api.post<EnrollmentCreateResponseDto>('/api/v1/enrollments', data),
+    mutationFn: async (data: EnrollmentCreateRequestDto) => {
+      const res = await create1(data);
+      return res as unknown as EnrollmentCreateResponseDto;
+    },
     onSuccess: (enrollment, variables) => {
       setCreatedEnrollment(enrollment);
       setCreatedEnrollmentName(variables?.name ?? null);
@@ -287,16 +289,20 @@ export default function EnrollmentsPage() {
   const debouncedName = useDebounce(nameInput, 300);
   const { list: integrations } = useIntegrations();
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<EnrollmentResponseDto>({
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<EnrollmentResponseDto, {
+    enrollmentName?: string;
+    status?: string;
+    integrationId?: number;
+    active?: boolean;
+  }>({
     queryKey: ['enrollments', debouncedName, statusFilter, integrationFilter, activeFilter],
-    queryFn: ({ page, size, sort }) => {
-      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
-      if (debouncedName) p.set('enrollmentName', debouncedName);
-      if (statusFilter) p.set('status', statusFilter);
-      if (integrationFilter) p.set('integrationId', integrationFilter);
-      if (activeFilter) p.set('active', activeFilter);
-      return api.get<PageResponse<EnrollmentResponseDto>>(`/api/v1/enrollments?${p.toString()}`);
+    baseParams: {
+      enrollmentName: debouncedName || undefined,
+      status: statusFilter || undefined,
+      integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+      active: activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
     },
+    fetchPage: (params) => search1(params as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
   });
 
   const columns: ColumnDef<EnrollmentResponseDto>[] = [

@@ -23,13 +23,13 @@ interface DataTableProps<T extends object> {
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
   /**
-   * Current sort string from usePaginatedQuery (e.g. 'createdAt,DESC').
+   * Current sort string from usePaginatedFromOrval (e.g. 'createdAt,DESC').
    * Required to show active sort indicator.
    */
   currentSort?: string;
   /**
    * Called with the new sort string when a sortable column header is clicked.
-   * Connect to `pagination.setSort` from usePaginatedQuery.
+   * Connect to `pagination.setSort` from usePaginatedFromOrval.
    */
   onSort?: (sort: string) => void;
 }

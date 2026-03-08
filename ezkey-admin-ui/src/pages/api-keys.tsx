@@ -55,7 +55,7 @@ function KeyStatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
     <span className="inline-flex items-center gap-1.5">
       {badge}
       {hasIpRestriction && (
-        <Shield className="size-3 text-fg-muted" title="IP restricted" />
+        <span title="IP restricted" className="inline-flex"><Shield className="size-3 text-fg-muted" aria-hidden /></span>
       )}
     </span>
   );

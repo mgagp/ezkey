@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import type { AuditLogResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import type { PageResponse } from '@/hooks/use-paginated-orval';
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 

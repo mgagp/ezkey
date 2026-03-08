@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { api } from '@/lib/api-client';
-import type { IntegrationResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import { search } from '@/generated/admin-api/integrations/integrations';
+import type { IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
 /** Returns the best display name for an integration, trying English first, then French, then code. */
 export function getIntegrationName(integration: IntegrationResponseDto): string {
@@ -20,7 +19,7 @@ export function useIntegrations(): {
 } {
   const { data, isLoading } = useQuery({
     queryKey: ['integrations-all'],
-    queryFn: () => api.get<PageResponse<IntegrationResponseDto>>('/api/v1/integrations?size=100'),
+    queryFn: () => search({ size: 100 }) as Promise<PagedModelIntegrationResponseDto>,
     staleTime: 60_000,
   });
 

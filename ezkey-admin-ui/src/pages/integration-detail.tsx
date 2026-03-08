@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
@@ -14,12 +14,13 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { api, getApiErrorMessage } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { PageResponse } from '@/hooks/use-paginated-query';
-import type { EnrollmentResponseDto, IntegrationResponseDto } from '@/generated/admin-api/model';
+import { getById1 } from '@/generated/admin-api/integrations/integrations';
+import { search1 } from '@/generated/admin-api/enrollments/enrollments';
+import type { EnrollmentResponseDto, IntegrationResponseDto, PagedModelEnrollmentResponseDto } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -111,17 +112,15 @@ export default function IntegrationDetailPage() {
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ['integration', integrationId],
-    queryFn: () => api.get<IntegrationResponseDto>(`/api/v1/integrations/${integrationId}`),
+    queryFn: () => getById1(integrationId) as Promise<IntegrationResponseDto>,
     enabled: !isNaN(integrationId),
   });
 
-  const { data: enrollments, pagination: enrPagination, isLoading: loadingEnr } = usePaginatedQuery<EnrollmentResponseDto>({
+  const { data: enrollments, pagination: enrPagination, isLoading: loadingEnr } = usePaginatedFromOrval<EnrollmentResponseDto, { integrationId?: number }>({
     queryKey: ['enrollments', 'for-integration', integrationId],
-    queryFn: ({ page, size, sort }) =>
-      api.get<PageResponse<EnrollmentResponseDto>>(
-        `/api/v1/enrollments?integrationId=${integrationId}&page=${page}&size=${size}&sort=${sort}`,
-      ),
+    baseParams: { integrationId: isNaN(integrationId) ? undefined : integrationId },
     defaultSize: 10,
+    fetchPage: (params) => search1(params) as Promise<PagedModelEnrollmentResponseDto>,
   });
 
   const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = [

@@ -18,19 +18,20 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError, api } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
+import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import type {
   AdminResponseDto,
+  PagedModelAdminResponseDto,
   TenantResponseDto,
   TenantUpdateRequestDto,
   TenantActivateRequestDto,
   TenantDeactivateRequestDto,
 } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -301,13 +302,11 @@ export default function TenantDetailPage() {
   });
 
   // Admins list for this tenant (Global Admin can see cross-tenant)
-  const { data: admins, pagination: admPagination, isLoading: loadingAdmins } = usePaginatedQuery<AdminResponseDto>({
+  const { data: admins, pagination: admPagination, isLoading: loadingAdmins } = usePaginatedFromOrval<AdminResponseDto, { tenantId?: number }>({
     queryKey: ['admins', 'for-tenant', tenantId],
-    queryFn: ({ page, size, sort }) =>
-      api.get<PageResponse<AdminResponseDto>>(
-        `/api/v1/admins?tenantId=${tenantId}&page=${page}&size=${size}&sort=${sort}`,
-      ),
+    baseParams: { tenantId: isNaN(tenantId) ? undefined : tenantId },
     defaultSize: 10,
+    fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
   });
 
   const adminColumns: ColumnDef<AdminResponseDto>[] = [

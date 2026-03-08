@@ -10,13 +10,13 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { api, ApiError } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
-import type { AuditLogResponseDto, ChainVerificationReport, IntegrityReport, ArchiveSealResult, GapDeclarationResult } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import { getAuditLogs } from '@/generated/admin-api/audit-logs/audit-logs';
+import type { AuditLogResponseDto, ChainVerificationReport, GetAuditLogsParams, IntegrityReport, ArchiveSealResult, GapDeclarationResult, PagedModelAuditLogResponseDto } from '@/generated/admin-api/model';
 
 // ── Event type options (from EventType.java enum) ─────────────────────────────
 
@@ -601,17 +601,22 @@ export default function AuditLogsPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLogResponseDto | null>(null);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuditLogResponseDto>({
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, {
+    eventType?: string;
+    eventStatus?: string;
+    apiName?: string;
+    createdAfter?: string;
+    createdBefore?: string;
+  }>({
     queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateFrom, dateTo],
-    queryFn: ({ page, size, sort }) => {
-      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
-      if (eventTypeFilter) p.set('eventType', eventTypeFilter);
-      if (eventStatusFilter) p.set('eventStatus', eventStatusFilter);
-      if (apiNameFilter) p.set('apiName', apiNameFilter);
-      if (dateFrom) p.set('createdAfter', new Date(dateFrom).toISOString());
-      if (dateTo) p.set('createdBefore', new Date(dateTo + 'T23:59:59').toISOString());
-      return api.get<PageResponse<AuditLogResponseDto>>(`/api/v1/audit-logs?${p.toString()}`);
+    baseParams: {
+      eventType: eventTypeFilter || undefined,
+      eventStatus: eventStatusFilter || undefined,
+      apiName: apiNameFilter || undefined,
+      createdAfter: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+      createdBefore: dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : undefined,
     },
+    fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
   });
 
   const columns: ColumnDef<AuditLogResponseDto>[] = [

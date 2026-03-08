@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Shield } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
@@ -10,13 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
-import { api } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import type { AuthAttemptDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
+import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
@@ -80,17 +79,22 @@ export default function AuthAttemptsPage() {
   const debouncedEnrollmentId = useDebounce(enrollmentIdInput, 400);
   const { list: integrations, lookup } = useIntegrations();
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AuthAttemptDto>({
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuthAttemptDto, {
+    status?: string;
+    enrollmentId?: number;
+    integrationId?: number;
+    createdAfter?: string;
+    createdBefore?: string;
+  }>({
     queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateFrom, dateTo],
-    queryFn: ({ page, size, sort }) => {
-      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
-      if (statusFilter) p.set('status', statusFilter);
-      if (debouncedEnrollmentId) p.set('enrollmentId', debouncedEnrollmentId);
-      if (integrationFilter) p.set('integrationId', integrationFilter);
-      if (dateFrom) p.set('createdAfter', new Date(dateFrom).toISOString());
-      if (dateTo) p.set('createdBefore', new Date(dateTo + 'T23:59:59').toISOString());
-      return api.get<PageResponse<AuthAttemptDto>>(`/api/v1/auth-attempts?${p.toString()}`);
+    baseParams: {
+      status: statusFilter || undefined,
+      enrollmentId: debouncedEnrollmentId ? parseInt(debouncedEnrollmentId, 10) : undefined,
+      integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+      createdAfter: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+      createdBefore: dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : undefined,
     },
+    fetchPage: (params) => search2(params as Search2Params) as Promise<PagedModelAuthAttemptDto>,
   });
 
   const columns: ColumnDef<AuthAttemptDto>[] = [

@@ -15,12 +15,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { api, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import type { AdminCreateRequestDto } from '@/generated/admin-api/model';
-import type { AdminOnboardingResponseDto, AdminProvisioningResponseDto, AdminResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
+import type {
+  AdminCreateRequestDto,
+  AdminResponseDto,
+  CreateGlobalAdmin201,
+  GetAdminOnboarding200,
+  PagedModelAdminResponseDto,
+} from '@/generated/admin-api/model';
+
+/** UI-facing shape for admin onboarding (API returns GetAdminOnboarding200). */
+interface AdminOnboardingShape {
+  enrollmentProofToken?: string;
+  enrollmentChallenge?: number;
+}
+
+/** UI-facing shape for create admin response (API returns CreateGlobalAdmin201). */
+interface AdminProvisioningShape {
+  username?: string;
+}
 
 // ── Admin type badge ───────────────────────────────────────────────────────────
 
@@ -49,14 +65,18 @@ function OnboardingDialog({
 
   const { data: onboarding, isLoading, isError } = useQuery({
     queryKey: ['admin-onboarding', adminId],
-    queryFn: () => api.get<AdminOnboardingResponseDto>(`/api/v1/admins/${adminId}/onboarding`),
+    queryFn: async () => {
+      const raw = await api.get<GetAdminOnboarding200>(`/api/v1/admins/${adminId}/onboarding`);
+      return raw as unknown as AdminOnboardingShape;
+    },
     enabled: open && adminId !== null,
   });
 
   const handleCopy = async () => {
-    if (!onboarding?.enrollmentProofToken) return;
+    const token = onboarding?.enrollmentProofToken;
+    if (token == null || token === '') return;
     try {
-      await navigator.clipboard.writeText(onboarding.enrollmentProofToken);
+      await navigator.clipboard.writeText(String(token));
       setTokenCopied(true);
       setTimeout(() => setTokenCopied(false), 2000);
     } catch { /* ignore */ }
@@ -96,7 +116,7 @@ function OnboardingDialog({
               Enrollment Proof Token
             </p>
             <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-              {onboarding.enrollmentProofToken}
+              {String(onboarding.enrollmentProofToken ?? '')}
             </div>
             <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5">
               {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
@@ -110,7 +130,7 @@ function OnboardingDialog({
               Binding Challenge Code
             </p>
             <p className="font-mono text-2xl font-black tracking-widest">
-              {onboarding.enrollmentChallenge}
+              {String(onboarding.enrollmentChallenge ?? '')}
             </p>
           </div>
 
@@ -353,7 +373,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const callerIsGlobal = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningResponseDto | null>(null);
+  const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<AdminFormValues>({
@@ -363,7 +383,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const createMutation = useMutation({
     mutationFn: ({ body, isGlobal }: { body: AdminCreateRequestDto; isGlobal: boolean }) => {
       const endpoint = isGlobal ? '/api/v1/admins/global' : '/api/v1/admins/tenant';
-      return api.post<AdminProvisioningResponseDto>(endpoint, body);
+      return api.post<CreateGlobalAdmin201>(endpoint, body) as Promise<AdminProvisioningShape>;
     },
     onSuccess: (admin, { isGlobal }) => {
       setCreatedAdmin(admin);
@@ -397,7 +417,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
       {createdAdmin ? (
         <div className="space-y-4">
           <Alert variant="success">
-            Admin <strong>{createdAdmin.username}</strong> created successfully.
+            Admin <strong>{String(createdAdmin.username ?? '')}</strong> created successfully.
           </Alert>
           <p className="text-sm text-fg-muted">
             Use the <strong>Credentials</strong> button in the list to retrieve the onboarding token and QR code to share with the new admin.
@@ -479,10 +499,10 @@ export default function AdminsPage() {
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<AdminResponseDto>({
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AdminResponseDto, Record<string, never>>({
     queryKey: ['admins'],
-    queryFn: ({ page, size, sort }) =>
-      api.get<PageResponse<AdminResponseDto>>(`/api/v1/admins?page=${page}&size=${size}&sort=${sort}`),
+    baseParams: {},
+    fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
   });
 
   const columns: ColumnDef<AdminResponseDto>[] = [

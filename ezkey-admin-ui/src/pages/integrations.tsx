@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,14 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { usePaginatedQuery } from '@/hooks/use-paginated-query';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto } from '@/generated/admin-api/model';
-import type { IntegrationResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-query';
+import { create, search } from '@/generated/admin-api/integrations/integrations';
+import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -47,7 +46,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
 
   const createMutation = useMutation({
     mutationFn: (data: IntegrationCreateRequestDto) =>
-      api.post<IntegrationCreateResponseDto>('/api/v1/integrations', data),
+      create(data) as Promise<IntegrationCreateResponseDto>,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['integrations'] });
       void queryClient.invalidateQueries({ queryKey: ['integrations-all'] });
@@ -130,15 +129,13 @@ export default function IntegrationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const debouncedName = useDebounce(nameInput, 300);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedQuery<IntegrationResponseDto>({
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<IntegrationResponseDto, { integrationName?: string; active?: boolean }>({
     queryKey: ['integrations', debouncedName, activeFilter],
-    queryFn: ({ page, size, sort }) => {
-      const p = new URLSearchParams({ page: String(page), size: String(size), sort });
-      if (debouncedName) p.set('integrationName', debouncedName);
-      if (activeFilter === 'active') p.set('active', 'true');
-      if (activeFilter === 'inactive') p.set('active', 'false');
-      return api.get<PageResponse<IntegrationResponseDto>>(`/api/v1/integrations?${p.toString()}`);
+    baseParams: {
+      integrationName: debouncedName || undefined,
+      active: activeFilter === 'all' ? undefined : activeFilter === 'active',
     },
+    fetchPage: (params) => search(params) as Promise<PagedModelIntegrationResponseDto>,
   });
 
   const columns: ColumnDef<IntegrationResponseDto>[] = [
