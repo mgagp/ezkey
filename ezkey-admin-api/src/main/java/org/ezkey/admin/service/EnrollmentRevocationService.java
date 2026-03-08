@@ -359,7 +359,7 @@ public class EnrollmentRevocationService {
    *
    * @param integrationId the ID of the integration whose enrollments should be revoked
    * @param principal the admin principal performing the bulk revocation
-   * @param reason mandatory justification for the bulk revocation (min 10 characters)
+   * @param reason optional justification for the bulk revocation (min 10 characters when provided)
    * @param context client context for audit logging
    * @param tenantId tenant ID for audit log association
    * @throws ResourceNotFoundException if the integration is not found

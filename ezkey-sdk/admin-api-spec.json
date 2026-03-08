@@ -595,8 +595,8 @@
           {
             "name": "reason",
             "in": "query",
-            "description": "Mandatory justification for bulk revocation (min 10 characters)",
-            "required": true,
+            "description": "Optional justification for bulk revocation (min 10 characters when provided)",
+            "required": false,
             "schema": {
               "type": "string",
               "maxLength": 500,

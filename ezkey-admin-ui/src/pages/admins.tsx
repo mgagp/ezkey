@@ -177,11 +177,13 @@ function DeactivateAdminDialog({
   admin: AdminResponseDto | null;
 }) {
   const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
 
   const deactivateMutation = useDeactivateAdmin({
     mutation: {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['admins'] });
+        setReason('');
         onClose();
       },
     },
@@ -189,8 +191,13 @@ function DeactivateAdminDialog({
 
   const handleClose = () => {
     deactivateMutation.reset();
+    setReason('');
     onClose();
   };
+
+  const reasonInvalid = reason.length > 0 && reason.length < 10;
+  const params =
+    reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
 
   return (
     <Dialog open={open} onClose={handleClose} title="Deactivate Admin" size="sm">
@@ -201,6 +208,18 @@ function DeactivateAdminDialog({
             <strong>{admin.username}</strong>? All active tokens will be revoked immediately.
           </p>
           <p className="text-xs text-fg-muted">This action cannot be undone from this interface.</p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="deactivate-admin-reason">
+              Reason <span className="text-fg-muted font-normal">(min 10 chars, for audit trail)</span>
+            </Label>
+            <Input
+              id="deactivate-admin-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Justification for this action..."
+            />
+          </div>
 
           {deactivateMutation.isError && (
             <Alert variant="error">
@@ -215,7 +234,11 @@ function DeactivateAdminDialog({
             <Button
               variant="destructive"
               isLoading={deactivateMutation.isPending}
-              onClick={() => admin && deactivateMutation.mutate({ id: admin.adminId! })}
+              disabled={reasonInvalid}
+              onClick={() =>
+                admin &&
+                deactivateMutation.mutate({ id: admin.adminId!, params })
+              }
             >
               <UserX className="size-3.5 mr-1.5" />
               Deactivate
@@ -233,10 +256,12 @@ function AdminDetailDialog({
   admin,
   onClose,
   onShowCredentials,
+  onRequestDeactivate,
 }: {
   admin: AdminResponseDto | null;
   onClose: () => void;
   onShowCredentials: (id: number, username: string) => void;
+  onRequestDeactivate?: (admin: AdminResponseDto) => void;
 }) {
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
@@ -259,17 +284,6 @@ function AdminDetailDialog({
         void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
       },
       onError: (e) => toast(getApiErrorMessage(e, 'Activation failed'), 'error'),
-    },
-  });
-
-  const deactivateMutation = useDeactivateAdmin({
-    mutation: {
-      onSuccess: () => {
-        toast(`Admin "${adm!.username}" deactivated.`, 'success');
-        void queryClient.invalidateQueries({ queryKey: ['admins'] });
-        void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
-      },
-      onError: (e) => toast(getApiErrorMessage(e, 'Deactivation failed'), 'error'),
     },
   });
 
@@ -327,13 +341,12 @@ function AdminDetailDialog({
               Credentials
             </Button>
 
-            {isGlobalAdmin && adm.active && (
+            {isGlobalAdmin && adm.active && onRequestDeactivate && (
               <Button
                 variant="destructive"
                 size="sm"
                 className="gap-1.5"
-                isLoading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate({ id: adm!.adminId! })}
+                onClick={() => onRequestDeactivate(adm)}
               >
                 <PowerOff className="size-3.5" />
                 Deactivate
@@ -627,6 +640,10 @@ export default function AdminsPage() {
         onShowCredentials={(id, username) => {
           setSelectedAdmin(null);
           setOnboardingTarget({ id, username });
+        }}
+        onRequestDeactivate={(a) => {
+          setSelectedAdmin(null);
+          setDeactivateTarget(a);
         }}
       />
       <CreateAdminDialog

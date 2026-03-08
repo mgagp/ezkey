@@ -549,7 +549,7 @@ public class IntegrationController {
    * bulk revocation (unlikely for non-system integrations), it is skipped rather than throwing.
    *
    * @param id the integration ID whose enrollments should be bulk-revoked
-   * @param reason mandatory justification (min 10, max 500 characters)
+   * @param reason optional justification (min 10, max 500 characters when provided)
    * @param httpRequest the HTTP request
    * @return 204 No Content on success
    */
@@ -573,8 +573,10 @@ public class IntegrationController {
   @PostMapping("/{id}/enrollments/revoke-all")
   public ResponseEntity<Void> revokeAllEnrollments(
       @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
-      @Parameter(description = "Mandatory justification for bulk revocation (min 10 characters)")
-          @RequestParam
+      @Parameter(
+              description =
+                  "Optional justification for bulk revocation (min 10 characters when provided)")
+          @RequestParam(required = false)
           @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
           String reason,
       HttpServletRequest httpRequest) {

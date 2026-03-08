@@ -340,6 +340,8 @@ export default function EnrollmentDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [revokeConfirm, setRevokeConfirm] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
+  const [lifecycleConfirm, setLifecycleConfirm] = useState<'deactivate' | 'reactivate' | null>(null);
+  const [lifecycleReason, setLifecycleReason] = useState('');
   const [testAuthOpen, setTestAuthOpen] = useState(false);
 
   const { toast } = useToast();
@@ -620,7 +622,7 @@ export default function EnrollmentDetailPage() {
                             size="sm"
                             className="gap-1.5"
                             isLoading={deactivateMutation.isPending}
-                            onClick={() => deactivateMutation.mutate({ id: enrollmentId, params: { reason: 'Deactivated from admin console' } })}
+                            onClick={() => setLifecycleConfirm('deactivate')}
                           >
                             <PowerOff className="size-3.5" />
                             Deactivate Enrollment
@@ -636,7 +638,7 @@ export default function EnrollmentDetailPage() {
                             size="sm"
                             className="gap-1.5"
                             isLoading={reactivateMutation.isPending}
-                            onClick={() => reactivateMutation.mutate({ id: enrollmentId, params: { reason: 'Reactivated from admin console' } })}
+                            onClick={() => setLifecycleConfirm('reactivate')}
                           >
                             <Power className="size-3.5" />
                             Reactivate Enrollment
@@ -777,6 +779,91 @@ export default function EnrollmentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Deactivate / Reactivate confirm with optional reason */}
+      <Dialog
+        open={lifecycleConfirm !== null}
+        onClose={() => { setLifecycleConfirm(null); setLifecycleReason(''); }}
+        title={lifecycleConfirm === 'deactivate' ? 'Deactivate Enrollment' : 'Reactivate Enrollment'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-fg">
+            {lifecycleConfirm === 'deactivate'
+              ? 'Temporarily deactivate this enrollment? The user will not be able to authenticate until reactivated.'
+              : 'Reactivate this enrollment? The user will be able to authenticate again.'}
+          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="lifecycle-reason">
+              Reason <span className="text-fg-muted font-normal">(min 10 chars, for audit trail)</span>
+            </Label>
+            <Input
+              id="lifecycle-reason"
+              value={lifecycleReason}
+              onChange={(e) => setLifecycleReason(e.target.value)}
+              placeholder="Justification for this action..."
+            />
+          </div>
+          {(lifecycleConfirm === 'deactivate' ? deactivateMutation.isError : reactivateMutation.isError) && (
+            <Alert variant="error">
+              {getApiErrorMessage(
+                lifecycleConfirm === 'deactivate' ? deactivateMutation.error : reactivateMutation.error,
+                lifecycleConfirm === 'deactivate' ? 'Failed to deactivate.' : 'Failed to reactivate.',
+              )}
+            </Alert>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => { setLifecycleConfirm(null); setLifecycleReason(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={lifecycleConfirm === 'deactivate' ? 'destructive' : 'primary'}
+              isLoading={
+                lifecycleConfirm === 'deactivate'
+                  ? deactivateMutation.isPending
+                  : reactivateMutation.isPending
+              }
+              disabled={lifecycleReason.length > 0 && lifecycleReason.length < 10}
+              onClick={() => {
+                if (lifecycleConfirm === null) return;
+                const params = lifecycleReason.trim().length >= 10
+                  ? { reason: lifecycleReason.trim() }
+                  : undefined;
+                if (lifecycleConfirm === 'deactivate') {
+                  deactivateMutation.mutate({ id: enrollmentId, params }, {
+                    onSuccess: () => {
+                      setLifecycleConfirm(null);
+                      setLifecycleReason('');
+                    },
+                  });
+                } else {
+                  reactivateMutation.mutate({ id: enrollmentId, params }, {
+                    onSuccess: () => {
+                      setLifecycleConfirm(null);
+                      setLifecycleReason('');
+                    },
+                  });
+                }
+              }}
+            >
+              {lifecycleConfirm === 'deactivate' ? (
+                <>
+                  <PowerOff className="size-3.5 mr-1.5" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <Power className="size-3.5 mr-1.5" />
+                  Reactivate
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       {enrollment && (
         <TestAuthDialog

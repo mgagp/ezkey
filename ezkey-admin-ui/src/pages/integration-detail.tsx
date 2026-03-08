@@ -50,6 +50,7 @@ function DangerConfirmDialog({
   description,
   confirmLabel,
   requireReason,
+  optionalReason,
   isPending,
   isError,
   errorMessage,
@@ -61,12 +62,18 @@ function DangerConfirmDialog({
   description: string;
   confirmLabel: string;
   requireReason?: boolean;
+  /** When true, reason field is shown but empty is allowed; if provided, min 10 chars. */
+  optionalReason?: boolean;
   isPending: boolean;
   isError: boolean;
   errorMessage: string;
   onConfirm: (reason: string) => void;
 }) {
   const [reason, setReason] = useState('');
+
+  const showReason = requireReason || optionalReason;
+  const reasonInvalid = optionalReason && reason.length > 0 && reason.length < 10;
+  const disabled = requireReason ? reason.length < 10 : reasonInvalid;
 
   const handleClose = () => { setReason(''); onClose(); };
 
@@ -77,9 +84,11 @@ function DangerConfirmDialog({
           <AlertTriangle className="size-5 text-error shrink-0 mt-0.5" />
           <p className="text-sm">{description}</p>
         </div>
-        {requireReason && (
+        {showReason && (
           <div className="space-y-1.5">
-            <Label htmlFor="danger-reason">Reason (min 10 chars, required for audit)</Label>
+            <Label htmlFor="danger-reason">
+              Reason {requireReason ? '(min 10 chars, required for audit)' : '(min 10 chars, for audit trail)'}
+            </Label>
             <Input
               id="danger-reason"
               value={reason}
@@ -94,7 +103,7 @@ function DangerConfirmDialog({
           <Button
             variant="destructive"
             isLoading={isPending}
-            disabled={requireReason ? reason.length < 10 : false}
+            disabled={disabled}
             onClick={() => onConfirm(reason)}
           >
             {confirmLabel}
@@ -288,12 +297,13 @@ export default function IntegrationDetailPage() {
         title="Deactivate All Enrollments"
         description="All active enrollments under this integration will be deactivated. Users will no longer be able to authenticate until reactivated."
         confirmLabel="Deactivate All"
-        requireReason
+        optionalReason
         isPending={false}
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          deactivateAllEnrollments(Number(integrationId), { reason })
+          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
+          deactivateAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments deactivated.');
@@ -308,12 +318,13 @@ export default function IntegrationDetailPage() {
         title="Reactivate All Enrollments"
         description="All deactivated enrollments under this integration will be reactivated."
         confirmLabel="Reactivate All"
-        requireReason
+        optionalReason
         isPending={false}
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          reactivateAllEnrollments(Number(integrationId), { reason })
+          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
+          reactivateAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments reactivated.');
@@ -328,12 +339,13 @@ export default function IntegrationDetailPage() {
         title="Revoke All Enrollments"
         description="All enrollments will be PERMANENTLY and IRREVERSIBLY revoked. All users under this integration will lose authentication access. New enrollments must be created for re-enrolment."
         confirmLabel="Revoke All Permanently"
-        requireReason
+        optionalReason
         isPending={false}
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          revokeAllEnrollments(Number(integrationId), { reason })
+          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
+          revokeAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments permanently revoked.', 'error');
@@ -348,11 +360,13 @@ export default function IntegrationDetailPage() {
         title="Delete Integration"
         description={`Are you sure you want to permanently delete integration "${integration?.name ?? integration?.code}"? This action cannot be undone.`}
         confirmLabel="Yes, Delete Integration"
+        optionalReason
         isPending={false}
         isError={false}
         errorMessage=""
-        onConfirm={() => {
-          delete1(Number(integrationId))
+        onConfirm={(reason) => {
+          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
+          delete1(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['integrations'] });
               toast('Integration deleted.');
