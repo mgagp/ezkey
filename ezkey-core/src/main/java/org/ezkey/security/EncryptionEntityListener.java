@@ -169,6 +169,28 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     String context = contextSupplier.get();
     String plaintext = getFieldValue(entity, transientFieldName);
 
+    // When transient is null/blank, use persistent field as fallback source (setter wrote
+    // plaintext to encryptedEnrollmentProofToken; reflection may not see transient on proxy/copy).
+    if ((plaintext == null || plaintext.isBlank())
+        && "enrollmentProofToken".equals(transientFieldName)
+        && entity instanceof Enrollment) {
+      try {
+        String fromPersistent = getFieldValue(entity, persistentFieldName);
+        if (fromPersistent != null
+            && !fromPersistent.isBlank()
+            && (service == null || !service.isEncrypted(fromPersistent))) {
+          plaintext = fromPersistent;
+        }
+      } catch (Exception e) {
+        logger.warn(
+            "Fallback read of enrollment proof token from persistent field failed for {}, "
+                + "skipping encryption of proof token",
+            context,
+            e);
+        // Leave plaintext null so we return early; persistent field stays as set by setter
+      }
+    }
+
     if (plaintext == null || plaintext.isBlank()) {
       logger.trace("Field {} is null or blank for {}", transientFieldName, context);
       return;

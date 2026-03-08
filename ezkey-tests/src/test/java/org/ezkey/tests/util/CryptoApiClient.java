@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li>Generate EC P-256 key pairs for device simulation
  *   <li>Generate proof tokens
+ *   <li>Encrypt plaintext (returns ENC:keyID:Base64 value for test data)
  *   <li>Sign data with private keys (ECDSA-SHA256)
  *   <li>Validate signatures (optional, for testing)
  * </ul>
@@ -215,6 +216,55 @@ public class CryptoApiClient {
       log.warn("Failed to parse keyId from Crypto API: {}", keyIdStr, e);
       return null;
     }
+  }
+
+  /**
+   * Encrypts plaintext via Crypto API and returns the encrypted value string.
+   *
+   * <p>Calls POST /api/v1/crypto/encrypt. Returns the value in application format {@code
+   * ENC:keyID:Base64(ciphertext)}, or null if encryption failed or is unavailable. Use this when
+   * tests need to persist encrypted values (e.g. raw SQL INSERT with enrollment_proof_token).
+   *
+   * @param plaintext plaintext to encrypt
+   * @return encrypted value with ENC: prefix, or null if encryption failed/unavailable
+   */
+  public String encrypt(String plaintext) {
+    if (plaintext == null) {
+      return null;
+    }
+    log.debug("Encrypting plaintext (length {})", plaintext.length());
+
+    RestAssuredTestConfig.configureForCryptoApi(dockerStackConfig);
+
+    Map<String, String> requestBody = new HashMap<>();
+    requestBody.put("plaintext", plaintext);
+
+    Response response =
+        given()
+            .contentType(ContentType.JSON)
+            .body(requestBody)
+            .when()
+            .post("/encrypt")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    Boolean encryptionSuccessful = response.jsonPath().getBoolean("encryptionSuccessful");
+    String encryptedValue = response.jsonPath().getString("encryptedValue");
+
+    if (!Boolean.TRUE.equals(encryptionSuccessful) || encryptedValue == null) {
+      log.debug(
+          "Encryption failed or no encryptedValue: encryptionSuccessful={}, hasValue={}",
+          encryptionSuccessful,
+          encryptedValue != null);
+      return null;
+    }
+    if (!encryptedValue.startsWith("ENC:")) {
+      log.debug("Encryption returned plaintext (no ENC: prefix), encryption likely unavailable");
+      return null;
+    }
+    return encryptedValue;
   }
 
   /**

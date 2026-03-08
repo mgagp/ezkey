@@ -351,9 +351,11 @@ public class AdminBootstrapService {
     // that was set)
     String tokenToLog = enrollmentProofToken;
 
-    // Link admin to enrollment. EzkeyAdmin.mfaEnrollment has CascadeType.MERGE, so
-    // adminRepository.save() will cascade merge to the enrollment and persist it.
-    globalAdmin.setMfaEnrollment(globalAdminEnrollment);
+    // Persist enrollment first. EzkeyAdmin.mfaEnrollment has CascadeType.MERGE only (no
+    // PERSIST), so a new enrollment must be saved explicitly before linking to the admin;
+    // otherwise Hibernate throws "references an unsaved transient instance".
+    Enrollment persistedEnrollment = enrollmentRepository.save(globalAdminEnrollment);
+    globalAdmin.setMfaEnrollment(persistedEnrollment);
 
     // Configure passwordless authentication defaults
     // Passwordless is the ONLY mode - no flag needed (implicit)
@@ -366,10 +368,6 @@ public class AdminBootstrapService {
     globalAdmin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
 
     adminRepository.save(globalAdmin);
-
-    // After cascade merge, the managed enrollment (with ID) is on the admin.
-    // The original globalAdminEnrollment may not have the ID; use the one from admin.
-    Enrollment persistedEnrollment = globalAdmin.getMfaEnrollment();
 
     logger.info(
         "✅ Global Admin Enrollment created (ID: {})", persistedEnrollment.getEnrollmentId());

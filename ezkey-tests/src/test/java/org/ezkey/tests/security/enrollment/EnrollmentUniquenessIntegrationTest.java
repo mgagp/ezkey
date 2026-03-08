@@ -16,9 +16,13 @@ import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAdminApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.DatabaseHelper;
@@ -236,15 +240,29 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     // Escape single quotes in keys for SQL
     String escapedPrivateKey = integrationPrivateKey.replace("'", "''");
     String escapedPublicKey = integrationPublicKey.replace("'", "''");
+    // Encrypt proof token so raw INSERT matches application encryption-at-rest. Use unique
+    // plaintext per INSERT so enrollment_proof_token_hash stays unique across tests.
+    String plaintextToken =
+        "test-token-2-" + integrationId + "-" + enrollmentId1 + "-" + UUID.randomUUID();
+    String encryptedProofToken = cryptoApiClient.encrypt(plaintextToken);
+    assertThat(encryptedProofToken)
+        .as("Encryption required for test data integrity (Crypto API must be available)")
+        .isNotNull();
+    String proofTokenHash = sha256Hex(plaintextToken);
+    String escapedEncryptedToken = encryptedProofToken.replace("'", "''");
     // Use executeQuery to get all results, then find the enrollment_id value
     List<String> insertResults =
         databaseHelper.executeQuery(
             "INSERT INTO ezkey_enrollment (integration_id, enrollment_name,"
                 + " enrollment_status, enrollment_active, enrollment_proof_token,"
-                + " enrollment_challenge, integration_private_key, integration_public_key,"
-                + " created_at) VALUES ("
+                + " enrollment_proof_token_hash, enrollment_challenge, integration_private_key,"
+                + " integration_public_key, created_at) VALUES ("
                 + integrationId
-                + ", 'Test Device', 'CREATED', false, 'test-token-2', 123457, '"
+                + ", 'Test Device', 'CREATED', false, '"
+                + escapedEncryptedToken
+                + "', '"
+                + proofTokenHash
+                + "', 123457, '"
                 + escapedPrivateKey
                 + "', '"
                 + escapedPublicKey
@@ -361,14 +379,26 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     // Escape single quotes in keys for SQL
     String escapedPrivateKey = integrationPrivateKey.replace("'", "''");
     String escapedPublicKey = integrationPublicKey.replace("'", "''");
+    String plaintextToken =
+        "test-token-2-" + integrationId + "-" + enrollmentId1 + "-" + UUID.randomUUID();
+    String encryptedProofToken = cryptoApiClient.encrypt(plaintextToken);
+    assertThat(encryptedProofToken)
+        .as("Encryption required for test data integrity (Crypto API must be available)")
+        .isNotNull();
+    String proofTokenHash = sha256Hex(plaintextToken);
+    String escapedEncryptedToken = encryptedProofToken.replace("'", "''");
     List<String> insertResults =
         databaseHelper.executeQuery(
             "INSERT INTO ezkey_enrollment (integration_id, enrollment_name,"
                 + " enrollment_status, enrollment_active, enrollment_proof_token,"
-                + " enrollment_challenge, integration_private_key, integration_public_key,"
-                + " created_at) VALUES ("
+                + " enrollment_proof_token_hash, enrollment_challenge, integration_private_key,"
+                + " integration_public_key, created_at) VALUES ("
                 + integrationId
-                + ", 'Test Device', 'CREATED', false, 'test-token-2', 123457, '"
+                + ", 'Test Device', 'CREATED', false, '"
+                + escapedEncryptedToken
+                + "', '"
+                + proofTokenHash
+                + "', 123457, '"
                 + escapedPrivateKey
                 + "', '"
                 + escapedPublicKey
@@ -461,14 +491,26 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     // Escape single quotes in keys for SQL
     String escapedPrivateKey = integrationPrivateKey.replace("'", "''");
     String escapedPublicKey = integrationPublicKey.replace("'", "''");
+    String plaintextToken =
+        "test-token-2-" + integrationId + "-" + enrollmentId1 + "-" + UUID.randomUUID();
+    String encryptedProofToken = cryptoApiClient.encrypt(plaintextToken);
+    assertThat(encryptedProofToken)
+        .as("Encryption required for test data integrity (Crypto API must be available)")
+        .isNotNull();
+    String proofTokenHash = sha256Hex(plaintextToken);
+    String escapedEncryptedToken = encryptedProofToken.replace("'", "''");
     List<String> insertResults =
         databaseHelper.executeQuery(
             "INSERT INTO ezkey_enrollment (integration_id, enrollment_name,"
                 + " enrollment_status, enrollment_active, enrollment_proof_token,"
-                + " enrollment_challenge, integration_private_key, integration_public_key,"
-                + " created_at) VALUES ("
+                + " enrollment_proof_token_hash, enrollment_challenge, integration_private_key,"
+                + " integration_public_key, created_at) VALUES ("
                 + integrationId
-                + ", 'Test Device', 'CREATED', false, 'test-token-2', 123457, '"
+                + ", 'Test Device', 'CREATED', false, '"
+                + escapedEncryptedToken
+                + "', '"
+                + proofTokenHash
+                + "', 123457, '"
                 + escapedPrivateKey
                 + "', '"
                 + escapedPublicKey
@@ -627,5 +669,27 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
         .containsAnyOf("/api/v1/admin/auth/recover", "/auth/recover", "recovery process");
     assertThat(responseBody)
         .containsAnyOf("/api/v1/admin/enrollments/reset", "/enrollments/reset", "recovery process");
+  }
+
+  /**
+   * SHA-256 hash of the value as lowercase hex (64 chars). Matches entity behavior for
+   * enrollment_proof_token_hash. Uses standard Java only (ezkey-tests has no ezkey-core
+   * dependency).
+   */
+  private static String sha256Hex(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+      StringBuilder hex = new StringBuilder(hashBytes.length * 2);
+      for (byte b : hashBytes) {
+        hex.append(String.format("%02x", b & 0xff));
+      }
+      return hex.toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 not available", e);
+    }
   }
 }

@@ -278,6 +278,93 @@ public class DatabaseHelper {
   }
 
   /**
+   * Returns enrollment IDs whose proof token is stored as plaintext (no ENC: prefix).
+   *
+   * <p>Used for opportunistic verification of encryption-at-rest: all enrollment proof tokens
+   * should be encrypted with Google Tink (format ENC:keyID:Base64). Any row not matching that
+   * format indicates a bypass of EncryptionEntityListener (e.g. raw SQL INSERT) or encryption
+   * unavailable at persist time.
+   *
+   * <p><b>Diagnostic query (run in BD to see what plaintext enrollments have in common):</b>
+   *
+   * <pre>{@code
+   * SELECT enrollment_id,
+   *        integration_id,
+   *        enrollment_name,
+   *        enrollment_status,
+   *        enrollment_proof_token_hash IS NOT NULL AS has_hash,
+   *        LEFT(enrollment_proof_token, 60) AS token_preview,
+   *        created_at
+   * FROM ezkey_enrollment
+   * WHERE enrollment_proof_token NOT LIKE '%ENC%'
+   * ORDER BY enrollment_id;
+   * }</pre>
+   *
+   * <p>Compare with encrypted rows (WHERE enrollment_proof_token LIKE 'ENC:%') to see patterns:
+   * e.g. same enrollment_name, NULL hash, or created_at clustering.
+   *
+   * <p><b>Typical diagnostic result:</b> Plaintext rows often have {@code has_hash = t} (hash set).
+   * Those were created via the application (JPA always sets the hash in setEnrollmentProofToken).
+   * Only rows with {@code plaintext AND enrollment_proof_token_hash IS NULL} can come from test raw
+   * SQL INSERTs (e.g. pre-fix EnrollmentUniquenessIntegrationTest). Use {@link
+   * #getEnrollmentIdsWithPlaintextProofTokenAndNullHash()} to assert only on that test-code
+   * pattern.
+   *
+   * @return list of enrollment_id values where enrollment_proof_token NOT LIKE 'ENC:%', empty if
+   *     none
+   */
+  public List<Integer> getEnrollmentIdsWithPlaintextProofToken() {
+    String sqlQuery =
+        "SELECT enrollment_id FROM ezkey_enrollment WHERE enrollment_proof_token NOT LIKE 'ENC:%';";
+    List<String> raw = executeQuery(sqlQuery);
+    List<Integer> ids = new ArrayList<>();
+    for (String row : raw) {
+      if (row == null || row.isBlank()) {
+        continue;
+      }
+      try {
+        ids.add(Integer.parseInt(row.trim()));
+      } catch (NumberFormatException e) {
+        log.debug("Skipping non-numeric row from enrollment_proof_token query: {}", row);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Returns enrollment IDs whose proof token is plaintext and hash is NULL (test-code-only
+   * pattern).
+   *
+   * <p>Enrollments created via the application (JPA entity) always set {@code
+   * enrollment_proof_token_hash} in {@code setEnrollmentProofToken()}. Only raw SQL INSERTs from
+   * test code could create rows with plaintext token and NULL hash (e.g. the pre-fix
+   * EnrollmentUniquenessIntegrationTest INSERTs). This method is used by the elective encryption
+   * integrity test to assert only on enrollments that can only come from test code, not from
+   * application behavior.
+   *
+   * @return list of enrollment_id where enrollment_proof_token NOT LIKE 'ENC:%' AND
+   *     enrollment_proof_token_hash IS NULL, empty if none
+   */
+  public List<Integer> getEnrollmentIdsWithPlaintextProofTokenAndNullHash() {
+    String sqlQuery =
+        "SELECT enrollment_id FROM ezkey_enrollment WHERE enrollment_proof_token NOT LIKE 'ENC:%'"
+            + " AND enrollment_proof_token_hash IS NULL;";
+    List<String> raw = executeQuery(sqlQuery);
+    List<Integer> ids = new ArrayList<>();
+    for (String row : raw) {
+      if (row == null || row.isBlank()) {
+        continue;
+      }
+      try {
+        ids.add(Integer.parseInt(row.trim()));
+      } catch (NumberFormatException e) {
+        log.debug("Skipping non-numeric row from enrollment_proof_token query: {}", row);
+      }
+    }
+    return ids;
+  }
+
+  /**
    * Gets the system integration ID (is_system_integration = true).
    *
    * <p>Used for tests that need to verify guards against bulk revocation of system integrations.
