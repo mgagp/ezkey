@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, QrCode, RefreshCw, Search } from 'lucide-react';
@@ -187,6 +187,10 @@ function EnrollmentCreateDialog({
             <Button onClick={handleClose}>Done</Button>
           </div>
         </div>
+      ) : !loadingIntegrations && integrations.length === 0 ? (
+        <Alert variant="warning">
+          No integration available. <Link to="/integrations" className="font-medium text-accent underline">Create an integration first</Link>.
+        </Alert>
       ) : (
         /* ── Form state ──────────────────────────────────── */
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

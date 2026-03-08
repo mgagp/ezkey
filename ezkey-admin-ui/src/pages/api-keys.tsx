@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
@@ -199,6 +199,10 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
             </Button>
           </div>
         </div>
+      ) : !loadingIntegrations && integrations.length === 0 ? (
+        <Alert variant="warning">
+          No integration available. <Link to="/integrations" className="font-medium text-accent underline">Create an integration first</Link>.
+        </Alert>
       ) : (
         /* ── Create form ─────────────────────────────────── */
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
