@@ -4,26 +4,30 @@ overview: Analyse du dashboard actuel du Tenant UI et recommandations d'évoluti
 todos:
   - id: backend-dto
     content: Créer DashboardOverviewDto avec les nested records (IntegrationStats, EnrollmentStats, Auth24hStats, RecentActivityItem)
-    status: pending
+    status: completed
   - id: backend-service
     content: Créer DashboardService avec requêtes parallèles CompletableFuture, tenant-scoped, fenêtre 24h côté serveur
-    status: pending
+    status: completed
   - id: backend-controller
     content: Créer DashboardController GET /api/v1/dashboard/overview avec @PreAuthorize ROLE_ADMIN
-    status: pending
+    status: completed
   - id: backend-pending-count
     content: Ajouter GET /api/v1/auth-attempts/pending-count dans AuthAttemptController (ou DashboardController)
-    status: pending
+    status: completed
   - id: frontend-types
-    content: Ajouter type DashboardOverview dans ezkey-tenant-ui/src/types/models.ts
-    status: pending
+    content: Ajouter type DashboardOverview dans ezkey-admin-ui/src/types/models.ts
+    status: completed
   - id: frontend-dashboard
     content: "Refactorer dashboard.tsx : 11 useQueries → 2 useQueries, données présentées depuis overview + pending count"
-    status: pending
+    status: completed
 isProject: false
+status: implemented
+archived: true
 ---
 
 # Dashboard API — Analyse et Recommandations d'Evolution
+
+**Implementation status:** Fully implemented and ready for archival. Backend (DTOs, DashboardService, DashboardController, pending-count), frontend (ezkey-admin-ui: types, 2 useQueries, Audit chain alerts widget for Global Admin), Postman collections, and elective test (DashboardOverviewElectiveTest with DB spot checks) are in place. Verified by maintainer.
 
 ## Diagnostic : Le problème actuel
 
@@ -231,4 +235,3 @@ Pour des widgets avec des vitesses très différentes (ex: alertes critiques à 
 - **Polling tiered** : conservé côté client via TanStack Query (60s + 10s)
 - **Pas de BFF** : endpoints natifs dans `ezkey-admin-api`, scoped au tenant
 - **Evolutivité** : le DTO `overview` est extensible par ajout de sections JSON optionnelles
-

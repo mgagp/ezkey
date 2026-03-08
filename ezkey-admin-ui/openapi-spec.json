@@ -43,6 +43,10 @@
       "description": "Administrator provisioning API"
     },
     {
+      "name": "Dashboard",
+      "description": "Dashboard overview and aggregated stats for Admin UI"
+    },
+    {
       "name": "Enrollments",
       "description": "Enrollment management API"
     },
@@ -3150,6 +3154,38 @@
         }
       }
     },
+    "/api/v1/dashboard/overview": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Get dashboard overview",
+        "description": "Returns aggregated stats (integrations, enrollments, auth 24h), recent activity, and for Global Admin only: instance-level alerts (e.g. audit chain gap pending). Designed for 60s refresh interval.",
+        "operationId": "getOverview",
+        "responses": {
+          "200": {
+            "description": "Dashboard overview",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth-attempts/{id}": {
       "get": {
         "tags": [
@@ -3297,6 +3333,46 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/pending-count": {
+      "get": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Get pending auth attempt count",
+        "description": "Returns the number of auth attempts with status PENDING for the current scope. Designed for dashboard live widget (e.g. 10s refresh).",
+        "operationId": "getPendingCount",
+        "responses": {
+          "200": {
+            "description": "Pending count",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
                 }
               }
             }
@@ -5578,6 +5654,172 @@
           "retryCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "DashboardAlertItemDto": {
+        "type": "object",
+        "description": "Admin console alert for dashboard overview (Global Admin only)",
+        "properties": {
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "eventStatus": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventDetails": {
+            "$ref": "#/components/schemas/DashboardGapPendingDetailsDto"
+          }
+        }
+      },
+      "DashboardAuth24hStatsDto": {
+        "type": "object",
+        "description": "Auth attempt counts in the last 24 hours for dashboard overview",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "accepted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rejected": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failureRatePct": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DashboardEnrollmentStatsDto": {
+        "type": "object",
+        "description": "Enrollment counts by status for dashboard overview",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "verified": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bound": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DashboardGapPendingDetailsDto": {
+        "type": "object",
+        "description": "Details for audit chain gap pending alert",
+        "properties": {
+          "gapStart": {
+            "type": "string"
+          },
+          "estimatedGapEnd": {
+            "type": "string"
+          },
+          "estimatedGapMinutes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "anchorCheckpointId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "DashboardIntegrationStatsDto": {
+        "type": "object",
+        "description": "Integration counts for dashboard overview",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inactive": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DashboardOverviewDto": {
+        "type": "object",
+        "description": "Aggregated dashboard overview (stats, recent activity, optional alerts)",
+        "properties": {
+          "integrations": {
+            "$ref": "#/components/schemas/DashboardIntegrationStatsDto"
+          },
+          "enrollments": {
+            "$ref": "#/components/schemas/DashboardEnrollmentStatsDto"
+          },
+          "auth24h": {
+            "$ref": "#/components/schemas/DashboardAuth24hStatsDto"
+          },
+          "recentActivity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardRecentActivityItemDto"
+            }
+          },
+          "alerts": {
+            "type": "array",
+            "description": "Instance-level alerts (e.g. audit chain gap pending). Populated only for Global Admin.",
+            "items": {
+              "$ref": "#/components/schemas/DashboardAlertItemDto"
+            }
+          }
+        }
+      },
+      "DashboardRecentActivityItemDto": {
+        "type": "object",
+        "description": "Recent audit log entry for dashboard overview",
+        "properties": {
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "eventStatus": {
+            "type": "string"
+          },
+          "eventAction": {
+            "type": "string"
+          },
+          "apiName": {
+            "type": "string"
+          },
+          "adminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
