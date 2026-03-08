@@ -174,6 +174,11 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 - **Use `dismissible={false}`** for any dialog that contains a **form** (create/edit) or **critical state** (e.g. secret shown once, live test in progress). This prevents accidental data loss when the user clicks outside.
 - **Leave default** (`dismissible` unspecified) for read-only detail dialogs and simple confirmations (yes/no, no form fields).
 
+### Button placement (list toolbar and dialogs)
+
+- **List toolbar:** The primary action (Create, New, Rotate Key, etc.) is always on the **right**. Put filters, search, and Refresh on the left; use `ml-auto` on the primary action button (or a right group with `justify-between`) so it stays right-aligned.
+- **Dialogs:** Cancel (or secondary) on the left, primary Submit/Create on the right. Use `flex justify-end gap-2` (or `justify-end pt-2`) for dialog footers.
+
 ## Docker Deployment
 
 ```

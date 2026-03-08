@@ -263,10 +263,6 @@ export default function TenantsPage() {
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
-          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 shrink-0">
-            <Plus className="size-3.5" />
-            Create Tenant
-          </Button>
           <div className="flex-1 min-w-52 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
             <Input
@@ -286,6 +282,10 @@ export default function TenantsPage() {
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="size-3.5" />
             Refresh
+          </Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 ml-auto">
+            <Plus className="size-3.5" />
+            Create Tenant
           </Button>
         </div>
 
