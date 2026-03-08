@@ -1,8 +1,10 @@
 # Phase 2 — Migration vers les hooks Orval : inventaire et évaluation
 
+**Statut :** ✅ **Complété — prêt à archiver** (vague 1 + vague 2 migrées ; tests exploratoires validés).
+
 **Contexte :** Plan [plan-adminUiOpenapiClientGeneration.prompt.md](../.github/prompts/plan-adminUiOpenapiClientGeneration.prompt.md). La Phase 1 (types générés, suppression de `src/types/`) est faite. La Phase 2 consiste à remplacer les appels manuels `api.get/post/...` et le hook custom `usePaginatedQuery` par les hooks TanStack Query générés par Orval.
 
-**Objectif de ce document :** Inventaire actualisé des écrans et APIs concernés, vérification de la couverture, et identification des angles morts avant de lancer la génération / migration.
+**Objectif de ce document :** Inventaire actualisé des écrans et APIs concernés, vérification de la couverture, et identification des angles morts avant de lancer la génération / migration. *(Document conservé pour référence et historique.)*
 
 ---
 
