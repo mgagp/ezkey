@@ -235,6 +235,43 @@ public class AuthAttemptController {
   }
 
   /**
+   * Returns the count of pending auth attempts for the current admin's scope.
+   *
+   * <p>Designed for dashboard live widget (e.g. 10s refresh). Tenant Admin sees only their tenant's
+   * pending count; Global Admin sees instance-wide count.
+   *
+   * @return JSON object with single field {@code count}
+   */
+  @Operation(
+      summary = "Get pending auth attempt count",
+      description =
+          "Returns the number of auth attempts with status PENDING for the current scope. "
+              + "Designed for dashboard live widget (e.g. 10s refresh).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Pending count"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+      })
+  @PreAuthorize("hasAnyRole('ADMIN', 'API_KEY')")
+  @GetMapping("/pending-count")
+  public ResponseEntity<java.util.Map<String, Long>> getPendingCount() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    Integer tenantId = extractTenantId(auth);
+    long count =
+        authAttemptService
+            .findByFilters(
+                AuthAttemptStatus.PENDING,
+                null,
+                null,
+                null,
+                null,
+                tenantId,
+                org.springframework.data.domain.PageRequest.of(0, 1))
+            .getTotalElements();
+    return ResponseEntity.ok(java.util.Map.of("count", count));
+  }
+
+  /**
    * Retrieves an authorization attempt by its ID for administrative purposes.
    *
    * <p>Returns the authorization attempt data as a DTO for administrative review. Returns 404 if

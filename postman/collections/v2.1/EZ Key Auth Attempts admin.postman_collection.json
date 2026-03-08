@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3822eaa7-740f-4b2d-824f-791b9376c346",
     "name": "EZ Key Auth Attempts admin",
-    "description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Cancel Auth Attempt**: Cancel a pending or read authentication attempt by marking it as expired\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
+    "description": "Collection for authentication attempt management operations in the Admin API.\n\n## Endpoints\n\n- **Create Auth Attempt**: Create a new authentication attempt for MFA validation\n- **List All Auth Attempts**: Retrieve all authentication attempts in the system\n- **Pending Count**: Get the number of PENDING auth attempts for the current scope (dashboard live widget)\n- **Get Auth Attempt by ID**: Get details of a specific authentication attempt\n- **Wait for Response**: Wait for mobile device response with configurable timeout and polling\n- **Cancel Auth Attempt**: Cancel a pending or read authentication attempt by marking it as expired\n\n## Authentication\n\nAll endpoints support two authentication methods:\n- **Bearer Token**: Admin authentication (requires passwordless login)\n- **API Key**: Machine-to-machine authentication (HTTP Basic Auth with integrationKey:secretKey)\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all auth attempts across all tenants\n- **TenantAdmin**: Can only access auth attempts for enrollments within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only auth attempts for their tenant's enrollments)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessAuthAttempt()`\n- **Enrollment Access Check**: Auth attempt creation validates that the admin has access to the enrollment (via `AccessControlService.canAccessEnrollment()`)\n- **Integration Access Check**: Returns 403 Forbidden if TenantAdmin tries to create auth attempt for enrollment from another tenant\n\n### API Key Access\n- **API Keys**: Can only create auth attempts for enrollments belonging to their associated integration\n- **Ownership Validation**: API key access is validated to ensure enrollment belongs to the API key's integration\n\n## Rate Limiting\n\n- **API Key Create**: 100 requests per hour per integration key\n- **API Key Wait**: 200 requests per hour per integration key\n- **Admin Bearer Token**: No rate limiting",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -348,6 +348,53 @@
           ]
         },
         "description": "Retrieves authentication attempts with optional filters, pagination, and dynamic sorting for security monitoring and administration.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all auth attempts across all tenants\n- **TenantAdmin**: Sees only auth attempts for enrollments within their tenant (automatic filtering)\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `authAttemptId,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `authAttemptId`, `createdAt`, `expiresAt`, `enrollmentId`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `status`: Filter by status (PENDING, READ, ACCEPTED, REJECTED, INVALID, EXPIRED)\n- `enrollmentId`: Filter by enrollment ID\n- `integrationId`: Filter by integration ID\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=authAttemptId,asc` - Sort by ID ascending\n- `?status=PENDING&sort=createdAt,desc` - Filter pending attempts, newest first\n\n**Response (200 OK):**\nPaginated response containing `content` (array of auth attempts) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "pending-count",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response contains count\", function () {",
+              "        pm.expect(jsonData).to.have.property('count');",
+              "        pm.expect(jsonData.count).to.be.a('number');",
+              "        pm.expect(jsonData.count).to.be.at.least(0);",
+              "    });",
+              "    ",
+              "    console.log('Pending auth attempts count:', jsonData.count);",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/auth-attempts/pending-count",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth-attempts",
+            "pending-count"
+          ]
+        },
+        "description": "Returns the number of auth attempts with status PENDING for the current admin's scope. Designed for the dashboard live widget (e.g. 10s refresh).\n\n**No request body.** GET only.\n\n**Multi-Tenancy:**\n- **Tenant Admin**: Count only includes pending attempts for enrollments within their tenant.\n- **Global Admin**: Count is instance-wide (all tenants).\n\n**Response (200 OK):**\n```json\n{\n  \"count\": 3\n}\n```\n- `count`: Number of auth attempts currently in PENDING status (non-negative integer).\n\n**Use case:** The Admin UI dashboard polls this endpoint at a short interval (e.g. 10s) to show \"X pending\" without calling the full list endpoint. Semantically correct and minimal payload compared to `GET /api/v1/auth-attempts?size=1&status=PENDING` (which returns a full page envelope).\n\n**Authentication:** Supports both Bearer token (admin) and API key (M2M).\n\n**Status Codes:**\n- 200: Pending count returned successfully\n- 401: Not authenticated\n- 500: Internal server error"
       },
       "response": []
     },

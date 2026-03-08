@@ -1,0 +1,118 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "EZ Key Dashboard admin",
+    "description": "Collection for dashboard overview and aggregated stats in the Admin API (ezkey-admin-ui backend).\n\n## Endpoints\n\n- **Get overview**: Aggregated stats (integrations, enrollments, auth 24h), recent activity, and for Global Admin only: instance-level alerts (e.g. AUDIT_CHAIN_GAP_PENDING)\n\n## Authentication\n\nAll endpoints require admin Bearer token (obtain via EZ Key Authentication Login admin collection).\n\n## Role-aware payload\n\n- **Tenant Admin**: Tenant-scoped stats (integrations, enrollments, auth 24h, recent activity). `alerts` is null or empty.\n- **Global Admin**: Instance-wide stats, recent activity across tenants, and `alerts` populated with recent AUDIT_CHAIN_GAP_PENDING entries when the audit chain scheduler has detected an undeclared gap.\n\n## Refresh intervals\n\n- Overview: designed for ~60s refresh (dashboard main payload).\n- Pending count: use GET /api/v1/auth-attempts/pending-count from the Auth Attempts admin collection for ~10s refresh (live pending widget).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "4087"
+  },
+  "item": [
+    {
+      "name": "get overview",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response contains integrations\", function () {",
+              "        pm.expect(jsonData).to.have.property('integrations');",
+              "        pm.expect(jsonData.integrations).to.have.property('total');",
+              "        pm.expect(jsonData.integrations).to.have.property('active');",
+              "        pm.expect(jsonData.integrations).to.have.property('inactive');",
+              "    });",
+              "    ",
+              "    pm.test(\"Response contains enrollments\", function () {",
+              "        pm.expect(jsonData).to.have.property('enrollments');",
+              "        pm.expect(jsonData.enrollments).to.have.property('total');",
+              "        pm.expect(jsonData.enrollments).to.have.property('verified');",
+              "        pm.expect(jsonData.enrollments).to.have.property('bound');",
+              "        pm.expect(jsonData.enrollments).to.have.property('created');",
+              "    });",
+              "    ",
+              "    pm.test(\"Response contains auth24h\", function () {",
+              "        pm.expect(jsonData).to.have.property('auth24h');",
+              "        pm.expect(jsonData.auth24h).to.have.property('total');",
+              "        pm.expect(jsonData.auth24h).to.have.property('accepted');",
+              "        pm.expect(jsonData.auth24h).to.have.property('rejected');",
+              "        pm.expect(jsonData.auth24h).to.have.property('failureRatePct');",
+              "    });",
+              "    ",
+              "    pm.test(\"Response contains recentActivity array\", function () {",
+              "        pm.expect(jsonData).to.have.property('recentActivity');",
+              "        pm.expect(jsonData.recentActivity).to.be.an('array');",
+              "    });",
+              "    ",
+              "    pm.test(\"Alerts if present are for Global Admin\", function () {",
+              "        if (jsonData.hasOwnProperty('alerts') && jsonData.alerts != null && jsonData.alerts.length > 0) {",
+              "            pm.expect(jsonData.alerts).to.be.an('array');",
+              "            var first = jsonData.alerts[0];",
+              "            pm.expect(first).to.have.property('eventType');",
+              "            pm.expect(first).to.have.property('createdAt');",
+              "            if (first.eventType === 'AUDIT_CHAIN_GAP_PENDING' && first.eventDetails) {",
+              "                pm.expect(first.eventDetails).to.have.property('anchorCheckpointId');",
+              "            }",
+              "        }",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/dashboard/overview",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "dashboard",
+            "overview"
+          ]
+        },
+        "description": "Returns the aggregated dashboard overview for the current admin. Consolidates integration, enrollment, and auth-24h stats, recent activity, and (for Global Admin only) instance-level alerts.\n\n**No request body.** GET only.\n\n**Role-aware response:**\n- **Tenant Admin** (`tenantId` set): `integrations`, `enrollments`, `auth24h`, `recentActivity` are tenant-scoped. `alerts` is null or empty.\n- **Global Admin** (`tenantId` null): Same structure with instance-wide counts; `alerts` is populated with recent `AUDIT_CHAIN_GAP_PENDING` entries when the audit chain scheduler has detected an undeclared gap (last checkpoint before lookback window).\n\n**Response (200 OK) — main sections:**\n- `integrations`: `{ total, active, inactive }`\n- `enrollments`: `{ total, verified, bound, created }`\n- `auth24h`: `{ total, accepted, rejected, failureRatePct }` (server-computed 24h window and failure rate)\n- `recentActivity`: array of `{ auditLogId, eventType, eventStatus, eventAction, apiName, adminId, createdAt }` (up to 5 items)\n- `alerts`: (optional, Global Admin only) array of `{ auditLogId, eventType, eventStatus, createdAt, eventDetails }`. For `AUDIT_CHAIN_GAP_PENDING`, `eventDetails` includes `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `anchorCheckpointId`, `message`.\n\n**Example response (Tenant Admin):**\n```json\n{\n  \"integrations\": { \"total\": 3, \"active\": 2, \"inactive\": 1 },\n  \"enrollments\": { \"total\": 12, \"verified\": 10, \"bound\": 1, \"created\": 1 },\n  \"auth24h\": { \"total\": 45, \"accepted\": 42, \"rejected\": 3, \"failureRatePct\": 6 },\n  \"recentActivity\": [ { \"auditLogId\": 101, \"eventType\": \"AUTH_ATTEMPT\", \"eventStatus\": \"SUCCESS\", \"eventAction\": \"login\", \"createdAt\": \"2026-03-08T14:00:00Z\" } ],\n  \"alerts\": null\n}\n```\n\n**Example response (Global Admin with gap alert):**\n`alerts` array contains one or more items with `eventType`: `AUDIT_CHAIN_GAP_PENDING`, `eventDetails.anchorCheckpointId` for use with `POST /api/v1/audit-logs/lifecycle/declare-gap`.\n\n**Status Codes:**\n- 200: Overview returned successfully\n- 401: Not authenticated\n- 500: Internal server error"
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [""]
+      }
+    }
+  ]
+}

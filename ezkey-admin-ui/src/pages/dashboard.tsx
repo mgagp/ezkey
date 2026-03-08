@@ -1,15 +1,14 @@
-import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
-import type { AuditLogResponseDto } from '@/generated/admin-api/model';
-import type { PageResponse } from '@/hooks/use-paginated-orval';
+import { useAuth } from '@/context/auth-context';
+import type { DashboardOverview } from '@/types/models';
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -51,111 +50,145 @@ const quickActions = [
 // ── Dashboard page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const since24h = useMemo(() => {
-    const d = new Date();
-    d.setHours(d.getHours() - 24);
-    return d.toISOString();
-  }, []);
-
-  type StatsPage = PageResponse<object>;
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
   const results = useQueries({
     queries: [
-      // 0 — integrations total
-      { queryKey: ['stats', 'int-total'], queryFn: () => api.get<StatsPage>('/api/v1/integrations?size=1'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 1 — integrations active
-      { queryKey: ['stats', 'int-active'], queryFn: () => api.get<StatsPage>('/api/v1/integrations?size=1&active=true'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 2 — enrollments total
-      { queryKey: ['stats', 'enr-total'], queryFn: () => api.get<StatsPage>('/api/v1/enrollments?size=1'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 3 — enrollments verified
-      { queryKey: ['stats', 'enr-verified'], queryFn: () => api.get<StatsPage>('/api/v1/enrollments?size=1&status=VERIFIED'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 4 — enrollments bound
-      { queryKey: ['stats', 'enr-bound'], queryFn: () => api.get<StatsPage>('/api/v1/enrollments?size=1&status=BOUND'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 5 — enrollments created (not yet bound)
-      { queryKey: ['stats', 'enr-created'], queryFn: () => api.get<StatsPage>('/api/v1/enrollments?size=1&status=CREATED'), staleTime: 60_000, refetchInterval: 60_000 },
-      // 6 — auth attempts total (24h)
-      { queryKey: ['stats', 'auth-total', since24h], queryFn: () => api.get<StatsPage>(`/api/v1/auth-attempts?size=1&createdAfter=${encodeURIComponent(since24h)}`), staleTime: 30_000, refetchInterval: 30_000 },
-      // 7 — auth attempts accepted (24h)
-      { queryKey: ['stats', 'auth-accepted', since24h], queryFn: () => api.get<StatsPage>(`/api/v1/auth-attempts?size=1&status=ACCEPTED&createdAfter=${encodeURIComponent(since24h)}`), staleTime: 30_000, refetchInterval: 30_000 },
-      // 8 — auth attempts rejected (24h)
-      { queryKey: ['stats', 'auth-rejected', since24h], queryFn: () => api.get<StatsPage>(`/api/v1/auth-attempts?size=1&status=REJECTED&createdAfter=${encodeURIComponent(since24h)}`), staleTime: 30_000, refetchInterval: 30_000 },
-      // 9 — pending auth attempts (live, short stale)
-      { queryKey: ['stats', 'auth-pending'], queryFn: () => api.get<StatsPage>('/api/v1/auth-attempts?size=1&status=PENDING'), staleTime: 10_000, refetchInterval: 10_000 },
-      // 10 — recent audit logs
-      { queryKey: ['stats', 'recent-activity'], queryFn: () => api.get<PageResponse<AuditLogResponseDto>>('/api/v1/audit-logs?size=5&sort=createdAt,DESC'), staleTime: 30_000, refetchInterval: 30_000 },
+      {
+        queryKey: ['dashboard', 'overview'],
+        queryFn: () => api.get<DashboardOverview>('/api/v1/dashboard/overview'),
+        staleTime: 60_000,
+        refetchInterval: 60_000,
+      },
+      {
+        queryKey: ['dashboard', 'pending'],
+        queryFn: () => api.get<{ count: number }>('/api/v1/auth-attempts/pending-count'),
+        staleTime: 10_000,
+        refetchInterval: 10_000,
+      },
     ],
   });
 
-  const intTotal = results[0].data?.page?.totalElements;
-  const intActive = results[1].data?.page?.totalElements;
-  const intInactive = intTotal !== undefined && intActive !== undefined ? intTotal - intActive : undefined;
+  const overview = results[0].data;
+  const pendingResponse = results[1].data;
+  const overviewLoading = results[0].isLoading;
+  const pendingLoading = results[1].isLoading;
 
-  const enrTotal = results[2].data?.page?.totalElements;
-  const enrVerified = results[3].data?.page?.totalElements;
-  const enrBound = results[4].data?.page?.totalElements;
-  const enrCreated = results[5].data?.page?.totalElements;
+  const intTotal = overview?.integrations?.total;
+  const intActive = overview?.integrations?.active;
+  const intInactive = overview?.integrations?.inactive;
 
-  const authTotal = results[6].data?.page?.totalElements;
-  const authAccepted = results[7].data?.page?.totalElements;
-  const authRejected = results[8].data?.page?.totalElements;
-  const authPending = results[9].data?.page?.totalElements;
+  const enrTotal = overview?.enrollments?.total;
+  const enrVerified = overview?.enrollments?.verified;
+  const enrBound = overview?.enrollments?.bound;
+  const enrCreated = overview?.enrollments?.created;
 
-  const failureRate =
-    authTotal && authTotal > 0 && authRejected !== undefined
-      ? Math.round((authRejected / authTotal) * 100)
-      : undefined;
+  const authTotal = overview?.auth24h?.total;
+  const authAccepted = overview?.auth24h?.accepted;
+  const authRejected = overview?.auth24h?.rejected;
+  const failureRate = overview?.auth24h?.failureRatePct;
+  const authPending = pendingResponse?.count;
 
-  const recentLogs = (results[10].data as PageResponse<AuditLogResponseDto> | undefined)?.content ?? [];
+  const recentLogs = overview?.recentActivity ?? [];
+  const alerts = overview?.alerts ?? [];
 
   return (
     <AppShell title="Dashboard">
       <div className="space-y-6">
 
+        {/* Audit chain alerts (Global Admin only) */}
+        {isGlobalAdmin && alerts.length > 0 && (
+          <Card className="border-2 border-error/50 bg-error/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-error">
+                  <AlertTriangle className="size-5" />
+                  Audit chain alerts
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-fg-muted mb-3">
+                Undeclared gap(s) detected. Declare the gap in Audit Logs to restore chain continuity.
+              </p>
+              <ul className="space-y-2">
+                {alerts.map((alert) => (
+                  <li
+                    key={alert.auditLogId}
+                    className="flex flex-wrap items-baseline gap-2 text-sm border-b border-fg/10 pb-2 last:border-0 last:pb-0"
+                  >
+                    <Badge variant="error">
+                      {(alert.eventType ?? '').replaceAll('_', ' ')}
+                    </Badge>
+                    <span className="text-fg-muted shrink-0">
+                      {formatRelativeTime(alert.createdAt ?? '')}
+                    </span>
+                    {alert.eventDetails?.anchorCheckpointId != null && (
+                      <span className="text-fg">
+                        Anchor checkpoint: {alert.eventDetails.anchorCheckpointId}
+                        {alert.eventDetails.estimatedGapMinutes != null &&
+                          ` · ~${alert.eventDetails.estimatedGapMinutes} min gap`}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/audit-logs"
+                className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
+              >
+                Open Audit Logs →
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
-          <StatCard title="Integrations" icon={Puzzle} isLoading={results[0].isLoading}>
+          <StatCard title="Integrations" icon={Puzzle} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
-              <StatNum value={intTotal} isLoading={results[0].isLoading} />
+              <StatNum value={intTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={intActive} isLoading={results[1].isLoading} /> active</Badge>
-              <Badge variant="muted"><StatNum value={intInactive} isLoading={results[0].isLoading} /> inactive</Badge>
+              <Badge variant="success"><StatNum value={intActive} isLoading={overviewLoading} /> active</Badge>
+              <Badge variant="muted"><StatNum value={intInactive} isLoading={overviewLoading} /> inactive</Badge>
             </div>
           </StatCard>
 
-          <StatCard title="Enrollments" icon={Users} isLoading={results[2].isLoading}>
+          <StatCard title="Enrollments" icon={Users} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
-              <StatNum value={enrTotal} isLoading={results[2].isLoading} />
+              <StatNum value={enrTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={enrVerified} isLoading={results[3].isLoading} /> verified</Badge>
-              <Badge variant="warning"><StatNum value={enrBound} isLoading={results[4].isLoading} /> bound</Badge>
-              <Badge variant="muted"><StatNum value={enrCreated} isLoading={results[5].isLoading} /> created</Badge>
+              <Badge variant="success"><StatNum value={enrVerified} isLoading={overviewLoading} /> verified</Badge>
+              <Badge variant="warning"><StatNum value={enrBound} isLoading={overviewLoading} /> bound</Badge>
+              <Badge variant="muted"><StatNum value={enrCreated} isLoading={overviewLoading} /> created</Badge>
             </div>
           </StatCard>
 
-          <StatCard title="Auth Attempts (24h)" icon={ShieldCheck} isLoading={results[6].isLoading}>
+          <StatCard title="Auth Attempts (24h)" icon={ShieldCheck} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
-              <StatNum value={authTotal} isLoading={results[6].isLoading} />
+              <StatNum value={authTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={authAccepted} isLoading={results[7].isLoading} /> accepted</Badge>
-              <Badge variant="error"><StatNum value={authRejected} isLoading={results[8].isLoading} /> rejected</Badge>
+              <Badge variant="success"><StatNum value={authAccepted} isLoading={overviewLoading} /> accepted</Badge>
+              <Badge variant="error"><StatNum value={authRejected} isLoading={overviewLoading} /> rejected</Badge>
               {(authPending ?? 0) > 0 && (
-                <Badge variant="warning"><StatNum value={authPending} isLoading={results[9].isLoading} /> pending</Badge>
+                <Badge variant="warning"><StatNum value={authPending} isLoading={pendingLoading} /> pending</Badge>
               )}
             </div>
           </StatCard>
 
-          <StatCard title="Failure Rate (24h)" icon={TrendingUp} isLoading={results[6].isLoading}>
+          <StatCard title="Failure Rate (24h)" icon={TrendingUp} isLoading={overviewLoading}>
             <p className={`text-4xl font-black ${
               failureRate === undefined ? 'text-fg'
               : failureRate > 20 ? 'text-error'
               : failureRate > 10 ? 'text-warning'
               : 'text-success'
             }`}>
-              {failureRate !== undefined ? `${failureRate}%` : <StatNum value={undefined} isLoading={results[6].isLoading} />}
+              {failureRate !== undefined ? `${failureRate}%` : <StatNum value={undefined} isLoading={overviewLoading} />}
             </p>
             <p className="text-xs text-fg-muted mt-2 font-medium">
               {failureRate === undefined ? '' : failureRate <= 5 ? 'Healthy' : failureRate <= 15 ? 'Monitor closely' : 'Action required'}
@@ -176,7 +209,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {results[10].isLoading ? (
+                {overviewLoading ? (
                   <div className="py-6 flex justify-center">
                     <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
                   </div>
@@ -184,9 +217,9 @@ export default function DashboardPage() {
                   <p className="text-sm text-fg-muted italic py-4 text-center">No recent activity.</p>
                 ) : (
                   <div>
-                    {recentLogs.map((log) => (
+                    {recentLogs.map((log, i) => (
                       <div
-                        key={log.auditLogId}
+                        key={log.auditLogId ?? `activity-${i}`}
                         className="flex items-center gap-3 py-2.5 border-b border-fg/10 last:border-0"
                       >
                         <Badge
