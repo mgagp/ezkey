@@ -11,9 +11,13 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
-# Copy source and build
+# OpenAPI spec is required for Orval codegen (canonical: specs/admin-api; committed copy here).
+COPY openapi-spec.json ./
+# Copy remaining source. src/generated/ is gitignored; Orval creates it at build time.
 COPY . .
-RUN npm run build
+
+# Generate API client (Orval) then build. Must run before build — app imports from src/generated/admin-api.
+RUN npm run generate:api && npm run build
 
 # Stage 2: Serve the built SPA with Caddy (non-root, Apache 2.0 licensed)
 FROM caddy:2-alpine AS runtime
