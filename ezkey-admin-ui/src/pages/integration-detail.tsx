@@ -16,9 +16,15 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
-import { api, getApiErrorMessage } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import { getById1 } from '@/generated/admin-api/integrations/integrations';
+import {
+  deactivateAllEnrollments,
+  delete1,
+  getById1,
+  reactivateAllEnrollments,
+  revokeAllEnrollments,
+} from '@/generated/admin-api/integrations/integrations';
 import { search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type { EnrollmentResponseDto, IntegrationResponseDto, PagedModelEnrollmentResponseDto } from '@/generated/admin-api/model';
 
@@ -287,7 +293,7 @@ export default function IntegrationDetailPage() {
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          api.post(`/api/v1/integrations/${integrationId}/enrollments/deactivate-all?reason=${encodeURIComponent(reason)}`, {})
+          deactivateAllEnrollments(Number(integrationId), { reason })
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments deactivated.');
@@ -307,7 +313,7 @@ export default function IntegrationDetailPage() {
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          api.post(`/api/v1/integrations/${integrationId}/enrollments/reactivate-all?reason=${encodeURIComponent(reason)}`, {})
+          reactivateAllEnrollments(Number(integrationId), { reason })
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments reactivated.');
@@ -327,7 +333,7 @@ export default function IntegrationDetailPage() {
         isError={false}
         errorMessage=""
         onConfirm={(reason) => {
-          api.post(`/api/v1/integrations/${integrationId}/enrollments/revoke-all?reason=${encodeURIComponent(reason)}`, {})
+          revokeAllEnrollments(Number(integrationId), { reason })
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
               toast('All enrollments permanently revoked.', 'error');
@@ -346,7 +352,7 @@ export default function IntegrationDetailPage() {
         isError={false}
         errorMessage=""
         onConfirm={() => {
-          api.delete(`/api/v1/integrations/${integrationId}`)
+          delete1(Number(integrationId))
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['integrations'] });
               toast('Integration deleted.');

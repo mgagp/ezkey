@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
@@ -13,9 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { api, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
-import type { AuthAttemptCreateRequestDto } from '@/generated/admin-api/model';
+import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
+import {
+  useDeactivate,
+  useDelete,
+  useGetById,
+  useReactivate,
+  useRevoke,
+} from '@/generated/admin-api/enrollments/enrollments';
 import type { AuthAttemptDto, AuthAttemptDtoAuthAttemptStatus, EnrollmentResponseDto } from '@/generated/admin-api/model';
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
@@ -100,13 +107,15 @@ function TestAuthDialog({
   }, [step, createdAttempt, isFinal]);
 
   // Live status — polls every 3 s, stops automatically on final state
-  const { data: liveStatus } = useQuery({
-    queryKey: ['test-auth', createdAttempt?.authAttemptId],
-    queryFn: () =>
-      api.get<AuthAttemptDto>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}`),
-    enabled: step === 'live' && createdAttempt !== null,
-    refetchInterval: isFinal ? false : 3_000,
-  });
+  const { data: liveStatus } = useGetById2<AuthAttemptDto>(
+    createdAttempt?.authAttemptId ?? 0,
+    {
+      query: {
+        enabled: step === 'live' && createdAttempt !== null,
+        refetchInterval: isFinal ? false : 3_000,
+      },
+    },
+  );
 
   // Transition to done when status becomes final
   useEffect(() => {
@@ -118,23 +127,24 @@ function TestAuthDialog({
     }
   }, [liveStatus, isFinal]);
 
-  const createMutation = useMutation({
-    mutationFn: (req: AuthAttemptCreateRequestDto) =>
-      api.post<AuthAttemptCreateResponse>('/api/v1/auth-attempts', req),
-    onSuccess: (data) => {
-      setCreatedAttempt(data);
-      setCountdown(data.timeoutSeconds);
-      setStep('live');
+  const createMutation = useCreate2({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as AuthAttemptCreateResponse;
+        setCreatedAttempt(res);
+        setCountdown(res.timeoutSeconds);
+        setStep('live');
+      },
     },
   });
 
-  const cancelMutation = useMutation({
-    mutationFn: () =>
-      api.post<AuthAttemptDto>(`/api/v1/auth-attempts/${createdAttempt!.authAttemptId}/cancel`, {}),
-    onSuccess: () => {
-      setIsFinal(true);
-      setDoneReason('cancelled');
-      setStep('done');
+  const cancelMutation = useCancel({
+    mutation: {
+      onSuccess: () => {
+        setIsFinal(true);
+        setDoneReason('cancelled');
+        setStep('done');
+      },
     },
   });
 
@@ -191,8 +201,10 @@ function TestAuthDialog({
               isLoading={createMutation.isPending}
               onClick={() =>
                 createMutation.mutate({
-                  enrollmentId: enrollment.enrollmentId,
-                  challengeRequested,
+                  data: {
+                    enrollmentId: enrollment.enrollmentId,
+                    challengeRequested,
+                  },
                 })
               }
               className="gap-1.5"
@@ -260,7 +272,7 @@ function TestAuthDialog({
               variant="ghost"
               size="sm"
               isLoading={cancelMutation.isPending}
-              onClick={() => cancelMutation.mutate()}
+              onClick={() => cancelMutation.mutate({ id: createdAttempt!.authAttemptId! })}
               className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
             >
               Cancel Attempt
@@ -333,51 +345,51 @@ export default function EnrollmentDetailPage() {
   const { toast } = useToast();
   const { lookup } = useIntegrations();
 
-  const { data: enrollment, isLoading } = useQuery({
-    queryKey: ['enrollment', enrollmentId],
-    queryFn: () => api.get<EnrollmentResponseDto>(`/api/v1/enrollments/${enrollmentId}`),
-    enabled: !isNaN(enrollmentId),
-  });
+  const { data: enrollment, isLoading } = useGetById<EnrollmentResponseDto>(
+    isNaN(enrollmentId) ? 0 : enrollmentId,
+    { query: { enabled: !isNaN(enrollmentId) } },
+  );
 
-  const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/api/v1/enrollments/${enrollmentId}`),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-      void queryClient.invalidateQueries({ queryKey: ['stats'] });
-      toast('Enrollment deleted.');
-      navigate('/enrollments');
+  const deleteMutation = useDelete({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        void queryClient.invalidateQueries({ queryKey: ['stats'] });
+        toast('Enrollment deleted.');
+        navigate('/enrollments');
+      },
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: (reason: string) =>
-      api.post<void>(`/api/v1/enrollments/${enrollmentId}/deactivate?reason=${encodeURIComponent(reason)}`, {}),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
-      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-      toast('Enrollment deactivated.');
+  const deactivateMutation = useDeactivate({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast('Enrollment deactivated.');
+      },
     },
   });
 
-  const reactivateMutation = useMutation({
-    mutationFn: (reason: string) =>
-      api.post<void>(`/api/v1/enrollments/${enrollmentId}/reactivate?reason=${encodeURIComponent(reason)}`, {}),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
-      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-      toast('Enrollment reactivated.');
+  const reactivateMutation = useReactivate({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast('Enrollment reactivated.');
+      },
     },
   });
 
-  const revokeMutation = useMutation({
-    mutationFn: (reason: string) =>
-      api.post<void>(`/api/v1/enrollments/${enrollmentId}/revoke?reason=${encodeURIComponent(reason)}`, {}),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
-      void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-      toast('Enrollment permanently revoked.', 'error');
-      setRevokeConfirm(false);
-      setRevokeReason('');
+  const revokeMutation = useRevoke({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast('Enrollment permanently revoked.', 'error');
+        setRevokeConfirm(false);
+        setRevokeReason('');
+      },
     },
   });
 
@@ -608,7 +620,7 @@ export default function EnrollmentDetailPage() {
                             size="sm"
                             className="gap-1.5"
                             isLoading={deactivateMutation.isPending}
-                            onClick={() => deactivateMutation.mutate('Deactivated from admin console')}
+                            onClick={() => deactivateMutation.mutate({ id: enrollmentId, params: { reason: 'Deactivated from admin console' } })}
                           >
                             <PowerOff className="size-3.5" />
                             Deactivate Enrollment
@@ -624,7 +636,7 @@ export default function EnrollmentDetailPage() {
                             size="sm"
                             className="gap-1.5"
                             isLoading={reactivateMutation.isPending}
-                            onClick={() => reactivateMutation.mutate('Reactivated from admin console')}
+                            onClick={() => reactivateMutation.mutate({ id: enrollmentId, params: { reason: 'Reactivated from admin console' } })}
                           >
                             <Power className="size-3.5" />
                             Reactivate Enrollment
@@ -692,7 +704,7 @@ export default function EnrollmentDetailPage() {
                               size="sm"
                               isLoading={revokeMutation.isPending}
                               disabled={revokeReason.length < 10}
-                              onClick={() => revokeMutation.mutate(revokeReason)}
+                              onClick={() => revokeMutation.mutate({ id: enrollmentId, params: { reason: revokeReason } })}
                               className="gap-1.5"
                             >
                               <ShieldOff className="size-3.5" />
@@ -743,7 +755,7 @@ export default function EnrollmentDetailPage() {
                           variant="destructive"
                           size="sm"
                           isLoading={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate()}
+                          onClick={() => deleteMutation.mutate({ id: enrollmentId })}
                           className="gap-1.5"
                         >
                           <Trash2 className="size-3.5" />

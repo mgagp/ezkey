@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Building2, Plus, RefreshCw, Search } from 'lucide-react';
@@ -18,11 +18,12 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
-import type { TenantCreateRequestDto, TenantResponseDto } from '@/generated/admin-api/model';
+import { useCreateTenant, useListTenants } from '@/generated/admin-api/tenants/tenants';
+import type { TenantResponseDto } from '@/generated/admin-api/model';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -57,14 +58,14 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
     resolver: zodResolver(createSchema),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: TenantCreateRequestDto) =>
-      api.post<TenantResponseDto>('/api/v1/tenants', data),
-    onSuccess: (tenant) => {
-      void queryClient.invalidateQueries({ queryKey: ['tenants'] });
-      toast(`Tenant "${tenant.tenantName}" created successfully.`);
-      reset();
-      onClose();
+  const createMutation = useCreateTenant({
+    mutation: {
+      onSuccess: (tenant) => {
+        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        toast(`Tenant "${(tenant as unknown as TenantResponseDto).tenantName}" created successfully.`);
+        reset();
+        onClose();
+      },
     },
   });
 
@@ -76,14 +77,16 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
 
   const onSubmit = (values: CreateFormValues) => {
     createMutation.mutate({
-      tenantName: values.tenantName,
-      tenantDescription: values.tenantDescription || undefined,
-      organizationName: values.organizationName || undefined,
-      organizationDomain: values.organizationDomain || undefined,
-      countryCode: values.countryCode || undefined,
-      timezone: values.timezone || undefined,
-      primaryContactName: values.primaryContactName || undefined,
-      primaryContactEmail: values.primaryContactEmail || undefined,
+      data: {
+        tenantName: values.tenantName,
+        tenantDescription: values.tenantDescription || undefined,
+        organizationName: values.organizationName || undefined,
+        organizationDomain: values.organizationDomain || undefined,
+        countryCode: values.countryCode || undefined,
+        timezone: values.timezone || undefined,
+        primaryContactName: values.primaryContactName || undefined,
+        primaryContactEmail: values.primaryContactEmail || undefined,
+      },
     });
   };
 
@@ -201,10 +204,8 @@ export default function TenantsPage() {
   const [pageSize, setPageSize] = useState(20);
   const debouncedName = useDebounce(nameInput, 300);
 
-  const { data: allTenants = [], isLoading, refetch } = useQuery({
-    queryKey: ['tenants'],
-    queryFn: () => api.get<TenantResponseDto[]>('/api/v1/tenants'),
-  });
+  const { data: allTenantsRaw, isLoading, refetch } = useListTenants<TenantResponseDto[]>();
+  const allTenants = allTenantsRaw ?? [];
 
   // Client-side filtering
   const filtered = useMemo(() => {

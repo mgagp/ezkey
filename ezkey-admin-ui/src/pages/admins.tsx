@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,14 +16,20 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { api, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
+import {
+  listAdmins,
+  useActivateAdmin,
+  useCreateGlobalAdmin,
+  useCreateTenantAdmin,
+  useDeactivateAdmin,
+  useGetAdminById,
+  useGetAdminOnboarding,
+} from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import type {
   AdminCreateRequestDto,
   AdminResponseDto,
-  CreateGlobalAdmin201,
-  GetAdminOnboarding200,
   PagedModelAdminResponseDto,
 } from '@/generated/admin-api/model';
 
@@ -63,14 +69,11 @@ function OnboardingDialog({
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
-  const { data: onboarding, isLoading, isError } = useQuery({
-    queryKey: ['admin-onboarding', adminId],
-    queryFn: async () => {
-      const raw = await api.get<GetAdminOnboarding200>(`/api/v1/admins/${adminId}/onboarding`);
-      return raw as unknown as AdminOnboardingShape;
-    },
-    enabled: open && adminId !== null,
-  });
+  const { data: rawOnboarding, isLoading, isError } = useGetAdminOnboarding<AdminOnboardingShape>(
+    adminId ?? 0,
+    { query: { enabled: open && adminId !== null } },
+  );
+  const onboarding = rawOnboarding as unknown as AdminOnboardingShape | undefined;
 
   const handleCopy = async () => {
     const token = onboarding?.enrollmentProofToken;
@@ -175,11 +178,12 @@ function DeactivateAdminDialog({
 }) {
   const queryClient = useQueryClient();
 
-  const deactivateMutation = useMutation({
-    mutationFn: (adminId: number) => api.post<void>(`/api/v1/admins/${adminId}/deactivate`, {}),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      onClose();
+  const deactivateMutation = useDeactivateAdmin({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['admins'] });
+        onClose();
+      },
     },
   });
 
@@ -211,7 +215,7 @@ function DeactivateAdminDialog({
             <Button
               variant="destructive"
               isLoading={deactivateMutation.isPending}
-              onClick={() => admin && deactivateMutation.mutate(admin.adminId!)}
+              onClick={() => admin && deactivateMutation.mutate({ id: admin.adminId! })}
             >
               <UserX className="size-3.5 mr-1.5" />
               Deactivate
@@ -240,32 +244,33 @@ function AdminDetailDialog({
   const { toast } = useToast();
 
   // Fetch live detail from API to ensure fresh data
-  const { data: detail } = useQuery({
-    queryKey: ['admin-detail', admin?.adminId],
-    queryFn: () => api.get<AdminResponseDto>(`/api/v1/admins/${admin!.adminId}`),
-    enabled: admin !== null,
-  });
+  const { data: detail } = useGetAdminById<AdminResponseDto>(
+    admin?.adminId ?? 0,
+    { query: { enabled: admin !== null } },
+  );
 
   const adm = detail ?? admin;
 
-  const activateMutation = useMutation({
-    mutationFn: () => api.post<void>(`/api/v1/admins/${adm!.adminId}/activate`, {}),
-    onSuccess: () => {
-      toast(`Admin "${adm!.username}" activated.`, 'success');
-      void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+  const activateMutation = useActivateAdmin({
+    mutation: {
+      onSuccess: () => {
+        toast(`Admin "${adm!.username}" activated.`, 'success');
+        void queryClient.invalidateQueries({ queryKey: ['admins'] });
+        void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Activation failed'), 'error'),
     },
-    onError: (e) => toast(getApiErrorMessage(e, 'Activation failed'), 'error'),
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: () => api.post<void>(`/api/v1/admins/${adm!.adminId}/deactivate`, {}),
-    onSuccess: () => {
-      toast(`Admin "${adm!.username}" deactivated.`, 'success');
-      void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+  const deactivateMutation = useDeactivateAdmin({
+    mutation: {
+      onSuccess: () => {
+        toast(`Admin "${adm!.username}" deactivated.`, 'success');
+        void queryClient.invalidateQueries({ queryKey: ['admins'] });
+        void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Deactivation failed'), 'error'),
     },
-    onError: (e) => toast(getApiErrorMessage(e, 'Deactivation failed'), 'error'),
   });
 
   if (!adm) return null;
@@ -328,7 +333,7 @@ function AdminDetailDialog({
                 size="sm"
                 className="gap-1.5"
                 isLoading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate()}
+                onClick={() => deactivateMutation.mutate({ id: adm!.adminId! })}
               >
                 <PowerOff className="size-3.5" />
                 Deactivate
@@ -341,7 +346,7 @@ function AdminDetailDialog({
                 size="sm"
                 className="gap-1.5 text-success border-success/30 hover:bg-success/10"
                 isLoading={activateMutation.isPending}
-                onClick={() => activateMutation.mutate()}
+                onClick={() => activateMutation.mutate({ id: adm!.adminId! })}
               >
                 <Power className="size-3.5" />
                 Activate
@@ -380,17 +385,41 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     resolver: zodResolver(adminSchema),
   });
 
-  const createMutation = useMutation({
-    mutationFn: ({ body, isGlobal }: { body: AdminCreateRequestDto; isGlobal: boolean }) => {
-      const endpoint = isGlobal ? '/api/v1/admins/global' : '/api/v1/admins/tenant';
-      return api.post<CreateGlobalAdmin201>(endpoint, body) as Promise<AdminProvisioningShape>;
-    },
-    onSuccess: (admin, { isGlobal }) => {
-      setCreatedAdmin(admin);
-      void queryClient.invalidateQueries({ queryKey: ['admins'] });
-      toast(`${isGlobal ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
+  const onCreated = (admin: AdminProvisioningShape, isGlobal: boolean) => {
+    setCreatedAdmin(admin);
+    void queryClient.invalidateQueries({ queryKey: ['admins'] });
+    toast(`${isGlobal ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
+  };
+
+  const createGlobalMutation = useCreateGlobalAdmin({
+    mutation: {
+      onSuccess: (data) => {
+        onCreated(data as unknown as AdminProvisioningShape, true);
+      },
     },
   });
+
+  const createTenantMutation = useCreateTenantAdmin({
+    mutation: {
+      onSuccess: (data) => {
+        onCreated(data as unknown as AdminProvisioningShape, false);
+      },
+    },
+  });
+
+  const createMutation = {
+    mutate: ({ body, isGlobal }: { body: AdminCreateRequestDto; isGlobal: boolean }) => {
+      if (isGlobal) createGlobalMutation.mutate({ data: body });
+      else createTenantMutation.mutate({ data: body });
+    },
+    isPending: createGlobalMutation.isPending || createTenantMutation.isPending,
+    isError: createGlobalMutation.isError || createTenantMutation.isError,
+    error: createGlobalMutation.error ?? createTenantMutation.error,
+    reset: () => {
+      createGlobalMutation.reset();
+      createTenantMutation.reset();
+    },
+  };
 
   const handleClose = () => {
     reset();

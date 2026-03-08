@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Pencil, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -16,10 +16,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import { RevokeApiKeyDialog } from '@/pages/api-keys';
-import type { ApiKeyResponseDto } from '@/generated/admin-api/model';
+import { useGetApiKey, useUpdateApiKey } from '@/generated/admin-api/api-keys/api-keys';
+import type { ApiKeyResponseDto, ApiKeyUpdateRequestDto } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
 
@@ -74,14 +75,14 @@ function EditApiKeyDialog({
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (body: { description?: string; ipWhitelist?: string[] | null }) =>
-      api.patch<ApiKeyResponseDto>(`/api/v1/api-keys/${apiKey.apiKeyId}`, body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['api-key', apiKey.apiKeyId] });
-      void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-      toast('API key updated.');
-      onClose();
+  const updateMutation = useUpdateApiKey({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['api-key', apiKey.apiKeyId] });
+        void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+        toast('API key updated.');
+        onClose();
+      },
     },
   });
 
@@ -91,8 +92,11 @@ function EditApiKeyDialog({
       : [];
 
     updateMutation.mutate({
-      description: values.description || undefined,
-      ipWhitelist: ipLines.length > 0 ? ipLines : [],
+      keyId: apiKey.apiKeyId!,
+      data: {
+        description: values.description || undefined,
+        ipWhitelist: ipLines.length > 0 ? ipLines : null,
+      } as ApiKeyUpdateRequestDto,
     });
   };
 
@@ -158,11 +162,10 @@ export default function ApiKeyDetailPage() {
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyResponseDto | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
 
-  const { data: apiKey, isLoading } = useQuery({
-    queryKey: ['api-key', keyId],
-    queryFn: () => api.get<ApiKeyResponseDto>(`/api/v1/api-keys/${keyId}`),
-    enabled: !isNaN(keyId),
-  });
+  const { data: apiKey, isLoading } = useGetApiKey<ApiKeyResponseDto>(
+    isNaN(keyId) ? 0 : keyId,
+    { query: { enabled: !isNaN(keyId) } },
+  );
 
   const handleCopyKey = async () => {
     if (!apiKey?.integrationKey) return;

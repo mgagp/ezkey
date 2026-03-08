@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -16,9 +16,14 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
-import type { ApiKeyCreateRequestDto } from '@/generated/admin-api/model';
+import {
+  listAllApiKeys,
+  listApiKeys,
+  useCreateApiKey,
+  useRevokeApiKey,
+} from '@/generated/admin-api/api-keys/api-keys';
 import type { ApiKeyCreateResponseDto, ApiKeyResponseDto } from '@/generated/admin-api/model';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -83,12 +88,12 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
     resolver: zodResolver(apiKeySchema),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: ApiKeyCreateRequestDto) =>
-      api.post<ApiKeyCreateResponseDto>('/api/v1/api-keys', data),
-    onSuccess: (key) => {
-      setCreatedKey(key);
-      void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+  const createMutation = useCreateApiKey({
+    mutation: {
+      onSuccess: (key) => {
+        setCreatedKey(key as unknown as ApiKeyCreateResponseDto);
+        void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+      },
     },
   });
 
@@ -118,10 +123,12 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
       : undefined;
 
     createMutation.mutate({
-      integrationId: parseInt(values.integrationId, 10),
-      description: values.description || undefined,
-      expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : undefined,
-      ipWhitelist: ipLines?.length ? ipLines : undefined,
+      data: {
+        integrationId: parseInt(values.integrationId, 10),
+        description: values.description || undefined,
+        expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : undefined,
+        ipWhitelist: ipLines?.length ? ipLines : undefined,
+      },
     });
   };
 
@@ -273,19 +280,15 @@ export function RevokeApiKeyDialog({
   const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
 
-  const revokeMutation = useMutation({
-    mutationFn: () => {
-      const reasonParam = reason.trim().length >= 10
-        ? `?reason=${encodeURIComponent(reason.trim())}`
-        : '';
-      return api.delete(`/api/v1/api-keys/${apiKey!.apiKeyId}${reasonParam}`);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-      void queryClient.invalidateQueries({ queryKey: ['api-key'] });
-      setReason('');
-      onRevoked?.();
-      onClose();
+  const revokeMutation = useRevokeApiKey({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+        void queryClient.invalidateQueries({ queryKey: ['api-key'] });
+        setReason('');
+        onRevoked?.();
+        onClose();
+      },
     },
   });
 
@@ -335,7 +338,7 @@ export function RevokeApiKeyDialog({
             size="sm"
             isLoading={revokeMutation.isPending}
             disabled={reasonTooShort}
-            onClick={() => revokeMutation.mutate()}
+            onClick={() => revokeMutation.mutate({ keyId: apiKey!.apiKeyId!, params: { reason: reason.trim() || undefined } })}
             className="gap-1.5"
           >
             <ShieldOff className="size-3.5" />
@@ -405,16 +408,17 @@ export default function ApiKeysPage() {
   const { list: integrations, lookup } = useIntegrations();
 
   // API returns List<ApiKeyResponseDto> (not paginated) — use plain useQuery
-  const { data: apiKeys = [], isLoading, refetch } = useQuery({
+  const { data: apiKeysRaw, isLoading, refetch } = useQuery({
     queryKey: ['api-keys', integrationFilter],
-    queryFn: () => {
-      const url = integrationFilter
-        ? `/api/v1/api-keys/integration/${integrationFilter}`
-        : '/api/v1/api-keys';
-      return api.get<ApiKeyResponseDto[]>(url);
+    queryFn: async () => {
+      const res = integrationFilter
+        ? await listApiKeys(Number(integrationFilter))
+        : await listAllApiKeys();
+      return res as unknown as ApiKeyResponseDto[];
     },
     staleTime: 30_000,
   });
+  const apiKeys = apiKeysRaw ?? [];
 
   // Client-side status filter + sort
   const filteredKeys = useMemo(() => {

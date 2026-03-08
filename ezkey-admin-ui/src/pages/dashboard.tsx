@@ -1,14 +1,14 @@
 import { Link } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
 import { AlertTriangle, FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
-import type { DashboardOverview } from '@/types/models';
+import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
+import { useGetPendingCount } from '@/generated/admin-api/auth-attempts/auth-attempts';
+import type { DashboardOverviewDto } from '@/generated/admin-api/model';
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -53,27 +53,13 @@ export default function DashboardPage() {
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
-  const results = useQueries({
-    queries: [
-      {
-        queryKey: ['dashboard', 'overview'],
-        queryFn: () => api.get<DashboardOverview>('/api/v1/dashboard/overview'),
-        staleTime: 60_000,
-        refetchInterval: 60_000,
-      },
-      {
-        queryKey: ['dashboard', 'pending'],
-        queryFn: () => api.get<{ count: number }>('/api/v1/auth-attempts/pending-count'),
-        staleTime: 10_000,
-        refetchInterval: 10_000,
-      },
-    ],
+  const { data: overview, isLoading: overviewLoading } = useGetOverview<DashboardOverviewDto>({
+    query: { staleTime: 60_000, refetchInterval: 60_000 },
   });
 
-  const overview = results[0].data;
-  const pendingResponse = results[1].data;
-  const overviewLoading = results[0].isLoading;
-  const pendingLoading = results[1].isLoading;
+  const { data: pendingResponse, isLoading: pendingLoading } = useGetPendingCount<{ count: number }>({
+    query: { staleTime: 10_000, refetchInterval: 10_000 },
+  });
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;

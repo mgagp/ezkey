@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Edit, Power, PowerOff } from 'lucide-react';
@@ -19,18 +19,22 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { ApiError, api } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
+import {
+  useActivateTenant,
+  useDeactivateTenant,
+  useGetTenant,
+  useUpdateTenant,
+} from '@/generated/admin-api/tenants/tenants';
 import type {
   AdminResponseDto,
   PagedModelAdminResponseDto,
   TenantResponseDto,
   TenantUpdateRequestDto,
-  TenantActivateRequestDto,
-  TenantDeactivateRequestDto,
 } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
@@ -88,14 +92,14 @@ function EditTenantDialog({
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: TenantUpdateRequestDto) =>
-      api.put<TenantResponseDto>(`/api/v1/tenants/${tenant.tenantId}`, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
-      void queryClient.invalidateQueries({ queryKey: ['tenants'] });
-      toast('Tenant updated successfully.');
-      onClose();
+  const updateMutation = useUpdateTenant({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
+        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        toast('Tenant updated successfully.');
+        onClose();
+      },
     },
   });
 
@@ -109,7 +113,7 @@ function EditTenantDialog({
     if (values.timezone !== undefined) dto.timezone = values.timezone || undefined;
     if (values.primaryContactName !== undefined) dto.primaryContactName = values.primaryContactName || undefined;
     if (values.primaryContactEmail !== undefined) dto.primaryContactEmail = values.primaryContactEmail || undefined;
-    updateMutation.mutate(dto);
+    updateMutation.mutate({ id: tenant.tenantId!, data: dto });
   };
 
   return (
@@ -219,20 +223,30 @@ function ToggleActiveDialog({
   const isActive = tenant.active;
   const [reason, setReason] = useState('');
 
-  const mutation = useMutation({
-    mutationFn: () => {
-      const body: TenantActivateRequestDto | TenantDeactivateRequestDto = { reason: reason || undefined };
-      const action = isActive ? 'deactivate' : 'activate';
-      return api.post<void>(`/api/v1/tenants/${tenant.tenantId}/${action}`, body);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
-      void queryClient.invalidateQueries({ queryKey: ['tenants'] });
-      toast(`Tenant ${isActive ? 'deactivated' : 'activated'} successfully.`);
-      setReason('');
-      onClose();
+  const body = { reason: reason || undefined };
+  const deactivateMutation = useDeactivateTenant({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
+        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        toast('Tenant deactivated successfully.');
+        setReason('');
+        onClose();
+      },
     },
   });
+  const activateMutation = useActivateTenant({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
+        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        toast('Tenant activated successfully.');
+        setReason('');
+        onClose();
+      },
+    },
+  });
+  const mutation = isActive ? deactivateMutation : activateMutation;
 
   const handleClose = () => { mutation.reset(); setReason(''); onClose(); };
 
@@ -266,7 +280,10 @@ function ToggleActiveDialog({
           <Button
             variant={isActive ? 'destructive' : 'primary'}
             isLoading={mutation.isPending}
-            onClick={() => mutation.mutate()}
+            onClick={() => {
+              if (isActive) deactivateMutation.mutate({ id: tenant.tenantId!, data: body });
+              else activateMutation.mutate({ id: tenant.tenantId!, data: body });
+            }}
             disabled={reason.length > 0 && reason.length < 10}
           >
             {isActive ? <PowerOff className="size-3.5 mr-1.5" /> : <Power className="size-3.5 mr-1.5" />}
@@ -295,11 +312,10 @@ export default function TenantDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
 
-  const { data: tenant, isLoading } = useQuery({
-    queryKey: ['tenant', tenantId],
-    queryFn: () => api.get<TenantResponseDto>(`/api/v1/tenants/${tenantId}`),
-    enabled: !isNaN(tenantId),
-  });
+  const { data: tenant, isLoading } = useGetTenant<TenantResponseDto>(
+    isNaN(tenantId) ? 0 : tenantId,
+    { query: { enabled: !isNaN(tenantId) } },
+  );
 
   // Admins list for this tenant (Global Admin can see cross-tenant)
   const { data: admins, pagination: admPagination, isLoading: loadingAdmins } = usePaginatedFromOrval<AdminResponseDto, { tenantId?: number }>({
