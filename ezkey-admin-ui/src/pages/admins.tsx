@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -417,10 +417,21 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   );
   type AdminFormValues = z.infer<typeof adminSchema>;
 
+  const defaultFormValues: AdminFormValues = { username: '', email: '', firstName: '', lastName: '', tenantId: '' };
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
-    defaultValues: { tenantId: '' },
+    defaultValues: defaultFormValues,
   });
+
+  // Fresh state each time the dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(defaultFormValues);
+      setTenantFilter('');
+      setCreatedAdmin(null);
+      setIsGlobalType(defaultGlobal);
+    }
+  }, [open, defaultGlobal, reset]);
 
   const watchedTenantId = watch('tenantId');
   const tenantAdminNeedsTenant = callerIsGlobal && !isGlobalType;
@@ -581,11 +592,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="adm-tenant">Assign to tenant *</Label>
-                    <Select
-                      id="adm-tenant"
-                      error={errors.tenantId?.message}
-                      {...register('tenantId')}
-                    >
+                    <Select id="adm-tenant" error={errors.tenantId?.message} {...register('tenantId')}>
                       <option value="">Select a tenant</option>
                       {filteredTenants.map((t) => (
                         <option key={t.tenantId} value={t.tenantId}>
