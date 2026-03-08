@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Key,
   RefreshCw,
@@ -19,9 +19,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { api, ApiError } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
+import {
+  useCreateBatches,
+  useGetKey,
+  useListBatches,
+  useListKeys,
+  useResumeBatch,
+  useRotateKey,
+  useTriggerFullReencryption,
+  useTriggerReencryptionForKey,
+} from '@/generated/admin-api/encryption-keys/encryption-keys';
 import type {
   EncryptionKeyResponse,
   KeyRotationResponse,
@@ -77,19 +87,17 @@ function ReencryptKeyDialog({
   const { toast } = useToast();
   const [result, setResult] = useState<ReencryptionKeyResponse | null>(null);
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      api.post<ReencryptionKeyResponse>(
-        `/api/v1/encryption-keys/${keyData!.keyId}/reencrypt`,
-        {},
-      ),
-    onSuccess: (data) => {
-      setResult(data);
-      toast(data.message ?? `Re-encryption triggered for key #${keyData!.keyId}`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
-      queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+  const mutation = useTriggerReencryptionForKey({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as ReencryptionKeyResponse;
+        setResult(res);
+        toast(res.message ?? `Re-encryption triggered for key #${keyData!.keyId}`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
+        queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Re-encryption failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Re-encryption failed', 'error'),
   });
 
   function handleClose() {
@@ -98,6 +106,11 @@ function ReencryptKeyDialog({
   }
 
   if (!keyData) return null;
+
+  function handleTrigger() {
+    const keyId = keyData?.keyId;
+    if (keyId != null) mutation.mutate({ keyId });
+  }
 
   return (
     <Dialog open={keyData !== null} onClose={handleClose} title={`Re-encrypt Key #${keyData.keyId}`} size="md">
@@ -139,7 +152,7 @@ function ReencryptKeyDialog({
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
             <Button
-              onClick={() => mutation.mutate()}
+              onClick={handleTrigger}
               disabled={mutation.isPending}
               className="gap-1.5"
             >
@@ -164,11 +177,10 @@ function KeyDetailDialog({
   onClose: () => void;
   onReencrypt: (key: EncryptionKeyResponse) => void;
 }) {
-  const { data: keyData, isLoading } = useQuery({
-    queryKey: ['encryption-key', keyId],
-    queryFn: () => api.get<EncryptionKeyResponse>(`/api/v1/encryption-keys/${keyId}`),
-    enabled: keyId !== null,
+  const { data: rawKey, isLoading } = useGetKey(keyId ?? 0, {
+    query: { enabled: keyId != null },
   });
+  const keyData = rawKey as EncryptionKeyResponse | undefined;
 
   if (keyId === null) return null;
 
@@ -282,23 +294,17 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
   const [reason, setReason] = useState('');
   const [result, setResult] = useState<KeyRotationResponse | null>(null);
 
-  const mutation = useMutation({
-    mutationFn: () => {
-      const p = new URLSearchParams();
-      if (reason.trim()) p.set('reason', reason.trim());
-      const qs = p.toString();
-      return api.post<KeyRotationResponse>(
-        `/api/v1/encryption-keys/rotate${qs ? `?${qs}` : ''}`,
-        {},
-      );
+  const mutation = useRotateKey({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as KeyRotationResponse;
+        setResult(res);
+        toast(`Key rotated — new primary: #${res.newPrimaryKeyId}`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
+        queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Rotation failed'), 'error'),
     },
-    onSuccess: (data) => {
-      setResult(data);
-      toast(`Key rotated — new primary: #${data.newPrimaryKeyId}`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
-      queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
-    },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Rotation failed', 'error'),
   });
 
   function handleClose() {
@@ -322,7 +328,13 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
           </div>
         </div>
       ) : (
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate({ params: { reason: reason.trim() } });
+          }}
+          className="space-y-4"
+        >
           <div className="flex items-start gap-2 p-3 border-2 border-warning/40 bg-warning/5">
             <AlertTriangle className="size-4 text-warning mt-0.5 shrink-0" />
             <p className="text-xs text-fg-muted">
@@ -360,43 +372,47 @@ function ReencryptionBatchesSection() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedBatch, setSelectedBatch] = useState<ReencryptionBatchResponse | null>(null);
 
-  const { data: batches = [], isLoading } = useQuery({
-    queryKey: ['reencryption-batches'],
-    queryFn: () => api.get<ReencryptionBatchResponse[]>('/api/v1/encryption-keys/reencryption-batches'),
-    enabled: expanded,
+  const { data: batchesData, isLoading } = useListBatches({
+    query: { enabled: expanded },
   });
+  const batches = (batchesData as ReencryptionBatchResponse[] | undefined) ?? [];
 
   const filteredBatches = useMemo(() => {
     if (!statusFilter) return batches;
     return batches.filter((b) => b.status === statusFilter);
   }, [batches, statusFilter]);
 
-  const triggerMutation = useMutation({
-    mutationFn: () => api.post<ReencryptionTriggerResponse>('/api/v1/encryption-keys/reencrypt/trigger', {}),
-    onSuccess: (data) => {
-      toast(data.message ?? `Triggered — ${data.batchesCreated} batches`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+  const triggerMutation = useTriggerFullReencryption({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as ReencryptionTriggerResponse;
+        toast(res.message ?? `Triggered — ${res.batchesCreated} batches`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Trigger failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Trigger failed', 'error'),
   });
 
-  const createBatchesMutation = useMutation({
-    mutationFn: () => api.post<BatchCreationResponse>('/api/v1/encryption-keys/reencrypt/create-batches', {}),
-    onSuccess: (data) => {
-      toast(data.message ?? `Created ${data.batchesCreated} batches`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+  const createBatchesMutation = useCreateBatches({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as BatchCreationResponse;
+        toast(res.message ?? `Created ${res.batchesCreated} batches`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Batch creation failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Batch creation failed', 'error'),
   });
 
-  const resumeMutation = useMutation({
-    mutationFn: (batchId: number) =>
-      api.post<BatchResumeResponse>(`/api/v1/encryption-keys/reencryption-batches/${batchId}/resume`, {}),
-    onSuccess: (data) => {
-      toast(data.message ?? `Batch #${data.batchId} resumed`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+  const resumeMutation = useResumeBatch({
+    mutation: {
+      onSuccess: (data) => {
+        const res = data as unknown as BatchResumeResponse;
+        toast(res.message ?? `Batch #${res.batchId} resumed`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Resume failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Resume failed', 'error'),
   });
 
   const batchColumns: ColumnDef<ReencryptionBatchResponse>[] = [
@@ -438,7 +454,7 @@ function ReencryptionBatchesSection() {
             size="sm"
             variant="secondary"
             className="gap-1 py-0.5 px-2"
-            onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(r.batchId!); }}
+            onClick={(e) => { e.stopPropagation(); resumeMutation.mutate({ batchId: r.batchId! }); }}
             disabled={resumeMutation.isPending}
           >
             <Play className="size-3" />
@@ -528,10 +544,8 @@ export default function EncryptionKeysPage() {
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
 
-  const { data: keys = [], isLoading, refetch } = useQuery({
-    queryKey: ['encryption-keys'],
-    queryFn: () => api.get<EncryptionKeyResponse[]>('/api/v1/encryption-keys'),
-  });
+  const { data: keysData, isLoading, refetch } = useListKeys();
+  const keys = (keysData as EncryptionKeyResponse[] | undefined) ?? [];
 
   const columns: ColumnDef<EncryptionKeyResponse>[] = [
     {

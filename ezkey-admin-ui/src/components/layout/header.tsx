@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
 
 interface HeaderProps {
   title: string;
@@ -11,7 +12,12 @@ export function Header({ title }: HeaderProps) {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // Best effort: clear client session even if server logout fails
+    }
     logout();
     navigate('/login', { replace: true });
   };

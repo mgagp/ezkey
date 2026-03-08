@@ -8,10 +8,10 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown } from '@/lib/utils';
+import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
-
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 
 const loginSchema = z.object({
   username: z.string().min(3, 'At least 3 characters').max(50),
@@ -82,17 +82,14 @@ export default function LoginPage() {
 
     const doWait = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/api/v1/admin/auth/passwordless-wait`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const response = await passwordlessWait(
+          {
             authAttemptId: waitingData.authAttemptId,
             ...(waitingData.challengeCode != null && { challengeCode: waitingData.challengeCode }),
-          }),
-          signal: controller.signal,
-        });
-
-        const data: AdminLoginResponseDto = await res.json();
+          },
+          { signal: controller.signal },
+        );
+        const data = response as unknown as AdminLoginResponseDto;
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
@@ -122,17 +119,16 @@ export default function LoginPage() {
     return () => { controller.abort(); };
   }, [loginState, waitingData, login, navigate]);
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (formData: LoginForm) => {
     setLoginState('submitting');
     setErrorMessage(null);
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/admin/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: data.username.trim(), challengeRequested: data.challengeRequested, nonBlocking: true }),
-      });
-      const result: AdminLoginResponseDto = await res.json();
-      if (res.ok && result.authAttemptId && result.expiresAt) {
+      const result = await loginApi({
+        username: formData.username.trim(),
+        challengeRequested: formData.challengeRequested,
+        nonBlocking: true,
+      }) as unknown as AdminLoginResponseDto;
+      if (result.authAttemptId && result.expiresAt) {
         setWaitingData({
           authAttemptId: result.authAttemptId,
           challengeCode: result.challengeCode ?? null,
@@ -143,9 +139,9 @@ export default function LoginPage() {
         setLoginState('error');
         setErrorMessage(result.message ?? 'Login failed. Check your username.');
       }
-    } catch {
+    } catch (err) {
       setLoginState('error');
-      setErrorMessage('Could not reach the server. Is the Admin API running?');
+      setErrorMessage(getApiErrorMessage(err, 'Could not reach the server. Is the Admin API running?'));
     }
   };
 

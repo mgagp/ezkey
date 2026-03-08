@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
@@ -11,11 +11,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { api, ApiError } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
-import { getAuditLogs } from '@/generated/admin-api/audit-logs/audit-logs';
+import {
+  checkChainIntegrity,
+  checkIntegrity,
+  getAuditLogs,
+  useDeclareGap,
+  useSealArchive,
+} from '@/generated/admin-api/audit-logs/audit-logs';
 import type { AuditLogResponseDto, ChainVerificationReport, GetAuditLogsParams, IntegrityReport, ArchiveSealResult, GapDeclarationResult, PagedModelAuditLogResponseDto } from '@/generated/admin-api/model';
 
 // ── Event type options (from EventType.java enum) ─────────────────────────────
@@ -233,16 +239,14 @@ function IntegrityPanel() {
     setChainLoading(true);
     setChainReport(null);
     try {
-      const p = new URLSearchParams();
-      if (checkFrom) p.set('from', new Date(checkFrom).toISOString());
-      if (checkTo) p.set('to', new Date(checkTo + 'T23:59:59').toISOString());
-      const qs = p.toString();
-      const report = await api.get<ChainVerificationReport>(
-        `/api/v1/audit-logs/chain-integrity${qs ? `?${qs}` : ''}`,
-      );
+      const params = {
+        from: checkFrom ? new Date(checkFrom).toISOString() : undefined,
+        to: checkTo ? new Date(checkTo + 'T23:59:59').toISOString() : undefined,
+      };
+      const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
       setChainReport(report);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : 'Chain integrity check failed', 'error');
+      toast(getApiErrorMessage(e, 'Chain integrity check failed'), 'error');
     } finally {
       setChainLoading(false);
     }
@@ -252,52 +256,40 @@ function IntegrityPanel() {
     setIntegrityLoading(true);
     setIntegrityReport(null);
     try {
-      const p = new URLSearchParams();
-      if (checkFrom) p.set('from', new Date(checkFrom).toISOString());
-      if (checkTo) p.set('to', new Date(checkTo + 'T23:59:59').toISOString());
-      const qs = p.toString();
-      const report = await api.get<IntegrityReport>(
-        `/api/v1/audit-logs/integrity-check${qs ? `?${qs}` : ''}`,
-      );
+      const params = {
+        from: checkFrom ? new Date(checkFrom).toISOString() : undefined,
+        to: checkTo ? new Date(checkTo + 'T23:59:59').toISOString() : undefined,
+      };
+      const report = await checkIntegrity(params) as unknown as IntegrityReport;
       setIntegrityReport(report);
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : 'Integrity check failed', 'error');
+      toast(getApiErrorMessage(e, 'Integrity check failed'), 'error');
     } finally {
       setIntegrityLoading(false);
     }
   }
 
-  const sealMutation = useMutation({
-    mutationFn: () =>
-      api.post<ArchiveSealResult>('/api/v1/audit-logs/lifecycle/seal-archive', {
-        periodStart: sealPeriodStart ? new Date(sealPeriodStart).toISOString() : undefined,
-        periodEnd: sealPeriodEnd ? new Date(sealPeriodEnd).toISOString() : undefined,
-        checkpointIdFrom: sealCheckpointFrom ? Number(sealCheckpointFrom) : undefined,
-        checkpointIdTo: sealCheckpointTo ? Number(sealCheckpointTo) : undefined,
-        justification: sealJustification,
-      }),
-    onSuccess: (data) => {
-      setSealResult(data);
-      toast(`Archive sealed — ${data.checkpointsSealed} checkpoints`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+  const sealMutation = useSealArchive({
+    mutation: {
+      onSuccess: (data) => {
+        const result = data as unknown as ArchiveSealResult;
+        setSealResult(result);
+        toast(`Archive sealed — ${result.checkpointsSealed} checkpoints`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Seal failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Seal failed', 'error'),
   });
 
-  const gapMutation = useMutation({
-    mutationFn: () =>
-      api.post<GapDeclarationResult>('/api/v1/audit-logs/lifecycle/declare-gap', {
-        gapStart: gapStart ? new Date(gapStart).toISOString() : undefined,
-        gapEnd: gapEnd ? new Date(gapEnd).toISOString() : undefined,
-        anchorCheckpointId: gapAnchorId ? Number(gapAnchorId) : undefined,
-        justification: gapJustification,
-      }),
-    onSuccess: (data) => {
-      setGapResult(data);
-      toast('Gap declared successfully', 'success');
-      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+  const gapMutation = useDeclareGap({
+    mutation: {
+      onSuccess: (data) => {
+        setGapResult(data as unknown as GapDeclarationResult);
+        toast('Gap declared successfully', 'success');
+        queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      },
+      onError: (e) => toast(getApiErrorMessage(e, 'Gap declaration failed'), 'error'),
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : 'Gap declaration failed', 'error'),
   });
 
   function resetSealForm() {
@@ -471,7 +463,18 @@ function IntegrityPanel() {
           </div>
         ) : (
           <form
-            onSubmit={(e) => { e.preventDefault(); sealMutation.mutate(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              sealMutation.mutate({
+                data: {
+                  periodStart: sealPeriodStart ? new Date(sealPeriodStart).toISOString() : undefined,
+                  periodEnd: sealPeriodEnd ? new Date(sealPeriodEnd).toISOString() : undefined,
+                  checkpointIdFrom: sealCheckpointFrom ? Number(sealCheckpointFrom) : undefined,
+                  checkpointIdTo: sealCheckpointTo ? Number(sealCheckpointTo) : undefined,
+                  justification: sealJustification,
+                },
+              });
+            }}
             className="space-y-4"
           >
             <p className="text-xs text-fg-muted">
@@ -532,7 +535,17 @@ function IntegrityPanel() {
           </div>
         ) : (
           <form
-            onSubmit={(e) => { e.preventDefault(); gapMutation.mutate(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              gapMutation.mutate({
+                data: {
+                  gapStart: gapStart ? new Date(gapStart).toISOString() : undefined,
+                  gapEnd: gapEnd ? new Date(gapEnd).toISOString() : undefined,
+                  anchorCheckpointId: gapAnchorId ? Number(gapAnchorId) : undefined,
+                  justification: gapJustification,
+                },
+              });
+            }}
             className="space-y-4"
           >
             <p className="text-xs text-fg-muted">

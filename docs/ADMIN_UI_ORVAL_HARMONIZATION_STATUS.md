@@ -49,9 +49,9 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 | `use-integrations.ts` uses generated `search({ size: 100 })` | ✅ Done |
 | Custom `usePaginatedQuery` | ✅ Removed; replaced by `use-paginated-orval.ts` |
 | Other pages use Orval-generated `useGet*` / `useMutation*` | ✅ Done for dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins |
-| Raw `api.get/post/put/delete/patch` calls | ⏳ Remaining only for audit seal/gap/integrity, encryption-keys, login; plus `fetchBlobUrl` for QR codes (unchanged) |
+| Raw `api.get/post/put/delete/patch` calls | ✅ None; only `fetchBlobUrl` remains for QR codes (unchanged) |
 
-**Conclusion:** Phase 2 **first wave is complete**. The UI now uses:
+**Conclusion:** Phase 2 **first and second wave are complete**. The UI now uses:
 
 - **Dashboard:** `useGetOverview`, `useGetPendingCount` (dedicated dashboard endpoint).
 - **`usePaginatedFromOrval`** + Orval fetch functions for all 7 paginated lists; `DataTable` and `Pagination` unchanged.
@@ -61,8 +61,9 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 - **API keys:** `useCreateApiKey`, `useRevokeApiKey`, `listAllApiKeys`/`listApiKeys`; **api-key-detail:** `useGetApiKey`, `useUpdateApiKey`.
 - **Admins:** `useGetAdminOnboarding`, `useGetAdminById`, `useActivateAdmin`, `useDeactivateAdmin`, `useCreateGlobalAdmin`, `useCreateTenantAdmin`.
 - **`use-integrations`** backed by generated `search`; `getIntegrationName` unchanged.
-
-**Remaining (optional second wave):** audit-logs seal/gap/integrity, encryption-keys page, login/auth — still using `api.*`; can be migrated when touching those areas.
+- **Audit logs (lifecycle):** `checkChainIntegrity`, `checkIntegrity`, `useSealArchive`, `useDeclareGap` (replacing raw `api.get`/`api.post`).
+- **Encryption keys:** `useListKeys`, `useGetKey`, `useTriggerReencryptionForKey`, `useRotateKey`, `useListBatches`, `useTriggerFullReencryption`, `useCreateBatches`, `useResumeBatch`.
+- **Login / auth:** generated `login`, `passwordlessWait` on the login page; generated `logout` called from the header before clearing session.
 
 ---
 
@@ -71,12 +72,11 @@ Running `npm run generate:api` in `ezkey-admin-ui` produces TypeScript types und
 - **Spec ↔ backend:** Aligned. Specs are up to date and include `sort` (array, form, explode true) and optional `tenantId` for admins.
 - **Orval execution:** Configured and runnable. `npm run generate:api` produces DTOs and hooks from `openapi-spec.json`.
 - **DTOs (Phase 1):** Harmonized. The UI uses only Orval-generated types; no hand-written API types remain.
-- **Hooks (Phase 2):** First wave done. Dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, and admins use Orval-generated hooks/functions. All paginated lists use `usePaginatedFromOrval`; `use-paginated-query.ts` removed. Build passes.
+- **Hooks (Phase 2):** Both waves done. Dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins, audit-logs (seal/gap/integrity), encryption-keys, and login/auth use Orval-generated hooks or fetch functions. All paginated lists use `usePaginatedFromOrval`; `use-paginated-query.ts` removed. No remaining `api.get`/`api.post` call sites; only `fetchBlobUrl` remains for QR codes. Build passes.
 
 **Optional next steps:**
 
-1. Migrate remaining **`api.*`** call sites: audit-logs seal/gap/integrity, encryption-keys page, login.
-2. Add **prebuild** / **predev** that runs `npm run generate:api` if desired.
+1. Add **prebuild** / **predev** that runs `npm run generate:api` if desired.
 
 Reference: `.cursor/plans/phase2_orval_hooks_migration_inventory.md` for the full inventory and plan.
 
@@ -95,7 +95,7 @@ So: **yes** — we maximize Orval for (1) DTO generation across everything expos
 
 ### What is not yet maximized
 
-- **Hooks for non-list endpoints:** First wave migrated: dashboard (getOverview, getPendingCount), tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins. **Still using `api.*`:** audit seal/gap/integrity, encryption-keys page, login — optional second wave.
+- **Hooks for non-list endpoints:** Both waves migrated. All non-list endpoints use Orval-generated hooks or fetch functions (dashboard, tenants, tenant-detail, integration-detail, enrollment-detail, api-keys, api-key-detail, admins, audit-logs seal/gap/integrity, encryption-keys, login/auth). Only `fetchBlobUrl` remains for blob URLs (QR codes).
 - **Orval’s generated hooks:** We now use Orval’s `useGet*` and `useMutation*` hooks where applicable (e.g. `useGetTenant`, `useGetOverview`, `useCreateApiKey`). List pages keep the adapter + fetch pattern by design.
 
 ### Quality of the current setup
@@ -111,17 +111,16 @@ So: **yes** — we maximize Orval for (1) DTO generation across everything expos
 - **Minimal custom code:**  
   - **DTOs:** Zero hand-written API types; all from Orval.  
   - **Pagination:** One ~80-line adapter instead of N custom list hooks; all list-specific code is “which Orval function and which baseParams”.  
-  - **Remaining custom code:** The mutator (auth/session wiring), `use-integrations` (search + lookup), and the remaining `api.*` call sites. The latter are the main source of “code we maintain by hand”; they can be reduced over time by adding endpoints to the spec and switching to generated hooks.
+  - **Remaining custom code:** The mutator (auth/session wiring), `use-integrations` (search + lookup), and `fetchBlobUrl` for QR codes. All other API calls go through Orval-generated code.
 
 - **Future and technical debt:**  
   - **New endpoints in the spec:** New list endpoints → add one `usePaginatedFromOrval` call with the new generated fetch. New single-resource or mutation endpoints → use the new generated hooks or fetch functions. No new custom types; no new pagination logic.  
   - **Spec as contract:** As long as the OpenAPI spec is updated when the backend changes and `generate:api` is run, types and list APIs stay in sync; the UI compiles against the real contract and breaks at build time if the API changes.  
-  - **Remaining debt:** The `api.*` usages are the main debt: they bypass Orval’s generated types and hooks. Migrating them (when the spec covers them) will further reduce manual code and centralize changes in the spec + codegen. The current state already avoids accumulating new debt on **lists and DTOs**: new list APIs and new DTOs are handled by Orval and the generic adapter.
-  - **Encryption-keys / Auth / Tenants:** If those APIs live in another spec or are not yet in any spec, they will continue to use `api.*` until they are specified and generated; that’s expected and does not weaken the Orval-based design for the Admin API.
+  - **Remaining debt:** Minimal. All Admin API call sites use Orval-generated types and hooks except `fetchBlobUrl` (blob URLs). New list APIs and new DTOs are handled by Orval and the generic adapter.
 
 ### Short summary
 
 - **DTOs:** Maximized; 100% from Orval for the Admin API surface in the spec.  
 - **Pagination:** Maximized for lists; one generic adapter + Orval-generated list fetches; no list-specific pagination code.  
-- **Code quality:** Generic adapter, TanStack Query–native, minimal custom code for lists and types; remaining custom code is mostly the remaining `api.*` call sites.  
+- **Code quality:** Generic adapter, TanStack Query–native, minimal custom code for lists and types; remaining custom code is the mutator, use-integrations, and fetchBlobUrl only.  
 - **Future:** Well positioned: new list APIs = one adapter call; new DTOs and new endpoints = spec + codegen. This keeps technical debt low and avoids regressions as long as the spec is maintained and codegen is run (e.g. in CI or prebuild).
