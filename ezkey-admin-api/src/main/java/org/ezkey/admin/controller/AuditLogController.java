@@ -201,6 +201,12 @@ public class AuditLogController {
                       + "whose scope is enforced automatically.")
           @RequestParam(required = false)
           Integer tenantId,
+      @Parameter(description = "Filter by creation time (inclusive start), ISO-8601")
+          @RequestParam(required = false)
+          OffsetDateTime createdAfter,
+      @Parameter(description = "Filter by creation time (inclusive end), ISO-8601")
+          @RequestParam(required = false)
+          OffsetDateTime createdBefore,
       @ParameterObject
           @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
@@ -225,6 +231,8 @@ public class AuditLogController {
                 targetAdminId,
                 requesterTenantId,
                 filterTenantId,
+                createdAfter,
+                createdBefore,
                 pageable)
             .map(auditLogMapper::toResponseDto);
 

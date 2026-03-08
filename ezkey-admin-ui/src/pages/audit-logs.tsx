@@ -6,12 +6,14 @@ import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
@@ -134,87 +136,8 @@ function IntegrityPanel() {
   const [chainLoading, setChainLoading] = useState(false);
   const [integrityLoading, setIntegrityLoading] = useState(false);
 
-  // ── Date range for checks ──
-  const [checkFrom, setCheckFrom] = useState('');
-  const [checkTo, setCheckTo] = useState('');
-  const [preset, setPreset] = useState('');
-
-  function applyPreset(value: string) {
-    setPreset(value);
-    if (!value) {
-      setCheckFrom('');
-      setCheckTo('');
-      return;
-    }
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-    switch (value) {
-      case 'today': {
-        setCheckFrom(fmt(today));
-        setCheckTo(fmt(today));
-        break;
-      }
-      case 'yesterday': {
-        const y = new Date(today);
-        y.setDate(y.getDate() - 1);
-        setCheckFrom(fmt(y));
-        setCheckTo(fmt(y));
-        break;
-      }
-      case 'last-24h': {
-        const h24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        setCheckFrom(fmt(h24));
-        setCheckTo(fmt(today));
-        break;
-      }
-      case 'last-7d': {
-        const d7 = new Date(today);
-        d7.setDate(d7.getDate() - 7);
-        setCheckFrom(fmt(d7));
-        setCheckTo(fmt(today));
-        break;
-      }
-      case 'last-30d': {
-        const d30 = new Date(today);
-        d30.setDate(d30.getDate() - 30);
-        setCheckFrom(fmt(d30));
-        setCheckTo(fmt(today));
-        break;
-      }
-      case 'last-week': {
-        const dayOfWeek = today.getDay();
-        const lastMonday = new Date(today);
-        lastMonday.setDate(today.getDate() - dayOfWeek - 6);
-        const lastSunday = new Date(lastMonday);
-        lastSunday.setDate(lastMonday.getDate() + 6);
-        setCheckFrom(fmt(lastMonday));
-        setCheckTo(fmt(lastSunday));
-        break;
-      }
-      case 'last-month': {
-        const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        setCheckFrom(fmt(firstOfLastMonth));
-        setCheckTo(fmt(lastOfLastMonth));
-        break;
-      }
-      case 'last-quarter': {
-        const currentQ = Math.floor(today.getMonth() / 3);
-        const qStart = new Date(today.getFullYear(), (currentQ - 1) * 3, 1);
-        const qEnd = new Date(today.getFullYear(), currentQ * 3, 0);
-        setCheckFrom(fmt(qStart));
-        setCheckTo(fmt(qEnd));
-        break;
-      }
-      case 'full':
-      default:
-        setCheckFrom('');
-        setCheckTo('');
-        break;
-    }
-  }
+  // ── Date range for integrity checks (shared DateRangeFilter) ──
+  const [checkRange, setCheckRange] = useState({ from: '', to: '' });
 
   // ── Dialogs ──
   const [sealOpen, setSealOpen] = useState(false);
@@ -239,10 +162,13 @@ function IntegrityPanel() {
     setChainLoading(true);
     setChainReport(null);
     try {
-      const params = {
-        from: checkFrom ? new Date(checkFrom).toISOString() : undefined,
-        to: checkTo ? new Date(checkTo + 'T23:59:59').toISOString() : undefined,
-      };
+      const params =
+        checkRange.from && checkRange.to
+          ? (() => {
+              const { createdAfter, createdBefore } = dateRangeToApiParams(checkRange.from, checkRange.to);
+              return { from: createdAfter, to: createdBefore };
+            })()
+          : { from: undefined as string | undefined, to: undefined as string | undefined };
       const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
       setChainReport(report);
     } catch (e) {
@@ -256,10 +182,13 @@ function IntegrityPanel() {
     setIntegrityLoading(true);
     setIntegrityReport(null);
     try {
-      const params = {
-        from: checkFrom ? new Date(checkFrom).toISOString() : undefined,
-        to: checkTo ? new Date(checkTo + 'T23:59:59').toISOString() : undefined,
-      };
+      const params =
+        checkRange.from && checkRange.to
+          ? (() => {
+              const { createdAfter, createdBefore } = dateRangeToApiParams(checkRange.from, checkRange.to);
+              return { from: createdAfter, to: createdBefore };
+            })()
+          : { from: undefined as string | undefined, to: undefined as string | undefined };
       const report = await checkIntegrity(params) as unknown as IntegrityReport;
       setIntegrityReport(report);
     } catch (e) {
@@ -337,39 +266,8 @@ function IntegrityPanel() {
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Verification</h3>
 
-            {/* Date range filter */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="w-44">
-                <Select value={preset} onChange={(e) => applyPreset(e.target.value)}>
-                  <option value="">Full range</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last-24h">Last 24 hours</option>
-                  <option value="last-7d">Last 7 days</option>
-                  <option value="last-30d">Last 30 days</option>
-                  <option value="last-week">Last week (Mon–Sun)</option>
-                  <option value="last-month">Last month</option>
-                  <option value="last-quarter">Last quarter</option>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs shrink-0">From</Label>
-                <Input type="date" value={checkFrom} onChange={(e) => { setCheckFrom(e.target.value); setPreset(''); }} className="w-36" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs shrink-0">To</Label>
-                <Input type="date" value={checkTo} onChange={(e) => { setCheckTo(e.target.value); setPreset(''); }} className="w-36" />
-              </div>
-              {(checkFrom || checkTo) && (
-                <button
-                  type="button"
-                  className="text-[10px] text-accent underline hover:text-accent/80"
-                  onClick={() => applyPreset('')}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            {/* Date range filter (shared presets, no Last 24h) */}
+            <DateRangeFilter value={checkRange} onChange={setCheckRange} presetWidth="w-44" />
 
             <div className="flex gap-3">
               <Button size="sm" variant="secondary" onClick={runChainCheck} disabled={chainLoading} className="gap-1.5">
@@ -610,9 +508,13 @@ export default function AuditLogsPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState('');
   const [eventStatusFilter, setEventStatusFilter] = useState('');
   const [apiNameFilter, setApiNameFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [selectedLog, setSelectedLog] = useState<AuditLogResponseDto | null>(null);
+
+  const listApiDateParams =
+    dateRange.from && dateRange.to
+      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, {
     eventType?: string;
@@ -621,13 +523,13 @@ export default function AuditLogsPage() {
     createdAfter?: string;
     createdBefore?: string;
   }>({
-    queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateFrom, dateTo],
+    queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateRange.from, dateRange.to],
     baseParams: {
       eventType: eventTypeFilter || undefined,
       eventStatus: eventStatusFilter || undefined,
       apiName: apiNameFilter || undefined,
-      createdAfter: dateFrom ? new Date(dateFrom).toISOString() : undefined,
-      createdBefore: dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : undefined,
+      createdAfter: listApiDateParams.createdAfter,
+      createdBefore: listApiDateParams.createdBefore,
     },
     fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
   });
@@ -713,14 +615,7 @@ export default function AuditLogsPage() {
               <option value="M2M_API">M2M API</option>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs shrink-0">From</Label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs shrink-0">To</Label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
-          </div>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} />
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <ShieldCheck className="size-3.5" />
             Refresh

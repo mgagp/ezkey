@@ -3520,6 +3520,26 @@
             }
           },
           {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter by creation time (inclusive start), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter by creation time (inclusive end), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Zero-based page index (0..N)",

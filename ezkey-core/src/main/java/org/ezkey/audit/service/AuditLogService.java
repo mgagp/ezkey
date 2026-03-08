@@ -154,6 +154,8 @@ public class AuditLogService {
    *     (no tenant restriction), non-null for Tenant Admin (strict tenant filtering)
    * @param filterTenantId optional explicit tenant filter for Global Admin; ignored when {@code
    *     requesterTenantId} is non-null (Tenant Admin scope takes precedence)
+   * @param createdAfter optional start of date range filter (inclusive)
+   * @param createdBefore optional end of date range filter (inclusive)
    * @param pageable pagination and sorting parameters
    * @return page of audit logs matching criteria and tenant scope
    */
@@ -167,6 +169,8 @@ public class AuditLogService {
       Integer targetAdminId,
       Integer requesterTenantId,
       Integer filterTenantId,
+      OffsetDateTime createdAfter,
+      OffsetDateTime createdBefore,
       Pageable pageable) {
 
     Specification<AuditLog> spec =
@@ -203,6 +207,13 @@ public class AuditLogService {
 
           if (targetAdminId != null) {
             predicates.add(cb.equal(root.get("targetAdminId"), targetAdminId));
+          }
+
+          if (createdAfter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+          }
+          if (createdBefore != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
           }
 
           // Force ordering by createdAt DESC if not specified in pageable

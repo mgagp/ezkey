@@ -5,12 +5,13 @@ import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
 import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status-badge';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
@@ -72,12 +73,16 @@ export default function AuthAttemptsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [enrollmentIdInput, setEnrollmentIdInput] = useState('');
   const [integrationFilter, setIntegrationFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [selectedAttempt, setSelectedAttempt] = useState<AuthAttemptDto | null>(null);
 
   const debouncedEnrollmentId = useDebounce(enrollmentIdInput, 400);
   const { list: integrations, lookup } = useIntegrations();
+
+  const apiDateParams =
+    dateRange.from && dateRange.to
+      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuthAttemptDto, {
     status?: string;
@@ -86,13 +91,13 @@ export default function AuthAttemptsPage() {
     createdAfter?: string;
     createdBefore?: string;
   }>({
-    queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateFrom, dateTo],
+    queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateRange.from, dateRange.to],
     baseParams: {
       status: statusFilter || undefined,
       enrollmentId: debouncedEnrollmentId ? parseInt(debouncedEnrollmentId, 10) : undefined,
       integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-      createdAfter: dateFrom ? new Date(dateFrom).toISOString() : undefined,
-      createdBefore: dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : undefined,
+      createdAfter: apiDateParams.createdAfter,
+      createdBefore: apiDateParams.createdBefore,
     },
     fetchPage: (params) => search2(params as Search2Params) as Promise<PagedModelAuthAttemptDto>,
   });
@@ -173,14 +178,7 @@ export default function AuthAttemptsPage() {
               min={1}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs shrink-0">From</Label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs shrink-0">To</Label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
-          </div>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} />
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <RefreshCw className="size-3.5" />
             Refresh
