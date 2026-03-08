@@ -213,7 +213,7 @@ function EnrollmentCreateDialog({
             <Label htmlFor="enr-name">Enrollment Name *</Label>
             <Input
               id="enr-name"
-              placeholder="e.g. John Smith — iPhone 15"
+              placeholder="e.g. Marie Dupont — iPhone 15"
               error={errors.name?.message}
               {...register('name')}
             />
@@ -225,7 +225,7 @@ function EnrollmentCreateDialog({
             <Input
               id="enr-email"
               type="email"
-              placeholder="user@example.com"
+              placeholder="user@garageducoin.com"
               error={errors.contactEmail?.message}
               {...register('contactEmail')}
             />

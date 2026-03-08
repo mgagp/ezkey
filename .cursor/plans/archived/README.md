@@ -12,6 +12,26 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2025-03 - Admin UI Garage du coin placeholders
+
+**Completion Date:** March 8, 2025
+**Status:** ✅ **FULLY IMPLEMENTED AND VALIDATED**
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **admin_ui_garage_du_coin_placeholders.plan.md** | Replace ACME-style form placeholders with "Garage du coin" theme (Oscar Dupont / Marie Dupont personae) | ✅ Completed |
+
+**What Was Implemented:**
+- ✅ tenants.tsx: Garage du coin, Oscar Dupont contact, garageducoin.com, Porsche/Mercedes/Audi hints
+- ✅ admins.tsx: Marie Dupont generic persona (marie.dupont, Marie, Dupont, marie@garageducoin.com)
+- ✅ enrollments.tsx: Marie Dupont — iPhone 15, user@garageducoin.com
+
+**Key Conventions:**
+- Garage contact (tenants only): Oscar Dupont / oscar@garageducoin.com
+- Generic persona (admins, enrollments): Marie Dupont; brands-only subtle luxury hint (no "auto luxueuse" wording)
+
+---
+
 ### 2026-01 - Maven POM Versioning (CI-Friendly Versions)
 
 **Completion Date:** January 16, 2026

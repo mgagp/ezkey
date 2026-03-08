@@ -484,21 +484,21 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
           )}
           <div className="space-y-1">
             <Label htmlFor="adm-username">Username *</Label>
-            <Input id="adm-username" placeholder="jsmith" error={errors.username?.message} {...register('username')} />
+            <Input id="adm-username" placeholder="marie.dupont" error={errors.username?.message} {...register('username')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="adm-fname">First Name</Label>
-              <Input id="adm-fname" placeholder="John" error={errors.firstName?.message} {...register('firstName')} />
+              <Input id="adm-fname" placeholder="Marie" error={errors.firstName?.message} {...register('firstName')} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="adm-lname">Last Name</Label>
-              <Input id="adm-lname" placeholder="Smith" error={errors.lastName?.message} {...register('lastName')} />
+              <Input id="adm-lname" placeholder="Dupont" error={errors.lastName?.message} {...register('lastName')} />
             </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="adm-email">Email <span className="text-fg-muted font-normal">(optional)</span></Label>
-            <Input id="adm-email" type="email" placeholder="jsmith@example.com" error={errors.email?.message} {...register('email')} />
+            <Input id="adm-email" type="email" placeholder="marie@garageducoin.com" error={errors.email?.message} {...register('email')} />
           </div>
 
           {createMutation.isError && (

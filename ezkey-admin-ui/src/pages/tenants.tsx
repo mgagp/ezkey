@@ -96,22 +96,22 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         {/* Row 1 */}
         <div>
           <Label htmlFor="t-name">Tenant Name *</Label>
-          <Input id="t-name" placeholder="e.g. Acme Corp" error={errors.tenantName?.message} {...register('tenantName')} />
+          <Input id="t-name" placeholder="e.g. Garage du coin" error={errors.tenantName?.message} {...register('tenantName')} />
         </div>
         <div>
           <Label htmlFor="t-desc">Description</Label>
-          <Textarea id="t-desc" placeholder="Optional description" rows={2} {...register('tenantDescription')} />
+          <Textarea id="t-desc" placeholder="Porsche, Mercedes, Audi" rows={2} {...register('tenantDescription')} />
         </div>
 
         {/* Row 2 — Organization */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="t-orgname">Organization Name</Label>
-            <Input id="t-orgname" placeholder="Acme Corporation" {...register('organizationName')} />
+            <Input id="t-orgname" placeholder="Garage du coin (Porsche, Mercedes, Audi)" {...register('organizationName')} />
           </div>
           <div>
             <Label htmlFor="t-orgdomain">Organization Domain</Label>
-            <Input id="t-orgdomain" placeholder="acme.com" error={errors.organizationDomain?.message} {...register('organizationDomain')} />
+            <Input id="t-orgdomain" placeholder="garageducoin.com" error={errors.organizationDomain?.message} {...register('organizationDomain')} />
           </div>
         </div>
 
@@ -165,11 +165,11 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="t-cname">Primary Contact Name</Label>
-            <Input id="t-cname" placeholder="Jane Doe" {...register('primaryContactName')} />
+            <Input id="t-cname" placeholder="Oscar Dupont" {...register('primaryContactName')} />
           </div>
           <div>
             <Label htmlFor="t-cemail">Primary Contact Email</Label>
-            <Input id="t-cemail" type="email" placeholder="jane@acme.com" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
+            <Input id="t-cemail" type="email" placeholder="oscar@garageducoin.com" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
           </div>
         </div>
 
