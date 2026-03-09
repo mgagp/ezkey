@@ -16,9 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ApiError } from '@/lib/api-client';
+import { isDemoMode, tenantDemoPresets } from '@/lib/demo-mode';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
@@ -52,6 +54,7 @@ type CreateFormValues = z.infer<typeof createSchema>;
 function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { sessionDemoOn } = useDemoModeSession();
   const countryGrouped = getCountryOptionsGrouped();
   const timezoneGrouped = getTimeZoneOptionsGrouped();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
@@ -93,6 +96,22 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Dialog open={open} onClose={handleClose} title="Create Tenant" size="lg" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {isDemoMode && sessionDemoOn && (
+          <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
+            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+            {tenantDemoPresets.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => reset(preset.values)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        )}
         {/* Row 1 */}
         <div>
           <Label htmlFor="t-name">Tenant Name *</Label>

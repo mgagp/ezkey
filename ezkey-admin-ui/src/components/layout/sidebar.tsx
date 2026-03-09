@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/auth-context';
+import { useDemoModeSession } from '@/context/demo-mode-context';
+import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';
 import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
 import {
@@ -43,15 +45,36 @@ function adminTagline(adminType: string | undefined): string {
 export function Sidebar() {
   const { pathname } = useLocation();
   const { session } = useAuth();
+  const { toggleSessionDemo } = useDemoModeSession();
 
   const visibleItems = navItems.filter(
     (item) => !item.roles || item.roles.includes(session?.adminType as AdminResponseDtoAdminType),
   );
 
+  const handleBrandClick = (e: React.MouseEvent) => {
+    if (isDemoMode && e.ctrlKey) {
+      e.preventDefault();
+      toggleSessionDemo();
+    }
+  };
+
   return (
     <aside className="w-52 shrink-0 h-screen bg-sidebar-bg flex flex-col border-r-2 border-fg sticky top-0">
-      {/* Brand */}
-      <div className="px-4 py-5 border-b-2 border-white/10">
+      {/* Brand — Ctrl+click toggles demo mode when VITE_DEMO_MODE is true */}
+      <div
+        className="px-4 py-5 border-b-2 border-white/10"
+        role={isDemoMode ? 'button' : undefined}
+        onClick={handleBrandClick}
+        onKeyDown={
+          isDemoMode
+            ? (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) toggleSessionDemo();
+              }
+            : undefined
+        }
+        tabIndex={isDemoMode ? 0 : undefined}
+        title={isDemoMode ? 'Ctrl+click to toggle demo mode' : undefined}
+      >
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sidebar-active">
           EZKey
         </p>

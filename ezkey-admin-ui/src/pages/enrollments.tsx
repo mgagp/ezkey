@@ -16,10 +16,12 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
+import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatDate } from '@/lib/utils';
 import { create1, search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type {
@@ -54,6 +56,7 @@ function EnrollmentCreateDialog({
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { sessionDemoOn } = useDemoModeSession();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
   const [createdEnrollment, setCreatedEnrollment] = useState<EnrollmentCreateResponseDto | null>(null);
   const [createdEnrollmentName, setCreatedEnrollmentName] = useState<string | null>(null);
@@ -64,6 +67,7 @@ function EnrollmentCreateDialog({
     register,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -194,6 +198,27 @@ function EnrollmentCreateDialog({
       ) : (
         /* ── Form state ──────────────────────────────────── */
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {isDemoMode && sessionDemoOn && (
+            <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+              {enrollmentDemoPresets.map((preset) => (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    reset({
+                      ...preset.values,
+                      integrationId: getValues('integrationId') || initialIntegrationId || '',
+                    })
+                  }
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          )}
           {/* Integration */}
           <div className="space-y-1">
             <Label htmlFor="enr-integration">Integration *</Label>

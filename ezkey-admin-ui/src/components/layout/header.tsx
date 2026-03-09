@@ -1,8 +1,10 @@
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
+import { isDemoMode } from '@/lib/demo-mode';
 
 interface HeaderProps {
   title: string;
@@ -10,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   const { session, logout } = useAuth();
+  const { sessionDemoOn } = useDemoModeSession();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -24,7 +27,14 @@ export function Header({ title }: HeaderProps) {
 
   return (
     <header className="h-13 shrink-0 border-b-2 border-fg bg-surface flex items-center justify-between px-6">
-      <h1 className="text-xs font-black uppercase tracking-[0.2em] text-fg">{title}</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-xs font-black uppercase tracking-[0.2em] text-fg">{title}</h1>
+        {isDemoMode && sessionDemoOn && (
+          <span className="text-[10px] px-2 py-0.5 bg-accent text-surface font-black uppercase tracking-widest rounded-sm">
+            Demo
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-3">
         {session && (
           <div className="flex items-center gap-2 text-sm">

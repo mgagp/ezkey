@@ -16,9 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
   listAdmins,
@@ -395,6 +397,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const callerIsGlobal = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { sessionDemoOn } = useDemoModeSession();
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
@@ -418,7 +421,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   type AdminFormValues = z.infer<typeof adminSchema>;
 
   const defaultFormValues: AdminFormValues = { username: '', email: '', firstName: '', lastName: '', tenantId: '' };
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<AdminFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
     defaultValues: defaultFormValues,
   });
@@ -540,6 +543,28 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {isDemoMode && sessionDemoOn && (
+            <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+              {adminDemoPresets.map((preset) => (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setIsGlobalType(preset.isGlobal);
+                    reset({
+                      ...preset.values,
+                      tenantId: preset.isGlobal ? '' : getValues('tenantId') ?? '',
+                    });
+                  }}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          )}
           {/* Admin type toggle — only visible when the caller is a GLOBAL_ADMIN */}
           {callerIsGlobal && (
             <div className="flex items-center gap-3 p-3 border-2 border-fg/20 bg-bg">

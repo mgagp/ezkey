@@ -30,6 +30,7 @@ src/
   lib/
     api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses RFC 9457 ProblemDetail, getApiErrorMessage()
     auth.ts             sessionStorage session management (AuthSession)
+    demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
     query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
@@ -38,6 +39,7 @@ src/
     models.ts           Domain models: Integration, Enrollment, AuthAttempt, Admin, AuditLog, ApiKey
   context/
     auth-context.tsx    AuthProvider + useAuth; clears QueryClient cache on logout
+    demo-mode-context.tsx   DemoModeProvider + useDemoModeSession (session toggle when VITE_DEMO_MODE; stripped in production)
   hooks/
     use-paginated-query.ts   usePaginatedQuery — Spring Data pagination (see Pattern B below)
     use-debounce.ts          useDebounce — search input debouncing
@@ -49,7 +51,7 @@ src/
     feature/            EnrollmentStatusBadge, AuthAttemptStatusBadge
   pages/                One file per route (see table above)
   routes.tsx            All routes, lazy imports, ProtectedRoute
-  App.tsx               Root: QueryClientProvider > AuthProvider > RouterProvider
+  App.tsx               Root: QueryClientProvider > AuthProvider > DemoModeProvider > ToastProvider > RouterProvider
 ```
 
 ## Critical Patterns
@@ -198,6 +200,12 @@ docker compose -f docker-compose.admin-ui.yml up --build
 - `VITE_API_BASE_URL` is **empty** in `.env.production` → all `/api/*` calls are relative
 - Caddy reverse-proxies `/api/*` → `host.docker.internal:9080` (Admin API on the Docker host)
 - SPA fallback to `index.html` for all non-API routes (React Router client-side routing)
+
+## Developer/Demo mode
+
+- **Dev-only:** When `VITE_DEMO_MODE=true` (e.g. in `.env.development`), the UI can show "Fill demo" controls in create dialogs (tenant, integration, enrollment, admin) and allow Ctrl+click on the sidebar brand to toggle a session-level demo indicator.
+- **Production stripping:** All demo-mode code and preset data are **removed** from production builds. In `vite.config.ts`, production builds use `define: { 'import.meta.env.VITE_DEMO_MODE': '"false"' }`, so any branch guarded by `isDemoMode` (or `import.meta.env.VITE_DEMO_MODE === 'true'`) is dead code and tree-shaken. Do not rely on runtime checks for demo features; use the compile-time flag so production bundles never contain demo logic or strings.
+- **Presets:** `src/lib/demo-mode.ts` exports `isDemoMode` and typed preset arrays; they are only referenced from components that render when `isDemoMode && sessionDemoOn`, so they are eliminated in production.
 
 ## Visual Identity: Neo-Brutalism (subtle)
 

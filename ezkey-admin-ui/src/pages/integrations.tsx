@@ -15,10 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
+import { integrationDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatDate } from '@/lib/utils';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
@@ -40,6 +42,7 @@ type CreateFormValues = z.infer<typeof createSchema>;
 
 function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const { sessionDemoOn } = useDemoModeSession();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
   });
@@ -72,6 +75,22 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
   return (
     <Dialog open={open} onClose={handleClose} title="Create Integration" size="md" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {isDemoMode && sessionDemoOn && (
+          <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
+            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+            {integrationDemoPresets.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => reset(preset.values)}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        )}
         <div>
           <Label htmlFor="create-code">Code</Label>
           <Input
