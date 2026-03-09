@@ -14,6 +14,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
@@ -221,16 +222,17 @@ export default function ApiKeyDetailPage() {
                       <span className="font-mono text-xs break-all select-all">
                         {apiKey.integrationKey}
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyKey}
-                        className="shrink-0 text-fg-muted hover:text-fg transition-colors"
-                        title="Copy integration key"
-                      >
-                        {keyCopied
-                          ? <Check className="size-3.5 text-success" />
-                          : <Copy className="size-3.5" />}
-                      </button>
+                      <Tooltip content="Copy integration key">
+                        <button
+                          type="button"
+                          onClick={handleCopyKey}
+                          className="shrink-0 text-fg-muted hover:text-fg transition-colors"
+                        >
+                          {keyCopied
+                            ? <Check className="size-3.5 text-success" />
+                            : <Copy className="size-3.5" />}
+                        </button>
+                      </Tooltip>
                     </span>
                   </InfoRow>
 

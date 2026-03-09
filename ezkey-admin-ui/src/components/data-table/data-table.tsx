@@ -1,9 +1,12 @@
 import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 
 export interface ColumnDef<T> {
   header: string;
+  /** Optional tooltip text for the column header (domain-specific terms). */
+  headerTooltip?: string;
   /** Key of T or any string when using render(). */
   key: string;
   render?: (row: T) => ReactNode;
@@ -88,7 +91,11 @@ export function DataTable<T extends object>({
                   )}
                 >
                   <span className="inline-flex items-center gap-1.5">
-                    {col.header}
+                    {col.headerTooltip ? (
+                      <Tooltip content={col.headerTooltip}><span>{col.header}</span></Tooltip>
+                    ) : (
+                      col.header
+                    )}
                     {isSortable && (
                       isActive ? (
                         activeDir === 'ASC'

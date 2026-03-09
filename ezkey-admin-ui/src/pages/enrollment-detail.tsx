@@ -11,9 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { ENROLLMENT_DETAIL_HELP } from '@/lib/help-text';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -532,7 +534,13 @@ export default function EnrollmentDetailPage() {
 
               {/* Proof Token */}
               <Card>
-                <CardHeader><CardTitle>Enrollment Token</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>
+                    <Tooltip content={ENROLLMENT_DETAIL_HELP.PROOF_TOKEN}>
+                      <span>Enrollment Token</span>
+                    </Tooltip>
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-fg-muted">
                     Share this token with the user to set up their EZKey mobile app.
@@ -565,7 +573,9 @@ export default function EnrollmentDetailPage() {
                       {enrollment.enrollmentChallenge != null && (
                         <div className="border-2 border-fg/30 p-3 bg-bg">
                           <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                            Binding Challenge Code
+                            <Tooltip content={ENROLLMENT_DETAIL_HELP.BINDING_CHALLENGE_CODE}>
+                              <span>Binding Challenge Code</span>
+                            </Tooltip>
                           </p>
                           <p className="font-mono text-2xl font-black tracking-widest">
                             {enrollment.enrollmentChallenge}

@@ -14,12 +14,20 @@ import {
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { getApiErrorMessage } from '@/lib/api-client';
+import {
+  BATCH_STATUS_HELP,
+  ENCRYPTION_KEY_STATUS_HELP,
+  ENCRYPTION_KEYS_SECTION_HELP,
+  REENCRYPT_BUTTON_HELP,
+} from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
 import {
@@ -45,17 +53,17 @@ import type {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function KeyStatusBadge({ status }: { status?: string }) {
-  if (status === 'PRIMARY') return <Badge variant="success">Primary</Badge>;
-  if (status === 'ENABLED') return <Badge variant="muted">Enabled</Badge>;
-  if (status === 'DISABLED') return <Badge variant="error">Disabled</Badge>;
+  if (status === 'PRIMARY') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.PRIMARY}><Badge variant="success">Primary</Badge></Tooltip>;
+  if (status === 'ENABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.ENABLED}><Badge variant="muted">Enabled</Badge></Tooltip>;
+  if (status === 'DISABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.DISABLED}><Badge variant="error">Disabled</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
 function BatchStatusBadge({ status }: { status?: string }) {
-  if (status === 'COMPLETED') return <Badge variant="success">Completed</Badge>;
-  if (status === 'IN_PROGRESS' || status === 'PROCESSING') return <Badge variant="warning">In Progress</Badge>;
-  if (status === 'FAILED') return <Badge variant="error">Failed</Badge>;
-  if (status === 'PENDING') return <Badge variant="muted">Pending</Badge>;
+  if (status === 'COMPLETED') return <Tooltip content={BATCH_STATUS_HELP.COMPLETED}><Badge variant="success">Completed</Badge></Tooltip>;
+  if (status === 'IN_PROGRESS' || status === 'PROCESSING') return <Tooltip content={BATCH_STATUS_HELP.IN_PROGRESS}><Badge variant="warning">In Progress</Badge></Tooltip>;
+  if (status === 'FAILED') return <Tooltip content={BATCH_STATUS_HELP.FAILED}><Badge variant="error">Failed</Badge></Tooltip>;
+  if (status === 'PENDING') return <Tooltip content={BATCH_STATUS_HELP.PENDING}><Badge variant="muted">Pending</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
@@ -586,15 +594,17 @@ export default function EncryptionKeysPage() {
       key: 'actions',
       render: (r) =>
         r.keyStatus === 'ENABLED' ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="gap-1 py-0.5 px-2"
-            onClick={(e) => { e.stopPropagation(); setReencryptTarget(r); }}
-          >
-            <RotateCcw className="size-3" />
-            Re-encrypt
-          </Button>
+          <Tooltip content={REENCRYPT_BUTTON_HELP}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1 py-0.5 px-2"
+              onClick={(e) => { e.stopPropagation(); setReencryptTarget(r); }}
+            >
+              <RotateCcw className="size-3" />
+              Re-encrypt
+            </Button>
+          </Tooltip>
         ) : null,
     },
   ];
@@ -604,9 +614,16 @@ export default function EncryptionKeysPage() {
       <div className="space-y-4">
         {/* Actions bar */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-fg-muted">
-            AES encryption keys protecting sensitive data at rest. Rotate periodically for compliance.
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-fg-muted">
+              AES encryption keys protecting sensitive data at rest. Rotate periodically for compliance.
+            </p>
+            <ContextHelp
+              title={ENCRYPTION_KEYS_SECTION_HELP.title}
+              content={ENCRYPTION_KEYS_SECTION_HELP.content}
+              ariaLabel="Help: Encryption keys"
+            />
+          </div>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
               <RefreshCw className="size-3.5" />

@@ -15,8 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip } from '@/components/ui/tooltip';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
+import { API_KEY_HELP } from '@/lib/help-text';
 import { formatDate } from '@/lib/utils';
 import {
   listAllApiKeys,
@@ -48,9 +50,9 @@ function KeyStatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
 
   const badge = (() => {
     switch (status) {
-      case 'revoked': return <Badge variant="error">Revoked</Badge>;
+      case 'revoked': return <Tooltip content={API_KEY_HELP.REVOKED}><Badge variant="error">Revoked</Badge></Tooltip>;
       case 'expired': return <Badge variant="muted">Expired</Badge>;
-      case 'expiring-soon': return <Badge variant="warning">Expiring Soon</Badge>;
+      case 'expiring-soon': return <Tooltip content={API_KEY_HELP.EXPIRING_SOON}><Badge variant="warning">Expiring Soon</Badge></Tooltip>;
       case 'active': return <Badge variant="success">Active</Badge>;
       default: return <Badge variant="muted">Inactive</Badge>;
     }
@@ -60,7 +62,9 @@ function KeyStatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
     <span className="inline-flex items-center gap-1.5">
       {badge}
       {hasIpRestriction && (
-        <span title="IP restricted" className="inline-flex"><Shield className="size-3 text-fg-muted" aria-hidden /></span>
+        <Tooltip content={API_KEY_HELP.IP_WHITELIST}>
+          <span className="inline-flex"><Shield className="size-3 text-fg-muted" aria-hidden /></span>
+        </Tooltip>
       )}
     </span>
   );
@@ -504,15 +508,16 @@ export default function ApiKeysPage() {
       className: 'w-10',
       render: (r) =>
         r.active && !r.revokedAt ? (
-          <Button
-            variant="destructive"
-            size="sm"
-            title="Revoke this key"
-            onClick={(e) => { e.stopPropagation(); setRevokeTarget(r); }}
-            className="gap-1 px-2"
-          >
-            <ShieldOff className="size-3" />
-          </Button>
+          <Tooltip content="Revoke this key">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); setRevokeTarget(r); }}
+              className="gap-1 px-2"
+            >
+              <ShieldOff className="size-3" />
+            </Button>
+          </Tooltip>
         ) : null,
     },
   ];

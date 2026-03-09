@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -7,6 +7,7 @@ import { Pagination } from '@/components/data-table/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ContextHelp } from '@/components/ui/context-help';
+import { Tooltip } from '@/components/ui/tooltip';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
+import { AUDIT_CONTEXT_HELP, CHECKPOINT_TYPE_HELP, HMAC_COLUMN_HELP } from '@/lib/help-text';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -63,48 +65,6 @@ const EVENT_TYPES = [
   ['API_KEY_IP_BLOCKED', 'API Key IP Blocked'],
   ['SYSTEM_ERROR', 'System Error'],
 ] as const;
-
-// ── In-context help copy (reusable pattern) ─────────────────────────────────
-
-const HELP = {
-  integrityLifecycle: {
-    title: 'Integrity & Lifecycle',
-    content: (
-      <>
-        Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check
-        chain and entry integrity. Use <strong>Seal Archive</strong> to mark a period for archival; use{' '}
-        <strong>Declare Gap</strong> when the system was offline so the chain stays valid.
-      </>
-    ),
-  },
-  sealArchive: {
-    title: 'Seal Archive',
-    content: (
-      <>
-        Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by
-        timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically.
-      </>
-    ),
-  },
-  declareGap: {
-    title: 'Declare Gap',
-    content: (
-      <>
-        When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next
-        regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor.
-      </>
-    ),
-  },
-  checkpointTimeline: {
-    title: 'Checkpoint timeline',
-    content: (
-      <>
-        Lists chain checkpoints in time order. Gaps (undeclared holes between checkpoints) are highlighted. Use row
-        actions to fill SEAL range or Declare Gap anchor in the dialogs.
-      </>
-    ),
-  },
-};
 
 function formatEventType(et: string): string {
   return et.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
@@ -186,9 +146,12 @@ type CheckpointRowItem =
   | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number };
 
 function CheckpointTypeBadge({ type }: { type?: string }) {
-  if (type === 'REGULAR') return <Badge variant="muted">Regular</Badge>;
-  if (type === 'ARCHIVE_SEAL') return <Badge variant="success">Sealed</Badge>;
-  if (type === 'GAP_DECLARATION') return <Badge variant="warning">Gap</Badge>;
+  const TooltipWrap = ({ content, badge }: { content: string; badge: ReactNode }) => (
+    <Tooltip content={content}>{badge}</Tooltip>
+  );
+  if (type === 'REGULAR') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.REGULAR} badge={<Badge variant="muted">Regular</Badge>} />;
+  if (type === 'ARCHIVE_SEAL') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.ARCHIVE_SEAL} badge={<Badge variant="success">Sealed</Badge>} />;
+  if (type === 'GAP_DECLARATION') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.GAP_DECLARATION} badge={<Badge variant="warning">Gap</Badge>} />;
   return <span className="text-fg-muted">—</span>;
 }
 
@@ -540,7 +503,7 @@ function IntegrityPanel() {
           <ShieldAlert className="size-5 text-accent" />
           <h2 className="font-black text-sm uppercase tracking-wider">Integrity &amp; Lifecycle</h2>
           <span onClick={(e) => e.stopPropagation()}>
-            <ContextHelp title={HELP.integrityLifecycle.title} content={HELP.integrityLifecycle.content} ariaLabel="Help: Integrity and Lifecycle" />
+            <ContextHelp title={AUDIT_CONTEXT_HELP.integrityLifecycle.title} content={AUDIT_CONTEXT_HELP.integrityLifecycle.content} ariaLabel="Help: Integrity and Lifecycle" />
           </span>
           <Badge variant="muted">Global Admin</Badge>
         </div>
@@ -620,14 +583,14 @@ function IntegrityPanel() {
                 Seal Archive
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={HELP.sealArchive.title} content={HELP.sealArchive.content} ariaLabel="Help: Seal Archive" />
+                <ContextHelp title={AUDIT_CONTEXT_HELP.sealArchive.title} content={AUDIT_CONTEXT_HELP.sealArchive.content} ariaLabel="Help: Seal Archive" />
               </span>
               <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
                 <AlertTriangle className="size-3.5" />
                 Declare Gap
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={HELP.declareGap.title} content={HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
+                <ContextHelp title={AUDIT_CONTEXT_HELP.declareGap.title} content={AUDIT_CONTEXT_HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
               </span>
             </div>
           </div>
@@ -641,7 +604,7 @@ function IntegrityPanel() {
             >
               <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Checkpoint timeline</h3>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={HELP.checkpointTimeline.title} content={HELP.checkpointTimeline.content} ariaLabel="Help: Checkpoint timeline" />
+                <ContextHelp title={AUDIT_CONTEXT_HELP.checkpointTimeline.title} content={AUDIT_CONTEXT_HELP.checkpointTimeline.content} ariaLabel="Help: Checkpoint timeline" />
               </span>
               {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>
@@ -943,6 +906,7 @@ export default function AuditLogsPage() {
     },
     {
       header: 'HMAC',
+      headerTooltip: HMAC_COLUMN_HELP,
       key: 'entryHmac',
       render: (r) =>
           r.entryHmac ? (
@@ -956,15 +920,16 @@ export default function AuditLogsPage() {
       header: '',
       key: 'detail',
       render: (r) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="p-1"
-          onClick={(e) => { e.stopPropagation(); setSelectedLog(r); }}
-          title="View details"
-        >
-          <Info className="size-3.5" />
-        </Button>
+        <Tooltip content="View details">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1"
+            onClick={(e) => { e.stopPropagation(); setSelectedLog(r); }}
+          >
+            <Info className="size-3.5" />
+          </Button>
+        </Tooltip>
       ),
     },
   ];

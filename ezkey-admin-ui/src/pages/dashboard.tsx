@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip } from '@/components/ui/tooltip';
+import { DASHBOARD_AUDIT_CHAIN_HELP } from '@/lib/help-text';
 import { formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
@@ -96,7 +98,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-fg-muted mb-3">
-                Undeclared gap(s) detected. Declare the gap in Audit Logs to restore chain continuity.
+                <Tooltip content={DASHBOARD_AUDIT_CHAIN_HELP.UNDECLARED_GAPS}>
+                  <span className="underline decoration-dotted cursor-help">Undeclared gap(s)</span>
+                </Tooltip>
+                {' '}detected. Declare the gap in Audit Logs to restore chain continuity.
               </p>
               <ul className="space-y-2">
                 {alerts.map((alert) => (
@@ -112,7 +117,10 @@ export default function DashboardPage() {
                     </span>
                     {alert.eventDetails?.anchorCheckpointId != null && (
                       <span className="text-fg">
-                        Anchor checkpoint: {alert.eventDetails.anchorCheckpointId}
+                        <Tooltip content={DASHBOARD_AUDIT_CHAIN_HELP.ANCHOR_CHECKPOINT}>
+                          <span className="underline decoration-dotted cursor-help">Anchor checkpoint</span>
+                        </Tooltip>
+                        : {alert.eventDetails.anchorCheckpointId}
                         {alert.eventDetails.estimatedGapMinutes != null &&
                           ` · ~${alert.eventDetails.estimatedGapMinutes} min gap`}
                       </span>
