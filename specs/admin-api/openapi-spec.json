@@ -2379,7 +2379,7 @@
             "description": "Enrollment not found"
           },
           "409": {
-            "description": "Enrollment has authentication history; revoke instead (RFC 9457)"
+            "description": "Enrollment has authentication history (revoke instead) or is linked as an administrator's MFA (use recovery flow to reset that admin's MFA) (RFC 9457)"
           },
           "500": {
             "description": "Internal server error"
@@ -3809,6 +3809,163 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ChainVerificationReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/chain-checkpoints": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Search audit chain checkpoints",
+        "description": "Paginated search over audit chain checkpoints with optional filters (window range, entry count, checkpoint type, created range). Supports SEAL range selection and Declare Gap anchor lookup. Global Admin only. Default sort: windowStart,asc.",
+        "operationId": "getChainCheckpoints",
+        "parameters": [
+          {
+            "name": "windowStartAfter",
+            "in": "query",
+            "description": "Filter: window_start >= value (inclusive), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "windowStartBefore",
+            "in": "query",
+            "description": "Filter: window_start < value (exclusive), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "entryCountMin",
+            "in": "query",
+            "description": "Filter: entry_count >= value (e.g. 1 for non-empty windows)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "entryCountMax",
+            "in": "query",
+            "description": "Filter: entry_count <= value (e.g. 0 for empty windows only)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "checkpointType",
+            "in": "query",
+            "description": "Filter by checkpoint type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REGULAR",
+                "ARCHIVE_SEAL",
+                "GAP_DECLARATION"
+              ]
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter: created_at >= value (inclusive), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter: created_at < value (exclusive), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "windowStart,ASC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkpoints retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainCheckpointResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainCheckpointResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainCheckpointResponseDto"
                 }
               }
             }
@@ -6117,6 +6274,73 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "AuditChainCheckpointResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkpointId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "windowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entryCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstEntryId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastEntryId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entriesDigest": {
+            "type": "string"
+          },
+          "prevChainHmac": {
+            "type": "string"
+          },
+          "chainHmac": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkpointType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "ARCHIVE_SEAL",
+              "GAP_DECLARATION"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "PagedModelAuditChainCheckpointResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditChainCheckpointResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },

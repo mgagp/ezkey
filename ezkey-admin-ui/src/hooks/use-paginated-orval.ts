@@ -69,6 +69,8 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   fetchPage: (params: P & { page: number; size: number; sort: string[] }) => Promise<PagedBody<T>>;
   defaultSize?: number;
   defaultSort?: string;
+  /** When false, the query is not run (e.g. for nested expandable sections). Default true. */
+  enabled?: boolean;
 }): UsePaginatedFromOrvalResult<T> {
   const {
     queryKey,
@@ -76,6 +78,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     fetchPage,
     defaultSize = 20,
     defaultSort = 'createdAt,DESC',
+    enabled = true,
   } = options;
 
   const [page, setPageState] = useState(0);
@@ -93,6 +96,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     queryKey: [...queryKey, page, size, sort],
     queryFn: () => fetchPage(params),
     placeholderData: keepPreviousData,
+    enabled,
   });
 
   const goToPage = useCallback((p: number) => setPageState(p), []);

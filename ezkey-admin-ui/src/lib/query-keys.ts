@@ -25,6 +25,8 @@ export const queryKeys = {
   reencryptionBatches: ['reencryption-batches'] as const,
   /** Audit logs list (paginated). */
   auditLogs: ['audit-logs'] as const,
+  /** Audit chain checkpoints (Global Admin, paginated). */
+  auditChainCheckpoints: ['audit-logs', 'chain-checkpoints'] as const,
   /** Dashboard / stats aggregates. */
   stats: ['stats'] as const,
   /** Single integration detail. */

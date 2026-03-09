@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ContextHelp } from '@/components/ui/context-help';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
+import { queryKeys } from '@/lib/query-keys';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
@@ -21,10 +23,22 @@ import {
   checkChainIntegrity,
   checkIntegrity,
   getAuditLogs,
+  getChainCheckpoints,
   useDeclareGap,
   useSealArchive,
 } from '@/generated/admin-api/audit-logs/audit-logs';
-import type { AuditLogResponseDto, ChainVerificationReport, GetAuditLogsParams, IntegrityReport, ArchiveSealResult, GapDeclarationResult, PagedModelAuditLogResponseDto } from '@/generated/admin-api/model';
+import type {
+  AuditChainCheckpointResponseDto,
+  AuditLogResponseDto,
+  ChainVerificationReport,
+  GetAuditLogsParams,
+  GetChainCheckpointsParams,
+  IntegrityReport,
+  ArchiveSealResult,
+  GapDeclarationResult,
+  PagedModelAuditLogResponseDto,
+  PagedModelAuditChainCheckpointResponseDto,
+} from '@/generated/admin-api/model';
 
 // ── Event type options (from EventType.java enum) ─────────────────────────────
 
@@ -49,6 +63,48 @@ const EVENT_TYPES = [
   ['API_KEY_IP_BLOCKED', 'API Key IP Blocked'],
   ['SYSTEM_ERROR', 'System Error'],
 ] as const;
+
+// ── In-context help copy (reusable pattern) ─────────────────────────────────
+
+const HELP = {
+  integrityLifecycle: {
+    title: 'Integrity & Lifecycle',
+    content: (
+      <>
+        Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check
+        chain and entry integrity. Use <strong>Seal Archive</strong> to mark a period for archival; use{' '}
+        <strong>Declare Gap</strong> when the system was offline so the chain stays valid.
+      </>
+    ),
+  },
+  sealArchive: {
+    title: 'Seal Archive',
+    content: (
+      <>
+        Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by
+        timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically.
+      </>
+    ),
+  },
+  declareGap: {
+    title: 'Declare Gap',
+    content: (
+      <>
+        When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next
+        regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor.
+      </>
+    ),
+  },
+  checkpointTimeline: {
+    title: 'Checkpoint timeline',
+    content: (
+      <>
+        Lists chain checkpoints in time order. Gaps (undeclared holes between checkpoints) are highlighted. Use row
+        actions to fill SEAL range or Declare Gap anchor in the dialogs.
+      </>
+    ),
+  },
+};
 
 function formatEventType(et: string): string {
   return et.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
@@ -123,6 +179,151 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
   );
 }
 
+// ── Checkpoint type badge and timeline table ───────────────────────────────────
+
+type CheckpointRowItem =
+  | { kind: 'checkpoint'; row: AuditChainCheckpointResponseDto }
+  | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number };
+
+function CheckpointTypeBadge({ type }: { type?: string }) {
+  if (type === 'REGULAR') return <Badge variant="muted">Regular</Badge>;
+  if (type === 'ARCHIVE_SEAL') return <Badge variant="success">Sealed</Badge>;
+  if (type === 'GAP_DECLARATION') return <Badge variant="warning">Gap</Badge>;
+  return <span className="text-fg-muted">—</span>;
+}
+
+function CheckpointTimelineTable({
+  rows,
+  isLoading,
+  currentSort,
+  onSort,
+  onUseSealFrom,
+  onUseSealTo,
+  onUseAsAnchor,
+}: {
+  rows: CheckpointRowItem[];
+  isLoading: boolean;
+  currentSort: string;
+  onSort: (s: string) => void;
+  onUseSealFrom: (id: number) => void;
+  onUseSealTo: (id: number) => void;
+  onUseAsAnchor: (id: number) => void;
+}) {
+  const [field = '', dir = ''] = currentSort.split(',');
+  const handleSort = (sortKey: string) => {
+    if (sortKey === field) onSort(`${sortKey},${dir === 'ASC' ? 'DESC' : 'ASC'}`);
+    else onSort(`${sortKey},ASC`);
+  };
+  const cols = 7;
+
+  return (
+    <div className="w-full overflow-x-auto border-2 border-fg">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-fg text-surface">
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-20">
+              <button type="button" onClick={() => handleSort('checkpointId')} className="inline-flex items-center gap-1">
+                ID
+              </button>
+            </th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
+              <button type="button" onClick={() => handleSort('windowStart')} className="inline-flex items-center gap-1">
+                Window start
+              </button>
+            </th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
+              <button type="button" onClick={() => handleSort('windowEnd')} className="inline-flex items-center gap-1">
+                Window end
+              </button>
+            </th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-20">Entries</th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-24">Type</th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">Notes</th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-40">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr>
+              <td colSpan={cols} className="px-3 py-10 text-center text-fg-muted">
+                <span className="inline-block size-5 border-2 border-fg border-t-transparent rounded-full animate-spin" />
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={cols} className="px-3 py-10 text-center text-fg-muted text-sm italic">
+                No checkpoints for the selected filters. Set a date range and refresh.
+              </td>
+            </tr>
+          ) : (
+            rows.map((item, index) => {
+              if (item.kind === 'gap') {
+                return (
+                  <tr key={`gap-${item.gapEnd}-${item.gapStart}`} className="bg-warning/10 border-l-4 border-warning">
+                    <td colSpan={cols} className="px-3 py-2 text-sm">
+                      <span className="font-bold text-warning">Gap:</span>{' '}
+                      {formatDate(item.gapEnd)} → {formatDate(item.gapStart)}
+                      {item.durationMin > 0 && (
+                        <span className="text-fg-muted ml-2">(~{item.durationMin} min)</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
+              const r = item.row;
+              const nextIsGap = rows[index + 1]?.kind === 'gap';
+              return (
+                <tr key={r.checkpointId ?? index} className="border-b border-fg/10 bg-surface even:bg-bg">
+                  <td className="px-3 py-2 font-mono text-xs">{r.checkpointId ?? '—'}</td>
+                  <td className="px-3 py-2 text-xs text-fg-muted">{r.windowStart ? formatDate(r.windowStart) : '—'}</td>
+                  <td className="px-3 py-2 text-xs text-fg-muted">{r.windowEnd ? formatDate(r.windowEnd) : '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{r.entryCount ?? 0}</td>
+                  <td className="px-3 py-2">
+                    <CheckpointTypeBadge type={r.checkpointType} />
+                  </td>
+                  <td className="px-3 py-2 text-xs text-fg-muted max-w-32 truncate" title={r.notes ?? undefined}>
+                    {r.notes ?? '—'}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs p-1 h-auto"
+                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onUseSealFrom(r.checkpointId); }}
+                      >
+                        SEAL from
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs p-1 h-auto"
+                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onUseSealTo(r.checkpointId); }}
+                      >
+                        SEAL to
+                      </Button>
+                      {nextIsGap && r.checkpointId != null && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs p-1 h-auto text-warning"
+                          onClick={(e) => { e.stopPropagation(); onUseAsAnchor(r.checkpointId!); }}
+                        >
+                          Use as anchor
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
 
 function IntegrityPanel() {
@@ -157,6 +358,78 @@ function IntegrityPanel() {
   const [gapEnd, setGapEnd] = useState('');
   const [gapAnchorId, setGapAnchorId] = useState('');
   const [gapJustification, setGapJustification] = useState('');
+
+  // ── Checkpoint timeline (nested expandable) ──
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
+  const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
+
+  const checkpointApiParams = useMemo(() => {
+    if (!checkpointRange.from || !checkpointRange.to) return {};
+    const { createdAfter, createdBefore } = dateRangeToApiParams(checkpointRange.from, checkpointRange.to);
+    return {
+      windowStartAfter: createdAfter,
+      windowStartBefore: createdBefore,
+      checkpointType: checkpointTypeFilter || undefined,
+    } as GetChainCheckpointsParams;
+  }, [checkpointRange.from, checkpointRange.to, checkpointTypeFilter]);
+
+  const {
+    data: checkpointData,
+    pagination: checkpointPagination,
+    isLoading: checkpointLoading,
+    refetch: refetchCheckpoints,
+  } = usePaginatedFromOrval<AuditChainCheckpointResponseDto, GetChainCheckpointsParams>({
+    queryKey: [...queryKeys.auditChainCheckpoints, checkpointApiParams.windowStartAfter ?? '', checkpointApiParams.windowStartBefore ?? '', checkpointApiParams.checkpointType ?? ''],
+    baseParams: checkpointApiParams,
+    fetchPage: (params) =>
+      getChainCheckpoints(params as GetChainCheckpointsParams) as Promise<PagedModelAuditChainCheckpointResponseDto>,
+    defaultSize: 20,
+    defaultSort: 'windowStart,ASC',
+    enabled: timelineExpanded,
+  });
+
+  /** Rows to display: checkpoints plus gap rows between consecutive checkpoints where windowEnd < next.windowStart */
+  const checkpointRowsWithGaps = useMemo(() => {
+    const sorted = [...checkpointData].sort(
+      (a, b) => new Date(a.windowStart ?? 0).getTime() - new Date(b.windowStart ?? 0).getTime(),
+    );
+    const out: Array<{ kind: 'checkpoint'; row: AuditChainCheckpointResponseDto } | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number }> = [];
+    for (let i = 0; i < sorted.length; i++) {
+      out.push({ kind: 'checkpoint', row: sorted[i] });
+      const curr = sorted[i];
+      const next = sorted[i + 1];
+      if (next && curr.windowEnd && next.windowStart) {
+        const end = new Date(curr.windowEnd).getTime();
+        const start = new Date(next.windowStart).getTime();
+        if (end < start) {
+          out.push({
+            kind: 'gap',
+            gapEnd: curr.windowEnd,
+            gapStart: next.windowStart,
+            durationMin: Math.round((start - end) / 60000),
+          });
+        }
+      }
+    }
+    return out;
+  }, [checkpointData]);
+
+  function openSealDialog(initialFrom?: number, initialTo?: number) {
+    if (initialFrom != null) setSealCheckpointFrom(String(initialFrom));
+    else setSealCheckpointFrom('');
+    if (initialTo != null) setSealCheckpointTo(String(initialTo));
+    else setSealCheckpointTo('');
+    setSealResult(null);
+    setSealOpen(true);
+  }
+
+  function openGapDialog(initialAnchorId?: number) {
+    if (initialAnchorId != null) setGapAnchorId(String(initialAnchorId));
+    else setGapAnchorId('');
+    setGapResult(null);
+    setGapOpen(true);
+  }
 
   async function runChainCheck() {
     setChainLoading(true);
@@ -204,7 +477,8 @@ function IntegrityPanel() {
         const result = data as unknown as ArchiveSealResult;
         setSealResult(result);
         toast(`Archive sealed — ${result.checkpointsSealed} checkpoints`, 'success');
-        queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
       onError: (e) => toast(getApiErrorMessage(e, 'Seal failed'), 'error'),
     },
@@ -215,7 +489,8 @@ function IntegrityPanel() {
       onSuccess: (data) => {
         setGapResult(data as unknown as GapDeclarationResult);
         toast('Gap declared successfully', 'success');
-        queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
+        queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
       onError: (e) => toast(getApiErrorMessage(e, 'Gap declaration failed'), 'error'),
     },
@@ -255,6 +530,9 @@ function IntegrityPanel() {
         <div className="flex items-center gap-2">
           <ShieldAlert className="size-5 text-accent" />
           <h2 className="font-black text-sm uppercase tracking-wider">Integrity &amp; Lifecycle</h2>
+          <span onClick={(e) => e.stopPropagation()}>
+            <ContextHelp title={HELP.integrityLifecycle.title} content={HELP.integrityLifecycle.content} ariaLabel="Help: Integrity and Lifecycle" />
+          </span>
           <Badge variant="muted">Global Admin</Badge>
         </div>
         {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
@@ -327,16 +605,76 @@ function IntegrityPanel() {
           {/* ── Lifecycle section ── */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Lifecycle Operations</h3>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap items-center">
               <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
                 <Archive className="size-3.5" />
                 Seal Archive
               </Button>
+              <span onClick={(e) => e.stopPropagation()}>
+                <ContextHelp title={HELP.sealArchive.title} content={HELP.sealArchive.content} ariaLabel="Help: Seal Archive" />
+              </span>
               <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
                 <AlertTriangle className="size-3.5" />
                 Declare Gap
               </Button>
+              <span onClick={(e) => e.stopPropagation()}>
+                <ContextHelp title={HELP.declareGap.title} content={HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
+              </span>
             </div>
+          </div>
+
+          {/* ── Checkpoint timeline (nested expandable) ── */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-2 -m-2 transition-colors"
+              onClick={() => setTimelineExpanded((v) => !v)}
+            >
+              <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Checkpoint timeline</h3>
+              <span onClick={(e) => e.stopPropagation()}>
+                <ContextHelp title={HELP.checkpointTimeline.title} content={HELP.checkpointTimeline.content} ariaLabel="Help: Checkpoint timeline" />
+              </span>
+              {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            </button>
+            {timelineExpanded && (
+              <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+                <div className="flex gap-3 items-center flex-wrap">
+                  <DateRangeFilter value={checkpointRange} onChange={setCheckpointRange} presetWidth="w-44" showClear={true} />
+                  <div className="w-40">
+                    <Select value={checkpointTypeFilter} onChange={(e) => setCheckpointTypeFilter(e.target.value)}>
+                      <option value="">All types</option>
+                      <option value="REGULAR">Regular</option>
+                      <option value="ARCHIVE_SEAL">Archive seal</option>
+                      <option value="GAP_DECLARATION">Gap declaration</option>
+                    </Select>
+                  </div>
+                  <Button size="sm" variant="secondary" onClick={() => refetchCheckpoints()} className="gap-1.5">
+                    <ListOrdered className="size-3.5" />
+                    Refresh
+                  </Button>
+                </div>
+                <CheckpointTimelineTable
+                  rows={checkpointRowsWithGaps}
+                  isLoading={checkpointLoading}
+                  currentSort={checkpointPagination.sort}
+                  onSort={checkpointPagination.setSort}
+                  onUseSealFrom={(id) => openSealDialog(id, undefined)}
+                  onUseSealTo={(id) => openSealDialog(undefined, id)}
+                  onUseAsAnchor={(id) => openGapDialog(id)}
+                />
+                <Pagination
+                  page={checkpointPagination.page}
+                  totalPages={checkpointPagination.totalPages}
+                  totalElements={checkpointPagination.totalElements}
+                  isFirst={checkpointPagination.isFirst}
+                  isLast={checkpointPagination.isLast}
+                  onPrevPage={checkpointPagination.prevPage}
+                  onNextPage={checkpointPagination.nextPage}
+                  pageSize={checkpointPagination.size}
+                  onPageSizeChange={checkpointPagination.setPageSize}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
