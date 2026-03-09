@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered } from 'lucide-react';
+import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
@@ -16,7 +16,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { queryKeys } from '@/lib/query-keys';
-import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import {
@@ -197,22 +197,40 @@ function CheckpointTimelineTable({
   isLoading,
   currentSort,
   onSort,
-  onUseSealFrom,
-  onUseSealTo,
-  onUseAsAnchor,
+  onSetSealFrom,
+  onSetSealTo,
+  onSetAnchor,
 }: {
   rows: CheckpointRowItem[];
   isLoading: boolean;
   currentSort: string;
   onSort: (s: string) => void;
-  onUseSealFrom: (id: number) => void;
-  onUseSealTo: (id: number) => void;
-  onUseAsAnchor: (id: number) => void;
+  /** Set checkpoint as SEAL "from" (selection only; does not open dialog). */
+  onSetSealFrom: (id: number) => void;
+  /** Set checkpoint as SEAL "to" (selection only; does not open dialog). */
+  onSetSealTo: (id: number) => void;
+  /** Set checkpoint as Declare Gap anchor (selection only; does not open dialog). */
+  onSetAnchor: (id: number) => void;
 }) {
   const [field = '', dir = ''] = currentSort.split(',');
   const handleSort = (sortKey: string) => {
     if (sortKey === field) onSort(`${sortKey},${dir === 'ASC' ? 'DESC' : 'ASC'}`);
-    else onSort(`${sortKey},ASC`);
+    else onSort(`${sortKey},DESC`);
+  };
+  const sortable = (sortKey: string, label: string, colClass?: string) => {
+    const isActive = field === sortKey;
+    return (
+      <th key={sortKey} className={cn('px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider', colClass)}>
+        <button
+          type="button"
+          onClick={() => handleSort(sortKey)}
+          className="inline-flex items-center gap-1.5 cursor-pointer select-none hover:bg-white/10 transition-colors"
+        >
+          {label}
+          {isActive ? (dir === 'ASC' ? <ArrowUp className="size-3 opacity-90" /> : <ArrowDown className="size-3 opacity-90" />) : <ArrowUpDown className="size-3 opacity-40" />}
+        </button>
+      </th>
+    );
   };
   const cols = 7;
 
@@ -221,23 +239,11 @@ function CheckpointTimelineTable({
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-fg text-surface">
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-20">
-              <button type="button" onClick={() => handleSort('checkpointId')} className="inline-flex items-center gap-1">
-                ID
-              </button>
-            </th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
-              <button type="button" onClick={() => handleSort('windowStart')} className="inline-flex items-center gap-1">
-                Window start
-              </button>
-            </th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
-              <button type="button" onClick={() => handleSort('windowEnd')} className="inline-flex items-center gap-1">
-                Window end
-              </button>
-            </th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-20">Entries</th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-24">Type</th>
+            {sortable('checkpointId', 'ID', 'w-20')}
+            {sortable('windowStart', 'Window start')}
+            {sortable('windowEnd', 'Window end')}
+            {sortable('entryCount', 'Entries', 'w-20')}
+            {sortable('checkpointType', 'Type', 'w-24')}
             <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">Notes</th>
             <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-40">Actions</th>
           </tr>
@@ -290,7 +296,7 @@ function CheckpointTimelineTable({
                         variant="ghost"
                         size="sm"
                         className="text-xs p-1 h-auto"
-                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onUseSealFrom(r.checkpointId); }}
+                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealFrom(r.checkpointId); }}
                       >
                         SEAL from
                       </Button>
@@ -298,7 +304,7 @@ function CheckpointTimelineTable({
                         variant="ghost"
                         size="sm"
                         className="text-xs p-1 h-auto"
-                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onUseSealTo(r.checkpointId); }}
+                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealTo(r.checkpointId); }}
                       >
                         SEAL to
                       </Button>
@@ -307,7 +313,7 @@ function CheckpointTimelineTable({
                           variant="ghost"
                           size="sm"
                           className="text-xs p-1 h-auto text-warning"
-                          onClick={(e) => { e.stopPropagation(); onUseAsAnchor(r.checkpointId!); }}
+                          onClick={(e) => { e.stopPropagation(); onSetAnchor(r.checkpointId!); }}
                         >
                           Use as anchor
                         </Button>
@@ -363,6 +369,10 @@ function IntegrityPanel() {
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
   const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
+  /** Selected checkpoints from the timeline table (selection only; dialog opens via explicit button). */
+  const [selectedSealFromId, setSelectedSealFromId] = useState<number | null>(null);
+  const [selectedSealToId, setSelectedSealToId] = useState<number | null>(null);
+  const [selectedGapAnchorId, setSelectedGapAnchorId] = useState<number | null>(null);
 
   const checkpointApiParams = useMemo(() => {
     if (!checkpointRange.from || !checkpointRange.to) return {};
@@ -415,18 +425,17 @@ function IntegrityPanel() {
     return out;
   }, [checkpointData]);
 
-  function openSealDialog(initialFrom?: number, initialTo?: number) {
-    if (initialFrom != null) setSealCheckpointFrom(String(initialFrom));
-    else setSealCheckpointFrom('');
-    if (initialTo != null) setSealCheckpointTo(String(initialTo));
-    else setSealCheckpointTo('');
+  /** Opens Seal Archive dialog with current selection (from timeline) or empty form. */
+  function openSealDialogWithSelection() {
+    setSealCheckpointFrom(selectedSealFromId != null ? String(selectedSealFromId) : '');
+    setSealCheckpointTo(selectedSealToId != null ? String(selectedSealToId) : '');
     setSealResult(null);
     setSealOpen(true);
   }
 
-  function openGapDialog(initialAnchorId?: number) {
-    if (initialAnchorId != null) setGapAnchorId(String(initialAnchorId));
-    else setGapAnchorId('');
+  /** Opens Declare Gap dialog with current anchor selection (from timeline) or empty form. */
+  function openGapDialogWithSelection() {
+    setGapAnchorId(selectedGapAnchorId != null ? String(selectedGapAnchorId) : '');
     setGapResult(null);
     setGapOpen(true);
   }
@@ -653,14 +662,45 @@ function IntegrityPanel() {
                     Refresh
                   </Button>
                 </div>
+                {(selectedSealFromId != null || selectedSealToId != null || selectedGapAnchorId != null) && (
+                  <div className="flex flex-wrap items-center gap-3 p-2 border-2 border-accent/30 bg-surface">
+                    <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">Selection</span>
+                    {(selectedSealFromId != null || selectedSealToId != null) && (
+                      <span className="text-sm">
+                        Seal range: From <span className="font-mono font-bold">#{selectedSealFromId ?? '—'}</span>
+                        {' · '}
+                        To <span className="font-mono font-bold">#{selectedSealToId ?? '—'}</span>
+                        <button type="button" onClick={() => { setSelectedSealFromId(null); setSelectedSealToId(null); }} className="ml-2 text-xs text-fg-muted hover:text-fg underline">Clear</button>
+                      </span>
+                    )}
+                    {selectedSealFromId != null || selectedSealToId != null ? (
+                      <Button size="sm" className="gap-1.5" onClick={openSealDialogWithSelection}>
+                        <Archive className="size-3.5" />
+                        Open Seal Archive
+                      </Button>
+                    ) : null}
+                    {selectedGapAnchorId != null && (
+                      <>
+                        <span className="text-sm">
+                          Anchor: <span className="font-mono font-bold">#{selectedGapAnchorId}</span>
+                          <button type="button" onClick={() => setSelectedGapAnchorId(null)} className="ml-2 text-xs text-fg-muted hover:text-fg underline">Clear</button>
+                        </span>
+                        <Button size="sm" variant="secondary" className="gap-1.5" onClick={openGapDialogWithSelection}>
+                          <AlertTriangle className="size-3.5" />
+                          Declare Gap
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <CheckpointTimelineTable
                   rows={checkpointRowsWithGaps}
                   isLoading={checkpointLoading}
                   currentSort={checkpointPagination.sort}
                   onSort={checkpointPagination.setSort}
-                  onUseSealFrom={(id) => openSealDialog(id, undefined)}
-                  onUseSealTo={(id) => openSealDialog(undefined, id)}
-                  onUseAsAnchor={(id) => openGapDialog(id)}
+                  onSetSealFrom={(id) => setSelectedSealFromId(id)}
+                  onSetSealTo={(id) => setSelectedSealToId(id)}
+                  onSetAnchor={(id) => setSelectedGapAnchorId(id)}
                 />
                 <Pagination
                   page={checkpointPagination.page}
@@ -738,12 +778,15 @@ function IntegrityPanel() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="seal-just">Justification *</Label>
-              <Input id="seal-just" placeholder="Monthly rotation — backing up to cold storage" value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} />
+              <Label htmlFor="seal-just">Justification <span className="text-fg-muted font-normal">(min 10 chars, required)</span></Label>
+              <Input id="seal-just" placeholder="Monthly rotation — backing up to cold storage" value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} maxLength={500} />
+              {sealJustification.trim().length > 0 && sealJustification.trim().length < 10 && (
+                <p className="text-xs text-error">Justification must be at least 10 characters.</p>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length === 0}>
+              <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length < 10}>
                 {sealMutation.isPending ? 'Sealing…' : 'Seal Archive'}
               </Button>
             </div>
@@ -803,12 +846,15 @@ function IntegrityPanel() {
               <Input id="gap-anchor" type="number" placeholder="optional — last checkpoint before outage" value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="gap-just">Justification *</Label>
-              <Input id="gap-just" placeholder="Planned maintenance window — DB migration" value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} />
+              <Label htmlFor="gap-just">Justification <span className="text-fg-muted font-normal">(min 10 chars, required)</span></Label>
+              <Input id="gap-just" placeholder="Planned maintenance window — DB migration" value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} maxLength={500} />
+              {gapJustification.trim().length > 0 && gapJustification.trim().length < 10 && (
+                <p className="text-xs text-error">Justification must be at least 10 characters.</p>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length === 0}>
+              <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>
                 {gapMutation.isPending ? 'Declaring…' : 'Declare Gap'}
               </Button>
             </div>

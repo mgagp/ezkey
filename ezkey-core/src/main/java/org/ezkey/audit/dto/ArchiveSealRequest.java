@@ -11,6 +11,7 @@
 package org.ezkey.audit.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
 /**
@@ -102,5 +103,8 @@ public record ArchiveSealRequest(
      * Human-readable justification for the archive seal. Must clearly identify where the archived
      * data is stored (e.g., Git repository URL, export filename, retention policy reference). This
      * text is stored in the {@code notes} field of all sealed checkpoints and in the audit entry.
+     * Aligned with other audit reason fields: 10–500 characters (SOC 2 traceability).
      */
-    @NotBlank String justification) {}
+    @NotBlank(message = "Justification is required")
+    @Size(min = 10, max = 500, message = "Justification must be between 10 and 500 characters")
+    String justification) {}
