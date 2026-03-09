@@ -342,6 +342,22 @@ Too many login attempts. Please try again later.
 - HTTP 429 when limit exceeded
 - `Retry-After` header indicates seconds until retry allowed
 
+---
+
+### Audit log and chain checkpoint APIs
+
+**Base path:** `http://localhost:9080/api/v1/audit-logs` (Admin API). Global Admin only for chain and integrity endpoints.
+
+**GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use for operator visibility, SEAL range selection, and Declare Gap (anchor checkpoint) workflows.
+
+**Query parameters (all optional):** `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601), plus `page`, `size`, `sort` (e.g. `sort=windowStart,asc`). Default: `size=20`, `sort=windowStart,asc`.
+
+**Response (200 OK):** Paginated response with `content` (array of checkpoint objects: `checkpointId`, `windowStart`, `windowEnd`, `entryCount`, `firstEntryId`, `lastEntryId`, `entriesDigest`, `prevChainHmac`, `chainHmac`, `createdAt`, `checkpointType`, `notes`), `totalElements`, `totalPages`, etc.
+
+See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, seal-archive, and declare-gap endpoints.
+
+---
+
 **Security Notes:**
 - **No passwords** - phishing resistant, cannot be stolen
 - Device-bound credentials (private key never leaves device)

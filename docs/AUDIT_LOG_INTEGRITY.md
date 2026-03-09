@@ -225,8 +225,13 @@ ezkey.audit.chain.cron=0 */5 * * * ?
 | Endpoint | Access | Description |
 |----------|--------|-------------|
 | `GET /api/v1/audit-logs` | Admin | Query audit logs with filters and pagination |
+| `GET /api/v1/audit-logs/chain-checkpoints` | Global Admin | Search audit chain checkpoints with filters and pagination |
 | `GET /api/v1/audit-logs/integrity-check` | Global Admin | Verify per-entry HMAC signatures |
 | `GET /api/v1/audit-logs/chain-integrity` | Global Admin | Verify chain checkpoint linkage |
+| `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Seal a period for archival |
+| `POST /api/v1/audit-logs/lifecycle/declare-gap` | Global Admin | Declare a downtime gap |
+
+**Chain checkpoints search** (`GET /api/v1/audit-logs/chain-checkpoints`): Paginated search with optional filters: `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601). Default sort: `windowStart,asc`. Use this to discover checkpoints for SEAL range selection (e.g. `checkpointIdFrom` / `checkpointIdTo`) and Declare Gap (anchor checkpoint).
 
 Both verification endpoints accept optional `from` and `to` query parameters (ISO-8601 `OffsetDateTime`). Omitting them verifies all entries/checkpoints.
 

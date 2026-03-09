@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "998795a6-b1c7-4ed8-8203-ce971bbbfeb8",
     "name": "EZ Key Audit Logs admin",
-    "description": "Collection for audit log query, integrity verification, and chain lifecycle operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n- **Verify Entry Integrity (range)**: Recompute HMAC-SHA256 for each entry in a date range and detect tampering (Global Admin only)\n- **Verify Single Entry Integrity**: Recompute HMAC-SHA256 for one specific entry by ID -- ideal for targeted forensic checks and developer experimentation (Global Admin only)\n- **Verify Chain Integrity**: Validate chain checkpoint linkage to detect insertion, deletion, or reordering (Global Admin only)\n- **Seal Archive (timestamp mode)**: Seal a period identified by ISO-8601 timestamps -- marks checkpoints as ARCHIVE_SEAL and returns the seal HMAC for the Git archive manifest (Global Admin only)\n- **Seal Archive (checkpoint ID mode)**: Same operation, period identified by checkpoint IDs read directly from the DB -- ergonomic alternative when working with the database (Global Admin only)\n- **Declare Gap (timestamp mode)**: Formally document a downtime gap using explicit timestamps for start and end (Global Admin only)\n- **Declare Gap (anchor checkpoint mode)**: Same operation, gap start derived automatically from the last checkpoint ID before the outage -- no timestamp extraction needed (Global Admin only)\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Integrity Verification\n\n### Per-Entry HMAC Verification\n- Each audit log entry is signed with HMAC-SHA256 at creation time\n- The integrity-check endpoint recomputes and compares each signature\n- Detects individual entry tampering\n\n### Chain Checkpoint Verification\n- Periodic batch job creates chain checkpoints every 5 minutes\n- Checkpoints link consecutive windows via HMAC chains\n- The chain-integrity endpoint validates the chain linkage\n- Detects entry insertion, deletion, or reordering between checkpoints\n- Lifecycle checkpoints (ARCHIVE_SEAL, GAP_DECLARATION) are acknowledged -- chain_hmac still verified\n\n## Chain Lifecycle Operations\n\n### Archive Seal (seal-archive)\n- Call before dropping an audit log DB partition (monthly rotation after 12-month retention)\n- Pre-flight integrity check is mandatory -- rejected if any violation detected\n- Returns `sealChainHmac` to include in Git archive manifest\n- Subsequent `verifyChain()` skips entries_digest for sealed periods (entries no longer in DB)\n\n### Gap Declaration (declare-gap)\n- Call when the system was offline longer than the scheduler lookback window (default: 60 min)\n- Must be called before the scheduler creates regular checkpoints for the gap period\n- Creates a single GAP_DECLARATION checkpoint spanning the full gap\n- Both operations create a signed meta-audit entry (AUDIT_CHAIN_ARCHIVE_SEALED / AUDIT_CHAIN_GAP_DECLARED)\n\n## Multi-Tenancy\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC 2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **Integrity endpoints**: Restricted to Global Admin only (system-level security operation)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC 2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range\n- **Tamper Detection**: Verify audit log integrity for SOC 2 audits\n- **Partition Archival**: Seal chain before dropping old partitions for 12-month retention compliance\n- **Downtime Documentation**: Formally declare gaps for unplanned or extended maintenance",
+    "description": "Collection for audit log query, integrity verification, and chain lifecycle operations in the Admin API.\n\n## Endpoints\n\n- **Query Audit Logs**: Retrieve audit logs with optional filters and pagination for security monitoring and compliance reporting\n- **Verify Entry Integrity (range)**: Recompute HMAC-SHA256 for each entry in a date range and detect tampering (Global Admin only)\n- **Verify Single Entry Integrity**: Recompute HMAC-SHA256 for one specific entry by ID -- ideal for targeted forensic checks and developer experimentation (Global Admin only)\n- **Verify Chain Integrity**: Validate chain checkpoint linkage to detect insertion, deletion, or reordering (Global Admin only)\n- **Search Chain Checkpoints**: Paginated search over audit chain checkpoints with optional filters for operator visibility, SEAL range selection, and Declare Gap anchor lookup (Global Admin only)\n- **Seal Archive (timestamp mode)**: Seal a period identified by ISO-8601 timestamps -- marks checkpoints as ARCHIVE_SEAL and returns the seal HMAC for the Git archive manifest (Global Admin only)\n- **Seal Archive (checkpoint ID mode)**: Same operation, period identified by checkpoint IDs read directly from the DB -- ergonomic alternative when working with the database (Global Admin only)\n- **Declare Gap (timestamp mode)**: Formally document a downtime gap using explicit timestamps for start and end (Global Admin only)\n- **Declare Gap (anchor checkpoint mode)**: Same operation, gap start derived automatically from the last checkpoint ID before the outage -- no timestamp extraction needed (Global Admin only)\n\n## Authentication\n\n- **Bearer Token**: Admin authentication required (passwordless login)\n\n## Integrity Verification\n\n### Per-Entry HMAC Verification\n- Each audit log entry is signed with HMAC-SHA256 at creation time\n- The integrity-check endpoint recomputes and compares each signature\n- Detects individual entry tampering\n\n### Chain Checkpoint Verification\n- Periodic batch job creates chain checkpoints every 5 minutes\n- Checkpoints link consecutive windows via HMAC chains\n- The chain-integrity endpoint validates the chain linkage\n- Detects entry insertion, deletion, or reordering between checkpoints\n- Lifecycle checkpoints (ARCHIVE_SEAL, GAP_DECLARATION) are acknowledged -- chain_hmac still verified\n\n## Chain Lifecycle Operations\n\n### Archive Seal (seal-archive)\n- Call before dropping an audit log DB partition (monthly rotation after 12-month retention)\n- Pre-flight integrity check is mandatory -- rejected if any violation detected\n- Returns `sealChainHmac` to include in Git archive manifest\n- Subsequent `verifyChain()` skips entries_digest for sealed periods (entries no longer in DB)\n\n### Gap Declaration (declare-gap)\n- Call when the system was offline longer than the scheduler lookback window (default: 60 min)\n- Must be called before the scheduler creates regular checkpoints for the gap period\n- Creates a single GAP_DECLARATION checkpoint spanning the full gap\n- Both operations create a signed meta-audit entry (AUDIT_CHAIN_ARCHIVE_SEALED / AUDIT_CHAIN_GAP_DECLARED)\n\n## Multi-Tenancy\n\n### Global Access (No Tenant Scoping)\n- **Audit logs are global**: All administrators (GlobalAdmin and TenantAdmin) can access all audit logs\n- **Compliance Requirement**: Audit logs are not tenant-scoped to ensure comprehensive security monitoring and SOC 2 compliance reporting\n- **Filtering**: Use `adminId` or `enrollmentId` filters to narrow down results by specific administrators or enrollments\n- **Integrity endpoints**: Restricted to Global Admin only (system-level security operation)\n\n## Use Cases\n\n- **Security Monitoring**: Real-time monitoring of authentication events\n- **Forensic Analysis**: Investigate security incidents by filtering logs\n- **Compliance Reporting**: SOC 2 compliance audit trail access\n- **Incident Investigation**: Filter by enrollment, admin, or time range\n- **Tamper Detection**: Verify audit log integrity for SOC 2 audits\n- **Partition Archival**: Seal chain before dropping old partitions for 12-month retention compliance\n- **Downtime Documentation**: Formally declare gaps for unplanned or extended maintenance",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -303,6 +303,122 @@
           ]
         },
         "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.\n\n**Access:** Global Admin only (system-level security operation).\n\n**What it detects:**\n- Entry insertion (entries added after checkpoint creation)\n- Entry deletion (entries removed after checkpoint creation)\n- Entry reordering\n- Checkpoint tampering (chain_hmac modification)\n\n**Parameters (all optional):**\n- `from`: Start of verification range (inclusive, ISO-8601 format)\n- `to`: End of verification range (exclusive, ISO-8601 format)\n- If both are omitted, verifies ALL checkpoints\n\n**Response (200 OK):**\n```json\n{\n  \"totalCheckpoints\": 288,\n  \"validCheckpoints\": 288,\n  \"invalidCheckpoints\": 0,\n  \"violations\": [],\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalCheckpoints`: Total number of chain checkpoints verified\n- `validCheckpoints`: Checkpoints with valid digest and chain linkage\n- `invalidCheckpoints`: Checkpoints with integrity violations\n- `violations`: Array of human-readable violation descriptions\n- `intact`: `true` if no violations were found\n- `status`: `OK` or `CHAIN_INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Chain verification completed\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
+      },
+      "response": []
+    },
+    {
+      "name": "search chain checkpoints",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is paginated\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('totalElements');",
+              "    pm.expect(jsonData).to.have.property('totalPages');",
+              "});",
+              "",
+              "pm.test(\"Checkpoint entries have required fields when present\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.content.length > 0) {",
+              "        var cp = jsonData.content[0];",
+              "        pm.expect(cp).to.have.property('checkpointId');",
+              "        pm.expect(cp).to.have.property('windowStart');",
+              "        pm.expect(cp).to.have.property('windowEnd');",
+              "        pm.expect(cp).to.have.property('entryCount');",
+              "        pm.expect(cp).to.have.property('checkpointType');",
+              "        pm.expect(cp).to.have.property('createdAt');",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/chain-checkpoints?page=0&size=20",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "chain-checkpoints"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Page number (zero-based, default: 0)"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size (default: 20)"
+            },
+            {
+              "key": "sort",
+              "value": "windowStart,asc",
+              "description": "Sort field and direction. Default: windowStart,asc. Sortable: checkpointId, windowStart, windowEnd, entryCount, createdAt, checkpointType",
+              "disabled": true
+            },
+            {
+              "key": "windowStartAfter",
+              "value": "",
+              "description": "Filter: window_start >= value (inclusive, ISO-8601). Target oldest periods for SEAL.",
+              "disabled": true
+            },
+            {
+              "key": "windowStartBefore",
+              "value": "",
+              "description": "Filter: window_start < value (exclusive, ISO-8601).",
+              "disabled": true
+            },
+            {
+              "key": "entryCountMin",
+              "value": "",
+              "description": "Filter: entry_count >= value (e.g. 1 for non-empty windows only)",
+              "disabled": true
+            },
+            {
+              "key": "entryCountMax",
+              "value": "",
+              "description": "Filter: entry_count <= value (e.g. 0 for empty windows only)",
+              "disabled": true
+            },
+            {
+              "key": "checkpointType",
+              "value": "REGULAR",
+              "description": "Filter by type: REGULAR, ARCHIVE_SEAL, GAP_DECLARATION",
+              "disabled": true
+            },
+            {
+              "key": "createdAfter",
+              "value": "",
+              "description": "Filter: created_at >= value (inclusive, ISO-8601). Aligns with UI date presets.",
+              "disabled": true
+            },
+            {
+              "key": "createdBefore",
+              "value": "",
+              "description": "Filter: created_at < value (exclusive, ISO-8601).",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Paginated search over audit chain checkpoints with optional filters. Use for operator visibility, SEAL range selection (checkpointIdFrom/To), and Declare Gap (anchorCheckpointId).\n\n**Access:** Global Admin only.\n\n**Pagination:** page (default 0), size (default 20), sort (default: windowStart,asc). Sortable fields: checkpointId, windowStart, windowEnd, entryCount, createdAt, checkpointType.\n\n**Filters (all optional):**\n- windowStartAfter / windowStartBefore: ISO-8601 (window_start range)\n- entryCountMin / entryCountMax: e.g. entryCountMax=0 for empty windows only\n- checkpointType: REGULAR, ARCHIVE_SEAL, GAP_DECLARATION\n- createdAfter / createdBefore: ISO-8601 (created_at range, for UI date presets)\n\n**Response (200 OK):** Paginated content array of checkpoints with checkpointId, windowStart, windowEnd, entryCount, firstEntryId, lastEntryId, entriesDigest, prevChainHmac, chainHmac, createdAt, checkpointType, notes.\n\n**Status Codes:** 200 OK, 401 Unauthorized, 403 Forbidden (not Global Admin)."
       },
       "response": []
     },

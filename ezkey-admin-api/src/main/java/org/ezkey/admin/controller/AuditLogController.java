@@ -23,12 +23,16 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
+import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
 import org.ezkey.audit.dto.AuditLogResponseDto;
+import org.ezkey.audit.dto.CheckpointType;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
+import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
 import org.springdoc.core.annotations.ParameterObject;
@@ -94,6 +98,8 @@ public class AuditLogController {
 
   private final AuditLogService auditLogService;
   private final AuditLogMapper auditLogMapper;
+  private final AuditChainCheckpointService auditChainCheckpointService;
+  private final AuditChainCheckpointMapper auditChainCheckpointMapper;
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService auditChainVerificationService;
   private final AuditLifecycleService auditLifecycleService;
@@ -103,6 +109,8 @@ public class AuditLogController {
    *
    * @param auditLogService the audit log service
    * @param auditLogMapper the MapStruct mapper for entity-DTO conversions
+   * @param auditChainCheckpointService the chain checkpoint search service
+   * @param auditChainCheckpointMapper the mapper for checkpoint entity to response DTO
    * @param auditIntegrityService the integrity verification service
    * @param auditChainVerificationService the chain checkpoint verification service
    * @param auditLifecycleService the chain lifecycle service for archive sealing and gap
@@ -111,11 +119,15 @@ public class AuditLogController {
   public AuditLogController(
       AuditLogService auditLogService,
       AuditLogMapper auditLogMapper,
+      AuditChainCheckpointService auditChainCheckpointService,
+      AuditChainCheckpointMapper auditChainCheckpointMapper,
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService auditChainVerificationService,
       AuditLifecycleService auditLifecycleService) {
     this.auditLogService = auditLogService;
     this.auditLogMapper = auditLogMapper;
+    this.auditChainCheckpointService = auditChainCheckpointService;
+    this.auditChainCheckpointMapper = auditChainCheckpointMapper;
     this.auditIntegrityService = auditIntegrityService;
     this.auditChainVerificationService = auditChainVerificationService;
     this.auditLifecycleService = auditLifecycleService;
@@ -237,6 +249,82 @@ public class AuditLogController {
             .map(auditLogMapper::toResponseDto);
 
     return ResponseEntity.ok(auditLogs);
+  }
+
+  /**
+   * Search audit chain checkpoints with optional filters and pagination.
+   *
+   * <p>Returns checkpoints for operator visibility, SEAL range selection (checkpointIdFrom/To), and
+   * Declare Gap (anchorCheckpointId). Global Admin only. All filter parameters are optional.
+   * Default sort is {@code windowStart,asc} (chronological).
+   *
+   * @param windowStartAfter window_start >= value (inclusive); ISO-8601
+   * @param windowStartBefore window_start &lt; value (exclusive); ISO-8601
+   * @param entryCountMin entry_count >= value
+   * @param entryCountMax entry_count <= value (e.g. 0 for empty windows only)
+   * @param checkpointType REGULAR, ARCHIVE_SEAL, or GAP_DECLARATION
+   * @param createdAfter created_at >= value (inclusive); ISO-8601
+   * @param createdBefore created_at &lt; value (exclusive); ISO-8601
+   * @param pageable pagination and sort (default: size=20, sort=windowStart,asc)
+   * @return page of checkpoint response DTOs
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/chain-checkpoints")
+  @Operation(
+      summary = "Search audit chain checkpoints",
+      description =
+          "Paginated search over audit chain checkpoints with optional filters (window range, "
+              + "entry count, checkpoint type, created range). Supports SEAL range selection and "
+              + "Declare Gap anchor lookup. Global Admin only. Default sort: windowStart,asc.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Checkpoints retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<Page<AuditChainCheckpointResponseDto>> getChainCheckpoints(
+      @Parameter(description = "Filter: window_start >= value (inclusive), ISO-8601")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime windowStartAfter,
+      @Parameter(description = "Filter: window_start < value (exclusive), ISO-8601")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime windowStartBefore,
+      @Parameter(description = "Filter: entry_count >= value (e.g. 1 for non-empty windows)")
+          @RequestParam(required = false)
+          Integer entryCountMin,
+      @Parameter(description = "Filter: entry_count <= value (e.g. 0 for empty windows only)")
+          @RequestParam(required = false)
+          Integer entryCountMax,
+      @Parameter(description = "Filter by checkpoint type") @RequestParam(required = false)
+          CheckpointType checkpointType,
+      @Parameter(description = "Filter: created_at >= value (inclusive), ISO-8601")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime createdAfter,
+      @Parameter(description = "Filter: created_at < value (exclusive), ISO-8601")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          OffsetDateTime createdBefore,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "windowStart", direction = Sort.Direction.ASC)
+          Pageable pageable) {
+
+    String checkpointTypeStr = checkpointType != null ? checkpointType.name() : null;
+    Page<AuditChainCheckpointResponseDto> page =
+        auditChainCheckpointService
+            .findCheckpoints(
+                windowStartAfter,
+                windowStartBefore,
+                entryCountMin,
+                entryCountMax,
+                checkpointTypeStr,
+                createdAfter,
+                createdBefore,
+                pageable)
+            .map(auditChainCheckpointMapper::toResponseDto);
+    return ResponseEntity.ok(page);
   }
 
   /**
