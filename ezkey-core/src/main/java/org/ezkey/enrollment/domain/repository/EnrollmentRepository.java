@@ -65,6 +65,17 @@ public interface EnrollmentRepository
   List<Enrollment> findByIntegrationId(Integer integrationId);
 
   /**
+   * Returns whether at least one enrollment exists for the given integration.
+   *
+   * <p>Use this for cheap existence checks (e.g. before deleting an integration) without loading
+   * enrollment entities.
+   *
+   * @param integrationId the integration ID to check
+   * @return true if at least one enrollment exists for the integration, false otherwise
+   */
+  boolean existsByIntegrationId(Integer integrationId);
+
+  /**
    * Finds and locks a CREATED enrollment by ID for secure binding.
    *
    * <p>This method uses SELECT FOR NO KEY UPDATE to lock the row atomically, preventing race

@@ -451,6 +451,8 @@ public class IntegrationController {
     Integer tenantId =
         integration.getTenant() != null ? integration.getTenant().getTenantId() : null;
 
+    service.delete(id);
+
     auditLogService.log(
         AuditHelper.createAdminAudit(
                 context,
@@ -463,7 +465,6 @@ public class IntegrationController {
             .reason(reason)
             .build());
 
-    service.delete(id);
     return ResponseEntity.noContent().build();
   }
 

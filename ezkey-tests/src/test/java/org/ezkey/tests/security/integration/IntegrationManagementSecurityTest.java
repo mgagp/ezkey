@@ -495,6 +495,49 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(14)
+  @DisplayName("DELETE integration with enrollments returns 409")
+  public void testDeleteIntegrationWithEnrollmentsReturns409() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      testDataFactory.createEnrollment(integrationId, "Delete Constraint Test Device", false);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Test delete blocked by enrollments")
+              .when()
+              .delete("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
+
+      assertThat(response.getStatusCode()).isEqualTo(409);
+      String body = response.getBody().asString();
+      assertThat(body).contains("enrollments");
+      assertThat(body).contains("Cannot delete integration: it has one or more enrollments");
+
+      Response getResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
+      assertThat(getResponse.getStatusCode()).isEqualTo(200);
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @Order(15)
   @DisplayName("DELETE non-existent integration returns 404")
   public void testDeleteNonExistentIntegrationReturns404() {
     try {
@@ -522,7 +565,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
   // ========== VALIDATION FAILURES (400) ==========
 
   @Test
-  @Order(15)
+  @Order(16)
   @DisplayName("Create integration with minimal required fields (code, name) succeeds")
   public void testCreateIntegrationWithMinimalFieldsSucceeds() {
     try {
@@ -568,7 +611,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
-  @Order(16)
+  @Order(17)
   @DisplayName("Create integration with blank name returns 400")
   public void testCreateIntegrationBlankNameReturns400() {
     try {

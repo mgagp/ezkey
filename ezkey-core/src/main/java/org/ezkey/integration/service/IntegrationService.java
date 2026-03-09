@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -24,6 +25,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
+import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +56,7 @@ public class IntegrationService {
   private final IntegrationRepository integrationRepository;
   private final IntegrationServiceMapper integrationServiceMapper;
   private final TenantRepository tenantRepository;
+  private final EnrollmentRepository enrollmentRepository;
 
   /**
    * Constructs the service with the required repository and mapper.
@@ -61,14 +64,17 @@ public class IntegrationService {
    * @param integrationRepository the repository for Integration entities
    * @param integrationServiceMapper the mapper for converting between DTOs and entities
    * @param tenantRepository the repository for Tenant entities
+   * @param enrollmentRepository the repository for Enrollment entities (used for delete guard)
    */
   public IntegrationService(
       IntegrationRepository integrationRepository,
       IntegrationServiceMapper integrationServiceMapper,
-      TenantRepository tenantRepository) {
+      TenantRepository tenantRepository,
+      EnrollmentRepository enrollmentRepository) {
     this.integrationRepository = integrationRepository;
     this.integrationServiceMapper = integrationServiceMapper;
     this.tenantRepository = tenantRepository;
+    this.enrollmentRepository = enrollmentRepository;
   }
 
   /**
@@ -264,9 +270,17 @@ public class IntegrationService {
   /**
    * Deletes an Integration entity by its unique identifier.
    *
+   * <p>Deletion is refused if the integration has one or more enrollments; remove or revoke
+   * enrollments first. This avoids surfacing a database foreign-key constraint violation to the
+   * client.
+   *
    * @param id the unique identifier of the Integration to delete
+   * @throws IntegrationHasEnrollmentsException if the integration has at least one enrollment
    */
   public void delete(Integer id) {
+    if (enrollmentRepository.existsByIntegrationId(id)) {
+      throw new IntegrationHasEnrollmentsException();
+    }
     integrationRepository.deleteById(id);
   }
 }

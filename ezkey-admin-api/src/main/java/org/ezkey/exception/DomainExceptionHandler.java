@@ -12,6 +12,7 @@ package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
+import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -32,6 +33,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <ul>
  *   <li><b>IntegrationCodeAlreadyExistsException (409):</b> Integration code already exists for the
  *       tenant
+ *   <li><b>IntegrationHasEnrollmentsException (409):</b> Integration cannot be deleted because it
+ *       has one or more enrollments
  * </ul>
  *
  * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs) with
@@ -77,11 +80,38 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @since 2025
  * @see ExceptionHandlerBase
  * @see IntegrationCodeAlreadyExistsException
+ * @see IntegrationHasEnrollmentsException
  */
 @RestControllerAdvice
 @Component
 @Order(80)
 public class DomainExceptionHandler extends ExceptionHandlerBase {
+
+  /**
+   * Handles IntegrationHasEnrollmentsException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when an administrator attempts to delete an integration that has one or more
+   * enrollments. Enrollments must be removed or revoked before the integration can be deleted.
+   *
+   * <p><b>HTTP Status:</b> 409 Conflict (Operation not allowed in current state)
+   *
+   * <p><b>Response Format:</b> RFC 9457 ProblemDetail
+   *
+   * @param ex the IntegrationHasEnrollmentsException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   * @since 2025
+   */
+  @ExceptionHandler(IntegrationHasEnrollmentsException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationHasEnrollmentsException(
+      IntegrationHasEnrollmentsException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/integration-has-enrollments",
+        "Integration Has Enrollments",
+        request);
+  }
 
   /**
    * Handles IntegrationCodeAlreadyExistsException and returns HTTP 409 Conflict.

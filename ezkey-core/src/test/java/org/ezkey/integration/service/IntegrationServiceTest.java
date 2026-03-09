@@ -1,13 +1,17 @@
 package org.ezkey.integration.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -16,6 +20,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +39,8 @@ class IntegrationServiceTest {
   @Mock private IntegrationServiceMapper mapper;
 
   @Mock private TenantRepository tenantRepository;
+
+  @Mock private EnrollmentRepository enrollmentRepository;
 
   @InjectMocks private IntegrationService service;
 
@@ -170,7 +177,17 @@ class IntegrationServiceTest {
 
   @Test
   void delete_callsRepository() {
+    when(enrollmentRepository.existsByIntegrationId(7)).thenReturn(false);
     service.delete(7);
     verify(repository).deleteById(7);
+  }
+
+  @Test
+  void delete_whenEnrollmentsExist_throwsIntegrationHasEnrollmentsException() {
+    when(enrollmentRepository.existsByIntegrationId(10)).thenReturn(true);
+    assertThatThrownBy(() -> service.delete(10))
+        .isInstanceOf(IntegrationHasEnrollmentsException.class)
+        .hasMessageContaining("enrollments");
+    verify(repository, never()).deleteById(eq(10));
   }
 }
