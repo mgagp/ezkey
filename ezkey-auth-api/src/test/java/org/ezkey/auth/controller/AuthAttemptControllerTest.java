@@ -101,6 +101,8 @@ class AuthAttemptControllerTest {
   @MockitoBean
   private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
 
+  @MockitoBean private org.ezkey.integration.domain.repository.EzkeyAdminRepository adminRepository;
+
   private AuthAttemptPendingRequestDto pendingRequestDto;
 
   private AuthAttemptPendingRequest pendingRequest;

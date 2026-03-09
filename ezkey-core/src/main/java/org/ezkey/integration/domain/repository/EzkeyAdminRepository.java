@@ -278,4 +278,20 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
       nativeQuery = true)
   Optional<Object[]> findTenantInfoByAdminMfaEnrollmentId(
       @Param("enrollmentId") Integer enrollmentId);
+
+  /**
+   * Returns the tenant ID of the admin whose MFA enrollment is the given enrollment.
+   *
+   * <p>Used for audit log tenant attribution: when bind/verify or auth-attempt events occur for an
+   * admin's MFA enrollment, the audit entry should use the admin's tenant so tenant admins see
+   * those events. Uses JPQL to avoid native-query type issues with Optional and nullable column.
+   *
+   * @param enrollmentId the MFA enrollment ID
+   * @return the admin's tenant ID (may be null for global admin), or empty if no admin has this
+   *     enrollment as MFA
+   */
+  @Query(
+      "SELECT t.tenantId FROM EzkeyAdmin a JOIN a.tenant t WHERE a.mfaEnrollment.enrollmentId ="
+          + " :enrollmentId")
+  Optional<Integer> findTenantIdByMfaEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 }

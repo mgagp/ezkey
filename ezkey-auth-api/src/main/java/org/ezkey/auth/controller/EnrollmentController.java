@@ -33,6 +33,7 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -103,6 +104,8 @@ public class EnrollmentController {
 
   private final IntegrationRepository integrationRepository;
 
+  private final EzkeyAdminRepository adminRepository;
+
   /**
    * Constructs the mobile enrollment controller with required dependencies.
    *
@@ -111,18 +114,21 @@ public class EnrollmentController {
    * @param auditLogService audit log service for security monitoring
    * @param enrollmentRepository enrollment repository for audit queries
    * @param integrationRepository integration repository for tenant resolution in audit logs
+   * @param adminRepository admin repository for resolving tenant from admin MFA enrollment
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
       EnrollmentAuthMapper enrollmentMapper,
       AuditLogService auditLogService,
       EnrollmentRepository enrollmentRepository,
-      IntegrationRepository integrationRepository) {
+      IntegrationRepository integrationRepository,
+      EzkeyAdminRepository adminRepository) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.adminRepository = adminRepository;
   }
 
   /**
@@ -191,7 +197,7 @@ public class EnrollmentController {
         || request.enrollmentProofToken() == null
         || request.enrollmentProofToken().trim().isEmpty()) {
 
-      Integer validationTenantId = resolveTenantId(request.enrollmentId());
+      Integer validationTenantId = resolveTenantIdForAudit(request.enrollmentId());
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -209,7 +215,7 @@ public class EnrollmentController {
       throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
     }
 
-    Integer auditTenantId = resolveTenantId(request.enrollmentId());
+    Integer auditTenantId = resolveTenantIdForAudit(request.enrollmentId());
 
     try {
       EnrollmentBindRequest bindRequest = enrollmentMapper.toEnrollmentBindRequest(request);
@@ -305,7 +311,7 @@ public class EnrollmentController {
 
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
-    Integer verifyTenantId = resolveTenantId(req.enrollmentId());
+    Integer verifyTenantId = resolveTenantIdForAudit(req.enrollmentId());
 
     try {
       EnrollmentVerifyResponse response =
@@ -425,6 +431,25 @@ public class EnrollmentController {
 
       throw e;
     }
+  }
+
+  /**
+   * Resolves the tenant ID for audit log association.
+   *
+   * <p>For enrollments that belong to an admin (MFA enrollment), returns that admin's tenant so
+   * that tenant admins see bind/verify events in their tenant's audit view. For other enrollments,
+   * falls back to the integration's tenant.
+   *
+   * @param enrollmentId the enrollment ID to resolve the tenant from
+   * @return the tenant ID for audit, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdForAudit(Integer enrollmentId) {
+    if (enrollmentId == null) {
+      return null;
+    }
+    return adminRepository
+        .findTenantIdByMfaEnrollmentId(enrollmentId)
+        .orElseGet(() -> resolveTenantId(enrollmentId));
   }
 
   /**

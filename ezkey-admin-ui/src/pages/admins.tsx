@@ -440,13 +440,11 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     const q = tenantFilter.trim().toLowerCase();
     if (!q) return eligibleTenants;
     const matches = (t: TenantResponseDto) => {
-      const displayLabel = `${t.tenantName ?? ''} (ID: ${t.tenantId ?? ''})`;
       const searchable = [
         t.tenantName,
         t.organizationName,
         t.organizationDomain,
         t.tenantId?.toString(),
-        displayLabel,
       ];
       return searchable.some((v) => v != null && String(v).toLowerCase().includes(q));
     };
@@ -596,7 +594,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                       <option value="">Select a tenant</option>
                       {filteredTenants.map((t) => (
                         <option key={t.tenantId} value={t.tenantId}>
-                          {t.tenantName ?? ''} (ID: {t.tenantId})
+                          {t.tenantName ?? ''}
                         </option>
                       ))}
                       {filteredTenants.length === 0 && tenantFilter.trim() !== '' && (

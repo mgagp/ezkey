@@ -36,6 +36,7 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +116,9 @@ public class AuthAttemptController {
   /** Repository for resolving integration to tenant for audit log tenant association. */
   private final IntegrationRepository integrationRepository;
 
+  /** Repository for resolving tenant from admin MFA enrollment for audit log tenant association. */
+  private final EzkeyAdminRepository adminRepository;
+
   /**
    * Constructs the mobile authentication attempt controller with required dependencies.
    *
@@ -124,6 +128,7 @@ public class AuthAttemptController {
    * @param authAttemptRepository the auth attempt repository for tenant resolution
    * @param enrollmentRepository the enrollment repository for tenant resolution
    * @param integrationRepository the integration repository for tenant resolution in audit logs
+   * @param adminRepository the admin repository for resolving tenant from admin MFA enrollment
    */
   public AuthAttemptController(
       final AuthAttemptService authAttemptService,
@@ -131,13 +136,15 @@ public class AuthAttemptController {
       final AuditLogService auditLogService,
       final AuthAttemptRepository authAttemptRepository,
       final EnrollmentRepository enrollmentRepository,
-      final IntegrationRepository integrationRepository) {
+      final IntegrationRepository integrationRepository,
+      final EzkeyAdminRepository adminRepository) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
     this.authAttemptRepository = authAttemptRepository;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.adminRepository = adminRepository;
   }
 
   /**
@@ -212,7 +219,7 @@ public class AuthAttemptController {
       AuthAttemptPendingResponse response =
           authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
 
-      Integer pendingTenantId = resolveTenantIdFromAuthAttempt(response.getAuthAttemptId());
+      Integer pendingTenantId = resolveTenantIdForAudit(response.getAuthAttemptId());
       Integer pendingAuthAttemptId = response.getAuthAttemptId();
       auditLogService.log(
           AuditLog.builder()
@@ -298,7 +305,7 @@ public class AuthAttemptController {
     String clientIp = AuditHelper.extractClientIp(httpRequest);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
-    Integer respondTenantId = resolveTenantIdFromAuthAttempt(request.authAttemptId());
+    Integer respondTenantId = resolveTenantIdForAudit(request.authAttemptId());
 
     try {
       AuthAttemptRespondResponse response =
@@ -348,6 +355,29 @@ public class AuthAttemptController {
 
       throw e;
     }
+  }
+
+  /**
+   * Resolves the tenant ID for audit log association for an auth attempt.
+   *
+   * <p>For enrollments that belong to an admin (MFA enrollment), returns that admin's tenant so
+   * that tenant admins see pending/respond events in their tenant's audit view. For other
+   * enrollments, falls back to the integration's tenant.
+   *
+   * @param authAttemptId the auth attempt ID to resolve the tenant from
+   * @return the tenant ID for audit, or {@code null} if not resolvable
+   */
+  private Integer resolveTenantIdForAudit(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return null;
+    }
+    Integer enrollmentId = resolveEnrollmentIdFromAuthAttempt(authAttemptId);
+    if (enrollmentId == null) {
+      return resolveTenantIdFromAuthAttempt(authAttemptId);
+    }
+    return adminRepository
+        .findTenantIdByMfaEnrollmentId(enrollmentId)
+        .orElseGet(() -> resolveTenantIdFromAuthAttempt(authAttemptId));
   }
 
   /**

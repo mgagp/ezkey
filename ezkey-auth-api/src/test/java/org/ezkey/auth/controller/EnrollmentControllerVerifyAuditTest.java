@@ -13,6 +13,7 @@ package org.ezkey.auth.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -67,6 +68,8 @@ class EnrollmentControllerVerifyAuditTest {
 
   @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
 
+  @Mock private org.ezkey.integration.domain.repository.EzkeyAdminRepository adminRepository;
+
   @Mock private HttpServletRequest httpRequest;
 
   private EnrollmentController enrollmentController;
@@ -94,6 +97,8 @@ class EnrollmentControllerVerifyAuditTest {
 
     when(enrollmentMapper.toEnrollmentVerifyRequest(requestDto)).thenReturn(verifyRequest);
 
+    when(adminRepository.findTenantIdByMfaEnrollmentId(anyInt())).thenReturn(Optional.empty());
+
     // Mock HttpServletRequest for AuditHelper
     // AuditHelper.extractClientIp checks CF-Connecting-IP, X-Forwarded-For,
     // X-Real-IP, then RemoteAddr
@@ -110,7 +115,8 @@ class EnrollmentControllerVerifyAuditTest {
             enrollmentMapper,
             auditLogService,
             enrollmentRepository,
-            integrationRepository);
+            integrationRepository,
+            adminRepository);
   }
 
   @Test

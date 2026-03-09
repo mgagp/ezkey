@@ -319,7 +319,7 @@ public class AdminProvisioningController {
                   context,
                   EventType.ADMIN_CREATED,
                   AdminAuditConstants.ADMIN_TENANT_CREATED,
-                  principal.tenantId())
+                  effectiveTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .targetAdminId(result.admin().getAdminId())
               .adminId(principal.adminId())
@@ -340,7 +340,7 @@ public class AdminProvisioningController {
                   context,
                   EventType.ADMIN_CREATED,
                   AdminAuditConstants.ADMIN_TENANT_CREATION_FAILED,
-                  principal.tenantId())
+                  effectiveTenantId)
               .eventStatus(EventStatus.FAILURE)
               .adminId(principal.adminId())
               .errorMessage(e.getMessage())
