@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -641,6 +642,24 @@ public class EnrollmentRevocationService {
                     "Cannot delete your own MFA enrollment. Use the recovery flow to reset it.");
               }
             });
+  }
+
+  /**
+   * Asserts that the enrollment is not linked as any administrator's MFA.
+   *
+   * <p>Call this after {@link #assertNotSelfDeletion} when performing enrollment deletion. If this
+   * enrollment is any admin's mfaEnrollment (including another admin's), deletion would cause
+   * foreign key or Hibernate transient reference errors. This guard returns RFC 9457 409 instead.
+   *
+   * @param enrollmentId the target enrollment ID to delete
+   * @throws EnrollmentLinkedAsAdminMfaException if the enrollment is linked as any admin's MFA
+   */
+  public void assertNotLinkedAsAdminMfa(Integer enrollmentId) {
+    if (adminRepository.findByMfaEnrollmentEnrollmentId(enrollmentId).isPresent()) {
+      throw new EnrollmentLinkedAsAdminMfaException(
+          "Enrollment cannot be deleted because it is linked as an administrator's MFA. Use the"
+              + " recovery flow to reset that admin's MFA first.");
+    }
   }
 
   /**

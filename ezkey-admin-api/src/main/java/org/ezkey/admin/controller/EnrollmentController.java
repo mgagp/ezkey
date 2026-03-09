@@ -606,7 +606,10 @@ public class EnrollmentController {
         @ApiResponse(responseCode = "404", description = "Enrollment not found"),
         @ApiResponse(
             responseCode = "409",
-            description = "Enrollment has authentication history; revoke instead (RFC 9457)"),
+            description =
+                "Enrollment has authentication history (revoke instead) or is linked as an"
+                    + " administrator's MFA (use recovery flow to reset that admin's MFA) (RFC"
+                    + " 9457)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -637,6 +640,7 @@ public class EnrollmentController {
 
       // Business guards: return RFC 9457 instead of DB constraint violation
       enrollmentRevocationService.assertNotSelfDeletion(principal, id);
+      enrollmentRevocationService.assertNotLinkedAsAdminMfa(id);
       if (authAttemptRepository.existsByEnrollmentId(id)) {
         throw new EnrollmentCannotBeDeletedException(
             "Enrollment cannot be deleted because it has authentication history. Revoke the"

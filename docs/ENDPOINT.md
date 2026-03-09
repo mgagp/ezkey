@@ -1001,6 +1001,25 @@ Content-Type: application/json
 - `expiresAt`: must be in the future if provided; null = no expiration
 - Only VERIFIED and active enrollments can be updated
 
+#### **DELETE /api/v1/enrollments/{id}** (Delete Enrollment)
+
+Removes an enrollment from the system. Optional query parameter `reason` (min 10, max 500 characters) is recorded in the audit log for SOC 2 compliance.
+
+**Request:**
+```http
+DELETE /api/v1/enrollments/42?reason=Device%20decommissioned
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (204 No Content):** Enrollment deleted successfully.
+
+**Status Codes:**
+- 204: Enrollment deleted successfully
+- 403: Cannot delete your own MFA enrollment (RFC 9457 Problem Detail). Use the recovery flow to reset it.
+- 404: Enrollment not found (or no access; existence is not revealed for cross-tenant)
+- 409: Enrollment cannot be deleted (RFC 9457 Problem Detail). Either it has authentication history (revoke instead) or it is linked as an administrator's MFA (use the recovery flow to reset that admin's MFA first).
+- 500: Internal server error
+
 #### **Summary Table**
 
 | Scenario | Use This API | Why |

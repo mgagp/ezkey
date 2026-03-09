@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -459,6 +460,67 @@ class EnrollmentRevocationServiceTest {
 
       verify(enrollmentRepository, never()).save(any());
       verify(auditLogService).log(any());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // assertNotSelfDeletion() / assertNotLinkedAsAdminMfa() (delete guards)
+  // -------------------------------------------------------------------------
+
+  @Nested
+  @DisplayName("assertNotSelfDeletion()")
+  class AssertNotSelfDeletionTests {
+
+    @Test
+    @DisplayName("Should throw when principal is the owner of the enrollment")
+    void assertNotSelfDeletion_throws_whenEnrollmentIsCallerMfa() {
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(1);
+
+      assertThatThrownBy(() -> service.assertNotSelfDeletion(globalAdminPrincipal, 42))
+          .isInstanceOf(SelfRevocationNotAllowedException.class)
+          .hasMessageContaining("Cannot delete your own MFA enrollment");
+    }
+
+    @Test
+    @DisplayName("Should not throw when enrollment is another admin's MFA")
+    void assertNotSelfDeletion_doesNotThrow_whenEnrollmentIsOtherAdminMfa() {
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(999); // different from globalAdminPrincipal (1)
+
+      service.assertNotSelfDeletion(globalAdminPrincipal, 42);
+    }
+
+    @Test
+    @DisplayName("Should not throw when enrollment is not any admin's MFA")
+    void assertNotSelfDeletion_doesNotThrow_whenEnrollmentNotLinked() {
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.empty());
+
+      service.assertNotSelfDeletion(globalAdminPrincipal, 42);
+    }
+  }
+
+  @Nested
+  @DisplayName("assertNotLinkedAsAdminMfa()")
+  class AssertNotLinkedAsAdminMfaTests {
+
+    @Test
+    @DisplayName("Should throw when enrollment is linked as any admin's MFA")
+    void assertNotLinkedAsAdminMfa_throws_whenEnrollmentIsAdminMfa() {
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+
+      assertThatThrownBy(() -> service.assertNotLinkedAsAdminMfa(42))
+          .isInstanceOf(EnrollmentLinkedAsAdminMfaException.class)
+          .hasMessageContaining("linked as an administrator's MFA")
+          .hasMessageContaining("recovery flow");
+    }
+
+    @Test
+    @DisplayName("Should not throw when enrollment is not linked as any admin's MFA")
+    void assertNotLinkedAsAdminMfa_doesNotThrow_whenEnrollmentNotLinked() {
+      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.empty());
+
+      service.assertNotLinkedAsAdminMfa(42);
     }
   }
 
