@@ -31,6 +31,7 @@ src/
     api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses RFC 9457 ProblemDetail, getApiErrorMessage()
     auth.ts             sessionStorage session management (AuthSession)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
+    query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
   types/
     api.ts              PageResponse<T>, ProblemDetail, request/response DTOs
@@ -128,6 +129,14 @@ const columns: ColumnDef<Integration>[] = [
 
 Clicking a new column sorts DESC by default; clicking the same column toggles ASC ↔ DESC.
 The active column shows `↑` (ASC) or `↓` (DESC); inactive sortable columns show `⇅`.
+
+### List refresh after mutations
+
+After a successful create/edit/delete that affects a list, **invalidate that list's query key** so the list refetches and stays in sync. Use the **same key** as the list query so `invalidateQueries` targets the right cache.
+
+- **Orval-generated list hooks** (e.g. tenants): use the **generated query key factory** in invalidations (e.g. `getListTenantsQueryKey()` from `@/generated/admin-api/tenants/tenants`). Orval uses path-based keys (e.g. `['/api/v1/tenants']`); invalidating `['tenants']` does not match and the list will not refresh.
+- **usePaginatedFromOrval / useQuery with custom key**: use the same prefix you pass as `queryKey` (e.g. `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
+- **Optional**: `await queryClient.invalidateQueries(...)` in mutation `onSuccess` so the mutation stays pending until the list refetch completes; the dialog can then close with the list already updated.
 
 ### Auth flow (login page)
 

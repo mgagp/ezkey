@@ -25,6 +25,8 @@ import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
+  getGetTenantQueryKey,
+  getListTenantsQueryKey,
   useActivateTenant,
   useDeactivateTenant,
   useGetTenant,
@@ -94,9 +96,9 @@ function EditTenantDialog({
 
   const updateMutation = useUpdateTenant({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
-        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
+        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
         toast('Tenant updated successfully.');
         onClose();
       },
@@ -226,9 +228,9 @@ function ToggleActiveDialog({
   const body = { reason: reason || undefined };
   const deactivateMutation = useDeactivateTenant({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
-        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
+        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
         toast('Tenant deactivated successfully.');
         setReason('');
         onClose();
@@ -237,9 +239,9 @@ function ToggleActiveDialog({
   });
   const activateMutation = useActivateTenant({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['tenant', tenant.tenantId] });
-        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
+        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
         toast('Tenant activated successfully.');
         setReason('');
         onClose();

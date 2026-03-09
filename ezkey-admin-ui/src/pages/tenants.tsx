@@ -22,7 +22,7 @@ import { ApiError } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
-import { useCreateTenant, useListTenants } from '@/generated/admin-api/tenants/tenants';
+import { getListTenantsQueryKey, useCreateTenant, useListTenants } from '@/generated/admin-api/tenants/tenants';
 import type { TenantResponseDto } from '@/generated/admin-api/model';
 
 // ── Create form schema ────────────────────────────────────────────────────────
@@ -60,8 +60,8 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
 
   const createMutation = useCreateTenant({
     mutation: {
-      onSuccess: (tenant) => {
-        void queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      onSuccess: async (tenant) => {
+        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
         toast(`Tenant "${(tenant as unknown as TenantResponseDto).tenantName}" created successfully.`);
         reset();
         onClose();
