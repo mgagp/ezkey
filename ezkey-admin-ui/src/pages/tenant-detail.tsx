@@ -26,7 +26,6 @@ import { formatDate } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
   getGetTenantQueryKey,
-  getListTenantsQueryKey,
   useActivateTenant,
   useDeactivateTenant,
   useGetTenant,
@@ -98,7 +97,7 @@ function EditTenantDialog({
     mutation: {
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
-        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: ['tenants'] });
         toast('Tenant updated successfully.');
         onClose();
       },
@@ -230,7 +229,7 @@ function ToggleActiveDialog({
     mutation: {
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
-        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: ['tenants'] });
         toast('Tenant deactivated successfully.');
         setReason('');
         onClose();
@@ -241,7 +240,7 @@ function ToggleActiveDialog({
     mutation: {
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
-        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: ['tenants'] });
         toast('Tenant activated successfully.');
         setReason('');
         onClose();

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,16 +16,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError } from '@/lib/api-client';
 import { isDemoMode, tenantDemoPresets } from '@/lib/demo-mode';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { formatDate } from '@/lib/utils';
-import { getListTenantsQueryKey, useCreateTenant, useListTenants } from '@/generated/admin-api/tenants/tenants';
-import type { TenantResponseDto } from '@/generated/admin-api/model';
+import { useCreateTenant, listTenants } from '@/generated/admin-api/tenants/tenants';
+import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated/admin-api/model';
 
 // ── Create form schema ────────────────────────────────────────────────────────
 
@@ -64,7 +66,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
   const createMutation = useCreateTenant({
     mutation: {
       onSuccess: async (tenant) => {
-        await queryClient.invalidateQueries({ queryKey: getListTenantsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: ['tenants'] });
         toast(`Tenant "${(tenant as unknown as TenantResponseDto).tenantName}" created successfully.`);
         reset();
         onClose();
@@ -214,33 +216,28 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+const STATUS_COLUMN_TOOLTIP = 'Active tenants can be used for enrollments; inactive are disabled.';
+const SYSTEM_TENANT_TOOLTIP = 'Reserved tenant; cannot be deactivated.';
+
 export default function TenantsPage() {
   const navigate = useNavigate();
   const [nameInput, setNameInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
   const debouncedName = useDebounce(nameInput, 300);
 
-  const { data: allTenantsRaw, isLoading, refetch } = useListTenants<TenantResponseDto[]>();
-  const allTenants = allTenantsRaw ?? [];
-
-  // Client-side filtering
-  const filtered = useMemo(() => {
-    let result = allTenants;
-    if (debouncedName) {
-      const lower = debouncedName.toLowerCase();
-      result = result.filter((t) => t.tenantName?.toLowerCase().includes(lower));
-    }
-    if (activeFilter === 'active') result = result.filter((t) => t.active);
-    if (activeFilter === 'inactive') result = result.filter((t) => !t.active);
-    return result;
-  }, [allTenants, debouncedName, activeFilter]);
-
-  // Client-side pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const data = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
+    TenantResponseDto,
+    { tenantName?: string; active?: boolean }
+  >({
+    queryKey: ['tenants', debouncedName, activeFilter],
+    baseParams: {
+      tenantName: debouncedName || undefined,
+      active: activeFilter === 'all' ? undefined : activeFilter === 'active',
+    },
+    fetchPage: (params) => listTenants(params) as Promise<PagedModelTenantResponseDto>,
+    defaultSort: 'createdAt,DESC',
+  });
 
   const columns: ColumnDef<TenantResponseDto>[] = [
     { header: 'ID', key: 'tenantId', className: 'w-14', sortKey: 'tenantId', render: (r) => <span className="font-mono text-xs">{r.tenantId}</span> },
@@ -261,10 +258,15 @@ export default function TenantsPage() {
       header: 'Status',
       key: 'active',
       sortKey: 'active',
+      headerTooltip: STATUS_COLUMN_TOOLTIP,
       render: (r) => (
         <div className="flex items-center gap-1.5">
           <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Active' : 'Inactive'}</Badge>
-          {r.isSystemTenant && <Badge variant="warning">System</Badge>}
+          {r.isSystemTenant && (
+            <Tooltip content={SYSTEM_TENANT_TOOLTIP}>
+              <Badge variant="warning">System</Badge>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -317,17 +319,19 @@ export default function TenantsPage() {
             onRowClick={(row) => navigate(`/tenants/${row.tenantId}`)}
             keyExtractor={(r, i) => r.tenantId ?? i}
             emptyMessage="No tenants found."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
           <Pagination
-            page={page}
-            totalPages={totalPages}
-            totalElements={filtered.length}
-            isFirst={page === 0}
-            isLast={page >= totalPages - 1}
-            onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
-            onNextPage={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            pageSize={pageSize}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalElements={pagination.totalElements}
+            isFirst={pagination.isFirst}
+            isLast={pagination.isLast}
+            onPrevPage={pagination.prevPage}
+            onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
           />
         </div>
       </div>

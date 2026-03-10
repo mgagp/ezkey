@@ -36,8 +36,9 @@ import type {
   AdminCreateRequestDto,
   AdminResponseDto,
   PagedModelAdminResponseDto,
+  PagedModelTenantResponseDto,
+  TenantResponseDto,
 } from '@/generated/admin-api/model';
-import type { TenantResponseDto } from '@/generated/admin-api/model';
 
 /** UI-facing shape for admin onboarding (API returns GetAdminOnboarding200). */
 interface AdminOnboardingShape {
@@ -403,8 +404,8 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
   const [tenantFilter, setTenantFilter] = useState('');
 
-  const { data: tenantsData } = useListTenants<TenantResponseDto[]>();
-  const allTenants = tenantsData ?? [];
+  const { data: tenantsData } = useListTenants({ page: 0, size: 100, sort: ['tenantName,asc'] });
+  const allTenants = (tenantsData as PagedModelTenantResponseDto | undefined)?.content ?? [];
   const eligibleTenants = useMemo(
     () => allTenants.filter((t) => !t.isSystemTenant),
     [allTenants],
