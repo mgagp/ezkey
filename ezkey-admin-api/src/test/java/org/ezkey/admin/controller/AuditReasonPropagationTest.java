@@ -43,6 +43,7 @@ import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.service.ApiKeyService;
@@ -87,6 +88,7 @@ class AuditReasonPropagationTest {
   // --- ApiKeyController mocks ---
 
   @Mock private ApiKeyService apiKeyService;
+  @Mock private ApiKeyRepository apiKeyRepository;
   @Mock private AdminOperationsRateLimitService adminOpsRateLimitService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private AccessControlService accessControlService;
@@ -134,6 +136,7 @@ class AuditReasonPropagationTest {
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,
+            apiKeyRepository,
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,
@@ -163,6 +166,7 @@ class AuditReasonPropagationTest {
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,
+            apiKeyRepository,
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,

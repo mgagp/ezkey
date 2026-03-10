@@ -76,23 +76,27 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test(\"Response is an array\", function () {",
+              "pm.test(\"Response is paginated (content + page)\", function () {",
               "    var jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData).to.have.property('page');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData.page).to.have.property('totalElements');",
+              "    pm.expect(jsonData.page).to.have.property('totalPages');",
               "});",
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    if (jsonData.length > 0) {",
-              "        pm.environment.set(\"apiKeyId\", jsonData[0].apiKeyId);",
-              "        pm.environment.set(\"integrationKey\", jsonData[0].integrationKey);",
+              "    if (jsonData.content && jsonData.content.length > 0) {",
+              "        pm.environment.set(\"apiKeyId\", jsonData.content[0].apiKeyId);",
+              "        pm.environment.set(\"integrationKey\", jsonData.content[0].integrationKey);",
               "        ",
               "        pm.test(\"API keys contain required fields\", function () {",
-              "            pm.expect(jsonData[0]).to.have.property('apiKeyId');",
-              "            pm.expect(jsonData[0]).to.have.property('integrationId');",
-              "            pm.expect(jsonData[0]).to.have.property('integrationKey');",
-              "            pm.expect(jsonData[0]).to.have.property('active');",
-              "            pm.expect(jsonData[0]).to.have.property('createdAt');",
+              "            pm.expect(jsonData.content[0]).to.have.property('apiKeyId');",
+              "            pm.expect(jsonData.content[0]).to.have.property('integrationId');",
+              "            pm.expect(jsonData.content[0]).to.have.property('integrationKey');",
+              "            pm.expect(jsonData.content[0]).to.have.property('active');",
+              "            pm.expect(jsonData.content[0]).to.have.property('createdAt');",
               "        });",
               "    }",
               "}"
@@ -107,7 +111,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/api-keys",
+          "raw": "{{base_url_admin_api}}/api/v1/api-keys?page=0&size=20&sort=createdAt,desc",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -115,9 +119,38 @@
             "api",
             "v1",
             "api-keys"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Zero-based page index"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort (e.g. apiKeyId,asc or createdAt,desc)"
+            },
+            {
+              "key": "integrationId",
+              "value": "",
+              "description": "Optional: filter by integration ID",
+              "disabled": true
+            },
+            {
+              "key": "active",
+              "value": "",
+              "description": "Optional: filter by active (true/false)",
+              "disabled": true
+            }
           ]
         },
-        "description": "Lists all API keys visible to the current admin. Results are automatically filtered based on admin type and tenant assignment. Secret keys are **never** included in the response.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all API keys across all tenants\n- **TenantAdmin**: Sees only API keys for integrations within their tenant (automatic filtering)\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Response (200 OK):**\nArray of API key objects, each containing:\n- `apiKeyId`: Database ID of the API key\n- `integrationId`: Integration ID this key belongs to\n- `integrationKey`: Public integration key (safe to display)\n- `description`: Human-readable description\n- `active`: Whether the key is active (false if revoked)\n- `createdAt`: Creation timestamp (UTC with timezone)\n- `expiresAt`: Expiration date (null if no expiration)\n- `lastUsedAt`: Last successful authentication timestamp (null if never used)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `revokedAt`: Revocation timestamp (null if active)\n- `revokedByUsername`: Admin who revoked this key (null if active)\n\n**Use Cases:**\n- Dashboard view of all API keys for tenant\n- Audit and compliance reporting\n- Key rotation management\n- Security reviews\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 500: Internal server error"
+        "description": "Lists API keys visible to the current admin with server-side pagination. GlobalAdmin sees all keys; TenantAdmin sees only keys for their tenant's integrations. Optional filters: integrationId, active, description. Secret keys are **never** included.\n\n**Query Parameters:**\n- `page` (default 0), `size` (default 20), `sort` (default createdAt,desc)\n- `integrationId`, `active`, `description` (optional filters)\n\n**Response (200 OK):** Paginated envelope with `content` (array of API key objects) and `page` (size, number, totalElements, totalPages).\n\n**Status Codes:**\n- 200: Paginated list retrieved\n- 401: Unauthorized"
       },
       "response": []
     },
@@ -132,16 +165,18 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test(\"Response is an array\", function () {",
+              "pm.test(\"Response is paginated (content + page)\", function () {",
               "    var jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData).to.have.property('page');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
               "});",
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    if (jsonData.length > 0) {",
-              "        pm.environment.set(\"apiKeyId\", jsonData[0].apiKeyId);",
-              "        pm.environment.set(\"integrationKey\", jsonData[0].integrationKey);",
+              "    if (jsonData.content && jsonData.content.length > 0) {",
+              "        pm.environment.set(\"apiKeyId\", jsonData.content[0].apiKeyId);",
+              "        pm.environment.set(\"integrationKey\", jsonData.content[0].integrationKey);",
               "    }",
               "}"
             ],
@@ -155,7 +190,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/api-keys/integration/:integrationId",
+          "raw": "{{base_url_admin_api}}/api/v1/api-keys/integration/:integrationId?page=0&size=20&sort=createdAt,desc",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -166,6 +201,29 @@
             "integration",
             ":integrationId"
           ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Zero-based page index"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort (e.g. createdAt,desc)"
+            },
+            {
+              "key": "active",
+              "value": "",
+              "description": "Optional: filter by active (omit = active only)",
+              "disabled": true
+            }
+          ],
           "variable": [
             {
               "key": "integrationId",
@@ -174,7 +232,7 @@
             }
           ]
         },
-        "description": "Lists all active (non-revoked) API keys for a specific integration. Secret keys are **never** included in the response.\n\n**Path Parameters:**\n- `integrationId` (required): Integration ID to list API keys for\n\n**Response (200 OK):**\nArray of API key objects, each containing:\n- `apiKeyId`: Database ID of the API key\n- `integrationId`: Integration ID this key belongs to\n- `integrationKey`: Public integration key (safe to display)\n- `description`: Human-readable description\n- `active`: Whether the key is active (false if revoked)\n- `createdAt`: Creation timestamp\n- `expiresAt`: Expiration date (null if no expiration)\n- `lastUsedAt`: Last successful authentication timestamp (null if never used)\n- `ipWhitelist`: IP restrictions (null if no restrictions)\n- `revokedAt`: Revocation timestamp (null if active)\n- `revokedByUsername`: Admin who revoked this key (null if active)\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required"
+        "description": "Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. Secret keys are **never** included.\n\n**Query Parameters:**\n- `page` (default 0), `size` (default 20), `sort` (default createdAt,desc)\n- `active` (optional)\n\n**Response (200 OK):** Paginated envelope with `content` and `page` metadata.\n\n**Status Codes:**\n- 200: Paginated list retrieved\n- 401: Unauthorized"
       },
       "response": []
     },

@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +38,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.service.ApiKeyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -83,6 +88,8 @@ class ApiKeyControllerTest {
 
   @Mock private ApiKeyService apiKeyService;
 
+  @Mock private ApiKeyRepository apiKeyRepository;
+
   @Mock private AdminOperationsRateLimitService adminOpsRateLimitService;
 
   @Mock private EzkeyAdminRepository adminRepository;
@@ -100,6 +107,7 @@ class ApiKeyControllerTest {
     controller =
         new ApiKeyController(
             apiKeyService,
+            apiKeyRepository,
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,
@@ -197,46 +205,98 @@ class ApiKeyControllerTest {
   class ListApiKeysTests {
 
     @Test
-    @DisplayName("Should return list of API keys for integration")
-    void shouldReturnListOfApiKeys() {
+    @DisplayName("Should return paginated list of API keys for integration")
+    void shouldReturnPaginatedListOfApiKeys() {
       // Arrange
       Integer integrationId = 123;
       List<ApiKey> mockApiKeys = Arrays.asList(createMockApiKey(1), createMockApiKey(2));
-      when(apiKeyService.listActiveApiKeys(integrationId)).thenReturn(mockApiKeys);
+      Pageable pageable = PageRequest.of(0, 20);
+      when(apiKeyRepository.findAll(
+              isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+          .thenReturn(new PageImpl<>(mockApiKeys, pageable, mockApiKeys.size()));
 
       // Act
-      ResponseEntity<List<ApiKeyResponseDto>> response = controller.listApiKeys(integrationId);
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+          controller.listApiKeys(integrationId, null, pageable);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
       assertNotNull(response.getBody());
-      List<ApiKeyResponseDto> responseBody = response.getBody();
-      assertNotNull(responseBody);
-      assertEquals(2, responseBody.size());
+      org.springframework.data.domain.Page<ApiKeyResponseDto> page = response.getBody();
+      assertNotNull(page);
+      assertEquals(2, page.getContent().size());
+      assertEquals(2, page.getTotalElements());
 
-      // Verify first API key details
-      ApiKeyResponseDto firstKey = responseBody.get(0);
+      ApiKeyResponseDto firstKey = page.getContent().get(0);
       assertEquals(1, firstKey.apiKeyId());
       assertEquals(123, firstKey.integrationId());
       assertEquals("integration-key-1", firstKey.integrationKey());
     }
 
     @Test
-    @DisplayName("Should return empty list when no API keys found")
-    void shouldReturnEmptyListWhenNoApiKeysFound() {
+    @DisplayName("Should return empty page when no API keys found for integration")
+    void shouldReturnEmptyPageWhenNoApiKeysFound() {
       // Arrange
       Integer integrationId = 123;
-      when(apiKeyService.listActiveApiKeys(integrationId)).thenReturn(Collections.emptyList());
+      Pageable pageable = PageRequest.of(0, 20);
+      when(apiKeyRepository.findAll(
+              isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+          .thenReturn(new PageImpl<>(Collections.emptyList(), pageable, 0));
 
       // Act
-      ResponseEntity<List<ApiKeyResponseDto>> response = controller.listApiKeys(integrationId);
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+          controller.listApiKeys(integrationId, null, pageable);
 
       // Assert
       assertEquals(HttpStatus.OK, response.getStatusCode());
       assertNotNull(response.getBody());
-      List<ApiKeyResponseDto> responseBody = response.getBody();
-      assertNotNull(responseBody);
-      assertTrue(responseBody.isEmpty());
+      assertTrue(response.getBody().getContent().isEmpty());
+      assertEquals(0, response.getBody().getTotalElements());
+    }
+  }
+
+  @Nested
+  @DisplayName("listAllApiKeys Tests")
+  class ListAllApiKeysTests {
+
+    @Test
+    @DisplayName("Should return paginated list of API keys for GlobalAdmin")
+    void shouldReturnPaginatedListForGlobalAdmin() {
+      // Arrange: setupAdminAuthentication() already sets GLOBAL_ADMIN
+      List<ApiKey> mockApiKeys = Arrays.asList(createMockApiKey(1), createMockApiKey(2));
+      Pageable pageable = PageRequest.of(0, 20);
+      when(apiKeyRepository.findAll(
+              isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+          .thenReturn(new PageImpl<>(mockApiKeys, pageable, mockApiKeys.size()));
+
+      // Act
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+          controller.listAllApiKeys(null, null, null, pageable);
+
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      org.springframework.data.domain.Page<ApiKeyResponseDto> page = response.getBody();
+      assertNotNull(page);
+      assertEquals(2, page.getContent().size());
+      assertEquals(1, page.getContent().get(0).apiKeyId());
+    }
+
+    @Test
+    @DisplayName("Should return paginated list with filters for GlobalAdmin")
+    void shouldReturnPaginatedListWithFilters() {
+      List<ApiKey> mockApiKeys = Collections.singletonList(createMockApiKey(1));
+      Pageable pageable = PageRequest.of(0, 20);
+      when(apiKeyRepository.findAll(
+              isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+          .thenReturn(new PageImpl<>(mockApiKeys, pageable, 1));
+
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+          controller.listAllApiKeys(123, true, "Test", pageable);
+
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      assertEquals(1, response.getBody().getContent().size());
     }
   }
 
@@ -391,6 +451,8 @@ class ApiKeyControllerTest {
     admin.setUsername("john.doe"); // SOC 2 compliant: identifiable username
     admin.setEmail("john.doe@example.com"); // SOC 2 compliant: email required
     admin.setActive(true);
+    admin.setAdminType(EzkeyAdmin.AdminType.GLOBAL_ADMIN);
+    admin.setTenant(null);
     return admin;
   }
 }

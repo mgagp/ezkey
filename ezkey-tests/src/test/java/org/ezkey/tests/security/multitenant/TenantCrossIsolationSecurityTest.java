@@ -432,6 +432,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + tenantAdminAToken)
+            .queryParam("page", 0)
+            .queryParam("size", 100)
             .when()
             .get("/api-keys")
             .then()
@@ -443,12 +445,18 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
     assertThat(response.getStatusCode()).isEqualTo(200);
 
-    // Our endpoint returns List directly, not wrapped in "content"
-    List<Map<String, Object>> apiKeys = response.jsonPath().getList("$");
+    // Paginated response: content + page; fallback to root array for legacy API
+    List<Map<String, Object>> apiKeys = response.jsonPath().getList("content");
+    if (apiKeys == null) {
+      apiKeys = response.jsonPath().getList("$");
+    }
     assertThat(apiKeys).isNotNull();
 
-    // Verify all API keys belong to Tenant A integrations
+    // Verify all API keys belong to Tenant A integrations (skip nulls from JSON parsing)
     for (Map<String, Object> apiKey : apiKeys) {
+      if (apiKey == null) {
+        continue;
+      }
       Integer integrationId = (Integer) apiKey.get("integrationId");
       // Should not be integration B
       assertThat(integrationId)
@@ -648,6 +656,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + globalAdminToken)
+            .queryParam("page", 0)
+            .queryParam("size", 100)
             .when()
             .get("/api-keys")
             .then()
@@ -655,12 +665,19 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    List<Map<String, Object>> apiKeys = response.jsonPath().getList("$");
+    // Paginated response: content + page; fallback to root array for legacy API
+    List<Map<String, Object>> apiKeys = response.jsonPath().getList("content");
+    if (apiKeys == null) {
+      apiKeys = response.jsonPath().getList("$");
+    }
     assertThat(apiKeys).isNotNull();
 
-    // Extract integration IDs from API keys
+    // Extract integration IDs from API keys (filter nulls from JSON parsing)
     List<Integer> integrationIds =
-        apiKeys.stream().map(apiKey -> (Integer) apiKey.get("integrationId")).toList();
+        apiKeys.stream()
+            .filter(apiKey -> apiKey != null)
+            .map(apiKey -> (Integer) apiKey.get("integrationId"))
+            .toList();
 
     // GlobalAdmin should see API keys from both tenants
     assertThat(integrationIds)

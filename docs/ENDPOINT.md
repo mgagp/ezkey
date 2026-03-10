@@ -1133,38 +1133,53 @@ Content-Type: application/json
 
 ---
 
-### b) List API Keys for Integration
+### b) List all API keys
 
-**GET /api/v1/api-keys/integration/{integrationId}**
+**GET /api/v1/api-keys**
 
-Lists all active API keys for a specific integration. Secret keys are never included.
+Lists API keys visible to the current admin with server-side pagination and optional filters. GlobalAdmin sees all keys; TenantAdmin sees only keys for their tenant's integrations. Secret keys are never included.
+
+**Query parameters:**
+- `page` (optional, default 0): Zero-based page index.
+- `size` (optional, default 20): Page size.
+- `sort` (optional, default `createdAt,DESC`): Sort property and direction (e.g. `apiKeyId,asc`, `integrationKey,desc`, `description`, `active`, `createdAt`, `expiresAt`, `lastUsedAt`, `revokedAt`).
+- `integrationId` (optional): Filter by integration ID.
+- `active` (optional): Filter by active flag (`true` or `false`); omit to return all.
+- `description` (optional): Filter by description (partial match, case-insensitive).
 
 **Request:**
 ```http
-GET /api/v1/api-keys/integration/123
+GET /api/v1/api-keys?page=0&size=20&sort=createdAt,desc
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Response (200 OK):**
-```json
-[
-  {
-    "apiKeyId": 42,
-    "integrationId": 123,
-    "integrationKey": "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0",
-    "description": "Production Server API Key",
-    "active": true,
-    "createdAt": "2025-10-17T12:00:00Z",
-    "expiresAt": "2025-12-31T23:59:59Z",
-    "lastUsedAt": "2025-10-17T15:30:00Z",
-    "ipWhitelist": ["192.168.1.0/24"]
-  }
-]
-```
+**Response (200 OK):** Paginated envelope with `content` (array of API key objects) and `page` (metadata: `size`, `number`, `totalElements`, `totalPages`).
 
 ---
 
-### c) Get API Key Details
+### c) List API Keys for Integration
+
+**GET /api/v1/api-keys/integration/{integrationId}**
+
+Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. When `active` is provided, results are filtered by that value. Secret keys are never included.
+
+**Query parameters:**
+- `page` (optional, default 0): Zero-based page index.
+- `size` (optional, default 20): Page size.
+- `sort` (optional, default `createdAt,DESC`): Sort property and direction.
+- `active` (optional): Filter by active flag; omit for active-only (default).
+
+**Request:**
+```http
+GET /api/v1/api-keys/integration/123?page=0&size=20&sort=createdAt,desc
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):** Paginated envelope with `content` (array of API key objects) and `page` (metadata: `size`, `number`, `totalElements`, `totalPages`).
+
+---
+
+### d) Get API Key Details
 
 **GET /api/v1/api-keys/{keyId}**
 
@@ -1195,7 +1210,7 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
-### d) Partially Update API Key Configuration
+### e) Partially Update API Key Configuration
 
 **PATCH /api/v1/api-keys/{keyId}**
 
@@ -1229,7 +1244,7 @@ Content-Type: application/json
 
 ---
 
-### e) Revoke API Key
+### f) Revoke API Key
 
 **DELETE /api/v1/api-keys/{keyId}**
 
@@ -1253,7 +1268,7 @@ HTTP/1.1 204 No Content
 
 ---
 
-### e) Using API Keys for Authentication
+### g) Using API Keys for Authentication
 
 Once created, use API keys with HTTP Basic Auth for all admin API calls:
 
@@ -1277,7 +1292,7 @@ Content-Type: application/json
 
 ---
 
-### f) API Key Rotation Best Practices
+### h) API Key Rotation Best Practices
 
 **Recommended Rotation Process:**
 

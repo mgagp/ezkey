@@ -17,12 +17,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.request.ApiKeyUpdateRequestDto;
@@ -39,10 +40,17 @@ import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.service.ApiKeyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -103,6 +111,7 @@ public class ApiKeyController {
   private static final Logger logger = LoggerFactory.getLogger(ApiKeyController.class);
 
   private final ApiKeyService apiKeyService;
+  private final ApiKeyRepository apiKeyRepository;
   private final AdminOperationsRateLimitService adminOpsRateLimitService;
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
@@ -112,6 +121,7 @@ public class ApiKeyController {
    * Constructs a new ApiKeyController.
    *
    * @param apiKeyService the API key service
+   * @param apiKeyRepository the API key repository for paginated list queries
    * @param adminOpsRateLimitService the admin operations rate limiting service
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
@@ -119,11 +129,13 @@ public class ApiKeyController {
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
+      ApiKeyRepository apiKeyRepository,
       AdminOperationsRateLimitService adminOpsRateLimitService,
       EzkeyAdminRepository adminRepository,
       AccessControlService accessControlService,
       AuditLogService auditLogService) {
     this.apiKeyService = apiKeyService;
+    this.apiKeyRepository = apiKeyRepository;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
@@ -284,7 +296,7 @@ public class ApiKeyController {
   }
 
   /**
-   * Lists all API keys visible to the current admin.
+   * Lists API keys visible to the current admin with server-side pagination and optional filters.
    *
    * <p>This endpoint returns API keys based on admin type:
    *
@@ -293,30 +305,50 @@ public class ApiKeyController {
    *   <li><b>TenantAdmin:</b> Can only see API keys for integrations in their own tenant
    * </ul>
    *
+   * <p>Optional filters: integrationId, active (boolean), description (partial match,
+   * case-insensitive). Sortable by apiKeyId, integrationKey, description, active, createdAt,
+   * expiresAt, lastUsedAt, revokedAt.
+   *
    * <p>The secret keys are never included in the response for security.
    *
-   * @return ResponseEntity containing list of API keys
+   * @param integrationId optional filter by integration ID
+   * @param active optional filter by active flag (true/false; omit for all)
+   * @param description optional filter by description (partial match, case-insensitive)
+   * @param pageable pagination and sort (default: size=20, sort=createdAt,DESC)
+   * @return ResponseEntity containing paginated list (content + page metadata)
    */
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   @Operation(
       summary = "List all API keys for current admin",
       description =
-          "Returns API keys filtered by admin type. GlobalAdmin sees all keys, "
-              + "TenantAdmin sees only keys for their tenant's integrations. Secret keys are never"
-              + " included.")
+          "Returns API keys with pagination, filtered by admin type. GlobalAdmin sees all keys, "
+              + "TenantAdmin sees only keys for their tenant's integrations. Optional filters: "
+              + "integrationId, active, description. Use page, size, sort for pagination. "
+              + "Secret keys are never included.")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of API keys",
+            description = "Paginated list of API keys (content + page metadata)",
             content =
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required")
       })
-  public ResponseEntity<List<ApiKeyResponseDto>> listAllApiKeys() {
+  public ResponseEntity<Page<ApiKeyResponseDto>> listAllApiKeys(
+      @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
+          Integer integrationId,
+      @Parameter(description = "Filter by active flag (true/false; omit for all)")
+          @RequestParam(required = false)
+          Boolean active,
+      @Parameter(description = "Filter by description (partial match, case-insensitive)")
+          @RequestParam(required = false)
+          String description,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
     EzkeyAdmin currentAdmin = getCurrentAdmin();
 
     logger.info(
@@ -324,74 +356,111 @@ public class ApiKeyController {
         currentAdmin.getUsername(),
         currentAdmin.getAdminType());
 
-    List<ApiKey> apiKeys;
-
-    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
-      // GlobalAdmin can see all API keys
-      logger.debug("GlobalAdmin - fetching all API keys");
-      apiKeys = apiKeyService.findAll();
-    } else {
-      // TenantAdmin sees only keys for their tenant's integrations
-      Integer tenantId = currentAdmin.getTenant().getTenantId();
-      logger.debug("TenantAdmin - fetching API keys for tenant: {}", tenantId);
-      apiKeys = apiKeyService.listApiKeysByTenant(tenantId);
+    Integer tenantIdForScope = null;
+    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN) {
+      tenantIdForScope = currentAdmin.getTenant().getTenantId();
+      logger.debug("TenantAdmin - scoping API keys to tenant: {}", tenantIdForScope);
     }
 
-    logger.debug("Found {} API keys before mapping", apiKeys.size());
+    final Integer tenantId = tenantIdForScope;
+    Specification<ApiKey> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          if (tenantId != null) {
+            predicates.add(
+                cb.equal(root.get("integration").get("tenant").get("tenantId"), tenantId));
+          }
+          if (integrationId != null) {
+            predicates.add(cb.equal(root.get("integration").get("id"), integrationId));
+          }
+          if (active != null) {
+            predicates.add(cb.equal(root.get("active"), active));
+          }
+          if (description != null && !description.isBlank()) {
+            String pattern = "%" + description.trim().toLowerCase() + "%";
+            predicates.add(cb.like(cb.lower(root.get("description")), pattern));
+          }
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-    List<ApiKeyResponseDto> response =
-        apiKeys.stream().map(this::mapToResponseDto).collect(Collectors.toList());
+    Page<ApiKeyResponseDto> page =
+        apiKeyRepository.findAll(spec, pageable).map(this::mapToResponseDto);
 
     logger.info(
-        "Found {} API keys for admin: {} (type: {})",
-        response.size(),
+        "Returning page {} with {} API keys for admin: {} (type: {})",
+        page.getNumber(),
+        page.getNumberOfElements(),
         currentAdmin.getUsername(),
         currentAdmin.getAdminType());
 
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(page);
   }
 
   /**
-   * Lists all active API keys for a specific integration.
+   * Lists API keys for a specific integration with server-side pagination.
    *
-   * <p>This endpoint returns all active (non-revoked) API keys for the specified integration. The
-   * secret keys are never included in the response for security.
+   * <p>This endpoint returns API keys for the specified integration. When {@code active} is not
+   * provided, only active (non-revoked) keys are returned (backward compatible). When {@code
+   * active} is provided, filters by that value. The secret keys are never included in the response
+   * for security.
    *
-   * @param integrationId the integration ID
-   * @return ResponseEntity containing list of API keys
+   * @param integrationId the integration ID (path)
+   * @param active optional filter by active flag (omit = active only; true/false for explicit)
+   * @param pageable pagination and sort (default: size=20, sort=createdAt,DESC)
+   * @return ResponseEntity containing paginated list (content + page metadata)
    */
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/integration/{integrationId}")
   @Operation(
-      summary = "List active API keys for integration",
+      summary = "List API keys for integration",
       description =
-          "Returns all active API keys for the specified integration. "
+          "Returns API keys for the specified integration with pagination. "
+              + "When active is omitted, returns only active keys. Use page, size, sort. "
               + "Secret keys are never included in responses.")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of active API keys",
+            description = "Paginated list of API keys (content + page metadata)",
             content =
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required")
       })
-  public ResponseEntity<List<ApiKeyResponseDto>> listApiKeys(
+  public ResponseEntity<Page<ApiKeyResponseDto>> listApiKeys(
       @Parameter(description = "Integration ID", example = "123") @PathVariable("integrationId")
-          Integer integrationId) {
+          Integer integrationId,
+      @Parameter(description = "Filter by active flag (omit = active only)")
+          @RequestParam(required = false)
+          Boolean active,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
 
     logger.debug("Listing API keys for integration: {}", integrationId);
 
-    List<ApiKey> apiKeys = apiKeyService.listActiveApiKeys(integrationId);
+    // When active is not provided, default to true (preserve previous behavior: active-only)
+    boolean filterActive = active != null ? active : true;
 
-    List<ApiKeyResponseDto> response =
-        apiKeys.stream().map(this::mapToResponseDto).collect(Collectors.toList());
+    Specification<ApiKey> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          predicates.add(cb.equal(root.get("integration").get("id"), integrationId));
+          predicates.add(cb.equal(root.get("active"), filterActive));
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-    logger.info("Found {} active API keys for integration: {}", response.size(), integrationId);
+    Page<ApiKeyResponseDto> page =
+        apiKeyRepository.findAll(spec, pageable).map(this::mapToResponseDto);
 
-    return ResponseEntity.ok(response);
+    logger.info(
+        "Returning page {} with {} API keys for integration: {}",
+        page.getNumber(),
+        page.getNumberOfElements(),
+        integrationId);
+
+    return ResponseEntity.ok(page);
   }
 
   /**

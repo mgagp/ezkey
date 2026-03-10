@@ -1762,11 +1762,80 @@
           "API Keys"
         ],
         "summary": "List all API keys for current admin",
-        "description": "Returns API keys filtered by admin type. GlobalAdmin sees all keys, TenantAdmin sees only keys for their tenant's integrations. Secret keys are never included.",
+        "description": "Returns API keys with pagination, filtered by admin type. GlobalAdmin sees all keys, TenantAdmin sees only keys for their tenant's integrations. Optional filters: integrationId, active, description. Use page, size, sort for pagination. Secret keys are never included.",
         "operationId": "listAllApiKeys",
+        "parameters": [
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag (true/false; omit for all)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "description",
+            "in": "query",
+            "description": "Filter by description (partial match, case-insensitive)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List of API keys",
+            "description": "Paginated list of API keys (content + page metadata)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1780,10 +1849,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ApiKeyResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PagedModelApiKeyResponseDto"
                 }
               }
             }
@@ -4031,8 +4097,8 @@
         "tags": [
           "API Keys"
         ],
-        "summary": "List active API keys for integration",
-        "description": "Returns all active API keys for the specified integration. Secret keys are never included in responses.",
+        "summary": "List API keys for integration",
+        "description": "Returns API keys for the specified integration with pagination. When active is omitted, returns only active keys. Use page, size, sort. Secret keys are never included in responses.",
         "operationId": "listApiKeys",
         "parameters": [
           {
@@ -4045,11 +4111,59 @@
               "format": "int32"
             },
             "example": 123
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag (omit = active only)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "List of active API keys",
+            "description": "Paginated list of API keys (content + page metadata)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4063,10 +4177,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ApiKeyResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PagedModelApiKeyResponseDto"
                 }
               }
             }
@@ -6406,6 +6517,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AuditChainCheckpointResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "PagedModelApiKeyResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeyResponseDto"
             }
           },
           "page": {
