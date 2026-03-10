@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
@@ -209,8 +210,8 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
   /**
    * Test 3: List All Tenants
    *
-   * <p>Validates that a GlobalAdmin can list all tenants and the response is a valid array
-   * containing tenant objects.
+   * <p>Validates that a GlobalAdmin can list all tenants and the response is a paginated envelope
+   * (content + page) containing tenant objects.
    */
   @Test
   @Order(3)
@@ -218,11 +219,13 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
   void test03_list_all_tenants() {
     log.info("=== Test 3: List All Tenants ===");
 
-    // Act: List all tenants
+    // Act: List all tenants (paginated)
     Response response =
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .queryParam("page", 0)
+            .queryParam("size", 100)
             .when()
             .get("/tenants")
             .then()
@@ -237,16 +240,18 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
 
     assertThat(response.statusCode()).as("Expected HTTP 200 OK").isEqualTo(200);
 
-    // Verify response is an array
-    assertThat(response.jsonPath().getList("$"))
-        .as("Response should be an array of tenants")
-        .isNotNull()
-        .isNotEmpty();
+    // Verify paginated shape: content array + page metadata
+    List<?> content = response.jsonPath().getList("content");
+    assertThat(content).as("Response should have content array").isNotNull().isNotEmpty();
+
+    assertThat(response.jsonPath().getObject("page", Object.class))
+        .as("Response should have page metadata")
+        .isNotNull();
 
     // Verify the created tenant is in the list
     if (createdTenantId != null) {
-      boolean foundCreatedTenant =
-          response.jsonPath().getList("tenantId", Integer.class).contains(createdTenantId);
+      List<Integer> tenantIds = response.jsonPath().getList("content.tenantId", Integer.class);
+      boolean foundCreatedTenant = tenantIds != null && tenantIds.contains(createdTenantId);
       assertThat(foundCreatedTenant).as("Created tenant should appear in the list").isTrue();
     }
 

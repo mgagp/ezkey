@@ -371,11 +371,13 @@ public class TestDataFactory {
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
-    // Try to find existing tenant
+    // Try to find existing tenant (paginated list; request enough to find by name)
     Response listResponse =
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + adminToken)
+            .queryParam("page", 0)
+            .queryParam("size", 100)
             .when()
             .get("/tenants")
             .then()
@@ -383,7 +385,7 @@ public class TestDataFactory {
             .extract()
             .response();
 
-    // Check if tenant with this name exists
+    // Check if tenant with this name exists in first page
     java.util.List<Map<String, Object>> tenants = listResponse.jsonPath().getList("content");
     if (tenants != null) {
       for (Map<String, Object> tenant : tenants) {

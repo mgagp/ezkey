@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Repository;
  *
  * <ul>
  *   <li><b>Search:</b> Find tenants by name or description
+ *   <li><b>Pagination:</b> {@code findAll(Specification, Pageable)} for paginated list with filters
  *   <li><b>Administrator Management:</b> Find tenants created by specific admins
  *   <li><b>Status Queries:</b> Find active/inactive tenants
  *   <li><b>Validation:</b> Check tenant name uniqueness
@@ -41,7 +43,8 @@ import org.springframework.stereotype.Repository;
  * @see Tenant
  */
 @Repository
-public interface TenantRepository extends JpaRepository<Tenant, Integer> {
+public interface TenantRepository
+    extends JpaRepository<Tenant, Integer>, JpaSpecificationExecutor<Tenant> {
 
   /**
    * Finds a tenant by its unique name.

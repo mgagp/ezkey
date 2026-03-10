@@ -210,18 +210,74 @@
           "Tenants"
         ],
         "summary": "List tenants",
-        "description": "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.",
+        "description": "Lists tenants with pagination and optional filters. GlobalAdmin only. Use page, size, sort for pagination. Optional tenantName (partial match) and active (boolean) for filtering. Sortable: tenantId, tenantName, active, createdAt.",
         "operationId": "listTenants",
+        "parameters": [
+          {
+            "name": "tenantName",
+            "in": "query",
+            "description": "Filter by tenant name (partial match, case-insensitive)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag (true/false; omit for all)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List of tenants",
+            "description": "Paginated list of tenants (content + page)",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PagedModelTenantResponseDto"
                 }
               }
             }
@@ -231,10 +287,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PagedModelTenantResponseDto"
                 }
               }
             }
@@ -4848,7 +4901,8 @@
           },
           "justification": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 500,
+            "minLength": 10
           }
         },
         "required": [
@@ -4899,7 +4953,8 @@
           },
           "justification": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 500,
+            "minLength": 10
           }
         },
         "required": [
@@ -5637,6 +5692,41 @@
           }
         }
       },
+      "PageMetadata": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PagedModelTenantResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
       "IntegrationResponseDto": {
         "type": "object",
         "description": "Response DTO containing complete integration details",
@@ -5681,27 +5771,6 @@
           "isSystemIntegration": {
             "type": "boolean",
             "description": "Whether this is the system integration (e.g. admin MFA); used by UI to adapt detail page"
-          }
-        }
-      },
-      "PageMetadata": {
-        "type": "object",
-        "properties": {
-          "size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "number": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },

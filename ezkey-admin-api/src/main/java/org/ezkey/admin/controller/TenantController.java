@@ -15,9 +15,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.TenantActivateRequestDto;
@@ -38,6 +40,12 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,6 +57,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -176,45 +185,62 @@ public class TenantController {
   }
 
   /**
-   * Lists tenants.
+   * Lists tenants with server-side pagination and optional filters.
    *
    * <p>Global administrators can list all tenants. Tenant administrators cannot access this
-   * endpoint.
+   * endpoint (403). Supports filtering by tenant name (substring, case-insensitive) and active
+   * status. Sortable by tenantId, tenantName, active, createdAt.
    *
+   * @param tenantName optional filter by tenant name (partial match, case-insensitive)
+   * @param active optional filter by active flag (true/false; omit for all)
+   * @param pageable pagination and sort (default: size=20, sort=createdAt,DESC)
    * @param auth the authentication context
-   * @return ResponseEntity with list of tenants (200 OK)
+   * @return ResponseEntity with paginated list (content + page metadata)
    */
   @GetMapping
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
   @Operation(
       summary = "List tenants",
       description =
-          "Lists tenants. GlobalAdmins see all tenants. TenantAdmins see only their own tenant.")
+          "Lists tenants with pagination and optional filters. GlobalAdmin only. Use page, size,"
+              + " sort for pagination. Optional tenantName (partial match) and active (boolean)"
+              + " for filtering. Sortable: tenantId, tenantName, active, createdAt.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "List of tenants"),
+    @ApiResponse(responseCode = "200", description = "Paginated list of tenants (content + page)"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not authorized")
   })
-  public ResponseEntity<List<TenantResponseDto>> listTenants(Authentication auth) {
+  public ResponseEntity<Page<TenantResponseDto>> listTenants(
+      @Parameter(description = "Filter by tenant name (partial match, case-insensitive)")
+          @RequestParam(required = false)
+          String tenantName,
+      @Parameter(description = "Filter by active flag (true/false; omit for all)")
+          @RequestParam(required = false)
+          Boolean active,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable,
+      Authentication auth) {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
-    if (principal == null) {
+    if (principal == null || !principal.isGlobalAdmin()) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    List<TenantResponseDto> tenants;
-    if (principal.isGlobalAdmin()) {
-      tenants = tenantMapper.toResponseDtoList(tenantRepository.findAll());
-    } else if (principal.tenantId() != null) {
-      tenants =
-          tenantRepository
-              .findById(principal.tenantId())
-              .map(tenantMapper::toResponseDto)
-              .map(List::of)
-              .orElse(List.of());
-    } else {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    }
+    Specification<Tenant> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          if (tenantName != null && !tenantName.isBlank()) {
+            String pattern = "%" + tenantName.trim().toLowerCase() + "%";
+            predicates.add(cb.like(cb.lower(root.get("tenantName")), pattern));
+          }
+          if (active != null) {
+            predicates.add(cb.equal(root.get("active"), active));
+          }
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-    return ResponseEntity.ok(tenants);
+    Page<TenantResponseDto> page =
+        tenantRepository.findAll(spec, pageable).map(tenantMapper::toResponseDto);
+    return ResponseEntity.ok(page);
   }
 
   /**

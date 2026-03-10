@@ -181,19 +181,26 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test(\"Response is an array\", function () {",
+              "pm.test(\"Response has paginated shape (content + page)\", function () {",
               "    var jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData).to.have.property('page');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData.page).to.have.property('size');",
+              "    pm.expect(jsonData.page).to.have.property('number');",
+              "    pm.expect(jsonData.page).to.have.property('totalElements');",
+              "    pm.expect(jsonData.page).to.have.property('totalPages');",
               "});",
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    if (jsonData.length > 0) {",
-              "        pm.environment.set(\"tenantId\", jsonData[0].tenantId.toString());",
-              "        pm.environment.set(\"tenantName\", jsonData[0].tenantName);",
+              "    var content = jsonData.content || [];",
+              "    if (content.length > 0) {",
+              "        pm.environment.set(\"tenantId\", content[0].tenantId.toString());",
+              "        pm.environment.set(\"tenantName\", content[0].tenantName);",
               "",
               "        pm.test(\"First tenant has enriched response fields\", function () {",
-              "            var tenant = jsonData[0];",
+              "            var tenant = content[0];",
               "            pm.expect(tenant).to.have.property('tenantId');",
               "            pm.expect(tenant).to.have.property('tenantName');",
               "            pm.expect(tenant).to.have.property('active');",
@@ -209,7 +216,7 @@
               "        });",
               "",
               "        pm.test(\"System tenant (ID=1) has isSystemTenant=true\", function () {",
-              "            var systemTenant = jsonData.find(t => t.tenantId === 1);",
+              "            var systemTenant = content.find(t => t.tenantId === 1);",
               "            if (systemTenant) {",
               "                pm.expect(systemTenant.isSystemTenant).to.be.true;",
               "            }",
@@ -226,7 +233,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/tenants",
+          "raw": "{{base_url_admin_api}}/api/v1/tenants?page=0&size=20&sort=createdAt,desc",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -234,9 +241,38 @@
             "api",
             "v1",
             "tenants"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Zero-based page index"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort (e.g. tenantId,asc or tenantName,desc)"
+            },
+            {
+              "key": "tenantName",
+              "value": "",
+              "disabled": true,
+              "description": "Filter by name (partial, case-insensitive)"
+            },
+            {
+              "key": "active",
+              "value": "",
+              "disabled": true,
+              "description": "Filter by active (true/false)"
+            }
           ]
         },
-        "description": "Lists all tenants in the system. Only GlobalAdmin can list tenants.\n\n**Permissions:**\n- **GlobalAdmin**: Can list all tenants\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Response (200 OK):**\nArray of tenant objects, each containing:\n- `tenantId`: Unique identifier for the tenant\n- `tenantName`: Name of the tenant\n- `tenantDescription`: Description of the tenant (if provided)\n- `organizationName`: Legal organization name (if provided)\n- `organizationDomain`: Primary domain (if provided)\n- `countryCode`: ISO 3166-1 alpha-2 country code (if provided)\n- `timezone`: IANA timezone identifier (if provided)\n- `primaryContactName`: Primary contact full name (if provided)\n- `primaryContactEmail`: Primary contact email (if provided)\n- `createdAt`: Timestamp when the tenant was created (UTC with timezone)\n- `updatedAt`: Timestamp of last modification (null if never updated)\n- `active`: Flag indicating if the tenant is active\n- `isSystemTenant`: Flag indicating if this is the system tenant\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
+        "description": "Lists tenants with server-side pagination and optional filters. GlobalAdmin only.\n\n**Query parameters:**\n- `page` (default 0): Zero-based page index\n- `size` (default 20): Page size\n- `sort` (default createdAt,desc): Sort property and direction (tenantId, tenantName, active, createdAt)\n- `tenantName` (optional): Filter by tenant name (partial match, case-insensitive)\n- `active` (optional): Filter by active flag (true/false)\n\n**Permissions:**\n- **GlobalAdmin**: Can list tenants (paginated)\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Response (200 OK):** Paginated envelope with `content` (array of tenant objects) and `page` (size, number, totalElements, totalPages). Each tenant in content has: tenantId, tenantName, tenantDescription, organizationName, organizationDomain, countryCode, timezone, primaryContactName, primaryContactEmail, createdAt, updatedAt, active, isSystemTenant.\n\n**Status Codes:**\n- 200: List retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error"
       },
       "response": []
     },

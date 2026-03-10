@@ -330,20 +330,16 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     assertThat(response.jsonPath().getString("tenantName")).isEqualTo(tenantName);
   }
 
-  // NOTE: Pagination test - pagination/sorting needs better debugging/fixing
   @Test
   @Order(31)
   @DisplayName("P1: GlobalAdmin can list all tenants")
   void globalAdmin_can_list_all_tenants() {
-    // Note: /tenants returns a JSON array (List<TenantResponseDto>), not a paged
-    // response.
     Response response = listTenants();
     assertThat(response.statusCode()).isEqualTo(200);
 
-    List<Integer> tenantIds = response.jsonPath().getList("tenantId", Integer.class);
+    // Paginated response: content array + page metadata
+    List<Integer> tenantIds = response.jsonPath().getList("content.tenantId", Integer.class);
     if (tenantIds == null) {
-      // Defensive fallback if the JSONPath extraction expects an explicit root
-      // selector.
       tenantIds = response.jsonPath().getList("$..tenantId", Integer.class);
     }
     assertThat(tenantIds).isNotNull().contains(tenantAId, tenantBId, tenantCId);
@@ -391,7 +387,9 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
     return given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .queryParam("page", 0)
         .queryParam("size", 100)
+        .queryParam("sort", "tenantId,asc")
         .when()
         .get("/tenants");
   }

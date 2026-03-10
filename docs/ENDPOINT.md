@@ -554,7 +554,7 @@ Tenant management endpoints allow GlobalAdmins to create, list, update, deactiva
 
 **Lifecycle:** A tenant is either **active** or **inactive**. Deactivation sets `active = false`, revokes all admin tokens for that tenant, and blocks new integrations, enrollments, and API keys; data is preserved for audit. Activation sets `active = true` and restores full access; deactivation metadata (who/when) is preserved for traceability. The **system tenant** cannot be deactivated.
 
-**Base path:** `http://localhost:9080/api/v1/tenants` (Admin API). All endpoints require Bearer token (GlobalAdmin for create/update/deactivate/activate; GlobalAdmin or TenantAdmin for list/get).
+**Base path:** `http://localhost:9080/api/v1/tenants` (Admin API). All endpoints require Bearer token (GlobalAdmin for list, create, update, deactivate, activate; GlobalAdmin or TenantAdmin for get by ID).
 
 ### Create tenant
 
@@ -570,9 +570,16 @@ Creates a new tenant. GlobalAdmin only.
 
 **GET /api/v1/tenants**
 
-Lists tenants. GlobalAdmin sees all; TenantAdmin sees only their own tenant.
+Lists tenants with server-side pagination and optional filters. GlobalAdmin only (TenantAdmin receives 403).
 
-**Response (200 OK):** Array of tenant objects.
+**Query parameters:**
+- `page` (optional, default 0): Zero-based page index.
+- `size` (optional, default 20): Page size.
+- `sort` (optional, default `createdAt,DESC`): Sort property and direction (e.g. `tenantId,asc`, `tenantName,desc`, `active,asc`, `createdAt,desc`).
+- `tenantName` (optional): Filter by tenant name (partial match, case-insensitive).
+- `active` (optional): Filter by active flag (`true` or `false`); omit to return all.
+
+**Response (200 OK):** Paginated envelope with `content` (array of tenant objects) and `page` (metadata: `size`, `number`, `totalElements`, `totalPages`).
 
 ### Get tenant by ID
 

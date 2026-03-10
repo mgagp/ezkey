@@ -106,5 +106,5 @@ public record ArchiveSealRequest(
      * Aligned with other audit reason fields: 10–500 characters (SOC 2 traceability).
      */
     @NotBlank(message = "Justification is required")
-    @Size(min = 10, max = 500, message = "Justification must be between 10 and 500 characters")
-    String justification) {}
+        @Size(min = 10, max = 500, message = "Justification must be between 10 and 500 characters")
+        String justification) {}

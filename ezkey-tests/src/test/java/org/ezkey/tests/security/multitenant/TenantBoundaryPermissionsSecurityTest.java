@@ -335,6 +335,8 @@ public class TenantBoundaryPermissionsSecurityTest extends AbstractSecurityTest 
         given()
             .contentType(ContentType.JSON)
             .header("Authorization", "Bearer " + globalAdminToken)
+            .queryParam("page", 0)
+            .queryParam("size", 100)
             .when()
             .get("/tenants")
             .then()
