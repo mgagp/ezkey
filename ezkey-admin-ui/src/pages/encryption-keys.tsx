@@ -21,20 +21,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
+import { Pagination } from '@/components/data-table/pagination';
 import { getApiErrorMessage } from '@/lib/api-client';
 import {
   BATCH_STATUS_HELP,
   ENCRYPTION_KEY_STATUS_HELP,
   ENCRYPTION_KEYS_SECTION_HELP,
+  ENCRYPTION_KEYS_TABLE_HEADER_HELP,
   REENCRYPT_BUTTON_HELP,
 } from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import {
+  listKeys,
   useCreateBatches,
   useGetKey,
   useListBatches,
-  useListKeys,
   useResumeBatch,
   useRotateKey,
   useTriggerFullReencryption,
@@ -43,6 +46,7 @@ import {
 import type {
   EncryptionKeyResponse,
   KeyRotationResponse,
+  PagedModelEncryptionKeyResponse,
   ReencryptionBatchResponse,
   ReencryptionTriggerResponse,
   ReencryptionKeyResponse,
@@ -56,6 +60,7 @@ function KeyStatusBadge({ status }: { status?: string }) {
   if (status === 'PRIMARY') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.PRIMARY}><Badge variant="success">Primary</Badge></Tooltip>;
   if (status === 'ENABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.ENABLED}><Badge variant="muted">Enabled</Badge></Tooltip>;
   if (status === 'DISABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.DISABLED}><Badge variant="error">Disabled</Badge></Tooltip>;
+  if (status === 'PENDING') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.PENDING}><Badge variant="muted">Pending</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
@@ -547,19 +552,34 @@ function ReencryptionBatchesSection() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+type KeyStatusFilter = 'all' | 'PRIMARY' | 'ENABLED' | 'DISABLED' | 'PENDING';
+
 export default function EncryptionKeysPage() {
   const [selectedKeyId, setSelectedKeyId] = useState<number | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
+  const [keyStatusFilter, setKeyStatusFilter] = useState<KeyStatusFilter>('all');
 
-  const { data: keysData, isLoading, refetch } = useListKeys();
-  const keys = (keysData as EncryptionKeyResponse[] | undefined) ?? [];
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
+    EncryptionKeyResponse,
+    { keyStatus?: string }
+  >({
+    queryKey: ['encryption-keys', keyStatusFilter],
+    baseParams: {
+      keyStatus: keyStatusFilter === 'all' ? undefined : keyStatusFilter,
+    },
+    fetchPage: (params) =>
+      listKeys(params) as Promise<PagedModelEncryptionKeyResponse>,
+    defaultSort: 'introducedAt,DESC',
+    defaultSize: 20,
+  });
 
   const columns: ColumnDef<EncryptionKeyResponse>[] = [
     {
       header: 'ID',
       key: 'keyId',
       className: 'w-14',
+      sortKey: 'keyId',
       render: (r) => (
         <span className="font-mono text-xs inline-flex items-center gap-1">
           {r.keyStatus === 'PRIMARY' && <Key className="size-3 text-accent" />}
@@ -567,16 +587,30 @@ export default function EncryptionKeysPage() {
         </span>
       ),
     },
-    { header: 'Status', key: 'keyStatus', render: (r) => <KeyStatusBadge status={r.keyStatus} /> },
-    { header: 'Algorithm', key: 'algorithm', render: (r) => <span className="font-mono text-xs">{r.algorithm ?? '—'}</span> },
+    {
+      header: 'Status',
+      key: 'keyStatus',
+      sortKey: 'keyStatus',
+      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.STATUS,
+      render: (r) => <KeyStatusBadge status={r.keyStatus} />,
+    },
+    {
+      header: 'Algorithm',
+      key: 'algorithm',
+      sortKey: 'algorithm',
+      render: (r) => <span className="font-mono text-xs">{r.algorithm ?? '—'}</span>,
+    },
     {
       header: 'Records',
       key: 'recordsEncrypted',
+      sortKey: 'recordsEncrypted',
+      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.RECORDS,
       render: (r) => <span className="font-mono text-xs">{r.recordsEncrypted ?? 0}</span>,
     },
     {
       header: 'Introduced',
       key: 'introducedAt',
+      sortKey: 'introducedAt',
       render: (r) => (
         <span className="text-xs text-fg-muted">{r.introducedAt ? formatRelativeTime(r.introducedAt) : '—'}</span>
       ),
@@ -584,11 +618,18 @@ export default function EncryptionKeysPage() {
     {
       header: 'Primary since',
       key: 'promotedPrimaryAt',
+      sortKey: 'promotedPrimaryAt',
+      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.PRIMARY_SINCE,
       render: (r) => (
         <span className="text-xs text-fg-muted">{r.promotedPrimaryAt ? formatDate(r.promotedPrimaryAt) : '—'}</span>
       ),
     },
-    { header: 'Created by', key: 'createdBy', render: (r) => <span className="text-xs">{r.createdBy ?? '—'}</span> },
+    {
+      header: 'Created by',
+      key: 'createdBy',
+      sortKey: 'createdBy',
+      render: (r) => <span className="text-xs">{r.createdBy ?? '—'}</span>,
+    },
     {
       header: '',
       key: 'actions',
@@ -612,8 +653,8 @@ export default function EncryptionKeysPage() {
   return (
     <AppShell title="Encryption Keys">
       <div className="space-y-4">
-        {/* Actions bar */}
-        <div className="flex items-center justify-between">
+        {/* Filter bar */}
+        <div className="flex gap-3 items-center flex-wrap">
           <div className="flex items-center gap-1.5">
             <p className="text-xs text-fg-muted">
               AES encryption keys protecting sensitive data at rest. Rotate periodically for compliance.
@@ -624,27 +665,52 @@ export default function EncryptionKeysPage() {
               ariaLabel="Help: Encryption keys"
             />
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="size-3.5" />
-              Refresh
-            </Button>
-            <Button size="sm" onClick={() => setRotateOpen(true)} className="gap-1.5">
-              <Key className="size-3.5" />
-              Rotate Key
-            </Button>
+          <div className="w-40">
+            <Select
+              value={keyStatusFilter}
+              onChange={(e) => setKeyStatusFilter(e.target.value as KeyStatusFilter)}
+            >
+              <option value="all">All statuses</option>
+              <option value="PRIMARY">Primary</option>
+              <option value="ENABLED">Enabled</option>
+              <option value="DISABLED">Disabled</option>
+              <option value="PENDING">Pending</option>
+            </Select>
           </div>
+          <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
+            <RefreshCw className="size-3.5" />
+            Refresh
+          </Button>
+          <Button size="sm" onClick={() => setRotateOpen(true)} className="gap-1.5 ml-auto">
+            <Key className="size-3.5" />
+            Rotate Key
+          </Button>
         </div>
 
         {/* Keys table */}
-        <DataTable
-          columns={columns}
-          data={keys}
-          isLoading={isLoading}
-          onRowClick={(row) => setSelectedKeyId(row.keyId ?? null)}
-          keyExtractor={(r, i) => r.keyId ?? i}
-          emptyMessage="No encryption keys found."
-        />
+        <div>
+          <DataTable
+            columns={columns}
+            data={data}
+            isLoading={isLoading}
+            onRowClick={(row) => setSelectedKeyId(row.keyId ?? null)}
+            keyExtractor={(r, i) => r.keyId ?? i}
+            emptyMessage="No encryption keys found."
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalElements={pagination.totalElements}
+            isFirst={pagination.isFirst}
+            isLast={pagination.isLast}
+            onPrevPage={pagination.prevPage}
+            onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </div>
 
         {/* Re-encryption batches */}
         <ReencryptionBatchesSection />

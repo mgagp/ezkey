@@ -30,6 +30,14 @@ export const ENCRYPTION_KEY_STATUS_HELP = {
   PRIMARY: 'Active key used for all new encryption operations.',
   ENABLED: 'Key can decrypt existing data but is not used for new encryption.',
   DISABLED: 'Key is retired; all data has been re-encrypted to a newer key.',
+  PENDING: 'Key created but not yet promoted or in use.',
+} as const;
+
+/** Header tooltips for encryption keys table columns. */
+export const ENCRYPTION_KEYS_TABLE_HEADER_HELP = {
+  STATUS: 'Primary = used for new encryption; Enabled = decryption only; Disabled = retired.',
+  RECORDS: 'Number of records encrypted with this key.',
+  PRIMARY_SINCE: 'Date this key was promoted to primary.',
 } as const;
 
 export const REENCRYPT_BUTTON_HELP =
