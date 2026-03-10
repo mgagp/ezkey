@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Search, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
+import { Pagination } from '@/components/data-table/pagination';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,8 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
+import { useDebounce } from '@/hooks/use-debounce';
+import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError } from '@/lib/api-client';
 import { API_KEY_HELP } from '@/lib/help-text';
 import { formatDate } from '@/lib/utils';
@@ -26,7 +29,11 @@ import {
   useCreateApiKey,
   useRevokeApiKey,
 } from '@/generated/admin-api/api-keys/api-keys';
-import type { ApiKeyCreateResponseDto, ApiKeyResponseDto } from '@/generated/admin-api/model';
+import type {
+  ApiKeyCreateResponseDto,
+  ApiKeyResponseDto,
+  PagedModelApiKeyResponseDto,
+} from '@/generated/admin-api/model';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -358,52 +365,23 @@ export function RevokeApiKeyDialog({
   );
 }
 
-// ── Client-side sort helper ──────────────────────────────────────────────────
+// ── Status filter → API param ─────────────────────────────────────────────────
 
-function sortKeys(
-  keys: ApiKeyResponseDto[],
-  sortStr: string,
-): ApiKeyResponseDto[] {
-  if (!sortStr) return keys;
-  const [field = '', dir = 'DESC'] = sortStr.split(',');
-  const mult = dir === 'ASC' ? 1 : -1;
+type StatusFilter = '' | 'active' | 'revoked' | 'expired';
 
-  return [...keys].sort((a, b) => {
-    let cmp = 0;
-    switch (field) {
-      case 'status': {
-        const order: Record<KeyStatus, number> = { active: 0, 'expiring-soon': 1, inactive: 2, expired: 3, revoked: 4 };
-        cmp = order[getKeyStatus(a)] - order[getKeyStatus(b)];
-        break;
-      }
-      case 'createdAt': {
-        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        cmp = ta - tb;
-        break;
-      }
-      case 'expiresAt': {
-        const ta = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
-        const tb = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
-        cmp = ta - tb;
-        break;
-      }
-      case 'lastUsedAt': {
-        const ta = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
-        const tb = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
-        cmp = ta - tb;
-        break;
-      }
-      default:
-        return 0;
-    }
-    return cmp * mult;
-  });
+function statusFilterToActive(value: StatusFilter): boolean | undefined {
+  if (value === '') return undefined;
+  if (value === 'active') return true;
+  return false; // revoked | expired → inactive
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type StatusFilter = '' | 'active' | 'revoked' | 'expired';
+type BaseParams = {
+  integrationId?: number;
+  active?: boolean;
+  description?: string;
+};
 
 export default function ApiKeysPage() {
   const navigate = useNavigate();
@@ -411,56 +389,54 @@ export default function ApiKeysPage() {
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyResponseDto | null>(null);
   const [integrationFilter, setIntegrationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
-  const [sort, setSort] = useState('status,ASC');
+  const [descriptionInput, setDescriptionInput] = useState('');
+  const debouncedDescription = useDebounce(descriptionInput, 300);
 
   const { list: integrations, lookup } = useIntegrations();
 
-  // API returns List<ApiKeyResponseDto> (not paginated) — use plain useQuery
-  const { data: apiKeysRaw, isLoading, refetch } = useQuery({
-    queryKey: ['api-keys', integrationFilter],
-    queryFn: async () => {
-      const res = integrationFilter
-        ? await listApiKeys(Number(integrationFilter))
-        : await listAllApiKeys();
-      return res as unknown as ApiKeyResponseDto[];
+  const baseParams: BaseParams = {
+    integrationId: integrationFilter ? Number(integrationFilter) : undefined,
+    active: statusFilterToActive(statusFilter),
+    description: debouncedDescription || undefined,
+  };
+
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
+    ApiKeyResponseDto,
+    BaseParams
+  >({
+    queryKey: ['api-keys', integrationFilter, statusFilter, debouncedDescription],
+    baseParams,
+    fetchPage: (params) => {
+      if (integrationFilter) {
+        return listApiKeys(Number(integrationFilter), {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          active: params.active,
+        }) as Promise<PagedModelApiKeyResponseDto>;
+      }
+      return listAllApiKeys({
+        ...params,
+        integrationId: params.integrationId,
+        active: params.active,
+        description: params.description,
+      }) as Promise<PagedModelApiKeyResponseDto>;
     },
-    staleTime: 30_000,
+    defaultSort: 'createdAt,DESC',
   });
-  const apiKeys = apiKeysRaw ?? [];
-
-  // Client-side status filter + sort
-  const filteredKeys = useMemo(() => {
-    let result = apiKeys;
-    if (statusFilter) {
-      result = result.filter((k) => {
-        const s = getKeyStatus(k);
-        switch (statusFilter) {
-          case 'active': return s === 'active' || s === 'expiring-soon';
-          case 'revoked': return s === 'revoked';
-          case 'expired': return s === 'expired';
-          default: return true;
-        }
-      });
-    }
-    return sortKeys(result, sort);
-  }, [apiKeys, statusFilter, sort]);
-
-  // Status breakdown counts
-  const counts = useMemo(() => {
-    let active = 0, expired = 0, revoked = 0;
-    for (const k of apiKeys) {
-      const s = getKeyStatus(k);
-      if (s === 'active' || s === 'expiring-soon') active++;
-      else if (s === 'expired') expired++;
-      else if (s === 'revoked') revoked++;
-    }
-    return { total: apiKeys.length, active, expired, revoked };
-  }, [apiKeys]);
 
   const columns: ColumnDef<ApiKeyResponseDto>[] = [
     {
+      header: 'ID',
+      key: 'apiKeyId',
+      className: 'w-14',
+      sortKey: 'apiKeyId',
+      render: (r) => <span className="font-mono text-xs">{r.apiKeyId}</span>,
+    },
+    {
       header: 'Integration',
       key: 'integrationId',
+      sortKey: 'integrationKey',
       render: (r) => (
         <span className="text-xs font-medium">{lookup.get(r.integrationId!) ?? `#${r.integrationId ?? '?'}`}</span>
       ),
@@ -468,14 +444,15 @@ export default function ApiKeysPage() {
     {
       header: 'Description',
       key: 'description',
+      sortKey: 'description',
       render: (r) => (
         <span className="text-xs text-fg-muted">{r.description ?? '—'}</span>
       ),
     },
     {
       header: 'Status',
-      key: 'status',
-      sortKey: 'status',
+      key: 'active',
+      sortKey: 'active',
       render: (r) => <KeyStatusBadge apiKey={r} />,
     },
     {
@@ -527,6 +504,15 @@ export default function ApiKeysPage() {
       <div className="space-y-4">
         {/* Toolbar */}
         <div className="flex gap-3 items-center flex-wrap">
+          <div className="flex-1 min-w-52 relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
+            <Input
+              placeholder="Search by description..."
+              value={descriptionInput}
+              onChange={(e) => setDescriptionInput(e.target.value)}
+              className="pl-8"
+            />
+          </div>
           <div className="w-44">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
               <option value="">All Integrations</option>
@@ -563,22 +549,25 @@ export default function ApiKeysPage() {
         <div>
           <DataTable
             columns={columns}
-            data={filteredKeys}
+            data={data}
             isLoading={isLoading}
             keyExtractor={(r, i) => r.apiKeyId ?? i}
             emptyMessage="No API keys found. Create your first key to enable M2M access."
             onRowClick={(row) => navigate(`/api-keys/${row.apiKeyId}`)}
-            currentSort={sort}
-            onSort={setSort}
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
           />
-          {!isLoading && apiKeys.length > 0 && (
-            <p className="text-xs text-fg-muted px-3 py-2 border-t border-fg/10">
-              {counts.total} key{counts.total !== 1 ? 's' : ''}
-              {' · '}{counts.active} active
-              {counts.expired > 0 && <> · {counts.expired} expired</>}
-              {counts.revoked > 0 && <> · {counts.revoked} revoked</>}
-            </p>
-          )}
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalElements={pagination.totalElements}
+            isFirst={pagination.isFirst}
+            isLast={pagination.isLast}
+            onPrevPage={pagination.prevPage}
+            onNextPage={pagination.nextPage}
+            pageSize={pagination.size}
+            onPageSizeChange={pagination.setPageSize}
+          />
         </div>
       </div>
 
