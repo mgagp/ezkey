@@ -18,16 +18,20 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test(\"Response is an array\", function () {",
+              "pm.test(\"Response has content and page\", function () {",
               "    var jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData).to.have.property('page');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData.page).to.have.property('totalElements');",
+              "    pm.expect(jsonData.page).to.have.property('totalPages');",
               "});",
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    if (jsonData.length > 0) {",
-              "        pm.environment.set(\"encryptionKeyId\", jsonData[0].keyId);",
-              "        var primaryKey = jsonData.find(k => k.keyStatus === 'PRIMARY');",
+              "    if (jsonData.content && jsonData.content.length > 0) {",
+              "        pm.environment.set(\"encryptionKeyId\", jsonData.content[0].keyId);",
+              "        var primaryKey = jsonData.content.find(k => k.keyStatus === 'PRIMARY');",
               "        if (primaryKey) {",
               "            pm.environment.set(\"primaryKeyId\", primaryKey.keyId);",
               "        }",
@@ -43,7 +47,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/encryption-keys",
+          "raw": "{{base_url_admin_api}}/api/v1/encryption-keys?page=0&size=20&sort=introducedAt,desc",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -51,9 +55,32 @@
             "api",
             "v1",
             "encryption-keys"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Zero-based page index"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size"
+            },
+            {
+              "key": "sort",
+              "value": "introducedAt,desc",
+              "description": "Sort (e.g. keyId,asc, keyStatus,desc)"
+            },
+            {
+              "key": "keyStatus",
+              "value": "",
+              "description": "Optional filter: PRIMARY, ENABLED, DISABLED, PENDING",
+              "disabled": true
+            }
           ]
         },
-        "description": "Returns all encryption keys in the system with their status, algorithm, and usage statistics."
+        "description": "Returns encryption keys with server-side pagination. Response has content (array of key objects) and page (size, number, totalElements, totalPages). Optional query param keyStatus filters by status."
       },
       "response": []
     },

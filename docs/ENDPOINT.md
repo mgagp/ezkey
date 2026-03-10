@@ -1478,12 +1478,26 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 
 ### Encryption Key Endpoints
 
-**GET    /api/v1/encryption-keys**                    // List all encryption keys
+**GET    /api/v1/encryption-keys**                    // List encryption keys (paginated)
 **GET    /api/v1/encryption-keys/primary**           // Get current primary key
 **GET    /api/v1/encryption-keys/{keyId}**           // Get key details
 **POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation
 **GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
+
+#### List encryption keys
+
+**GET /api/v1/encryption-keys**
+
+Lists encryption keys with server-side pagination and optional filter by status.
+
+**Query parameters:**
+- `page` (optional, default 0): Zero-based page index.
+- `size` (optional, default 20): Page size.
+- `sort` (optional, default `introducedAt,DESC`): Sort property and direction (e.g. `keyId,asc`, `keyStatus,desc`, `introducedAt`, `recordsEncrypted`, `createdBy`, `createdAt`).
+- `keyStatus` (optional): Filter by key status. Values: `PRIMARY`, `ENABLED`, `DISABLED`, `PENDING`. Omit for all keys.
+
+**Response (200 OK):** Paginated. Body has `content` (array of encryption key objects) and `page` (object with `size`, `number`, `totalElements`, `totalPages`).
 
 ### Re-encryption Trigger Endpoints
 

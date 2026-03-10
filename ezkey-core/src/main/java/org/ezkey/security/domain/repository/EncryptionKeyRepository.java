@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -45,7 +46,8 @@ import org.springframework.stereotype.Repository;
  * @see EncryptionKey
  */
 @Repository
-public interface EncryptionKeyRepository extends JpaRepository<EncryptionKey, Long> {
+public interface EncryptionKeyRepository
+    extends JpaRepository<EncryptionKey, Long>, JpaSpecificationExecutor<EncryptionKey> {
 
   /**
    * Find encryption keys by status.

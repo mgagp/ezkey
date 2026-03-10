@@ -3107,19 +3107,66 @@
         "tags": [
           "Encryption Keys"
         ],
-        "summary": "List all encryption keys",
-        "description": "Returns all encryption keys in the system",
+        "summary": "List encryption keys",
+        "description": "Returns encryption keys with pagination and optional keyStatus filter. Use page, size, sort for pagination. Optional keyStatus: PRIMARY, ENABLED, DISABLED, PENDING. Sortable: keyId, keyStatus, algorithm, introducedAt, promotedPrimaryAt, disabledAt, recordsEncrypted, recordsReencrypted, createdBy, createdAt.",
         "operationId": "listKeys",
+        "parameters": [
+          {
+            "name": "keyStatus",
+            "in": "query",
+            "description": "Filter by key status (PRIMARY, ENABLED, DISABLED, PENDING); omit for all",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "introducedAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Keys retrieved successfully",
+            "description": "Paginated list of keys (content + page)",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EncryptionKeyResponse"
-                  }
+                  "$ref": "#/components/schemas/PagedModelEncryptionKeyResponse"
                 }
               }
             }
@@ -3129,10 +3176,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EncryptionKeyResponse"
-                  }
+                  "$ref": "#/components/schemas/PagedModelEncryptionKeyResponse"
                 }
               }
             }
@@ -5951,6 +5995,20 @@
           },
           "notes": {
             "type": "string"
+          }
+        }
+      },
+      "PagedModelEncryptionKeyResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EncryptionKeyResponse"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },

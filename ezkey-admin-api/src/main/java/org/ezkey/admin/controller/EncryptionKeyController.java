@@ -11,11 +11,14 @@
 package org.ezkey.admin.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
@@ -30,11 +33,18 @@ import org.ezkey.audit.util.ClientContext;
 import org.ezkey.security.KeyRotationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
+import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -115,24 +125,50 @@ public class EncryptionKeyController {
   }
 
   /**
-   * List all encryption keys.
+   * List encryption keys with server-side pagination and optional filter by status.
    *
-   * @return list of all encryption keys
+   * @param keyStatus optional filter by key status (PRIMARY, ENABLED, DISABLED, PENDING); omit for
+   *     all
+   * @param pageable page, size, and sort (e.g. sort=introducedAt,DESC)
+   * @return paginated list of encryption keys (content + page metadata)
    */
   @Operation(
-      summary = "List all encryption keys",
-      description = "Returns all encryption keys in the system")
+      summary = "List encryption keys",
+      description =
+          "Returns encryption keys with pagination and optional keyStatus filter. Use page, size,"
+              + " sort for pagination. Optional keyStatus: PRIMARY, ENABLED, DISABLED, PENDING."
+              + " Sortable: keyId, keyStatus, algorithm, introducedAt, promotedPrimaryAt,"
+              + " disabledAt, recordsEncrypted, recordsReencrypted, createdBy, createdAt.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Keys retrieved successfully"),
+    @ApiResponse(responseCode = "200", description = "Paginated list of keys (content + page)"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
-  public ResponseEntity<List<EncryptionKeyResponse>> listKeys() {
-    List<EncryptionKey> keys = keyRepository.findAll();
-    List<EncryptionKeyResponse> responses =
-        keys.stream().map(this::toResponse).collect(Collectors.toList());
-    return ResponseEntity.ok(responses);
+  public ResponseEntity<Page<EncryptionKeyResponse>> listKeys(
+      @Parameter(
+              description =
+                  "Filter by key status (PRIMARY, ENABLED, DISABLED, PENDING); omit for all")
+          @RequestParam(required = false)
+          String keyStatus,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "introducedAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    Specification<EncryptionKey> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          if (keyStatus != null && !keyStatus.isBlank()) {
+            try {
+              KeyStatus status = KeyStatus.valueOf(keyStatus.trim().toUpperCase());
+              predicates.add(cb.equal(root.get("keyStatus"), status));
+            } catch (IllegalArgumentException ignored) {
+              // Invalid enum value: ignore filter and return all keys
+            }
+          }
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    Page<EncryptionKeyResponse> page = keyRepository.findAll(spec, pageable).map(this::toResponse);
+    return ResponseEntity.ok(page);
   }
 
   /**

@@ -1,0 +1,22 @@
+---
+description: Maven build and compile workflow to avoid Checkstyle resolution issues
+globs: "**/pom.xml"
+alwaysApply: true
+---
+
+# Maven build — Spotless then compile
+
+To avoid Checkstyle plugin resolution or quality-gate failures when building or testing:
+
+1. **From the project root**, run Spotless first:
+   - `mvn spotless:apply`
+2. **Then** compile or run tests, e.g.:
+   - `mvn compile`
+   - `mvn test -pl 'ezkey-admin-api,!ezkey-tests'` (exclude functional tests)
+   - `mvn clean install`
+
+**Excluding functional tests:** To run the build (and unit tests) without the functional test module, exclude `ezkey-tests`:
+   - `mvn clean install -pl '!ezkey-tests'`
+   - Or with tests skipped: `mvn clean install -DskipTests -pl '!ezkey-tests'`
+
+This order ensures formatting is applied before Checkstyle runs and avoids "artifact descriptor could not be resolved" or similar issues when building a single module (e.g. `-pl ezkey-admin-api`) without a full reactor build.
