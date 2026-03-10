@@ -129,6 +129,10 @@ const columns: ColumnDef<Integration>[] = [
 ];
 ```
 
+### Paginated lists: sort is always server-side
+
+For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` + `listTenants`, `search` integrations, etc.), **sort must be sent to the backend**. The API accepts a `sort` parameter and returns the current page of the **globally** ordered result set. Do **not** implement client-side-only sort (e.g. sorting only the current page in memory): that would reorder just the visible segment and mislead users who assume "sort by name" applies to the full list. Wire `currentSort` and `onSort` from the pagination hook to `DataTable` so that clicking a sortable column triggers a new request with the updated `sort` param. If the backend does not support sort for a given list, do not add a `sortKey` to that column.
+
 Clicking a new column sorts DESC by default; clicking the same column toggles ASC ↔ DESC.
 The active column shows `↑` (ASC) or `↓` (DESC); inactive sortable columns show `⇅`.
 

@@ -92,18 +92,33 @@ export function DataTable<T extends object>({
                 >
                   <span className="inline-flex items-center gap-1.5">
                     {col.headerTooltip ? (
-                      <Tooltip content={col.headerTooltip}><span>{col.header}</span></Tooltip>
+                      <Tooltip content={col.headerTooltip}>
+                        <span className="inline-flex items-center gap-1.5 cursor-help" tabIndex={0}>
+                          {col.header}
+                          {isSortable && (
+                            isActive ? (
+                              activeDir === 'ASC'
+                                ? <ArrowUp className="size-3 opacity-90" />
+                                : <ArrowDown className="size-3 opacity-90" />
+                            ) : (
+                              <ArrowUpDown className="size-3 opacity-40" />
+                            )
+                          )}
+                        </span>
+                      </Tooltip>
                     ) : (
-                      col.header
-                    )}
-                    {isSortable && (
-                      isActive ? (
-                        activeDir === 'ASC'
-                          ? <ArrowUp className="size-3 opacity-90" />
-                          : <ArrowDown className="size-3 opacity-90" />
-                      ) : (
-                        <ArrowUpDown className="size-3 opacity-40" />
-                      )
+                      <>
+                        {col.header}
+                        {isSortable && (
+                          isActive ? (
+                            activeDir === 'ASC'
+                              ? <ArrowUp className="size-3 opacity-90" />
+                              : <ArrowDown className="size-3 opacity-90" />
+                          ) : (
+                            <ArrowUpDown className="size-3 opacity-40" />
+                          )
+                        )}
+                      </>
                     )}
                   </span>
                 </th>
