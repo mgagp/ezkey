@@ -196,14 +196,27 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 
 ## Docker Deployment
 
-```
-docker compose -f docker-compose.admin-ui.yml up --build
+Use **start.sh** to build and run the Admin UI in Docker:
+
+```bash
+./start.sh                    # Test/QA build (demo mode on), http://localhost:3080
+./start.sh -production        # Production build (no demo), same port
+./start.sh -p 3090            # Custom host port (e.g. avoid conflict with Grafana on 3000)
+./start.sh -d                 # Detached
+./start.sh --no-cache         # Force full rebuild
 ```
 
-- Served by **Caddy** on port 8080 inside the container, exposed as **3000** on the host
-- `VITE_API_BASE_URL` is **empty** in `.env.production` → all `/api/*` calls are relative
-- Caddy reverse-proxies `/api/*` → `host.docker.internal:9080` (Admin API on the Docker host)
-- SPA fallback to `index.html` for all non-API routes (React Router client-side routing)
+- **Build modes:** Default is **Test/QA** (`BUILD_MODE=test`): demo mode enabled (Ctrl+click on sidebar, Fill demo in create forms). Use `-production` for a production build: optimized, no demo code (tree-shaken).
+- **Port:** Default host port is **3080** (avoids common conflicts: 3000 Grafana, 5173 Vite dev, 8080/9090/9100). Override with `-p PORT` or `--port PORT`.
+- Served by **Caddy** on port 8080 inside the container; host port is configurable.
+- `VITE_API_BASE_URL` is **empty** in production/test envs → all `/api/*` calls are relative.
+- Caddy reverse-proxies `/api/*` → `host.docker.internal:9080` (Admin API on the Docker host).
+- SPA fallback to `index.html` for all non-API routes (React Router client-side routing).
+
+**Verification (production build, no demo leakage):**
+
+- **Automated:** After a local `npm run build`, run `./scripts/assert-no-demo-in-build.sh` to grep `dist/` for demo-only strings; use in CI for the production build path.
+- **Visual:** With `./start.sh -production`, open the UI and confirm: no "Demo" badge in header, no "Fill demo" in create dialogs, no Ctrl+click behavior on the sidebar brand.
 
 ## Developer/Demo mode
 
