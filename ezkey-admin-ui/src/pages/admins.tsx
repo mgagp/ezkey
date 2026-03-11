@@ -413,10 +413,30 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
   const adminSchema = useMemo(
     () =>
-      adminSchemaBase.refine(
-        (data) => !(callerIsGlobal && !isGlobalType) || (data.tenantId != null && data.tenantId !== ''),
-        { message: 'Select a tenant', path: ['tenantId'] },
-      ),
+      adminSchemaBase
+        .refine(
+          (data) => !(callerIsGlobal && !isGlobalType) || (data.tenantId != null && data.tenantId !== ''),
+          { message: 'Select a tenant', path: ['tenantId'] },
+        )
+        .refine(
+          (data) => !isGlobalType || (typeof data.email === 'string' && data.email.trim().length > 0),
+          { message: 'Email is required for global administrator creation', path: ['email'] },
+        )
+        .refine(
+          (data) => !isGlobalType || (typeof data.firstName === 'string' && data.firstName.trim().length > 0),
+          { message: 'First name is required for global administrator creation', path: ['firstName'] },
+        )
+        .refine(
+          (data) => !isGlobalType || (typeof data.lastName === 'string' && data.lastName.trim().length > 0),
+          { message: 'Last name is required for global administrator creation', path: ['lastName'] },
+        )
+        .refine(
+          (data) =>
+            !isGlobalType ||
+            !(typeof data.email === 'string' && data.email.trim().length > 0) ||
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()),
+          { message: 'Invalid email', path: ['email'] },
+        ),
     [callerIsGlobal, isGlobalType],
   );
   type AdminFormValues = z.infer<typeof adminSchema>;
@@ -638,16 +658,18 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="adm-fname">First Name</Label>
+              <Label htmlFor="adm-fname">First Name{isGlobalType ? ' *' : ''}</Label>
               <Input id="adm-fname" placeholder="Marie" error={errors.firstName?.message} {...register('firstName')} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="adm-lname">Last Name</Label>
+              <Label htmlFor="adm-lname">Last Name{isGlobalType ? ' *' : ''}</Label>
               <Input id="adm-lname" placeholder="Dupont" error={errors.lastName?.message} {...register('lastName')} />
             </div>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="adm-email">Email <span className="text-fg-muted font-normal">(optional)</span></Label>
+            <Label htmlFor="adm-email">
+              Email {isGlobalType ? '*' : <span className="text-fg-muted font-normal">(optional)</span>}
+            </Label>
             <Input id="adm-email" type="email" placeholder="marie@garageducoin.com" error={errors.email?.message} {...register('email')} />
           </div>
 
