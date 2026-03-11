@@ -33,7 +33,7 @@ integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instance
 
 ### Verification
 
-`GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation.
+`GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request.
 
 ### Instance Tracking
 
@@ -202,6 +202,8 @@ Each checkpoint's `chain_hmac` transitively depends on **every previous checkpoi
 2. **Verify chain linkage** -- `prev_chain_hmac` must match the previous checkpoint's `chain_hmac`
 3. **Recompute `chain_hmac`** -- detects direct checkpoint tampering
 
+**Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request.
+
 ### Configuration Reference
 
 ```properties
@@ -233,7 +235,7 @@ ezkey.audit.chain.cron=0 */5 * * * ?
 
 **Chain checkpoints search** (`GET /api/v1/audit-logs/chain-checkpoints`): Paginated search with optional filters: `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601). Default sort: `windowStart,asc`. Use this to discover checkpoints for SEAL range selection (e.g. `checkpointIdFrom` / `checkpointIdTo`) and Declare Gap (anchor checkpoint).
 
-Both verification endpoints accept optional `from` and `to` query parameters (ISO-8601 `OffsetDateTime`). Omitting them verifies all entries/checkpoints.
+Both verification endpoints **require** `from` and `to` query parameters (ISO-8601). Omitting either returns 400 Bad Request with a message that a date range is required.
 
 ---
 

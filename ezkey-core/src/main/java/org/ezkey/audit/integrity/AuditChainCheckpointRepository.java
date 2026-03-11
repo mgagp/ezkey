@@ -127,4 +127,19 @@ public interface AuditChainCheckpointRepository
       "SELECT c FROM AuditChainCheckpoint c "
           + "WHERE c.windowStart > :after ORDER BY c.windowStart ASC LIMIT 1")
   Optional<AuditChainCheckpoint> findFirstAfter(@Param("after") OffsetDateTime after);
+
+  /**
+   * Finds all checkpoints whose window_start is at or after the given boundary, ordered ascending.
+   *
+   * <p>Used by gap declaration to re-chain checkpoints that already exist after the gap (created by
+   * the scheduler before the gap was declared). Their prev_chain_hmac must be updated to link to
+   * the new GAP_DECLARATION checkpoint and each other.
+   *
+   * @param from start boundary (inclusive)
+   * @return list of checkpoints in chronological order
+   */
+  @Query(
+      "SELECT c FROM AuditChainCheckpoint c "
+          + "WHERE c.windowStart >= :from ORDER BY c.windowStart ASC")
+  List<AuditChainCheckpoint> findAllWithWindowStartAtOrAfter(@Param("from") OffsetDateTime from);
 }

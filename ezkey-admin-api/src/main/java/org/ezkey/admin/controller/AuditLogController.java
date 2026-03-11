@@ -348,6 +348,9 @@ public class AuditLogController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Integrity check completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Date range required — provide from and to as ISO-8601"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -361,6 +364,11 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
+    if (from == null || to == null) {
+      throw new IllegalArgumentException(
+          "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
+              + " ISO-8601.");
+    }
     AuditIntegrityService.IntegrityReport report = auditIntegrityService.verifyRange(from, to);
     return ResponseEntity.ok(report);
   }
@@ -430,6 +438,9 @@ public class AuditLogController {
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Chain verification completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Date range required — provide from and to as ISO-8601"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -443,6 +454,11 @@ public class AuditLogController {
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           OffsetDateTime to) {
 
+    if (from == null || to == null) {
+      throw new IllegalArgumentException(
+          "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
+              + " ISO-8601.");
+    }
     AuditChainVerificationService.ChainVerificationReport report =
         auditChainVerificationService.verifyChain(from, to);
     return ResponseEntity.ok(report);

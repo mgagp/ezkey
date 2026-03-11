@@ -12,6 +12,7 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -161,6 +162,31 @@ class AuditLogControllerChainCheckpointsTest {
             WINDOW_START.minusDays(1),
             WINDOW_END.plusDays(1),
             pageable);
+  }
+
+  @Test
+  @DisplayName("checkIntegrity without from and to throws IllegalArgumentException (400)")
+  void checkIntegrity_withoutDateRange_throwsIllegalArgumentException() {
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> controller.checkIntegrity(null, null));
+    assertNotNull(ex.getMessage());
+    assertEquals(
+        "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
+            + " ISO-8601.",
+        ex.getMessage());
+  }
+
+  @Test
+  @DisplayName("checkChainIntegrity without from and to throws IllegalArgumentException (400)")
+  void checkChainIntegrity_withoutDateRange_throwsIllegalArgumentException() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class, () -> controller.checkChainIntegrity(null, null));
+    assertNotNull(ex.getMessage());
+    assertEquals(
+        "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
+            + " ISO-8601.",
+        ex.getMessage());
   }
 
   private static AuditChainCheckpoint createCheckpoint(long id) {

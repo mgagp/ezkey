@@ -40,13 +40,13 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li><b>Per-entry HMAC integrity (full dataset)</b> -- calls {@code GET
- *       /api/v1/audit-logs/integrity-check} with no date filter; every signed entry in the database
- *       is recomputed and compared against its stored HMAC. Any mismatch means the entry was
- *       tampered with after signing.
+ *       /api/v1/audit-logs/integrity-check} with a date range covering all data; every signed entry
+ *       in the database is recomputed and compared against its stored HMAC. Any mismatch means the
+ *       entry was tampered with after signing.
  *   <li><b>Chain checkpoint linkage</b> -- calls {@code GET /api/v1/audit-logs/chain-integrity}
- *       with no date filter; every 5-minute checkpoint window is recomputed and its chain link to
- *       the previous checkpoint is validated. Detects entry insertion, deletion, or reordering
- *       between checkpoints.
+ *       with a date range covering all checkpoints; every 5-minute checkpoint window is recomputed
+ *       and its chain link to the previous checkpoint is validated. Detects entry insertion,
+ *       deletion, or reordering between checkpoints.
  *   <li><b>Single-entry targeted check</b> -- picks the most-recently signed entry from the DB and
  *       verifies it via {@code GET /api/v1/audit-logs/{id}/integrity-check}. Demonstrates the
  *       forensic spot-check capability.
@@ -109,10 +109,14 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
         dbSignedCount,
         dbUnsignedCount);
 
-    // Call the range integrity-check endpoint (no date filter = full dataset)
+    // Call the range integrity-check endpoint with a wide date range (covers full dataset)
+    String from = "2000-01-01T00:00:00Z";
+    String to = "2030-12-31T23:59:59Z";
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
+            .queryParam("from", from)
+            .queryParam("to", to)
             .when()
             .get("/audit-logs/integrity-check")
             .then()
@@ -181,10 +185,14 @@ public class AuditIntegrityElectiveTest extends AbstractSecurityTest {
 
     logger.info("Database snapshot: checkpoints={}", dbCheckpointCount);
 
-    // Call the chain-integrity endpoint (no date filter = full chain)
+    // Call the chain-integrity endpoint with a wide date range (covers full chain)
+    String from = "2000-01-01T00:00:00Z";
+    String to = "2030-12-31T23:59:59Z";
     Response response =
         given()
             .header("Authorization", "Bearer " + adminToken)
+            .queryParam("from", from)
+            .queryParam("to", to)
             .when()
             .get("/audit-logs/chain-integrity")
             .then()

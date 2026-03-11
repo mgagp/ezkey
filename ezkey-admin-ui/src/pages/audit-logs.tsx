@@ -516,15 +516,34 @@ function IntegrityPanel() {
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Verification</h3>
 
-            {/* Date range filter (shared presets, no Last 24h) */}
-            <DateRangeFilter value={checkRange} onChange={setCheckRange} presetWidth="w-44" />
+            {/* Date range filter (range required for verification) */}
+            <DateRangeFilter
+              value={checkRange}
+              onChange={setCheckRange}
+              presetWidth="w-44"
+              emptyOptionLabel="Select a range"
+            />
 
             <div className="flex gap-3">
-              <Button size="sm" variant="secondary" onClick={runChainCheck} disabled={chainLoading} className="gap-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={runChainCheck}
+                disabled={chainLoading || !checkRange.from || !checkRange.to}
+                className="gap-1.5"
+                title={!checkRange.from || !checkRange.to ? 'Select a date range to run verification' : undefined}
+              >
                 <ShieldCheck className="size-3.5" />
                 {chainLoading ? 'Checking…' : 'Chain Integrity'}
               </Button>
-              <Button size="sm" variant="secondary" onClick={runIntegrityCheck} disabled={integrityLoading} className="gap-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={runIntegrityCheck}
+                disabled={integrityLoading || !checkRange.from || !checkRange.to}
+                className="gap-1.5"
+                title={!checkRange.from || !checkRange.to ? 'Select a date range to run verification' : undefined}
+              >
                 <ShieldCheck className="size-3.5" />
                 {integrityLoading ? 'Checking…' : 'Entry Integrity'}
               </Button>

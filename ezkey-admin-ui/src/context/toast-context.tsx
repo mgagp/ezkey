@@ -29,15 +29,22 @@ export function useToast() {
 
 // ── Toast item ────────────────────────────────────────────────────────────────
 
+const TOAST_DURATION_MS: Record<ToastVariant, number> = {
+  success: 4000,
+  error: 6000,
+  info: 4000,
+};
+
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => onRemove(toast.id), 4000);
+    const duration = TOAST_DURATION_MS[toast.variant];
+    timerRef.current = setTimeout(() => onRemove(toast.id), duration);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [toast.id, onRemove]);
+  }, [toast.id, toast.variant, onRemove]);
 
   const Icon =
     toast.variant === 'success' ? CheckCircle :
@@ -46,7 +53,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 
   const styles: Record<ToastVariant, string> = {
     success: 'border-success bg-success/10 text-fg',
-    error:   'border-error   bg-error/10   text-fg',
+    error:   'border-error   bg-error/40   text-fg',
     info:    'border-accent  bg-accent/10  text-fg',
   };
 

@@ -402,6 +402,32 @@ public class AuditLifecycleService {
     gapCheckpoint.setNotes(request.justification());
     checkpointRepository.save(gapCheckpoint);
 
+    // Re-chain any checkpoints that already exist after the gap (scheduler created them before
+    // declaration). Their prev_chain_hmac currently points to the anchor; update to the gap's
+    // chain_hmac and recompute each chain_hmac so verification passes.
+    List<AuditChainCheckpoint> afterGap =
+        checkpointRepository.findAllWithWindowStartAtOrAfter(gapEnd);
+    String previousChainHmac = gapCheckpoint.getChainHmac();
+    for (AuditChainCheckpoint cp : afterGap) {
+      cp.setPrevChainHmac(previousChainHmac);
+      String rechainInput =
+          cp.getEntriesDigest()
+              + FIELD_SEPARATOR
+              + (previousChainHmac != null ? previousChainHmac : GENESIS_MARKER);
+      String newChainHmac = auditHmacService.computeHmac(rechainInput);
+      cp.setChainHmac(newChainHmac);
+      checkpointRepository.save(cp);
+      previousChainHmac = newChainHmac;
+    }
+    if (!afterGap.isEmpty()) {
+      logger.info(
+          "Re-chained {} checkpoint(s) after gap [{} to {}) to link from GAP_DECLARATION id={}",
+          afterGap.size(),
+          gapStart,
+          gapEnd,
+          gapCheckpoint.getCheckpointId());
+    }
+
     logger.info(
         "Created GAP_DECLARATION checkpoint id={} for period [{} to {}). Chain HMAC: {}",
         gapCheckpoint.getCheckpointId(),

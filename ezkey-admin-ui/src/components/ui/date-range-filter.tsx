@@ -20,6 +20,8 @@ interface DateRangeFilterProps {
   presetWidth?: string;
   /** Show "Clear" link when range is set (default true). */
   showClear?: boolean;
+  /** Label for the empty preset option (value ''). Default "Full range". Use e.g. "Select a range" when range is required. */
+  emptyOptionLabel?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export function DateRangeFilter({
   className = '',
   presetWidth = 'w-44',
   showClear = true,
+  emptyOptionLabel = 'Full range',
 }: DateRangeFilterProps) {
   const hasRange = Boolean(value.from || value.to);
 
@@ -77,7 +80,7 @@ export function DateRangeFilter({
         >
           {DATE_RANGE_PRESET_OPTIONS.map((opt) => (
             <option key={opt.value || 'full'} value={opt.value}>
-              {opt.label}
+              {opt.value === '' ? emptyOptionLabel : opt.label}
             </option>
           ))}
         </Select>
