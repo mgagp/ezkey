@@ -31,6 +31,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * ezkey.rate-limit.pending.window-minutes=1
  * ezkey.rate-limit.verify.requests=5
  * ezkey.rate-limit.verify.window-minutes=5
+ * ezkey.rate-limit.respond.requests=1
+ * ezkey.rate-limit.respond.window-minutes=5
  * </pre>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -67,6 +69,21 @@ public class RateLimitProperties {
    */
   private EndpointConfig bind = new EndpointConfig();
 
+  /**
+   * Rate limiting configuration for auth attempt respond endpoint. Controls how many respond
+   * requests are allowed per auth attempt (per authAttemptId) within the time window. Default: 1
+   * request per 5 minutes, key strategy auth-attempt-id.
+   */
+  private EndpointConfig respond = defaultRespondConfig();
+
+  private static EndpointConfig defaultRespondConfig() {
+    EndpointConfig config = new EndpointConfig();
+    config.setRequests(1);
+    config.setWindowMinutes(5);
+    config.setKeyStrategy("auth-attempt-id");
+    return config;
+  }
+
   /** Configuration for a specific endpoint's rate limiting behavior. */
   public static class EndpointConfig {
 
@@ -77,8 +94,8 @@ public class RateLimitProperties {
     private int windowMinutes = 1;
 
     /**
-     * Strategy for identifying clients for rate limiting. Options: "client-ip" or "enrollment-id"
-     * Default: "client-ip"
+     * Strategy for identifying clients for rate limiting. Options: "client-ip", "enrollment-id", or
+     * "auth-attempt-id" (respond endpoint only). Default: "client-ip"
      */
     private String keyStrategy = "client-ip";
 
@@ -139,5 +156,13 @@ public class RateLimitProperties {
 
   public void setBind(EndpointConfig bind) {
     this.bind = bind;
+  }
+
+  public EndpointConfig getRespond() {
+    return respond;
+  }
+
+  public void setRespond(EndpointConfig respond) {
+    this.respond = respond;
   }
 }

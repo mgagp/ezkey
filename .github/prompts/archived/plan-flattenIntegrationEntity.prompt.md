@@ -1,5 +1,7 @@
 # Plan: Flatten Integration Entity — Remove Logo & I18N
 
+> **STATUS: ✅ COMPLETED** — All 4 phases implemented and verified. Archived on 2026-03-12.
+
 Les deux changements partagent le même vecteur (simplification du modèle `Integration`) et peuvent être livrés en deux phases atomiques et validables indépendamment. Phase 1 est un échauffement à faible risque; Phase 2 est le vrai sujet.
 
 **Philosophie** : Mode full development. On brise les contrats (mobile, tenant UI) et on fait le modèle plat comme il aurait dû être dès le départ. Pas de pédaler en mode compatibilité. L'utilisateur fera les phases complémentaires de révision pour le TUI, le tenant UI et l'app mobile native. Clean start = base de référence unique ; si quelque chose casse, on arrange.

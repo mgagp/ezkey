@@ -149,6 +149,8 @@ Content-Type: application/json
 **POST /api/v1/auth-attempts/respond**
 
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
+- **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
+- **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
 
 **Request**
 ```http
@@ -164,7 +166,8 @@ Content-Type: application/json
 ```
 
 **Response**
-- 200 OK + validation result
+- **200 OK** + validation result
+- **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); response includes a `Retry-After` header (seconds).
 ```json
 {
   "result": "APPROVED",

@@ -78,6 +78,10 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   The `findAndLockUnreadById` native query enforces this with `SELECT FOR NO KEY UPDATE`.
 - Device public keys are uniqueness-checked by SHA-256 hash (`Enrollment.devicePublicKeyHash`)
   to prevent replay attacks across enrollments.
+- **Respond endpoint**: One failed validation (invalid signature, wrong challenge, or missing device
+  key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
+  retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`
+  is per `authAttemptId` (from request body), default 1 request per 5 minutes.
 - The `EnrollmentController.resolveTenantId()` method navigates `Enrollment → Integration → Tenant`
   chain for audit context. It uses standard `findById()` (read-only chain, no i18n access) —
   this is safe because it does not access any cascade-tracked collection.

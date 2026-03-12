@@ -12,6 +12,8 @@
 
 package org.ezkey.auth.config;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
@@ -41,14 +43,18 @@ import org.springframework.http.HttpStatus;
  *
  * <ul>
  *   <li>POST /api/v1/auth-attempts/pending
+ *   <li>POST /api/v1/auth-attempts/respond
  *   <li>POST /api/v1/enrollments/verify
+ *   <li>POST /api/v1/enrollments/bind
  * </ul>
  *
  * <p><b>Rate Limiting Strategy:</b>
  *
  * <ul>
  *   <li>Pending: By enrollment ID or client IP (configurable)
+ *   <li>Respond: By authAttemptId from request body (configurable), fallback to client IP
  *   <li>Verify: By client IP only
+ *   <li>Bind: By client IP only
  * </ul>
  *
  * <p><b>Response Behavior:</b>
@@ -72,15 +78,20 @@ public class RateLimitFilter implements Filter {
 
   private final RateLimitProperties properties;
 
+  private final ObjectMapper objectMapper;
+
   private final Cache<String, Bucket> bucketCache;
 
   /**
-   * Constructs the rate limiting filter with configuration properties.
+   * Constructs the rate limiting filter with configuration properties and ObjectMapper for parsing
+   * respond request body.
    *
    * @param properties the rate limiting configuration properties
+   * @param objectMapper the Jackson ObjectMapper for extracting authAttemptId from respond body
    */
-  public RateLimitFilter(RateLimitProperties properties) {
+  public RateLimitFilter(RateLimitProperties properties, ObjectMapper objectMapper) {
     this.properties = properties;
+    this.objectMapper = objectMapper;
 
     // Cache buckets for 1 hour with maximum 1000 entries
     this.bucketCache =
@@ -97,6 +108,14 @@ public class RateLimitFilter implements Filter {
     String requestUri = req.getRequestURI();
     String requestMethod = req.getMethod();
 
+    // For respond endpoint, wrap request so body can be read for authAttemptId and re-read by
+    // controller
+    if ("POST".equals(requestMethod)
+        && requestUri != null
+        && requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
+      req = new CachedBodyHttpServletRequestWrapper(req);
+    }
+
     // Apply rate limiting only to targeted endpoints
     if (shouldApplyRateLimit(requestUri, requestMethod)) {
       RateLimitResult result = checkRateLimit(requestUri, requestMethod, req);
@@ -108,7 +127,7 @@ public class RateLimitFilter implements Filter {
       }
     }
 
-    chain.doFilter(request, response);
+    chain.doFilter(req, response);
   }
 
   /**
@@ -136,6 +155,11 @@ public class RateLimitFilter implements Filter {
 
     // Check for bind endpoint
     if (requestUri.contains(EnrollmentController.FULL_PATH_BIND)) {
+      return true;
+    }
+
+    // Check for respond endpoint
+    if (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
       return true;
     }
 
@@ -181,8 +205,56 @@ public class RateLimitFilter implements Filter {
       }
     }
 
+    // For respond endpoint, use authAttemptId from body if configured
+    if (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
+      if ("auth-attempt-id".equals(properties.getRespond().getKeyStrategy())) {
+        Integer authAttemptId = extractAuthAttemptIdFromBody(request);
+        if (authAttemptId != null) {
+          return "respond:" + authAttemptId;
+        }
+        // Fallback to client IP if body missing, invalid, or authAttemptId null
+      }
+    }
+
     // Default: use client IP
     return getClientIP(request);
+  }
+
+  /**
+   * Extracts authAttemptId from the request body when it is a CachedBodyHttpServletRequestWrapper.
+   * Returns null if the request is not wrapped, the body is not valid JSON, or authAttemptId is
+   * missing or not a number.
+   *
+   * @param request the HTTP request (must be wrapped for respond path)
+   * @return the authAttemptId, or null if not available
+   */
+  private Integer extractAuthAttemptIdFromBody(HttpServletRequest request) {
+    if (!(request instanceof CachedBodyHttpServletRequestWrapper)) {
+      return null;
+    }
+    try {
+      byte[] body = ((CachedBodyHttpServletRequestWrapper) request).getContentAsByteArray();
+      if (body == null || body.length == 0) {
+        return null;
+      }
+      JsonNode root = objectMapper.readTree(body);
+      if (root == null || !root.has("authAttemptId")) {
+        return null;
+      }
+      JsonNode idNode = root.get("authAttemptId");
+      if (idNode == null || idNode.isNull()) {
+        return null;
+      }
+      if (idNode.isNumber()) {
+        return idNode.intValue();
+      }
+      if (idNode.isTextual()) {
+        return Integer.parseInt(idNode.asText());
+      }
+      return null;
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   /**
@@ -215,6 +287,8 @@ public class RateLimitFilter implements Filter {
       return properties.getVerify();
     } else if (bucketKey.contains(EnrollmentController.FULL_PATH_BIND)) {
       return properties.getBind();
+    } else if (bucketKey.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
+      return properties.getRespond();
     }
 
     // Default configuration

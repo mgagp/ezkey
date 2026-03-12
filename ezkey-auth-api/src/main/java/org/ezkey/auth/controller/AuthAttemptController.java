@@ -98,6 +98,12 @@ public class AuthAttemptController {
   /** Full rate limiting path for pending authentication requests. */
   public static final String FULL_PATH_PENDING = "/api/v1/auth-attempts" + ENDPOINT_PENDING;
 
+  /** Rate limiting endpoint path for submitting authentication responses. */
+  public static final String ENDPOINT_RESPOND = "/respond";
+
+  /** Full rate limiting path for respond endpoint. */
+  public static final String FULL_PATH_RESPOND = "/api/v1/auth-attempts" + ENDPOINT_RESPOND;
+
   /** Service for managing authentication attempt business logic. */
   private final AuthAttemptService authAttemptService;
 

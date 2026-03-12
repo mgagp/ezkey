@@ -85,13 +85,16 @@ public class RateLimitConfig {
    * Creates the rate limiting filter bean.
    *
    * <p>This filter intercepts HTTP requests and applies rate limiting based on the configured
-   * properties for specific endpoints.
+   * properties for specific endpoints. For the respond endpoint, the filter parses the request body
+   * to extract authAttemptId; ObjectMapper is required for that JSON parsing.
    *
    * @param properties the rate limiting configuration properties
+   * @param objectMapper the Jackson ObjectMapper for parsing respond request body
    * @return configured RateLimitFilter instance
    */
   @Bean
-  public RateLimitFilter rateLimitFilter(RateLimitProperties properties) {
-    return new RateLimitFilter(properties);
+  public RateLimitFilter rateLimitFilter(
+      RateLimitProperties properties, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    return new RateLimitFilter(properties, objectMapper);
   }
 }
