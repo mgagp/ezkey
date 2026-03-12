@@ -28,6 +28,8 @@ export interface PaginationControls {
   isFirst: boolean;
   isLast: boolean;
   goToPage: (page: number) => void;
+  firstPage: () => void;
+  lastPage: () => void;
   nextPage: () => void;
   prevPage: () => void;
   setPageSize: (size: number) => void;
@@ -99,7 +101,15 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     enabled,
   });
 
+  const totalPages = body?.page?.totalPages ?? 0;
+  const currentPageNum = body?.page?.number ?? page;
+
   const goToPage = useCallback((p: number) => setPageState(p), []);
+  const firstPage = useCallback(() => goToPage(0), [goToPage]);
+  const lastPage = useCallback(
+    () => goToPage(Math.max(0, totalPages - 1)),
+    [goToPage, totalPages],
+  );
   const nextPage = useCallback(() => setPageState((prev) => prev + 1), []);
   const prevPage = useCallback(() => setPageState((prev) => Math.max(0, prev - 1)), []);
   const setPageSize = useCallback((s: number) => {
@@ -110,9 +120,6 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     setSortState(s);
     setPageState(0);
   }, []);
-
-  const totalPages = body?.page?.totalPages ?? 0;
-  const currentPageNum = body?.page?.number ?? page;
 
   return {
     data: body?.content ?? [],
@@ -125,6 +132,8 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
       isFirst: currentPageNum === 0,
       isLast: totalPages === 0 || currentPageNum >= totalPages - 1,
       goToPage,
+      firstPage,
+      lastPage,
       nextPage,
       prevPage,
       setPageSize,

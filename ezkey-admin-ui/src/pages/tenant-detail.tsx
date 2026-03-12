@@ -472,6 +472,8 @@ export default function TenantDetailPage() {
                 totalElements={admPagination.totalElements}
                 isFirst={admPagination.isFirst}
                 isLast={admPagination.isLast}
+                onFirstPage={admPagination.firstPage}
+                onLastPage={admPagination.lastPage}
                 onPrevPage={admPagination.prevPage}
                 onNextPage={admPagination.nextPage}
                 pageSize={admPagination.size}

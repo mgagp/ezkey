@@ -788,6 +788,8 @@ function IntegrityPanel() {
                   totalElements={checkpointPagination.totalElements}
                   isFirst={checkpointPagination.isFirst}
                   isLast={checkpointPagination.isLast}
+                  onFirstPage={checkpointPagination.firstPage}
+                  onLastPage={checkpointPagination.lastPage}
                   onPrevPage={checkpointPagination.prevPage}
                   onNextPage={checkpointPagination.nextPage}
                   pageSize={checkpointPagination.size}
@@ -1109,6 +1111,8 @@ export default function AuditLogsPage() {
             totalElements={pagination.totalElements}
             isFirst={pagination.isFirst}
             isLast={pagination.isLast}
+            onFirstPage={pagination.firstPage}
+            onLastPage={pagination.lastPage}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
             pageSize={pagination.size}

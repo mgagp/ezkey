@@ -563,6 +563,8 @@ export default function ApiKeysPage() {
             totalElements={pagination.totalElements}
             isFirst={pagination.isFirst}
             isLast={pagination.isLast}
+            onFirstPage={pagination.firstPage}
+            onLastPage={pagination.lastPage}
             onPrevPage={pagination.prevPage}
             onNextPage={pagination.nextPage}
             pageSize={pagination.size}

@@ -245,6 +245,8 @@ export default function IntegrationDetailPage() {
             totalElements={enrPagination.totalElements}
             isFirst={enrPagination.isFirst}
             isLast={enrPagination.isLast}
+            onFirstPage={enrPagination.firstPage}
+            onLastPage={enrPagination.lastPage}
             onPrevPage={enrPagination.prevPage}
             onNextPage={enrPagination.nextPage}
             pageSize={enrPagination.size}
