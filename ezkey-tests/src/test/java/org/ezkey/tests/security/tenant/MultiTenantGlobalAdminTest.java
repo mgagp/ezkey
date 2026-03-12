@@ -334,7 +334,10 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
   @Order(31)
   @DisplayName("P1: GlobalAdmin can list all tenants")
   void globalAdmin_can_list_all_tenants() {
-    Response response = listTenants();
+    // Scope to this run's tenants via tenantName filter (partial match). Without it, with
+    // page=0&size=100 and sort=tenantId,asc, tenants created in this run (high IDs after
+    // previous runs) would be on later pages and the assertion would fail on re-runs.
+    Response response = listTenants(uniqueSuffix);
     assertThat(response.statusCode()).isEqualTo(200);
 
     // Paginated response: content array + page metadata
@@ -381,17 +384,20 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
         .get("/tenants/" + tenantId);
   }
 
-  private Response listTenants() {
+  private Response listTenants(String tenantNameFilter) {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
-    return given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
-        .queryParam("page", 0)
-        .queryParam("size", 100)
-        .queryParam("sort", "tenantId,asc")
-        .when()
-        .get("/tenants");
+    var request =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .queryParam("page", 0)
+            .queryParam("size", 100)
+            .queryParam("sort", "tenantId,asc");
+    if (tenantNameFilter != null && !tenantNameFilter.isBlank()) {
+      request = request.queryParam("tenantName", tenantNameFilter);
+    }
+    return request.when().get("/tenants");
   }
 
   private Integer createIntegrationForTenant(String integrationName, String tenantAdminToken) {
