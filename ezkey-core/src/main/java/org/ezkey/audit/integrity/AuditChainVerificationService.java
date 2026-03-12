@@ -11,8 +11,10 @@
 package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Reordered entries
  *   <li>Modified entries (entry_hmac changed)
  *   <li>Broken chain links (checkpoint tampering)
+ *   <li>Undeclared temporal gaps (missing checkpoints between consecutive windows)
  * </ul>
  *
  * <p><b>Lifecycle-aware verification:</b> Checkpoints of type {@code ARCHIVE_SEAL} and {@code
@@ -95,14 +98,40 @@ public class AuditChainVerificationService {
   public ChainVerificationReport verifyChain(OffsetDateTime from, OffsetDateTime to) {
     if (!auditHmacService.isActive()) {
       return new ChainVerificationReport(
-          0, 0, 0, 0, 0, List.of(), false, "HMAC signing is not active");
+          0,
+          0,
+          0,
+          0,
+          0,
+          List.of(),
+          List.of(),
+          null,
+          null,
+          null,
+          null,
+          true,
+          false,
+          "HMAC signing is not active");
     }
 
     List<AuditChainCheckpoint> checkpoints = checkpointRepository.findByWindowRange(from, to);
 
     if (checkpoints.isEmpty()) {
       return new ChainVerificationReport(
-          0, 0, 0, 0, 0, List.of(), true, "No checkpoints found in range");
+          0,
+          0,
+          0,
+          0,
+          0,
+          List.of(),
+          List.of(),
+          null,
+          null,
+          null,
+          null,
+          true,
+          true,
+          "No checkpoints found in range");
     }
 
     int validCheckpoints = 0;
@@ -110,6 +139,7 @@ public class AuditChainVerificationService {
     int archivedCheckpoints = 0;
     int gapDeclaredCheckpoints = 0;
     List<String> violations = new ArrayList<>();
+    List<UndeclaredGap> undeclaredGaps = new ArrayList<>();
 
     for (int i = 0; i < checkpoints.size(); i++) {
       AuditChainCheckpoint checkpoint = checkpoints.get(i);
@@ -147,7 +177,8 @@ public class AuditChainVerificationService {
 
       // 2. Verify chain linkage (all checkpoint types)
       if (i > 0) {
-        String expectedPrevHmac = checkpoints.get(i - 1).getChainHmac();
+        AuditChainCheckpoint prev = checkpoints.get(i - 1);
+        String expectedPrevHmac = prev.getChainHmac();
         if (!java.util.Objects.equals(checkpoint.getPrevChainHmac(), expectedPrevHmac)) {
           valid = false;
           violations.add(
@@ -155,6 +186,13 @@ public class AuditChainVerificationService {
                   + checkpoint.getWindowStart()
                   + " (prev_chain_hmac does not match previous checkpoint's chain_hmac)"
                   + (isArchiveSeal ? " [ARCHIVE_SEAL]" : isGapDeclaration ? " [GAP]" : ""));
+        }
+        // 2b. Temporal continuity: detect undeclared gap between consecutive checkpoints
+        OffsetDateTime prevEnd = prev.getWindowEnd();
+        OffsetDateTime currStart = checkpoint.getWindowStart();
+        if (prevEnd.isBefore(currStart)) {
+          long gapMinutes = ChronoUnit.MINUTES.between(prevEnd, currStart);
+          undeclaredGaps.add(new UndeclaredGap(prevEnd, currStart, gapMinutes));
         }
       }
 
@@ -182,17 +220,60 @@ public class AuditChainVerificationService {
       }
     }
 
-    boolean intact = invalidCheckpoints == 0;
-    String status = intact ? "OK" : "CHAIN_INTEGRITY_VIOLATION_DETECTED";
+    OffsetDateTime coverageStart = checkpoints.get(0).getWindowStart();
+    OffsetDateTime coverageEnd = checkpoints.get(checkpoints.size() - 1).getWindowEnd();
+
+    // Boundary coverage: report leading/trailing gaps only when the requested range extends
+    // beyond the system's checkpoint extent. When from is before the first checkpoint in the DB
+    // (or to is after the last), that period is "before/after EZKey time", not a real gap.
+    Optional<AuditChainCheckpoint> earliestOpt = checkpointRepository.findEarliest();
+    Optional<AuditChainCheckpoint> latestOpt = checkpointRepository.findLatest();
+    boolean firstInRangeIsEarliest =
+        earliestOpt.isPresent()
+            && checkpoints.get(0).getWindowStart().equals(earliestOpt.get().getWindowStart());
+    boolean lastInRangeIsLatest =
+        latestOpt.isPresent()
+            && checkpoints
+                .get(checkpoints.size() - 1)
+                .getWindowStart()
+                .equals(latestOpt.get().getWindowStart());
+
+    boolean addLeadingGap = from != null && from.isBefore(coverageStart) && !firstInRangeIsEarliest;
+    boolean addTrailingGap = to != null && coverageEnd.isBefore(to) && !lastInRangeIsLatest;
+
+    if (addLeadingGap) {
+      long leadingGapMinutes = ChronoUnit.MINUTES.between(from, coverageStart);
+      undeclaredGaps.add(new UndeclaredGap(from, coverageStart, leadingGapMinutes));
+    }
+    if (addTrailingGap) {
+      long trailingGapMinutes = ChronoUnit.MINUTES.between(coverageEnd, to);
+      undeclaredGaps.add(new UndeclaredGap(coverageEnd, to, trailingGapMinutes));
+    }
+
+    OffsetDateTime effectiveFrom = addLeadingGap ? from : coverageStart;
+    OffsetDateTime effectiveTo = addTrailingGap ? to : coverageEnd;
+
+    boolean continuousCoverage = undeclaredGaps.isEmpty();
+    boolean cryptographicallyIntact = invalidCheckpoints == 0;
+    boolean intact = cryptographicallyIntact && continuousCoverage;
+    String status;
+    if (!cryptographicallyIntact) {
+      status = "CHAIN_INTEGRITY_VIOLATION_DETECTED";
+    } else if (!continuousCoverage) {
+      status = "UNDECLARED_GAP_DETECTED";
+    } else {
+      status = "OK";
+    }
 
     logger.info(
         "Chain verification completed: total={}, valid={}, invalid={}, archived={}, gaps={}, "
-            + "violations={}, status={}",
+            + "undeclaredGaps={}, violations={}, status={}",
         checkpoints.size(),
         validCheckpoints,
         invalidCheckpoints,
         archivedCheckpoints,
         gapDeclaredCheckpoints,
+        undeclaredGaps.size(),
         violations.size(),
         status);
 
@@ -203,6 +284,12 @@ public class AuditChainVerificationService {
         archivedCheckpoints,
         gapDeclaredCheckpoints,
         violations,
+        undeclaredGaps,
+        coverageStart,
+        coverageEnd,
+        effectiveFrom,
+        effectiveTo,
+        continuousCoverage,
         intact,
         status);
   }
@@ -234,6 +321,15 @@ public class AuditChainVerificationService {
   }
 
   /**
+   * Represents an undeclared temporal gap between two consecutive checkpoints (missing windows).
+   *
+   * @param gapStart end of the previous checkpoint's window (exclusive)
+   * @param gapEnd start of the next checkpoint's window (exclusive)
+   * @param gapMinutes approximate duration of the gap in minutes
+   */
+  public record UndeclaredGap(OffsetDateTime gapStart, OffsetDateTime gapEnd, long gapMinutes) {}
+
+  /**
    * Immutable report of a chain verification run.
    *
    * @param totalCheckpoints total number of checkpoints verified
@@ -242,8 +338,19 @@ public class AuditChainVerificationService {
    * @param archivedCheckpoints ARCHIVE_SEAL checkpoints (entries_digest skipped, chain verified)
    * @param gapDeclaredCheckpoints GAP_DECLARATION checkpoints (downtime gaps, chain verified)
    * @param violations list of human-readable violation descriptions
-   * @param intact true if no violations were found
-   * @param status human-readable status string
+   * @param undeclaredGaps temporal gaps between consecutive checkpoints (no checkpoint coverage)
+   * @param coverageStart window start of the first checkpoint in range (null if none)
+   * @param coverageEnd window end of the last checkpoint in range (null if none)
+   * @param effectiveFrom start of the range used for boundary gap reporting (null if no range or
+   *     early return). When the requested from was before the first checkpoint in the DB, this is
+   *     clamped to coverageStart; otherwise equals the requested from.
+   * @param effectiveTo end of the range used for boundary gap reporting (null if no range or early
+   *     return). When the requested to was after the last checkpoint in the DB, this is clamped to
+   *     coverageEnd; otherwise equals the requested to.
+   * @param continuousCoverage true if no undeclared gaps exist between checkpoints
+   * @param intact true if chain is cryptographically valid and no undeclared gaps
+   * @param status human-readable status string (OK, UNDECLARED_GAP_DETECTED,
+   *     CHAIN_INTEGRITY_VIOLATION_DETECTED)
    */
   public record ChainVerificationReport(
       int totalCheckpoints,
@@ -252,6 +359,12 @@ public class AuditChainVerificationService {
       int archivedCheckpoints,
       int gapDeclaredCheckpoints,
       List<String> violations,
+      List<UndeclaredGap> undeclaredGaps,
+      OffsetDateTime coverageStart,
+      OffsetDateTime coverageEnd,
+      OffsetDateTime effectiveFrom,
+      OffsetDateTime effectiveTo,
+      boolean continuousCoverage,
       boolean intact,
       String status) {}
 }

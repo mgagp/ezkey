@@ -52,6 +52,17 @@ public interface AuditChainCheckpointRepository
   Optional<AuditChainCheckpoint> findLatest();
 
   /**
+   * Finds the earliest checkpoint by window_start ascending.
+   *
+   * <p>Used by the scheduler to clamp the lookback window so that checkpoints are never created
+   * before the first checkpoint ever created (avoids empty "past" windows on bootstrap).
+   *
+   * @return the earliest checkpoint, or empty if no checkpoints exist
+   */
+  @Query("SELECT c FROM AuditChainCheckpoint c ORDER BY c.windowStart ASC LIMIT 1")
+  Optional<AuditChainCheckpoint> findEarliest();
+
+  /**
    * Finds all checkpoints whose window_start falls within a range, ordered ascending.
    *
    * @param from start boundary (inclusive)

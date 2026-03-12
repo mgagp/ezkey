@@ -266,6 +266,16 @@
               "    var jsonData = pm.response.json();",
               "    pm.expect(jsonData.archivedCheckpoints).to.be.a('number').and.to.be.at.least(0);",
               "    pm.expect(jsonData.gapDeclaredCheckpoints).to.be.a('number').and.to.be.at.least(0);",
+              "});",
+              "",
+              "pm.test(\"Response has effectiveFrom/effectiveTo when checkpoints in range\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('effectiveFrom');",
+              "    pm.expect(jsonData).to.have.property('effectiveTo');",
+              "    if (jsonData.coverageStart != null && jsonData.coverageEnd != null) {",
+              "        pm.expect(jsonData.effectiveFrom).to.not.be.undefined;",
+              "        pm.expect(jsonData.effectiveTo).to.not.be.undefined;",
+              "    }",
               "});"
             ],
             "type": "text/javascript",
@@ -291,18 +301,16 @@
             {
               "key": "from",
               "value": "2026-01-01T00:00:00Z",
-              "description": "Start of verification range (inclusive, ISO-8601). Optional -- omit to verify from the beginning.",
-              "disabled": true
+              "description": "Start of verification range (inclusive, ISO-8601). Required."
             },
             {
               "key": "to",
               "value": "2026-12-31T23:59:59Z",
-              "description": "End of verification range (exclusive, ISO-8601). Optional -- omit to verify up to now.",
-              "disabled": true
+              "description": "End of verification range (exclusive, ISO-8601). Required."
             }
           ]
         },
-        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.\n\n**Access:** Global Admin only (system-level security operation).\n\n**What it detects:**\n- Entry insertion (entries added after checkpoint creation)\n- Entry deletion (entries removed after checkpoint creation)\n- Entry reordering\n- Checkpoint tampering (chain_hmac modification)\n\n**Parameters (all optional):**\n- `from`: Start of verification range (inclusive, ISO-8601 format)\n- `to`: End of verification range (exclusive, ISO-8601 format)\n- If both are omitted, verifies ALL checkpoints\n\n**Response (200 OK):**\n```json\n{\n  \"totalCheckpoints\": 288,\n  \"validCheckpoints\": 288,\n  \"invalidCheckpoints\": 0,\n  \"violations\": [],\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalCheckpoints`: Total number of chain checkpoints verified\n- `validCheckpoints`: Checkpoints with valid digest and chain linkage\n- `invalidCheckpoints`: Checkpoints with integrity violations\n- `violations`: Array of human-readable violation descriptions\n- `intact`: `true` if no violations were found\n- `status`: `OK` or `CHAIN_INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Chain verification completed\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage between consecutive checkpoints.\n\n**Access:** Global Admin only (system-level security operation).\n\n**What it detects:**\n- Entry insertion (entries added after checkpoint creation)\n- Entry deletion (entries removed after checkpoint creation)\n- Entry reordering\n- Checkpoint tampering (chain_hmac modification)\n- Undeclared temporal gaps (missing checkpoints between consecutive windows)\n\n**Parameters (required):**\n- `from`: Start of verification range (inclusive, ISO-8601)\n- `to`: End of verification range (exclusive, ISO-8601)\n- Omitting either returns 400 Bad Request\n\n**Range handling:** The requested range may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields `effectiveFrom` and `effectiveTo` indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).\n\n**Response (200 OK):**\n```json\n{\n  \"totalCheckpoints\": 288,\n  \"validCheckpoints\": 288,\n  \"invalidCheckpoints\": 0,\n  \"violations\": [],\n  \"undeclaredGaps\": [],\n  \"coverageStart\": \"2026-03-11T16:40:00Z\",\n  \"coverageEnd\": \"2026-03-11T20:55:00Z\",\n  \"effectiveFrom\": \"2026-03-11T16:40:00Z\",\n  \"effectiveTo\": \"2026-03-11T20:55:00Z\",\n  \"intact\": true,\n  \"status\": \"OK\"\n}\n```\n\n**Response Fields:**\n- `totalCheckpoints`, `validCheckpoints`, `invalidCheckpoints`: Counts\n- `archivedCheckpoints`, `gapDeclaredCheckpoints`: Lifecycle checkpoint counts\n- `violations`: Human-readable integrity violation descriptions\n- `undeclaredGaps`: List of `{ gapStart, gapEnd, gapMinutes }` for temporal gaps\n- `coverageStart`, `coverageEnd`: First/last checkpoint window boundaries in range\n- `effectiveFrom`, `effectiveTo`: Range used for boundary gap reporting (clamped when request extended before first or after last checkpoint)\n- `continuousCoverage`: false if any undeclared gap exists\n- `intact`: true if cryptographically valid and no undeclared gaps\n- `status`: `OK`, `UNDECLARED_GAP_DETECTED`, or `CHAIN_INTEGRITY_VIOLATION_DETECTED`\n\n**Status Codes:**\n- 200: Chain verification completed\n- 400: Date range required (provide from and to)\n- 401: Unauthorized - admin token required\n- 403: Forbidden - Global Admin role required"
       },
       "response": []
     },

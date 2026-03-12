@@ -17,6 +17,30 @@ export function formatDate(dateStr: string): string {
   }).format(new Date(dateStr));
 }
 
+/**
+ * Format an ISO date string in local time with an explicit timezone label (e.g. "11 Mar 2025, 09:00 (EST)").
+ * Use in audit/chain contexts so operators know whether they are looking at local time or UTC when
+ * correlating with DB or logs (DB stores UTC).
+ */
+export function formatDateWithTimezone(dateStr: string): string {
+  const date = new Date(dateStr);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).formatToParts(date);
+  const dateTime = parts
+    .filter((p) => p.type !== 'timeZoneName')
+    .map((p) => p.value)
+    .join('');
+  const tzPart = parts.find((p) => p.type === 'timeZoneName');
+  const tz = tzPart?.value ?? 'UTC';
+  return `${dateTime.trim()} (${tz})`;
+}
+
 /** Format seconds remaining as MM:SS for countdown display. */
 export function formatCountdown(seconds: number): string {
   const mins = Math.floor(seconds / 60);

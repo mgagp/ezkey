@@ -18,7 +18,7 @@ import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { AUDIT_CONTEXT_HELP, CHECKPOINT_TYPE_HELP, HMAC_COLUMN_HELP } from '@/lib/help-text';
 import { queryKeys } from '@/lib/query-keys';
-import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
+import { cn, formatDate, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import {
@@ -163,6 +163,7 @@ function CheckpointTimelineTable({
   onSetSealFrom,
   onSetSealTo,
   onSetAnchor,
+  focusGap,
 }: {
   rows: CheckpointRowItem[];
   isLoading: boolean;
@@ -174,6 +175,8 @@ function CheckpointTimelineTable({
   onSetSealTo: (id: number) => void;
   /** Set checkpoint as Declare Gap anchor (selection only; does not open dialog). */
   onSetAnchor: (id: number) => void;
+  /** When set, highlight checkpoint rows immediately before/after this gap (bordering rows). */
+  focusGap?: { gapStart: string; gapEnd: string } | null;
 }) {
   const [field = '', dir = ''] = currentSort.split(',');
   const handleSort = (sortKey: string) => {
@@ -231,7 +234,7 @@ function CheckpointTimelineTable({
                   <tr key={`gap-${item.gapEnd}-${item.gapStart}`} className="bg-warning/10 border-l-4 border-warning">
                     <td colSpan={cols} className="px-3 py-2 text-sm">
                       <span className="font-bold text-warning">Gap:</span>{' '}
-                      {formatDate(item.gapEnd)} → {formatDate(item.gapStart)}
+                      {formatDateWithTimezone(item.gapEnd)} → {formatDateWithTimezone(item.gapStart)}
                       {item.durationMin > 0 && (
                         <span className="text-fg-muted ml-2">(~{item.durationMin} min)</span>
                       )}
@@ -241,11 +244,33 @@ function CheckpointTimelineTable({
               }
               const r = item.row;
               const nextIsGap = rows[index + 1]?.kind === 'gap';
+              const gapStartMs = focusGap ? new Date(focusGap.gapStart).getTime() : null;
+              const gapEndMs = focusGap ? new Date(focusGap.gapEnd).getTime() : null;
+              const rowEndMs = r.windowEnd ? new Date(r.windowEnd).getTime() : null;
+              const rowStartMs = r.windowStart ? new Date(r.windowStart).getTime() : null;
+              const isAnchor = focusGap && gapStartMs != null && rowEndMs === gapStartMs;
+              const isAfterGap = focusGap && gapEndMs != null && rowStartMs === gapEndMs;
+              const isBorderingGap = isAnchor || isAfterGap;
               return (
-                <tr key={r.checkpointId ?? index} className="border-b border-fg/10 bg-surface even:bg-bg">
-                  <td className="px-3 py-2 font-mono text-xs">{r.checkpointId ?? '—'}</td>
-                  <td className="px-3 py-2 text-xs text-fg-muted">{r.windowStart ? formatDate(r.windowStart) : '—'}</td>
-                  <td className="px-3 py-2 text-xs text-fg-muted">{r.windowEnd ? formatDate(r.windowEnd) : '—'}</td>
+                <tr
+                  key={r.checkpointId ?? index}
+                  className={cn(
+                    'border-b border-fg/10 bg-surface even:bg-bg',
+                    isBorderingGap && '!bg-warning/25 border-2 border-warning shadow-brutal',
+                  )}
+                >
+                  <td className="px-3 py-2 font-mono text-xs">
+                    {isBorderingGap ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-black text-warning">{r.checkpointId ?? '—'}</span>
+                        <Badge variant="warning" className="text-[10px] px-1.5 py-0">{isAnchor ? 'Anchor' : 'After gap'}</Badge>
+                      </span>
+                    ) : (
+                      r.checkpointId ?? '—'
+                    )}
+                  </td>
+                  <td className={cn('px-3 py-2 text-xs', isBorderingGap ? 'text-fg font-semibold' : 'text-fg-muted')}>{r.windowStart ? formatDateWithTimezone(r.windowStart) : '—'}</td>
+                  <td className={cn('px-3 py-2 text-xs', isBorderingGap ? 'text-fg font-semibold' : 'text-fg-muted')}>{r.windowEnd ? formatDateWithTimezone(r.windowEnd) : '—'}</td>
                   <td className="px-3 py-2 font-mono text-xs">{r.entryCount ?? 0}</td>
                   <td className="px-3 py-2">
                     <CheckpointTypeBadge type={r.checkpointType} />
@@ -336,6 +361,9 @@ function IntegrityPanel() {
   const [selectedSealFromId, setSelectedSealFromId] = useState<number | null>(null);
   const [selectedSealToId, setSelectedSealToId] = useState<number | null>(null);
   const [selectedGapAnchorId, setSelectedGapAnchorId] = useState<number | null>(null);
+  /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
+  const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
+  const [gapsListExpanded, setGapsListExpanded] = useState(true);
 
   const checkpointApiParams = useMemo(() => {
     if (!checkpointRange.from || !checkpointRange.to) return {};
@@ -362,7 +390,7 @@ function IntegrityPanel() {
     enabled: timelineExpanded,
   });
 
-  /** Rows to display: checkpoints plus gap rows between consecutive checkpoints where windowEnd < next.windowStart */
+  /** Rows to display: checkpoints plus gap rows only between consecutive checkpoints on the same page (windowEnd < next.windowStart) */
   const checkpointRowsWithGaps = useMemo(() => {
     const sorted = [...checkpointData].sort(
       (a, b) => new Date(a.windowStart ?? 0).getTime() - new Date(b.windowStart ?? 0).getTime(),
@@ -403,9 +431,30 @@ function IntegrityPanel() {
     setGapOpen(true);
   }
 
+  /** Format Date to YYYY-MM-DD for checkpoint range filter. */
+  function toYYYYMMDD(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  /** Focus a gap and navigate timeline to show it: set range around the gap, go to page 0, expand timeline. */
+  function focusGapAndNavigate(g: { gapStart: string; gapEnd: string; gapMinutes: number }) {
+    setFocusedGap(g);
+    const start = new Date(g.gapStart);
+    start.setDate(start.getDate() - 1);
+    const end = new Date(g.gapEnd);
+    end.setDate(end.getDate() + 1);
+    setCheckpointRange({ from: toYYYYMMDD(start), to: toYYYYMMDD(end) });
+    checkpointPagination.goToPage(0);
+    setTimelineExpanded(true);
+  }
+
   async function runChainCheck() {
     setChainLoading(true);
     setChainReport(null);
+    setFocusedGap(null);
     try {
       const params =
         checkRange.from && checkRange.to
@@ -485,8 +534,9 @@ function IntegrityPanel() {
     setGapResult(null);
   }
 
-  function ReportBadge({ intact }: { intact?: boolean }) {
+  function ReportBadge({ intact, status }: { intact?: boolean; status?: string }) {
     if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />Intact</Badge>;
+    if (status === 'UNDECLARED_GAP_DETECTED') return <Badge variant="warning"><AlertTriangle className="size-3 mr-1" />Undeclared gap(s)</Badge>;
     if (intact === false) return <Badge variant="error"><XCircle className="size-3 mr-1" />Violation</Badge>;
     return null;
   }
@@ -554,13 +604,14 @@ function IntegrityPanel() {
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs uppercase tracking-wider">Chain Verification</span>
-                  <ReportBadge intact={chainReport.intact} />
+                  <ReportBadge intact={chainReport.intact} status={(chainReport as { status?: string }).status} />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <Stat label="Total" value={chainReport.totalCheckpoints} />
                   <Stat label="Valid" value={chainReport.validCheckpoints} ok />
                   <Stat label="Invalid" value={chainReport.invalidCheckpoints} bad />
                   <Stat label="Archived" value={chainReport.archivedCheckpoints} />
+                  <Stat label="Undeclared gaps" value={(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0} bad={((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) > 0} />
                 </div>
                 {chainReport.gapDeclaredCheckpoints != null && chainReport.gapDeclaredCheckpoints > 0 && (
                   <p className="text-xs text-fg-muted">Gap-declared checkpoints: {chainReport.gapDeclaredCheckpoints}</p>
@@ -612,6 +663,52 @@ function IntegrityPanel() {
                 <ContextHelp title={AUDIT_CONTEXT_HELP.declareGap.title} content={AUDIT_CONTEXT_HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
               </span>
             </div>
+
+            {/* Undeclared gaps for consultation (from last chain verification) */}
+            {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> } | null)?.undeclaredGaps?.length ?? 0) > 0 && (
+              <div className="border-2 border-fg/10 bg-bg p-3 space-y-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
+                  onClick={() => setGapsListExpanded((v) => !v)}
+                >
+                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">Undeclared gaps for consultation</span>
+                  <Badge variant="warning">{(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0}</Badge>
+                  {gapsListExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </button>
+                {gapsListExpanded && (
+                  <ul className="space-y-2 pl-0 list-none">
+                    {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> }).undeclaredGaps ?? []).map((g, idx) => {
+                      const isFocused = focusedGap !== null && focusedGap.gapStart === g.gapStart && focusedGap.gapEnd === g.gapEnd;
+                      return (
+                        <li key={`${g.gapStart}-${g.gapEnd}`}>
+                          <button
+                            type="button"
+                            onClick={() => (isFocused ? setFocusedGap(null) : focusGapAndNavigate(g))}
+                            className={cn(
+                              'w-full text-left text-xs p-2 border-2 transition-colors',
+                              isFocused ? 'border-warning bg-warning/10 font-bold' : 'border-fg/20 hover:border-warning/50 hover:bg-warning/5',
+                            )}
+                          >
+                            <span className="text-fg-muted">Gap {idx + 1}:</span>{' '}
+                            {formatDateWithTimezone(g.gapStart)} → {formatDateWithTimezone(g.gapEnd)}
+                            <span className="text-fg-muted ml-2">(~{Number(g.gapMinutes).toLocaleString()} min)</span>
+                            {isFocused && <span className="ml-2 text-warning font-bold">· Focus</span>}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {focusedGap !== null && (
+                  <div className="flex items-center gap-2 flex-wrap text-xs p-2 border-2 border-warning/50 bg-warning/5">
+                    <span className="font-bold text-warning">Focus:</span>
+                    <span>{formatDateWithTimezone(focusedGap.gapStart)} → {formatDateWithTimezone(focusedGap.gapEnd)} (~{Number(focusedGap.gapMinutes).toLocaleString()} min)</span>
+                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setFocusedGap(null)}>Clear focus</Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Checkpoint timeline (nested expandable) ── */}
@@ -683,6 +780,7 @@ function IntegrityPanel() {
                   onSetSealFrom={(id) => setSelectedSealFromId(id)}
                   onSetSealTo={(id) => setSelectedSealToId(id)}
                   onSetAnchor={(id) => setSelectedGapAnchorId(id)}
+                  focusGap={focusedGap}
                 />
                 <Pagination
                   page={checkpointPagination.page}
@@ -785,7 +883,7 @@ function IntegrityPanel() {
               <span className="font-bold">Gap declared successfully</span>
             </div>
             <dl className="space-y-1.5 text-sm">
-              <InfoPair label="Gap period" value={`${gapResult.gapStart ?? '—'} → ${gapResult.gapEnd ?? '—'}`} />
+              <InfoPair label="Gap period" value={gapResult.gapStart && gapResult.gapEnd ? `${formatDateWithTimezone(gapResult.gapStart)} → ${formatDateWithTimezone(gapResult.gapEnd)}` : '—'} />
               <InfoPair label="Gap checkpoint" value={String(gapResult.gapCheckpointId ?? '—')} />
               <InfoPair label="Gap HMAC" value={gapResult.gapChainHmac ?? '—'} mono />
               <InfoPair label="Audit log ID" value={String(gapResult.auditLogId ?? '—')} />

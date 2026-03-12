@@ -194,13 +194,18 @@ Each checkpoint's `chain_hmac` transitively depends on **every previous checkpoi
 | **Concurrent writes** | Operates on already-committed entries (past windows) -- no write contention |
 | **Duplicate runs** | UNIQUE constraint on `(window_start, window_end)` prevents double-inserts |
 
+**First-run bootstrap:** On the very first scheduler run (no checkpoints exist), only the last completed 5-minute window is checkpointed instead of the full 60-minute lookback. On subsequent runs, the lookback window is clamped so that checkpoints are never created before the earliest existing checkpoint. This avoids generating empty "past" checkpoints that would suggest the system was running before it was first started.
+
 ### Verification
 
-`GET /api/v1/audit-logs/chain-integrity` (Global Admin only) performs three checks for each checkpoint in a date range:
+`GET /api/v1/audit-logs/chain-integrity` (Global Admin only) performs four checks:
 
-1. **Recompute `entries_digest`** from current audit log entries -- detects entry insertion/deletion/reordering
+1. **Recompute `entries_digest`** from current audit log entries (per checkpoint) -- detects entry insertion/deletion/reordering
 2. **Verify chain linkage** -- `prev_chain_hmac` must match the previous checkpoint's `chain_hmac`
 3. **Recompute `chain_hmac`** -- detects direct checkpoint tampering
+4. **Temporal continuity** -- between each pair of consecutive checkpoints, verifies that the previous checkpoint's `window_end` equals the next checkpoint's `window_start`. Any gap (missing windows) is reported as an **undeclared gap**. Boundary coverage: if the requested range extends beyond the first or last checkpoint in the DB, the service only reports a **leading** or **trailing** undeclared gap when that period is within the system's checkpoint extent (i.e. there are checkpoints before `from` or after the last in range). When the first checkpoint in range is the earliest in the DB, a requested `from` before it is not reported as a gap ("before EZKey time"). When the last checkpoint in range is the latest in the DB, a requested `to` after it is not reported as a gap ("after EZKey time" or future).
+
+The response includes `undeclaredGaps` (list of `{ gapStart, gapEnd, gapMinutes }`), `coverageStart`/`coverageEnd` (actual checkpoint boundaries), `effectiveFrom`/`effectiveTo` (range used for boundary gap reporting: clamped to coverage when the request extended before the first or after the last checkpoint), `continuousCoverage` (false when any undeclared gap exists), and `status`: `OK` (valid, no gaps), `UNDECLARED_GAP_DETECTED` (valid chain but temporal gaps), or `CHAIN_INTEGRITY_VIOLATION_DETECTED` (cryptographic violations). `intact` is true only when the chain is cryptographically valid and there are no undeclared gaps.
 
 **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request.
 

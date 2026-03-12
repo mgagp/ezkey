@@ -133,8 +133,24 @@ public class AuditChainScheduler {
       // Defensive check: detect undeclared gap before the lookback window
       detectPreLookbackGap(lookbackStart);
 
+      // Bootstrap: when no checkpoints exist, only create the last completed window (avoids
+      // 60 minutes of empty "past" checkpoints). When checkpoints exist, clamp lookback so we
+      // never create checkpoints before the first one ever created.
       int created = 0;
-      OffsetDateTime windowStart = lookbackStart;
+      OffsetDateTime windowStart;
+      Optional<AuditChainCheckpoint> latestOpt = checkpointRepository.findLatest();
+      if (latestOpt.isEmpty()) {
+        windowStart = currentWindowStart.minusMinutes(windowMinutes);
+      } else {
+        Optional<AuditChainCheckpoint> earliestOpt = checkpointRepository.findEarliest();
+        if (earliestOpt.isPresent()) {
+          OffsetDateTime earliestStart = earliestOpt.get().getWindowStart();
+          if (lookbackStart.isBefore(earliestStart)) {
+            lookbackStart = earliestStart;
+          }
+        }
+        windowStart = lookbackStart;
+      }
 
       while (windowStart.isBefore(currentWindowStart)) {
         OffsetDateTime windowEnd = windowStart.plusMinutes(windowMinutes);

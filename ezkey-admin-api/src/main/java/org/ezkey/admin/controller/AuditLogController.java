@@ -433,8 +433,17 @@ public class AuditLogController {
       summary = "Verify audit chain checkpoint integrity",
       description =
           "Verifies chain checkpoint integrity by recomputing entry digests and validating "
-              + "chain linkage. Detects entry insertion, deletion, reordering, and checkpoint "
-              + "tampering. Global Admin only.")
+              + "chain linkage. Detects entry insertion, deletion, reordering, checkpoint "
+              + "tampering, and undeclared temporal gaps (missing checkpoints between consecutive "
+              + "windows or uncovered leading/trailing periods in the requested range). "
+              + "Global Admin only.\n\n"
+              + "**Range handling:** The requested from/to may extend before the first checkpoint "
+              + "or after the last in the database. Such periods are not reported as undeclared "
+              + "gaps (they are before/after \"EZKey time\"). Only real gaps within the system's "
+              + "checkpoint extent are reported. The response fields effectiveFrom and effectiveTo "
+              + "indicate the range actually used for boundary gap reporting (clamped to "
+              + "coverageStart/coverageEnd when the request extended beyond the first/last "
+              + "checkpoint).")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Chain verification completed"),

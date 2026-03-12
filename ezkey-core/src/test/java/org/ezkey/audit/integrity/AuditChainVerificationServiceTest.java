@@ -17,12 +17,14 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.integrity.AuditChainVerificationService.ChainVerificationReport;
+import org.ezkey.audit.integrity.AuditChainVerificationService.UndeclaredGap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -203,6 +205,156 @@ class AuditChainVerificationServiceTest {
   }
 
   // -----------------------------------------------------------------------
+  // Undeclared temporal gap between two checkpoints (chain still cryptographically valid)
+  // -----------------------------------------------------------------------
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_temporalGapBetweenCheckpoints_detectsUndeclaredGap() {
+    AuditLog e1 = buildSignedEntry(1L);
+    AuditLog e2 = buildSignedEntry(2L);
+
+    AuditChainCheckpoint cp1 = buildGenesisCheckpoint(List.of(e1));
+    // cp2 starts 10 minutes after cp1 ends -> undeclared gap
+    OffsetDateTime gapWindowStart = WIN_END.plusMinutes(10);
+    OffsetDateTime gapWindowEnd = gapWindowStart.plusMinutes(5);
+    AuditChainCheckpoint cp2 =
+        buildLinkedCheckpointWithWindow(
+            List.of(e2), cp1.getChainHmac(), gapWindowStart, gapWindowEnd);
+
+    when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, cp2));
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+        .thenReturn(List.of(e1))
+        .thenReturn(List.of(e2));
+
+    OffsetDateTime from = WIN_START;
+    OffsetDateTime to = gapWindowEnd;
+    ChainVerificationReport report = verificationService.verifyChain(from, to);
+
+    assertEquals(2, report.totalCheckpoints());
+    assertEquals(2, report.validCheckpoints());
+    assertFalse(report.intact());
+    assertFalse(report.continuousCoverage());
+    assertEquals("UNDECLARED_GAP_DETECTED", report.status());
+    assertEquals(1, report.undeclaredGaps().size());
+    UndeclaredGap gap = report.undeclaredGaps().get(0);
+    assertEquals(WIN_END, gap.gapStart());
+    assertEquals(gapWindowStart, gap.gapEnd());
+    assertEquals(10L, gap.gapMinutes());
+  }
+
+  // -----------------------------------------------------------------------
+  // GAP_DECLARATION checkpoint in chain does not produce false positive
+  // -----------------------------------------------------------------------
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_gapDeclarationCheckpoint_noUndeclaredGapReported() {
+    AuditLog e1 = buildSignedEntry(1L);
+    AuditLog e2 = buildSignedEntry(2L);
+
+    AuditChainCheckpoint cp1 = buildGenesisCheckpoint(List.of(e1));
+    OffsetDateTime gapStart = WIN_END;
+    OffsetDateTime gapEnd = WIN_END.plusMinutes(10);
+    AuditChainCheckpoint gapCp =
+        buildGapDeclarationCheckpoint(cp1.getChainHmac(), gapStart, gapEnd);
+    AuditChainCheckpoint cp2 =
+        buildLinkedCheckpointWithWindow(
+            List.of(e2), gapCp.getChainHmac(), gapEnd, gapEnd.plusMinutes(5));
+
+    when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(cp1, gapCp, cp2));
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+        .thenReturn(List.of(e1))
+        .thenReturn(List.of(e2));
+
+    ChainVerificationReport report = verificationService.verifyChain(null, null);
+
+    assertEquals(3, report.totalCheckpoints());
+    assertEquals(3, report.validCheckpoints());
+    assertTrue(report.undeclaredGaps().isEmpty());
+    assertTrue(report.continuousCoverage());
+    assertTrue(report.intact());
+    assertEquals("OK", report.status());
+  }
+
+  // -----------------------------------------------------------------------
+  // Boundary coverage: no leading/trailing gap when range extends beyond full extent
+  // -----------------------------------------------------------------------
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_requestedRangeWiderThanCheckpoints_whenFullExtent_noBoundaryGaps() {
+    AuditLog entry = buildSignedEntry(1L);
+    AuditChainCheckpoint checkpoint = buildGenesisCheckpoint(List.of(entry));
+    stubAuditLogs(List.of(entry));
+
+    when(checkpointRepository.findByWindowRange(any(), any())).thenReturn(List.of(checkpoint));
+    when(checkpointRepository.findEarliest()).thenReturn(Optional.of(checkpoint));
+    when(checkpointRepository.findLatest()).thenReturn(Optional.of(checkpoint));
+
+    OffsetDateTime from = WIN_START.minusMinutes(10);
+    OffsetDateTime to = WIN_END.plusMinutes(20);
+    ChainVerificationReport report = verificationService.verifyChain(from, to);
+
+    assertEquals(1, report.totalCheckpoints());
+    assertTrue(report.continuousCoverage());
+    assertTrue(report.intact());
+    assertEquals("OK", report.status());
+    assertTrue(report.undeclaredGaps().isEmpty());
+    assertEquals(WIN_START, report.coverageStart());
+    assertEquals(WIN_END, report.coverageEnd());
+    assertEquals(WIN_START, report.effectiveFrom());
+    assertEquals(WIN_END, report.effectiveTo());
+  }
+
+  // -----------------------------------------------------------------------
+  // Boundary coverage: leading and trailing gaps when range is inside extent
+  // -----------------------------------------------------------------------
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_requestedRangeInsideExtent_reportsLeadingAndTrailingGaps() {
+    AuditLog entry = buildSignedEntry(1L);
+    AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
+    AuditChainCheckpoint second =
+        buildLinkedCheckpointWithWindow(
+            List.of(entry), first.getChainHmac(), WIN_END, WIN_END.plusMinutes(5));
+    AuditChainCheckpoint third =
+        buildLinkedCheckpointWithWindow(
+            List.of(entry), second.getChainHmac(), WIN_END.plusMinutes(5), WIN_END.plusMinutes(10));
+    stubAuditLogs(List.of(entry));
+
+    // Request range that only includes the middle checkpoint (second)
+    OffsetDateTime from = WIN_START.plusMinutes(3);
+    OffsetDateTime to = WIN_END.plusMinutes(7);
+    when(checkpointRepository.findByWindowRange(eq(from), eq(to))).thenReturn(List.of(second));
+    when(checkpointRepository.findEarliest()).thenReturn(Optional.of(first));
+    when(checkpointRepository.findLatest()).thenReturn(Optional.of(third));
+
+    ChainVerificationReport report = verificationService.verifyChain(from, to);
+
+    assertEquals(1, report.totalCheckpoints());
+    assertFalse(report.continuousCoverage());
+    assertFalse(report.intact());
+    assertEquals("UNDECLARED_GAP_DETECTED", report.status());
+    assertEquals(2, report.undeclaredGaps().size());
+    UndeclaredGap leading = report.undeclaredGaps().get(0);
+    assertEquals(from, leading.gapStart());
+    assertEquals(WIN_END, leading.gapEnd());
+    assertEquals(2L, leading.gapMinutes());
+    UndeclaredGap trailing = report.undeclaredGaps().get(1);
+    assertEquals(WIN_END.plusMinutes(5), trailing.gapStart());
+    assertEquals(to, trailing.gapEnd());
+    assertEquals(2L, trailing.gapMinutes());
+    assertEquals(WIN_END, report.coverageStart());
+    assertEquals(WIN_END.plusMinutes(5), report.coverageEnd());
+    assertEquals(from, report.effectiveFrom());
+    assertEquals(to, report.effectiveTo());
+  }
+
+  // -----------------------------------------------------------------------
   // Violation: chain_hmac of the checkpoint record itself is tampered
   // -----------------------------------------------------------------------
 
@@ -258,17 +410,50 @@ class AuditChainVerificationServiceTest {
 
   /** Builds a subsequent checkpoint linked to its predecessor. */
   private AuditChainCheckpoint buildLinkedCheckpoint(List<AuditLog> entries, String prevChainHmac) {
+    return buildLinkedCheckpointWithWindow(entries, prevChainHmac, WIN_END, WIN_END.plusMinutes(5));
+  }
+
+  /** Builds a subsequent checkpoint with custom window (for gap tests). */
+  private AuditChainCheckpoint buildLinkedCheckpointWithWindow(
+      List<AuditLog> entries,
+      String prevChainHmac,
+      OffsetDateTime windowStart,
+      OffsetDateTime windowEnd) {
     String entriesDigest = computeEntriesDigest(entries);
     String chainInput = entriesDigest + "|" + prevChainHmac;
     String chainHmac = hmacService.computeHmac(chainInput);
 
     AuditChainCheckpoint cp = new AuditChainCheckpoint();
-    cp.setWindowStart(WIN_END);
-    cp.setWindowEnd(WIN_END.plusMinutes(5));
+    cp.setWindowStart(windowStart);
+    cp.setWindowEnd(windowEnd);
     cp.setEntryCount(entries.size());
     cp.setEntriesDigest(entriesDigest);
     cp.setPrevChainHmac(prevChainHmac);
     cp.setChainHmac(chainHmac);
+    return cp;
+  }
+
+  /** Builds a GAP_DECLARATION checkpoint (same digest formula as AuditLifecycleService). */
+  private AuditChainCheckpoint buildGapDeclarationCheckpoint(
+      String prevChainHmac, OffsetDateTime gapStart, OffsetDateTime gapEnd) {
+    String gapDigestInput =
+        "DECLARED_GAP:"
+            + gapStart.withOffsetSameInstant(ZoneOffset.UTC)
+            + "|"
+            + gapEnd.withOffsetSameInstant(ZoneOffset.UTC);
+    String entriesDigest = hmacService.computeHmac(gapDigestInput);
+    String chainInput = entriesDigest + "|" + prevChainHmac;
+    String chainHmac = hmacService.computeHmac(chainInput);
+
+    AuditChainCheckpoint cp = new AuditChainCheckpoint();
+    cp.setWindowStart(gapStart);
+    cp.setWindowEnd(gapEnd);
+    cp.setEntryCount(0);
+    cp.setEntriesDigest(entriesDigest);
+    cp.setPrevChainHmac(prevChainHmac);
+    cp.setChainHmac(chainHmac);
+    cp.setCheckpointType("GAP_DECLARATION");
+    cp.setNotes("Declared downtime gap test");
     return cp;
   }
 

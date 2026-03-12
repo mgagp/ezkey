@@ -3892,6 +3892,16 @@
               }
             }
           },
+          "400": {
+            "description": "Date range required — provide from and to as ISO-8601",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
             "content": {
@@ -3921,7 +3931,7 @@
           "Audit Logs"
         ],
         "summary": "Verify audit chain checkpoint integrity",
-        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, and checkpoint tampering. Global Admin only.",
+        "description": "Verifies chain checkpoint integrity by recomputing entry digests and validating chain linkage. Detects entry insertion, deletion, reordering, checkpoint tampering, and undeclared temporal gaps (missing checkpoints between consecutive windows or uncovered leading/trailing periods in the requested range). Global Admin only.\n\n**Range handling:** The requested from/to may extend before the first checkpoint or after the last in the database. Such periods are not reported as undeclared gaps (they are before/after \"EZKey time\"). Only real gaps within the system's checkpoint extent are reported. The response fields effectiveFrom and effectiveTo indicate the range actually used for boundary gap reporting (clamped to coverageStart/coverageEnd when the request extended beyond the first/last checkpoint).",
         "operationId": "checkChainIntegrity",
         "parameters": [
           {
@@ -3948,6 +3958,16 @@
         "responses": {
           "200": {
             "description": "Chain verification completed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerificationReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Date range required — provide from and to as ISO-8601",
             "content": {
               "*/*": {
                 "schema": {
@@ -6507,11 +6527,53 @@
               "type": "string"
             }
           },
+          "undeclaredGaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UndeclaredGap"
+            }
+          },
+          "coverageStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "coverageEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "continuousCoverage": {
+            "type": "boolean"
+          },
           "intact": {
             "type": "boolean"
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "UndeclaredGap": {
+        "type": "object",
+        "properties": {
+          "gapStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "gapEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "gapMinutes": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
