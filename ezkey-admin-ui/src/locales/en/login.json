@@ -1,0 +1,40 @@
+{
+  "title": "Admin Console",
+  "tagline": "Passwordless · Secure · Simple",
+  "form": {
+    "username": "Username",
+    "usernamePlaceholder": "your.username",
+    "requireChallengeCode": "Require challenge code",
+    "submit": "Login with EZKey"
+  },
+  "validation": {
+    "minLength": "At least 3 characters"
+  },
+  "waiting": {
+    "enterCodeOnDevice": "Enter code on device",
+    "awaitingApproval": "Awaiting approval",
+    "checkMobileApp": "Check your EZKey mobile app",
+    "challengeCode": "Challenge Code",
+    "enterCodeOnDeviceHint": "Enter this 2-digit code on your device",
+    "timeRemaining": "Time remaining"
+  },
+  "states": {
+    "rejected": {
+      "title": "Access Denied",
+      "message": "The authentication request was rejected on your device."
+    },
+    "expired": {
+      "title": "Request Expired",
+      "message": "The authentication request timed out. Please try again."
+    },
+    "error": {
+      "title": "Authentication Error",
+      "messageFallback": "An unexpected error occurred.",
+      "authFailed": "Authentication failed. Please try again.",
+      "connectionLost": "Connection lost. Please check your network and try again.",
+      "loginFailed": "Login failed. Check your username.",
+      "serverUnreachable": "Could not reach the server. Is the Admin API running?"
+    }
+  },
+  "footer": "Powered by {{brand}} — Eat Your Own Dog Food"
+}

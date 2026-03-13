@@ -247,7 +247,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 ## Non-Negotiables
 
-- All content in English
+- **i18n**: All user-facing text must use translation keys via `useTranslation()` and `t('key')` (or `t('namespace:key')`). Supported locales: `en`, `fr`. Add new strings to `src/locales/en/*.json` and `src/locales/fr/*.json`. Language selector is in the header (EN | FR); preference is stored in `localStorage` under `ezkey-admin-ui-lang`.
 - Strict TypeScript — no `any`, no non-null assertions (`!`) in app code
 - No axios — always `api.*` from `@/lib/api-client`
 - Token in `sessionStorage` only (never `localStorage`)

@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { isDemoMode } from '@/lib/demo-mode';
@@ -16,8 +17,19 @@ import {
   Users,
 } from 'lucide-react';
 
+type NavLabelKey =
+  | 'dashboard'
+  | 'tenants'
+  | 'integrations'
+  | 'enrollments'
+  | 'authAttempts'
+  | 'auditLogs'
+  | 'admins'
+  | 'apiKeys'
+  | 'encryptionKeys';
+
 interface NavItem {
-  label: string;
+  labelKey: NavLabelKey;
   path: string;
   icon: typeof LayoutDashboard;
   /** If set, the item is only shown when the logged-in admin has one of these roles. */
@@ -25,24 +37,25 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Tenants', path: '/tenants', icon: Building2, roles: ['GLOBAL_ADMIN'] },
-  { label: 'Integrations', path: '/integrations', icon: Puzzle },
-  { label: 'Enrollments', path: '/enrollments', icon: Users },
-  { label: 'Auth Attempts', path: '/auth-attempts', icon: ShieldCheck },
-  { label: 'Audit Logs', path: '/audit-logs', icon: FileText },
-  { label: 'Admins', path: '/admins', icon: UserCog },
-  { label: 'API Keys', path: '/api-keys', icon: Key },
-  { label: 'Encryption Keys', path: '/encryption-keys', icon: KeyRound, roles: ['GLOBAL_ADMIN'] },
+  { labelKey: 'dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { labelKey: 'tenants', path: '/tenants', icon: Building2, roles: ['GLOBAL_ADMIN'] },
+  { labelKey: 'integrations', path: '/integrations', icon: Puzzle },
+  { labelKey: 'enrollments', path: '/enrollments', icon: Users },
+  { labelKey: 'authAttempts', path: '/auth-attempts', icon: ShieldCheck },
+  { labelKey: 'auditLogs', path: '/audit-logs', icon: FileText },
+  { labelKey: 'admins', path: '/admins', icon: UserCog },
+  { labelKey: 'apiKeys', path: '/api-keys', icon: Key },
+  { labelKey: 'encryptionKeys', path: '/encryption-keys', icon: KeyRound, roles: ['GLOBAL_ADMIN'] },
 ];
 
-function adminTagline(adminType: string | undefined): string {
-  if (adminType === 'GLOBAL_ADMIN') return 'Global Admin';
-  if (adminType === 'TENANT_ADMIN') return 'Tenant Admin';
-  return 'Admin Console';
+function getAdminTaglineKey(adminType: string | undefined): string {
+  if (adminType === 'GLOBAL_ADMIN') return 'tagline.globalAdmin';
+  if (adminType === 'TENANT_ADMIN') return 'tagline.tenantAdmin';
+  return 'tagline.adminConsole';
 }
 
 export function Sidebar() {
+  const { t } = useTranslation('layout');
   const { pathname } = useLocation();
   const { session } = useAuth();
   const { toggleSessionDemo } = useDemoModeSession();
@@ -73,20 +86,20 @@ export function Sidebar() {
             : undefined
         }
         tabIndex={isDemoMode ? 0 : undefined}
-        title={isDemoMode ? 'Ctrl+click to toggle demo mode' : undefined}
+        title={isDemoMode ? t('sidebar.demoModeTitle') : undefined}
       >
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sidebar-active">
-          EZKey
+          {t('brand')}
         </p>
         <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">
-          {adminTagline(session?.adminType)}
+          {t(getAdminTaglineKey(session?.adminType))}
         </p>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto">
         <ul className="space-y-0.5 px-2">
-          {visibleItems.map(({ label, path, icon: Icon }) => {
+          {visibleItems.map(({ labelKey, path, icon: Icon }) => {
             const isActive = pathname === path || pathname.startsWith(`${path}/`);
             return (
               <li key={path}>
@@ -101,7 +114,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {label}
+                  {t(`nav.${labelKey}`)}
                 </Link>
               </li>
             );

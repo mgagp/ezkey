@@ -1,0 +1,26 @@
+{
+  "brand": "EZKey",
+  "tagline": {
+    "globalAdmin": "Global Admin",
+    "tenantAdmin": "Tenant Admin",
+    "adminConsole": "Admin Console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "integrations": "Integrations",
+    "enrollments": "Enrollments",
+    "authAttempts": "Auth Attempts",
+    "auditLogs": "Audit Logs",
+    "admins": "Admins",
+    "apiKeys": "API Keys",
+    "encryptionKeys": "Encryption Keys"
+  },
+  "header": {
+    "signedInAs": "Signed in as",
+    "demoBadge": "Demo"
+  },
+  "sidebar": {
+    "demoModeTitle": "Ctrl+click to toggle demo mode"
+  }
+}

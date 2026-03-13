@@ -1,23 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/auth-context';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { I18N_STORAGE_KEY } from '@/i18n';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown } from '@/lib/utils';
 import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
-
-const loginSchema = z.object({
-  username: z.string().min(3, 'At least 3 characters').max(50),
-  challengeRequested: z.boolean(),
-});
-type LoginForm = z.infer<typeof loginSchema>;
 
 type LoginState = 'idle' | 'submitting' | 'waiting' | 'rejected' | 'expired' | 'error';
 
@@ -28,8 +24,19 @@ interface WaitingData {
 }
 
 export default function LoginPage() {
+  const { t, i18n } = useTranslation(['login', 'common', 'layout']);
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
+
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        username: z.string().min(3, t('login:validation.minLength')).max(50),
+        challengeRequested: z.boolean(),
+      }),
+    [t],
+  );
+  type LoginForm = z.infer<typeof loginSchema>;
 
   const [loginState, setLoginState] = useState<LoginState>('idle');
   const [waitingData, setWaitingData] = useState<WaitingData | null>(null);
@@ -104,19 +111,20 @@ export default function LoginPage() {
         } else {
           finalStatusRef.current = 'ERROR';
           setLoginState('error');
-          setErrorMessage(data.message ?? 'Authentication failed. Please try again.');
+          setErrorMessage(data.message ?? t('login:states.error.authFailed'));
         }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         if (finalStatusRef.current !== null) return;
         finalStatusRef.current = 'ERROR';
         setLoginState('error');
-        setErrorMessage('Connection lost. Please check your network and try again.');
+        setErrorMessage(t('login:states.error.connectionLost'));
       }
     };
 
     void doWait();
     return () => { controller.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- omit t to avoid restarting wait on language change
   }, [loginState, waitingData, login, navigate]);
 
   const onSubmit = async (formData: LoginForm) => {
@@ -137,11 +145,11 @@ export default function LoginPage() {
         setLoginState('waiting');
       } else {
         setLoginState('error');
-        setErrorMessage(result.message ?? 'Login failed. Check your username.');
+        setErrorMessage(result.message ?? t('login:states.error.loginFailed'));
       }
     } catch (err) {
       setLoginState('error');
-      setErrorMessage(getApiErrorMessage(err, 'Could not reach the server. Is the Admin API running?'));
+      setErrorMessage(getApiErrorMessage(err, t('login:states.error.serverUnreachable')));
     }
   };
 
@@ -161,17 +169,42 @@ export default function LoginPage() {
   const countdownColor =
     remainingSeconds <= 30 ? 'text-error' : remainingSeconds <= 60 ? 'text-warning' : 'text-fg';
 
+  const setLanguage = (lng: 'en' | 'fr') => {
+    i18n.changeLanguage(lng);
+    window.localStorage.setItem(I18N_STORAGE_KEY, lng);
+  };
+
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm relative">
+        {/* Language selector — no header when unauthenticated */}
+        <div className="absolute top-0 right-0 flex items-center gap-1 text-sm">
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={i18n.language.startsWith('en') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
+            aria-label="English"
+          >
+            EN
+          </button>
+          <span className="text-fg/30">|</span>
+          <button
+            type="button"
+            onClick={() => setLanguage('fr')}
+            className={i18n.language.startsWith('fr') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
+            aria-label="Français"
+          >
+            FR
+          </button>
+        </div>
 
         {/* Brand header */}
         <div className="mb-8 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sidebar-bg mb-2">
-            EZKey
+            {t('layout:brand')}
           </p>
-          <h1 className="text-3xl font-black text-sidebar-bg tracking-tight">Admin Console</h1>
-          <p className="text-sm text-fg-muted mt-1">Passwordless · Secure · Simple</p>
+          <h1 className="text-3xl font-black text-sidebar-bg tracking-tight">{t('login:title')}</h1>
+          <p className="text-sm text-fg-muted mt-1">{t('login:tagline')}</p>
         </div>
 
         {/* Main card */}
@@ -181,12 +214,12 @@ export default function LoginPage() {
           {(loginState === 'idle' || loginState === 'submitting') && (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               <div>
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{t('login:form.username')}</Label>
                 <Input
                   id="username"
                   autoFocus
                   autoComplete="username"
-                  placeholder="your.username"
+                  placeholder={t('login:form.usernamePlaceholder')}
                   error={errors.username?.message}
                   {...register('username')}
                 />
@@ -203,12 +236,12 @@ export default function LoginPage() {
                   htmlFor="challengeRequested"
                   className="text-sm font-medium cursor-pointer select-none text-fg"
                 >
-                  Require challenge code
+                  {t('login:form.requireChallengeCode')}
                 </label>
               </div>
 
               <Button type="submit" size="lg" className="w-full" isLoading={loginState === 'submitting'}>
-                Login with EZKey
+                {t('login:form.submit')}
               </Button>
             </form>
           )}
@@ -218,11 +251,13 @@ export default function LoginPage() {
             <div className="text-center space-y-5">
               <div className="space-y-2">
                 <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
-                  {waitingData.challengeCode != null ? 'Enter code on device' : 'Awaiting approval'}
+                  {waitingData.challengeCode != null
+                    ? t('login:waiting.enterCodeOnDevice')
+                    : t('login:waiting.awaitingApproval')}
                 </p>
                 <div className="flex items-center justify-center gap-2">
                   <span className="size-4 border-2 border-fg border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm text-fg-muted">Check your EZKey mobile app</span>
+                  <span className="text-sm text-fg-muted">{t('login:waiting.checkMobileApp')}</span>
                 </div>
               </div>
 
@@ -230,19 +265,19 @@ export default function LoginPage() {
               {waitingData.challengeCode != null && (
                 <div className="border-2 border-sidebar-bg bg-bg p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
-                    Challenge Code
+                    {t('login:waiting.challengeCode')}
                   </p>
                   <p className="font-mono text-6xl font-black text-fg tracking-[0.2em] tabular-nums">
                     {formatChallengeCode(waitingData.challengeCode)}
                   </p>
-                  <p className="text-xs text-fg-muted mt-2">Enter this 2-digit code on your device</p>
+                  <p className="text-xs text-fg-muted mt-2">{t('login:waiting.enterCodeOnDeviceHint')}</p>
                 </div>
               )}
 
               {/* Countdown */}
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                  Time remaining
+                  {t('login:waiting.timeRemaining')}
                 </p>
                 <p className={`font-mono text-2xl font-bold tabular-nums ${countdownColor}`}>
                   {formatCountdown(remainingSeconds)}
@@ -250,7 +285,7 @@ export default function LoginPage() {
               </div>
 
               <Button variant="ghost" size="sm" onClick={handleCancel} className="w-full">
-                Cancel
+                {t('common:buttons.cancel')}
               </Button>
             </div>
           )}
@@ -258,11 +293,11 @@ export default function LoginPage() {
           {/* ── Rejected ── */}
           {loginState === 'rejected' && (
             <div className="space-y-4">
-              <Alert variant="error" title="Access Denied">
-                The authentication request was rejected on your device.
+              <Alert variant="error" title={t('login:states.rejected.title')}>
+                {t('login:states.rejected.message')}
               </Alert>
               <Button variant="secondary" className="w-full" onClick={handleRetry}>
-                Try Again
+                {t('common:buttons.tryAgain')}
               </Button>
             </div>
           )}
@@ -270,11 +305,11 @@ export default function LoginPage() {
           {/* ── Expired ── */}
           {loginState === 'expired' && (
             <div className="space-y-4">
-              <Alert variant="error" title="Request Expired">
-                The authentication request timed out. Please try again.
+              <Alert variant="error" title={t('login:states.expired.title')}>
+                {t('login:states.expired.message')}
               </Alert>
               <Button variant="secondary" className="w-full" onClick={handleRetry}>
-                Try Again
+                {t('common:buttons.tryAgain')}
               </Button>
             </div>
           )}
@@ -282,20 +317,18 @@ export default function LoginPage() {
           {/* ── Error ── */}
           {loginState === 'error' && (
             <div className="space-y-4">
-              <Alert variant="error" title="Authentication Error">
-                {errorMessage ?? 'An unexpected error occurred.'}
+              <Alert variant="error" title={t('login:states.error.title')}>
+                {errorMessage ?? t('login:states.error.messageFallback')}
               </Alert>
               <Button variant="secondary" className="w-full" onClick={handleRetry}>
-                Try Again
+                {t('common:buttons.tryAgain')}
               </Button>
             </div>
           )}
         </div>
 
         <p className="text-center text-xs text-fg-muted mt-5">
-          Powered by{' '}
-          <span className="font-bold text-sidebar-bg">EZKey</span>
-          {' '}— Eat Your Own Dog Food
+          {t('login:footer', { brand: t('layout:brand') })}
         </p>
       </div>
     </div>

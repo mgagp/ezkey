@@ -1,0 +1,12 @@
+{
+  "buttons": {
+    "cancel": "Cancel",
+    "logout": "Logout",
+    "backToDashboard": "Back to Dashboard",
+    "tryAgain": "Try Again"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "The page you're looking for doesn't exist."
+  }
+}

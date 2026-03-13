@@ -1,0 +1,12 @@
+{
+  "buttons": {
+    "cancel": "Annuler",
+    "logout": "Déconnexion",
+    "backToDashboard": "Retour au tableau de bord",
+    "tryAgain": "Réessayer"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "description": "La page que vous recherchez n'existe pas."
+  }
+}

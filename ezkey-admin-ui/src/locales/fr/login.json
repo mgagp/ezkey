@@ -1,0 +1,40 @@
+{
+  "title": "Console d'administration",
+  "tagline": "Sans mot de passe · Sécurisé · Simple",
+  "form": {
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "votre.nom",
+    "requireChallengeCode": "Exiger un code défi",
+    "submit": "Connexion avec EZKey"
+  },
+  "validation": {
+    "minLength": "Au moins 3 caractères"
+  },
+  "waiting": {
+    "enterCodeOnDevice": "Saisir le code sur l'appareil",
+    "awaitingApproval": "En attente d'approbation",
+    "checkMobileApp": "Ouvrez l'application mobile EZKey",
+    "challengeCode": "Code défi",
+    "enterCodeOnDeviceHint": "Saisissez ce code à 2 chiffres sur votre appareil",
+    "timeRemaining": "Temps restant"
+  },
+  "states": {
+    "rejected": {
+      "title": "Accès refusé",
+      "message": "La demande d'authentification a été refusée sur votre appareil."
+    },
+    "expired": {
+      "title": "Demande expirée",
+      "message": "La demande d'authentification a expiré. Veuillez réessayer."
+    },
+    "error": {
+      "title": "Erreur d'authentification",
+      "messageFallback": "Une erreur inattendue s'est produite.",
+      "authFailed": "Échec de l'authentification. Veuillez réessayer.",
+      "connectionLost": "Connexion perdue. Vérifiez votre réseau et réessayez.",
+      "loginFailed": "Échec de la connexion. Vérifiez votre nom d'utilisateur.",
+      "serverUnreachable": "Impossible de joindre le serveur. L'API Admin est-elle démarrée ?"
+    }
+  },
+  "footer": "Propulsé par {{brand}} — Eat Your Own Dog Food"
+}
