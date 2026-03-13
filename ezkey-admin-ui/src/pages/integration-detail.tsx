@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
+import { type ColumnDef } from '@/components/data-table/data-table';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -237,7 +237,7 @@ export default function IntegrationDetailPage() {
               </Button>
             )}
           </div>
-          <DataTable
+          <PaginatedTable
             columns={enrollmentColumns}
             data={enrollments}
             isLoading={loadingEnr}
@@ -246,19 +246,7 @@ export default function IntegrationDetailPage() {
             emptyMessage={t('detail.enrollmentsEmpty')}
             currentSort={enrPagination.sort}
             onSort={enrPagination.setSort}
-          />
-          <Pagination
-            page={enrPagination.page}
-            totalPages={enrPagination.totalPages}
-            totalElements={enrPagination.totalElements}
-            isFirst={enrPagination.isFirst}
-            isLast={enrPagination.isLast}
-            onFirstPage={enrPagination.firstPage}
-            onLastPage={enrPagination.lastPage}
-            onPrevPage={enrPagination.prevPage}
-            onNextPage={enrPagination.nextPage}
-            pageSize={enrPagination.size}
-            onPageSizeChange={enrPagination.setPageSize}
+            pagination={enrPagination}
           />
         </div>
 

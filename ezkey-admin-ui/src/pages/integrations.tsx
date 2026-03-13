@@ -7,8 +7,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Plus, RefreshCw, Search } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
+import { type ColumnDef } from '@/components/data-table/data-table';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -214,7 +214,7 @@ export default function IntegrationsPage() {
 
         {/* Table */}
         <div>
-          <DataTable
+          <PaginatedTable
             columns={columns}
             data={data}
             isLoading={isLoading}
@@ -223,19 +223,7 @@ export default function IntegrationsPage() {
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
-          />
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalElements={pagination.totalElements}
-            isFirst={pagination.isFirst}
-            isLast={pagination.isLast}
-            onFirstPage={pagination.firstPage}
-            onLastPage={pagination.lastPage}
-            onPrevPage={pagination.prevPage}
-            onNextPage={pagination.nextPage}
-            pageSize={pagination.size}
-            onPageSizeChange={pagination.setPageSize}
+            pagination={pagination}
           />
         </div>
 

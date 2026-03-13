@@ -7,8 +7,8 @@ import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX 
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
+import { type ColumnDef } from '@/components/data-table/data-table';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -783,7 +783,7 @@ export default function AdminsPage() {
         </div>
 
         <div>
-          <DataTable
+          <PaginatedTable
             columns={columns}
             data={data}
             isLoading={isLoading}
@@ -792,19 +792,7 @@ export default function AdminsPage() {
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
-          />
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalElements={pagination.totalElements}
-            isFirst={pagination.isFirst}
-            isLast={pagination.isLast}
-            onFirstPage={pagination.firstPage}
-            onLastPage={pagination.lastPage}
-            onPrevPage={pagination.prevPage}
-            onNextPage={pagination.nextPage}
-            pageSize={pagination.size}
-            onPageSizeChange={pagination.setPageSize}
+            pagination={pagination}
           />
         </div>
       </div>

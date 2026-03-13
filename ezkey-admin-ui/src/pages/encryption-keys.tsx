@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { ENCRYPTION_KEYS_SECTION_HELP } from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
@@ -691,7 +691,7 @@ export default function EncryptionKeysPage() {
 
         {/* Keys table */}
         <div>
-          <DataTable
+          <PaginatedTable
             columns={columns}
             data={data}
             isLoading={isLoading}
@@ -700,19 +700,7 @@ export default function EncryptionKeysPage() {
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
-          />
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalElements={pagination.totalElements}
-            isFirst={pagination.isFirst}
-            isLast={pagination.isLast}
-            onFirstPage={pagination.firstPage}
-            onLastPage={pagination.lastPage}
-            onPrevPage={pagination.prevPage}
-            onNextPage={pagination.nextPage}
-            pageSize={pagination.size}
-            onPageSizeChange={pagination.setPageSize}
+            pagination={pagination}
           />
         </div>
 

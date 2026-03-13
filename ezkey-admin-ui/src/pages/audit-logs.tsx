@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
+import { type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ContextHelp } from '@/components/ui/context-help';
@@ -759,6 +760,20 @@ function IntegrityPanel() {
                     )}
                   </div>
                 )}
+                <Pagination
+                  page={checkpointPagination.page}
+                  totalPages={checkpointPagination.totalPages}
+                  totalElements={checkpointPagination.totalElements}
+                  isFirst={checkpointPagination.isFirst}
+                  isLast={checkpointPagination.isLast}
+                  onFirstPage={checkpointPagination.firstPage}
+                  onLastPage={checkpointPagination.lastPage}
+                  onPrevPage={checkpointPagination.prevPage}
+                  onNextPage={checkpointPagination.nextPage}
+                  pageSize={checkpointPagination.size}
+                  onPageSizeChange={checkpointPagination.setPageSize}
+                  position="top"
+                />
                 <CheckpointTimelineTable
                   rows={checkpointRowsWithGaps}
                   isLoading={checkpointLoading}
@@ -1085,7 +1100,7 @@ export default function AuditLogsPage() {
         </p>
 
         <div>
-          <DataTable
+          <PaginatedTable
             columns={columns}
             data={data}
             isLoading={isLoading}
@@ -1094,19 +1109,7 @@ export default function AuditLogsPage() {
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
-          />
-          <Pagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalElements={pagination.totalElements}
-            isFirst={pagination.isFirst}
-            isLast={pagination.isLast}
-            onFirstPage={pagination.firstPage}
-            onLastPage={pagination.lastPage}
-            onPrevPage={pagination.prevPage}
-            onNextPage={pagination.nextPage}
-            pageSize={pagination.size}
-            onPageSizeChange={pagination.setPageSize}
+            pagination={pagination}
           />
         </div>
       </div>

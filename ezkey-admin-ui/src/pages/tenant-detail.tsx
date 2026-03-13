@@ -7,8 +7,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Edit, Power, PowerOff } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
-import { Pagination } from '@/components/data-table/pagination';
+import { type ColumnDef } from '@/components/data-table/data-table';
+import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -464,7 +464,7 @@ export default function TenantDetailPage() {
                   {t('detail.adminsSectionTitle')}
                 </h3>
               </div>
-              <DataTable
+              <PaginatedTable
                 columns={adminColumns}
                 data={admins}
                 isLoading={loadingAdmins}
@@ -473,19 +473,7 @@ export default function TenantDetailPage() {
                 emptyMessage={t('detail.adminsEmpty')}
                 currentSort={admPagination.sort}
                 onSort={admPagination.setSort}
-              />
-              <Pagination
-                page={admPagination.page}
-                totalPages={admPagination.totalPages}
-                totalElements={admPagination.totalElements}
-                isFirst={admPagination.isFirst}
-                isLast={admPagination.isLast}
-                onFirstPage={admPagination.firstPage}
-                onLastPage={admPagination.lastPage}
-                onPrevPage={admPagination.prevPage}
-                onNextPage={admPagination.nextPage}
-                pageSize={admPagination.size}
-                onPageSizeChange={admPagination.setPageSize}
+                pagination={admPagination}
               />
             </div>
 
