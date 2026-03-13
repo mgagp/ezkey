@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Key,
@@ -23,13 +24,7 @@ import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
 import { getApiErrorMessage } from '@/lib/api-client';
-import {
-  BATCH_STATUS_HELP,
-  ENCRYPTION_KEY_STATUS_HELP,
-  ENCRYPTION_KEYS_SECTION_HELP,
-  ENCRYPTION_KEYS_TABLE_HEADER_HELP,
-  REENCRYPT_BUTTON_HELP,
-} from '@/lib/help-text';
+import { ENCRYPTION_KEYS_SECTION_HELP } from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -57,18 +52,20 @@ import type {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function KeyStatusBadge({ status }: { status?: string }) {
-  if (status === 'PRIMARY') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.PRIMARY}><Badge variant="success">Primary</Badge></Tooltip>;
-  if (status === 'ENABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.ENABLED}><Badge variant="muted">Enabled</Badge></Tooltip>;
-  if (status === 'DISABLED') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.DISABLED}><Badge variant="error">Disabled</Badge></Tooltip>;
-  if (status === 'PENDING') return <Tooltip content={ENCRYPTION_KEY_STATUS_HELP.PENDING}><Badge variant="muted">Pending</Badge></Tooltip>;
+  const { t } = useTranslation('encryption-keys');
+  if (status === 'PRIMARY') return <Tooltip content={t('keyStatus.helpPrimary')}><Badge variant="success">{t('keyStatus.labelPrimary')}</Badge></Tooltip>;
+  if (status === 'ENABLED') return <Tooltip content={t('keyStatus.helpEnabled')}><Badge variant="muted">{t('keyStatus.labelEnabled')}</Badge></Tooltip>;
+  if (status === 'DISABLED') return <Tooltip content={t('keyStatus.helpDisabled')}><Badge variant="error">{t('keyStatus.labelDisabled')}</Badge></Tooltip>;
+  if (status === 'PENDING') return <Tooltip content={t('keyStatus.helpPending')}><Badge variant="muted">{t('keyStatus.labelPending')}</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
 function BatchStatusBadge({ status }: { status?: string }) {
-  if (status === 'COMPLETED') return <Tooltip content={BATCH_STATUS_HELP.COMPLETED}><Badge variant="success">Completed</Badge></Tooltip>;
-  if (status === 'IN_PROGRESS' || status === 'PROCESSING') return <Tooltip content={BATCH_STATUS_HELP.IN_PROGRESS}><Badge variant="warning">In Progress</Badge></Tooltip>;
-  if (status === 'FAILED') return <Tooltip content={BATCH_STATUS_HELP.FAILED}><Badge variant="error">Failed</Badge></Tooltip>;
-  if (status === 'PENDING') return <Tooltip content={BATCH_STATUS_HELP.PENDING}><Badge variant="muted">Pending</Badge></Tooltip>;
+  const { t } = useTranslation('encryption-keys');
+  if (status === 'COMPLETED') return <Tooltip content={t('batchStatus.helpCompleted')}><Badge variant="success">{t('batchStatus.labelCompleted')}</Badge></Tooltip>;
+  if (status === 'IN_PROGRESS' || status === 'PROCESSING') return <Tooltip content={t('batchStatus.helpInProgress')}><Badge variant="warning">{t('batchStatus.labelInProgress')}</Badge></Tooltip>;
+  if (status === 'FAILED') return <Tooltip content={t('batchStatus.helpFailed')}><Badge variant="error">{t('batchStatus.labelFailed')}</Badge></Tooltip>;
+  if (status === 'PENDING') return <Tooltip content={t('batchStatus.helpPending')}><Badge variant="muted">{t('batchStatus.labelPending')}</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
@@ -96,6 +93,7 @@ function ReencryptKeyDialog({
   keyData: EncryptionKeyResponse | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [result, setResult] = useState<ReencryptionKeyResponse | null>(null);
@@ -105,11 +103,11 @@ function ReencryptKeyDialog({
       onSuccess: (data) => {
         const res = data as unknown as ReencryptionKeyResponse;
         setResult(res);
-        toast(res.message ?? `Re-encryption triggered for key #${keyData!.keyId}`, 'success');
+        toast(res.message ?? t('reencryptDialog.toastSuccess', { id: keyData!.keyId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Re-encryption failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('reencryptDialog.errorTrigger')), 'error'),
     },
   });
 
@@ -126,30 +124,30 @@ function ReencryptKeyDialog({
   }
 
   return (
-    <Dialog open={keyData !== null} onClose={handleClose} title={`Re-encrypt Key #${keyData.keyId}`} size="md">
+    <Dialog open={keyData !== null} onClose={handleClose} title={t('reencryptDialog.title', { id: keyData.keyId })} size="md">
       {result ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-success">
             <RotateCcw className="size-5" />
-            <span className="font-bold">Re-encryption triggered</span>
+            <span className="font-bold">{t('reencryptDialog.triggered')}</span>
           </div>
           <p className="text-sm">{result.message}</p>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="border-2 border-fg/20 p-2">
               <p className="text-lg font-mono font-bold">{result.batchesCreated ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">Created</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.created')}</p>
             </div>
             <div className="border-2 border-fg/20 p-2">
               <p className="text-lg font-mono font-bold">{result.batchesProcessed ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">Processed</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.processed')}</p>
             </div>
             <div className="border-2 border-fg/20 p-2">
               <p className="text-lg font-mono font-bold text-error">{result.batchesFailed ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">Failed</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.failed')}</p>
             </div>
           </div>
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>Done</Button>
+            <Button onClick={handleClose}>{t('reencryptDialog.done')}</Button>
           </div>
         </div>
       ) : (
@@ -157,20 +155,18 @@ function ReencryptKeyDialog({
           <div className="flex items-start gap-2 p-3 border-2 border-warning/40 bg-warning/5">
             <AlertTriangle className="size-4 text-warning mt-0.5 shrink-0" />
             <p className="text-xs text-fg-muted">
-              This will create and process re-encryption batches to migrate all records
-              from key <span className="font-mono font-bold">#{keyData.keyId}</span> to the current primary key.
-              This may take time depending on the number of records.
+              {t('reencryptDialog.warning', { id: keyData.keyId })}
             </p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={handleClose}>{t('reencryptDialog.cancel')}</Button>
             <Button
               onClick={handleTrigger}
               disabled={mutation.isPending}
               className="gap-1.5"
             >
               <RotateCcw className="size-3.5" />
-              {mutation.isPending ? 'Re-encrypting…' : 'Re-encrypt'}
+              {mutation.isPending ? t('reencryptDialog.submitting') : t('reencryptDialog.submit')}
             </Button>
           </div>
         </div>
@@ -190,6 +186,7 @@ function KeyDetailDialog({
   onClose: () => void;
   onReencrypt: (key: EncryptionKeyResponse) => void;
 }) {
+  const { t } = useTranslation('encryption-keys');
   const { data: rawKey, isLoading } = useGetKey(keyId ?? 0, {
     query: { enabled: keyId != null },
   });
@@ -207,7 +204,7 @@ function KeyDetailDialog({
   }
 
   return (
-    <Dialog open={keyId !== null} onClose={onClose} title={`Key #${keyId}`} size="md">
+    <Dialog open={keyId !== null} onClose={onClose} title={t('keyDetail.title', { id: keyId })} size="md">
       {isLoading || !keyData ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="size-5 animate-spin text-fg-muted" />
@@ -215,16 +212,16 @@ function KeyDetailDialog({
       ) : (
         <>
           <dl className="space-y-2.5">
-            <Row label="Key ID"><span className="font-mono">{keyData.keyId}</span></Row>
-            <Row label="Status"><KeyStatusBadge status={keyData.keyStatus} /></Row>
-            <Row label="Algorithm"><span className="font-mono text-xs">{keyData.algorithm ?? '—'}</span></Row>
-            <Row label="Introduced"><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></Row>
-            <Row label="Promoted primary">{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</Row>
-            <Row label="Disabled">{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</Row>
-            <Row label="Records encrypted"><span className="font-mono">{keyData.recordsEncrypted ?? 0}</span></Row>
-            <Row label="Records re-encrypted"><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></Row>
-            <Row label="Created by">{keyData.createdBy ?? '—'}</Row>
-            {keyData.notes && <Row label="Notes"><span className="text-xs text-fg-muted">{keyData.notes}</span></Row>}
+            <Row label={t('keyDetail.labelKeyId')}><span className="font-mono">{keyData.keyId}</span></Row>
+            <Row label={t('keyDetail.labelStatus')}><KeyStatusBadge status={keyData.keyStatus} /></Row>
+            <Row label={t('keyDetail.labelAlgorithm')}><span className="font-mono text-xs">{keyData.algorithm ?? '—'}</span></Row>
+            <Row label={t('keyDetail.labelIntroduced')}><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></Row>
+            <Row label={t('keyDetail.labelPromotedPrimary')}>{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</Row>
+            <Row label={t('keyDetail.labelDisabled')}>{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</Row>
+            <Row label={t('keyDetail.labelRecordsEncrypted')}><span className="font-mono">{keyData.recordsEncrypted ?? 0}</span></Row>
+            <Row label={t('keyDetail.labelRecordsReencrypted')}><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></Row>
+            <Row label={t('keyDetail.labelCreatedBy')}>{keyData.createdBy ?? '—'}</Row>
+            {keyData.notes && <Row label={t('keyDetail.labelNotes')}><span className="text-xs text-fg-muted">{keyData.notes}</span></Row>}
           </dl>
           <div className="flex justify-end gap-2 pt-4">
             {keyData.keyStatus !== 'PRIMARY' && keyData.keyStatus !== 'DISABLED' && (
@@ -234,10 +231,10 @@ function KeyDetailDialog({
                 onClick={() => { onClose(); onReencrypt(keyData); }}
               >
                 <RotateCcw className="size-3.5" />
-                Re-encrypt
+                {t('list.reencryptButton')}
               </Button>
             )}
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={onClose}>{t('keyDetail.close')}</Button>
           </div>
         </>
       )}
@@ -254,6 +251,7 @@ function BatchDetailDialog({
   batch: ReencryptionBatchResponse | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('encryption-keys');
   if (!batch) return null;
 
   function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -266,34 +264,34 @@ function BatchDetailDialog({
   }
 
   return (
-    <Dialog open={batch !== null} onClose={onClose} title={`Batch #${batch.batchId}`} size="md">
+    <Dialog open={batch !== null} onClose={onClose} title={t('batchDetail.title', { id: batch.batchId })} size="md">
       <dl className="space-y-2.5">
-        <Row label="Batch ID"><span className="font-mono">{batch.batchId}</span></Row>
-        <Row label="Status"><BatchStatusBadge status={batch.status} /></Row>
-        <Row label="Target table"><span className="font-mono text-xs">{batch.targetTable}</span></Row>
-        <Row label="Target column"><span className="font-mono text-xs">{batch.targetColumn}</span></Row>
-        <Row label="Old key"><span className="font-mono">#{batch.oldKeyId}</span></Row>
-        <Row label="New key"><span className="font-mono">#{batch.newKeyId}</span></Row>
-        <Row label="Progress"><ProgressBar pct={batch.progressPct} /></Row>
-        <Row label="Records total"><span className="font-mono">{batch.recordsTotal ?? 0}</span></Row>
-        <Row label="Records done"><span className="font-mono">{batch.recordsDone ?? 0}</span></Row>
-        <Row label="Records failed">
+        <Row label={t('batchDetail.labelBatchId')}><span className="font-mono">{batch.batchId}</span></Row>
+        <Row label={t('batchDetail.labelStatus')}><BatchStatusBadge status={batch.status} /></Row>
+        <Row label={t('batchDetail.labelTargetTable')}><span className="font-mono text-xs">{batch.targetTable}</span></Row>
+        <Row label={t('batchDetail.labelTargetColumn')}><span className="font-mono text-xs">{batch.targetColumn}</span></Row>
+        <Row label={t('batchDetail.labelOldKey')}><span className="font-mono">#{batch.oldKeyId}</span></Row>
+        <Row label={t('batchDetail.labelNewKey')}><span className="font-mono">#{batch.newKeyId}</span></Row>
+        <Row label={t('batchDetail.labelProgress')}><ProgressBar pct={batch.progressPct} /></Row>
+        <Row label={t('batchDetail.labelRecordsTotal')}><span className="font-mono">{batch.recordsTotal ?? 0}</span></Row>
+        <Row label={t('batchDetail.labelRecordsDone')}><span className="font-mono">{batch.recordsDone ?? 0}</span></Row>
+        <Row label={t('batchDetail.labelRecordsFailed')}>
           <span className={`font-mono ${(batch.recordsFailed ?? 0) > 0 ? 'text-error font-bold' : ''}`}>
             {batch.recordsFailed ?? 0}
           </span>
         </Row>
-        <Row label="Records skipped"><span className="font-mono">{batch.recordsSkipped ?? 0}</span></Row>
-        <Row label="Retry count"><span className="font-mono">{batch.retryCount ?? 0}</span></Row>
-        <Row label="Started">{batch.startedAt ? formatDate(batch.startedAt) : '—'}</Row>
-        <Row label="Completed">{batch.completedAt ? formatDate(batch.completedAt) : '—'}</Row>
+        <Row label={t('batchDetail.labelRecordsSkipped')}><span className="font-mono">{batch.recordsSkipped ?? 0}</span></Row>
+        <Row label={t('batchDetail.labelRetryCount')}><span className="font-mono">{batch.retryCount ?? 0}</span></Row>
+        <Row label={t('batchDetail.labelStarted')}>{batch.startedAt ? formatDate(batch.startedAt) : '—'}</Row>
+        <Row label={t('batchDetail.labelCompleted')}>{batch.completedAt ? formatDate(batch.completedAt) : '—'}</Row>
         {batch.errorMessage && (
-          <Row label="Error">
+          <Row label={t('batchDetail.labelError')}>
             <span className="text-xs text-error font-mono">{batch.errorMessage}</span>
           </Row>
         )}
       </dl>
       <div className="flex justify-end pt-4">
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose}>{t('batchDetail.close')}</Button>
       </div>
     </Dialog>
   );
@@ -302,6 +300,7 @@ function BatchDetailDialog({
 // ── Rotate Key Dialog ─────────────────────────────────────────────────────────
 
 function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [reason, setReason] = useState('');
@@ -312,11 +311,11 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
       onSuccess: (data) => {
         const res = data as unknown as KeyRotationResponse;
         setResult(res);
-        toast(`Key rotated — new primary: #${res.newPrimaryKeyId}`, 'success');
+        toast(t('rotateDialog.toastSuccess', { id: res.newPrimaryKeyId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Rotation failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('rotateDialog.errorRotate')), 'error'),
     },
   });
 
@@ -327,17 +326,17 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Rotate Encryption Key" size="md" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={t('rotateDialog.title')} size="md" dismissible={false}>
       {result ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-success">
             <Key className="size-5" />
-            <span className="font-bold">Key rotated successfully</span>
+            <span className="font-bold">{t('rotateDialog.successTitle')}</span>
           </div>
           <p className="text-sm">{result.message}</p>
-          <p className="text-sm font-mono">New primary key: <strong>#{result.newPrimaryKeyId}</strong></p>
+          <p className="text-sm font-mono">{t('rotateDialog.newPrimary')} <strong>#{result.newPrimaryKeyId}</strong></p>
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>Done</Button>
+            <Button onClick={handleClose}>{t('rotateDialog.done')}</Button>
           </div>
         </div>
       ) : (
@@ -351,23 +350,22 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
           <div className="flex items-start gap-2 p-3 border-2 border-warning/40 bg-warning/5">
             <AlertTriangle className="size-4 text-warning mt-0.5 shrink-0" />
             <p className="text-xs text-fg-muted">
-              This will generate a new AES encryption key and promote it as the primary.
-              A background re-encryption job will start to migrate existing records.
+              {t('rotateDialog.warning')}
             </p>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="rotate-reason">Reason (min 10 chars)</Label>
+            <Label htmlFor="rotate-reason">{t('rotateDialog.reasonLabel')}</Label>
             <Input
               id="rotate-reason"
-              placeholder="Scheduled quarterly key rotation"
+              placeholder={t('rotateDialog.reasonPlaceholder')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={handleClose}>{t('rotateDialog.cancel')}</Button>
             <Button type="submit" disabled={mutation.isPending || reason.trim().length < 10}>
-              {mutation.isPending ? 'Rotating…' : 'Rotate Key'}
+              {mutation.isPending ? t('rotateDialog.submitting') : t('rotateDialog.submit')}
             </Button>
           </div>
         </form>
@@ -379,6 +377,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
 // ── Re-encryption Batches Section ─────────────────────────────────────────────
 
 function ReencryptionBatchesSection() {
+  const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -399,10 +398,10 @@ function ReencryptionBatchesSection() {
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as ReencryptionTriggerResponse;
-        toast(res.message ?? `Triggered — ${res.batchesCreated} batches`, 'success');
+        toast(res.message ?? t('batchesSection.toastTrigger', { count: res.batchesCreated }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Trigger failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorTrigger')), 'error'),
     },
   });
 
@@ -410,10 +409,10 @@ function ReencryptionBatchesSection() {
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as BatchCreationResponse;
-        toast(res.message ?? `Created ${res.batchesCreated} batches`, 'success');
+        toast(res.message ?? t('batchesSection.toastCreate', { count: res.batchesCreated }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Batch creation failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorCreate')), 'error'),
     },
   });
 
@@ -421,19 +420,19 @@ function ReencryptionBatchesSection() {
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as BatchResumeResponse;
-        toast(res.message ?? `Batch #${res.batchId} resumed`, 'success');
+        toast(res.message ?? t('batchesSection.toastResume', { id: res.batchId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Resume failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorResume')), 'error'),
     },
   });
 
   const batchColumns: ColumnDef<ReencryptionBatchResponse>[] = [
-    { header: 'ID', key: 'batchId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.batchId}</span> },
-    { header: 'Table', key: 'targetTable', render: (r) => <span className="font-mono text-xs">{r.targetTable}</span> },
-    { header: 'Column', key: 'targetColumn', render: (r) => <span className="font-mono text-xs">{r.targetColumn}</span> },
+    { header: t('batchesSection.columnsId'), key: 'batchId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.batchId}</span> },
+    { header: t('batchesSection.columnsTable'), key: 'targetTable', render: (r) => <span className="font-mono text-xs">{r.targetTable}</span> },
+    { header: t('batchesSection.columnsColumn'), key: 'targetColumn', render: (r) => <span className="font-mono text-xs">{r.targetColumn}</span> },
     {
-      header: 'Keys',
+      header: t('batchesSection.columnsKeys'),
       key: 'keys',
       render: (r) => (
         <span className="text-xs">
@@ -441,20 +440,20 @@ function ReencryptionBatchesSection() {
         </span>
       ),
     },
-    { header: 'Status', key: 'status', render: (r) => <BatchStatusBadge status={r.status} /> },
+    { header: t('batchesSection.columnsStatus'), key: 'status', render: (r) => <BatchStatusBadge status={r.status} /> },
     {
-      header: 'Progress',
+      header: t('batchesSection.columnsProgress'),
       key: 'progress',
       className: 'w-32',
       render: (r) => <ProgressBar pct={r.progressPct} />,
     },
     {
-      header: 'Records',
+      header: t('batchesSection.columnsRecords'),
       key: 'records',
       render: (r) => (
         <span className="text-xs font-mono">
           {r.recordsDone ?? 0}/{r.recordsTotal ?? 0}
-          {(r.recordsFailed ?? 0) > 0 && <span className="text-error ml-1">({r.recordsFailed} fail)</span>}
+          {(r.recordsFailed ?? 0) > 0 && <span className="text-error ml-1">({r.recordsFailed} {t('batchDetail.failSuffix')})</span>}
         </span>
       ),
     },
@@ -471,7 +470,7 @@ function ReencryptionBatchesSection() {
             disabled={resumeMutation.isPending}
           >
             <Play className="size-3" />
-            Resume
+            {t('batchesSection.resume')}
           </Button>
         ) : null,
     },
@@ -486,7 +485,7 @@ function ReencryptionBatchesSection() {
       >
         <div className="flex items-center gap-2">
           <RotateCcw className="size-4 text-accent" />
-          <h2 className="font-black text-sm uppercase tracking-wider">Re-encryption Batches</h2>
+          <h2 className="font-black text-sm uppercase tracking-wider">{t('batchesSection.title')}</h2>
           {batches.length > 0 && <Badge variant="muted">{batches.length}</Badge>}
         </div>
         {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
@@ -497,11 +496,11 @@ function ReencryptionBatchesSection() {
           <div className="flex items-center gap-2 flex-wrap">
             <div className="w-40">
               <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">All statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="FAILED">Failed</option>
+                <option value="">{t('batchesSection.filterAll')}</option>
+                <option value="PENDING">{t('batchStatus.labelPending')}</option>
+                <option value="IN_PROGRESS">{t('batchStatus.labelInProgress')}</option>
+                <option value="COMPLETED">{t('batchStatus.labelCompleted')}</option>
+                <option value="FAILED">{t('batchStatus.labelFailed')}</option>
               </Select>
             </div>
             <div className="flex gap-2 ml-auto">
@@ -513,7 +512,7 @@ function ReencryptionBatchesSection() {
                 disabled={createBatchesMutation.isPending}
               >
                 <ListPlus className="size-3.5" />
-                {createBatchesMutation.isPending ? 'Creating…' : 'Create Batches'}
+                {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
               </Button>
               <Button
                 size="sm"
@@ -523,7 +522,7 @@ function ReencryptionBatchesSection() {
                 disabled={triggerMutation.isPending}
               >
                 <RefreshCw className="size-3.5" />
-                {triggerMutation.isPending ? 'Triggering…' : 'Trigger Full Re-encryption'}
+                {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
               </Button>
             </div>
           </div>
@@ -534,12 +533,14 @@ function ReencryptionBatchesSection() {
             isLoading={isLoading}
             onRowClick={(row) => setSelectedBatch(row)}
             keyExtractor={(r, i) => r.batchId ?? i}
-            emptyMessage={statusFilter ? 'No batches match the selected filter.' : 'No re-encryption batches found.'}
+            emptyMessage={statusFilter ? t('batchesSection.emptyFiltered') : t('batchesSection.emptyAll')}
           />
           {!isLoading && filteredBatches.length > 0 && (
             <p className="text-xs text-fg-muted">
-              {filteredBatches.length} batch{filteredBatches.length !== 1 ? 'es' : ''}
-              {statusFilter ? ` (filtered from ${batches.length})` : ''}
+              {filteredBatches.length === 1
+                ? t('batchesSection.batchCount', { count: filteredBatches.length })
+                : t('batchesSection.batchCountPlural', { count: filteredBatches.length })}
+              {statusFilter && ` ${t('batchesSection.filteredFrom', { total: batches.length })}`}
             </p>
           )}
         </div>
@@ -555,6 +556,7 @@ function ReencryptionBatchesSection() {
 type KeyStatusFilter = 'all' | 'PRIMARY' | 'ENABLED' | 'DISABLED' | 'PENDING';
 
 export default function EncryptionKeysPage() {
+  const { t } = useTranslation('encryption-keys');
   const [selectedKeyId, setSelectedKeyId] = useState<number | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
@@ -576,7 +578,7 @@ export default function EncryptionKeysPage() {
 
   const columns: ColumnDef<EncryptionKeyResponse>[] = [
     {
-      header: 'ID',
+      header: t('list.columns.id'),
       key: 'keyId',
       className: 'w-14',
       sortKey: 'keyId',
@@ -588,27 +590,27 @@ export default function EncryptionKeysPage() {
       ),
     },
     {
-      header: 'Status',
+      header: t('list.columns.status'),
       key: 'keyStatus',
       sortKey: 'keyStatus',
-      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.STATUS,
+      headerTooltip: t('list.headerTooltipStatus'),
       render: (r) => <KeyStatusBadge status={r.keyStatus} />,
     },
     {
-      header: 'Algorithm',
+      header: t('list.columns.algorithm'),
       key: 'algorithm',
       sortKey: 'algorithm',
       render: (r) => <span className="font-mono text-xs">{r.algorithm ?? '—'}</span>,
     },
     {
-      header: 'Records',
+      header: t('list.columns.records'),
       key: 'recordsEncrypted',
       sortKey: 'recordsEncrypted',
-      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.RECORDS,
+      headerTooltip: t('list.headerTooltipRecords'),
       render: (r) => <span className="font-mono text-xs">{r.recordsEncrypted ?? 0}</span>,
     },
     {
-      header: 'Introduced',
+      header: t('list.columns.introduced'),
       key: 'introducedAt',
       sortKey: 'introducedAt',
       render: (r) => (
@@ -616,16 +618,16 @@ export default function EncryptionKeysPage() {
       ),
     },
     {
-      header: 'Primary since',
+      header: t('list.columns.primarySince'),
       key: 'promotedPrimaryAt',
       sortKey: 'promotedPrimaryAt',
-      headerTooltip: ENCRYPTION_KEYS_TABLE_HEADER_HELP.PRIMARY_SINCE,
+      headerTooltip: t('list.headerTooltipPrimarySince'),
       render: (r) => (
         <span className="text-xs text-fg-muted">{r.promotedPrimaryAt ? formatDate(r.promotedPrimaryAt) : '—'}</span>
       ),
     },
     {
-      header: 'Created by',
+      header: t('list.columns.createdBy'),
       key: 'createdBy',
       sortKey: 'createdBy',
       render: (r) => <span className="text-xs">{r.createdBy ?? '—'}</span>,
@@ -635,7 +637,7 @@ export default function EncryptionKeysPage() {
       key: 'actions',
       render: (r) =>
         r.keyStatus === 'ENABLED' ? (
-          <Tooltip content={REENCRYPT_BUTTON_HELP}>
+          <Tooltip content={t('list.reencryptButtonTooltip')}>
             <Button
               size="sm"
               variant="secondary"
@@ -643,7 +645,7 @@ export default function EncryptionKeysPage() {
               onClick={(e) => { e.stopPropagation(); setReencryptTarget(r); }}
             >
               <RotateCcw className="size-3" />
-              Re-encrypt
+              {t('list.reencryptButton')}
             </Button>
           </Tooltip>
         ) : null,
@@ -651,18 +653,18 @@ export default function EncryptionKeysPage() {
   ];
 
   return (
-    <AppShell title="Encryption Keys">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
           <div className="flex items-center gap-1.5">
             <p className="text-xs text-fg-muted">
-              AES encryption keys protecting sensitive data at rest. Rotate periodically for compliance.
+              {t('list.sectionIntro')}
             </p>
             <ContextHelp
-              title={ENCRYPTION_KEYS_SECTION_HELP.title}
+              title={t('list.sectionHelpTitle')}
               content={ENCRYPTION_KEYS_SECTION_HELP.content}
-              ariaLabel="Help: Encryption keys"
+              ariaLabel={`Help: ${t('list.sectionHelpTitle')}`}
             />
           </div>
           <div className="w-40">
@@ -670,20 +672,20 @@ export default function EncryptionKeysPage() {
               value={keyStatusFilter}
               onChange={(e) => setKeyStatusFilter(e.target.value as KeyStatusFilter)}
             >
-              <option value="all">All statuses</option>
-              <option value="PRIMARY">Primary</option>
-              <option value="ENABLED">Enabled</option>
-              <option value="DISABLED">Disabled</option>
-              <option value="PENDING">Pending</option>
+              <option value="all">{t('list.filterStatusAll')}</option>
+              <option value="PRIMARY">{t('list.filterStatusPrimary')}</option>
+              <option value="ENABLED">{t('list.filterStatusEnabled')}</option>
+              <option value="DISABLED">{t('list.filterStatusDisabled')}</option>
+              <option value="PENDING">{t('list.filterStatusPending')}</option>
             </Select>
           </div>
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
           <Button size="sm" onClick={() => setRotateOpen(true)} className="gap-1.5 ml-auto">
             <Key className="size-3.5" />
-            Rotate Key
+            {t('list.rotateKey')}
           </Button>
         </div>
 
@@ -695,7 +697,7 @@ export default function EncryptionKeysPage() {
             isLoading={isLoading}
             onRowClick={(row) => setSelectedKeyId(row.keyId ?? null)}
             keyExtractor={(r, i) => r.keyId ?? i}
-            emptyMessage="No encryption keys found."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />

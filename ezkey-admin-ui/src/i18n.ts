@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import enApiKeys from '@/locales/en/api-keys.json';
 import enAuditLogs from '@/locales/en/audit-logs.json';
+import enEncryptionKeys from '@/locales/en/encryption-keys.json';
 import enAuthAttempts from '@/locales/en/auth-attempts.json';
 import enCommon from '@/locales/en/common.json';
 import enDashboard from '@/locales/en/dashboard.json';
@@ -14,6 +15,7 @@ import enLogin from '@/locales/en/login.json';
 import enTenants from '@/locales/en/tenants.json';
 import frApiKeys from '@/locales/fr/api-keys.json';
 import frAuditLogs from '@/locales/fr/audit-logs.json';
+import frEncryptionKeys from '@/locales/fr/encryption-keys.json';
 import frAuthAttempts from '@/locales/fr/auth-attempts.json';
 import frCommon from '@/locales/fr/common.json';
 import frDashboard from '@/locales/fr/dashboard.json';
@@ -33,6 +35,7 @@ i18n
       en: {
         'api-keys': enApiKeys as Record<string, unknown>,
         'audit-logs': enAuditLogs as Record<string, unknown>,
+        'encryption-keys': enEncryptionKeys as Record<string, unknown>,
         'auth-attempts': enAuthAttempts as Record<string, unknown>,
         common: enCommon as Record<string, unknown>,
         dashboard: enDashboard as Record<string, unknown>,
@@ -45,6 +48,7 @@ i18n
       fr: {
         'api-keys': frApiKeys as Record<string, unknown>,
         'audit-logs': frAuditLogs as Record<string, unknown>,
+        'encryption-keys': frEncryptionKeys as Record<string, unknown>,
         'auth-attempts': frAuthAttempts as Record<string, unknown>,
         common: frCommon as Record<string, unknown>,
         dashboard: frDashboard as Record<string, unknown>,
@@ -57,7 +61,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['api-keys', 'audit-logs', 'auth-attempts', 'common', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },
