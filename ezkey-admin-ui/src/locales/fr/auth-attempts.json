@@ -1,0 +1,52 @@
+{
+  "list": {
+    "title": "Tentatives d'authentification",
+    "filterStatusAll": "Tous les statuts",
+    "filterStatusPending": "En attente",
+    "filterStatusRead": "Lu",
+    "filterStatusAccepted": "Accepté",
+    "filterStatusRejected": "Refusé",
+    "filterStatusExpired": "Expiré",
+    "filterStatusInvalid": "Invalide",
+    "filterIntegrationAll": "Toutes les intégrations",
+    "enrollmentIdPlaceholder": "ID enrôlement",
+    "dateRangeFull": "Toute la période",
+    "refresh": "Actualiser",
+    "hintReadOnly": "Lecture seule — vue des tentatives d'authentification dans le périmètre du tenant.",
+    "emptyMessage": "Aucune tentative d'authentification pour les filtres sélectionnés.",
+    "columns": {
+      "id": "ID",
+      "status": "Statut",
+      "enrollment": "Enrôlement",
+      "integration": "Intégration",
+      "challenge": "Défi",
+      "created": "Créé",
+      "expires": "Expire"
+    }
+  },
+  "detail": {
+    "title": "Tentative d'auth. #{{id}}",
+    "close": "Fermer",
+    "labelId": "ID",
+    "labelStatus": "Statut",
+    "labelEnrollment": "Enrôlement",
+    "labelChallenge": "Défi",
+    "labelCreated": "Créé",
+    "labelExpires": "Expire",
+    "labelProofToken": "Jeton de preuve"
+  },
+  "status": {
+    "labelPending": "En attente",
+    "labelRead": "Lu",
+    "labelAccepted": "Accepté",
+    "labelRejected": "Refusé",
+    "labelExpired": "Expiré",
+    "labelInvalid": "Invalide",
+    "helpPending": "En attente que l'appareil mobile prenne en charge la demande.",
+    "helpRead": "Demande reçue par l'appareil ; en attente de la décision de l'utilisateur.",
+    "helpAccepted": "L'utilisateur a approuvé la demande d'authentification.",
+    "helpRejected": "L'utilisateur a refusé la demande d'authentification.",
+    "helpExpired": "Aucune réponse dans le délai imparti.",
+    "helpInvalid": "Échec de la validation cryptographique."
+  }
+}

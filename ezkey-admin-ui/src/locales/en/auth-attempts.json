@@ -1,0 +1,52 @@
+{
+  "list": {
+    "title": "Auth Attempts",
+    "filterStatusAll": "All Status",
+    "filterStatusPending": "Pending",
+    "filterStatusRead": "Read",
+    "filterStatusAccepted": "Accepted",
+    "filterStatusRejected": "Rejected",
+    "filterStatusExpired": "Expired",
+    "filterStatusInvalid": "Invalid",
+    "filterIntegrationAll": "All Integrations",
+    "enrollmentIdPlaceholder": "Enrollment ID",
+    "dateRangeFull": "Full range",
+    "refresh": "Refresh",
+    "hintReadOnly": "Read-only — tenant-scoped view of authentication attempts.",
+    "emptyMessage": "No auth attempts found for the selected filters.",
+    "columns": {
+      "id": "ID",
+      "status": "Status",
+      "enrollment": "Enrollment",
+      "integration": "Integration",
+      "challenge": "Challenge",
+      "created": "Created",
+      "expires": "Expires"
+    }
+  },
+  "detail": {
+    "title": "Auth Attempt #{{id}}",
+    "close": "Close",
+    "labelId": "ID",
+    "labelStatus": "Status",
+    "labelEnrollment": "Enrollment",
+    "labelChallenge": "Challenge",
+    "labelCreated": "Created",
+    "labelExpires": "Expires",
+    "labelProofToken": "Proof Token"
+  },
+  "status": {
+    "labelPending": "Pending",
+    "labelRead": "Read",
+    "labelAccepted": "Accepted",
+    "labelRejected": "Rejected",
+    "labelExpired": "Expired",
+    "labelInvalid": "Invalid",
+    "helpPending": "Waiting for mobile device to pick up the request.",
+    "helpRead": "Device received the request; waiting for user decision.",
+    "helpAccepted": "User approved the authentication request.",
+    "helpRejected": "User denied the authentication request.",
+    "helpExpired": "No response within the allowed time window.",
+    "helpInvalid": "Cryptographic validation failed."
+  }
+}

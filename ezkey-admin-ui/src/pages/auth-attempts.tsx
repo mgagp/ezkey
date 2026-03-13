@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { RefreshCw, Shield } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
@@ -27,6 +28,7 @@ function AttemptDetailDialog({
   attempt: AuthAttemptDto | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('auth-attempts');
   if (!attempt) return null;
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -39,28 +41,28 @@ function AttemptDetailDialog({
   }
 
   return (
-    <Dialog open={attempt !== null} onClose={onClose} title={`Auth Attempt #${attempt.authAttemptId}`} size="md">
+    <Dialog open={attempt !== null} onClose={onClose} title={t('detail.title', { id: attempt.authAttemptId })} size="md">
       <dl className="space-y-3">
-        <InfoRow label="ID"><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
-        <InfoRow label="Status"><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>
-        <InfoRow label="Enrollment">
+        <InfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
+        <InfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>
+        <InfoRow label={t('detail.labelEnrollment')}>
           <span className="font-mono">#{attempt.enrollmentId}</span>
         </InfoRow>
-        <InfoRow label="Challenge">
+        <InfoRow label={t('detail.labelChallenge')}>
           {attempt.authAttemptChallenge != null
             ? <span className="font-mono font-bold">{String(attempt.authAttemptChallenge).padStart(2, '0')}</span>
             : <span className="text-fg-muted">—</span>}
         </InfoRow>
-        <InfoRow label="Created"><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></InfoRow>
-        <InfoRow label="Expires"><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></InfoRow>
+        <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></InfoRow>
+        <InfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></InfoRow>
         {attempt.authAttemptProofToken && (
-          <InfoRow label="Proof Token">
+          <InfoRow label={t('detail.labelProofToken')}>
             <span className="font-mono text-xs break-all text-success">{attempt.authAttemptProofToken}</span>
           </InfoRow>
         )}
       </dl>
       <div className="flex justify-end pt-4">
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose}>{t('detail.close')}</Button>
       </div>
     </Dialog>
   );
@@ -69,6 +71,7 @@ function AttemptDetailDialog({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AuthAttemptsPage() {
+  const { t } = useTranslation('auth-attempts');
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('');
   const [enrollmentIdInput, setEnrollmentIdInput] = useState('');
@@ -103,10 +106,10 @@ export default function AuthAttemptsPage() {
   });
 
   const columns: ColumnDef<AuthAttemptDto>[] = [
-    { header: 'ID', key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
-    { header: 'Status', key: 'authAttemptStatus', sortKey: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
+    { header: t('list.columns.id'), key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
+    { header: t('list.columns.status'), key: 'authAttemptStatus', sortKey: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
     {
-      header: 'Enrollment',
+      header: t('list.columns.enrollment'),
       key: 'enrollmentId',
       render: (r) => (
         <button
@@ -118,17 +121,16 @@ export default function AuthAttemptsPage() {
       ),
     },
     {
-      header: 'Integration',
+      header: t('list.columns.integration'),
       key: 'integration',
       render: (r) => {
-        // Auth attempt doesn't directly expose integrationId — show via lookup if available
         const name = Array.from(lookup.entries()).find(() => false);
-        void name; // not directly available from auth attempt DTO
+        void name;
         return <span className="text-xs text-fg-muted">via #{r.enrollmentId}</span>;
       },
     },
     {
-      header: 'Challenge',
+      header: t('list.columns.challenge'),
       key: 'authAttemptChallenge',
       render: (r) =>
         r.authAttemptChallenge != null ? (
@@ -137,33 +139,33 @@ export default function AuthAttemptsPage() {
           <span className="text-fg-muted">—</span>
         ),
     },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
-    { header: 'Expires', key: 'expiresAt', sortKey: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.expiresAt)}</span> },
+    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
+    { header: t('list.columns.expires'), key: 'expiresAt', sortKey: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.expiresAt)}</span> },
   ];
 
   // Suppress unused variable warning
   void integrations;
 
   return (
-    <AppShell title="Auth Attempts">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
           <div className="w-36">
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="READ">Read</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="INVALID">Invalid</option>
+              <option value="">{t('list.filterStatusAll')}</option>
+              <option value="PENDING">{t('list.filterStatusPending')}</option>
+              <option value="READ">{t('list.filterStatusRead')}</option>
+              <option value="ACCEPTED">{t('list.filterStatusAccepted')}</option>
+              <option value="REJECTED">{t('list.filterStatusRejected')}</option>
+              <option value="EXPIRED">{t('list.filterStatusExpired')}</option>
+              <option value="INVALID">{t('list.filterStatusInvalid')}</option>
             </Select>
           </div>
           <div className="w-44">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
-              <option value="">All Integrations</option>
+              <option value="">{t('list.filterIntegrationAll')}</option>
               {integrations.map((i) => (
                 <option key={i.id} value={String(i.id)}>{i.code}</option>
               ))}
@@ -171,23 +173,23 @@ export default function AuthAttemptsPage() {
           </div>
           <div className="w-36">
             <Input
-              placeholder="Enrollment ID"
+              placeholder={t('list.enrollmentIdPlaceholder')}
               value={enrollmentIdInput}
               onChange={(e) => setEnrollmentIdInput(e.target.value)}
               type="number"
               min={1}
             />
           </div>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} />
+          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <RefreshCw className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
           <Shield className="size-3.5 text-fg-muted" />
-          <p className="text-xs text-fg-muted italic">Read-only — tenant-scoped view of authentication attempts.</p>
+          <p className="text-xs text-fg-muted italic">{t('list.hintReadOnly')}</p>
         </div>
 
         {/* Table */}
@@ -198,7 +200,7 @@ export default function AuthAttemptsPage() {
             isLoading={isLoading}
             onRowClick={(row) => setSelectedAttempt(row)}
             keyExtractor={(r) => r.authAttemptId}
-            emptyMessage="No auth attempts found for the selected filters."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />
