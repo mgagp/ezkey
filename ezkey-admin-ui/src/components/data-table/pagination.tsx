@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -42,14 +43,16 @@ export function Pagination({
   pageSize,
   onPageSizeChange,
 }: PaginationProps) {
+  const { t } = useTranslation('common');
+
   if (totalElements === 0 && totalPages === 0) return null;
 
   return (
     <div className="flex items-center justify-between border-2 border-t-0 border-fg px-3 py-2 bg-bg flex-wrap gap-2">
       <p className="text-xs text-fg-muted font-medium">
-        Page <strong className="text-fg">{page + 1}</strong> of{' '}
+        {t('pagination.page')} <strong className="text-fg">{page + 1}</strong> {t('pagination.of')}{' '}
         <strong className="text-fg">{Math.max(totalPages, 1)}</strong>
-        <span className="text-fg-muted"> · {totalElements} total</span>
+        <span className="text-fg-muted"> · {totalElements} {t('pagination.total')}</span>
       </p>
 
       <div className="flex items-center gap-2">
@@ -62,7 +65,7 @@ export function Pagination({
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
               <option key={n} value={n}>
-                {n} / page
+                {t('pagination.perPage', { count: n })}
               </option>
             ))}
           </select>
@@ -70,18 +73,18 @@ export function Pagination({
 
         <Button variant="secondary" size="sm" onClick={onFirstPage} disabled={isFirst}>
           <ChevronsLeft className="size-3.5" />
-          First
+          {t('pagination.first')}
         </Button>
         <Button variant="secondary" size="sm" onClick={onPrevPage} disabled={isFirst}>
           <ChevronLeft className="size-3.5" />
-          Prev
+          {t('pagination.prev')}
         </Button>
         <Button variant="secondary" size="sm" onClick={onNextPage} disabled={isLast}>
-          Next
+          {t('pagination.next')}
           <ChevronRight className="size-3.5" />
         </Button>
         <Button variant="secondary" size="sm" onClick={onLastPage} disabled={isLast}>
-          Last
+          {t('pagination.last')}
           <ChevronsRight className="size-3.5" />
         </Button>
       </div>

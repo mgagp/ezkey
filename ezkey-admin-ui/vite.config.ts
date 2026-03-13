@@ -15,8 +15,11 @@ export default defineConfig(({ mode }) => ({
       ? { 'import.meta.env.VITE_DEMO_MODE': '"false"' }
       : undefined,
   server: {
+    // Proxy only the Admin API base path so app routes like /api-keys/48 are not
+    // forwarded to the backend. Without this, requests to /api-keys/:id would
+    // match '/api' and get a 404 from the API instead of the SPA index.html.
     proxy: {
-      '/api': {
+      '/api/v1': {
         target: 'http://localhost:9080',
         changeOrigin: true,
       },

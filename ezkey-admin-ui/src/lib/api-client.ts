@@ -1,7 +1,7 @@
 import { clearSession, getToken } from './auth';
 
 /**
- * In development, BASE_URL is empty and Vite proxies /api/* → localhost:9080.
+ * In development, BASE_URL is empty and Vite proxies /api/v1 → localhost:9080.
  * In production, set VITE_API_BASE_URL to the Admin API base URL.
  */
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';

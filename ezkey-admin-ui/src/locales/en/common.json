@@ -3,7 +3,22 @@
     "cancel": "Cancel",
     "logout": "Logout",
     "backToDashboard": "Back to Dashboard",
-    "tryAgain": "Try Again"
+    "tryAgain": "Try Again",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "search": "Search",
+    "loading": "Loading"
+  },
+  "pagination": {
+    "page": "Page",
+    "of": "of",
+    "total": "total",
+    "first": "First",
+    "prev": "Prev",
+    "next": "Next",
+    "last": "Last",
+    "perPage": "{{count}} / page"
   },
   "notFound": {
     "title": "Page Not Found",

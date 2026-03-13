@@ -3,7 +3,22 @@
     "cancel": "Annuler",
     "logout": "Déconnexion",
     "backToDashboard": "Retour au tableau de bord",
-    "tryAgain": "Réessayer"
+    "tryAgain": "Réessayer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "search": "Rechercher",
+    "loading": "Chargement"
+  },
+  "pagination": {
+    "page": "Page",
+    "of": "sur",
+    "total": "au total",
+    "first": "Première",
+    "prev": "Préc.",
+    "next": "Suiv.",
+    "last": "Dernière",
+    "perPage": "{{count}} / page"
   },
   "notFound": {
     "title": "Page introuvable",

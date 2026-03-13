@@ -1,0 +1,47 @@
+{
+  "stats": {
+    "integrations": "Integrations",
+    "enrollments": "Enrollments",
+    "authAttempts24h": "Auth Attempts (24h)",
+    "failureRate24h": "Failure Rate (24h)",
+    "active": "active",
+    "inactive": "inactive",
+    "verified": "verified",
+    "bound": "bound",
+    "created": "created",
+    "accepted": "accepted",
+    "rejected": "rejected",
+    "pending": "pending",
+    "healthy": "Healthy",
+    "monitorClosely": "Monitor closely",
+    "actionRequired": "Action required"
+  },
+  "auditChain": {
+    "title": "Audit chain alerts",
+    "undeclaredGapsLabel": "Undeclared gap(s)",
+    "help": {
+      "undeclaredGaps": "Periods with no checkpoints that have not been formally declared.",
+      "anchorCheckpoint": "The last checkpoint before the gap; used as the link point."
+    },
+    "detectedMessage": "detected. Declare the gap in Audit Logs to restore chain continuity.",
+    "anchorCheckpointLabel": "Anchor checkpoint",
+    "gapMinutes": "~{{count}} min gap",
+    "openAuditLogs": "Open Audit Logs →"
+  },
+  "recentActivity": {
+    "title": "Recent Activity",
+    "empty": "No recent activity.",
+    "adminLabel": "Admin {{id}}"
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "newIntegration": "New Integration",
+    "newIntegrationDesc": "Register an application",
+    "newEnrollment": "New Enrollment",
+    "newEnrollmentDesc": "Enroll a user device",
+    "newAdmin": "New Admin",
+    "newAdminDesc": "Add a tenant admin",
+    "newApiKey": "New API Key",
+    "newApiKeyDesc": "Create M2M credentials"
+  }
+}

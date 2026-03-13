@@ -1,0 +1,47 @@
+{
+  "stats": {
+    "integrations": "Intégrations",
+    "enrollments": "Enrôlements",
+    "authAttempts24h": "Tentatives d'auth. (24h)",
+    "failureRate24h": "Taux d'échec (24h)",
+    "active": "actives",
+    "inactive": "inactives",
+    "verified": "vérifiés",
+    "bound": "liés",
+    "created": "créés",
+    "accepted": "acceptées",
+    "rejected": "refusées",
+    "pending": "en attente",
+    "healthy": "Sain",
+    "monitorClosely": "Surveiller",
+    "actionRequired": "Action requise"
+  },
+  "auditChain": {
+    "title": "Alertes chaîne d'audit",
+    "undeclaredGapsLabel": "Trou(s) non déclaré(s)",
+    "help": {
+      "undeclaredGaps": "Périodes sans point de contrôle qui n'ont pas été formellement déclarées.",
+      "anchorCheckpoint": "Dernier point de contrôle avant le trou ; sert de point d'ancrage."
+    },
+    "detectedMessage": "détecté(s). Déclarez le trou dans les Journaux d'audit pour rétablir la continuité.",
+    "anchorCheckpointLabel": "Point d'ancrage",
+    "gapMinutes": "~{{count}} min de trou",
+    "openAuditLogs": "Ouvrir les journaux d'audit →"
+  },
+  "recentActivity": {
+    "title": "Activité récente",
+    "empty": "Aucune activité récente.",
+    "adminLabel": "Admin {{id}}"
+  },
+  "quickActions": {
+    "title": "Actions rapides",
+    "newIntegration": "Nouvelle intégration",
+    "newIntegrationDesc": "Enregistrer une application",
+    "newEnrollment": "Nouvel enrôlement",
+    "newEnrollmentDesc": "Enrôler un appareil",
+    "newAdmin": "Nouvel administrateur",
+    "newAdminDesc": "Ajouter un admin tenant",
+    "newApiKey": "Nouvelle clé API",
+    "newApiKeyDesc": "Créer des identifiants M2M"
+  }
+}

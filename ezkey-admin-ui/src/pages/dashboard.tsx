@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
-import { DASHBOARD_AUDIT_CHAIN_HELP } from '@/lib/help-text';
 import { formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
@@ -43,15 +43,16 @@ function StatCard({ title, icon: Icon, isLoading, children }: StatCardProps) {
 }
 
 const quickActions = [
-  { label: 'New Integration', desc: 'Register an application', to: '/integrations', icon: Puzzle },
-  { label: 'New Enrollment', desc: 'Enroll a user device', to: '/enrollments', icon: Users },
-  { label: 'New Admin', desc: 'Add a tenant admin', to: '/admins', icon: ShieldCheck },
-  { label: 'New API Key', desc: 'Create M2M credentials', to: '/api-keys', icon: Key },
+  { labelKey: 'newIntegration', descKey: 'newIntegrationDesc', to: '/integrations', icon: Puzzle },
+  { labelKey: 'newEnrollment', descKey: 'newEnrollmentDesc', to: '/enrollments', icon: Users },
+  { labelKey: 'newAdmin', descKey: 'newAdminDesc', to: '/admins', icon: ShieldCheck },
+  { labelKey: 'newApiKey', descKey: 'newApiKeyDesc', to: '/api-keys', icon: Key },
 ];
 
 // ── Dashboard page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t } = useTranslation(['dashboard', 'layout']);
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
@@ -82,7 +83,7 @@ export default function DashboardPage() {
   const alerts = overview?.alerts ?? [];
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell title={t('layout:nav.dashboard')}>
       <div className="space-y-6">
 
         {/* Audit chain alerts (Global Admin only) */}
@@ -92,16 +93,16 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-error">
                   <AlertTriangle className="size-5" />
-                  Audit chain alerts
+                  {t('dashboard:auditChain.title')}
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-fg-muted mb-3">
-                <Tooltip content={DASHBOARD_AUDIT_CHAIN_HELP.UNDECLARED_GAPS}>
-                  <span className="underline decoration-dotted cursor-help">Undeclared gap(s)</span>
+                <Tooltip content={t('dashboard:auditChain.help.undeclaredGaps')}>
+                  <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.undeclaredGapsLabel')}</span>
                 </Tooltip>
-                {' '}detected. Declare the gap in Audit Logs to restore chain continuity.
+                {' '}{t('dashboard:auditChain.detectedMessage')}
               </p>
               <ul className="space-y-2">
                 {alerts.map((alert) => (
@@ -117,12 +118,12 @@ export default function DashboardPage() {
                     </span>
                     {alert.eventDetails?.anchorCheckpointId != null && (
                       <span className="text-fg">
-                        <Tooltip content={DASHBOARD_AUDIT_CHAIN_HELP.ANCHOR_CHECKPOINT}>
-                          <span className="underline decoration-dotted cursor-help">Anchor checkpoint</span>
+                        <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
+                          <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
                         </Tooltip>
                         : {alert.eventDetails.anchorCheckpointId}
                         {alert.eventDetails.estimatedGapMinutes != null &&
-                          ` · ~${alert.eventDetails.estimatedGapMinutes} min gap`}
+                          ` · ${t('dashboard:auditChain.gapMinutes', { count: alert.eventDetails.estimatedGapMinutes })}`}
                       </span>
                     )}
                   </li>
@@ -132,7 +133,7 @@ export default function DashboardPage() {
                 to="/audit-logs"
                 className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
               >
-                Open Audit Logs →
+                {t('dashboard:auditChain.openAuditLogs')}
               </Link>
             </CardContent>
           </Card>
@@ -141,41 +142,41 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
-          <StatCard title="Integrations" icon={Puzzle} isLoading={overviewLoading}>
+          <StatCard title={t('dashboard:stats.integrations')} icon={Puzzle} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
               <StatNum value={intTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={intActive} isLoading={overviewLoading} /> active</Badge>
-              <Badge variant="muted"><StatNum value={intInactive} isLoading={overviewLoading} /> inactive</Badge>
+              <Badge variant="success"><StatNum value={intActive} isLoading={overviewLoading} /> {t('dashboard:stats.active')}</Badge>
+              <Badge variant="muted"><StatNum value={intInactive} isLoading={overviewLoading} /> {t('dashboard:stats.inactive')}</Badge>
             </div>
           </StatCard>
 
-          <StatCard title="Enrollments" icon={Users} isLoading={overviewLoading}>
+          <StatCard title={t('dashboard:stats.enrollments')} icon={Users} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
               <StatNum value={enrTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={enrVerified} isLoading={overviewLoading} /> verified</Badge>
-              <Badge variant="warning"><StatNum value={enrBound} isLoading={overviewLoading} /> bound</Badge>
-              <Badge variant="muted"><StatNum value={enrCreated} isLoading={overviewLoading} /> created</Badge>
+              <Badge variant="success"><StatNum value={enrVerified} isLoading={overviewLoading} /> {t('dashboard:stats.verified')}</Badge>
+              <Badge variant="warning"><StatNum value={enrBound} isLoading={overviewLoading} /> {t('dashboard:stats.bound')}</Badge>
+              <Badge variant="muted"><StatNum value={enrCreated} isLoading={overviewLoading} /> {t('dashboard:stats.created')}</Badge>
             </div>
           </StatCard>
 
-          <StatCard title="Auth Attempts (24h)" icon={ShieldCheck} isLoading={overviewLoading}>
+          <StatCard title={t('dashboard:stats.authAttempts24h')} icon={ShieldCheck} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
               <StatNum value={authTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={authAccepted} isLoading={overviewLoading} /> accepted</Badge>
-              <Badge variant="error"><StatNum value={authRejected} isLoading={overviewLoading} /> rejected</Badge>
+              <Badge variant="success"><StatNum value={authAccepted} isLoading={overviewLoading} /> {t('dashboard:stats.accepted')}</Badge>
+              <Badge variant="error"><StatNum value={authRejected} isLoading={overviewLoading} /> {t('dashboard:stats.rejected')}</Badge>
               {(authPending ?? 0) > 0 && (
-                <Badge variant="warning"><StatNum value={authPending} isLoading={pendingLoading} /> pending</Badge>
+                <Badge variant="warning"><StatNum value={authPending} isLoading={pendingLoading} /> {t('dashboard:stats.pending')}</Badge>
               )}
             </div>
           </StatCard>
 
-          <StatCard title="Failure Rate (24h)" icon={TrendingUp} isLoading={overviewLoading}>
+          <StatCard title={t('dashboard:stats.failureRate24h')} icon={TrendingUp} isLoading={overviewLoading}>
             <p className={`text-4xl font-black ${
               failureRate === undefined ? 'text-fg'
               : failureRate > 20 ? 'text-error'
@@ -185,7 +186,7 @@ export default function DashboardPage() {
               {failureRate !== undefined ? `${failureRate}%` : <StatNum value={undefined} isLoading={overviewLoading} />}
             </p>
             <p className="text-xs text-fg-muted mt-2 font-medium">
-              {failureRate === undefined ? '' : failureRate <= 5 ? 'Healthy' : failureRate <= 15 ? 'Monitor closely' : 'Action required'}
+              {failureRate === undefined ? '' : failureRate <= 5 ? t('dashboard:stats.healthy') : failureRate <= 15 ? t('dashboard:stats.monitorClosely') : t('dashboard:stats.actionRequired')}
             </p>
           </StatCard>
         </div>
@@ -198,7 +199,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Recent Activity</CardTitle>
+                  <CardTitle>{t('dashboard:recentActivity.title')}</CardTitle>
                   <FileText className="size-4 text-fg-muted" />
                 </div>
               </CardHeader>
@@ -208,7 +209,7 @@ export default function DashboardPage() {
                     <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
                   </div>
                 ) : recentLogs.length === 0 ? (
-                  <p className="text-sm text-fg-muted italic py-4 text-center">No recent activity.</p>
+                  <p className="text-sm text-fg-muted italic py-4 text-center">{t('dashboard:recentActivity.empty')}</p>
                 ) : (
                   <div>
                     {recentLogs.map((log, i) => (
@@ -226,7 +227,7 @@ export default function DashboardPage() {
                           {(log.eventType ?? '').replaceAll('_', ' ')}
                         </Badge>
                         <span className="text-xs text-fg-muted flex-1 truncate min-w-0">
-                          {log.eventAction ?? log.apiName ?? (log.adminId ? `Admin ${log.adminId}` : '—')}
+                          {log.eventAction ?? log.apiName ?? (log.adminId != null ? t('dashboard:recentActivity.adminLabel', { id: log.adminId }) : '—')}
                         </span>
                         <span className="text-[10px] text-fg-muted font-mono shrink-0">
                           {formatRelativeTime(log.createdAt ?? '')}
@@ -242,11 +243,11 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle>{t('dashboard:quickActions.title')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {quickActions.map(({ label, desc, to, icon: Icon }) => (
+                {quickActions.map(({ labelKey, descKey, to, icon: Icon }) => (
                   <Link
                     key={to}
                     to={to}
@@ -254,8 +255,8 @@ export default function DashboardPage() {
                   >
                     <Icon className="size-4 text-fg-muted mt-0.5 shrink-0 group-hover:text-accent transition-colors" />
                     <div>
-                      <p className="text-sm font-bold text-fg leading-tight">{label}</p>
-                      <p className="text-xs text-fg-muted">{desc}</p>
+                      <p className="text-sm font-bold text-fg leading-tight">{t(`dashboard:quickActions.${labelKey}`)}</p>
+                      <p className="text-xs text-fg-muted">{t(`dashboard:quickActions.${descKey}`)}</p>
                     </div>
                   </Link>
                 ))}

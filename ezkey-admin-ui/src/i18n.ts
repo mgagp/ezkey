@@ -3,9 +3,11 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
 import enCommon from '@/locales/en/common.json';
+import enDashboard from '@/locales/en/dashboard.json';
 import enLayout from '@/locales/en/layout.json';
 import enLogin from '@/locales/en/login.json';
 import frCommon from '@/locales/fr/common.json';
+import frDashboard from '@/locales/fr/dashboard.json';
 import frLayout from '@/locales/fr/layout.json';
 import frLogin from '@/locales/fr/login.json';
 
@@ -18,18 +20,20 @@ i18n
     resources: {
       en: {
         common: enCommon as Record<string, unknown>,
+        dashboard: enDashboard as Record<string, unknown>,
         layout: enLayout as Record<string, unknown>,
         login: enLogin as Record<string, unknown>,
       },
       fr: {
         common: frCommon as Record<string, unknown>,
+        dashboard: frDashboard as Record<string, unknown>,
         layout: frLayout as Record<string, unknown>,
         login: frLogin as Record<string, unknown>,
       },
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'layout', 'login'],
+    ns: ['common', 'dashboard', 'layout', 'login'],
     interpolation: {
       escapeValue: false,
     },
