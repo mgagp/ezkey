@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, QrCode, RefreshCw, Search } from 'lucide-react';
@@ -32,17 +33,6 @@ import type {
   Search1Params,
 } from '@/generated/admin-api/model';
 
-// ── Create form schema ────────────────────────────────────────────────────────
-
-const createSchema = z.object({
-  integrationId: z.string().min(1, 'Select an integration'),
-  name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),
-  authAttemptChallengeRequired: z.boolean(),
-  contactEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
-  userIdentifier: z.string().max(100).optional().or(z.literal('')),
-});
-type CreateFormValues = z.infer<typeof createSchema>;
-
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function EnrollmentCreateDialog({
@@ -54,6 +44,7 @@ function EnrollmentCreateDialog({
   initialIntegrationId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('enrollments');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { sessionDemoOn } = useDemoModeSession();
@@ -62,6 +53,19 @@ function EnrollmentCreateDialog({
   const [createdEnrollmentName, setCreatedEnrollmentName] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+
+  const createSchema = useMemo(
+    () =>
+      z.object({
+        integrationId: z.string().min(1, t('validation.selectIntegration')),
+        name: z.string().min(1, t('validation.nameRequired')).max(100, t('validation.nameMax', { n: 100 })),
+        authAttemptChallengeRequired: z.boolean(),
+        contactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        userIdentifier: z.string().max(100).optional().or(z.literal('')),
+      }),
+    [t],
+  );
+  type CreateFormValues = z.infer<typeof createSchema>;
 
   const {
     register,
@@ -144,17 +148,17 @@ function EnrollmentCreateDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="New Enrollment" size="md" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={t('create.title')} size="md" dismissible={false}>
       {createdEnrollment ? (
         /* ── Success state: QR on demand + challenge ───────── */
         <div className="space-y-4">
           <Alert variant="success">
-            Enrollment <strong>{createdEnrollmentName ?? 'created'}</strong> created successfully.
+            {t('create.successMessage', { name: createdEnrollmentName ?? 'created' })}
           </Alert>
 
           <div className="space-y-3">
             <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
-              User can scan the QR code below to set up their device.
+              {t('create.qrHint')}
             </p>
             <Button
               variant="secondary"
@@ -164,7 +168,7 @@ function EnrollmentCreateDialog({
               className="gap-1.5"
             >
               <QrCode className="size-3.5" />
-              {qrCodeUrl ? 'Hide QR Code' : 'Show QR Code'}
+              {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
             </Button>
             {qrCodeUrl && (
               <div className="border-2 border-fg p-3 inline-block">
@@ -176,7 +180,7 @@ function EnrollmentCreateDialog({
           {createdEnrollment.enrollmentChallenge != null && (
             <div className="border-2 border-fg/30 p-3 bg-bg">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                Binding Challenge Code
+                {t('create.bindingChallengeCode')}
               </p>
               <p className="font-mono text-2xl font-black tracking-widest">
                 {createdEnrollment.enrollmentChallenge}
@@ -186,21 +190,22 @@ function EnrollmentCreateDialog({
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={handleViewEnrollment}>
-              View enrollment
+              {t('create.viewEnrollment')}
             </Button>
-            <Button onClick={handleClose}>Done</Button>
+            <Button onClick={handleClose}>{t('create.done')}</Button>
           </div>
         </div>
       ) : !loadingIntegrations && integrations.length === 0 ? (
         <Alert variant="warning">
-          No integration available. <Link to="/integrations" className="font-medium text-accent underline">Create an integration first</Link>.
+          {t('create.noIntegration')}{' '}
+          <Link to="/integrations" className="font-medium text-accent underline">{t('create.createIntegrationFirst')}</Link>.
         </Alert>
       ) : (
         /* ── Form state ──────────────────────────────────── */
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {isDemoMode && sessionDemoOn && (
             <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
-              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
               {enrollmentDemoPresets.map((preset) => (
                 <Button
                   key={preset.id}
@@ -221,14 +226,14 @@ function EnrollmentCreateDialog({
           )}
           {/* Integration */}
           <div className="space-y-1">
-            <Label htmlFor="enr-integration">Integration *</Label>
+            <Label htmlFor="enr-integration">{t('create.integration')}</Label>
             <Select
               id="enr-integration"
               disabled={loadingIntegrations}
               error={errors.integrationId?.message}
               {...register('integrationId')}
             >
-              <option value="">Select an integration...</option>
+              <option value="">{t('create.integrationPlaceholder')}</option>
               {integrations.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.code} — {i.name ?? i.code}
@@ -239,10 +244,10 @@ function EnrollmentCreateDialog({
 
           {/* Name */}
           <div className="space-y-1">
-            <Label htmlFor="enr-name">Enrollment Name *</Label>
+            <Label htmlFor="enr-name">{t('create.name')}</Label>
             <Input
               id="enr-name"
-              placeholder="e.g. Marie Dupont — iPhone 15"
+              placeholder={t('create.namePlaceholder')}
               error={errors.name?.message}
               {...register('name')}
             />
@@ -250,11 +255,11 @@ function EnrollmentCreateDialog({
 
           {/* Contact email */}
           <div className="space-y-1">
-            <Label htmlFor="enr-email">Contact Email <span className="text-fg-muted font-normal">(optional)</span></Label>
+            <Label htmlFor="enr-email">{t('create.contactEmail')} <span className="text-fg-muted font-normal">{t('create.contactEmailOptional')}</span></Label>
             <Input
               id="enr-email"
               type="email"
-              placeholder="user@garageducoin.com"
+              placeholder={t('create.contactEmailPlaceholder')}
               error={errors.contactEmail?.message}
               {...register('contactEmail')}
             />
@@ -262,10 +267,10 @@ function EnrollmentCreateDialog({
 
           {/* User identifier */}
           <div className="space-y-1">
-            <Label htmlFor="enr-uid">User Identifier <span className="text-fg-muted font-normal">(optional)</span></Label>
+            <Label htmlFor="enr-uid">{t('create.userIdentifier')} <span className="text-fg-muted font-normal">{t('create.contactEmailOptional')}</span></Label>
             <Input
               id="enr-uid"
-              placeholder="Internal reference (HR ID, username…)"
+              placeholder={t('create.userIdentifierPlaceholder')}
               error={errors.userIdentifier?.message}
               {...register('userIdentifier')}
             />
@@ -280,7 +285,7 @@ function EnrollmentCreateDialog({
               {...register('authAttemptChallengeRequired')}
             />
             <Label htmlFor="enr-challenge" className="cursor-pointer">
-              Require challenge code on each authentication
+              {t('create.challengeRequired')}
             </Label>
           </div>
 
@@ -289,13 +294,13 @@ function EnrollmentCreateDialog({
             <Alert variant="error">
               {createMutation.error instanceof ApiError
                 ? createMutation.error.message
-                : 'Failed to create enrollment. Please try again.'}
+                : t('create.errorCreate')}
             </Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
-            <Button type="submit" isLoading={createMutation.isPending}>Create Enrollment</Button>
+            <Button type="button" variant="ghost" onClick={handleClose}>{t('create.cancel')}</Button>
+            <Button type="submit" isLoading={createMutation.isPending}>{t('create.submit')}</Button>
           </div>
         </form>
       )}
@@ -306,6 +311,7 @@ function EnrollmentCreateDialog({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EnrollmentsPage() {
+  const { t } = useTranslation('enrollments');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -335,12 +341,12 @@ export default function EnrollmentsPage() {
   });
 
   const columns: ColumnDef<EnrollmentResponseDto>[] = [
-    { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: 'Status', key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
-    { header: 'Active', key: 'enrollmentActive', sortKey: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
+    { header: t('list.columns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
+    { header: t('list.columns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
+    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
     {
-      header: 'Integration',
+      header: t('list.columns.integration'),
       key: 'integrationId',
       render: (r) => {
         const integration = integrations.find((i) => i.id === r.integrationId);
@@ -351,12 +357,12 @@ export default function EnrollmentsPage() {
         );
       },
     },
-    { header: 'Challenge', key: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? 'Yes' : 'No'}</Badge> },
-    { header: 'Verified', key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
+    { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
   ];
 
   return (
-    <AppShell title="Enrollments">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
 
         {/* Filter bar */}
@@ -364,7 +370,7 @@ export default function EnrollmentsPage() {
           <div className="flex-1 min-w-48 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
             <Input
-              placeholder="Search by name..."
+              placeholder={t('list.searchPlaceholder')}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               className="pl-8"
@@ -373,17 +379,17 @@ export default function EnrollmentsPage() {
 
           <div className="w-36">
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">All Status</option>
-              <option value="CREATED">Created</option>
-              <option value="BOUND">Bound</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="INVALID">Invalid</option>
+              <option value="">{t('list.filterStatusAll')}</option>
+              <option value="CREATED">{t('list.filterStatusCreated')}</option>
+              <option value="BOUND">{t('list.filterStatusBound')}</option>
+              <option value="VERIFIED">{t('list.filterStatusVerified')}</option>
+              <option value="INVALID">{t('list.filterStatusInvalid')}</option>
             </Select>
           </div>
 
           <div className="w-44">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
-              <option value="">All Integrations</option>
+              <option value="">{t('list.filterIntegrationAll')}</option>
               {integrations.map((i) => (
                 <option key={i.id} value={String(i.id)}>{i.code}</option>
               ))}
@@ -392,20 +398,20 @@ export default function EnrollmentsPage() {
 
           <div className="w-32">
             <Select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
-              <option value="">Any Active</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="">{t('list.filterActiveAny')}</option>
+              <option value="true">{t('list.filterActiveActive')}</option>
+              <option value="false">{t('list.filterActiveInactive')}</option>
             </Select>
           </div>
 
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
 
           <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5 ml-auto">
             <Plus className="size-3.5" />
-            New Enrollment
+            {t('list.newEnrollment')}
           </Button>
         </div>
 
@@ -417,7 +423,7 @@ export default function EnrollmentsPage() {
             isLoading={isLoading}
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
             keyExtractor={(row, i) => row.enrollmentId ?? i}
-            emptyMessage="No enrollments found. Create your first enrollment to get started."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />

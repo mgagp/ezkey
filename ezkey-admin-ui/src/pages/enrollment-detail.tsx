@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
@@ -15,7 +16,6 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
-import { ENROLLMENT_DETAIL_HELP } from '@/lib/help-text';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -61,14 +61,14 @@ function authStatusVariant(s: AuthAttemptDtoAuthAttemptStatus): 'success' | 'err
   return 'muted';
 }
 
-function authStatusLabel(s: AuthAttemptDtoAuthAttemptStatus): string {
+function authStatusLabel(s: AuthAttemptDtoAuthAttemptStatus, t: (key: string) => string): string {
   switch (s) {
-    case 'PENDING': return 'Waiting for device…';
-    case 'READ':    return 'Device is reading…';
-    case 'ACCEPTED': return 'Accepted';
-    case 'REJECTED': return 'Rejected';
-    case 'EXPIRED':  return 'Expired';
-    case 'INVALID':  return 'Invalid';
+    case 'PENDING': return t('testAuth.statusPending');
+    case 'READ':    return t('testAuth.statusRead');
+    case 'ACCEPTED': return t('testAuth.statusAccepted');
+    case 'REJECTED': return t('testAuth.statusRejected');
+    case 'EXPIRED':  return t('testAuth.statusExpired');
+    case 'INVALID':  return t('testAuth.statusInvalid');
   }
 }
 
@@ -81,6 +81,7 @@ function TestAuthDialog({
   onClose: () => void;
   enrollment: EnrollmentResponseDto;
 }) {
+  const { t } = useTranslation('enrollments');
   type Step = 'configure' | 'live' | 'done';
   type DoneReason = 'accepted' | 'rejected' | 'expired' | 'invalid' | 'cancelled';
 
@@ -164,15 +165,13 @@ function TestAuthDialog({
   const handleClose = () => { resetState(); onClose(); };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Test Authentication" size="md" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={t('testAuth.title')} size="md" dismissible={false}>
 
       {/* ── Step 1: Configure ── */}
       {step === 'configure' && (
         <div className="space-y-4">
           <p className="text-sm text-fg">
-            Trigger a live authentication request for enrollment{' '}
-            <strong>{enrollment.enrollmentName}</strong>. The end-user will see a pending
-            request on their EZKey mobile app.
+            {t('testAuth.intro', { name: enrollment.enrollmentName })}
           </p>
 
           <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-fg/20 hover:border-fg/40 transition-colors">
@@ -183,22 +182,21 @@ function TestAuthDialog({
               onChange={(e) => setChallengeRequested(e.target.checked)}
             />
             <div>
-              <p className="text-sm font-bold">Request challenge code</p>
+              <p className="text-sm font-bold">{t('testAuth.requestChallenge')}</p>
               <p className="text-xs text-fg-muted mt-0.5">
-                A 2-digit code is displayed here. The user must confirm the matching code on
-                their device.
+                {t('testAuth.challengeHint')}
               </p>
             </div>
           </label>
 
           {createMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(createMutation.error, 'Failed to create auth attempt.')}
+              {getApiErrorMessage(createMutation.error, t('testAuth.errorCreateAttempt'))}
             </Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+            <Button variant="ghost" onClick={handleClose}>{t('testAuth.cancel')}</Button>
             <Button
               isLoading={createMutation.isPending}
               onClick={() =>
@@ -212,7 +210,7 @@ function TestAuthDialog({
               className="gap-1.5"
             >
               <Zap className="size-3.5" />
-              Launch Test
+              {t('testAuth.launchTest')}
             </Button>
           </div>
         </div>
@@ -224,13 +222,13 @@ function TestAuthDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="border-2 border-fg/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                Attempt ID
+                {t('testAuth.attemptId')}
               </p>
               <p className="font-mono font-black text-xl">{createdAttempt.authAttemptId}</p>
             </div>
             <div className="border-2 border-fg/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                Expires in
+                {t('testAuth.expiresIn')}
               </p>
               <p
                 className={`font-mono font-black text-xl ${
@@ -245,24 +243,24 @@ function TestAuthDialog({
           {createdAttempt.authAttemptChallenge != null && (
             <div className="border-2 border-fg p-4 bg-bg text-center shadow-brutal">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
-                Challenge Code
+                {t('testAuth.challengeCode')}
               </p>
               <p className="font-mono text-5xl font-black tracking-[0.5em] text-accent">
                 {formatChallengeCode(createdAttempt.authAttemptChallenge)}
               </p>
               <p className="text-xs text-fg-muted mt-2">
-                Show this to the user — they must confirm the matching code on their device.
+                {t('testAuth.challengeHintLive')}
               </p>
             </div>
           )}
 
           <div className="flex items-center gap-2 py-1">
             <span className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              Status
+              {t('testAuth.status')}
             </span>
             {liveStatus ? (
               <Badge variant={authStatusVariant(liveStatus.authAttemptStatus)}>
-                {authStatusLabel(liveStatus.authAttemptStatus)}
+                {authStatusLabel(liveStatus.authAttemptStatus, t)}
               </Badge>
             ) : (
               <span className="size-3.5 border-2 border-fg/30 border-t-fg rounded-full animate-spin inline-block" />
@@ -277,7 +275,7 @@ function TestAuthDialog({
               onClick={() => cancelMutation.mutate({ id: createdAttempt!.authAttemptId! })}
               className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
             >
-              Cancel Attempt
+              {t('testAuth.cancelAttempt')}
             </Button>
           </div>
         </div>
@@ -287,39 +285,26 @@ function TestAuthDialog({
       {step === 'done' && (
         <div className="space-y-4">
           {doneReason === 'accepted' && (
-            <Alert variant="success">
-              <strong>Authentication accepted!</strong> The user confirmed the request on their
-              device. The enrollment is working correctly.
-            </Alert>
+            <Alert variant="success">{t('testAuth.doneAccepted')}</Alert>
           )}
           {doneReason === 'rejected' && (
-            <Alert variant="error">
-              <strong>Authentication rejected.</strong> The user declined the request on their
-              device.
-            </Alert>
+            <Alert variant="error">{t('testAuth.doneRejected')}</Alert>
           )}
           {doneReason === 'expired' && (
-            <Alert variant="warning">
-              <strong>Timed out.</strong> No response was received before the attempt expired.
-            </Alert>
+            <Alert variant="warning">{t('testAuth.doneExpired')}</Alert>
           )}
           {doneReason === 'invalid' && (
-            <Alert variant="error">
-              <strong>Invalid attempt.</strong> The request was marked invalid — this may
-              indicate a device binding issue.
-            </Alert>
+            <Alert variant="error">{t('testAuth.doneInvalid')}</Alert>
           )}
           {doneReason === 'cancelled' && (
-            <Alert variant="info">
-              <strong>Cancelled.</strong> The test authentication was cancelled.
-            </Alert>
+            <Alert variant="info">{t('testAuth.doneCancelled')}</Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={resetState}>
-              Run Another Test
+              {t('testAuth.runAnotherTest')}
             </Button>
-            <Button onClick={handleClose}>Close</Button>
+            <Button onClick={handleClose}>{t('testAuth.close')}</Button>
           </div>
         </div>
       )}
@@ -330,6 +315,7 @@ function TestAuthDialog({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function EnrollmentDetailPage() {
+  const { t } = useTranslation('enrollments');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -359,7 +345,7 @@ export default function EnrollmentDetailPage() {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
         void queryClient.invalidateQueries({ queryKey: ['stats'] });
-        toast('Enrollment deleted.');
+        toast(t('detail.toastDeleted'));
         navigate('/enrollments');
       },
     },
@@ -370,7 +356,7 @@ export default function EnrollmentDetailPage() {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-        toast('Enrollment deactivated.');
+        toast(t('detail.toastDeactivated'));
       },
     },
   });
@@ -380,7 +366,7 @@ export default function EnrollmentDetailPage() {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-        toast('Enrollment reactivated.');
+        toast(t('detail.toastReactivated'));
       },
     },
   });
@@ -390,7 +376,7 @@ export default function EnrollmentDetailPage() {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-        toast('Enrollment permanently revoked.', 'error');
+        toast(t('detail.toastRevoked'), 'error');
         setRevokeConfirm(false);
         setRevokeReason('');
       },
@@ -434,9 +420,9 @@ export default function EnrollmentDetailPage() {
 
   return (
     <AppShell
-      title={enrollment?.enrollmentName ?? 'Enrollment Detail'}
+      title={enrollment?.enrollmentName ?? t('detail.fallbackTitle')}
       breadcrumb={[
-        { label: 'Enrollments', path: '/enrollments' },
+        { label: t('detail.breadcrumbEnrollments'), path: '/enrollments' },
         ...(enrollment?.integrationId
           ? [{
               label:
@@ -462,7 +448,7 @@ export default function EnrollmentDetailPage() {
               className="gap-1.5"
             >
               <Zap className="size-3.5" />
-              Test Authentication
+              {t('detail.testAuthentication')}
             </Button>
           )}
         </div>
@@ -478,18 +464,18 @@ export default function EnrollmentDetailPage() {
 
             {/* Info Card */}
             <Card>
-              <CardHeader><CardTitle>Enrollment Info</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.enrollmentInfo')}</CardTitle></CardHeader>
               <CardContent>
                 <dl className="space-y-3">
-                  <InfoRow label="ID"><span className="font-mono">{enrollment.enrollmentId}</span></InfoRow>
-                  <InfoRow label="Name"><span className="font-medium">{enrollment.enrollmentName}</span></InfoRow>
-                  <InfoRow label="Status"><EnrollmentStatusBadge status={enrollment.enrollmentStatus} /></InfoRow>
-                  <InfoRow label="Active">
+                  <InfoRow label={t('detail.infoId')}><span className="font-mono">{enrollment.enrollmentId}</span></InfoRow>
+                  <InfoRow label={t('detail.infoName')}><span className="font-medium">{enrollment.enrollmentName}</span></InfoRow>
+                  <InfoRow label={t('detail.infoStatus')}><EnrollmentStatusBadge status={enrollment.enrollmentStatus} /></InfoRow>
+                  <InfoRow label={t('detail.infoActive')}>
                     <Badge variant={enrollment.enrollmentActive ? 'success' : 'muted'}>
-                      {enrollment.enrollmentActive ? 'Yes' : 'No'}
+                      {enrollment.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}
                     </Badge>
                   </InfoRow>
-                  <InfoRow label="Integration">
+                  <InfoRow label={t('detail.infoIntegration')}>
                     {(enrollment as { isSystemIntegration?: boolean }).isSystemIntegration ? (
                       <span className="font-medium">
                         {(enrollment as { integrationName?: string }).integrationName ??
@@ -507,22 +493,22 @@ export default function EnrollmentDetailPage() {
                       </button>
                     )}
                   </InfoRow>
-                  <InfoRow label="Challenge">
+                  <InfoRow label={t('detail.infoChallenge')}>
                     <Badge variant={enrollment.authAttemptChallengeRequired ? 'warning' : 'muted'}>
-                      {enrollment.authAttemptChallengeRequired ? 'Required' : 'Not required'}
+                      {enrollment.authAttemptChallengeRequired ? t('detail.challengeRequired') : t('detail.challengeNotRequired')}
                     </Badge>
                   </InfoRow>
                   {enrollment.contactEmail && (
-                    <InfoRow label="Contact Email">{enrollment.contactEmail}</InfoRow>
+                    <InfoRow label={t('detail.infoContactEmail')}>{enrollment.contactEmail}</InfoRow>
                   )}
                   {enrollment.userIdentifier && (
-                    <InfoRow label="User ID">{enrollment.userIdentifier}</InfoRow>
+                    <InfoRow label={t('detail.infoUserId')}>{enrollment.userIdentifier}</InfoRow>
                   )}
                   {enrollment.verifiedAt && (
-                    <InfoRow label="Verified"><span className="text-fg-muted">{formatDate(enrollment.verifiedAt)}</span></InfoRow>
+                    <InfoRow label={t('detail.infoVerified')}><span className="text-fg-muted">{formatDate(enrollment.verifiedAt)}</span></InfoRow>
                   )}
                   {enrollment.lastUsedAt && (
-                    <InfoRow label="Last Used"><span className="text-fg-muted">{formatDate(enrollment.lastUsedAt)}</span></InfoRow>
+                    <InfoRow label={t('detail.infoLastUsed')}><span className="text-fg-muted">{formatDate(enrollment.lastUsedAt)}</span></InfoRow>
                   )}
 
                 </dl>
@@ -536,14 +522,14 @@ export default function EnrollmentDetailPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    <Tooltip content={ENROLLMENT_DETAIL_HELP.PROOF_TOKEN}>
-                      <span>Enrollment Token</span>
+                    <Tooltip content={t('detail.help.proofToken')}>
+                      <span>{t('detail.enrollmentToken')}</span>
                     </Tooltip>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-fg-muted">
-                    Share this token with the user to set up their EZKey mobile app.
+                    {t('detail.tokenHint')}
                   </p>
                   {enrollment.enrollmentProofToken ? (
                     <>
@@ -558,7 +544,7 @@ export default function EnrollmentDetailPage() {
                           className="gap-1.5"
                         >
                           {tokenVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                          {tokenVisible ? 'Hide' : 'Reveal'}
+                          {tokenVisible ? t('detail.hide') : t('detail.reveal')}
                         </Button>
                         <Button
                           variant="secondary"
@@ -567,14 +553,14 @@ export default function EnrollmentDetailPage() {
                           className="gap-1.5"
                         >
                           {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                          {tokenCopied ? 'Copied!' : 'Copy'}
+                          {tokenCopied ? t('detail.copied') : t('detail.copy')}
                         </Button>
                       </div>
                       {enrollment.enrollmentChallenge != null && (
                         <div className="border-2 border-fg/30 p-3 bg-bg">
                           <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-                            <Tooltip content={ENROLLMENT_DETAIL_HELP.BINDING_CHALLENGE_CODE}>
-                              <span>Binding Challenge Code</span>
+                            <Tooltip content={t('detail.help.bindingChallengeCode')}>
+                              <span>{t('create.bindingChallengeCode')}</span>
                             </Tooltip>
                           </p>
                           <p className="font-mono text-2xl font-black tracking-widest">
@@ -584,17 +570,17 @@ export default function EnrollmentDetailPage() {
                       )}
                     </>
                   ) : (
-                    <Alert variant="info">Token is not available for this enrollment.</Alert>
+                    <Alert variant="info">{t('detail.tokenNotAvailable')}</Alert>
                   )}
                 </CardContent>
               </Card>
 
               {/* QR Code */}
               <Card>
-                <CardHeader><CardTitle>QR Code</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{t('detail.qrCode')}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-fg-muted">
-                    User can scan this QR code with the EZKey mobile app.
+                    {t('detail.qrCodeHint')}
                   </p>
                   <Button
                     variant="secondary"
@@ -604,7 +590,7 @@ export default function EnrollmentDetailPage() {
                     className="gap-1.5"
                   >
                     <QrCode className="size-3.5" />
-                    {qrCodeUrl ? 'Hide QR Code' : 'Show QR Code'}
+                    {qrCodeUrl ? t('create.hideQrCode') : t('create.showQrCode')}
                   </Button>
                   {qrCodeUrl && (
                     <div className="border-2 border-fg p-3 inline-block">
@@ -616,7 +602,7 @@ export default function EnrollmentDetailPage() {
 
               {/* Danger Zone */}
               <Card className="border-error">
-                <CardHeader><CardTitle>Danger Zone</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
 
                   {/* Deactivate / Reactivate */}
@@ -625,7 +611,7 @@ export default function EnrollmentDetailPage() {
                       {enrollment.enrollmentActive ? (
                         <>
                           <p className="text-xs text-fg-muted">
-                            Deactivating temporarily prevents authentication. The enrollment can be reactivated later.
+                            {t('detail.deactivateIntro')}
                           </p>
                           <Button
                             variant="destructive"
@@ -635,13 +621,13 @@ export default function EnrollmentDetailPage() {
                             onClick={() => setLifecycleConfirm('deactivate')}
                           >
                             <PowerOff className="size-3.5" />
-                            Deactivate Enrollment
+                            {t('detail.deactivateEnrollment')}
                           </Button>
                         </>
                       ) : (
                         <>
                           <p className="text-xs text-fg-muted">
-                            This enrollment is inactive. Reactivating will restore authentication capabilities.
+                            {t('detail.reactivateIntro')}
                           </p>
                           <Button
                             variant="primary"
@@ -651,18 +637,18 @@ export default function EnrollmentDetailPage() {
                             onClick={() => setLifecycleConfirm('reactivate')}
                           >
                             <Power className="size-3.5" />
-                            Reactivate Enrollment
+                            {t('detail.reactivateEnrollment')}
                           </Button>
                         </>
                       )}
                       {deactivateMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(deactivateMutation.error, 'Failed to deactivate.')}
+                          {getApiErrorMessage(deactivateMutation.error, t('detail.errorDeactivate'))}
                         </Alert>
                       )}
                       {reactivateMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(reactivateMutation.error, 'Failed to reactivate.')}
+                          {getApiErrorMessage(reactivateMutation.error, t('detail.errorReactivate'))}
                         </Alert>
                       )}
                     </div>
@@ -679,7 +665,7 @@ export default function EnrollmentDetailPage() {
                       {!revokeConfirm ? (
                         <>
                           <p className="text-xs text-fg-muted">
-                            <strong className="text-error">Irreversible.</strong> Revoking permanently disables this enrollment. A new enrollment must be created for re-enrolment.
+                            {t('detail.revokeIntro')}
                           </p>
                           <Button
                             variant="destructive"
@@ -688,26 +674,26 @@ export default function EnrollmentDetailPage() {
                             onClick={() => setRevokeConfirm(true)}
                           >
                             <ShieldOff className="size-3.5" />
-                            Revoke Enrollment
+                            {t('detail.revokeEnrollment')}
                           </Button>
                         </>
                       ) : (
                         <>
                           <p className="text-sm font-bold text-error">
-                            This action is PERMANENT. The enrollment will be irreversibly revoked.
+                            {t('detail.revokeConfirmTitle')}
                           </p>
                           <div className="space-y-1.5">
-                            <Label htmlFor="revoke-reason">Reason (min 10 chars, required for audit)</Label>
+                            <Label htmlFor="revoke-reason">{t('detail.revokeReasonLabel')}</Label>
                             <Input
                               id="revoke-reason"
                               value={revokeReason}
                               onChange={(e) => setRevokeReason(e.target.value)}
-                              placeholder="Security incident — enrollment compromised..."
+                              placeholder={t('detail.revokeReasonPlaceholder')}
                             />
                           </div>
                           {revokeMutation.isError && (
                             <Alert variant="error">
-                              {getApiErrorMessage(revokeMutation.error, 'Failed to revoke.')}
+                              {getApiErrorMessage(revokeMutation.error, t('detail.errorRevoke'))}
                             </Alert>
                           )}
                           <div className="flex gap-2">
@@ -720,9 +706,9 @@ export default function EnrollmentDetailPage() {
                               className="gap-1.5"
                             >
                               <ShieldOff className="size-3.5" />
-                              Yes, Revoke Permanently
+                              {t('detail.yesRevokePermanently')}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => { setRevokeConfirm(false); setRevokeReason(''); }}>Cancel</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setRevokeConfirm(false); setRevokeReason(''); }}>{t('lifecycleDialog.cancel')}</Button>
                           </div>
                         </>
                       )}
@@ -730,7 +716,7 @@ export default function EnrollmentDetailPage() {
                   )}
 
                   {enrollment.enrollmentStatus === 'REVOKED' && (
-                    <Alert variant="error">This enrollment has been permanently revoked.</Alert>
+                    <Alert variant="error">{t('detail.revokedAlert')}</Alert>
                   )}
 
                   {/* Divider */}
@@ -740,7 +726,7 @@ export default function EnrollmentDetailPage() {
                   {!deleteConfirm ? (
                     <>
                       <p className="text-xs text-fg-muted">
-                        Deleting an enrollment permanently removes the device association. The user will no longer be able to authenticate.
+                        {t('detail.deleteIntro')}
                       </p>
                       <Button
                         variant="destructive"
@@ -749,17 +735,17 @@ export default function EnrollmentDetailPage() {
                         onClick={() => setDeleteConfirm(true)}
                       >
                         <Trash2 className="size-3.5" />
-                        Delete Enrollment
+                        {t('detail.deleteEnrollment')}
                       </Button>
                     </>
                   ) : (
                     <>
                       <p className="text-sm font-bold text-error">
-                        Are you sure? This action cannot be undone.
+                        {t('detail.deleteConfirmTitle')}
                       </p>
                       {deleteMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(deleteMutation.error, 'Failed to delete enrollment.')}
+                          {getApiErrorMessage(deleteMutation.error, t('detail.errorDelete'))}
                         </Alert>
                       )}
                       <div className="flex gap-2">
@@ -771,14 +757,14 @@ export default function EnrollmentDetailPage() {
                           className="gap-1.5"
                         >
                           <Trash2 className="size-3.5" />
-                          Yes, Delete
+                          {t('detail.yesDelete')}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setDeleteConfirm(false)}
                         >
-                          Cancel
+                          {t('lifecycleDialog.cancel')}
                         </Button>
                       </div>
                     </>
@@ -794,31 +780,31 @@ export default function EnrollmentDetailPage() {
       <Dialog
         open={lifecycleConfirm !== null}
         onClose={() => { setLifecycleConfirm(null); setLifecycleReason(''); }}
-        title={lifecycleConfirm === 'deactivate' ? 'Deactivate Enrollment' : 'Reactivate Enrollment'}
+        title={lifecycleConfirm === 'deactivate' ? t('lifecycleDialog.deactivateTitle') : t('lifecycleDialog.reactivateTitle')}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-fg">
             {lifecycleConfirm === 'deactivate'
-              ? 'Temporarily deactivate this enrollment? The user will not be able to authenticate until reactivated.'
-              : 'Reactivate this enrollment? The user will be able to authenticate again.'}
+              ? t('lifecycleDialog.deactivateMessage')
+              : t('lifecycleDialog.reactivateMessage')}
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="lifecycle-reason">
-              Reason <span className="text-fg-muted font-normal">(min 10 chars, for audit trail)</span>
+              {t('lifecycleDialog.reasonLabel')} <span className="text-fg-muted font-normal">{t('lifecycleDialog.reasonHint')}</span>
             </Label>
             <Input
               id="lifecycle-reason"
               value={lifecycleReason}
               onChange={(e) => setLifecycleReason(e.target.value)}
-              placeholder="Justification for this action..."
+              placeholder={t('lifecycleDialog.reasonPlaceholder')}
             />
           </div>
           {(lifecycleConfirm === 'deactivate' ? deactivateMutation.isError : reactivateMutation.isError) && (
             <Alert variant="error">
               {getApiErrorMessage(
                 lifecycleConfirm === 'deactivate' ? deactivateMutation.error : reactivateMutation.error,
-                lifecycleConfirm === 'deactivate' ? 'Failed to deactivate.' : 'Failed to reactivate.',
+                lifecycleConfirm === 'deactivate' ? t('detail.errorDeactivate') : t('detail.errorReactivate'),
               )}
             </Alert>
           )}
@@ -827,7 +813,7 @@ export default function EnrollmentDetailPage() {
               variant="ghost"
               onClick={() => { setLifecycleConfirm(null); setLifecycleReason(''); }}
             >
-              Cancel
+              {t('lifecycleDialog.cancel')}
             </Button>
             <Button
               variant={lifecycleConfirm === 'deactivate' ? 'destructive' : 'primary'}
@@ -862,12 +848,12 @@ export default function EnrollmentDetailPage() {
               {lifecycleConfirm === 'deactivate' ? (
                 <>
                   <PowerOff className="size-3.5 mr-1.5" />
-                  Deactivate
+                  {t('lifecycleDialog.deactivate')}
                 </>
               ) : (
                 <>
                   <Power className="size-3.5 mr-1.5" />
-                  Reactivate
+                  {t('lifecycleDialog.reactivate')}
                 </>
               )}
             </Button>
