@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
+import enApiKeys from '@/locales/en/api-keys.json';
 import enAuditLogs from '@/locales/en/audit-logs.json';
 import enAuthAttempts from '@/locales/en/auth-attempts.json';
 import enCommon from '@/locales/en/common.json';
@@ -11,6 +12,7 @@ import enIntegrations from '@/locales/en/integrations.json';
 import enLayout from '@/locales/en/layout.json';
 import enLogin from '@/locales/en/login.json';
 import enTenants from '@/locales/en/tenants.json';
+import frApiKeys from '@/locales/fr/api-keys.json';
 import frAuditLogs from '@/locales/fr/audit-logs.json';
 import frAuthAttempts from '@/locales/fr/auth-attempts.json';
 import frCommon from '@/locales/fr/common.json';
@@ -29,6 +31,7 @@ i18n
   .init({
     resources: {
       en: {
+        'api-keys': enApiKeys as Record<string, unknown>,
         'audit-logs': enAuditLogs as Record<string, unknown>,
         'auth-attempts': enAuthAttempts as Record<string, unknown>,
         common: enCommon as Record<string, unknown>,
@@ -40,6 +43,7 @@ i18n
         tenants: enTenants as Record<string, unknown>,
       },
       fr: {
+        'api-keys': frApiKeys as Record<string, unknown>,
         'audit-logs': frAuditLogs as Record<string, unknown>,
         'auth-attempts': frAuthAttempts as Record<string, unknown>,
         common: frCommon as Record<string, unknown>,
@@ -53,7 +57,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['audit-logs', 'auth-attempts', 'common', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['api-keys', 'audit-logs', 'auth-attempts', 'common', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

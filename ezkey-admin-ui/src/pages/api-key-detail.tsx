@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Pencil, Shield, ShieldOff } from 'lucide-react';
@@ -39,22 +40,22 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 // ── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
-  if (apiKey.revokedAt) return <Badge variant="error">Revoked</Badge>;
-  if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) return <Badge variant="muted">Expired</Badge>;
+  const { t } = useTranslation('api-keys');
+  if (apiKey.revokedAt) return <Badge variant="error">{t('status.labelRevoked')}</Badge>;
+  if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) return <Badge variant="muted">{t('status.labelExpired')}</Badge>;
   if (apiKey.active && apiKey.expiresAt) {
     const daysLeft = (new Date(apiKey.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (daysLeft <= 7) return <Badge variant="warning">Expiring Soon</Badge>;
+    if (daysLeft <= 7) return <Badge variant="warning">{t('status.labelExpiringSoon')}</Badge>;
   }
-  return <Badge variant={apiKey.active ? 'success' : 'muted'}>{apiKey.active ? 'Active' : 'Inactive'}</Badge>;
+  return <Badge variant={apiKey.active ? 'success' : 'muted'}>{apiKey.active ? t('status.labelActive') : t('status.labelInactive')}</Badge>;
 }
 
 // ── Edit dialog ──────────────────────────────────────────────────────────────
 
-const editSchema = z.object({
-  description: z.string().max(255).optional().or(z.literal('')),
-  ipWhitelist: z.string().optional().or(z.literal('')),
-});
-type EditFormValues = z.infer<typeof editSchema>;
+type EditFormValues = {
+  description?: string;
+  ipWhitelist?: string;
+};
 
 function EditApiKeyDialog({
   apiKey,
@@ -65,11 +66,17 @@ function EditApiKeyDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('api-keys');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const editSchema = useMemo(() => z.object({
+    description: z.string().max(255).optional().or(z.literal('')),
+    ipWhitelist: z.string().optional().or(z.literal('')),
+  }), []);
+
   const { register, handleSubmit, formState: { errors } } = useForm<EditFormValues>({
-    resolver: zodResolver(editSchema),
+    resolver: zodResolver(editSchema) as never,
     defaultValues: {
       description: apiKey.description ?? '',
       ipWhitelist: apiKey.ipWhitelist?.join('\n') ?? '',
@@ -81,7 +88,7 @@ function EditApiKeyDialog({
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['api-key', apiKey.apiKeyId] });
         void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-        toast('API key updated.');
+        toast(t('detail.toastUpdated'));
         onClose();
       },
     },
@@ -104,15 +111,15 @@ function EditApiKeyDialog({
   const is409 = updateMutation.error instanceof ApiError && updateMutation.error.status === 409;
 
   return (
-    <Dialog open={open} onClose={onClose} title="Edit API Key" size="md" dismissible={false}>
+    <Dialog open={open} onClose={onClose} title={t('editDialog.title')} size="md" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="edit-desc">
-            Description <span className="text-fg-muted font-normal">(optional)</span>
+            {t('editDialog.description')} <span className="text-fg-muted font-normal">{t('editDialog.descriptionOptional')}</span>
           </Label>
           <Input
             id="edit-desc"
-            placeholder="e.g. Production server — CI/CD pipeline"
+            placeholder={t('editDialog.descriptionPlaceholder')}
             error={errors.description?.message}
             {...register('description')}
           />
@@ -120,11 +127,11 @@ function EditApiKeyDialog({
 
         <div className="space-y-1">
           <Label htmlFor="edit-ips">
-            IP Whitelist <span className="text-fg-muted font-normal">(one IP or CIDR per line — leave empty to remove restrictions)</span>
+            {t('editDialog.ipWhitelist')} <span className="text-fg-muted font-normal">{t('editDialog.ipWhitelistHint')}</span>
           </Label>
           <Textarea
             id="edit-ips"
-            placeholder={'192.168.1.0/24\n10.0.0.1'}
+            placeholder={t('editDialog.ipWhitelistPlaceholder')}
             rows={3}
             error={errors.ipWhitelist?.message}
             {...register('ipWhitelist')}
@@ -134,16 +141,16 @@ function EditApiKeyDialog({
         {updateMutation.isError && (
           <Alert variant="error">
             {is409
-              ? 'This key was modified by another user. Please refresh and try again.'
+              ? t('editDialog.errorConflict')
               : updateMutation.error instanceof ApiError
                 ? updateMutation.error.message
-                : 'Failed to update API key.'}
+                : t('editDialog.errorUpdate')}
           </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={updateMutation.isPending}>Save Changes</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{t('editDialog.cancel')}</Button>
+          <Button type="submit" isLoading={updateMutation.isPending}>{t('editDialog.save')}</Button>
         </div>
       </form>
     </Dialog>
@@ -153,6 +160,7 @@ function EditApiKeyDialog({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ApiKeyDetailPage() {
+  const { t } = useTranslation('api-keys');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const keyId = Number(id);
@@ -183,8 +191,8 @@ export default function ApiKeyDetailPage() {
 
   return (
     <AppShell
-      title={isLoading ? 'API Key' : `API Key #${apiKey?.apiKeyId ?? '?'}`}
-      breadcrumb={[{ label: 'API Keys', path: '/api-keys' }]}
+      title={isLoading ? t('detail.fallbackTitle') : t('detail.title', { id: apiKey?.apiKeyId ?? '?' })}
+      breadcrumb={[{ label: t('detail.breadcrumb'), path: '/api-keys' }]}
     >
       {isLoading && (
         <div className="flex items-center justify-center h-32">
@@ -197,14 +205,14 @@ export default function ApiKeyDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* ── Details card ──────────────────────────────── */}
             <Card className="lg:col-span-2">
-              <CardHeader><CardTitle>API Key Details</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.cardDetails')}</CardTitle></CardHeader>
               <CardContent>
                 <dl className="space-y-3">
-                  <InfoRow label="ID">
+                  <InfoRow label={t('detail.labelId')}>
                     <span className="font-mono">{apiKey.apiKeyId}</span>
                   </InfoRow>
 
-                  <InfoRow label="Integration">
+                  <InfoRow label={t('detail.labelIntegration')}>
                     {apiKey.integrationId ? (
                       <Link
                         to={`/integrations/${apiKey.integrationId}`}
@@ -217,12 +225,12 @@ export default function ApiKeyDetailPage() {
                     )}
                   </InfoRow>
 
-                  <InfoRow label="Key">
+                  <InfoRow label={t('detail.labelKey')}>
                     <span className="inline-flex items-center gap-2">
                       <span className="font-mono text-xs break-all select-all">
                         {apiKey.integrationKey}
                       </span>
-                      <Tooltip content="Copy integration key">
+                      <Tooltip content={t('detail.copyKeyTooltip')}>
                         <button
                           type="button"
                           onClick={handleCopyKey}
@@ -236,33 +244,33 @@ export default function ApiKeyDetailPage() {
                     </span>
                   </InfoRow>
 
-                  <InfoRow label="Description">
+                  <InfoRow label={t('detail.labelDescription')}>
                     <span className="text-fg-muted">{apiKey.description || '—'}</span>
                   </InfoRow>
 
-                  <InfoRow label="Status">
+                  <InfoRow label={t('detail.labelStatus')}>
                     <StatusBadge apiKey={apiKey} />
                   </InfoRow>
 
-                  <InfoRow label="Created">
+                  <InfoRow label={t('detail.labelCreated')}>
                     <span className="text-fg-muted">
                       {apiKey.createdAt ? formatDate(apiKey.createdAt) : '—'}
                     </span>
                   </InfoRow>
 
-                  <InfoRow label="Expires">
+                  <InfoRow label={t('detail.labelExpires')}>
                     <span className="text-fg-muted">
-                      {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : 'Never'}
+                      {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : t('detail.never')}
                     </span>
                   </InfoRow>
 
-                  <InfoRow label="Last Used">
+                  <InfoRow label={t('detail.labelLastUsed')}>
                     <span className="text-fg-muted">
-                      {apiKey.lastUsedAt ? formatDate(apiKey.lastUsedAt) : 'Never'}
+                      {apiKey.lastUsedAt ? formatDate(apiKey.lastUsedAt) : t('detail.never')}
                     </span>
                   </InfoRow>
 
-                  <InfoRow label="IP Whitelist">
+                  <InfoRow label={t('detail.labelIpWhitelist')}>
                     {apiKey.ipWhitelist && apiKey.ipWhitelist.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
                         {apiKey.ipWhitelist.map((ip) => (
@@ -276,16 +284,15 @@ export default function ApiKeyDetailPage() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-fg-muted">No restrictions</span>
+                      <span className="text-fg-muted">{t('detail.noRestrictions')}</span>
                     )}
                   </InfoRow>
                 </dl>
               </CardContent>
             </Card>
 
-            {/* ── Actions card ─────────────────────────────── */}
             <Card>
-              <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.cardActions')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {isActive && !isExpired && (
@@ -297,7 +304,7 @@ export default function ApiKeyDetailPage() {
                         onClick={() => setEditOpen(true)}
                       >
                         <Pencil className="size-3.5" />
-                        Edit Key Config
+                        {t('detail.editKeyConfig')}
                       </Button>
                       <Button
                         variant="destructive"
@@ -306,14 +313,14 @@ export default function ApiKeyDetailPage() {
                         onClick={() => setRevokeTarget(apiKey)}
                       >
                         <ShieldOff className="size-3.5" />
-                        Revoke Key
+                        {t('detail.revokeKey')}
                       </Button>
                     </>
                   )}
 
                   {!isActive && (
                     <p className="text-xs text-fg-muted italic">
-                      This key is no longer active. No actions available.
+                      {t('detail.noActions')}
                     </p>
                   )}
                 </div>
@@ -321,16 +328,15 @@ export default function ApiKeyDetailPage() {
             </Card>
           </div>
 
-          {/* ── Revocation info ────────────────────────────── */}
           {apiKey.revokedAt && (
             <Card className="border-error">
-              <CardHeader><CardTitle>Revocation Info</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.cardRevocation')}</CardTitle></CardHeader>
               <CardContent>
                 <dl className="space-y-3">
-                  <InfoRow label="Revoked At">
+                  <InfoRow label={t('detail.labelRevokedAt')}>
                     <span className="text-fg-muted">{formatDate(apiKey.revokedAt)}</span>
                   </InfoRow>
-                  <InfoRow label="Revoked By">
+                  <InfoRow label={t('detail.labelRevokedBy')}>
                     <span className="text-fg-muted">{apiKey.revokedByUsername ?? '—'}</span>
                   </InfoRow>
                 </dl>
