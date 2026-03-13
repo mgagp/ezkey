@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,9 +55,10 @@ interface AdminProvisioningShape {
 // ── Admin type badge ───────────────────────────────────────────────────────────
 
 function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
-  if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">Global</Badge>;
-  if (type === 'INTEGRATION_ADMIN') return <Badge variant="muted">Integration</Badge>;
-  return <Badge variant="muted">Tenant</Badge>;
+  const { t } = useTranslation('admins');
+  if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">{t('adminType.global')}</Badge>;
+  if (type === 'INTEGRATION_ADMIN') return <Badge variant="muted">{t('adminType.integration')}</Badge>;
+  return <Badge variant="muted">{t('adminType.tenant')}</Badge>;
 }
 
 // ── Onboarding credentials dialog ─────────────────────────────────────────────
@@ -72,6 +74,7 @@ function OnboardingDialog({
   adminId: number | null;
   adminUsername: string;
 }) {
+  const { t } = useTranslation('admins');
   const [tokenCopied, setTokenCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -107,37 +110,37 @@ function OnboardingDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title={`Onboarding — ${adminUsername}`} size="md">
+    <Dialog open={open} onClose={handleClose} title={t('onboarding.title', { username: adminUsername })} size="md">
       {isLoading && (
         <div className="flex justify-center py-8">
           <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
         </div>
       )}
-      {isError && <Alert variant="error">Could not load onboarding credentials.</Alert>}
+      {isError && <Alert variant="error">{t('onboarding.errorLoad')}</Alert>}
       {onboarding && (
         <div className="space-y-4">
           <Alert variant="info">
-            Share these credentials with the admin to set up their EZKey mobile app.
+            {t('onboarding.alertShare')}
           </Alert>
 
           {/* Proof Token */}
           <div className="space-y-1.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              Enrollment Proof Token
+              {t('onboarding.enrollmentProofToken')}
             </p>
             <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
               {String(onboarding.enrollmentProofToken ?? '')}
             </div>
             <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5">
               {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {tokenCopied ? 'Copied!' : 'Copy Token'}
+              {tokenCopied ? t('onboarding.copied') : t('onboarding.copyToken')}
             </Button>
           </div>
 
           {/* Challenge */}
           <div className="border-2 border-fg/30 p-3 bg-bg">
             <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-              Binding Challenge Code
+              {t('onboarding.bindingChallenge')}
             </p>
             <p className="font-mono text-2xl font-black tracking-widest">
               {String(onboarding.enrollmentChallenge ?? '')}
@@ -154,17 +157,17 @@ function OnboardingDialog({
               className="gap-1.5"
             >
               <QrCode className="size-3.5" />
-              {qrCodeUrl ? 'Hide QR Code' : 'Show QR Code'}
+              {qrCodeUrl ? t('onboarding.hideQrCode') : t('onboarding.showQrCode')}
             </Button>
             {qrCodeUrl && (
               <div className="border-2 border-fg p-3 inline-block">
-                <img src={qrCodeUrl} alt="Admin onboarding QR Code" className="size-48" />
+                <img src={qrCodeUrl} alt={t('onboarding.qrCodeAlt')} className="size-48" />
               </div>
             )}
           </div>
 
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>Close</Button>
+            <Button onClick={handleClose}>{t('onboarding.close')}</Button>
           </div>
         </div>
       )}
@@ -183,6 +186,7 @@ function DeactivateAdminDialog({
   onClose: () => void;
   admin: AdminResponseDto | null;
 }) {
+  const { t } = useTranslation('admins');
   const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
 
@@ -207,36 +211,35 @@ function DeactivateAdminDialog({
     reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Deactivate Admin" size="sm">
+    <Dialog open={open} onClose={handleClose} title={t('deactivate.title')} size="sm">
       {admin && (
         <div className="space-y-4">
           <p className="text-sm text-fg">
-            Are you sure you want to deactivate{' '}
-            <strong>{admin.username}</strong>? All active tokens will be revoked immediately.
+            {t('deactivate.confirmMessage', { username: admin.username })}
           </p>
-          <p className="text-xs text-fg-muted">This action cannot be undone from this interface.</p>
+          <p className="text-xs text-fg-muted">{t('deactivate.cannotUndo')}</p>
 
           <div className="space-y-1.5">
             <Label htmlFor="deactivate-admin-reason">
-              Reason <span className="text-fg-muted font-normal">(min 10 chars, for audit trail)</span>
+              {t('deactivate.reasonLabel')} <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
             </Label>
             <Input
               id="deactivate-admin-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Justification for this action..."
+              placeholder={t('deactivate.reasonPlaceholder')}
             />
           </div>
 
           {deactivateMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(deactivateMutation.error, 'Failed to deactivate admin.')}
+              {getApiErrorMessage(deactivateMutation.error, t('deactivate.errorDeactivate'))}
             </Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={handleClose}>
-              Cancel
+              {t('deactivate.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -248,7 +251,7 @@ function DeactivateAdminDialog({
               }
             >
               <UserX className="size-3.5 mr-1.5" />
-              Deactivate
+              {t('deactivate.submit')}
             </Button>
           </div>
         </div>
@@ -270,6 +273,7 @@ function AdminDetailDialog({
   onShowCredentials: (id: number, username: string) => void;
   onRequestDeactivate?: (admin: AdminResponseDto) => void;
 }) {
+  const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
@@ -286,11 +290,11 @@ function AdminDetailDialog({
   const activateMutation = useActivateAdmin({
     mutation: {
       onSuccess: () => {
-        toast(`Admin "${adm!.username}" activated.`, 'success');
+        toast(t('detail.toastActivated', { username: adm!.username }), 'success');
         void queryClient.invalidateQueries({ queryKey: ['admins'] });
         void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Activation failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('detail.errorActivate')), 'error'),
     },
   });
 
@@ -308,35 +312,35 @@ function AdminDetailDialog({
   }
 
   return (
-    <Dialog open={admin !== null} onClose={onClose} title={`Admin — ${adm.username}`} size="lg">
+    <Dialog open={admin !== null} onClose={onClose} title={t('detail.title', { username: adm.username })} size="lg">
       <div className="space-y-5">
         {/* Info section */}
         <dl className="space-y-2.5">
-          <InfoRow label="Admin ID"><span className="font-mono">{adm.adminId}</span></InfoRow>
-          <InfoRow label="Username"><span className="font-medium">{adm.username}</span></InfoRow>
-          <InfoRow label="Name">{fullName || <span className="text-fg-muted">—</span>}</InfoRow>
-          <InfoRow label="Email">{adm.email || <span className="text-fg-muted">—</span>}</InfoRow>
-          <InfoRow label="Type"><AdminTypeBadge type={adm.adminType} /></InfoRow>
+          <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">{adm.adminId}</span></InfoRow>
+          <InfoRow label={t('detail.labelUsername')}><span className="font-medium">{adm.username}</span></InfoRow>
+          <InfoRow label={t('detail.labelName')}>{fullName || <span className="text-fg-muted">—</span>}</InfoRow>
+          <InfoRow label={t('detail.labelEmail')}>{adm.email || <span className="text-fg-muted">—</span>}</InfoRow>
+          <InfoRow label={t('detail.labelType')}><AdminTypeBadge type={adm.adminType} /></InfoRow>
           {adm.tenantId != null && (
-            <InfoRow label="Tenant ID"><span className="font-mono">{adm.tenantId}</span></InfoRow>
+            <InfoRow label={t('detail.labelTenantId')}><span className="font-mono">{adm.tenantId}</span></InfoRow>
           )}
-          <InfoRow label="Status"><Badge variant={adm.active ? 'success' : 'muted'}>{adm.active ? 'Active' : 'Inactive'}</Badge></InfoRow>
-          <InfoRow label="Created">{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>
-          <InfoRow label="Last Login">
+          <InfoRow label={t('detail.labelStatus')}><Badge variant={adm.active ? 'success' : 'muted'}>{adm.active ? t('detail.statusActive') : t('detail.statusInactive')}</Badge></InfoRow>
+          <InfoRow label={t('detail.labelCreated')}>{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>
+          <InfoRow label={t('detail.labelLastLogin')}>
             {adm.lastLoginAt ? (
               <span>
                 {formatDate(adm.lastLoginAt)}
                 <span className="text-fg-muted text-xs ml-1.5">({formatRelativeTime(adm.lastLoginAt)})</span>
               </span>
             ) : (
-              <span className="text-fg-muted italic">Never</span>
+              <span className="text-fg-muted italic">{t('detail.lastLoginNever')}</span>
             )}
           </InfoRow>
         </dl>
 
         {/* Actions */}
         <div className="border-t-2 border-fg/10 pt-4 space-y-3">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Actions</h3>
+          <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('detail.sectionActions')}</h3>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
@@ -345,7 +349,7 @@ function AdminDetailDialog({
               onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
             >
               <KeyRound className="size-3.5" />
-              Credentials
+              {t('detail.credentials')}
             </Button>
 
             {isGlobalAdmin && adm.active && onRequestDeactivate && (
@@ -356,7 +360,7 @@ function AdminDetailDialog({
                 onClick={() => onRequestDeactivate(adm)}
               >
                 <PowerOff className="size-3.5" />
-                Deactivate
+                {t('detail.deactivate')}
               </Button>
             )}
 
@@ -369,14 +373,14 @@ function AdminDetailDialog({
                 onClick={() => activateMutation.mutate({ id: adm!.adminId! })}
               >
                 <Power className="size-3.5" />
-                Activate
+                {t('detail.activate')}
               </Button>
             )}
           </div>
         </div>
 
         <div className="flex justify-end pt-2">
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t('detail.close')}</Button>
         </div>
       </div>
     </Dialog>
@@ -385,15 +389,8 @@ function AdminDetailDialog({
 
 // ── Create admin dialog ────────────────────────────────────────────────────────
 
-const adminSchemaBase = z.object({
-  username: z.string().min(3, 'Min 3 characters').max(50, 'Max 50 characters'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  firstName: z.string().max(100).optional().or(z.literal('')),
-  lastName: z.string().max(100).optional().or(z.literal('')),
-  tenantId: z.union([z.number(), z.string()]).optional().or(z.literal('')),
-});
-
 function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boolean; onClose: () => void; defaultGlobal?: boolean }) {
+  const { t } = useTranslation('admins');
   const { session } = useAuth();
   const callerIsGlobal = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
@@ -412,32 +409,40 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   );
 
   const adminSchema = useMemo(
-    () =>
-      adminSchemaBase
+    () => {
+      const base = z.object({
+        username: z.string().min(3, t('validation.usernameMin')).max(50, t('validation.usernameMax')),
+        email: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        firstName: z.string().max(100).optional().or(z.literal('')),
+        lastName: z.string().max(100).optional().or(z.literal('')),
+        tenantId: z.union([z.number(), z.string()]).optional().or(z.literal('')),
+      });
+      return base
         .refine(
           (data) => !(callerIsGlobal && !isGlobalType) || (data.tenantId != null && data.tenantId !== ''),
-          { message: 'Select a tenant', path: ['tenantId'] },
+          { message: t('validation.selectTenant'), path: ['tenantId'] },
         )
         .refine(
           (data) => !isGlobalType || (typeof data.email === 'string' && data.email.trim().length > 0),
-          { message: 'Email is required for global administrator creation', path: ['email'] },
+          { message: t('validation.emailRequired'), path: ['email'] },
         )
         .refine(
           (data) => !isGlobalType || (typeof data.firstName === 'string' && data.firstName.trim().length > 0),
-          { message: 'First name is required for global administrator creation', path: ['firstName'] },
+          { message: t('validation.firstNameRequired'), path: ['firstName'] },
         )
         .refine(
           (data) => !isGlobalType || (typeof data.lastName === 'string' && data.lastName.trim().length > 0),
-          { message: 'Last name is required for global administrator creation', path: ['lastName'] },
+          { message: t('validation.lastNameRequired'), path: ['lastName'] },
         )
         .refine(
           (data) =>
             !isGlobalType ||
             !(typeof data.email === 'string' && data.email.trim().length > 0) ||
             /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()),
-          { message: 'Invalid email', path: ['email'] },
-        ),
-    [callerIsGlobal, isGlobalType],
+          { message: t('validation.invalidEmail'), path: ['email'] },
+        );
+    },
+    [callerIsGlobal, isGlobalType, t],
   );
   type AdminFormValues = z.infer<typeof adminSchema>;
 
@@ -489,7 +494,8 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const onCreated = (admin: AdminProvisioningShape, isGlobal: boolean) => {
     setCreatedAdmin(admin);
     void queryClient.invalidateQueries({ queryKey: ['admins'] });
-    toast(`${isGlobal ? 'Global' : 'Tenant'} Admin "${admin.username}" created.`);
+    const typeLabel = isGlobal ? t('adminType.global') : t('adminType.tenant');
+    toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
   };
 
   const createGlobalMutation = useCreateGlobalAdmin({
@@ -549,24 +555,24 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title={isGlobalType ? 'New Global Admin' : 'New Tenant Admin'} size="md" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={isGlobalType ? t('create.titleGlobal') : t('create.titleTenant')} size="md" dismissible={false}>
       {createdAdmin ? (
         <div className="space-y-4">
           <Alert variant="success">
-            Admin <strong>{String(createdAdmin.username ?? '')}</strong> created successfully.
+            {t('create.successMessage', { username: String(createdAdmin.username ?? '') })}
           </Alert>
           <p className="text-sm text-fg-muted">
-            Use the <strong>Credentials</strong> button in the list to retrieve the onboarding token and QR code to share with the new admin.
+            {t('create.successHint')}
           </p>
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>Done</Button>
+            <Button onClick={handleClose}>{t('create.done')}</Button>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {isDemoMode && sessionDemoOn && (
             <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
-              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
               {adminDemoPresets.map((preset) => (
                 <Button
                   key={preset.id}
@@ -597,7 +603,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                   onChange={() => setIsGlobalType(false)}
                   className="accent-accent"
                 />
-                <span className="text-sm font-medium">Tenant Admin</span>
+                <span className="text-sm font-medium">{t('create.typeTenant')}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -611,7 +617,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                   }}
                   className="accent-accent"
                 />
-                <span className="text-sm font-medium">Global Admin</span>
+                <span className="text-sm font-medium">{t('create.typeGlobal')}</span>
               </label>
             </div>
           )}
@@ -619,32 +625,33 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
             <>
               {eligibleTenants.length === 0 ? (
                 <Alert variant="warning">
-                  No tenant available. <Link to="/tenants" className="font-medium text-accent underline">Create a tenant first</Link>.
+                  {t('create.noTenantAvailable')}{' '}
+                  <Link to="/tenants" className="font-medium text-accent underline">{t('create.createTenantLink')}</Link>.
                 </Alert>
               ) : (
                 <div className="space-y-2">
                   <div className="space-y-1">
-                    <Label htmlFor="adm-tenant-filter">Filter tenants</Label>
+                    <Label htmlFor="adm-tenant-filter">{t('create.filterTenants')}</Label>
                     <Input
                       id="adm-tenant-filter"
                       type="text"
-                      placeholder="By name, organization or domain..."
+                      placeholder={t('create.filterTenantsPlaceholder')}
                       value={tenantFilter}
                       onChange={(e) => setTenantFilter(e.target.value)}
                       className="text-sm"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="adm-tenant">Assign to tenant *</Label>
+                    <Label htmlFor="adm-tenant">{t('create.assignTenant')}</Label>
                     <Select id="adm-tenant" error={errors.tenantId?.message} {...register('tenantId')}>
-                      <option value="">Select a tenant</option>
-                      {filteredTenants.map((t) => (
-                        <option key={t.tenantId} value={t.tenantId}>
-                          {t.tenantName ?? ''}
+                      <option value="">{t('create.selectTenant')}</option>
+                      {filteredTenants.map((tenant) => (
+                        <option key={tenant.tenantId} value={tenant.tenantId}>
+                          {tenant.tenantName ?? ''}
                         </option>
                       ))}
                       {filteredTenants.length === 0 && tenantFilter.trim() !== '' && (
-                        <option value="" disabled>No tenant matches your filter</option>
+                        <option value="" disabled>{t('create.noTenantMatches')}</option>
                       )}
                     </Select>
                   </div>
@@ -653,40 +660,40 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
             </>
           )}
           <div className="space-y-1">
-            <Label htmlFor="adm-username">Username *</Label>
-            <Input id="adm-username" placeholder="marie.dupont" error={errors.username?.message} {...register('username')} />
+            <Label htmlFor="adm-username">{t('create.usernameLabel')}</Label>
+            <Input id="adm-username" placeholder={t('create.usernamePlaceholder')} error={errors.username?.message} {...register('username')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="adm-fname">First Name{isGlobalType ? ' *' : ''}</Label>
-              <Input id="adm-fname" placeholder="Marie" error={errors.firstName?.message} {...register('firstName')} />
+              <Label htmlFor="adm-fname">{t('create.firstNameLabel')}{isGlobalType ? ' *' : ''}</Label>
+              <Input id="adm-fname" placeholder={t('create.firstNamePlaceholder')} error={errors.firstName?.message} {...register('firstName')} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="adm-lname">Last Name{isGlobalType ? ' *' : ''}</Label>
-              <Input id="adm-lname" placeholder="Dupont" error={errors.lastName?.message} {...register('lastName')} />
+              <Label htmlFor="adm-lname">{t('create.lastNameLabel')}{isGlobalType ? ' *' : ''}</Label>
+              <Input id="adm-lname" placeholder={t('create.lastNamePlaceholder')} error={errors.lastName?.message} {...register('lastName')} />
             </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="adm-email">
-              Email {isGlobalType ? '*' : <span className="text-fg-muted font-normal">(optional)</span>}
+              {t('create.emailLabel')} {isGlobalType ? '*' : <span className="text-fg-muted font-normal">{t('create.emailOptional')}</span>}
             </Label>
-            <Input id="adm-email" type="email" placeholder="marie@garageducoin.com" error={errors.email?.message} {...register('email')} />
+            <Input id="adm-email" type="email" placeholder={t('create.emailPlaceholder')} error={errors.email?.message} {...register('email')} />
           </div>
 
           {createMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(createMutation.error, 'Failed to create admin.')}
+              {getApiErrorMessage(createMutation.error, t('create.errorCreate'))}
             </Alert>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={handleClose}>{t('create.cancel')}</Button>
             <Button
               type="submit"
               isLoading={createMutation.isPending}
               disabled={!canSubmitTenantAdmin}
             >
-              Create Admin
+              {t('create.submit')}
             </Button>
           </div>
         </form>
@@ -698,6 +705,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminsPage() {
+  const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
@@ -713,10 +721,10 @@ export default function AdminsPage() {
   });
 
   const columns: ColumnDef<AdminResponseDto>[] = [
-    { header: 'ID', key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
-    { header: 'Username', key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
+    { header: t('list.columns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
+    { header: t('list.columns.username'), key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
     {
-      header: 'Name',
+      header: t('list.columns.name'),
       key: 'name',
       render: (r) => (
         <span className="text-fg-muted text-xs">
@@ -724,12 +732,12 @@ export default function AdminsPage() {
         </span>
       ),
     },
-    { header: 'Email', key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
-    { header: 'Type', key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    { header: 'Active', key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
+    { header: t('list.columns.email'), key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
+    { header: t('list.columns.type'), key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
+    { header: t('list.columns.active'), key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.activeYes') : t('list.activeNo')}</Badge> },
+    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
     {
-      header: 'Actions',
+      header: t('list.columns.actions'),
       key: 'actions',
       render: (r) => (
         <div className="flex items-center gap-1.5">
@@ -740,7 +748,7 @@ export default function AdminsPage() {
             onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId!, username: r.username! }); }}
           >
             <KeyRound className="size-3" />
-            Credentials
+            {t('list.credentials')}
           </Button>
           {isGlobalAdmin && r.active && (
             <Button
@@ -750,7 +758,7 @@ export default function AdminsPage() {
               onClick={(e) => { e.stopPropagation(); setDeactivateTarget(r); }}
             >
               <UserX className="size-3" />
-              Deactivate
+              {t('list.deactivate')}
             </Button>
           )}
         </div>
@@ -759,18 +767,18 @@ export default function AdminsPage() {
   ];
 
   return (
-    <AppShell title="Admins">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
               <RefreshCw className="size-3.5" />
-              Refresh
+              {t('list.refresh')}
             </Button>
           </div>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
             <Plus className="size-3.5" />
-            New Admin
+            {t('list.newAdmin')}
           </Button>
         </div>
 
@@ -781,7 +789,7 @@ export default function AdminsPage() {
             isLoading={isLoading}
             onRowClick={(row) => setSelectedAdmin(row)}
             keyExtractor={(r, i) => r.adminId ?? i}
-            emptyMessage="No admins found."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />

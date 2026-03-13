@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
+import enAdmins from '@/locales/en/admins.json';
 import enApiKeys from '@/locales/en/api-keys.json';
 import enAuditLogs from '@/locales/en/audit-logs.json';
 import enEncryptionKeys from '@/locales/en/encryption-keys.json';
@@ -13,6 +14,7 @@ import enIntegrations from '@/locales/en/integrations.json';
 import enLayout from '@/locales/en/layout.json';
 import enLogin from '@/locales/en/login.json';
 import enTenants from '@/locales/en/tenants.json';
+import frAdmins from '@/locales/fr/admins.json';
 import frApiKeys from '@/locales/fr/api-keys.json';
 import frAuditLogs from '@/locales/fr/audit-logs.json';
 import frEncryptionKeys from '@/locales/fr/encryption-keys.json';
@@ -33,6 +35,7 @@ i18n
   .init({
     resources: {
       en: {
+        admins: enAdmins as Record<string, unknown>,
         'api-keys': enApiKeys as Record<string, unknown>,
         'audit-logs': enAuditLogs as Record<string, unknown>,
         'encryption-keys': enEncryptionKeys as Record<string, unknown>,
@@ -46,6 +49,7 @@ i18n
         tenants: enTenants as Record<string, unknown>,
       },
       fr: {
+        admins: frAdmins as Record<string, unknown>,
         'api-keys': frApiKeys as Record<string, unknown>,
         'audit-logs': frAuditLogs as Record<string, unknown>,
         'encryption-keys': frEncryptionKeys as Record<string, unknown>,
@@ -61,7 +65,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },
