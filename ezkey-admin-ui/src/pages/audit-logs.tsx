@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -16,7 +17,7 @@ import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
-import { AUDIT_CONTEXT_HELP, CHECKPOINT_TYPE_HELP, HMAC_COLUMN_HELP } from '@/lib/help-text';
+import { AUDIT_CONTEXT_HELP } from '@/lib/help-text';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -44,43 +45,27 @@ import type {
 
 // ── Event type options (from EventType.java enum) ─────────────────────────────
 
-const EVENT_TYPES = [
-  ['ADMIN_LOGIN', 'Admin Login'],
-  ['ADMIN_LOGOUT', 'Admin Logout'],
-  ['ADMIN_PASSWORD_CHANGE', 'Admin Password Change'],
-  ['ADMIN_RECOVERY_USE', 'Admin Recovery Use'],
-  ['ENROLLMENT_CREATED', 'Enrollment Created'],
-  ['ENROLLMENT_DELETED', 'Enrollment Deleted'],
-  ['ENROLLMENT_BIND', 'Enrollment Bind'],
-  ['ENROLLMENT_VERIFY', 'Enrollment Verify'],
-  ['AUTH_ATTEMPT_CREATED', 'Auth Attempt Created'],
-  ['AUTH_ATTEMPT_PENDING', 'Auth Attempt Pending'],
-  ['AUTH_ATTEMPT_RESPOND', 'Auth Attempt Respond'],
-  ['AUTH_ATTEMPT_CANCELLED', 'Auth Attempt Cancelled'],
-  ['API_KEY_CREATED', 'API Key Created'],
-  ['API_KEY_REVOKED', 'API Key Revoked'],
-  ['API_KEY_EXPIRED', 'API Key Expired'],
-  ['API_KEY_AUTH_SUCCESS', 'API Key Auth Success'],
-  ['API_KEY_AUTH_FAILED', 'API Key Auth Failed'],
-  ['API_KEY_IP_BLOCKED', 'API Key IP Blocked'],
-  ['SYSTEM_ERROR', 'System Error'],
+const EVENT_TYPE_KEYS = [
+  'ADMIN_LOGIN', 'ADMIN_LOGOUT', 'ADMIN_PASSWORD_CHANGE', 'ADMIN_RECOVERY_USE',
+  'ENROLLMENT_CREATED', 'ENROLLMENT_DELETED', 'ENROLLMENT_BIND', 'ENROLLMENT_VERIFY',
+  'AUTH_ATTEMPT_CREATED', 'AUTH_ATTEMPT_PENDING', 'AUTH_ATTEMPT_RESPOND', 'AUTH_ATTEMPT_CANCELLED',
+  'API_KEY_CREATED', 'API_KEY_REVOKED', 'API_KEY_EXPIRED', 'API_KEY_AUTH_SUCCESS', 'API_KEY_AUTH_FAILED', 'API_KEY_IP_BLOCKED',
+  'SYSTEM_ERROR',
 ] as const;
-
-function formatEventType(et: string): string {
-  return et.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-}
 
 // ── Event status badge ────────────────────────────────────────────────────────
 
 function EventStatusBadge({ status }: { status: AuditLogResponseDto['eventStatus'] }) {
-  if (status === 'SUCCESS') return <Badge variant="success">Success</Badge>;
-  if (status === 'FAILURE') return <Badge variant="error">Failure</Badge>;
-  return <Badge variant="error">Error</Badge>;
+  const { t } = useTranslation('audit-logs');
+  if (status === 'SUCCESS') return <Badge variant="success">{t('eventStatus.labelSuccess')}</Badge>;
+  if (status === 'FAILURE') return <Badge variant="error">{t('eventStatus.labelFailure')}</Badge>;
+  return <Badge variant="error">{t('eventStatus.labelError')}</Badge>;
 }
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
 function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | null; onClose: () => void }) {
+  const { t } = useTranslation('audit-logs');
   if (!log) return null;
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -93,47 +78,47 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
   }
 
   return (
-    <Dialog open={log !== null} onClose={onClose} title={`Log #${log.auditLogId}`} size="lg">
+    <Dialog open={log !== null} onClose={onClose} title={t('detail.title', { id: log.auditLogId })} size="lg">
       <dl className="space-y-2.5">
-        <InfoRow label="ID"><span className="font-mono">{log.auditLogId}</span></InfoRow>
-        <InfoRow label="Event Type">
+        <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
+        <InfoRow label={t('detail.labelEventType')}>
           <span className="font-mono text-xs bg-fg/5 px-1.5 py-0.5">{log.eventType}</span>
         </InfoRow>
-        <InfoRow label="Status"><EventStatusBadge status={log.eventStatus} /></InfoRow>
-        {log.apiName && <InfoRow label="API"><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
-        {log.adminId && <InfoRow label="Admin ID"><span className="font-mono">#{log.adminId}</span></InfoRow>}
-        {log.integrationId && <InfoRow label="Integration"><span className="font-mono">#{log.integrationId}</span></InfoRow>}
-        {log.enrollmentId && <InfoRow label="Enrollment"><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
-        {log.authAttemptId && <InfoRow label="Auth Attempt"><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
-        {log.ipAddress && <InfoRow label="IP Address"><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
-        {log.userAgent && <InfoRow label="User Agent"><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
+        <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
+        {log.apiName && <InfoRow label={t('detail.labelApi')}><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
+        {log.adminId && <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">#{log.adminId}</span></InfoRow>}
+        {log.integrationId && <InfoRow label={t('detail.labelIntegration')}><span className="font-mono">#{log.integrationId}</span></InfoRow>}
+        {log.enrollmentId && <InfoRow label={t('detail.labelEnrollment')}><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
+        {log.authAttemptId && <InfoRow label={t('detail.labelAuthAttempt')}><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
+        {log.ipAddress && <InfoRow label={t('detail.labelIpAddress')}><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
+        {log.userAgent && <InfoRow label={t('detail.labelUserAgent')}><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
         {log.eventDetails && (
-          <InfoRow label="Details">
+          <InfoRow label={t('detail.labelDetails')}>
             <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.eventDetails}</pre>
           </InfoRow>
         )}
         {log.errorMessage && (
-          <InfoRow label="Error">
+          <InfoRow label={t('detail.labelError')}>
             <span className="text-xs text-error">{log.errorMessage}</span>
           </InfoRow>
         )}
-        <InfoRow label="Created"><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
-        <InfoRow label="HMAC Integrity">
+        <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
+        <InfoRow label={t('detail.labelHmacIntegrity')}>
           {log.entryHmac ? (
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="size-3.5 text-success" />
-              <span className="text-xs text-success font-bold">Chain intact</span>
+              <span className="text-xs text-success font-bold">{t('detail.chainIntact')}</span>
             </div>
           ) : (
-            <span className="text-xs text-fg-muted">Not available</span>
+            <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
           )}
         </InfoRow>
         {log.instanceId && (
-          <InfoRow label="Instance"><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
+          <InfoRow label={t('detail.labelInstance')}><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
         )}
       </dl>
       <div className="flex justify-end pt-4">
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose}>{t('detail.close')}</Button>
       </div>
     </Dialog>
   );
@@ -146,12 +131,13 @@ type CheckpointRowItem =
   | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number };
 
 function CheckpointTypeBadge({ type }: { type?: string }) {
+  const { t } = useTranslation('audit-logs');
   const TooltipWrap = ({ content, badge }: { content: string; badge: ReactNode }) => (
     <Tooltip content={content}>{badge}</Tooltip>
   );
-  if (type === 'REGULAR') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.REGULAR} badge={<Badge variant="muted">Regular</Badge>} />;
-  if (type === 'ARCHIVE_SEAL') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.ARCHIVE_SEAL} badge={<Badge variant="success">Sealed</Badge>} />;
-  if (type === 'GAP_DECLARATION') return <TooltipWrap content={CHECKPOINT_TYPE_HELP.GAP_DECLARATION} badge={<Badge variant="warning">Gap</Badge>} />;
+  if (type === 'REGULAR') return <TooltipWrap content={t('integrity.helpCheckpointRegular')} badge={<Badge variant="muted">{t('integrity.checkpointTypeRegular')}</Badge>} />;
+  if (type === 'ARCHIVE_SEAL') return <TooltipWrap content={t('integrity.helpCheckpointArchiveSeal')} badge={<Badge variant="success">{t('integrity.checkpointTypeSealed')}</Badge>} />;
+  if (type === 'GAP_DECLARATION') return <TooltipWrap content={t('integrity.helpCheckpointGapDeclaration')} badge={<Badge variant="warning">{t('integrity.checkpointTypeGap')}</Badge>} />;
   return <span className="text-fg-muted">—</span>;
 }
 
@@ -183,6 +169,7 @@ function CheckpointTimelineTable({
     if (sortKey === field) onSort(`${sortKey},${dir === 'ASC' ? 'DESC' : 'ASC'}`);
     else onSort(`${sortKey},DESC`);
   };
+  const { t } = useTranslation('audit-logs');
   const sortable = (sortKey: string, label: string, colClass?: string) => {
     const isActive = field === sortKey;
     return (
@@ -205,13 +192,13 @@ function CheckpointTimelineTable({
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-fg text-surface">
-            {sortable('checkpointId', 'ID', 'w-20')}
-            {sortable('windowStart', 'Window start')}
-            {sortable('windowEnd', 'Window end')}
-            {sortable('entryCount', 'Entries', 'w-20')}
-            {sortable('checkpointType', 'Type', 'w-24')}
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">Notes</th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-40">Actions</th>
+            {sortable('checkpointId', t('integrity.timelineColId'), 'w-20')}
+            {sortable('windowStart', t('integrity.timelineColWindowStart'))}
+            {sortable('windowEnd', t('integrity.timelineColWindowEnd'))}
+            {sortable('entryCount', t('integrity.timelineColEntries'), 'w-20')}
+            {sortable('checkpointType', t('integrity.timelineColType'), 'w-24')}
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">{t('integrity.timelineColNotes')}</th>
+            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-40">{t('integrity.timelineColActions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -224,7 +211,7 @@ function CheckpointTimelineTable({
           ) : rows.length === 0 ? (
             <tr>
               <td colSpan={cols} className="px-3 py-10 text-center text-fg-muted text-sm italic">
-                No checkpoints for the selected filters. Set a date range and refresh.
+                {t('integrity.noCheckpoints')}
               </td>
             </tr>
           ) : (
@@ -233,7 +220,7 @@ function CheckpointTimelineTable({
                 return (
                   <tr key={`gap-${item.gapEnd}-${item.gapStart}`} className="bg-warning/10 border-l-4 border-warning">
                     <td colSpan={cols} className="px-3 py-2 text-sm">
-                      <span className="font-bold text-warning">Gap:</span>{' '}
+                      <span className="font-bold text-warning">{t('integrity.checkpointTypeGap')}:</span>{' '}
                       {formatDateWithTimezone(item.gapEnd)} → {formatDateWithTimezone(item.gapStart)}
                       {item.durationMin > 0 && (
                         <span className="text-fg-muted ml-2">(~{item.durationMin} min)</span>
@@ -263,7 +250,7 @@ function CheckpointTimelineTable({
                     {isBorderingGap ? (
                       <span className="inline-flex items-center gap-1.5">
                         <span className="font-black text-warning">{r.checkpointId ?? '—'}</span>
-                        <Badge variant="warning" className="text-[10px] px-1.5 py-0">{isAnchor ? 'Anchor' : 'After gap'}</Badge>
+                        <Badge variant="warning" className="text-[10px] px-1.5 py-0">{isAnchor ? t('integrity.anchorBadge') : t('integrity.afterGapBadge')}</Badge>
                       </span>
                     ) : (
                       r.checkpointId ?? '—'
@@ -286,7 +273,7 @@ function CheckpointTimelineTable({
                         className="text-xs p-1 h-auto"
                         onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealFrom(r.checkpointId); }}
                       >
-                        SEAL from
+                        {t('integrity.sealFrom')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -294,7 +281,7 @@ function CheckpointTimelineTable({
                         className="text-xs p-1 h-auto"
                         onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealTo(r.checkpointId); }}
                       >
-                        SEAL to
+                        {t('integrity.sealTo')}
                       </Button>
                       {nextIsGap && r.checkpointId != null && (
                         <Button
@@ -303,7 +290,7 @@ function CheckpointTimelineTable({
                           className="text-xs p-1 h-auto text-warning"
                           onClick={(e) => { e.stopPropagation(); onSetAnchor(r.checkpointId!); }}
                         >
-                          Use as anchor
+                          {t('integrity.useAsAnchor')}
                         </Button>
                       )}
                     </div>
@@ -321,6 +308,7 @@ function CheckpointTimelineTable({
 // ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
 
 function IntegrityPanel() {
+  const { t } = useTranslation('audit-logs');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -466,7 +454,7 @@ function IntegrityPanel() {
       const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
       setChainReport(report);
     } catch (e) {
-      toast(getApiErrorMessage(e, 'Chain integrity check failed'), 'error');
+      toast(getApiErrorMessage(e, t('integrity.errorChainCheck')), 'error');
     } finally {
       setChainLoading(false);
     }
@@ -486,7 +474,7 @@ function IntegrityPanel() {
       const report = await checkIntegrity(params) as unknown as IntegrityReport;
       setIntegrityReport(report);
     } catch (e) {
-      toast(getApiErrorMessage(e, 'Integrity check failed'), 'error');
+      toast(getApiErrorMessage(e, t('integrity.errorIntegrityCheck')), 'error');
     } finally {
       setIntegrityLoading(false);
     }
@@ -497,11 +485,11 @@ function IntegrityPanel() {
       onSuccess: (data) => {
         const result = data as unknown as ArchiveSealResult;
         setSealResult(result);
-        toast(`Archive sealed — ${result.checkpointsSealed} checkpoints`, 'success');
+        toast(t('integrity.toastSealSuccess', { count: result.checkpointsSealed }), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Seal failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('integrity.errorSeal')), 'error'),
     },
   });
 
@@ -509,11 +497,11 @@ function IntegrityPanel() {
     mutation: {
       onSuccess: (data) => {
         setGapResult(data as unknown as GapDeclarationResult);
-        toast('Gap declared successfully', 'success');
+        toast(t('integrity.toastGapSuccess'), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
-      onError: (e) => toast(getApiErrorMessage(e, 'Gap declaration failed'), 'error'),
+      onError: (e) => toast(getApiErrorMessage(e, t('integrity.errorGap')), 'error'),
     },
   });
 
@@ -535,9 +523,9 @@ function IntegrityPanel() {
   }
 
   function ReportBadge({ intact, status }: { intact?: boolean; status?: string }) {
-    if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />Intact</Badge>;
-    if (status === 'UNDECLARED_GAP_DETECTED') return <Badge variant="warning"><AlertTriangle className="size-3 mr-1" />Undeclared gap(s)</Badge>;
-    if (intact === false) return <Badge variant="error"><XCircle className="size-3 mr-1" />Violation</Badge>;
+    if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />{t('integrity.reportIntact')}</Badge>;
+    if (status === 'UNDECLARED_GAP_DETECTED') return <Badge variant="warning"><AlertTriangle className="size-3 mr-1" />{t('integrity.reportUndeclaredGaps')}</Badge>;
+    if (intact === false) return <Badge variant="error"><XCircle className="size-3 mr-1" />{t('integrity.reportViolation')}</Badge>;
     return null;
   }
 
@@ -551,11 +539,11 @@ function IntegrityPanel() {
       >
         <div className="flex items-center gap-2">
           <ShieldAlert className="size-5 text-accent" />
-          <h2 className="font-black text-sm uppercase tracking-wider">Integrity &amp; Lifecycle</h2>
+          <h2 className="font-black text-sm uppercase tracking-wider">{t('integrity.title')}</h2>
           <span onClick={(e) => e.stopPropagation()}>
-            <ContextHelp title={AUDIT_CONTEXT_HELP.integrityLifecycle.title} content={AUDIT_CONTEXT_HELP.integrityLifecycle.content} ariaLabel="Help: Integrity and Lifecycle" />
+            <ContextHelp title={AUDIT_CONTEXT_HELP.integrityLifecycle.title} content={AUDIT_CONTEXT_HELP.integrityLifecycle.content} ariaLabel={`Help: ${t('integrity.title')}`} />
           </span>
-          <Badge variant="muted">Global Admin</Badge>
+          <Badge variant="muted">{t('integrity.globalAdmin')}</Badge>
         </div>
         {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
       </button>
@@ -564,14 +552,13 @@ function IntegrityPanel() {
         <div className="border-t-2 border-fg/20 p-4 space-y-6">
           {/* ── Verification section ── */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Verification</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.verification')}</h3>
 
             {/* Date range filter (range required for verification) */}
             <DateRangeFilter
               value={checkRange}
               onChange={setCheckRange}
-              presetWidth="w-44"
-              emptyOptionLabel="Select a range"
+              emptyOptionLabel={t('integrity.dateRangeSelect')}
             />
 
             <div className="flex gap-3">
@@ -581,10 +568,10 @@ function IntegrityPanel() {
                 onClick={runChainCheck}
                 disabled={chainLoading || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
-                title={!checkRange.from || !checkRange.to ? 'Select a date range to run verification' : undefined}
+                title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
               >
                 <ShieldCheck className="size-3.5" />
-                {chainLoading ? 'Checking…' : 'Chain Integrity'}
+                {chainLoading ? t('integrity.checking') : t('integrity.chainIntegrity')}
               </Button>
               <Button
                 size="sm"
@@ -592,10 +579,10 @@ function IntegrityPanel() {
                 onClick={runIntegrityCheck}
                 disabled={integrityLoading || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
-                title={!checkRange.from || !checkRange.to ? 'Select a date range to run verification' : undefined}
+                title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
               >
                 <ShieldCheck className="size-3.5" />
-                {integrityLoading ? 'Checking…' : 'Entry Integrity'}
+                {integrityLoading ? t('integrity.checking') : t('integrity.entryIntegrity')}
               </Button>
             </div>
 
@@ -603,22 +590,22 @@ function IntegrityPanel() {
             {chainReport && (
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs uppercase tracking-wider">Chain Verification</span>
+                  <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.chainVerification')}</span>
                   <ReportBadge intact={chainReport.intact} status={(chainReport as { status?: string }).status} />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <Stat label="Total" value={chainReport.totalCheckpoints} />
-                  <Stat label="Valid" value={chainReport.validCheckpoints} ok />
-                  <Stat label="Invalid" value={chainReport.invalidCheckpoints} bad />
-                  <Stat label="Archived" value={chainReport.archivedCheckpoints} />
-                  <Stat label="Undeclared gaps" value={(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0} bad={((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) > 0} />
+                  <Stat label={t('integrity.statTotal')} value={chainReport.totalCheckpoints} />
+                  <Stat label={t('integrity.statValid')} value={chainReport.validCheckpoints} ok />
+                  <Stat label={t('integrity.statInvalid')} value={chainReport.invalidCheckpoints} bad />
+                  <Stat label={t('integrity.statArchived')} value={chainReport.archivedCheckpoints} />
+                  <Stat label={t('integrity.statUndeclaredGaps')} value={(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0} bad={((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) > 0} />
                 </div>
                 {chainReport.gapDeclaredCheckpoints != null && chainReport.gapDeclaredCheckpoints > 0 && (
-                  <p className="text-xs text-fg-muted">Gap-declared checkpoints: {chainReport.gapDeclaredCheckpoints}</p>
+                  <p className="text-xs text-fg-muted">{t('integrity.gapDeclaredCheckpoints', { count: chainReport.gapDeclaredCheckpoints })}</p>
                 )}
                 {chainReport.violations && chainReport.violations.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-bold text-error mb-1">Violations:</p>
+                    <p className="text-xs font-bold text-error mb-1">{t('integrity.violations')}</p>
                     <ul className="text-xs text-error list-disc pl-4 space-y-0.5">
                       {chainReport.violations.map((v, i) => <li key={i}>{v}</li>)}
                     </ul>
@@ -631,14 +618,14 @@ function IntegrityPanel() {
             {integrityReport && (
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs uppercase tracking-wider">Entry Integrity</span>
+                  <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
                   <ReportBadge intact={integrityReport.intact} />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <Stat label="Total" value={integrityReport.totalEntries} />
-                  <Stat label="Valid" value={integrityReport.validEntries} ok />
-                  <Stat label="Invalid" value={integrityReport.invalidEntries} bad />
-                  <Stat label="Unsigned" value={integrityReport.unsignedEntries} />
+                  <Stat label={t('integrity.statTotal')} value={integrityReport.totalEntries} />
+                  <Stat label={t('integrity.statValid')} value={integrityReport.validEntries} ok />
+                  <Stat label={t('integrity.statInvalid')} value={integrityReport.invalidEntries} bad />
+                  <Stat label={t('integrity.statUnsigned')} value={integrityReport.unsignedEntries} />
                 </div>
               </div>
             )}
@@ -646,18 +633,18 @@ function IntegrityPanel() {
 
           {/* ── Lifecycle section ── */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Lifecycle Operations</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecycleOperations')}</h3>
             <div className="flex gap-3 flex-wrap items-center">
               <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
                 <Archive className="size-3.5" />
-                Seal Archive
+                {t('integrity.sealArchive')}
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={AUDIT_CONTEXT_HELP.sealArchive.title} content={AUDIT_CONTEXT_HELP.sealArchive.content} ariaLabel="Help: Seal Archive" />
               </span>
               <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
                 <AlertTriangle className="size-3.5" />
-                Declare Gap
+                {t('integrity.declareGap')}
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={AUDIT_CONTEXT_HELP.declareGap.title} content={AUDIT_CONTEXT_HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
@@ -672,7 +659,7 @@ function IntegrityPanel() {
                   className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-1 -m-1 transition-colors"
                   onClick={() => setGapsListExpanded((v) => !v)}
                 >
-                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">Undeclared gaps for consultation</span>
+                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.undeclaredGapsForConsultation')}</span>
                   <Badge variant="warning">{(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0}</Badge>
                   {gapsListExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                 </button>
@@ -690,10 +677,10 @@ function IntegrityPanel() {
                               isFocused ? 'border-warning bg-warning/10 font-bold' : 'border-fg/20 hover:border-warning/50 hover:bg-warning/5',
                             )}
                           >
-                            <span className="text-fg-muted">Gap {idx + 1}:</span>{' '}
+                            <span className="text-fg-muted">{t('integrity.gapLabel', { n: idx + 1 })}</span>{' '}
                             {formatDateWithTimezone(g.gapStart)} → {formatDateWithTimezone(g.gapEnd)}
                             <span className="text-fg-muted ml-2">(~{Number(g.gapMinutes).toLocaleString()} min)</span>
-                            {isFocused && <span className="ml-2 text-warning font-bold">· Focus</span>}
+                            {isFocused && <span className="ml-2 text-warning font-bold">· {t('integrity.focus')}</span>}
                           </button>
                         </li>
                       );
@@ -702,9 +689,9 @@ function IntegrityPanel() {
                 )}
                 {focusedGap !== null && (
                   <div className="flex items-center gap-2 flex-wrap text-xs p-2 border-2 border-warning/50 bg-warning/5">
-                    <span className="font-bold text-warning">Focus:</span>
+                    <span className="font-bold text-warning">{t('integrity.focus')}:</span>
                     <span>{formatDateWithTimezone(focusedGap.gapStart)} → {formatDateWithTimezone(focusedGap.gapEnd)} (~{Number(focusedGap.gapMinutes).toLocaleString()} min)</span>
-                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setFocusedGap(null)}>Clear focus</Button>
+                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setFocusedGap(null)}>{t('integrity.clearFocus')}</Button>
                   </div>
                 )}
               </div>
@@ -718,7 +705,7 @@ function IntegrityPanel() {
               className="flex items-center gap-2 w-full text-left hover:bg-fg/5 p-2 -m-2 transition-colors"
               onClick={() => setTimelineExpanded((v) => !v)}
             >
-              <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">Checkpoint timeline</h3>
+              <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={AUDIT_CONTEXT_HELP.checkpointTimeline.title} content={AUDIT_CONTEXT_HELP.checkpointTimeline.content} ariaLabel="Help: Checkpoint timeline" />
               </span>
@@ -727,46 +714,46 @@ function IntegrityPanel() {
             {timelineExpanded && (
               <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
                 <div className="flex gap-3 items-center flex-wrap">
-                  <DateRangeFilter value={checkpointRange} onChange={setCheckpointRange} presetWidth="w-44" showClear={true} />
+                  <DateRangeFilter value={checkpointRange} onChange={setCheckpointRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
                   <div className="w-40">
                     <Select value={checkpointTypeFilter} onChange={(e) => setCheckpointTypeFilter(e.target.value)}>
-                      <option value="">All types</option>
-                      <option value="REGULAR">Regular</option>
-                      <option value="ARCHIVE_SEAL">Archive seal</option>
-                      <option value="GAP_DECLARATION">Gap declaration</option>
+                      <option value="">{t('integrity.allTypes')}</option>
+                      <option value="REGULAR">{t('integrity.typeRegular')}</option>
+                      <option value="ARCHIVE_SEAL">{t('integrity.typeArchiveSeal')}</option>
+                      <option value="GAP_DECLARATION">{t('integrity.typeGapDeclaration')}</option>
                     </Select>
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => refetchCheckpoints()} className="gap-1.5">
                     <ListOrdered className="size-3.5" />
-                    Refresh
+                    {t('list.refresh')}
                   </Button>
                 </div>
                 {(selectedSealFromId != null || selectedSealToId != null || selectedGapAnchorId != null) && (
                   <div className="flex flex-wrap items-center gap-3 p-2 border-2 border-accent/30 bg-surface">
-                    <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">Selection</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">{t('integrity.selection')}</span>
                     {(selectedSealFromId != null || selectedSealToId != null) && (
                       <span className="text-sm">
-                        Seal range: From <span className="font-mono font-bold">#{selectedSealFromId ?? '—'}</span>
+                        {t('integrity.sealRangeLabel')}: {t('integrity.sealRangeFrom')} <span className="font-mono font-bold">#{selectedSealFromId ?? '—'}</span>
                         {' · '}
-                        To <span className="font-mono font-bold">#{selectedSealToId ?? '—'}</span>
-                        <button type="button" onClick={() => { setSelectedSealFromId(null); setSelectedSealToId(null); }} className="ml-2 text-xs text-fg-muted hover:text-fg underline">Clear</button>
+                        {t('integrity.sealRangeTo')} <span className="font-mono font-bold">#{selectedSealToId ?? '—'}</span>
+                        <button type="button" onClick={() => { setSelectedSealFromId(null); setSelectedSealToId(null); }} className="ml-2 text-xs text-fg-muted hover:text-fg underline">{t('integrity.clear')}</button>
                       </span>
                     )}
                     {selectedSealFromId != null || selectedSealToId != null ? (
                       <Button size="sm" className="gap-1.5" onClick={openSealDialogWithSelection}>
                         <Archive className="size-3.5" />
-                        Open Seal Archive
+                        {t('integrity.openSealArchive')}
                       </Button>
                     ) : null}
                     {selectedGapAnchorId != null && (
                       <>
                         <span className="text-sm">
-                          Anchor: <span className="font-mono font-bold">#{selectedGapAnchorId}</span>
-                          <button type="button" onClick={() => setSelectedGapAnchorId(null)} className="ml-2 text-xs text-fg-muted hover:text-fg underline">Clear</button>
+                          {t('integrity.anchor')}: <span className="font-mono font-bold">#{selectedGapAnchorId}</span>
+                          <button type="button" onClick={() => setSelectedGapAnchorId(null)} className="ml-2 text-xs text-fg-muted hover:text-fg underline">{t('integrity.clear')}</button>
                         </span>
                         <Button size="sm" variant="secondary" className="gap-1.5" onClick={openGapDialogWithSelection}>
                           <AlertTriangle className="size-3.5" />
-                          Declare Gap
+                          {t('integrity.declareGap')}
                         </Button>
                       </>
                     )}
@@ -802,21 +789,21 @@ function IntegrityPanel() {
       )}
 
       {/* ── Seal Archive Dialog ── */}
-      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title="Seal Archive" size="lg" dismissible={false}>
+      <Dialog open={sealOpen} onClose={() => setSealOpen(false)} title={t('sealDialog.title')} size="lg" dismissible={false}>
         {sealResult ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">
               <CheckCircle className="size-5" />
-              <span className="font-bold">Archive sealed successfully</span>
+              <span className="font-bold">{t('sealDialog.successTitle')}</span>
             </div>
             <dl className="space-y-1.5 text-sm">
-              <InfoPair label="Period" value={`${sealResult.periodStart ?? '—'} → ${sealResult.periodEnd ?? '—'}`} />
-              <InfoPair label="Checkpoints sealed" value={String(sealResult.checkpointsSealed ?? 0)} />
-              <InfoPair label="Seal HMAC" value={sealResult.sealChainHmac ?? '—'} mono />
-              <InfoPair label="Audit log ID" value={String(sealResult.auditLogId ?? '—')} />
+              <InfoPair label={t('sealDialog.resultPeriod')} value={`${sealResult.periodStart ?? '—'} → ${sealResult.periodEnd ?? '—'}`} />
+              <InfoPair label={t('sealDialog.resultCheckpointsSealed')} value={String(sealResult.checkpointsSealed ?? 0)} />
+              <InfoPair label={t('sealDialog.resultSealHmac')} value={sealResult.sealChainHmac ?? '—'} mono />
+              <InfoPair label={t('sealDialog.resultAuditLogId')} value={String(sealResult.auditLogId ?? '—')} />
             </dl>
             <div className="flex justify-end pt-2">
-              <Button onClick={() => setSealOpen(false)}>Done</Button>
+              <Button onClick={() => setSealOpen(false)}>{t('sealDialog.done')}</Button>
             </div>
           </div>
         ) : (
@@ -836,40 +823,39 @@ function IntegrityPanel() {
             className="space-y-4"
           >
             <p className="text-xs text-fg-muted">
-              Seal an archive period before dropping an audit log partition.
-              A pre-flight integrity check is mandatory — the API will reject if any violation is detected.
+              {t('sealDialog.intro')}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="seal-start" className="text-xs">Period Start</Label>
+                <Label htmlFor="seal-start" className="text-xs">{t('sealDialog.periodStart')}</Label>
                 <Input id="seal-start" type="datetime-local" value={sealPeriodStart} onChange={(e) => setSealPeriodStart(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="seal-end" className="text-xs">Period End</Label>
+                <Label htmlFor="seal-end" className="text-xs">{t('sealDialog.periodEnd')}</Label>
                 <Input id="seal-end" type="datetime-local" value={sealPeriodEnd} onChange={(e) => setSealPeriodEnd(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="seal-cp-from" className="text-xs">Checkpoint ID From</Label>
-                <Input id="seal-cp-from" type="number" placeholder="optional" value={sealCheckpointFrom} onChange={(e) => setSealCheckpointFrom(e.target.value)} />
+                <Label htmlFor="seal-cp-from" className="text-xs">{t('sealDialog.checkpointIdFrom')}</Label>
+                <Input id="seal-cp-from" type="number" placeholder={t('sealDialog.optionalPlaceholder')} value={sealCheckpointFrom} onChange={(e) => setSealCheckpointFrom(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="seal-cp-to" className="text-xs">Checkpoint ID To</Label>
-                <Input id="seal-cp-to" type="number" placeholder="optional" value={sealCheckpointTo} onChange={(e) => setSealCheckpointTo(e.target.value)} />
+                <Label htmlFor="seal-cp-to" className="text-xs">{t('sealDialog.checkpointIdTo')}</Label>
+                <Input id="seal-cp-to" type="number" placeholder={t('sealDialog.optionalPlaceholder')} value={sealCheckpointTo} onChange={(e) => setSealCheckpointTo(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="seal-just">Justification <span className="text-fg-muted font-normal">(min 10 chars, required)</span></Label>
-              <Input id="seal-just" placeholder="Monthly rotation — backing up to cold storage" value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} maxLength={500} />
+              <Label htmlFor="seal-just">{t('sealDialog.justification')} <span className="text-fg-muted font-normal">{t('sealDialog.justificationHint')}</span></Label>
+              <Input id="seal-just" placeholder={t('sealDialog.justificationPlaceholder')} value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} maxLength={500} />
               {sealJustification.trim().length > 0 && sealJustification.trim().length < 10 && (
-                <p className="text-xs text-error">Justification must be at least 10 characters.</p>
+                <p className="text-xs text-error">{t('sealDialog.justificationMinError')}</p>
               )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>{t('sealDialog.cancel')}</Button>
               <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length < 10}>
-                {sealMutation.isPending ? 'Sealing…' : 'Seal Archive'}
+                {sealMutation.isPending ? t('sealDialog.submitting') : t('sealDialog.submit')}
               </Button>
             </div>
           </form>
@@ -877,21 +863,21 @@ function IntegrityPanel() {
       </Dialog>
 
       {/* ── Gap Declaration Dialog ── */}
-      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title="Declare Gap" size="lg" dismissible={false}>
+      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title={t('gapDialog.title')} size="lg" dismissible={false}>
         {gapResult ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">
               <CheckCircle className="size-5" />
-              <span className="font-bold">Gap declared successfully</span>
+              <span className="font-bold">{t('gapDialog.successTitle')}</span>
             </div>
             <dl className="space-y-1.5 text-sm">
-              <InfoPair label="Gap period" value={gapResult.gapStart && gapResult.gapEnd ? `${formatDateWithTimezone(gapResult.gapStart)} → ${formatDateWithTimezone(gapResult.gapEnd)}` : '—'} />
-              <InfoPair label="Gap checkpoint" value={String(gapResult.gapCheckpointId ?? '—')} />
-              <InfoPair label="Gap HMAC" value={gapResult.gapChainHmac ?? '—'} mono />
-              <InfoPair label="Audit log ID" value={String(gapResult.auditLogId ?? '—')} />
+              <InfoPair label={t('gapDialog.resultGapPeriod')} value={gapResult.gapStart && gapResult.gapEnd ? `${formatDateWithTimezone(gapResult.gapStart)} → ${formatDateWithTimezone(gapResult.gapEnd)}` : '—'} />
+              <InfoPair label={t('gapDialog.resultGapCheckpoint')} value={String(gapResult.gapCheckpointId ?? '—')} />
+              <InfoPair label={t('gapDialog.resultGapHmac')} value={gapResult.gapChainHmac ?? '—'} mono />
+              <InfoPair label={t('gapDialog.resultAuditLogId')} value={String(gapResult.auditLogId ?? '—')} />
             </dl>
             <div className="flex justify-end pt-2">
-              <Button onClick={() => setGapOpen(false)}>Done</Button>
+              <Button onClick={() => setGapOpen(false)}>{t('gapDialog.done')}</Button>
             </div>
           </div>
         ) : (
@@ -910,34 +896,33 @@ function IntegrityPanel() {
             className="space-y-4"
           >
             <p className="text-xs text-fg-muted">
-              Declare a gap when the system was offline longer than the scheduler lookback window (default 60 min).
-              Must be called before the scheduler creates regular checkpoints for the gap period.
+              {t('gapDialog.intro')}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="gap-start" className="text-xs">Gap Start</Label>
+                <Label htmlFor="gap-start" className="text-xs">{t('gapDialog.gapStart')}</Label>
                 <Input id="gap-start" type="datetime-local" value={gapStart} onChange={(e) => setGapStart(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="gap-end" className="text-xs">Gap End</Label>
+                <Label htmlFor="gap-end" className="text-xs">{t('gapDialog.gapEnd')}</Label>
                 <Input id="gap-end" type="datetime-local" value={gapEnd} onChange={(e) => setGapEnd(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="gap-anchor" className="text-xs">Anchor Checkpoint ID</Label>
-              <Input id="gap-anchor" type="number" placeholder="optional — last checkpoint before outage" value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
+              <Label htmlFor="gap-anchor" className="text-xs">{t('gapDialog.anchorCheckpointId')}</Label>
+              <Input id="gap-anchor" type="number" placeholder={t('gapDialog.anchorPlaceholder')} value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="gap-just">Justification <span className="text-fg-muted font-normal">(min 10 chars, required)</span></Label>
-              <Input id="gap-just" placeholder="Planned maintenance window — DB migration" value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} maxLength={500} />
+              <Label htmlFor="gap-just">{t('gapDialog.justification')} <span className="text-fg-muted font-normal">{t('gapDialog.justificationHint')}</span></Label>
+              <Input id="gap-just" placeholder={t('gapDialog.justificationPlaceholder')} value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} maxLength={500} />
               {gapJustification.trim().length > 0 && gapJustification.trim().length < 10 && (
-                <p className="text-xs text-error">Justification must be at least 10 characters.</p>
+                <p className="text-xs text-error">{t('gapDialog.justificationMinError')}</p>
               )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>{t('gapDialog.cancel')}</Button>
               <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>
-                {gapMutation.isPending ? 'Declaring…' : 'Declare Gap'}
+                {gapMutation.isPending ? t('gapDialog.submitting') : t('gapDialog.submit')}
               </Button>
             </div>
           </form>
@@ -969,6 +954,7 @@ function InfoPair({ label, value, mono }: { label: string; value: string; mono?:
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AuditLogsPage() {
+  const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const [eventTypeFilter, setEventTypeFilter] = useState('');
@@ -1001,31 +987,35 @@ export default function AuditLogsPage() {
   });
 
   const columns: ColumnDef<AuditLogResponseDto>[] = [
-    { header: 'ID', key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
+    { header: t('list.columns.id'), key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
     {
-      header: 'Event',
+      header: t('list.columns.event'),
       key: 'eventType',
       sortKey: 'eventType',
       render: (r) => (
-        <span className="font-mono text-xs">{formatEventType(r.eventType ?? '')}</span>
+        <span className="font-mono text-xs">
+          {EVENT_TYPE_KEYS.includes((r.eventType ?? '') as typeof EVENT_TYPE_KEYS[number])
+            ? t(`eventType.${r.eventType}`)
+            : (r.eventType ?? '').split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
+        </span>
       ),
     },
-    { header: 'Status', key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
+    { header: t('list.columns.status'), key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
     {
-      header: 'API',
+      header: t('list.columns.api'),
       key: 'apiName',
       render: (r) => r.apiName
         ? <Badge variant="muted">{r.apiName.replace('_API', '')}</Badge>
         : <span className="text-fg-muted">—</span>,
     },
     {
-      header: 'Admin',
+      header: t('list.columns.admin'),
       key: 'adminId',
       render: (r) => r.adminId ? <span className="font-mono text-xs">#{r.adminId}</span> : <span className="text-fg-muted">—</span>,
     },
     {
-      header: 'HMAC',
-      headerTooltip: HMAC_COLUMN_HELP,
+      header: t('list.columns.hmac'),
+      headerTooltip: t('list.hmacTooltip'),
       key: 'entryHmac',
       render: (r) =>
           r.entryHmac ? (
@@ -1034,12 +1024,12 @@ export default function AuditLogsPage() {
           <span className="text-fg-muted text-xs">—</span>
         ),
     },
-    { header: 'Time', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt ?? '')}</span> },
+    { header: t('list.columns.time'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt ?? '')}</span> },
     {
       header: '',
       key: 'detail',
       render: (r) => (
-        <Tooltip content="View details">
+        <Tooltip content={t('list.viewDetails')}>
           <Button
             variant="ghost"
             size="sm"
@@ -1054,44 +1044,44 @@ export default function AuditLogsPage() {
   ];
 
   return (
-    <AppShell title="Audit Logs">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
           <div className="w-52">
             <Select value={eventTypeFilter} onChange={(e) => setEventTypeFilter(e.target.value)}>
-              <option value="">All Event Types</option>
-              {EVENT_TYPES.map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
+              <option value="">{t('list.filterEventTypeAll')}</option>
+              {EVENT_TYPE_KEYS.map((val) => (
+                <option key={val} value={val}>{t(`eventType.${val}`)}</option>
               ))}
             </Select>
           </div>
           <div className="w-32">
             <Select value={eventStatusFilter} onChange={(e) => setEventStatusFilter(e.target.value)}>
-              <option value="">All Status</option>
-              <option value="SUCCESS">Success</option>
-              <option value="FAILURE">Failure</option>
-              <option value="ERROR">Error</option>
+              <option value="">{t('list.filterStatusAll')}</option>
+              <option value="SUCCESS">{t('list.filterStatusSuccess')}</option>
+              <option value="FAILURE">{t('list.filterStatusFailure')}</option>
+              <option value="ERROR">{t('list.filterStatusError')}</option>
             </Select>
           </div>
           <div className="w-36">
             <Select value={apiNameFilter} onChange={(e) => setApiNameFilter(e.target.value)}>
-              <option value="">All APIs</option>
-              <option value="ADMIN_API">Admin API</option>
-              <option value="AUTH_API">Auth API</option>
-              <option value="M2M_API">M2M API</option>
+              <option value="">{t('list.filterApiAll')}</option>
+              <option value="ADMIN_API">{t('list.filterApiAdmin')}</option>
+              <option value="AUTH_API">{t('list.filterApiAuth')}</option>
+              <option value="M2M_API">{t('list.filterApiM2m')}</option>
             </Select>
           </div>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} />
+          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <ShieldCheck className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
         </div>
 
         <p className="text-xs text-fg-muted italic">
-          Read-only · Tenant-scoped · <span className="inline-flex items-center gap-1"><ShieldCheck className="size-3 text-success inline" /> HMAC</span> = tamper-evident chain intact for that entry.
+          {t('list.hint')}
         </p>
 
         <div>
@@ -1101,7 +1091,7 @@ export default function AuditLogsPage() {
             isLoading={isLoading}
             onRowClick={(row) => setSelectedLog(row)}
             keyExtractor={(r, i) => r.auditLogId ?? i}
-            emptyMessage="No audit log entries found for the selected filters."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />

@@ -23,5 +23,21 @@
   "notFound": {
     "title": "Page Not Found",
     "description": "The page you're looking for doesn't exist."
+  },
+  "dateRange": {
+    "full": "Full range",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last-7d": "Last 7 days",
+    "last-30d": "Last 30 days",
+    "last-week": "Last week (Mon–Sun)",
+    "last-month": "Last month",
+    "last-quarter": "Last quarter",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear",
+    "ariaPreset": "Date range preset",
+    "ariaFrom": "From date",
+    "ariaTo": "To date"
   }
 }

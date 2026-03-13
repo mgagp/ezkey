@@ -23,5 +23,21 @@
   "notFound": {
     "title": "Page introuvable",
     "description": "La page que vous recherchez n'existe pas."
+  },
+  "dateRange": {
+    "full": "Toute la période",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "last-7d": "7 derniers jours",
+    "last-30d": "30 derniers jours",
+    "last-week": "Semaine dernière (lun.–dim.)",
+    "last-month": "Mois dernier",
+    "last-quarter": "Trimestre dernier",
+    "from": "Du",
+    "to": "Au",
+    "clear": "Effacer",
+    "ariaPreset": "Présélection de période",
+    "ariaFrom": "Date de début",
+    "ariaTo": "Date de fin"
   }
 }
