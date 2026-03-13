@@ -6,10 +6,12 @@ import enCommon from '@/locales/en/common.json';
 import enDashboard from '@/locales/en/dashboard.json';
 import enLayout from '@/locales/en/layout.json';
 import enLogin from '@/locales/en/login.json';
+import enTenants from '@/locales/en/tenants.json';
 import frCommon from '@/locales/fr/common.json';
 import frDashboard from '@/locales/fr/dashboard.json';
 import frLayout from '@/locales/fr/layout.json';
 import frLogin from '@/locales/fr/login.json';
+import frTenants from '@/locales/fr/tenants.json';
 
 const STORAGE_KEY = 'ezkey-admin-ui-lang';
 
@@ -23,17 +25,19 @@ i18n
         dashboard: enDashboard as Record<string, unknown>,
         layout: enLayout as Record<string, unknown>,
         login: enLogin as Record<string, unknown>,
+        tenants: enTenants as Record<string, unknown>,
       },
       fr: {
         common: frCommon as Record<string, unknown>,
         dashboard: frDashboard as Record<string, unknown>,
         layout: frLayout as Record<string, unknown>,
         login: frLogin as Record<string, unknown>,
+        tenants: frTenants as Record<string, unknown>,
       },
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'dashboard', 'layout', 'login'],
+    ns: ['common', 'dashboard', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

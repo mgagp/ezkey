@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -53,18 +54,6 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 // ── Edit tenant dialog ────────────────────────────────────────────────────────
 
-const editSchema = z.object({
-  tenantName: z.string().min(3).max(100).optional().or(z.literal('')),
-  tenantDescription: z.string().max(500).optional().or(z.literal('')),
-  organizationName: z.string().max(255).optional().or(z.literal('')),
-  organizationDomain: z.string().regex(/^$|^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid domain').optional().or(z.literal('')),
-  countryCode: z.string().regex(/^$|^[A-Z]{2}$/, '2-letter code').optional().or(z.literal('')),
-  timezone: z.string().max(50).optional().or(z.literal('')),
-  primaryContactName: z.string().max(255).optional().or(z.literal('')),
-  primaryContactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
-});
-type EditFormValues = z.infer<typeof editSchema>;
-
 function EditTenantDialog({
   open,
   onClose,
@@ -74,8 +63,25 @@ function EditTenantDialog({
   onClose: () => void;
   tenant: TenantResponseDto;
 }) {
+  const { t } = useTranslation('tenants');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const editSchema = useMemo(
+    () =>
+      z.object({
+        tenantName: z.string().min(3).max(100).optional().or(z.literal('')),
+        tenantDescription: z.string().max(500).optional().or(z.literal('')),
+        organizationName: z.string().max(255).optional().or(z.literal('')),
+        organizationDomain: z.string().regex(/^$|^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, t('validation.invalidDomain')).optional().or(z.literal('')),
+        countryCode: z.string().regex(/^$|^[A-Z]{2}$/, t('validation.twoLetterCode')).optional().or(z.literal('')),
+        timezone: z.string().max(50).optional().or(z.literal('')),
+        primaryContactName: z.string().max(255).optional().or(z.literal('')),
+        primaryContactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+      }),
+    [t],
+  );
+  type EditFormValues = z.infer<typeof editSchema>;
 
   const countryGrouped = getCountryOptionsGrouped();
   const timezoneGrouped = getTimeZoneOptionsGrouped();
@@ -98,7 +104,7 @@ function EditTenantDialog({
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
         await queryClient.invalidateQueries({ queryKey: ['tenants'] });
-        toast('Tenant updated successfully.');
+        toast(t('edit.toastSuccess'));
         onClose();
       },
     },
@@ -118,42 +124,42 @@ function EditTenantDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title="Edit Tenant" size="lg" dismissible={false}>
+    <Dialog open={open} onClose={onClose} title={t('edit.title')} size="lg" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <Label htmlFor="e-name">Tenant Name</Label>
+          <Label htmlFor="e-name">{t('edit.tenantName')}</Label>
           <Input id="e-name" error={errors.tenantName?.message} {...register('tenantName')} />
         </div>
         <div>
-          <Label htmlFor="e-desc">Description</Label>
+          <Label htmlFor="e-desc">{t('detail.infoDescription')}</Label>
           <Textarea id="e-desc" rows={2} {...register('tenantDescription')} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="e-orgname">Organization Name</Label>
+            <Label htmlFor="e-orgname">{t('create.organizationName')}</Label>
             <Input id="e-orgname" {...register('organizationName')} />
           </div>
           <div>
-            <Label htmlFor="e-orgdomain">Organization Domain</Label>
+            <Label htmlFor="e-orgdomain">{t('create.organizationDomain')}</Label>
             <Input id="e-orgdomain" error={errors.organizationDomain?.message} {...register('organizationDomain')} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="e-country">Country</Label>
+            <Label htmlFor="e-country">{t('create.country')}</Label>
             <Select id="e-country" error={errors.countryCode?.message} {...register('countryCode')}>
               <option value="">—</option>
-              <optgroup label="North America">
+              <optgroup label={t('create.optgroupNorthAmerica')}>
                 {countryGrouped.quickNorthAmerica.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
               </optgroup>
-              <optgroup label="Europe (France &amp; nearby)">
+              <optgroup label={t('create.optgroupEurope')}>
                 {countryGrouped.quickEurope.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
               </optgroup>
-              <optgroup label="All countries">
+              <optgroup label={t('create.optgroupAllCountries')}>
                 {countryGrouped.all.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
@@ -161,20 +167,20 @@ function EditTenantDialog({
             </Select>
           </div>
           <div>
-            <Label htmlFor="e-tz">Timezone</Label>
+            <Label htmlFor="e-tz">{t('create.timezone')}</Label>
             <Select id="e-tz" {...register('timezone')}>
               <option value="">—</option>
-              <optgroup label="North America">
+              <optgroup label={t('create.optgroupNorthAmerica')}>
                 {timezoneGrouped.quickNorthAmerica.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
               </optgroup>
-              <optgroup label="Europe (France &amp; nearby)">
+              <optgroup label={t('create.optgroupEurope')}>
                 {timezoneGrouped.quickEurope.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
               </optgroup>
-              <optgroup label="All time zones">
+              <optgroup label={t('create.optgroupAllTimeZones')}>
                 {timezoneGrouped.all.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
@@ -184,24 +190,24 @@ function EditTenantDialog({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="e-cname">Primary Contact Name</Label>
+            <Label htmlFor="e-cname">{t('create.primaryContactName')}</Label>
             <Input id="e-cname" {...register('primaryContactName')} />
           </div>
           <div>
-            <Label htmlFor="e-cemail">Primary Contact Email</Label>
+            <Label htmlFor="e-cemail">{t('create.primaryContactEmail')}</Label>
             <Input id="e-cemail" type="email" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
           </div>
         </div>
 
         {updateMutation.isError && (
           <Alert variant="error">
-            {updateMutation.error instanceof ApiError ? updateMutation.error.message : 'Failed to update tenant.'}
+            {updateMutation.error instanceof ApiError ? updateMutation.error.message : t('edit.errorUpdate')}
           </Alert>
         )}
 
         <div className="flex gap-2 justify-end pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={updateMutation.isPending}>Save Changes</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{t('edit.cancel')}</Button>
+          <Button type="submit" isLoading={updateMutation.isPending}>{t('edit.saveChanges')}</Button>
         </div>
       </form>
     </Dialog>
@@ -219,6 +225,7 @@ function ToggleActiveDialog({
   onClose: () => void;
   tenant: TenantResponseDto;
 }) {
+  const { t } = useTranslation('tenants');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isActive = tenant.active;
@@ -230,7 +237,7 @@ function ToggleActiveDialog({
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
         await queryClient.invalidateQueries({ queryKey: ['tenants'] });
-        toast('Tenant deactivated successfully.');
+        toast(t('toggle.toastDeactivated'));
         setReason('');
         onClose();
       },
@@ -241,7 +248,7 @@ function ToggleActiveDialog({
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getGetTenantQueryKey(tenant.tenantId!) });
         await queryClient.invalidateQueries({ queryKey: ['tenants'] });
-        toast('Tenant activated successfully.');
+        toast(t('toggle.toastActivated'));
         setReason('');
         onClose();
       },
@@ -252,32 +259,31 @@ function ToggleActiveDialog({
   const handleClose = () => { mutation.reset(); setReason(''); onClose(); };
 
   return (
-    <Dialog open={open} onClose={handleClose} title={isActive ? 'Deactivate Tenant' : 'Activate Tenant'} size="sm">
+    <Dialog open={open} onClose={handleClose} title={isActive ? t('toggle.deactivateTitle') : t('toggle.activateTitle')} size="sm">
       <div className="space-y-4">
         <p className="text-sm">
           {isActive
-            ? <>Are you sure you want to deactivate <strong>{tenant.tenantName}</strong>? All integrations and enrollments under this tenant will become inaccessible.</>
-            : <>Re-activate <strong>{tenant.tenantName}</strong>? All resources under this tenant will become accessible again.</>
-          }
+            ? t('toggle.deactivateConfirm', { name: tenant.tenantName })
+            : t('toggle.activateConfirm', { name: tenant.tenantName })}
         </p>
         <div className="space-y-1.5">
-          <Label htmlFor="toggle-reason">Reason <span className="text-fg-muted font-normal">(min 10 chars, for audit trail)</span></Label>
+          <Label htmlFor="toggle-reason">{t('toggle.reasonLabel')} <span className="text-fg-muted font-normal">{t('toggle.reasonHint')}</span></Label>
           <Input
             id="toggle-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Justification for this action..."
+            placeholder={t('toggle.reasonPlaceholder')}
           />
         </div>
 
         {mutation.isError && (
           <Alert variant="error">
-            {mutation.error instanceof ApiError ? mutation.error.message : 'Operation failed.'}
+            {mutation.error instanceof ApiError ? mutation.error.message : t('toggle.errorOperation')}
           </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+          <Button variant="ghost" onClick={handleClose}>{t('toggle.cancel')}</Button>
           <Button
             variant={isActive ? 'destructive' : 'primary'}
             isLoading={mutation.isPending}
@@ -288,7 +294,7 @@ function ToggleActiveDialog({
             disabled={reason.length > 0 && reason.length < 10}
           >
             {isActive ? <PowerOff className="size-3.5 mr-1.5" /> : <Power className="size-3.5 mr-1.5" />}
-            {isActive ? 'Deactivate' : 'Activate'}
+            {isActive ? t('toggle.deactivate') : t('toggle.activate')}
           </Button>
         </div>
       </div>
@@ -299,13 +305,15 @@ function ToggleActiveDialog({
 // ── Admin type badge ──────────────────────────────────────────────────────────
 
 function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
-  if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">Global</Badge>;
-  return <Badge variant="muted">Tenant</Badge>;
+  const { t } = useTranslation('tenants');
+  if (type === 'GLOBAL_ADMIN') return <Badge variant="warning">{t('detail.adminTypeGlobal')}</Badge>;
+  return <Badge variant="muted">{t('detail.adminTypeTenant')}</Badge>;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TenantDetailPage() {
+  const { t } = useTranslation('tenants');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tenantId = Number(id);
@@ -327,17 +335,17 @@ export default function TenantDetailPage() {
   });
 
   const adminColumns: ColumnDef<AdminResponseDto>[] = [
-    { header: 'ID', key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
-    { header: 'Username', key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
-    { header: 'Type', key: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    { header: 'Active', key: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Yes' : 'No'}</Badge> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
+    { header: t('detail.adminColumns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
+    { header: t('detail.adminColumns.username'), key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
+    { header: t('detail.adminColumns.type'), key: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
+    { header: t('detail.adminColumns.active'), key: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('detail.activeYes') : t('detail.activeNo')}</Badge> },
+    { header: t('detail.adminColumns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
   ];
 
   return (
     <AppShell
-      title={tenant?.tenantName ?? 'Tenant'}
-      breadcrumb={[{ label: 'Tenants', path: '/tenants' }]}
+      title={tenant?.tenantName ?? t('detail.fallbackTitle')}
+      breadcrumb={[{ label: t('detail.breadcrumbTenants'), path: '/tenants' }]}
     >
       <div className="space-y-6">
 
@@ -352,46 +360,46 @@ export default function TenantDetailPage() {
             {/* Detail cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card className="lg:col-span-2">
-                <CardHeader><CardTitle>Tenant Details</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{t('detail.tenantDetails')}</CardTitle></CardHeader>
                 <CardContent>
                   <dl className="space-y-3">
-                    <InfoRow label="ID"><span className="font-mono">{tenant.tenantId}</span></InfoRow>
-                    <InfoRow label="Name"><span className="font-medium">{tenant.tenantName}</span></InfoRow>
+                    <InfoRow label={t('detail.infoId')}><span className="font-mono">{tenant.tenantId}</span></InfoRow>
+                    <InfoRow label={t('detail.infoName')}><span className="font-medium">{tenant.tenantName}</span></InfoRow>
                     {tenant.tenantDescription && (
-                      <InfoRow label="Description"><span className="text-fg-muted">{tenant.tenantDescription}</span></InfoRow>
+                      <InfoRow label={t('detail.infoDescription')}><span className="text-fg-muted">{tenant.tenantDescription}</span></InfoRow>
                     )}
-                    <InfoRow label="Status">
+                    <InfoRow label={t('detail.infoStatus')}>
                       <div className="flex items-center gap-1.5">
                         <Badge variant={tenant.active ? 'success' : 'muted'}>
-                          {tenant.active ? 'Active' : 'Inactive'}
+                          {tenant.active ? t('list.statusActive') : t('list.statusInactive')}
                         </Badge>
-                        {tenant.isSystemTenant && <Badge variant="warning">System Tenant</Badge>}
+                        {tenant.isSystemTenant && <Badge variant="warning">{t('detail.systemTenant')}</Badge>}
                       </div>
                     </InfoRow>
                     {tenant.organizationName && (
-                      <InfoRow label="Organization"><span>{tenant.organizationName}</span></InfoRow>
+                      <InfoRow label={t('detail.infoOrganization')}><span>{tenant.organizationName}</span></InfoRow>
                     )}
                     {tenant.organizationDomain && (
-                      <InfoRow label="Domain"><span className="font-mono">{tenant.organizationDomain}</span></InfoRow>
+                      <InfoRow label={t('detail.infoDomain')}><span className="font-mono">{tenant.organizationDomain}</span></InfoRow>
                     )}
                     {tenant.countryCode && (
-                      <InfoRow label="Country"><span>{tenant.countryCode}</span></InfoRow>
+                      <InfoRow label={t('detail.infoCountry')}><span>{tenant.countryCode}</span></InfoRow>
                     )}
                     {tenant.timezone && (
-                      <InfoRow label="Timezone"><span>{tenant.timezone}</span></InfoRow>
+                      <InfoRow label={t('detail.infoTimezone')}><span>{tenant.timezone}</span></InfoRow>
                     )}
                     {tenant.primaryContactName && (
-                      <InfoRow label="Contact Name"><span>{tenant.primaryContactName}</span></InfoRow>
+                      <InfoRow label={t('detail.infoContactName')}><span>{tenant.primaryContactName}</span></InfoRow>
                     )}
                     {tenant.primaryContactEmail && (
-                      <InfoRow label="Contact Email"><span>{tenant.primaryContactEmail}</span></InfoRow>
+                      <InfoRow label={t('detail.infoContactEmail')}><span>{tenant.primaryContactEmail}</span></InfoRow>
                     )}
-                    <InfoRow label="Created"><span className="text-fg-muted">{formatDate(tenant.createdAt ?? '')}</span></InfoRow>
+                    <InfoRow label={t('detail.infoCreated')}><span className="text-fg-muted">{formatDate(tenant.createdAt ?? '')}</span></InfoRow>
                     {tenant.updatedAt && (
-                      <InfoRow label="Updated"><span className="text-fg-muted">{formatDate(tenant.updatedAt)}</span></InfoRow>
+                      <InfoRow label={t('detail.infoUpdated')}><span className="text-fg-muted">{formatDate(tenant.updatedAt)}</span></InfoRow>
                     )}
                     {tenant.deactivatedAt && (
-                      <InfoRow label="Deactivated At"><span className="text-error">{formatDate(tenant.deactivatedAt)}</span></InfoRow>
+                      <InfoRow label={t('detail.infoDeactivatedAt')}><span className="text-error">{formatDate(tenant.deactivatedAt)}</span></InfoRow>
                     )}
                   </dl>
                 </CardContent>
@@ -400,7 +408,7 @@ export default function TenantDetailPage() {
               {/* Actions card */}
               <div className="space-y-4">
                 <Card>
-                  <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>{t('detail.actions')}</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
                     {!tenant.isSystemTenant && (
                       <Button
@@ -410,7 +418,7 @@ export default function TenantDetailPage() {
                         onClick={() => setEditOpen(true)}
                       >
                         <Edit className="size-3.5" />
-                        Edit Tenant
+                        {t('detail.editTenant')}
                       </Button>
                     )}
                     <Button
@@ -419,7 +427,7 @@ export default function TenantDetailPage() {
                       className="w-full justify-start gap-2"
                       onClick={() => navigate(`/integrations?tenantId=${tenant.tenantId}`)}
                     >
-                      View Integrations
+                      {t('detail.viewIntegrations')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -427,12 +435,12 @@ export default function TenantDetailPage() {
                 {/* Danger zone */}
                 {!tenant.isSystemTenant && (
                   <Card className="border-error">
-                    <CardHeader><CardTitle>Danger Zone</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
                     <CardContent>
                       <p className="text-xs text-fg-muted mb-3">
                         {tenant.active
-                          ? 'Deactivating a tenant will make all its integrations, enrollments, and admin accounts inaccessible.'
-                          : 'This tenant is currently inactive. Re-activating will restore access to all resources.'}
+                          ? t('detail.deactivateWarning')
+                          : t('detail.activateWarning')}
                       </p>
                       <Button
                         variant={tenant.active ? 'destructive' : 'primary'}
@@ -441,7 +449,7 @@ export default function TenantDetailPage() {
                         onClick={() => setToggleOpen(true)}
                       >
                         {tenant.active ? <PowerOff className="size-3.5" /> : <Power className="size-3.5" />}
-                        {tenant.active ? 'Deactivate Tenant' : 'Activate Tenant'}
+                        {tenant.active ? t('detail.deactivateTenant') : t('detail.activateTenant')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -453,7 +461,7 @@ export default function TenantDetailPage() {
             <div className="border-2 border-fg shadow-brutal bg-surface">
               <div className="px-4 py-3 border-b-2 border-fg bg-bg">
                 <h3 className="text-xs font-black uppercase tracking-widest text-fg-muted">
-                  Administrators for this Tenant
+                  {t('detail.adminsSectionTitle')}
                 </h3>
               </div>
               <DataTable
@@ -462,7 +470,7 @@ export default function TenantDetailPage() {
                 isLoading={loadingAdmins}
                 onRowClick={(row) => navigate(`/admins?adminId=${row.adminId}`)}
                 keyExtractor={(r, i) => r.adminId ?? i}
-                emptyMessage="No admins found for this tenant."
+                emptyMessage={t('detail.adminsEmpty')}
                 currentSort={admPagination.sort}
                 onSort={admPagination.setSort}
               />

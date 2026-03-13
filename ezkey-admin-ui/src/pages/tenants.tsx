@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -29,36 +30,40 @@ import { formatDate } from '@/lib/utils';
 import { useCreateTenant, listTenants } from '@/generated/admin-api/tenants/tenants';
 import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated/admin-api/model';
 
-// ── Create form schema ────────────────────────────────────────────────────────
-
-const createSchema = z.object({
-  tenantName: z.string().min(3, 'Min 3 characters').max(100, 'Max 100 characters'),
-  tenantDescription: z.string().max(500).optional().or(z.literal('')),
-  organizationName: z.string().max(255).optional().or(z.literal('')),
-  organizationDomain: z
-    .string()
-    .regex(/^$|^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Must be a valid domain')
-    .optional()
-    .or(z.literal('')),
-  countryCode: z
-    .string()
-    .regex(/^$|^[A-Z]{2}$/, 'Must be a 2-letter country code (e.g. US, FR)')
-    .optional()
-    .or(z.literal('')),
-  timezone: z.string().max(50).optional().or(z.literal('')),
-  primaryContactName: z.string().max(255).optional().or(z.literal('')),
-  primaryContactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
-});
-type CreateFormValues = z.infer<typeof createSchema>;
-
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation('tenants');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { sessionDemoOn } = useDemoModeSession();
   const countryGrouped = getCountryOptionsGrouped();
   const timezoneGrouped = getTimeZoneOptionsGrouped();
+
+  const createSchema = useMemo(
+    () =>
+      z.object({
+        tenantName: z.string().min(3, t('validation.minChars', { n: 3 })).max(100, t('validation.maxChars', { n: 100 })),
+        tenantDescription: z.string().max(500).optional().or(z.literal('')),
+        organizationName: z.string().max(255).optional().or(z.literal('')),
+        organizationDomain: z
+          .string()
+          .regex(/^$|^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, t('validation.validDomain'))
+          .optional()
+          .or(z.literal('')),
+        countryCode: z
+          .string()
+          .regex(/^$|^[A-Z]{2}$/, t('validation.countryCode'))
+          .optional()
+          .or(z.literal('')),
+        timezone: z.string().max(50).optional().or(z.literal('')),
+        primaryContactName: z.string().max(255).optional().or(z.literal('')),
+        primaryContactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+      }),
+    [t],
+  );
+  type CreateFormValues = z.infer<typeof createSchema>;
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
   });
@@ -67,7 +72,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
     mutation: {
       onSuccess: async (tenant) => {
         await queryClient.invalidateQueries({ queryKey: ['tenants'] });
-        toast(`Tenant "${(tenant as unknown as TenantResponseDto).tenantName}" created successfully.`);
+        toast(t('create.toastSuccess', { name: (tenant as unknown as TenantResponseDto).tenantName }));
         reset();
         onClose();
       },
@@ -96,11 +101,11 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Create Tenant" size="lg" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={t('create.title')} size="lg" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {isDemoMode && sessionDemoOn && (
           <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
-            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
             {tenantDemoPresets.map((preset) => (
               <Button
                 key={preset.id}
@@ -116,43 +121,43 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         )}
         {/* Row 1 */}
         <div>
-          <Label htmlFor="t-name">Tenant Name *</Label>
-          <Input id="t-name" placeholder="e.g. Garage du coin" error={errors.tenantName?.message} {...register('tenantName')} />
+          <Label htmlFor="t-name">{t('create.tenantName')}</Label>
+          <Input id="t-name" placeholder={t('create.tenantNamePlaceholder')} error={errors.tenantName?.message} {...register('tenantName')} />
         </div>
         <div>
-          <Label htmlFor="t-desc">Description</Label>
-          <Textarea id="t-desc" placeholder="Porsche, Mercedes, Audi" rows={2} {...register('tenantDescription')} />
+          <Label htmlFor="t-desc">{t('create.description')}</Label>
+          <Textarea id="t-desc" placeholder={t('create.descriptionPlaceholder')} rows={2} {...register('tenantDescription')} />
         </div>
 
         {/* Row 2 — Organization */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="t-orgname">Organization Name</Label>
-            <Input id="t-orgname" placeholder="Garage du coin (Porsche, Mercedes, Audi)" {...register('organizationName')} />
+            <Label htmlFor="t-orgname">{t('create.organizationName')}</Label>
+            <Input id="t-orgname" placeholder={t('create.organizationNamePlaceholder')} {...register('organizationName')} />
           </div>
           <div>
-            <Label htmlFor="t-orgdomain">Organization Domain</Label>
-            <Input id="t-orgdomain" placeholder="garageducoin.com" error={errors.organizationDomain?.message} {...register('organizationDomain')} />
+            <Label htmlFor="t-orgdomain">{t('create.organizationDomain')}</Label>
+            <Input id="t-orgdomain" placeholder={t('create.organizationDomainPlaceholder')} error={errors.organizationDomain?.message} {...register('organizationDomain')} />
           </div>
         </div>
 
         {/* Row 3 — Location */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="t-country">Country</Label>
+            <Label htmlFor="t-country">{t('create.country')}</Label>
             <Select id="t-country" error={errors.countryCode?.message} {...register('countryCode')}>
               <option value="">—</option>
-              <optgroup label="North America">
+              <optgroup label={t('create.optgroupNorthAmerica')}>
                 {countryGrouped.quickNorthAmerica.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
               </optgroup>
-              <optgroup label="Europe (France &amp; nearby)">
+              <optgroup label={t('create.optgroupEurope')}>
                 {countryGrouped.quickEurope.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
               </optgroup>
-              <optgroup label="All countries">
+              <optgroup label={t('create.optgroupAllCountries')}>
                 {countryGrouped.all.map(({ code, name }) => (
                   <option key={code} value={code}>{name} ({code})</option>
                 ))}
@@ -160,20 +165,20 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
             </Select>
           </div>
           <div>
-            <Label htmlFor="t-tz">Timezone</Label>
+            <Label htmlFor="t-tz">{t('create.timezone')}</Label>
             <Select id="t-tz" {...register('timezone')}>
               <option value="">—</option>
-              <optgroup label="North America">
+              <optgroup label={t('create.optgroupNorthAmerica')}>
                 {timezoneGrouped.quickNorthAmerica.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
               </optgroup>
-              <optgroup label="Europe (France &amp; nearby)">
+              <optgroup label={t('create.optgroupEurope')}>
                 {timezoneGrouped.quickEurope.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
               </optgroup>
-              <optgroup label="All time zones">
+              <optgroup label={t('create.optgroupAllTimeZones')}>
                 {timezoneGrouped.all.map((tz) => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
@@ -185,12 +190,12 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         {/* Row 4 — Contact */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="t-cname">Primary Contact Name</Label>
-            <Input id="t-cname" placeholder="Oscar Dupont" {...register('primaryContactName')} />
+            <Label htmlFor="t-cname">{t('create.primaryContactName')}</Label>
+            <Input id="t-cname" placeholder={t('create.primaryContactNamePlaceholder')} {...register('primaryContactName')} />
           </div>
           <div>
-            <Label htmlFor="t-cemail">Primary Contact Email</Label>
-            <Input id="t-cemail" type="email" placeholder="oscar@garageducoin.com" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
+            <Label htmlFor="t-cemail">{t('create.primaryContactEmail')}</Label>
+            <Input id="t-cemail" type="email" placeholder={t('create.primaryContactEmailPlaceholder')} error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
           </div>
         </div>
 
@@ -198,15 +203,15 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
           <Alert variant="error">
             {createMutation.error instanceof ApiError
               ? createMutation.error.message
-              : 'Failed to create tenant.'}
+              : t('create.errorCreate')}
           </Alert>
         )}
 
         <div className="flex gap-2 justify-end pt-2">
-          <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={handleClose}>{t('create.cancel')}</Button>
           <Button type="submit" isLoading={createMutation.isPending}>
             <Building2 className="size-3.5 mr-1.5" />
-            Create Tenant
+            {t('create.submit')}
           </Button>
         </div>
       </form>
@@ -216,10 +221,8 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const STATUS_COLUMN_TOOLTIP = 'Active tenants can be used for enrollments; inactive are disabled.';
-const SYSTEM_TENANT_TOOLTIP = 'Reserved tenant; cannot be deactivated.';
-
 export default function TenantsPage() {
+  const { t } = useTranslation('tenants');
   const navigate = useNavigate();
   const [nameInput, setNameInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -240,46 +243,46 @@ export default function TenantsPage() {
   });
 
   const columns: ColumnDef<TenantResponseDto>[] = [
-    { header: 'ID', key: 'tenantId', className: 'w-14', sortKey: 'tenantId', render: (r) => <span className="font-mono text-xs">{r.tenantId}</span> },
-    { header: 'Name', key: 'tenantName', sortKey: 'tenantName', render: (r) => <span className="font-medium">{r.tenantName}</span> },
+    { header: t('list.columns.id'), key: 'tenantId', className: 'w-14', sortKey: 'tenantId', render: (r) => <span className="font-mono text-xs">{r.tenantId}</span> },
+    { header: t('list.columns.name'), key: 'tenantName', sortKey: 'tenantName', render: (r) => <span className="font-medium">{r.tenantName}</span> },
     {
-      header: 'Organization',
+      header: t('list.columns.organization'),
       key: 'organizationName',
       render: (r) => <span className="text-xs text-fg-muted">{r.organizationName ?? '—'}</span>,
     },
     {
-      header: 'Domain',
+      header: t('list.columns.domain'),
       key: 'organizationDomain',
       render: (r) => r.organizationDomain
         ? <span className="font-mono text-xs">{r.organizationDomain}</span>
         : <span className="text-fg-muted">—</span>,
     },
     {
-      header: 'Status',
+      header: t('list.columns.status'),
       key: 'active',
       sortKey: 'active',
-      headerTooltip: STATUS_COLUMN_TOOLTIP,
+      headerTooltip: t('list.tooltipStatus'),
       render: (r) => (
         <div className="flex items-center gap-1.5">
-          <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? 'Active' : 'Inactive'}</Badge>
+          <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.statusActive') : t('list.statusInactive')}</Badge>
           {r.isSystemTenant && (
-            <Tooltip content={SYSTEM_TENANT_TOOLTIP}>
-              <Badge variant="warning">System</Badge>
+            <Tooltip content={t('list.tooltipSystemTenant')}>
+              <Badge variant="warning">{t('list.statusSystem')}</Badge>
             </Tooltip>
           )}
         </div>
       ),
     },
     {
-      header: 'Country',
+      header: t('list.columns.country'),
       key: 'countryCode',
       render: (r) => <span className="text-xs">{r.countryCode ?? '—'}</span>,
     },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
+    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
   ];
 
   return (
-    <AppShell title="Tenants">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
 
         {/* Filter bar */}
@@ -287,7 +290,7 @@ export default function TenantsPage() {
           <div className="flex-1 min-w-52 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
             <Input
-              placeholder="Search by name..."
+              placeholder={t('list.searchPlaceholder')}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               className="pl-8"
@@ -295,18 +298,18 @@ export default function TenantsPage() {
           </div>
           <div className="w-40">
             <Select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value as typeof activeFilter)}>
-              <option value="all">All Status</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
+              <option value="all">{t('list.filterAll')}</option>
+              <option value="active">{t('list.filterActive')}</option>
+              <option value="inactive">{t('list.filterInactive')}</option>
             </Select>
           </div>
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 ml-auto">
             <Plus className="size-3.5" />
-            Create Tenant
+            {t('list.createTenant')}
           </Button>
         </div>
 
@@ -318,7 +321,7 @@ export default function TenantsPage() {
             isLoading={isLoading}
             onRowClick={(row) => navigate(`/tenants/${row.tenantId}`)}
             keyExtractor={(r, i) => r.tenantId ?? i}
-            emptyMessage="No tenants found."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />
