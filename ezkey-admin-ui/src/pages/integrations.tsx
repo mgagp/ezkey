@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -25,24 +26,28 @@ import { formatDate } from '@/lib/utils';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
-// ── Create form schema ────────────────────────────────────────────────────────
-
-const createSchema = z.object({
-  code: z
-    .string()
-    .min(2, 'Code must be at least 2 characters')
-    .max(100, 'Code must be at most 100 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Code must contain only letters, numbers, hyphens, and underscores'),
-  name: z.string().min(1, 'Name is required').max(255, 'Name must be at most 255 characters'),
-  description: z.string().max(500).optional().or(z.literal('')),
-});
-type CreateFormValues = z.infer<typeof createSchema>;
-
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation('integrations');
   const queryClient = useQueryClient();
   const { sessionDemoOn } = useDemoModeSession();
+
+  const createSchema = useMemo(
+    () =>
+      z.object({
+        code: z
+          .string()
+          .min(2, t('validation.codeMin', { n: 2 }))
+          .max(100, t('validation.codeMax', { n: 100 }))
+          .regex(/^[a-zA-Z0-9_-]+$/, t('validation.codeRegex')),
+        name: z.string().min(1, t('validation.nameRequired')).max(255, t('validation.nameMax', { n: 255 })),
+        description: z.string().max(500).optional().or(z.literal('')),
+      }),
+    [t],
+  );
+  type CreateFormValues = z.infer<typeof createSchema>;
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
   });
@@ -73,11 +78,11 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Create Integration" size="md" dismissible={false}>
+    <Dialog open={open} onClose={handleClose} title={t('create.title')} size="md" dismissible={false}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {isDemoMode && sessionDemoOn && (
           <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
-            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">Fill demo:</span>
+            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
             {integrationDemoPresets.map((preset) => (
               <Button
                 key={preset.id}
@@ -92,32 +97,32 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
           </div>
         )}
         <div>
-          <Label htmlFor="create-code">Code</Label>
+          <Label htmlFor="create-code">{t('create.code')}</Label>
           <Input
             id="create-code"
             {...register('code')}
-            placeholder="e.g. admin-console"
+            placeholder={t('create.codePlaceholder')}
             className="mt-1 font-mono"
           />
           {errors.code && <p className="text-xs text-error mt-1">{errors.code.message}</p>}
-          <p className="text-[10px] text-fg-muted mt-0.5">Alphanumeric, hyphens, underscores. Unique per tenant.</p>
+          <p className="text-[10px] text-fg-muted mt-0.5">{t('create.codeHint')}</p>
         </div>
         <div>
-          <Label htmlFor="create-name">Name</Label>
+          <Label htmlFor="create-name">{t('create.name')}</Label>
           <Input
             id="create-name"
             {...register('name')}
-            placeholder="e.g. Administration"
+            placeholder={t('create.namePlaceholder')}
           />
           {errors.name && <p className="text-xs text-error mt-1">{errors.name.message}</p>}
-          <p className="text-[10px] text-fg-muted mt-0.5">Display name for the application.</p>
+          <p className="text-[10px] text-fg-muted mt-0.5">{t('create.nameHint')}</p>
         </div>
         <div>
-          <Label htmlFor="create-description">Description (optional)</Label>
+          <Label htmlFor="create-description">{t('create.description')}</Label>
           <Textarea
             id="create-description"
             {...register('description')}
-            placeholder="e.g. Console d'administration"
+            placeholder={t('create.descriptionPlaceholder')}
             rows={2}
           />
         </div>
@@ -125,15 +130,15 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
           <p className="text-xs text-error">
             {createMutation.error instanceof ApiError
               ? createMutation.error.message
-              : 'Failed to create integration.'}
+              : t('create.errorCreate')}
           </p>
         )}
         <div className="flex gap-2 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={handleClose}>
-            Cancel
+            {t('create.cancel')}
           </Button>
           <Button type="submit" isLoading={createMutation.isPending}>
-            Create Integration
+            {t('create.submit')}
           </Button>
         </div>
       </form>
@@ -142,6 +147,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
 }
 
 export default function IntegrationsPage() {
+  const { t } = useTranslation('integrations');
   const navigate = useNavigate();
   const [nameInput, setNameInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -158,21 +164,21 @@ export default function IntegrationsPage() {
   });
 
   const columns: ColumnDef<IntegrationResponseDto>[] = [
-    { header: 'ID', key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
-    { header: 'Code', key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
-    { header: 'Name', key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
+    { header: t('list.columns.id'), key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
+    { header: t('list.columns.code'), key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
+    { header: t('list.columns.name'), key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
     {
-      header: 'Status',
+      header: t('list.columns.status'),
       key: 'active',
       sortKey: 'active',
-      render: (row) => <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? 'Active' : 'Inactive'}</Badge>,
+      render: (row) => <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? t('list.statusActive') : t('list.statusInactive')}</Badge>,
     },
-    { header: 'Tenant', key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
-    { header: 'Created', key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span> },
+    { header: t('list.columns.tenant'), key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
+    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span> },
   ];
 
   return (
-    <AppShell title="Integrations">
+    <AppShell title={t('list.title')}>
       <div className="space-y-4">
 
         {/* Filter bar */}
@@ -180,7 +186,7 @@ export default function IntegrationsPage() {
           <div className="flex-1 min-w-52 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
             <Input
-              placeholder="Search by name..."
+              placeholder={t('list.searchPlaceholder')}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               className="pl-8"
@@ -191,18 +197,18 @@ export default function IntegrationsPage() {
               value={activeFilter}
               onChange={(e) => setActiveFilter(e.target.value as typeof activeFilter)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
+              <option value="all">{t('list.filterAll')}</option>
+              <option value="active">{t('list.filterActive')}</option>
+              <option value="inactive">{t('list.filterInactive')}</option>
             </Select>
           </div>
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="size-3.5" />
-            Refresh
+            {t('list.refresh')}
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 ml-auto">
             <Plus className="size-3.5" />
-            Create Integration
+            {t('list.createIntegration')}
           </Button>
         </div>
 
@@ -214,7 +220,7 @@ export default function IntegrationsPage() {
             isLoading={isLoading}
             onRowClick={(row) => navigate(`/integrations/${row.id}`)}
             keyExtractor={(row, i) => row.id ?? i}
-            emptyMessage="No integrations found. Create your first integration to get started."
+            emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
           />
@@ -234,7 +240,7 @@ export default function IntegrationsPage() {
         </div>
 
         <p className="text-xs text-fg-muted italic">
-          Click a row to view integration details and enrollments.
+          {t('list.hintClickRow')}
         </p>
       </div>
 

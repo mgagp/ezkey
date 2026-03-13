@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
@@ -51,6 +52,9 @@ function DangerConfirmDialog({
   confirmLabel,
   requireReason,
   optionalReason,
+  reasonLabel,
+  reasonPlaceholder,
+  cancelLabel,
   isPending,
   isError,
   errorMessage,
@@ -64,6 +68,9 @@ function DangerConfirmDialog({
   requireReason?: boolean;
   /** When true, reason field is shown but empty is allowed; if provided, min 10 chars. */
   optionalReason?: boolean;
+  reasonLabel?: string;
+  reasonPlaceholder?: string;
+  cancelLabel?: string;
   isPending: boolean;
   isError: boolean;
   errorMessage: string;
@@ -87,19 +94,19 @@ function DangerConfirmDialog({
         {showReason && (
           <div className="space-y-1.5">
             <Label htmlFor="danger-reason">
-              Reason {requireReason ? '(min 10 chars, required for audit)' : '(min 10 chars, for audit trail)'}
+              {reasonLabel ?? (requireReason ? 'Reason (min 10 chars, required for audit)' : 'Reason (min 10 chars, for audit trail)')}
             </Label>
             <Input
               id="danger-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Justification..."
+              placeholder={reasonPlaceholder ?? 'Justification...'}
             />
           </div>
         )}
         {isError && <Alert variant="error">{errorMessage}</Alert>}
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+          <Button variant="ghost" onClick={handleClose}>{cancelLabel ?? 'Cancel'}</Button>
           <Button
             variant="destructive"
             isLoading={isPending}
@@ -117,6 +124,7 @@ function DangerConfirmDialog({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function IntegrationDetailPage() {
+  const { t } = useTranslation('integrations');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -139,11 +147,11 @@ export default function IntegrationDetailPage() {
   });
 
   const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = [
-    { header: 'ID', key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: 'Name', key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: 'Status', key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
-    { header: 'Active', key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? 'Yes' : 'No'}</Badge> },
-    { header: 'Verified', key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    { header: t('detail.enrollmentColumns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
+    { header: t('detail.enrollmentColumns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
+    { header: t('detail.enrollmentColumns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: t('detail.enrollmentColumns.active'), key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('detail.activeYes') : t('detail.activeNo')}</Badge> },
+    { header: t('detail.enrollmentColumns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
   ];
 
   const name = integration ? getIntegrationName(integration) : '...';
@@ -151,14 +159,14 @@ export default function IntegrationDetailPage() {
 
   return (
     <AppShell
-      title={isLoading ? 'Integration' : name}
-      breadcrumb={[{ label: 'Integrations', path: '/integrations' }]}
+      title={isLoading ? t('detail.fallbackTitle') : name}
+      breadcrumb={[{ label: t('detail.breadcrumbIntegrations'), path: '/integrations' }]}
     >
       <div className="space-y-6">
 
         {integration && isSystemIntegration && (
           <Alert variant="info">
-            This is the Ezkey system integration used for admin MFA. Admin enrollments are managed via the dedicated admin provisioning flow (Admins screen). Bulk actions and integration deletion are not available for this integration.
+            {t('detail.systemIntegrationAlert')}
           </Alert>
         )}
 
@@ -166,28 +174,28 @@ export default function IntegrationDetailPage() {
         {integration && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
-              <CardHeader><CardTitle>Integration Details</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.integrationDetails')}</CardTitle></CardHeader>
               <CardContent>
                 <dl className="space-y-3">
-                  <InfoRow label="ID"><span className="font-mono">{integration.id}</span></InfoRow>
-                  <InfoRow label="Code"><span className="font-mono">{integration.code}</span></InfoRow>
+                  <InfoRow label={t('detail.infoId')}><span className="font-mono">{integration.id}</span></InfoRow>
+                  <InfoRow label={t('detail.infoCode')}><span className="font-mono">{integration.code}</span></InfoRow>
                   {integration.tenantId != null && (
-                    <InfoRow label="Tenant ID"><span className="font-mono">{integration.tenantId}</span></InfoRow>
+                    <InfoRow label={t('detail.infoTenantId')}><span className="font-mono">{integration.tenantId}</span></InfoRow>
                   )}
-                  <InfoRow label="Name">
+                  <InfoRow label={t('detail.infoName')}>
                     <span className="font-medium">{integration.name ?? integration.code}</span>
                   </InfoRow>
                   {integration.description && (
-                    <InfoRow label="Description">
+                    <InfoRow label={t('detail.infoDescription')}>
                       <span className="text-fg-muted">{integration.description}</span>
                     </InfoRow>
                   )}
-                  <InfoRow label="Status">
+                  <InfoRow label={t('detail.infoStatus')}>
                     <Badge variant={integration.active ? 'success' : 'muted'}>
-                      {integration.active ? 'Active' : 'Inactive'}
+                      {integration.active ? t('list.statusActive') : t('list.statusInactive')}
                     </Badge>
                   </InfoRow>
-                  <InfoRow label="Created">
+                  <InfoRow label={t('detail.infoCreated')}>
                     <span className="text-fg-muted">{formatDate(integration.createdAt ?? '')}</span>
                   </InfoRow>
                 </dl>
@@ -195,7 +203,7 @@ export default function IntegrationDetailPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('detail.actions')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <Button
@@ -205,7 +213,7 @@ export default function IntegrationDetailPage() {
                     onClick={() => navigate(`/enrollments?integrationId=${integration.id}`)}
                   >
                     <Users className="size-3.5" />
-                    View All Enrollments
+                    {t('detail.viewAllEnrollments')}
                   </Button>
                 </div>
               </CardContent>
@@ -217,15 +225,15 @@ export default function IntegrationDetailPage() {
         <div className="border-2 border-fg shadow-brutal bg-surface">
           <div className="flex items-center justify-between px-4 py-3 border-b-2 border-fg bg-bg">
             <h3 className="text-xs font-black uppercase tracking-widest text-fg-muted">
-              Enrollments for this Integration
+              {t('detail.enrollmentsSectionTitle')}
             </h3>
-            {!isSystemIntegration && (
+            {integration && !isSystemIntegration && (
               <Button
                 size="sm"
                 onClick={() => navigate(`/enrollments?integrationId=${integrationId}`)}
               >
                 <Users className="size-3.5" />
-                New Enrollment
+                {t('detail.newEnrollment')}
               </Button>
             )}
           </div>
@@ -235,7 +243,7 @@ export default function IntegrationDetailPage() {
             isLoading={loadingEnr}
             onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
             keyExtractor={(row, i) => row.enrollmentId ?? i}
-            emptyMessage="No enrollments for this integration yet."
+            emptyMessage={t('detail.enrollmentsEmpty')}
             currentSort={enrPagination.sort}
             onSort={enrPagination.setSort}
           />
@@ -257,33 +265,33 @@ export default function IntegrationDetailPage() {
         {/* Danger Zone — hidden for system integration */}
         {integration && !isSystemIntegration && (
           <Card className="border-error">
-            <CardHeader><CardTitle>Danger Zone</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <p className="text-xs text-fg-muted">
-                  Mass operations affect <strong>all enrollments</strong> under this integration. Use with extreme caution.
+                  {t('detail.dangerZoneIntro')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('deactivate-all')}>
                     <PowerOff className="size-3.5" />
-                    Deactivate All
+                    {t('detail.deactivateAll')}
                   </Button>
                   <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setDangerAction('reactivate-all')}>
                     <Power className="size-3.5" />
-                    Reactivate All
+                    {t('detail.reactivateAll')}
                   </Button>
                   <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('revoke-all')}>
                     <ShieldOff className="size-3.5" />
-                    Revoke All
+                    {t('detail.revokeAll')}
                   </Button>
                 </div>
                 <div className="border-t-2 border-error/20 pt-3">
                   <p className="text-xs text-fg-muted mb-2">
-                    Deleting this integration will remove it permanently. All associated enrollments must be handled first.
+                    {t('detail.deleteIntro')}
                   </p>
                   <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('delete')}>
                     <Trash2 className="size-3.5" />
-                    Delete Integration
+                    {t('detail.deleteIntegration')}
                   </Button>
                 </div>
               </div>
@@ -296,10 +304,13 @@ export default function IntegrationDetailPage() {
       <DangerConfirmDialog
         open={dangerAction === 'deactivate-all'}
         onClose={() => setDangerAction(null)}
-        title="Deactivate All Enrollments"
-        description="All active enrollments under this integration will be deactivated. Users will no longer be able to authenticate until reactivated."
-        confirmLabel="Deactivate All"
+        title={t('detail.danger.deactivateAllTitle')}
+        description={t('detail.danger.deactivateAllDescription')}
+        confirmLabel={t('detail.danger.deactivateAllConfirm')}
         optionalReason
+        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
+        cancelLabel={t('detail.danger.cancel')}
         isPending={false}
         isError={false}
         errorMessage=""
@@ -308,19 +319,22 @@ export default function IntegrationDetailPage() {
           deactivateAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast('All enrollments deactivated.');
+              toast(t('detail.toastDeactivated'));
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
         open={dangerAction === 'reactivate-all'}
         onClose={() => setDangerAction(null)}
-        title="Reactivate All Enrollments"
-        description="All deactivated enrollments under this integration will be reactivated."
-        confirmLabel="Reactivate All"
+        title={t('detail.danger.reactivateAllTitle')}
+        description={t('detail.danger.reactivateAllDescription')}
+        confirmLabel={t('detail.danger.reactivateAllConfirm')}
         optionalReason
+        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
+        cancelLabel={t('detail.danger.cancel')}
         isPending={false}
         isError={false}
         errorMessage=""
@@ -329,19 +343,22 @@ export default function IntegrationDetailPage() {
           reactivateAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast('All enrollments reactivated.');
+              toast(t('detail.toastReactivated'));
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
         open={dangerAction === 'revoke-all'}
         onClose={() => setDangerAction(null)}
-        title="Revoke All Enrollments"
-        description="All enrollments will be PERMANENTLY and IRREVERSIBLY revoked. All users under this integration will lose authentication access. New enrollments must be created for re-enrolment."
-        confirmLabel="Revoke All Permanently"
+        title={t('detail.danger.revokeAllTitle')}
+        description={t('detail.danger.revokeAllDescription')}
+        confirmLabel={t('detail.danger.revokeAllConfirm')}
         optionalReason
+        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
+        cancelLabel={t('detail.danger.cancel')}
         isPending={false}
         isError={false}
         errorMessage=""
@@ -350,19 +367,22 @@ export default function IntegrationDetailPage() {
           revokeAllEnrollments(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast('All enrollments permanently revoked.', 'error');
+              toast(t('detail.toastRevoked'), 'error');
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, 'Failed.'), 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
         open={dangerAction === 'delete'}
         onClose={() => setDangerAction(null)}
-        title="Delete Integration"
-        description={`Are you sure you want to permanently delete integration "${integration?.name ?? integration?.code}"? This action cannot be undone.`}
-        confirmLabel="Yes, Delete Integration"
+        title={t('detail.danger.deleteTitle')}
+        description={t('detail.danger.deleteDescription', { name: integration?.name ?? integration?.code ?? '' })}
+        confirmLabel={t('detail.danger.deleteConfirm')}
         optionalReason
+        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
+        cancelLabel={t('detail.danger.cancel')}
         isPending={false}
         isError={false}
         errorMessage=""
@@ -371,10 +391,10 @@ export default function IntegrationDetailPage() {
           delete1(Number(integrationId), params)
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['integrations'] });
-              toast('Integration deleted.');
+              toast(t('detail.toastDeleted'));
               navigate('/integrations');
             })
-            .catch((e) => toast(getApiErrorMessage(e, 'Failed to delete.'), 'error'));
+            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorDeleteFailed')), 'error'));
         }}
       />
     </AppShell>
