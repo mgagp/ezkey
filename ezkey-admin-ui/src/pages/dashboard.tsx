@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
-import { getAuditEventActionLabel, getAuditEventTypeLabel } from '@/lib/audit-event-type';
+import { EventStatusBadge } from '@/components/feature/event-status-badge';
+import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatCountdown, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
@@ -300,32 +301,55 @@ export default function DashboardPage() {
                 ) : recentLogs.length === 0 ? (
                   <p className="text-sm text-fg-muted italic py-4 text-center">{t('dashboard:recentActivity.empty')}</p>
                 ) : (
-                  <div>
-                    {recentLogs.map((log, i) => (
-                      <div
-                        key={log.auditLogId ?? `activity-${i}`}
-                        className="flex items-center gap-3 py-2.5 border-b border-fg/10 last:border-0"
-                      >
-                        <Badge
-                          variant={
-                            log.eventStatus === 'SUCCESS' ? 'success'
-                            : log.eventStatus === 'FAILURE' ? 'error'
-                            : 'muted'
-                          }
-                        >
-                          {getAuditEventTypeLabel(log.eventType ?? undefined, t)}
-                        </Badge>
-                        <span className="text-xs text-fg-muted flex-1 truncate min-w-0">
-                          {log.eventAction
-                            ? getAuditEventActionLabel(log.eventAction, t)
-                            : log.apiName ?? (log.adminId != null ? t('dashboard:recentActivity.adminLabel', { id: log.adminId }) : '—')}
-                        </span>
-                        <span className="text-[10px] text-fg-muted font-mono shrink-0">
-                          {formatRelativeTime(log.createdAt ?? '')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="w-full overflow-x-auto border-2 border-fg">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-fg text-surface">
+                            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
+                              {t('audit-logs:list.columns.event')}
+                            </th>
+                            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
+                              {t('audit-logs:list.columns.status')}
+                            </th>
+                            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">
+                              {t('audit-logs:list.columns.api')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recentLogs.map((log, i) => (
+                            <tr
+                              key={log.auditLogId ?? `activity-${i}`}
+                              className="border-b border-fg/10 bg-surface even:bg-bg last:border-0"
+                            >
+                              <td className="px-3 py-2">
+                                <span className="font-mono text-xs">
+                                  {getAuditEventTypeLabel(log.eventType ?? undefined, t)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <EventStatusBadge status={log.eventStatus as 'SUCCESS' | 'FAILURE' | 'ERROR'} />
+                              </td>
+                              <td className="px-3 py-2">
+                                {log.apiName ? (
+                                  <Badge variant="muted">{log.apiName.replace('_API', '')}</Badge>
+                                ) : (
+                                  <span className="text-fg-muted">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Link
+                      to="/audit-logs"
+                      className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
+                    >
+                      {t('dashboard:recentActivity.viewAll')}
+                    </Link>
+                  </>
                 )}
               </CardContent>
             </Card>

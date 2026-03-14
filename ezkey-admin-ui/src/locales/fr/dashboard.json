@@ -40,7 +40,8 @@
   "recentActivity": {
     "title": "Activité récente",
     "empty": "Aucune activité récente.",
-    "adminLabel": "Admin {{id}}"
+    "adminLabel": "Admin {{id}}",
+    "viewAll": "Tout voir →"
   },
   "quickActions": {
     "title": "Actions rapides",

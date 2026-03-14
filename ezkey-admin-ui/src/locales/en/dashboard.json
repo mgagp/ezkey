@@ -40,7 +40,8 @@
   "recentActivity": {
     "title": "Recent Activity",
     "empty": "No recent activity.",
-    "adminLabel": "Admin {{id}}"
+    "adminLabel": "Admin {{id}}",
+    "viewAll": "View all →"
   },
   "quickActions": {
     "title": "Quick Actions",

@@ -19,6 +19,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { AUDIT_CONTEXT_HELP } from '@/lib/help-text';
+import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
@@ -44,15 +45,6 @@ import type {
   PagedModelAuditLogResponseDto,
   PagedModelAuditChainCheckpointResponseDto,
 } from '@/generated/admin-api/model';
-
-// ── Event status badge ────────────────────────────────────────────────────────
-
-function EventStatusBadge({ status }: { status: AuditLogResponseDto['eventStatus'] }) {
-  const { t } = useTranslation('audit-logs');
-  if (status === 'SUCCESS') return <Badge variant="success">{t('eventStatus.labelSuccess')}</Badge>;
-  if (status === 'FAILURE') return <Badge variant="error">{t('eventStatus.labelFailure')}</Badge>;
-  return <Badge variant="error">{t('eventStatus.labelError')}</Badge>;
-}
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
