@@ -1,17 +1,22 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, FileText, Key, Puzzle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, FileText, Key, Puzzle, RefreshCw, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
-import { formatRelativeTime } from '@/lib/utils';
+import { formatCountdown, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
 import { useGetPendingCount } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import type { DashboardOverviewDto } from '@/generated/admin-api/model';
+
+const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
+const REFRESH_INTERVAL_PENDING_MS = 10_000;
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +55,19 @@ const quickActions = [
   { labelKey: 'newApiKey', descKey: 'newApiKeyDesc', to: '/api-keys', icon: Key },
 ];
 
+function getUpdatedLabelKeyAndParams(
+  dataUpdatedAtMs: number
+): { key: string; params?: { count: number } } {
+  if (dataUpdatedAtMs <= 0) return { key: 'refreshStrip.loading' };
+  const diffMs = Date.now() - dataUpdatedAtMs;
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return { key: 'refreshStrip.updatedJustNow' };
+  if (diffMins < 60) return { key: 'refreshStrip.updatedMinutesAgo', params: { count: diffMins } };
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return { key: 'refreshStrip.updatedHoursAgo', params: { count: diffHours } };
+  return { key: 'refreshStrip.updatedDaysAgo', params: { count: Math.floor(diffHours / 24) } };
+}
+
 // ── Dashboard page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -57,13 +75,46 @@ export default function DashboardPage() {
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
-  const { data: overview, isLoading: overviewLoading } = useGetOverview<DashboardOverviewDto>({
-    query: { staleTime: 60_000, refetchInterval: 60_000 },
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    dataUpdatedAt: overviewUpdatedAt,
+    refetch: overviewRefetch,
+    isFetching: overviewFetching,
+  } = useGetOverview<DashboardOverviewDto>({
+    query: {
+      staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
+      refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
+    },
   });
 
-  const { data: pendingResponse, isLoading: pendingLoading } = useGetPendingCount<{ count: number }>({
-    query: { staleTime: 10_000, refetchInterval: 10_000 },
+  const {
+    data: pendingResponse,
+    isLoading: pendingLoading,
+    refetch: pendingRefetch,
+  } = useGetPendingCount<{ count: number }>({
+    query: {
+      staleTime: REFRESH_INTERVAL_PENDING_MS,
+      refetchInterval: REFRESH_INTERVAL_PENDING_MS,
+    },
   });
+
+  const [secondsUntilNext, setSecondsUntilNext] = useState(0);
+  useEffect(() => {
+    if (overviewUpdatedAt == null || overviewUpdatedAt <= 0) return;
+    const compute = () => {
+      const next = Math.max(
+        0,
+        Math.floor(
+          (overviewUpdatedAt + REFRESH_INTERVAL_OVERVIEW_MS - Date.now()) / 1000
+        )
+      );
+      setSecondsUntilNext(next);
+    };
+    compute();
+    const id = setInterval(compute, 1000);
+    return () => clearInterval(id);
+  }, [overviewUpdatedAt]);
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;
@@ -83,9 +134,46 @@ export default function DashboardPage() {
   const recentLogs = overview?.recentActivity ?? [];
   const alerts = overview?.alerts ?? [];
 
+  const updatedLabel = getUpdatedLabelKeyAndParams(overviewUpdatedAt ?? 0);
+  const updatedText =
+    updatedLabel.params != null
+      ? t(`dashboard:${updatedLabel.key}`, updatedLabel.params)
+      : t(`dashboard:${updatedLabel.key}`);
+
   return (
     <AppShell title={t('layout:nav.dashboard')}>
       <div className="space-y-6">
+
+        {/* Dashboard refresh strip */}
+        <div className="flex items-center gap-2 text-xs text-fg-muted">
+          <span>{updatedText}</span>
+          <span aria-hidden>·</span>
+          <span>
+            {overviewUpdatedAt && overviewUpdatedAt > 0
+              ? t('dashboard:refreshStrip.nextIn', { countdown: formatCountdown(secondsUntilNext) })
+              : '—'}
+          </span>
+          <Tooltip content={t('dashboard:refreshStrip.refreshTooltip')}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              aria-label={t('dashboard:refreshStrip.refreshTooltip')}
+              disabled={overviewFetching}
+              onClick={() => {
+                overviewRefetch();
+                pendingRefetch();
+              }}
+              className="size-8 p-0 shrink-0"
+            >
+              {overviewFetching ? (
+                <span className="inline-block size-3.5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+            </Button>
+          </Tooltip>
+        </div>
 
         {/* Audit chain alerts (Global Admin only) */}
         {isGlobalAdmin && alerts.length > 0 && (

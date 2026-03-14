@@ -1,4 +1,13 @@
 {
+  "refreshStrip": {
+    "updatedJustNow": "Mis à jour à l'instant",
+    "updatedMinutesAgo": "Mis à jour il y a {{count}} min",
+    "updatedHoursAgo": "Mis à jour il y a {{count}} h",
+    "updatedDaysAgo": "Mis à jour il y a {{count}} j",
+    "nextIn": "Prochaine dans {{countdown}}",
+    "refreshTooltip": "Rafraîchir le tableau de bord",
+    "loading": "Chargement…"
+  },
   "stats": {
     "integrations": "Intégrations",
     "enrollments": "Enrôlements",

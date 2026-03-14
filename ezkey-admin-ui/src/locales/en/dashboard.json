@@ -1,4 +1,13 @@
 {
+  "refreshStrip": {
+    "updatedJustNow": "Updated just now",
+    "updatedMinutesAgo": "Updated {{count}}m ago",
+    "updatedHoursAgo": "Updated {{count}}h ago",
+    "updatedDaysAgo": "Updated {{count}}d ago",
+    "nextIn": "Next in {{countdown}}",
+    "refreshTooltip": "Refresh dashboard",
+    "loading": "Loading…"
+  },
   "stats": {
     "integrations": "Integrations",
     "enrollments": "Enrollments",
