@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.ezkey.crypto.config.SecurityConfig;
 import org.ezkey.security.EncryptionService;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.Test;
@@ -149,6 +150,44 @@ class CryptoControllerTest {
         .andExpect(jsonPath("$.valid").value(true))
         .andExpect(jsonPath("$.message").value("Signature is valid"))
         .andExpect(jsonPath("$.algorithm").value("EC_P256"));
+  }
+
+  @Test
+  void testHashTokenEndpoint() throws Exception {
+    String token = "ezkey_a1b2c3d4e5f67890";
+    String expectedHash = SensitiveDataHasher.sha256Hex(token);
+    String requestBody =
+        """
+        {
+          "token": "ezkey_a1b2c3d4e5f67890"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/hash-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.tokenHash").value(expectedHash));
+  }
+
+  @Test
+  void testHashTokenWithEmptyToken() throws Exception {
+    String requestBody =
+        """
+        {
+          "token": ""
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/hash-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

@@ -71,13 +71,13 @@ public class AdminToken {
   private Integer tokenId;
 
   /**
-   * The bearer token string used for authentication.
+   * SHA-256 hash (hex, 64 chars) of the bearer token used for lookup.
    *
-   * <p>This field contains the actual token string that is sent in the Authorization header for API
-   * authentication.
+   * <p>The plain token is never stored. At validation time the incoming token is hashed and
+   * compared to this value. Protects against DB breach (stolen DB does not expose usable tokens).
    */
-  @Column(name = "bearer_token", nullable = false, length = 255, unique = true)
-  private String bearerToken;
+  @Column(name = "bearer_token_hash", nullable = false, length = 64, unique = true)
+  private String bearerTokenHash;
 
   /**
    * Reference to the administrator who owns this token.
@@ -183,17 +183,17 @@ public class AdminToken {
   /**
    * Constructs a new admin token with the specified details.
    *
-   * <p>This constructor creates a new admin token with the provided bearer token, administrator,
-   * and expiration time.
+   * <p>This constructor creates a new admin token with the SHA-256 hash of the bearer token,
+   * administrator, and expiration time. The plain token is never stored.
    *
-   * @param bearerToken the bearer token string
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @param admin the administrator who owns this token
    * @param adminType the type of administrator
    * @param expiresAt the expiration timestamp
    */
   public AdminToken(
-      String bearerToken, EzkeyAdmin admin, String adminType, OffsetDateTime expiresAt) {
-    this.bearerToken = bearerToken;
+      String bearerTokenHash, EzkeyAdmin admin, String adminType, OffsetDateTime expiresAt) {
+    this.bearerTokenHash = bearerTokenHash;
     this.admin = admin;
     this.adminType = adminType;
     this.expiresAt = expiresAt;
@@ -220,21 +220,21 @@ public class AdminToken {
   }
 
   /**
-   * Gets the bearer token.
+   * Gets the SHA-256 hash (hex) of the bearer token.
    *
-   * @return the bearer token
+   * @return the bearer token hash
    */
-  public String getBearerToken() {
-    return bearerToken;
+  public String getBearerTokenHash() {
+    return bearerTokenHash;
   }
 
   /**
-   * Sets the bearer token.
+   * Sets the SHA-256 hash (hex) of the bearer token.
    *
-   * @param bearerToken the bearer token
+   * @param bearerTokenHash the bearer token hash
    */
-  public void setBearerToken(String bearerToken) {
-    this.bearerToken = bearerToken;
+  public void setBearerTokenHash(String bearerTokenHash) {
+    this.bearerTokenHash = bearerTokenHash;
   }
 
   /**
@@ -427,8 +427,10 @@ public class AdminToken {
     return "AdminToken{"
         + "tokenId="
         + tokenId
-        + ", bearerToken='"
-        + bearerToken
+        + ", bearerTokenHash='"
+        + (bearerTokenHash != null && bearerTokenHash.length() > 8
+            ? bearerTokenHash.substring(0, 8) + "..."
+            : "***")
         + '\''
         + ", adminType='"
         + adminType

@@ -48,52 +48,49 @@ import org.springframework.stereotype.Repository;
 public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer> {
 
   /**
-   * Finds a token by its bearer token string.
+   * Finds a token by its bearer token hash (SHA-256 hex).
    *
-   * <p>This method is used for token validation during API authentication to find the token record
-   * by its bearer token string.
+   * <p>Used for token validation: the incoming bearer token is hashed and this method looks up by
+   * hash. Plain token is never stored.
    *
-   * @param bearerToken the bearer token string
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @return Optional containing the token if found, empty otherwise
    */
-  Optional<AdminToken> findByBearerToken(String bearerToken);
+  Optional<AdminToken> findByBearerTokenHash(String bearerTokenHash);
 
   /**
-   * Finds an active token by its bearer token string.
+   * Finds an active token by its bearer token hash (SHA-256 hex).
    *
-   * <p>This method is used for token validation during API authentication to find only active
-   * tokens by their bearer token string.
+   * <p>Used for token validation during API authentication. Caller hashes the incoming token and
+   * passes the hash.
    *
-   * @param bearerToken the bearer token string
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @return Optional containing the active token if found, empty otherwise
    */
-  Optional<AdminToken> findByBearerTokenAndActiveTrue(String bearerToken);
+  Optional<AdminToken> findByBearerTokenHashAndActiveTrue(String bearerTokenHash);
 
   /**
-   * Finds an active token by its bearer token string with admin eagerly loaded.
+   * Finds an active token by its bearer token hash with admin eagerly loaded.
    *
-   * <p>This method is used in filters where Hibernate session may be closed. It uses JOIN FETCH to
-   * eagerly load the associated admin to avoid LazyInitializationException.
+   * <p>Used in filters where Hibernate session may be closed. JOIN FETCH loads the admin to avoid
+   * LazyInitializationException.
    *
-   * @param bearerToken the bearer token string
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @return Optional containing the active token with admin loaded, empty otherwise
    */
   @Query(
-      "SELECT t FROM AdminToken t JOIN FETCH t.admin WHERE t.bearerToken = :bearerToken AND"
-          + " t.active = true")
-  Optional<AdminToken> findByBearerTokenAndActiveTrueWithAdmin(
-      @Param("bearerToken") String bearerToken);
+      "SELECT t FROM AdminToken t JOIN FETCH t.admin WHERE t.bearerTokenHash = :bearerTokenHash"
+          + " AND t.active = true")
+  Optional<AdminToken> findByBearerTokenHashAndActiveTrueWithAdmin(
+      @Param("bearerTokenHash") String bearerTokenHash);
 
   /**
-   * Finds an active token by its bearer token string with admin, tenant, and integration eagerly
+   * Finds an active token by its bearer token hash with admin, tenant, and integration eagerly
    * loaded.
    *
-   * <p>This method is used in filters where Hibernate session may be closed. It uses JOIN FETCH to
-   * eagerly load all associated entities (admin, tenant, integration) to avoid
-   * LazyInitializationException. This is needed for creating AdminPrincipal with complete scope
-   * information.
+   * <p>Used in filters to build AdminPrincipal with full scope. JOIN FETCH loads all relations.
    *
-   * @param bearerToken the bearer token string
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
    * @return Optional containing the active token with admin, tenant, and integration loaded, empty
    *     otherwise
    */
@@ -102,9 +99,9 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Integer>
           + "LEFT JOIN FETCH t.admin "
           + "LEFT JOIN FETCH t.tenant "
           + "LEFT JOIN FETCH t.integration "
-          + "WHERE t.bearerToken = :bearerToken AND t.active = true")
-  Optional<AdminToken> findByBearerTokenAndActiveTrueWithRelations(
-      @Param("bearerToken") String bearerToken);
+          + "WHERE t.bearerTokenHash = :bearerTokenHash AND t.active = true")
+  Optional<AdminToken> findByBearerTokenHashAndActiveTrueWithRelations(
+      @Param("bearerTokenHash") String bearerTokenHash);
 
   /**
    * Finds all tokens for a specific administrator.

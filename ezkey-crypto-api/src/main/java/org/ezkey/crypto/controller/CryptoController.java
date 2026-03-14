@@ -20,12 +20,15 @@ import org.ezkey.crypto.dto.DecryptResponseDto;
 import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
 import org.ezkey.crypto.dto.EncryptRequestDto;
 import org.ezkey.crypto.dto.EncryptResponseDto;
+import org.ezkey.crypto.dto.HashTokenRequestDto;
+import org.ezkey.crypto.dto.HashTokenResponseDto;
 import org.ezkey.crypto.dto.ProofTokenResponseDto;
 import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
 import org.ezkey.crypto.dto.ValidateSignatureRequestDto;
 import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
 import org.ezkey.security.EncryptionService;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.ECP256KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
@@ -254,6 +257,27 @@ public class CryptoController {
             encryptedFormat,
             errorMessage,
             encryptionAvailable);
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
+      summary = "Hash bearer token (SHA-256 hex)",
+      description =
+          "Computes the SHA-256 hash (hexadecimal) of a bearer token. Used for development and "
+              + "debugging when admin tokens are stored as hashes in the database "
+              + "(ezkey_admin_tokens.bearer_token_hash). Send a token in the request body to get "
+              + "the hash that would be used for lookup.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Token hash computed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request (empty or blank token)"),
+      })
+  @PostMapping("/hash-token")
+  public ResponseEntity<HashTokenResponseDto> hashToken(
+      @Valid @RequestBody HashTokenRequestDto request) {
+    String token = request.getToken();
+    String tokenHash = SensitiveDataHasher.sha256Hex(token);
+    var response = new HashTokenResponseDto(tokenHash != null ? tokenHash : "");
     return ResponseEntity.ok(response);
   }
 

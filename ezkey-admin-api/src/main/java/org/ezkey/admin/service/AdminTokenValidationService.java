@@ -13,11 +13,11 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
-import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -79,11 +79,14 @@ public class AdminTokenValidationService {
   @Transactional(readOnly = true)
   public Optional<AdminToken> validateTokenWithRelations(String token) {
     try {
-      logger.debug(
-          "🔍 Validating bearer token: {}...", token.substring(0, Math.min(10, token.length())));
+      String hash = SensitiveDataHasher.sha256Hex(token);
+      if (hash == null) {
+        return Optional.empty();
+      }
+      logger.debug("🔍 Validating bearer token (hash prefix): {}...", hash.substring(0, 8));
 
       Optional<AdminToken> tokenOptional =
-          tokenRepository.findByBearerTokenAndActiveTrueWithRelations(token);
+          tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(hash);
 
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
@@ -117,10 +120,10 @@ public class AdminTokenValidationService {
           logger.debug("✅ Token validated successfully for admin: {}", admin.getUsername());
           return Optional.of(adminToken);
         } else {
-          logger.warn("❌ Token expired for: {}", token.substring(0, Math.min(10, token.length())));
+          logger.warn("❌ Token expired");
         }
       } else {
-        logger.warn("❌ Invalid token: {}", token.substring(0, Math.min(10, token.length())));
+        logger.warn("❌ Invalid token");
       }
     } catch (Exception e) {
       logger.error("❌ Error validating token: {}", e.getMessage());
@@ -142,14 +145,21 @@ public class AdminTokenValidationService {
   @Transactional
   public void updateTokenLastUsed(String token) {
     try {
-      Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenAndActiveTrue(token);
+      String hash = SensitiveDataHasher.sha256Hex(token);
+      if (hash == null) {
+        return;
+      }
+      Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenHashAndActiveTrue(hash);
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
         OffsetDateTime now = OffsetDateTime.now();
         adminToken.setLastUsedAt(now);
-        // Sliding expiration: extend expiresAt for normal admin tokens (not recovery tokens)
-        if (adminToken.getBearerToken() != null
-            && !adminToken.getBearerToken().startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
+        // Sliding expiration: extend expiresAt for normal admin tokens (not recovery tokens).
+        // Recovery tokens have short TTL (e.g. 30 min); infer from expiration window.
+        long minutesToExpiry =
+            java.time.temporal.ChronoUnit.MINUTES.between(
+                adminToken.getCreatedAt(), adminToken.getExpiresAt());
+        if (minutesToExpiry > 31) {
           int hours = Math.max(1, rotationProperties.getExpirationHours());
           adminToken.setExpiresAt(now.plusHours(hours));
         }

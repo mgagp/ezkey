@@ -34,6 +34,7 @@ import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -268,7 +269,7 @@ public class AdminAuthService {
 
       if ("ACCEPTED".equals(status)) {
         rotateTokensIfEnabled(admin);
-        AdminToken token = generateAndPersistToken(admin);
+        TokenIssueResult result = generateAndPersistToken(admin);
         updateLastLogin(admin);
 
         logger.info(
@@ -276,7 +277,7 @@ public class AdminAuthService {
             admin.getUsername(),
             waitResp.getWaitDuration());
 
-        return buildSuccessResponse(admin, token);
+        return buildSuccessResponse(admin, result.token(), result.plainToken());
       } else if ("REJECTED".equals(status)) {
         logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
         throw new AdminAuthenticationRejectedException(
@@ -386,7 +387,7 @@ public class AdminAuthService {
 
     if ("ACCEPTED".equals(status)) {
       rotateTokensIfEnabled(admin);
-      AdminToken token = generateAndPersistToken(admin);
+      TokenIssueResult result = generateAndPersistToken(admin);
       updateLastLogin(admin);
 
       String flowType = challengeCode != null ? "challenge" : "non-blocking";
@@ -396,7 +397,7 @@ public class AdminAuthService {
           admin.getUsername(),
           waitResp.getWaitDuration());
 
-      return buildSuccessResponse(admin, token);
+      return buildSuccessResponse(admin, result.token(), result.plainToken());
     } else if ("REJECTED".equals(status)) {
       logger.warn("❌ Passwordless auth rejected by device for admin: {}", admin.getUsername());
       throw new AdminAuthenticationRejectedException("Device rejected the authentication request");
@@ -433,9 +434,9 @@ public class AdminAuthService {
    */
   public AdminLoginResponseDto authenticateAfterMfa(EzkeyAdmin admin) {
     rotateTokensIfEnabled(admin);
-    AdminToken token = generateAndPersistToken(admin);
+    TokenIssueResult result = generateAndPersistToken(admin);
     updateLastLogin(admin);
-    return buildSuccessResponse(admin, token);
+    return buildSuccessResponse(admin, result.token(), result.plainToken());
   }
 
   /**
@@ -458,31 +459,34 @@ public class AdminAuthService {
     }
   }
 
+  /** Result of issuing a bearer token: entity (with hash stored) and plain token for the client. */
+  private record TokenIssueResult(AdminToken token, String plainToken) {}
+
   /**
-   * Generate a new bearer token and persist it to database.
+   * Generate a new bearer token and persist only its SHA-256 hash to database.
    *
    * @param admin the administrator for whom to generate the token
-   * @return the persisted token entity
+   * @return the persisted token entity and the plain token to return to the client
    */
-  private AdminToken generateAndPersistToken(EzkeyAdmin admin) {
-    String bearerToken = generateBearerToken();
+  private TokenIssueResult generateAndPersistToken(EzkeyAdmin admin) {
+    String plainToken = generateBearerToken();
+    String hash = SensitiveDataHasher.sha256Hex(plainToken);
+    if (hash == null) {
+      throw new IllegalStateException("Token hash could not be computed");
+    }
     int hours = Math.max(1, rotationProperties.getExpirationHours());
     OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(hours);
 
-    AdminToken token = new AdminToken();
-    token.setBearerToken(bearerToken);
-    token.setAdmin(admin);
-    token.setAdminType(admin.getAdminType().name());
+    AdminToken token = new AdminToken(hash, admin, admin.getAdminType().name(), expiresAt);
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
-    token.setExpiresAt(expiresAt);
     token.setCreatedAt(OffsetDateTime.now());
     token.setActive(true);
 
     tokenRepository.save(token);
     logger.debug("Token created for admin: {}", admin.getUsername());
 
-    return token;
+    return new TokenIssueResult(token, plainToken);
   }
 
   /**
@@ -510,17 +514,16 @@ public class AdminAuthService {
    * Build success response DTO.
    *
    * @param admin the authenticated administrator
-   * @param token the generated token
+   * @param token the generated token entity
+   * @param plainToken the plain bearer token to return to the client (not stored in DB)
    * @return success response DTO
    */
-  private AdminLoginResponseDto buildSuccessResponse(EzkeyAdmin admin, AdminToken token) {
+  private AdminLoginResponseDto buildSuccessResponse(
+      EzkeyAdmin admin, AdminToken token, String plainToken) {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
     return new AdminLoginResponseDto(
-        token.getBearerToken(),
-        admin.getAdminType().name(),
-        admin.getUsername(),
-        token.getExpiresAt());
+        plainToken, admin.getAdminType().name(), admin.getUsername(), token.getExpiresAt());
   }
 
   /**
@@ -535,7 +538,11 @@ public class AdminAuthService {
   @Transactional(readOnly = true)
   public EzkeyAdmin validateToken(String bearerToken) {
     try {
-      AdminToken token = tokenRepository.findByBearerTokenAndActiveTrue(bearerToken).orElse(null);
+      String hash = SensitiveDataHasher.sha256Hex(bearerToken);
+      if (hash == null) {
+        return null;
+      }
+      AdminToken token = tokenRepository.findByBearerTokenHashAndActiveTrue(hash).orElse(null);
 
       if (token == null) {
         return null;
@@ -570,8 +577,12 @@ public class AdminAuthService {
     if (bearerToken == null || bearerToken.isBlank()) {
       return null;
     }
+    String hash = SensitiveDataHasher.sha256Hex(bearerToken);
+    if (hash == null) {
+      return null;
+    }
     return tokenRepository
-        .findByBearerTokenAndActiveTrue(bearerToken)
+        .findByBearerTokenHashAndActiveTrue(hash)
         .map(AdminToken::getAdmin)
         .map(EzkeyAdmin::getAdminId)
         .orElse(null);
@@ -587,7 +598,11 @@ public class AdminAuthService {
    */
   public void logout(String bearerToken) {
     try {
-      AdminToken token = tokenRepository.findByBearerTokenAndActiveTrue(bearerToken).orElse(null);
+      String hash = SensitiveDataHasher.sha256Hex(bearerToken);
+      if (hash == null) {
+        return;
+      }
+      AdminToken token = tokenRepository.findByBearerTokenHashAndActiveTrue(hash).orElse(null);
 
       if (token != null) {
         token.setActive(false);

@@ -25,6 +25,7 @@ import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,17 +210,17 @@ public class AdminRecoveryService {
     // 5. Generate temporary recovery bearer token (limited permissions, configurable duration)
     String recoveryToken =
         AdminAuditConstants.RECOVERY_TOKEN_PREFIX + UUID.randomUUID().toString().replace("-", "");
+    String tokenHash = SensitiveDataHasher.sha256Hex(recoveryToken);
+    if (tokenHash == null) {
+      throw new IllegalStateException("Recovery token hash could not be computed");
+    }
     OffsetDateTime expiresAt =
         OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes());
 
-    AdminToken token = new AdminToken();
-    token.setBearerToken(recoveryToken);
-    token.setAdmin(admin);
-    token.setAdminType(admin.getAdminType().name());
+    AdminToken token = new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
     token.setCreatedAt(OffsetDateTime.now());
-    token.setExpiresAt(expiresAt);
     token.setActive(true);
     tokenRepository.save(token);
 
@@ -253,10 +254,14 @@ public class AdminRecoveryService {
       throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
     }
 
-    // 2. Find recovery token in bearer tokens table
+    // 2. Find recovery token in bearer tokens table (lookup by hash)
+    String tokenHash = SensitiveDataHasher.sha256Hex(recoveryToken);
+    if (tokenHash == null) {
+      throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
+    }
     AdminToken token =
         tokenRepository
-            .findByBearerTokenAndActiveTrue(recoveryToken)
+            .findByBearerTokenHashAndActiveTrue(tokenHash)
             .orElseThrow(
                 () ->
                     new org.ezkey.admin.exception.AuthenticationException(
