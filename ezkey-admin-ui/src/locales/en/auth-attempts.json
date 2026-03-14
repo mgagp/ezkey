@@ -12,7 +12,7 @@
     "enrollmentIdPlaceholder": "Enrollment ID",
     "dateRangeFull": "Full range",
     "refresh": "Refresh",
-    "hintReadOnly": "Read-only — tenant-scoped view of authentication attempts.",
+    "hintReadOnly": "Read-only — authentication attempts within your scope.",
     "emptyMessage": "No auth attempts found for the selected filters.",
     "columns": {
       "id": "ID",

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
-import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
+import { getAuditEventActionLabel, getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatCountdown, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
@@ -316,7 +316,9 @@ export default function DashboardPage() {
                           {getAuditEventTypeLabel(log.eventType ?? undefined, t)}
                         </Badge>
                         <span className="text-xs text-fg-muted flex-1 truncate min-w-0">
-                          {log.eventAction ?? log.apiName ?? (log.adminId != null ? t('dashboard:recentActivity.adminLabel', { id: log.adminId }) : '—')}
+                          {log.eventAction
+                            ? getAuditEventActionLabel(log.eventAction, t)
+                            : log.apiName ?? (log.adminId != null ? t('dashboard:recentActivity.adminLabel', { id: log.adminId }) : '—')}
                         </span>
                         <span className="text-[10px] text-fg-muted font-mono shrink-0">
                           {formatRelativeTime(log.createdAt ?? '')}

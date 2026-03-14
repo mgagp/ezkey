@@ -163,7 +163,7 @@ export default function AuthAttemptsPage() {
               <option value="INVALID">{t('list.filterStatusInvalid')}</option>
             </Select>
           </div>
-          <div className="w-44">
+          <div className="w-52">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
               <option value="">{t('list.filterIntegrationAll')}</option>
               {integrations.map((i) => (

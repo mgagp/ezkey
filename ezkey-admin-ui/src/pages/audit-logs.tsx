@@ -74,7 +74,10 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
       <dl className="space-y-2.5">
         <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
         <InfoRow label={t('detail.labelEventType')}>
-          <span className="font-mono text-xs bg-fg/5 px-1.5 py-0.5">{log.eventType}</span>
+          <span className="text-sm">{getAuditEventTypeLabel(log.eventType ?? undefined, t)}</span>
+          {log.eventType && (
+            <span className="ml-2 font-mono text-xs text-fg-muted">({log.eventType})</span>
+          )}
         </InfoRow>
         <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
         {log.apiName && <InfoRow label={t('detail.labelApi')}><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
@@ -1053,7 +1056,7 @@ export default function AuditLogsPage() {
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
-          <div className="w-52">
+          <div className="min-w-[15rem] w-64">
             <Select value={eventTypeFilter} onChange={(e) => setEventTypeFilter(e.target.value)}>
               <option value="">{t('list.filterEventTypeAll')}</option>
               {EVENT_TYPE_KEYS.map((val) => (
@@ -1061,7 +1064,7 @@ export default function AuditLogsPage() {
               ))}
             </Select>
           </div>
-          <div className="w-32">
+          <div className="min-w-[10rem] w-40">
             <Select value={eventStatusFilter} onChange={(e) => setEventStatusFilter(e.target.value)}>
               <option value="">{t('list.filterStatusAll')}</option>
               <option value="SUCCESS">{t('list.filterStatusSuccess')}</option>

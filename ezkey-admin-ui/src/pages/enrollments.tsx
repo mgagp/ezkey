@@ -335,7 +335,7 @@ export default function EnrollmentsPage() {
       enrollmentName: debouncedName || undefined,
       status: statusFilter || undefined,
       integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
-      active: activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
+      active: activeFilter === '' ? undefined : activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
     },
     fetchPage: (params) => search1(params as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
   });
@@ -387,7 +387,7 @@ export default function EnrollmentsPage() {
             </Select>
           </div>
 
-          <div className="w-44">
+          <div className="w-52">
             <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
               <option value="">{t('list.filterIntegrationAll')}</option>
               {integrations.map((i) => (

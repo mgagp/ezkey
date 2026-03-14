@@ -24,6 +24,15 @@
     "title": "Page introuvable",
     "description": "La page que vous recherchez n'existe pas."
   },
+  "date": {
+    "justNow": "À l'instant",
+    "minutesAgo_one": "Il y a 1 min",
+    "minutesAgo_other": "Il y a {{count}} min",
+    "hoursAgo_one": "Il y a 1 h",
+    "hoursAgo_other": "Il y a {{count}} h",
+    "daysAgo_one": "Il y a 1 j",
+    "daysAgo_other": "Il y a {{count}} j"
+  },
   "dateRange": {
     "full": "Toute la période",
     "today": "Aujourd'hui",

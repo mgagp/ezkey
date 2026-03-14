@@ -12,7 +12,7 @@
     "enrollmentIdPlaceholder": "ID enrôlement",
     "dateRangeFull": "Toute la période",
     "refresh": "Actualiser",
-    "hintReadOnly": "Lecture seule — vue des tentatives d'authentification dans le périmètre du tenant.",
+    "hintReadOnly": "Lecture seule — tentatives d'authentification selon votre périmètre.",
     "emptyMessage": "Aucune tentative d'authentification pour les filtres sélectionnés.",
     "columns": {
       "id": "ID",
