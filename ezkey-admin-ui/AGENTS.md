@@ -146,6 +146,10 @@ After a successful create/edit/delete that affects a list, **invalidate that lis
 - **usePaginatedFromOrval / useQuery with custom key**: use the same prefix you pass as `queryKey` (e.g. `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
 - **Optional**: `await queryClient.invalidateQueries(...)` in mutation `onSuccess` so the mutation stays pending until the list refetch completes; the dialog can then close with the list already updated.
 
+### Detail refresh after mutations
+
+After a mutation that changes the current entity on a **detail** page (e.g. deactivate enrollment, update API key), invalidate using the **same query key** as the detail query so the view refetches and reflects the new state. For Orval-generated detail hooks (`useGetById`, `useGetApiKey`, `useGetTenant`), use the generated **query key factory** from the same module (e.g. `getGetByIdQueryKey(id)`, `getGetApiKeyQueryKey(keyId)`). Custom keys like `['enrollment', id]` do not match Orval's path-based keys (`['/api/v1/enrollments/123']`) and the detail will not refresh. See `src/lib/query-keys.ts` for the rule.
+
 ### Auth flow (login page)
 
 1. `POST /api/v1/admin/auth/login` — always `nonBlocking: true`

@@ -25,6 +25,7 @@ import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
 import {
+  getGetApiKeyQueryKey,
   listAllApiKeys,
   listApiKeys,
   useCreateApiKey,
@@ -351,7 +352,9 @@ export function RevokeApiKeyDialog({
     mutation: {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-        void queryClient.invalidateQueries({ queryKey: ['api-key'] });
+        if (apiKey?.apiKeyId != null) {
+          void queryClient.invalidateQueries({ queryKey: getGetApiKeyQueryKey(apiKey.apiKeyId) });
+        }
         setReason('');
         onRevoked?.();
         onClose();

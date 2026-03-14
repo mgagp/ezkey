@@ -19,6 +19,7 @@ import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
+  getGetByIdQueryKey,
   useDeactivate,
   useDelete,
   useGetById,
@@ -353,8 +354,8 @@ export default function EnrollmentDetailPage() {
 
   const deactivateMutation = useDeactivate({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetByIdQueryKey(enrollmentId) });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
         toast(t('detail.toastDeactivated'));
       },
@@ -363,8 +364,8 @@ export default function EnrollmentDetailPage() {
 
   const reactivateMutation = useReactivate({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetByIdQueryKey(enrollmentId) });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
         toast(t('detail.toastReactivated'));
       },
@@ -373,8 +374,8 @@ export default function EnrollmentDetailPage() {
 
   const revokeMutation = useRevoke({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['enrollment', enrollmentId] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetByIdQueryKey(enrollmentId) });
         void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
         toast(t('detail.toastRevoked'), 'error');
         setRevokeConfirm(false);

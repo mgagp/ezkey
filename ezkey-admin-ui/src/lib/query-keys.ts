@@ -6,6 +6,12 @@
  * Orval-generated list hooks (e.g. tenants), use the generated query key factory
  * (getListTenantsQueryKey) instead of a string prefix — see AGENTS.md "List refresh
  * after mutations".
+ *
+ * For detail pages that use Orval-generated get-by-id hooks (e.g. useGetById,
+ * useGetApiKey), always invalidate using the generated get*QueryKey(id) factory
+ * (e.g. getGetByIdQueryKey, getGetApiKeyQueryKey) so the detail view refetches
+ * after mutations. Custom keys like ['enrollment', id] do not match Orval's
+ * path-based keys and will not trigger a refresh.
  */
 export const queryKeys = {
   /** Integrations list (paginated). */

@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
+import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
@@ -52,7 +53,7 @@ const quickActions = [
 // ── Dashboard page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { t } = useTranslation(['dashboard', 'layout']);
+  const { t } = useTranslation(['dashboard', 'layout', 'audit-logs']);
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
@@ -111,7 +112,7 @@ export default function DashboardPage() {
                     className="flex flex-wrap items-baseline gap-2 text-sm border-b border-fg/10 pb-2 last:border-0 last:pb-0"
                   >
                     <Badge variant="error">
-                      {(alert.eventType ?? '').replaceAll('_', ' ')}
+                      {getAuditEventTypeLabel(alert.eventType ?? undefined, t)}
                     </Badge>
                     <span className="text-fg-muted shrink-0">
                       {formatRelativeTime(alert.createdAt ?? '')}
@@ -224,7 +225,7 @@ export default function DashboardPage() {
                             : 'muted'
                           }
                         >
-                          {(log.eventType ?? '').replaceAll('_', ' ')}
+                          {getAuditEventTypeLabel(log.eventType ?? undefined, t)}
                         </Badge>
                         <span className="text-xs text-fg-muted flex-1 truncate min-w-0">
                           {log.eventAction ?? log.apiName ?? (log.adminId != null ? t('dashboard:recentActivity.adminLabel', { id: log.adminId }) : '—')}

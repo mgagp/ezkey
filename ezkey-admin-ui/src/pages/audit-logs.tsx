@@ -19,6 +19,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { AUDIT_CONTEXT_HELP } from '@/lib/help-text';
+import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -43,16 +44,6 @@ import type {
   PagedModelAuditLogResponseDto,
   PagedModelAuditChainCheckpointResponseDto,
 } from '@/generated/admin-api/model';
-
-// ── Event type options (from EventType.java enum) ─────────────────────────────
-
-const EVENT_TYPE_KEYS = [
-  'ADMIN_LOGIN', 'ADMIN_LOGOUT', 'ADMIN_PASSWORD_CHANGE', 'ADMIN_RECOVERY_USE',
-  'ENROLLMENT_CREATED', 'ENROLLMENT_DELETED', 'ENROLLMENT_BIND', 'ENROLLMENT_VERIFY',
-  'AUTH_ATTEMPT_CREATED', 'AUTH_ATTEMPT_PENDING', 'AUTH_ATTEMPT_RESPOND', 'AUTH_ATTEMPT_CANCELLED',
-  'API_KEY_CREATED', 'API_KEY_REVOKED', 'API_KEY_EXPIRED', 'API_KEY_AUTH_SUCCESS', 'API_KEY_AUTH_FAILED', 'API_KEY_IP_BLOCKED',
-  'SYSTEM_ERROR',
-] as const;
 
 // ── Event status badge ────────────────────────────────────────────────────────
 
@@ -1009,9 +1000,7 @@ export default function AuditLogsPage() {
       sortKey: 'eventType',
       render: (r) => (
         <span className="font-mono text-xs">
-          {EVENT_TYPE_KEYS.includes((r.eventType ?? '') as typeof EVENT_TYPE_KEYS[number])
-            ? t(`eventType.${r.eventType}`)
-            : (r.eventType ?? '').split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
+          {getAuditEventTypeLabel(r.eventType ?? undefined, t)}
         </span>
       ),
     },

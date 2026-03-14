@@ -22,7 +22,7 @@ import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
 import { RevokeApiKeyDialog } from '@/pages/api-keys';
-import { useGetApiKey, useUpdateApiKey } from '@/generated/admin-api/api-keys/api-keys';
+import { getGetApiKeyQueryKey, useGetApiKey, useUpdateApiKey } from '@/generated/admin-api/api-keys/api-keys';
 import type { ApiKeyResponseDto, ApiKeyUpdateRequestDto } from '@/generated/admin-api/model';
 
 // ── Info row helper ──────────────────────────────────────────────────────────
@@ -104,8 +104,8 @@ function EditApiKeyDialog({
 
   const updateMutation = useUpdateApiKey({
     mutation: {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['api-key', apiKey.apiKeyId] });
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetApiKeyQueryKey(apiKey.apiKeyId!) });
         void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
         toast(t('detail.toastUpdated'));
         onClose();
