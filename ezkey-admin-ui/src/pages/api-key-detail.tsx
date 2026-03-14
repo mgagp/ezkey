@@ -19,6 +19,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
+import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
 import { RevokeApiKeyDialog } from '@/pages/api-keys';
 import { useGetApiKey, useUpdateApiKey } from '@/generated/admin-api/api-keys/api-keys';
@@ -70,10 +71,28 @@ function EditApiKeyDialog({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const editSchema = useMemo(() => z.object({
-    description: z.string().max(255).optional().or(z.literal('')),
-    ipWhitelist: z.string().optional().or(z.literal('')),
-  }), []);
+  const editSchema = useMemo(
+    () =>
+      z
+        .object({
+          description: z.string().max(255).optional().or(z.literal('')),
+          ipWhitelist: z.string().optional().or(z.literal('')),
+        })
+        .superRefine((data, ctx) => {
+          const result = parseAndValidateIpWhitelist(data.ipWhitelist);
+          if (!result.success) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('validation.ipWhitelistInvalid', {
+                line: result.lineNumber,
+                value: result.value,
+              }),
+              path: ['ipWhitelist'],
+            });
+          }
+        }),
+    [t],
+  );
 
   const { register, handleSubmit, formState: { errors } } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema) as never,
@@ -95,9 +114,8 @@ function EditApiKeyDialog({
   });
 
   const onSubmit = (values: EditFormValues) => {
-    const ipLines = values.ipWhitelist
-      ? values.ipWhitelist.split('\n').map((s) => s.trim()).filter(Boolean)
-      : [];
+    const parseResult = parseAndValidateIpWhitelist(values.ipWhitelist);
+    const ipLines = parseResult.success ? parseResult.entries : [];
 
     updateMutation.mutate({
       keyId: apiKey.apiKeyId!,
@@ -136,6 +154,7 @@ function EditApiKeyDialog({
             error={errors.ipWhitelist?.message}
             {...register('ipWhitelist')}
           />
+          <p className="text-xs text-fg-muted">{t('editDialog.ipWhitelistHelp')}</p>
         </div>
 
         {updateMutation.isError && (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, Key, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -214,6 +214,15 @@ export default function IntegrationDetailPage() {
                   >
                     <Users className="size-3.5" />
                     {t('detail.viewAllEnrollments')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => navigate(`/api-keys?create=1&integrationId=${integration.id}`)}
+                  >
+                    <Key className="size-3.5" />
+                    {t('detail.createApiKey')}
                   </Button>
                 </div>
               </CardContent>

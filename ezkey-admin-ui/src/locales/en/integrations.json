@@ -49,6 +49,7 @@
     "integrationDetails": "Integration Details",
     "actions": "Actions",
     "viewAllEnrollments": "View All Enrollments",
+    "createApiKey": "Create API Key",
     "enrollmentsSectionTitle": "Enrollments for this Integration",
     "newEnrollment": "New Enrollment",
     "enrollmentsEmpty": "No enrollments for this integration yet.",

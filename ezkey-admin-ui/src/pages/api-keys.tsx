@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, Key, Plus, RefreshCw, Search, Shield, ShieldOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -22,6 +22,7 @@ import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError } from '@/lib/api-client';
+import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
 import {
   listAllApiKeys,
@@ -87,17 +88,43 @@ type ApiKeyFormValues = {
   ipWhitelist?: string;
 };
 
-function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateApiKeyDialog({
+  open,
+  onClose,
+  defaultIntegrationId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultIntegrationId?: number;
+}) {
   const { t } = useTranslation('api-keys');
   const queryClient = useQueryClient();
   const { list: integrations, isLoading: loadingIntegrations } = useIntegrations();
 
-  const apiKeySchema = useMemo(() => z.object({
-    integrationId: z.string().min(1, t('validation.selectIntegration')),
-    description: z.string().max(255).optional().or(z.literal('')),
-    expiresAt: z.string().optional().or(z.literal('')),
-    ipWhitelist: z.string().optional().or(z.literal('')),
-  }), [t]);
+  const apiKeySchema = useMemo(
+    () =>
+      z
+        .object({
+          integrationId: z.string().min(1, t('validation.selectIntegration')),
+          description: z.string().max(255).optional().or(z.literal('')),
+          expiresAt: z.string().optional().or(z.literal('')),
+          ipWhitelist: z.string().optional().or(z.literal('')),
+        })
+        .superRefine((data, ctx) => {
+          const result = parseAndValidateIpWhitelist(data.ipWhitelist);
+          if (!result.success) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('validation.ipWhitelistInvalid', {
+                line: result.lineNumber,
+                value: result.value,
+              }),
+              path: ['ipWhitelist'],
+            });
+          }
+        }),
+    [t],
+  );
   const [createdKey, setCreatedKey] = useState<ApiKeyCreateResponseDto | null>(null);
   const [integrationKeyCopied, setIntegrationKeyCopied] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
@@ -105,7 +132,26 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ApiKeyFormValues>({
     resolver: zodResolver(apiKeySchema) as never,
+    defaultValues: {
+      integrationId: defaultIntegrationId ? String(defaultIntegrationId) : '',
+      description: '',
+      expiresAt: '',
+      ipWhitelist: '',
+    },
   });
+
+  // When opening from integration detail (defaultIntegrationId), preselect that integration.
+  // Run after integrations load so the <option value="..."> exists in the DOM.
+  useEffect(() => {
+    if (open && defaultIntegrationId !== undefined && !loadingIntegrations) {
+      reset({
+        integrationId: String(defaultIntegrationId),
+        description: '',
+        expiresAt: '',
+        ipWhitelist: '',
+      });
+    }
+  }, [open, defaultIntegrationId, loadingIntegrations, reset]);
 
   const createMutation = useCreateApiKey({
     mutation: {
@@ -137,8 +183,9 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   const onSubmit = (values: ApiKeyFormValues) => {
-    const ipLines = values.ipWhitelist
-      ? values.ipWhitelist.split('\n').map((s) => s.trim()).filter(Boolean)
+    const parseResult = parseAndValidateIpWhitelist(values.ipWhitelist);
+    const ipLines = parseResult.success && parseResult.entries.length > 0
+      ? parseResult.entries
       : undefined;
 
     createMutation.mutate({
@@ -266,6 +313,7 @@ function CreateApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => v
               error={errors.ipWhitelist?.message}
               {...register('ipWhitelist')}
             />
+            <p className="text-xs text-fg-muted">{t('create.ipWhitelistHelp')}</p>
           </div>
 
           {createMutation.isError && (
@@ -390,12 +438,27 @@ type BaseParams = {
 export default function ApiKeysPage() {
   const { t } = useTranslation('api-keys');
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
+  const [prefillIntegrationId, setPrefillIntegrationId] = useState<number | undefined>(undefined);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyResponseDto | null>(null);
   const [integrationFilter, setIntegrationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
   const [descriptionInput, setDescriptionInput] = useState('');
   const debouncedDescription = useDebounce(descriptionInput, 300);
+
+  useEffect(() => {
+    const create = searchParams.get('create');
+    const idParam = searchParams.get('integrationId');
+    if (create === '1' && idParam) {
+      const id = Number(idParam);
+      if (!Number.isNaN(id)) {
+        setCreateOpen(true);
+        setPrefillIntegrationId(id);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
 
   const { list: integrations, lookup } = useIntegrations();
 
@@ -563,7 +626,15 @@ export default function ApiKeysPage() {
         </div>
       </div>
 
-      <CreateApiKeyDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateApiKeyDialog
+        key={prefillIntegrationId ?? 'new'}
+        open={createOpen}
+        onClose={() => {
+          setCreateOpen(false);
+          setPrefillIntegrationId(undefined);
+        }}
+        defaultIntegrationId={prefillIntegrationId}
+      />
       <RevokeApiKeyDialog apiKey={revokeTarget} onClose={() => setRevokeTarget(null)} />
     </AppShell>
   );

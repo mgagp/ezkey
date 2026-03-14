@@ -54,14 +54,16 @@
     "expiresAt": "Expire le",
     "expiresAtHint": "(optionnel — laisser vide pour pas d'expiration)",
     "ipWhitelist": "Liste blanche IP",
-    "ipWhitelistHint": "(optionnel — une IP ou CIDR par ligne)",
-    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1",
+    "ipWhitelistHint": "(optionnel — une par ligne)",
+    "ipWhitelistHelp": "Une par ligne. IPv4 ou IPv6, adresse unique ou CIDR.",
+    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1\n2001:db8::/32",
     "cancel": "Annuler",
     "submit": "Créer la clé API",
     "errorCreate": "Échec de la création de la clé API."
   },
   "validation": {
-    "selectIntegration": "Sélectionnez une intégration"
+    "selectIntegration": "Sélectionnez une intégration",
+    "ipWhitelistInvalid": "IP ou CIDR invalide à la ligne {{line}} : \"{{value}}\". Utilisez IPv4 ou IPv6, adresse unique ou CIDR (ex. 192.168.1.0/24)."
   },
   "revokeDialog": {
     "title": "Révoquer la clé API",
@@ -107,8 +109,9 @@
     "descriptionOptional": "(optionnel)",
     "descriptionPlaceholder": "ex. Serveur de production — pipeline CI/CD",
     "ipWhitelist": "Liste blanche IP",
-    "ipWhitelistHint": "(une IP ou CIDR par ligne — laisser vide pour supprimer les restrictions)",
-    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1",
+    "ipWhitelistHint": "(une par ligne — laisser vide pour supprimer les restrictions)",
+    "ipWhitelistHelp": "Une par ligne. IPv4 ou IPv6, adresse unique ou CIDR.",
+    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1\n2001:db8::/32",
     "cancel": "Annuler",
     "save": "Enregistrer",
     "errorConflict": "Cette clé a été modifiée par un autre utilisateur. Actualisez et réessayez.",

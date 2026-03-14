@@ -54,14 +54,16 @@
     "expiresAt": "Expires At",
     "expiresAtHint": "(optional — leave blank for no expiration)",
     "ipWhitelist": "IP Whitelist",
-    "ipWhitelistHint": "(optional — one IP or CIDR per line)",
-    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1",
+    "ipWhitelistHint": "(optional — one per line)",
+    "ipWhitelistHelp": "One per line. IPv4 or IPv6, single address or CIDR.",
+    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1\n2001:db8::/32",
     "cancel": "Cancel",
     "submit": "Create API Key",
     "errorCreate": "Failed to create API key."
   },
   "validation": {
-    "selectIntegration": "Select an integration"
+    "selectIntegration": "Select an integration",
+    "ipWhitelistInvalid": "Invalid IP or CIDR on line {{line}}: \"{{value}}\". Use IPv4 or IPv6, single address or CIDR (e.g. 192.168.1.0/24)."
   },
   "revokeDialog": {
     "title": "Revoke API Key",
@@ -107,8 +109,9 @@
     "descriptionOptional": "(optional)",
     "descriptionPlaceholder": "e.g. Production server — CI/CD pipeline",
     "ipWhitelist": "IP Whitelist",
-    "ipWhitelistHint": "(one IP or CIDR per line — leave empty to remove restrictions)",
-    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1",
+    "ipWhitelistHint": "(one per line — leave empty to remove restrictions)",
+    "ipWhitelistHelp": "One per line. IPv4 or IPv6, single address or CIDR.",
+    "ipWhitelistPlaceholder": "192.168.1.0/24\n10.0.0.1\n2001:db8::/32",
     "cancel": "Cancel",
     "save": "Save Changes",
     "errorConflict": "This key was modified by another user. Please refresh and try again.",

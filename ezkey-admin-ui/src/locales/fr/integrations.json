@@ -49,6 +49,7 @@
     "integrationDetails": "Détails de l'intégration",
     "actions": "Actions",
     "viewAllEnrollments": "Voir tous les enrôlements",
+    "createApiKey": "Créer une clé API",
     "enrollmentsSectionTitle": "Enrôlements pour cette intégration",
     "newEnrollment": "Nouvel enrôlement",
     "enrollmentsEmpty": "Aucun enrôlement pour cette intégration.",
