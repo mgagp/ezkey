@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -392,6 +393,7 @@ export function RevokeApiKeyDialog({
             onChange={(e) => setReason(e.target.value)}
             placeholder={t('revokeDialog.reasonPlaceholder')}
           />
+          <DemoReasonBadges onSelect={setReason} />
           {reasonTooShort && (
             <p className="text-xs text-error">{t('revokeDialog.reasonMinError')}</p>
           )}

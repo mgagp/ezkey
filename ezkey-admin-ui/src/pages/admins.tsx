@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -229,6 +230,7 @@ function DeactivateAdminDialog({
               onChange={(e) => setReason(e.target.value)}
               placeholder={t('deactivate.reasonPlaceholder')}
             />
+            <DemoReasonBadges onSelect={setReason} />
           </div>
 
           {deactivateMutation.isError && (

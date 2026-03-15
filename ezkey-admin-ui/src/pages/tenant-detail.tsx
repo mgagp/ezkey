@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Edit, Power, PowerOff } from 'lucide-react';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -274,6 +275,7 @@ function ToggleActiveDialog({
             onChange={(e) => setReason(e.target.value)}
             placeholder={t('toggle.reasonPlaceholder')}
           />
+          <DemoReasonBadges onSelect={setReason} />
         </div>
 
         {mutation.isError && (

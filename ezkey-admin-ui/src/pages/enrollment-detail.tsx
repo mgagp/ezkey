@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -691,6 +692,7 @@ export default function EnrollmentDetailPage() {
                               onChange={(e) => setRevokeReason(e.target.value)}
                               placeholder={t('detail.revokeReasonPlaceholder')}
                             />
+                            <DemoReasonBadges onSelect={setRevokeReason} />
                           </div>
                           {revokeMutation.isError && (
                             <Alert variant="error">
@@ -800,6 +802,7 @@ export default function EnrollmentDetailPage() {
               onChange={(e) => setLifecycleReason(e.target.value)}
               placeholder={t('lifecycleDialog.reasonPlaceholder')}
             />
+            <DemoReasonBadges onSelect={setLifecycleReason} />
           </div>
           {(lifecycleConfirm === 'deactivate' ? deactivateMutation.isError : reactivateMutation.isError) && (
             <Alert variant="error">

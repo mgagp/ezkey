@@ -161,3 +161,23 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     },
   },
 ];
+
+// ── Reason field (min 10 chars): quick-select presets for demo ─────────────────
+// Used in key rotation, revoke, deactivate, toggle tenant, etc.
+
+export interface ReasonDemoPreset {
+  id: string;
+  /** English text (min 10 chars); used as badge label and as value when selected. */
+  en: string;
+  /** French text (min 10 chars); used as badge label and as value when selected. */
+  fr: string;
+}
+
+export const reasonDemoPresets: ReasonDemoPreset[] = [
+  { id: 'routine-rotation', en: 'Routine key rotation', fr: 'Rotation de clé de routine' },
+  { id: 'scheduled-rotation', en: 'Scheduled key rotation', fr: 'Rotation planifiée des clés' },
+  { id: 'compliance', en: 'Compliance and audit', fr: 'Conformité et audit' },
+  { id: 'security-policy', en: 'Security policy update', fr: 'Mise à jour politique de sécurité' },
+  { id: 'end-of-access', en: 'End of access / offboarding', fr: 'Fin d\'accès / départ' },
+  { id: 'revoked-security', en: 'Revoked for security reasons', fr: 'Révoqué pour raison de sécurité' },
+];

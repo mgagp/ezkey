@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -17,7 +18,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { isDemoMode } from '@/lib/demo-mode';
 import { formatDate } from '@/lib/utils';
 import {
   deactivateAllEnrollments,
@@ -59,6 +62,7 @@ function DangerConfirmDialog({
   isError,
   errorMessage,
   onConfirm,
+  renderReasonBadges,
 }: {
   open: boolean;
   onClose: () => void;
@@ -75,6 +79,8 @@ function DangerConfirmDialog({
   isError: boolean;
   errorMessage: string;
   onConfirm: (reason: string) => void;
+  /** Demo mode: render quick-select reason badges (receives setReason). */
+  renderReasonBadges?: (setReason: (value: string) => void) => React.ReactNode;
 }) {
   const [reason, setReason] = useState('');
 
@@ -102,6 +108,7 @@ function DangerConfirmDialog({
               onChange={(e) => setReason(e.target.value)}
               placeholder={reasonPlaceholder ?? 'Justification...'}
             />
+            {renderReasonBadges?.(setReason)}
           </div>
         )}
         {isError && <Alert variant="error">{errorMessage}</Alert>}
@@ -128,6 +135,11 @@ export default function IntegrationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { sessionDemoOn } = useDemoModeSession();
+  const renderReasonBadges =
+    isDemoMode && sessionDemoOn
+      ? (setReason: (value: string) => void) => <DemoReasonBadges onSelect={setReason} />
+      : undefined;
   const { toast } = useToast();
   const integrationId = Number(id);
 
@@ -311,6 +323,7 @@ export default function IntegrationDetailPage() {
         isPending={false}
         isError={false}
         errorMessage=""
+        renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
           const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
           deactivateAllEnrollments(Number(integrationId), params)
@@ -335,6 +348,7 @@ export default function IntegrationDetailPage() {
         isPending={false}
         isError={false}
         errorMessage=""
+        renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
           const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
           reactivateAllEnrollments(Number(integrationId), params)
@@ -359,6 +373,7 @@ export default function IntegrationDetailPage() {
         isPending={false}
         isError={false}
         errorMessage=""
+        renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
           const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
           revokeAllEnrollments(Number(integrationId), params)
@@ -383,6 +398,7 @@ export default function IntegrationDetailPage() {
         isPending={false}
         isError={false}
         errorMessage=""
+        renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
           const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
           delete1(Number(integrationId), params)

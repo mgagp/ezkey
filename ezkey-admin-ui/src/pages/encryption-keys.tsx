@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { ENCRYPTION_KEYS_SECTION_HELP } from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
@@ -361,6 +362,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
+            <DemoReasonBadges onSelect={setReason} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={handleClose}>{t('rotateDialog.cancel')}</Button>

@@ -22,5 +22,6 @@
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+clic pour basculer le mode démo"
-  }
+  },
+  "demoQuickReason": "Raison rapide (démo) :"
 }
