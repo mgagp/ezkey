@@ -51,7 +51,8 @@ import org.springframework.http.HttpStatus;
  * <p><b>Rate Limiting Strategy:</b>
  *
  * <ul>
- *   <li>Pending: By enrollment ID or client IP (configurable)
+ *   <li>Pending: By enrollment ID from request body or client IP (configurable via
+ *       enrollment-id/client-ip)
  *   <li>Respond: By authAttemptId from request body (configurable), fallback to client IP
  *   <li>Verify: By client IP only
  *   <li>Bind: By client IP only
@@ -87,7 +88,8 @@ public class RateLimitFilter implements Filter {
    * respond request body.
    *
    * @param properties the rate limiting configuration properties
-   * @param objectMapper the Jackson ObjectMapper for extracting authAttemptId from respond body
+   * @param objectMapper the Jackson ObjectMapper for extracting authAttemptId/enrollmentId from
+   *     request bodies
    */
   public RateLimitFilter(RateLimitProperties properties, ObjectMapper objectMapper) {
     this.properties = properties;
@@ -108,11 +110,12 @@ public class RateLimitFilter implements Filter {
     String requestUri = req.getRequestURI();
     String requestMethod = req.getMethod();
 
-    // For respond endpoint, wrap request so body can be read for authAttemptId and re-read by
-    // controller
+    // For respond and pending endpoints, wrap request so body can be read for authAttemptId /
+    // enrollmentId and re-read by controller
     if ("POST".equals(requestMethod)
         && requestUri != null
-        && requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
+        && (requestUri.contains(AuthAttemptController.FULL_PATH_RESPOND)
+            || requestUri.contains(AuthAttemptController.FULL_PATH_PENDING))) {
       req = new CachedBodyHttpServletRequestWrapper(req);
     }
 
@@ -198,10 +201,14 @@ public class RateLimitFilter implements Filter {
    * @return client identifier string
    */
   private String extractClientId(String requestUri, HttpServletRequest request) {
-    // For pending endpoint, use enrollment ID if configured
+    // For pending endpoint, use enrollment ID from body if configured
     if (requestUri.contains(AuthAttemptController.FULL_PATH_PENDING)) {
       if ("enrollment-id".equals(properties.getPending().getKeyStrategy())) {
-        return extractEnrollmentIdFromPath(requestUri);
+        Integer enrollmentId = extractEnrollmentIdFromBody(request);
+        if (enrollmentId != null) {
+          return "pending:" + enrollmentId;
+        }
+        // Fallback to client IP if body missing, invalid, or enrollmentId null
       }
     }
 
@@ -218,6 +225,43 @@ public class RateLimitFilter implements Filter {
 
     // Default: use client IP
     return getClientIP(request);
+  }
+
+  /**
+   * Extracts enrollmentId from the request body when it is a CachedBodyHttpServletRequestWrapper.
+   * Returns null if the request is not wrapped, the body is not valid JSON, or enrollmentId is
+   * missing or not a number.
+   *
+   * @param request the HTTP request (must be wrapped for pending path)
+   * @return the enrollmentId, or null if not available
+   */
+  private Integer extractEnrollmentIdFromBody(HttpServletRequest request) {
+    if (!(request instanceof CachedBodyHttpServletRequestWrapper)) {
+      return null;
+    }
+    try {
+      byte[] body = ((CachedBodyHttpServletRequestWrapper) request).getContentAsByteArray();
+      if (body == null || body.length == 0) {
+        return null;
+      }
+      JsonNode root = objectMapper.readTree(body);
+      if (root == null || !root.has("enrollmentId")) {
+        return null;
+      }
+      JsonNode idNode = root.get("enrollmentId");
+      if (idNode == null || idNode.isNull()) {
+        return null;
+      }
+      if (idNode.isNumber()) {
+        return idNode.intValue();
+      }
+      if (idNode.isTextual()) {
+        return Integer.parseInt(idNode.asText());
+      }
+      return null;
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   /**
@@ -367,18 +411,6 @@ public class RateLimitFilter implements Filter {
     } catch (Exception e) {
       return false;
     }
-  }
-
-  /**
-   * Extracts enrollment ID from request path.
-   *
-   * @param requestUri the request URI
-   * @return enrollment ID string
-   */
-  private String extractEnrollmentIdFromPath(String requestUri) {
-    // Extract from /api/v1/auth-attempts/pending
-    String[] parts = requestUri.split("/");
-    return parts[parts.length - 1];
   }
 
   /** Result of a rate limit check operation. */

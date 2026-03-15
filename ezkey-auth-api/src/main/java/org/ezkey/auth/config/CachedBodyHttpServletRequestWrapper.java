@@ -27,10 +27,10 @@ import org.springframework.util.StreamUtils;
  * Wraps an {@link HttpServletRequest} so the request body can be read once, cached, and re-read by
  * downstream filters or the controller.
  *
- * <p>Used by {@link RateLimitFilter} when rate limiting the respond endpoint: the filter must read
- * the JSON body to extract {@code authAttemptId} for the bucket key, then pass the request to the
- * controller which reads the body again. This wrapper ensures the body is only consumed once from
- * the underlying stream.
+ * <p>Used by {@link RateLimitFilter} when rate limiting the respond and pending endpoints: the
+ * filter must read the JSON body to extract {@code authAttemptId} (respond) or {@code enrollmentId}
+ * (pending) for the bucket key, then pass the request to the controller which reads the body again.
+ * This wrapper ensures the body is only consumed once from the underlying stream.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
