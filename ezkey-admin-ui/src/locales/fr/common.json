@@ -33,6 +33,14 @@
     "daysAgo_one": "Il y a 1 j",
     "daysAgo_other": "Il y a {{count}} j"
   },
+  "detail": {
+    "moreDetails": "Plus de détails",
+    "relatedContext": "Contexte associé",
+    "relatedTenant": "Tenant",
+    "relatedIntegration": "Intégration",
+    "relatedEnrollment": "Enrôlement",
+    "relatedAdmin": "Administrateur"
+  },
   "help": {
     "ariaLabel": "Aide : {{title}}"
   },

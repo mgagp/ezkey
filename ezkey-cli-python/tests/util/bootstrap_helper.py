@@ -299,16 +299,16 @@ class BootstrapHelper:
             raise RuntimeError("Enrollment Proof Token not found in logs")
         enrollment_proof_token = token_match.group(1).strip()
 
-        # Validate token format: should have 2 dots (3 parts: random.timestamp.salt)
+        # Validate token format: should have 1 dot (2 parts: randomPart.saltPart)
         parts = enrollment_proof_token.split(".")
-        if len(parts) != 3:
+        if len(parts) != 2:
             logger.error(
-                "Invalid proof token format: expected 3 parts separated by dots, got %d parts",
+                "Invalid proof token format: expected 2 parts separated by dots, got %d parts",
                 len(parts),
             )
             logger.error("Token parts: %s", parts)
             raise RuntimeError(
-                f"Invalid proof token format: expected format 'randomPart.timestamp.saltPart', "
+                f"Invalid proof token format: expected format 'randomPart.saltPart', "
                 f"got: {enrollment_proof_token[:min(100, len(enrollment_proof_token))]}"
             )
 

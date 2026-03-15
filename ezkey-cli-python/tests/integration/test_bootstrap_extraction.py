@@ -41,9 +41,9 @@ class TestBootstrapExtraction:
         assert credentials.enrollment_proof_token is not None
         assert len(credentials.enrollment_proof_token) > 0, "Proof token should not be empty"
 
-        # Validate token format: should have 2 dots (3 parts)
+        # Validate token format: should have 1 dot (2 parts: randomPart.saltPart)
         token_parts = credentials.enrollment_proof_token.split(".")
-        assert len(token_parts) == 3, f"Token should have 3 parts, got {len(token_parts)}"
+        assert len(token_parts) == 2, f"Token should have 2 parts, got {len(token_parts)}"
 
         # Validate challenge code
         assert credentials.enrollment_challenge_code is not None

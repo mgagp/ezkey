@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -16,6 +16,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/demo-mode-context';
@@ -169,6 +170,10 @@ export default function IntegrationDetailPage() {
   const name = integration ? getIntegrationName(integration) : '...';
   const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
 
+  const relatedDetails = useExpandableRelatedDetails({
+    tenantId: integration?.tenantId ?? undefined,
+  });
+
   return (
     <AppShell
       title={isLoading ? t('detail.fallbackTitle') : name}
@@ -186,13 +191,37 @@ export default function IntegrationDetailPage() {
         {integration && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
-              <CardHeader><CardTitle>{t('detail.integrationDetails')}</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle>{t('detail.integrationDetails')}</CardTitle>
+                {relatedDetails.hasAnyFk && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={relatedDetails.expand}
+                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+                  >
+                    {relatedDetails.isExpanded && relatedDetails.isLoading
+                      ? t('common:buttons.loading')
+                      : t('common:detail.moreDetails')}
+                  </Button>
+                )}
+              </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.infoId')}><span className="font-mono">{integration.id}</span></InfoRow>
                   <InfoRow label={t('detail.infoCode')}><span className="font-mono">{integration.code}</span></InfoRow>
                   {integration.tenantId != null && (
                     <InfoRow label={t('detail.infoTenantId')}><span className="font-mono">{integration.tenantId}</span></InfoRow>
+                  )}
+                  {relatedDetails.isExpanded && relatedDetails.tenant && (
+                    <InfoRow label={t('common:detail.relatedTenant')}>
+                      <Link
+                        to={`/tenants/${relatedDetails.tenant.tenantId}`}
+                        className="font-medium text-accent hover:underline"
+                      >
+                        {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
+                      </Link>
+                    </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoName')}>
                     <span className="font-medium">{integration.name ?? integration.code}</span>
