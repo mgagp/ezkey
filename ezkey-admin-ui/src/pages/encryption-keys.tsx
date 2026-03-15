@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Key,
@@ -25,7 +25,6 @@ import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { getApiErrorMessage } from '@/lib/api-client';
-import { ENCRYPTION_KEYS_SECTION_HELP } from '@/lib/help-text';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -665,8 +664,13 @@ export default function EncryptionKeysPage() {
             </p>
             <ContextHelp
               title={t('list.sectionHelpTitle')}
-              content={ENCRYPTION_KEYS_SECTION_HELP.content}
-              ariaLabel={`Help: ${t('list.sectionHelpTitle')}`}
+              content={
+                <Trans
+                  i18nKey="encryption-keys:list.help.sectionContent"
+                  components={{ strong: <strong /> }}
+                />
+              }
+              ariaLabel={t('common:help.ariaLabel', { title: t('list.sectionHelpTitle') })}
             />
           </div>
           <div className="w-40">

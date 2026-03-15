@@ -24,7 +24,10 @@
     "headerTooltipRecords": "Number of records encrypted with this key.",
     "headerTooltipPrimarySince": "Date this key was promoted to primary.",
     "reencryptButtonTooltip": "Migrate records encrypted with this key to the current primary key.",
-    "reencryptButton": "Re-encrypt"
+    "reencryptButton": "Re-encrypt",
+    "help": {
+      "sectionContent": "AES-256 encryption keys protecting sensitive data at rest. The <strong>PRIMARY</strong> key encrypts new data. Old keys remain <strong>ENABLED</strong> until all their records are re-encrypted."
+    }
   },
   "keyStatus": {
     "labelPrimary": "Primary",

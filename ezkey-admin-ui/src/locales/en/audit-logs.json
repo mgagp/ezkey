@@ -1,4 +1,18 @@
 {
+  "help": {
+    "integrityLifecycle": {
+      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check chain and entry integrity. Use <strong>Seal Archive</strong> to mark a period for archival; use <strong>Declare Gap</strong> when the system was offline so the chain stays valid."
+    },
+    "sealArchive": {
+      "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
+    },
+    "declareGap": {
+      "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor."
+    },
+    "checkpointTimeline": {
+      "content": "Lists chain checkpoints in time order. Gaps (undeclared holes between checkpoints) are highlighted. Use row actions to fill SEAL range or Declare Gap anchor in the dialogs."
+    }
+  },
   "list": {
     "title": "Audit Logs",
     "filterEventTypeAll": "All Event Types",

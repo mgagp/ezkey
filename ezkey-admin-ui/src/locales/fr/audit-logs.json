@@ -1,4 +1,18 @@
 {
+  "help": {
+    "integrityLifecycle": {
+      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérification</strong> pour contrôler l'intégrité de la chaîne et des entrées. Utilisez <strong>Sceller l'archive</strong> pour marquer une période pour archivage ; utilisez <strong>Déclarer une lacune</strong> lorsque le système a été indisponible pour garder la chaîne valide."
+    },
+    "sealArchive": {
+      "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
+    },
+    "declareGap": {
+      "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez la lacune pour que le prochain checkpoint régulier puisse se lier correctement. Indiquez le dernier checkpoint avant l'arrêt comme ancre."
+    },
+    "checkpointTimeline": {
+      "content": "Affiche les checkpoints de chaîne dans l'ordre chronologique. Les lacunes (trous non déclarés entre checkpoints) sont mis en évidence. Utilisez les actions de ligne pour renseigner la plage SEAL ou l'ancre Déclarer une lacune dans les dialogues."
+    }
+  },
   "list": {
     "title": "Journaux d'audit",
     "filterEventTypeAll": "Tous les types d'événements",

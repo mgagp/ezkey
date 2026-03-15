@@ -1,5 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -18,7 +18,6 @@ import { Select } from '@/components/ui/select';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
-import { AUDIT_CONTEXT_HELP } from '@/lib/help-text';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
@@ -528,7 +527,7 @@ function IntegrityPanel() {
           <ShieldAlert className="size-5 text-accent" />
           <h2 className="font-black text-sm uppercase tracking-wider">{t('integrity.title')}</h2>
           <span onClick={(e) => e.stopPropagation()}>
-            <ContextHelp title={AUDIT_CONTEXT_HELP.integrityLifecycle.title} content={AUDIT_CONTEXT_HELP.integrityLifecycle.content} ariaLabel={`Help: ${t('integrity.title')}`} />
+            <ContextHelp title={t('integrity.title')} content={<Trans i18nKey="audit-logs:help.integrityLifecycle.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.title') })} />
           </span>
           <Badge variant="muted">{t('integrity.globalAdmin')}</Badge>
         </div>
@@ -627,14 +626,14 @@ function IntegrityPanel() {
                 {t('integrity.sealArchive')}
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={AUDIT_CONTEXT_HELP.sealArchive.title} content={AUDIT_CONTEXT_HELP.sealArchive.content} ariaLabel="Help: Seal Archive" />
+                <ContextHelp title={t('integrity.sealArchive')} content={<Trans i18nKey="audit-logs:help.sealArchive.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.sealArchive') })} />
               </span>
               <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
                 <AlertTriangle className="size-3.5" />
                 {t('integrity.declareGap')}
               </Button>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={AUDIT_CONTEXT_HELP.declareGap.title} content={AUDIT_CONTEXT_HELP.declareGap.content} ariaLabel="Help: Declare Gap" />
+                <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
               </span>
             </div>
 
@@ -694,7 +693,7 @@ function IntegrityPanel() {
             >
               <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.checkpointTimeline')}</h3>
               <span onClick={(e) => e.stopPropagation()}>
-                <ContextHelp title={AUDIT_CONTEXT_HELP.checkpointTimeline.title} content={AUDIT_CONTEXT_HELP.checkpointTimeline.content} ariaLabel="Help: Checkpoint timeline" />
+                <ContextHelp title={t('integrity.checkpointTimeline')} content={<Trans i18nKey="audit-logs:help.checkpointTimeline.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.checkpointTimeline') })} />
               </span>
               {timelineExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>

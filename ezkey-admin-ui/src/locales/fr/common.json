@@ -33,6 +33,9 @@
     "daysAgo_one": "Il y a 1 j",
     "daysAgo_other": "Il y a {{count}} j"
   },
+  "help": {
+    "ariaLabel": "Aide : {{title}}"
+  },
   "dateRange": {
     "full": "Toute la période",
     "today": "Aujourd'hui",

@@ -33,6 +33,9 @@
     "daysAgo_one": "1 d ago",
     "daysAgo_other": "{{count}}d ago"
   },
+  "help": {
+    "ariaLabel": "Help: {{title}}"
+  },
   "dateRange": {
     "full": "Full range",
     "today": "Today",

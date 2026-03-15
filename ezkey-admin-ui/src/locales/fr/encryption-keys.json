@@ -24,7 +24,10 @@
     "headerTooltipRecords": "Nombre d'enregistrements chiffrés avec cette clé.",
     "headerTooltipPrimarySince": "Date de promotion en clé primaire.",
     "reencryptButtonTooltip": "Migrer les enregistrements chiffrés avec cette clé vers la clé primaire actuelle.",
-    "reencryptButton": "Re-chiffrer"
+    "reencryptButton": "Re-chiffrer",
+    "help": {
+      "sectionContent": "Clés AES-256 protégeant les données sensibles au repos. La clé <strong>PRIMARY</strong> chiffre les nouvelles données. Les anciennes clés restent <strong>ENABLED</strong> jusqu'à ce que tous leurs enregistrements soient re-chiffrés."
+    }
   },
   "keyStatus": {
     "labelPrimary": "Primaire",

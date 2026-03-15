@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 // ── Tooltip text (short, one sentence) ──────────────────────────────────────
 
 export const ENROLLMENT_STATUS_HELP = {
@@ -51,17 +49,6 @@ export const BATCH_STATUS_HELP = {
   FAILED: 'Re-encryption failed; use Resume to retry.',
 } as const;
 
-export const ENCRYPTION_KEYS_SECTION_HELP = {
-  title: 'Encryption keys',
-  content: (
-    <>
-      AES-256 encryption keys protecting sensitive data at rest. The <strong>PRIMARY</strong> key
-      encrypts new data. Old keys remain <strong>ENABLED</strong> until all their records are
-      re-encrypted.
-    </>
-  ),
-} as const;
-
 export const HMAC_COLUMN_HELP =
   'Hash-based message authentication code; ensures entry tamper-evidence.';
 
@@ -81,50 +68,3 @@ export const ENROLLMENT_DETAIL_HELP = {
   PROOF_TOKEN: 'Cryptographic token used by the mobile device to bind to this enrollment.',
   BINDING_CHALLENGE_CODE: 'One-time code the device must enter to complete enrollment.',
 } as const;
-
-// ── ContextHelp popover content (Audit Logs — multi-sentence, may include JSX) ─
-
-export interface ContextHelpEntry {
-  title: string;
-  content: ReactNode;
-}
-
-export const AUDIT_CONTEXT_HELP: Record<string, ContextHelpEntry> = {
-  integrityLifecycle: {
-    title: 'Integrity & Lifecycle',
-    content: (
-      <>
-        Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check
-        chain and entry integrity. Use <strong>Seal Archive</strong> to mark a period for archival; use{' '}
-        <strong>Declare Gap</strong> when the system was offline so the chain stays valid.
-      </>
-    ),
-  },
-  sealArchive: {
-    title: 'Seal Archive',
-    content: (
-      <>
-        Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by
-        timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically.
-      </>
-    ),
-  },
-  declareGap: {
-    title: 'Declare Gap',
-    content: (
-      <>
-        When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next
-        regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor.
-      </>
-    ),
-  },
-  checkpointTimeline: {
-    title: 'Checkpoint timeline',
-    content: (
-      <>
-        Lists chain checkpoints in time order. Gaps (undeclared holes between checkpoints) are highlighted. Use row
-        actions to fill SEAL range or Declare Gap anchor in the dialogs.
-      </>
-    ),
-  },
-};
