@@ -533,15 +533,15 @@ public class BootstrapCredentialsExtractor {
             ? enrollmentProofToken.substring(enrollmentProofToken.length() - 30)
             : enrollmentProofToken);
 
-    // Validate token format: should have 2 dots (3 parts: random.timestamp.salt)
+    // Validate token format: should have 1 dot (2 parts: randomPart.saltPart)
     String[] parts = enrollmentProofToken.split("\\.");
-    if (parts.length != 3) {
+    if (parts.length != 2) {
       log.error(
-          "Invalid proof token format: expected 3 parts separated by dots, got {} parts",
+          "Invalid proof token format: expected 2 parts separated by dots, got {} parts",
           parts.length);
       log.error("Token parts: {}", java.util.Arrays.toString(parts));
       throw new IllegalStateException(
-          "Invalid proof token format: expected format 'randomPart.timestamp.saltPart', got: "
+          "Invalid proof token format: expected format 'randomPart.saltPart', got: "
               + enrollmentProofToken.substring(0, Math.min(100, enrollmentProofToken.length())));
     }
 

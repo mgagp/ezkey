@@ -142,8 +142,8 @@ Ezkey implements mutual cryptographic authentication where both the backend and 
 
 #### **Enrollment Proof Token**
 - **Format**: Base64 URL-safe without padding
-- **Structure**: `randomBytes.timestamp.salt`
-- **Size**: 32 bytes random + timestamp + 16 bytes salt
+- **Structure**: `randomBytes.salt` (two parts separated by '.')
+- **Size**: 32 bytes random + 16 bytes salt (384 bits total entropy)
 
 #### **Device Proof Token**
 - **Format**: Base64 URL-safe

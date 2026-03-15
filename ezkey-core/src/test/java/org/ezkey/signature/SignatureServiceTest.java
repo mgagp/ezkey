@@ -83,13 +83,9 @@ class SignatureServiceTest {
     assertTrue(
         proofToken != null && !proofToken.isEmpty(), "Proof token should not be null or empty");
     String[] parts = proofToken.split("\\.");
-    assertTrue(parts.length == 3, "Proof token should have three parts separated by '.'");
-    // Check that the timestamp part is a valid long
-    try {
-      Long.parseLong(parts[1]);
-    } catch (NumberFormatException e) {
-      throw new AssertionError("Timestamp part of proof token should be a valid long");
-    }
+    assertTrue(
+        parts.length == 2,
+        "Proof token should have two parts separated by '.' (randomPart.saltPart)");
   }
 
   @Test

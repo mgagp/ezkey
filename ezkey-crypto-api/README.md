@@ -23,7 +23,7 @@ Generates a cryptographically secure proof token for use in authentication flows
 **Response:**
 ```json
 {
-  "proofToken": "_kzdCf7M75wTfw1rvaPG1YdxlrQSq60LnP0o-S19zC4.1755647562970.GRWDB__P5BQ1TkTDpv_0tQ"
+  "proofToken": "_kzdCf7M75wTfw1rvaPG1YdxlrQSq60LnP0o-S19zC4.GRWDB__P5BQ1TkTDpv_0tQ"
 }
 ```
 

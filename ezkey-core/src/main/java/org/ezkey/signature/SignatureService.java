@@ -377,25 +377,24 @@ public class SignatureService {
    *
    * <ul>
    *   <li>256 bits (32 bytes) of cryptographically secure random data
-   *   <li>A timestamp (milliseconds since epoch)
-   *   <li>An additional 128 bits (16 bytes) of random salt
+   *   <li>128 bits (16 bytes) of random salt
    * </ul>
    *
    * The result is encoded as a Base64 URL-safe string (without padding), concatenating the random
-   * bytes, timestamp, and salt, separated by a period ('.').
+   * bytes and salt, separated by a period ('.'). Uniqueness and anti-replay are enforced by the
+   * stored hash and one-time use semantics; no timestamp is included.
    *
-   * @return a Base64 URL-safe encoded proof token string
+   * @return a Base64 URL-safe encoded proof token string (format: randomPart.saltPart)
    */
   public String generateProofToken() {
     try {
       byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];
       secureRandom.nextBytes(randomBytes);
-      long timestamp = System.currentTimeMillis();
       byte[] salt = new byte[PROOF_TOKEN_SALT_BYTES];
       secureRandom.nextBytes(salt);
       String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
       String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
-      return randomPart + "." + timestamp + "." + saltPart;
+      return randomPart + "." + saltPart;
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate proof token", e);
     }
