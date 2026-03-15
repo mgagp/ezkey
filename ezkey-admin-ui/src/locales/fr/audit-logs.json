@@ -10,7 +10,7 @@
       "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez la lacune pour que le prochain checkpoint régulier puisse se lier correctement. Indiquez le dernier checkpoint avant l'arrêt comme ancre."
     },
     "checkpointTimeline": {
-      "content": "Affiche les checkpoints de chaîne dans l'ordre chronologique. Les lacunes (trous non déclarés entre checkpoints) sont mis en évidence. Utilisez les actions de ligne pour renseigner la plage SEAL ou l'ancre Déclarer une lacune dans les dialogues."
+      "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez les actions de ligne pour renseigner la plage SEAL ou l'ancre Déclarer une lacune dans les dialogues."
     }
   },
   "list": {
@@ -216,6 +216,7 @@
     "focus": "Focus",
     "clearFocus": "Effacer le focus",
     "checkpointTimeline": "Chronologie des checkpoints",
+    "timelineHint": "Triez par Début de fenêtre pour afficher les lignes de lacune entre checkpoints ; les autres tris n'affichent que les checkpoints. Utilisez le rapport de Vérification pour la liste complète des lacunes non déclarées.",
     "allTypes": "Tous les types",
     "typeRegular": "Régulier",
     "typeArchiveSeal": "Scellement archive",

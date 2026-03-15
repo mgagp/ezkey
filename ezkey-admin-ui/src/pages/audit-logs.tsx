@@ -419,16 +419,16 @@ function IntegrityPanel() {
     enabled: timelineExpanded,
   });
 
-  /** Rows to display: checkpoints plus gap rows only between consecutive checkpoints on the same page (windowEnd < next.windowStart) */
+  /** Rows to display: checkpoints in API order plus gap rows when sort is chronological. Gap detection is only valid when consecutive rows are in time order (sort by windowStart); otherwise do not insert gap rows to avoid misleading the operator. */
   const checkpointRowsWithGaps = useMemo(() => {
-    const sorted = [...checkpointData].sort(
-      (a, b) => new Date(a.windowStart ?? 0).getTime() - new Date(b.windowStart ?? 0).getTime(),
-    );
+    const sortField = checkpointPagination.sort.split(',')[0] ?? '';
+    const isChronologicalSort = sortField === 'windowStart';
     const out: Array<{ kind: 'checkpoint'; row: AuditChainCheckpointResponseDto } | { kind: 'gap'; gapEnd: string; gapStart: string; durationMin: number }> = [];
-    for (let i = 0; i < sorted.length; i++) {
-      out.push({ kind: 'checkpoint', row: sorted[i] });
-      const curr = sorted[i];
-      const next = sorted[i + 1];
+    for (let i = 0; i < checkpointData.length; i++) {
+      out.push({ kind: 'checkpoint', row: checkpointData[i] });
+      if (!isChronologicalSort) continue;
+      const curr = checkpointData[i];
+      const next = checkpointData[i + 1];
       if (next && curr.windowEnd && next.windowStart) {
         const end = new Date(curr.windowEnd).getTime();
         const start = new Date(next.windowStart).getTime();
@@ -443,7 +443,7 @@ function IntegrityPanel() {
       }
     }
     return out;
-  }, [checkpointData]);
+  }, [checkpointData, checkpointPagination.sort]);
 
   /** Opens Seal Archive dialog with current selection (from timeline) or empty form. */
   function openSealDialogWithSelection() {
@@ -840,6 +840,10 @@ function IntegrityPanel() {
                     )}
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Info className="size-3.5 text-fg-muted shrink-0" aria-hidden />
+                  <p className="text-xs text-fg-muted italic">{t('integrity.timelineHint')}</p>
+                </div>
                 <Pagination
                   page={checkpointPagination.page}
                   totalPages={checkpointPagination.totalPages}

@@ -10,7 +10,7 @@
       "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor."
     },
     "checkpointTimeline": {
-      "content": "Lists chain checkpoints in time order. Gaps (undeclared holes between checkpoints) are highlighted. Use row actions to fill SEAL range or Declare Gap anchor in the dialogs."
+      "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use row actions to fill SEAL range or Declare Gap anchor in the dialogs."
     }
   },
   "list": {
@@ -216,6 +216,7 @@
     "focus": "Focus",
     "clearFocus": "Clear focus",
     "checkpointTimeline": "Checkpoint timeline",
+    "timelineHint": "Sort by Window start to see inline gap rows between checkpoints; other sorts show checkpoints only. Use the Verification report for the full list of undeclared gaps.",
     "allTypes": "All types",
     "typeRegular": "Regular",
     "typeArchiveSeal": "Archive seal",
