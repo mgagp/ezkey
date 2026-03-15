@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Shield } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
@@ -11,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
@@ -29,6 +30,11 @@ function AttemptDetailDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation('auth-attempts');
+
+  const relatedDetails = useExpandableRelatedDetails({
+    enrollmentId: attempt?.enrollmentId ?? undefined,
+  });
+
   if (!attempt) return null;
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -42,12 +48,37 @@ function AttemptDetailDialog({
 
   return (
     <Dialog open={attempt !== null} onClose={onClose} title={t('detail.title', { id: attempt.authAttemptId })} size="md">
-      <dl className="space-y-3">
-        <InfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
-        <InfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>
-        <InfoRow label={t('detail.labelEnrollment')}>
-          <span className="font-mono">#{attempt.enrollmentId}</span>
-        </InfoRow>
+      <div className="space-y-4">
+        {relatedDetails.hasAnyFk && (
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={relatedDetails.expand}
+              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+            >
+              {relatedDetails.isExpanded && relatedDetails.isLoading
+                ? t('common:buttons.loading')
+                : t('common:detail.moreDetails')}
+            </Button>
+          </div>
+        )}
+        <dl className="space-y-3">
+          <InfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
+          <InfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>
+          <InfoRow label={t('detail.labelEnrollment')}>
+            <span className="font-mono">#{attempt.enrollmentId}</span>
+          </InfoRow>
+          {relatedDetails.isExpanded && relatedDetails.enrollment && (
+            <InfoRow label={t('common:detail.relatedEnrollment')}>
+              <Link
+                to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
+              </Link>
+            </InfoRow>
+          )}
         <InfoRow label={t('detail.labelChallenge')}>
           {attempt.authAttemptChallenge != null
             ? <span className="font-mono font-bold">{String(attempt.authAttemptChallenge).padStart(2, '0')}</span>
@@ -60,9 +91,10 @@ function AttemptDetailDialog({
             <span className="font-mono text-xs break-all text-success">{attempt.authAttemptProofToken}</span>
           </InfoRow>
         )}
-      </dl>
-      <div className="flex justify-end pt-4">
-        <Button onClick={onClose}>{t('detail.close')}</Button>
+        </dl>
+        <div className="flex justify-end pt-4">
+          <Button onClick={onClose}>{t('detail.close')}</Button>
+        </div>
       </div>
     </Dialog>
   );

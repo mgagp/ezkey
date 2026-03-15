@@ -17,7 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
-import { useIntegrations } from '@/hooks/use-integrations';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
@@ -208,6 +209,10 @@ export default function ApiKeyDetailPage() {
   const isExpired = apiKey?.expiresAt ? new Date(apiKey.expiresAt) < new Date() : false;
   const integrationName = apiKey?.integrationId ? lookup.get(apiKey.integrationId) : undefined;
 
+  const relatedDetails = useExpandableRelatedDetails({
+    integrationId: apiKey?.integrationId ?? undefined,
+  });
+
   return (
     <AppShell
       title={isLoading ? t('detail.fallbackTitle') : t('detail.title', { id: apiKey?.apiKeyId ?? '?' })}
@@ -224,7 +229,21 @@ export default function ApiKeyDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* ── Details card ──────────────────────────────── */}
             <Card className="lg:col-span-2">
-              <CardHeader><CardTitle>{t('detail.cardDetails')}</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle>{t('detail.cardDetails')}</CardTitle>
+                {relatedDetails.hasAnyFk && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={relatedDetails.expand}
+                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+                  >
+                    {relatedDetails.isExpanded && relatedDetails.isLoading
+                      ? t('common:buttons.loading')
+                      : t('common:detail.moreDetails')}
+                  </Button>
+                )}
+              </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.labelId')}>
@@ -237,7 +256,9 @@ export default function ApiKeyDetailPage() {
                         to={`/integrations/${apiKey.integrationId}`}
                         className="font-medium text-accent hover:underline"
                       >
-                        {integrationName ?? `#${apiKey.integrationId}`}
+                        {relatedDetails.isExpanded && relatedDetails.integration
+                          ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
+                          : integrationName ?? `#${apiKey.integrationId}`}
                       </Link>
                     ) : (
                       <span className="text-fg-muted">—</span>

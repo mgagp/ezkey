@@ -1,5 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -15,6 +16,8 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { getIntegrationName } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
@@ -49,6 +52,13 @@ import type {
 
 function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | null; onClose: () => void }) {
   const { t } = useTranslation('audit-logs');
+
+  const relatedDetails = useExpandableRelatedDetails({
+    adminId: log?.adminId ?? undefined,
+    integrationId: log?.integrationId ?? undefined,
+    enrollmentId: log?.enrollmentId ?? undefined,
+  });
+
   if (!log) return null;
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -62,20 +72,62 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
 
   return (
     <Dialog open={log !== null} onClose={onClose} title={t('detail.title', { id: log.auditLogId })} size="lg">
-      <dl className="space-y-2.5">
-        <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
-        <InfoRow label={t('detail.labelEventType')}>
-          <span className="text-sm">{getAuditEventTypeLabel(log.eventType ?? undefined, t)}</span>
-          {log.eventType && (
-            <span className="ml-2 font-mono text-xs text-fg-muted">({log.eventType})</span>
+      <div className="space-y-4">
+        {relatedDetails.hasAnyFk && (
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={relatedDetails.expand}
+              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+            >
+              {relatedDetails.isExpanded && relatedDetails.isLoading
+                ? t('common:buttons.loading')
+                : t('common:detail.moreDetails')}
+            </Button>
+          </div>
+        )}
+        <dl className="space-y-2.5">
+          <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
+          <InfoRow label={t('detail.labelEventType')}>
+            <span className="text-sm">{getAuditEventTypeLabel(log.eventType ?? undefined, t)}</span>
+            {log.eventType && (
+              <span className="ml-2 font-mono text-xs text-fg-muted">({log.eventType})</span>
+            )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
+          {log.apiName && <InfoRow label={t('detail.labelApi')}><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
+          {log.adminId && <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">#{log.adminId}</span></InfoRow>}
+          {relatedDetails.isExpanded && relatedDetails.admin && (
+            <InfoRow label={t('common:detail.relatedAdmin')}>
+              <span className="font-medium">
+                {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID {relatedDetails.admin.adminId})
+              </span>
+            </InfoRow>
           )}
-        </InfoRow>
-        <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
-        {log.apiName && <InfoRow label={t('detail.labelApi')}><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
-        {log.adminId && <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">#{log.adminId}</span></InfoRow>}
-        {log.integrationId && <InfoRow label={t('detail.labelIntegration')}><span className="font-mono">#{log.integrationId}</span></InfoRow>}
-        {log.enrollmentId && <InfoRow label={t('detail.labelEnrollment')}><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
-        {log.authAttemptId && <InfoRow label={t('detail.labelAuthAttempt')}><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
+          {log.integrationId && <InfoRow label={t('detail.labelIntegration')}><span className="font-mono">#{log.integrationId}</span></InfoRow>}
+          {relatedDetails.isExpanded && relatedDetails.integration && (
+            <InfoRow label={t('common:detail.relatedIntegration')}>
+              <Link
+                to={`/integrations/${relatedDetails.integration.id}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {getIntegrationName(relatedDetails.integration)} (ID {relatedDetails.integration.id})
+              </Link>
+            </InfoRow>
+          )}
+          {log.enrollmentId && <InfoRow label={t('detail.labelEnrollment')}><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
+          {relatedDetails.isExpanded && relatedDetails.enrollment && (
+            <InfoRow label={t('common:detail.relatedEnrollment')}>
+              <Link
+                to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
+              </Link>
+            </InfoRow>
+          )}
+          {log.authAttemptId && <InfoRow label={t('detail.labelAuthAttempt')}><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
         {log.ipAddress && <InfoRow label={t('detail.labelIpAddress')}><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
         {log.userAgent && <InfoRow label={t('detail.labelUserAgent')}><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
         {log.eventDetails && (
@@ -99,12 +151,13 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
             <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
           )}
         </InfoRow>
-        {log.instanceId && (
-          <InfoRow label={t('detail.labelInstance')}><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
-        )}
-      </dl>
-      <div className="flex justify-end pt-4">
-        <Button onClick={onClose}>{t('detail.close')}</Button>
+          {log.instanceId && (
+            <InfoRow label={t('detail.labelInstance')}><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
+          )}
+        </dl>
+        <div className="flex justify-end pt-4">
+          <Button onClick={onClose}>{t('detail.close')}</Button>
+        </div>
       </div>
     </Dialog>
   );

@@ -20,6 +20,7 @@ import { Select } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -289,6 +290,10 @@ function AdminDetailDialog({
 
   const adm = detail ?? admin;
 
+  const relatedDetails = useExpandableRelatedDetails({
+    tenantId: adm?.tenantId ?? undefined,
+  });
+
   const activateMutation = useActivateAdmin({
     mutation: {
       onSuccess: () => {
@@ -316,6 +321,20 @@ function AdminDetailDialog({
   return (
     <Dialog open={admin !== null} onClose={onClose} title={t('detail.title', { username: adm.username })} size="lg">
       <div className="space-y-5">
+        {relatedDetails.hasAnyFk && (
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={relatedDetails.expand}
+              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+            >
+              {relatedDetails.isExpanded && relatedDetails.isLoading
+                ? t('common:buttons.loading')
+                : t('common:detail.moreDetails')}
+            </Button>
+          </div>
+        )}
         {/* Info section */}
         <dl className="space-y-2.5">
           <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">{adm.adminId}</span></InfoRow>
@@ -325,6 +344,16 @@ function AdminDetailDialog({
           <InfoRow label={t('detail.labelType')}><AdminTypeBadge type={adm.adminType} /></InfoRow>
           {adm.tenantId != null && (
             <InfoRow label={t('detail.labelTenantId')}><span className="font-mono">{adm.tenantId}</span></InfoRow>
+          )}
+          {relatedDetails.isExpanded && relatedDetails.tenant && (
+            <InfoRow label={t('common:detail.relatedTenant')}>
+              <Link
+                to={`/tenants/${relatedDetails.tenant.tenantId}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
+              </Link>
+            </InfoRow>
           )}
           <InfoRow label={t('detail.labelStatus')}><Badge variant={adm.active ? 'success' : 'muted'}>{adm.active ? t('detail.statusActive') : t('detail.statusInactive')}</Badge></InfoRow>
           <InfoRow label={t('detail.labelCreated')}>{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>

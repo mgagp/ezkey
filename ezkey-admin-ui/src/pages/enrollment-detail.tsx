@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
-import { useIntegrations } from '@/hooks/use-integrations';
+import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
@@ -342,6 +343,10 @@ export default function EnrollmentDetailPage() {
     { query: { enabled: !isNaN(enrollmentId) } },
   );
 
+  const relatedDetails = useExpandableRelatedDetails({
+    integrationId: enrollment?.integrationId ?? undefined,
+  });
+
   const deleteMutation = useDelete({
     mutation: {
       onSuccess: () => {
@@ -466,7 +471,21 @@ export default function EnrollmentDetailPage() {
 
             {/* Info Card */}
             <Card>
-              <CardHeader><CardTitle>{t('detail.enrollmentInfo')}</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle>{t('detail.enrollmentInfo')}</CardTitle>
+                {relatedDetails.hasAnyFk && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={relatedDetails.expand}
+                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+                  >
+                    {relatedDetails.isExpanded && relatedDetails.isLoading
+                      ? t('common:buttons.loading')
+                      : t('common:detail.moreDetails')}
+                  </Button>
+                )}
+              </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.infoId')}><span className="font-mono">{enrollment.enrollmentId}</span></InfoRow>
@@ -478,22 +497,24 @@ export default function EnrollmentDetailPage() {
                     </Badge>
                   </InfoRow>
                   <InfoRow label={t('detail.infoIntegration')}>
-                    {(enrollment as { isSystemIntegration?: boolean }).isSystemIntegration ? (
-                      <span className="font-medium">
-                        {(enrollment as { integrationName?: string }).integrationName ??
-                          lookup.get(enrollment.integrationId!) ??
-                          `#${enrollment.integrationId ?? '?'}`}
-                      </span>
-                    ) : (
-                      <button
-                        className="font-mono text-sm text-accent hover:underline"
-                        onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
-                      >
-                        {(enrollment as { integrationName?: string }).integrationName ??
-                          lookup.get(enrollment.integrationId!) ??
-                          `#${enrollment.integrationId ?? '?'}`}
-                      </button>
-                    )}
+                    {(() => {
+                      const displayName =
+                        relatedDetails.isExpanded && relatedDetails.integration
+                          ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
+                          : (enrollment as { integrationName?: string }).integrationName ??
+                              lookup.get(enrollment.integrationId!) ??
+                              `#${enrollment.integrationId ?? '?'}`;
+                      return (enrollment as { isSystemIntegration?: boolean }).isSystemIntegration ? (
+                        <span className="font-medium">{displayName}</span>
+                      ) : (
+                        <button
+                          className="font-mono text-sm text-accent hover:underline"
+                          onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
+                        >
+                          {displayName}
+                        </button>
+                      );
+                    })()}
                   </InfoRow>
                   <InfoRow label={t('detail.infoChallenge')}>
                     <Badge variant={enrollment.authAttemptChallengeRequired ? 'warning' : 'muted'}>
