@@ -24,7 +24,7 @@ import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
-import { cn, formatDate, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
+import { cn, formatDate, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
 import {
@@ -355,6 +355,8 @@ function IntegrityPanel() {
   // ── Check results ──
   const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
   const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
+  const [chainReportRange, setChainReportRange] = useState<{ from: string; to: string } | null>(null);
+  const [integrityReportRange, setIntegrityReportRange] = useState<{ from: string; to: string } | null>(null);
   const [chainLoading, setChainLoading] = useState(false);
   const [integrityLoading, setIntegrityLoading] = useState(false);
 
@@ -481,6 +483,7 @@ function IntegrityPanel() {
   async function runChainCheck() {
     setChainLoading(true);
     setChainReport(null);
+    setChainReportRange(null);
     setFocusedGap(null);
     try {
       const params =
@@ -492,6 +495,9 @@ function IntegrityPanel() {
           : { from: undefined as string | undefined, to: undefined as string | undefined };
       const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
       setChainReport(report);
+      if (checkRange.from && checkRange.to) {
+        setChainReportRange({ from: checkRange.from, to: checkRange.to });
+      }
     } catch (e) {
       toast(getApiErrorMessage(e, t('integrity.errorChainCheck')), 'error');
     } finally {
@@ -502,6 +508,7 @@ function IntegrityPanel() {
   async function runIntegrityCheck() {
     setIntegrityLoading(true);
     setIntegrityReport(null);
+    setIntegrityReportRange(null);
     try {
       const params =
         checkRange.from && checkRange.to
@@ -512,6 +519,9 @@ function IntegrityPanel() {
           : { from: undefined as string | undefined, to: undefined as string | undefined };
       const report = await checkIntegrity(params) as unknown as IntegrityReport;
       setIntegrityReport(report);
+      if (checkRange.from && checkRange.to) {
+        setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
+      }
     } catch (e) {
       toast(getApiErrorMessage(e, t('integrity.errorIntegrityCheck')), 'error');
     } finally {
@@ -632,6 +642,14 @@ function IntegrityPanel() {
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.chainVerification')}</span>
                   <ReportBadge intact={chainReport.intact} status={(chainReport as { status?: string }).status} />
                 </div>
+                {chainReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.periodFromTo', {
+                      from: formatDateOnly(chainReportRange.from),
+                      to: formatDateOnly(chainReportRange.to),
+                    })}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <Stat label={t('integrity.statTotal')} value={chainReport.totalCheckpoints} />
                   <Stat label={t('integrity.statValid')} value={chainReport.validCheckpoints} ok />
@@ -660,6 +678,14 @@ function IntegrityPanel() {
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
                   <ReportBadge intact={integrityReport.intact} />
                 </div>
+                {integrityReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.periodFromTo', {
+                      from: formatDateOnly(integrityReportRange.from),
+                      to: formatDateOnly(integrityReportRange.to),
+                    })}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <Stat label={t('integrity.statTotal')} value={integrityReport.totalEntries} />
                   <Stat label={t('integrity.statValid')} value={integrityReport.validEntries} ok />
@@ -702,6 +728,14 @@ function IntegrityPanel() {
                   <Badge variant="warning">{(chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0}</Badge>
                   {gapsListExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                 </button>
+                {chainReportRange && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.fromVerificationPeriod', {
+                      from: formatDateOnly(chainReportRange.from),
+                      to: formatDateOnly(chainReportRange.to),
+                    })}
+                  </p>
+                )}
                 {gapsListExpanded && (
                   <ul className="space-y-2 pl-0 list-none">
                     {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> }).undeclaredGaps ?? []).map((g, idx) => {
@@ -767,6 +801,14 @@ function IntegrityPanel() {
                     {t('list.refresh')}
                   </Button>
                 </div>
+                {checkpointRange.from && checkpointRange.to && (
+                  <p className="text-xs text-fg-muted">
+                    {t('integrity.showingCheckpointsFor', {
+                      from: formatDateOnly(checkpointRange.from),
+                      to: formatDateOnly(checkpointRange.to),
+                    })}
+                  </p>
+                )}
                 {(selectedSealFromId != null || selectedSealToId != null || selectedGapAnchorId != null) && (
                   <div className="flex flex-wrap items-center gap-3 p-2 border-2 border-accent/30 bg-surface">
                     <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">{t('integrity.selection')}</span>

@@ -33,6 +33,20 @@ export function formatDate(dateStr: string): string {
 }
 
 /**
+ * Format a date string (YYYY-MM-DD or ISO) to a short date-only string (e.g. "1 Mar 2025").
+ * Locale-aware; use for period labels so result blocks show which range the data refers to.
+ */
+export function formatDateOnly(dateStr: string): string {
+  if (!dateStr) return '';
+  const { locale } = getDateLocaleAndOptions();
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`));
+}
+
+/**
  * Format an ISO date string in local time with an explicit timezone label (e.g. "11 Mar 2025, 09:00 (EST)").
  * Use in audit/chain contexts so operators know whether they are looking at local time or UTC when
  * correlating with DB or logs (DB stores UTC). Locale-aware; 24h for French.
