@@ -25,7 +25,6 @@ class IntegrationsScreen(Screen):
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
-      Binding("c", "create", "Create"),
       Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
@@ -262,18 +261,6 @@ class IntegrationsScreen(Screen):
     """Switch to home screen."""
     log.debug("Switching to home screen")
     self.app.pop_screen()
-
-  def action_create(self) -> None:
-    """Create new integration."""
-    log.debug("Creating new integration")
-    from .integration_create import CreateIntegrationModal
-
-    def on_create_result(created: bool) -> None:
-      if created:
-        log.info("Integration created, refreshing list")
-        self._load_integrations()
-
-    self.app.push_screen(CreateIntegrationModal(), on_create_result)
 
   def action_filter(self) -> None:
     """Open filter modal."""

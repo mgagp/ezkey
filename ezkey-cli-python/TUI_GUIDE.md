@@ -1,6 +1,6 @@
-# Ezkey TUI Admin Console - Complete Guide
+# Ezkey TUI - Development Guide
 
-**Text User Interface for Ezkey Administration**
+**The TUI is a read-only investigation and audit fallback.** For scope and positioning, see [TUI_SCOPE.md](TUI_SCOPE.md). This guide covers architecture and development for contributors.
 
 ## Table of Contents
 
@@ -21,18 +21,18 @@
 
 ## Overview
 
-The Ezkey Admin TUI is a **Text User Interface (TUI) admin console** built with the Textual framework. It provides a pragmatic, keyboard-first interface for managing Ezkey without requiring a web UI.
+The Ezkey TUI is a **read-only** Text User Interface built with the Textual framework. It is an investigation and audit fallback when the web Admin UI is unavailable (e.g. SSH). **Primary admin interface:** Admin UI (web). See [TUI_SCOPE.md](TUI_SCOPE.md).
 
 **Entry command**: `ezkey --tui`
 
-### Key Features
+### Key Features (read-only)
 
 - ✅ Passwordless authentication with encrypted session storage
 - ✅ Interactive setup wizard (first-run)
 - ✅ Dashboard with real-time stats
-- ✅ Integration management (list, create, filter, delete)
+- ✅ Audit logs (list, filter, follow)
+- ✅ Auth attempts, Enrollments, Integrations, Tenants (list, detail, filter only — no create/update/delete)
 - ✅ Keyboard-first navigation
-- ✅ DevOps-friendly patterns
 
 ---
 

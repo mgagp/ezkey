@@ -23,7 +23,6 @@ class IntegrationDetailScreen(Screen):
   BINDINGS = [
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
-      Binding("d", "delete", "Delete"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -124,45 +123,6 @@ class IntegrationDetailScreen(Screen):
     log.debug("Refreshing integration detail")
     self._load_integration()
 
-  def action_delete(self) -> None:
-    """Delete integration with confirmation."""
-    log.debug(f"Deleting integration {self.integration_id}")
-    from .confirmation_modal import ConfirmationModal
-
-    name = (self.integration_data.get("name") or self.integration_data.get("code") or "Unknown") if self.integration_data else "Unknown"
-
-    def on_confirm(confirmed: bool) -> None:
-      if confirmed:
-        self._perform_delete()
-
-    self.app.push_screen(
-        ConfirmationModal(
-            title="Delete Integration",
-            message=f"Are you sure you want to delete '{name}'?\nThis action cannot be undone."
-        ),
-        on_confirm
-    )
-
   def action_quit(self) -> None:
     """Quit the application."""
     self.app.exit()
-
-  def _perform_delete(self) -> None:
-    """Perform the actual DELETE API call."""
-    api_client = self.app.api_client
-    if not api_client:
-      self._show_error("No API client available")
-      return
-
-    url = f"/api/v1/integrations/{self.integration_id}"
-    success = api_client._delete(url)
-
-    if success:
-      log.info(f"Integration {self.integration_id} deleted successfully")
-      # Show success message briefly then return to list
-      detail_widget = self.query_one("#detail_content", Static)
-      detail_widget.update("✓ Integration deleted. Returning to list...")
-      # Pop back to integrations screen (which will refresh automatically)
-      self.app.set_timer(1.0, lambda: self.app.pop_screen())
-    else:
-      self._show_error(f"Failed to delete integration {self.integration_id}")

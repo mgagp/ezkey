@@ -23,7 +23,6 @@ class AuthAttemptDetailScreen(Screen):
   BINDINGS = [
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
-      Binding("c", "cancel", "Cancel"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -121,42 +120,6 @@ class AuthAttemptDetailScreen(Screen):
     """Refresh auth attempt data."""
     log.debug("Refreshing auth attempt detail")
     self._load_auth_attempt()
-
-  def action_cancel(self) -> None:
-    """Cancel auth attempt with confirmation."""
-    log.debug(f"Cancelling auth attempt {self.auth_attempt_id}")
-    from .confirmation_modal import ConfirmationModal
-
-    def on_confirm(confirmed: bool) -> None:
-      if confirmed:
-        self._perform_cancel()
-
-    self.app.push_screen(
-        ConfirmationModal(
-            title="Cancel Auth Attempt",
-            message="Are you sure you want to cancel this auth attempt?\n"
-                    "Only PENDING or READ attempts can be cancelled."
-        ),
-        on_confirm
-    )
-
-  def _perform_cancel(self) -> None:
-    """Perform cancel API call."""
-    api_client = self.app.api_client
-    if not api_client:
-      self._show_error("No API client available")
-      return
-
-    response = api_client.cancel_auth_attempt(self.auth_attempt_id)
-    if response:
-      log.info(f"Auth attempt {self.auth_attempt_id} cancelled successfully")
-      detail_widget = self.query_one("#detail_content", Static)
-      detail_widget.update("✓ Auth attempt cancelled. Returning to list...")
-      self.app.set_timer(1.0, lambda: self.app.pop_screen())
-    else:
-      if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
-        self.app.handle_auth_error()
-      self._show_error(f"Failed to cancel auth attempt {self.auth_attempt_id}")
 
   def action_quit(self) -> None:
     """Quit the application."""

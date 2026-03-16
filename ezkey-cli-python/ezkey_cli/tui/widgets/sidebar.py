@@ -23,14 +23,11 @@ class SidebarWidget(Static):
     """Render the sidebar."""
     items = [
         "Dashboard",
-        "Integrations",
-        "Enrollments",
-        "Auth Attempts",
-        "Admins",
-        "Encryption Keys",
-        "API Keys",
         "Audit Logs",
-        "Settings",
+        "Auth Attempts",
+        "Enrollments",
+        "Integrations",
+        "Tenants",
     ]
 
     sidebar = Text()

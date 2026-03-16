@@ -4,15 +4,17 @@
 
 ## Overview
 
-The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. It follows AWS CLI patterns with hierarchical commands, supports both traditional CLI mode and an interactive TUI (Text User Interface) admin console.
+The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. It follows AWS CLI patterns with hierarchical commands, supports both traditional CLI mode and an interactive TUI (Text User Interface) for **read-only investigation and audit**.
 
 **Key Features:**
 - Passwordless admin authentication
 - API key management for machine-to-machine integrations
-- Interactive TUI admin console (`ezkey --tui`)
+- **TUI** (`ezkey --tui`) — read-only investigation/audit fallback (e.g. over SSH when the web Admin UI is unavailable)
 - Configuration management
 - JSON file input support
 - Comprehensive error handling
+
+**Primary admin interface:** Use the **Admin UI** (web) for day-to-day operations. The TUI is a narrow, read-only tool for audit logs and entity lookup. See [TUI_SCOPE.md](TUI_SCOPE.md).
 
 ## Installation
 
@@ -45,15 +47,14 @@ ezkey admin auth login --username admin
 ezkey admin integration list
 ```
 
-### TUI Mode (Interactive Admin Console)
+### TUI Mode (Read-only investigation and audit)
 
 ```bash
-# Launch interactive admin console
+# Launch read-only TUI (e.g. over SSH when web UI is unavailable)
 ezkey --tui
 ```
 
-**First run:** Interactive setup wizard (Admin URL, username, organization, passwordless auth)
-**Subsequent runs:** Session loads automatically, token refreshed silently
+**First run:** Interactive setup wizard (Admin URL, username, organization, passwordless auth). **Subsequent runs:** Session loads automatically. The TUI exposes **Audit logs**, **Auth attempts**, **Enrollments**, **Integrations**, and **Tenants** in read-only form (list, detail, filter). No create/update/delete. See [TUI_SCOPE.md](TUI_SCOPE.md).
 
 ## Command Structure
 
@@ -266,7 +267,8 @@ See [TUI_GUIDE.md - API Client & Error Handling](TUI_GUIDE.md#api-client--error-
 ## Documentation
 
 - **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete CLI usage guide with workflows and examples
-- **[TUI_GUIDE.md](TUI_GUIDE.md)** - TUI admin console guide (architecture, development, patterns)
+- **[TUI_SCOPE.md](TUI_SCOPE.md)** - TUI scope and positioning (read-only investigation/audit fallback)
+- **[TUI_GUIDE.md](TUI_GUIDE.md)** - TUI architecture and development (for contributors)
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Testing strategy and implementation
 
 ## Updating the CLI

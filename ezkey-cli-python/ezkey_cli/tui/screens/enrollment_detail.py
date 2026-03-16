@@ -23,7 +23,6 @@ class EnrollmentDetailScreen(Screen):
   BINDINGS = [
       Binding("escape", "back", "Back"),
       Binding("h", "back", "Back"),
-      Binding("d", "delete", "Delete"),
       Binding("r", "refresh", "Refresh"),
       Binding("q", "quit", "Quit"),
   ]
@@ -128,45 +127,6 @@ class EnrollmentDetailScreen(Screen):
     """Refresh enrollment data."""
     log.debug("Refreshing enrollment detail")
     self._load_enrollment()
-
-  def action_delete(self) -> None:
-    """Delete enrollment with confirmation."""
-    log.debug(f"Deleting enrollment {self.enrollment_id}")
-    from .confirmation_modal import ConfirmationModal
-
-    name = ""
-    if self.enrollment_data:
-      name = self.enrollment_data.get("enrollmentName") or "Unknown"
-
-    def on_confirm(confirmed: bool) -> None:
-      if confirmed:
-        self._perform_delete()
-
-    self.app.push_screen(
-        ConfirmationModal(
-            title="Delete Enrollment",
-            message=f"Are you sure you want to delete '{name}'?\nThis action cannot be undone."
-        ),
-        on_confirm
-    )
-
-  def _perform_delete(self) -> None:
-    """Perform the actual DELETE API call."""
-    api_client = self.app.api_client
-    if not api_client:
-      self._show_error("No API client available")
-      return
-
-    url = f"/api/v1/enrollments/{self.enrollment_id}"
-    success = api_client._delete(url)
-
-    if success:
-      log.info(f"Enrollment {self.enrollment_id} deleted successfully")
-      detail_widget = self.query_one("#detail_content", Static)
-      detail_widget.update("✓ Enrollment deleted. Returning to list...")
-      self.app.set_timer(1.0, lambda: self.app.pop_screen())
-    else:
-      self._show_error(f"Failed to delete enrollment {self.enrollment_id}")
 
   def action_quit(self) -> None:
     """Quit the application."""

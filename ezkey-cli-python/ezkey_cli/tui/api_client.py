@@ -577,6 +577,36 @@ class ApiClient:
           "data": {}
       }
 
+  def get_dashboard_overview(self) -> Optional[Dict[str, Any]]:
+    """
+    Get dashboard overview from the unified Dashboard API (single request).
+
+    Same endpoint as the Admin UI: GET /api/v1/dashboard/overview.
+    Returns integrations, enrollments, auth24h, recentActivity, alerts (Global Admin only).
+
+    Returns:
+        Dashboard overview dict or None on auth error
+    """
+    return self._get("/api/v1/dashboard/overview")
+
+  def get_auth_attempts_pending_count(self) -> Optional[int]:
+    """
+    Get count of pending auth attempts for the current admin's scope.
+
+    Same as Admin UI: GET /api/v1/auth-attempts/pending-count.
+    Returns:
+        Pending count or None on auth error
+    """
+    resp = self._get("/api/v1/auth-attempts/pending-count")
+    if not resp or not isinstance(resp, dict):
+      return None
+    count = resp.get("count")
+    if isinstance(count, int):
+      return count
+    if isinstance(count, (float, str)) and str(count).isdigit():
+      return int(float(count))
+    return 0
+
   def get_dashboard_stats(self) -> Optional[Dict[str, int]]:
     """
     Get dashboard statistics (counts for all resources).

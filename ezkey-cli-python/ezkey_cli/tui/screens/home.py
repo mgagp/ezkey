@@ -190,15 +190,14 @@ class QuickActionsPanel(Static):
   """
 
   def render(self) -> str:
-    """Render quick actions."""
+    """Render quick actions (read-only investigation)."""
     return (
-        "⚡ Quick Actions\n\n"
-        "I - Integrations\n"
-        "E - Enrollments\n"
-        "T - Auth Attempts\n"
-        "C - Crypto\n"
-      "N - Tenants\n"
+        "⚡ Quick Actions (read-only)\n\n"
         "A - Audit Logs\n"
+        "T - Auth Attempts\n"
+        "E - Enrollments\n"
+        "I - Integrations\n"
+        "N - Tenants\n"
         "R - Refresh"
     )
 
@@ -234,14 +233,11 @@ class HomeScreen(Screen):
   """Home dashboard screen with status overview."""
 
   BINDINGS = [
-      Binding("i", "show_integrations", "Integrations"),
-      Binding("e", "show_enrollments", "Enrollments"),
-      Binding("a", "show_audit", "Audit"),
+      Binding("a", "show_audit", "Audit Logs"),
       Binding("t", "show_auth_attempts", "Auth Attempts"),
-      Binding("m", "show_admins", "Admins"),
-      Binding("k", "show_api_keys", "API Keys"),
+      Binding("e", "show_enrollments", "Enrollments"),
+      Binding("i", "show_integrations", "Integrations"),
       Binding("n", "show_tenants", "Tenants"),
-      Binding("c", "show_crypto", "Crypto"),
       Binding("r", "refresh", "Refresh"),
       Binding("l", "logout", "Logout"),
       Binding("q", "quit", "Quit"),
@@ -346,9 +342,8 @@ class HomeScreen(Screen):
     self._load_dashboard_data()
 
   def _load_dashboard_data(self) -> None:
-    """Load dashboard data from API."""
+    """Load dashboard data from unified Dashboard API (same as Admin UI)."""
     try:
-      # Get ApiClient from app
       api_client = self.app.api_client
 
       if not api_client:
@@ -356,17 +351,22 @@ class HomeScreen(Screen):
         self._set_status("No API client available")
         return
 
-      snapshot = api_client.get_dashboard_snapshot()
-      if snapshot is None and api_client.last_auth_error:
+      overview = api_client.get_dashboard_overview()
+      if overview is None and api_client.last_auth_error:
         log.warning("Dashboard auth error")
         if hasattr(self.app, "handle_auth_error"):
           self.app.handle_auth_error()
         return
 
-      if not snapshot:
+      if not overview:
         self._set_status("Failed to load dashboard data")
         return
 
+      pending_count = api_client.get_auth_attempts_pending_count()
+      if pending_count is None and api_client.last_auth_error:
+        pending_count = 0
+
+      snapshot = self._snapshot_from_overview(overview, pending_count or 0)
       self._set_status("")
 
       status_panel = self.query_one("#status_panel", StatusPanel)
@@ -386,11 +386,101 @@ class HomeScreen(Screen):
       info_panel.session_line = self._format_session_status()
       info_panel.scope_line = self._format_scope_status()
 
-      log.debug("Dashboard snapshot loaded")
+      log.debug("Dashboard overview loaded")
 
     except Exception as e:
       log.error(f"Failed to load dashboard data: {e}")
       self._set_status("Failed to load dashboard data")
+
+  def _snapshot_from_overview(
+      self,
+      overview: Dict[str, Any],
+      pending_count: int
+  ) -> Dict[str, Any]:
+    """Build panel snapshot from GET /api/v1/dashboard/overview + pending count."""
+    status: Dict[str, Any] = {
+        "integrations_total": 0,
+        "integrations_active": 0,
+        "integrations_inactive": 0,
+        "enrollments_total": 0,
+        "enrollments_verified": 0,
+        "enrollments_bound": 0,
+        "enrollments_created": 0,
+        "enrollments_invalid": 0,
+        "auth_total_24h": 0,
+        "auth_accepted_24h": 0,
+        "auth_failed_24h": 0,
+        "auth_pending_24h": 0,
+    }
+    actions: Dict[str, Any] = {
+        "pending_over_5m": 0,
+        "enrollments_created_over_24h": 0,
+        "api_keys_expiring_30d": 0,
+    }
+    activity: List[str] = []
+    security: Dict[str, Any] = {
+        "login_failures_24h": 0,
+        "recoveries_7d": 0,
+        "keys_revoked_7d": 0,
+    }
+
+    ints = overview.get("integrations") or {}
+    if isinstance(ints, dict):
+      status["integrations_total"] = int(ints.get("total") or 0)
+      status["integrations_active"] = int(ints.get("active") or 0)
+      status["integrations_inactive"] = int(ints.get("inactive") or 0)
+
+    enr = overview.get("enrollments") or {}
+    if isinstance(enr, dict):
+      status["enrollments_total"] = int(enr.get("total") or 0)
+      status["enrollments_verified"] = int(enr.get("verified") or 0)
+      status["enrollments_bound"] = int(enr.get("bound") or 0)
+      status["enrollments_created"] = int(enr.get("created") or 0)
+
+    auth = overview.get("auth24h") or {}
+    if isinstance(auth, dict):
+      status["auth_total_24h"] = int(auth.get("total") or 0)
+      status["auth_accepted_24h"] = int(auth.get("accepted") or 0)
+      status["auth_failed_24h"] = int(auth.get("rejected") or 0)
+    status["auth_pending_24h"] = pending_count
+
+    actions["pending_over_5m"] = pending_count
+
+    recent = overview.get("recentActivity") or []
+    if isinstance(recent, list):
+      activity = self._format_recent_activity(recent, limit=10)
+    if not activity:
+      activity = ["No recent activity"]
+
+    return {
+        "status": status,
+        "actions": actions,
+        "activity": activity,
+        "security": security,
+    }
+
+  def _format_recent_activity(self, items: List[Dict[str, Any]], limit: int = 10) -> List[str]:
+    """Format dashboard recentActivity items for the activity panel."""
+    lines = []
+    for item in items[:limit]:
+      if not isinstance(item, dict):
+        continue
+      created = item.get("createdAt")
+      time_str = "--:--"
+      if created:
+        try:
+          dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+          time_str = dt.strftime("%m-%d %H:%M")
+        except (ValueError, TypeError):
+          pass
+      event_type = (item.get("eventType") or "UNKNOWN").strip()
+      event_status = (item.get("eventStatus") or "-").strip()
+      admin_id = item.get("adminId")
+      parts = [time_str, event_type, event_status]
+      if admin_id is not None:
+        parts.append(f"admin:{admin_id}")
+      lines.append(" ".join(str(p) for p in parts))
+    return lines
 
   def _set_status(self, message: str) -> None:
     """Set status label text."""
@@ -501,30 +591,10 @@ class HomeScreen(Screen):
     log.debug("Switching to auth attempts screen")
     self.app.push_screen("auth_attempts")
 
-  def action_show_crypto(self) -> None:
-    """Switch to crypto tools screen."""
-    log.debug("Switching to crypto tools screen")
-    self.app.push_screen("crypto_home")
-
-  def action_show_admins(self) -> None:
-    """Switch to admins screen."""
-    log.debug("Switching to admins screen")
-    self.app.push_screen("admins")
-
-  def action_show_api_keys(self) -> None:
-    """Switch to API keys screen."""
-    log.debug("Switching to API keys screen")
-    self.app.push_screen("api_keys")
-
   def action_show_tenants(self) -> None:
     """Switch to tenants screen."""
     log.debug("Switching to tenants screen")
     self.app.push_screen("tenants")
-
-  def action_show_encryption_keys(self) -> None:
-    """Switch to encryption keys screen."""
-    log.debug("Switching to encryption keys screen")
-    self.app.push_screen("encryption_keys")
 
   def action_refresh(self) -> None:
     """Manually refresh dashboard data."""

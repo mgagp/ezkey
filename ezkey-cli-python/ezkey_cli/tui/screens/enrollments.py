@@ -24,7 +24,6 @@ class EnrollmentsScreen(Screen):
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
-      Binding("c", "create", "Create"),
       Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
@@ -251,18 +250,6 @@ class EnrollmentsScreen(Screen):
     """Switch to home screen."""
     log.debug("Switching to home screen")
     self.app.pop_screen()
-
-  def action_create(self) -> None:
-    """Create new enrollment."""
-    log.debug("Creating new enrollment")
-    from .enrollment_create import CreateEnrollmentModal
-
-    def on_create_result(created: bool) -> None:
-      if created:
-        log.info("Enrollment created, refreshing list")
-        self._load_enrollments()
-
-    self.app.push_screen(CreateEnrollmentModal(), on_create_result)
 
   def action_filter(self) -> None:
     """Open filter modal."""

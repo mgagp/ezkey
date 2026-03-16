@@ -487,7 +487,9 @@ ezkey admin api-key revoke --id <old-key-id>
 
 ---
 
-## TUI Admin Console
+## TUI (read-only investigation and audit)
+
+The TUI is a **read-only** fallback for when the web Admin UI is unavailable (e.g. SSH). Use the **Admin UI** for day-to-day operations. See [TUI_SCOPE.md](TUI_SCOPE.md).
 
 ### Launch TUI
 
@@ -506,41 +508,14 @@ ezkey --tui
 ### Subsequent Launches
 
 ```bash
-ezkey --tui  # Just works! Session loads automatically
+ezkey --tui  # Session loads automatically
 ```
 
-### Development Mode (Docker)
+### TUI scope (read-only)
 
-The TUI automatically detects localhost and Docker hostnames:
-
-```bash
-# All these work automatically without SSL issues
-ezkey --tui
-# Enter: http://localhost:9080
-# OR: http://host.docker.internal:9080
-# OR: http://docker.for.mac.localhost:9080
-```
-
-**Development mode features:**
-- ✅ HTTP connections accepted (no HTTPS required)
-- ✅ SSL verification disabled
-- ✅ Helpful error messages
-- ✅ Can continue setup even if health check fails
-
-### TUI Features
-
-**Phase 1 (Current):**
-- ✅ Session encryption & persistence
-- ✅ Passwordless authentication wizard
-- ✅ Token refresh logic
-- ✅ Basic screens (auth, home, integrations)
-- ✅ Reusable widgets (header, sidebar)
-
-**Phase 2 (Coming):**
-- 🔄 Full Textual app with screen switching
-- 🔄 Home dashboard with real Admin API data
-- 🔄 Integration management screen
-- 🔄 Enrollment and auth attempt tracking
+- **Audit logs** — list, filter, follow
+- **Auth attempts** — list, detail, filter, follow
+- **Enrollments, Integrations, Tenants** — list, detail, filter (no create/update/delete)
 
 ### File Locations
 
@@ -552,7 +527,7 @@ ezkey --tui
 - **Minimum**: 80x24 characters, ANSI/VT100 support, UTF-8 encoding
 - **Recommended**: 256 colors, Unicode glyphs, Truecolor support
 
-For complete TUI documentation, see [TUI_GUIDE.md](TUI_GUIDE.md)
+For TUI scope and maintenance commitment, see [TUI_SCOPE.md](TUI_SCOPE.md). For architecture and development, see [TUI_GUIDE.md](TUI_GUIDE.md).
 
 ---
 

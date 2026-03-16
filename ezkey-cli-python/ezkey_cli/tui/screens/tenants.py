@@ -26,7 +26,6 @@ class TenantsScreen(Screen):
 
   BINDINGS = [
       Binding("h", "show_home", "Home"),
-      Binding("c", "create", "Create"),
       Binding("f", "filter", "Filter"),
       Binding("r", "refresh", "Refresh"),
       Binding("n", "next_page", "Next"),
@@ -332,15 +331,6 @@ class TenantsScreen(Screen):
         self._load_tenants()
 
     self.app.push_screen(TenantFilterModal(current_filters=self.filters), on_filter_result)
-
-  def action_create(self) -> None:
-    from .tenant_create import CreateTenantModal
-
-    def on_created(result: bool) -> None:
-      if result:
-        self._load_tenants()
-
-    self.app.push_screen(CreateTenantModal(), on_created)
 
   def action_refresh(self) -> None:
     self._load_tenants()
