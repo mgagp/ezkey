@@ -85,15 +85,16 @@ class StatusPanel(Static):
       self.auth_failure_rate = 0.0
 
 
-class ActionPanel(Static):
-  """Action required panel."""
+class HighlightsPanel(Static):
+  """Single compact panel: pending auth + security (replaces Action Required + Security)."""
 
-  pending_over_5m = reactive(0)
-  enrollments_created_over_24h = reactive(0)
-  api_keys_expiring_30d = reactive(0)
+  pending = reactive(0)
+  login_failures_24h = reactive(0)
+  recoveries_7d = reactive(0)
+  keys_revoked_7d = reactive(0)
 
   DEFAULT_CSS = """
-  ActionPanel {
+  HighlightsPanel {
       border: solid $warning;
       padding: 1 2;
       height: auto;
@@ -101,21 +102,28 @@ class ActionPanel(Static):
   """
 
   def render(self) -> str:
-    """Render the action required panel."""
-    return (
-        f"🚨 Action Required\n\n"
-        f"Pending >5m: {self.pending_over_5m}\n"
-        f"Enrollments CREATED >24h: {self.enrollments_created_over_24h}\n"
-        f"API keys expiring <30d: {self.api_keys_expiring_30d}"
-    )
+    """Render highlights (pending + security in one block)."""
+    lines = [
+        "Pending auth: %s" % self.pending,
+        "Security: login %s, recoveries %s, revoked %s"
+        % (self.login_failures_24h, self.recoveries_7d, self.keys_revoked_7d),
+    ]
+    return "📌 Highlights\n\n" + "\n".join(lines)
 
-  def update_actions(self, actions: Dict[str, Any]) -> None:
-    """Update action counts from API."""
+  def update_highlights(
+      self,
+      actions: Dict[str, Any],
+      security: Dict[str, Any]
+  ) -> None:
+    """Update from actions + security snapshot."""
     if not actions or not isinstance(actions, dict):
       actions = {}
-    self.pending_over_5m = actions.get("pending_over_5m", 0) or 0
-    self.enrollments_created_over_24h = actions.get("enrollments_created_over_24h", 0) or 0
-    self.api_keys_expiring_30d = actions.get("api_keys_expiring_30d", 0) or 0
+    if not security or not isinstance(security, dict):
+      security = {}
+    self.pending = actions.get("pending_over_5m", 0) or 0
+    self.login_failures_24h = security.get("login_failures_24h", 0) or 0
+    self.recoveries_7d = security.get("recoveries_7d", 0) or 0
+    self.keys_revoked_7d = security.get("keys_revoked_7d", 0) or 0
 
 
 class ActivityPanel(Static):
@@ -143,63 +151,6 @@ class ActivityPanel(Static):
       self.activities = ["No recent activity"]
       return
     self.activities = activities
-
-
-class SecurityPanel(Static):
-  """Security snapshot panel."""
-
-  login_failures_24h = reactive(0)
-  recoveries_7d = reactive(0)
-  keys_revoked_7d = reactive(0)
-
-  DEFAULT_CSS = """
-  SecurityPanel {
-      border: solid $error;
-      padding: 1 2;
-      height: auto;
-  }
-  """
-
-  def render(self) -> str:
-    """Render the security panel."""
-    return (
-        f"🔐 Security Snapshot\n\n"
-        f"Login failures (24h): {self.login_failures_24h}\n"
-        f"Recoveries (7d): {self.recoveries_7d}\n"
-        f"Keys revoked (7d): {self.keys_revoked_7d}"
-    )
-
-  def update_security(self, security: Dict[str, Any]) -> None:
-    """Update security metrics."""
-    if not security or not isinstance(security, dict):
-      security = {}
-    self.login_failures_24h = security.get("login_failures_24h", 0) or 0
-    self.recoveries_7d = security.get("recoveries_7d", 0) or 0
-    self.keys_revoked_7d = security.get("keys_revoked_7d", 0) or 0
-
-
-class QuickActionsPanel(Static):
-  """Quick actions panel."""
-
-  DEFAULT_CSS = """
-  QuickActionsPanel {
-      border: solid $primary;
-      padding: 1 2;
-      height: auto;
-  }
-  """
-
-  def render(self) -> str:
-    """Render quick actions (read-only investigation)."""
-    return (
-        "⚡ Quick Actions (read-only)\n\n"
-        "A - Audit Logs\n"
-        "T - Auth Attempts\n"
-        "E - Enrollments\n"
-        "I - Integrations\n"
-        "N - Tenants\n"
-        "R - Refresh"
-    )
 
 
 class InfoPanel(Static):
@@ -260,10 +211,7 @@ class HomeScreen(Screen):
 
     #row_mid {
       height: 1fr;
-    }
-
-    #row_bottom {
-      height: auto;
+      min-height: 10;
     }
 
   StatusPanel {
@@ -272,8 +220,9 @@ class HomeScreen(Screen):
       margin: 1 1 1 0;
   }
 
-    ActionPanel {
-      width: 1fr;
+    HighlightsPanel {
+      width: auto;
+      min-width: 24;
       height: auto;
       margin: 1 0 1 1;
   }
@@ -281,19 +230,8 @@ class HomeScreen(Screen):
     ActivityPanel {
       width: 1fr;
       height: 1fr;
+      min-height: 10;
       margin: 1 0;
-    }
-
-    SecurityPanel {
-      width: 1fr;
-      height: auto;
-      margin: 1 1 1 0;
-    }
-
-    QuickActionsPanel {
-      width: 1fr;
-      height: auto;
-      margin: 1 0 1 1;
     }
 
       InfoPanel {
@@ -312,12 +250,9 @@ class HomeScreen(Screen):
       yield Label("", id="status_label")
       with Horizontal(id="row_top"):
         yield StatusPanel(id="status_panel")
-        yield ActionPanel(id="action_panel")
+        yield HighlightsPanel(id="highlights_panel")
       with Horizontal(id="row_mid"):
         yield ActivityPanel(id="activity_panel")
-      with Horizontal(id="row_bottom"):
-        yield SecurityPanel(id="security_panel")
-        yield QuickActionsPanel(id="quick_actions_panel")
       yield InfoPanel(id="info_panel")
 
     yield Footer()
@@ -372,14 +307,16 @@ class HomeScreen(Screen):
       status_panel = self.query_one("#status_panel", StatusPanel)
       status_panel.update_stats(snapshot.get("status", {}))
 
-      action_panel = self.query_one("#action_panel", ActionPanel)
-      action_panel.update_actions(snapshot.get("actions", {}))
+      highlights_panel = self.query_one("#highlights_panel", HighlightsPanel)
+      highlights_panel.update_highlights(
+          snapshot.get("actions", {}),
+          snapshot.get("security", {})
+      )
+      highlights_panel.refresh()
 
       activity_panel = self.query_one("#activity_panel", ActivityPanel)
       activity_panel.update_activity(snapshot.get("activity", []))
-
-      security_panel = self.query_one("#security_panel", SecurityPanel)
-      security_panel.update_security(snapshot.get("security", {}))
+      activity_panel.refresh()
 
       info_panel = self.query_one("#info_panel", InfoPanel)
       info_panel.api_url_line = self._format_api_url()
