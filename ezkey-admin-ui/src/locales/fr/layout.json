@@ -21,7 +21,13 @@
     "demoBadge": "Démo"
   },
   "sidebar": {
-    "demoModeTitle": "Ctrl+clic pour basculer le mode démo"
+    "demoModeTitle": "Ctrl+clic pour basculer le mode démo",
+    "about": "À propos"
+  },
+  "about": {
+    "title": "À propos de EZKey",
+    "description": "EZKey est une plateforme d'authentification sans mot de passe, liée à l'appareil. Cette console d'administration permet de gérer les tenants, intégrations, enrôlements et clés API.",
+    "learnMore": "En savoir plus"
   },
   "demoQuickReason": "Raison rapide (démo) :"
 }

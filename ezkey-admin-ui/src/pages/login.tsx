@@ -176,9 +176,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-sm relative">
-        {/* Language selector — no header when unauthenticated */}
-        <div className="absolute top-0 right-0 flex items-center gap-1 text-sm">
+      <div className="w-full max-w-sm border border-[#3076DF] p-6">
+        <div className="relative">
+          {/* Language selector — no header when unauthenticated */}
+          <div className="absolute top-0 right-0 flex items-center gap-1 text-sm">
           <button
             type="button"
             onClick={() => setLanguage('en')}
@@ -200,6 +201,13 @@ export default function LoginPage() {
 
         {/* Brand header */}
         <div className="mb-8 text-center">
+          <img
+            src="/logo.svg"
+            alt=""
+            className="mx-auto mb-4"
+            width={80}
+            height={80}
+          />
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sidebar-bg mb-2">
             {t('layout:brand')}
           </p>
@@ -330,6 +338,7 @@ export default function LoginPage() {
         <p className="text-center text-xs text-fg-muted mt-5">
           {t('login:footer', { brand: t('layout:brand') })}
         </p>
+        </div>
       </div>
     </div>
   );

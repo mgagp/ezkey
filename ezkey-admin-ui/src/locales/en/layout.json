@@ -21,7 +21,13 @@
     "demoBadge": "Demo"
   },
   "sidebar": {
-    "demoModeTitle": "Ctrl+click to toggle demo mode"
+    "demoModeTitle": "Ctrl+click to toggle demo mode",
+    "about": "About"
+  },
+  "about": {
+    "title": "About EZKey",
+    "description": "EZKey is a passwordless, device-bound authentication platform. This admin console lets you manage tenants, integrations, enrollments, and API keys.",
+    "learnMore": "Learn more"
   },
   "demoQuickReason": "Quick reason (demo):"
 }
