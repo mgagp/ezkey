@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';
+import { Dialog } from '@/components/ui/dialog';
 import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
 import {
   Building2,
@@ -59,6 +61,7 @@ export function Sidebar() {
   const { pathname } = useLocation();
   const { session } = useAuth();
   const { toggleSessionDemo } = useDemoModeSession();
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const visibleItems = navItems.filter(
     (item) => !item.roles || item.roles.includes(session?.adminType as AdminResponseDtoAdminType),
@@ -88,12 +91,23 @@ export function Sidebar() {
         tabIndex={isDemoMode ? 0 : undefined}
         title={isDemoMode ? t('sidebar.demoModeTitle') : undefined}
       >
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sidebar-active">
-          {t('brand')}
-        </p>
-        <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">
-          {t(getAdminTaglineKey(session?.adminType))}
-        </p>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo-sidebar.svg"
+            alt=""
+            className="size-10 shrink-0"
+            width={40}
+            height={40}
+          />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sidebar-active">
+              {t('brand')}
+            </p>
+            <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">
+              {t(getAdminTaglineKey(session?.adminType))}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -123,9 +137,33 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t-2 border-white/10">
+      <div className="px-4 py-3 border-t-2 border-white/10 space-y-1">
+        <button
+          type="button"
+          onClick={() => setAboutOpen(true)}
+          className="text-[10px] font-medium text-sidebar-fg/60 hover:text-sidebar-fg transition-colors"
+        >
+          {t('sidebar.about')}
+        </button>
         <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">v0.1.0</p>
       </div>
+
+      <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} title={t('about.title')} size="sm">
+        <div className="space-y-4 text-sm text-fg">
+          <img src="/logo.svg" alt="" className="mx-auto" width={64} height={64} />
+          <p>{t('about.description')}</p>
+          <p>
+            <a
+              href="https://github.com/your-org/ezkey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-sidebar-bg hover:opacity-80"
+            >
+              {t('about.learnMore')}
+            </a>
+          </p>
+        </div>
+      </Dialog>
     </aside>
   );
 }
