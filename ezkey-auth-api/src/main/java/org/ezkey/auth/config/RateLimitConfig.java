@@ -47,7 +47,7 @@ import org.springframework.context.annotation.Configuration;
     name = "ezkey.rate-limit.enabled",
     havingValue = "true",
     matchIfMissing = false)
-@EnableConfigurationProperties(RateLimitProperties.class)
+@EnableConfigurationProperties({RateLimitProperties.class, TrustedProxyProperties.class})
 public class RateLimitConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(RateLimitConfig.class);
@@ -94,7 +94,9 @@ public class RateLimitConfig {
    */
   @Bean
   public RateLimitFilter rateLimitFilter(
-      RateLimitProperties properties, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
-    return new RateLimitFilter(properties, objectMapper);
+      RateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    return new RateLimitFilter(properties, trustedProxyProperties, objectMapper);
   }
 }

@@ -28,6 +28,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
+import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.auth.controller.AuthAttemptController;
 import org.ezkey.auth.controller.EnrollmentController;
 import org.springframework.http.HttpStatus;
@@ -79,6 +81,8 @@ public class RateLimitFilter implements Filter {
 
   private final RateLimitProperties properties;
 
+  private final TrustedProxyProperties trustedProxyProperties;
+
   private final ObjectMapper objectMapper;
 
   private final Cache<String, Bucket> bucketCache;
@@ -88,11 +92,17 @@ public class RateLimitFilter implements Filter {
    * respond request body.
    *
    * @param properties the rate limiting configuration properties
+   * @param trustedProxyProperties the trusted proxy CIDR list (for client IP resolution); may be
+   *     null
    * @param objectMapper the Jackson ObjectMapper for extracting authAttemptId/enrollmentId from
    *     request bodies
    */
-  public RateLimitFilter(RateLimitProperties properties, ObjectMapper objectMapper) {
+  public RateLimitFilter(
+      RateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      ObjectMapper objectMapper) {
     this.properties = properties;
+    this.trustedProxyProperties = trustedProxyProperties;
     this.objectMapper = objectMapper;
 
     // Cache buckets for 1 hour with maximum 1000 entries
@@ -223,8 +233,9 @@ public class RateLimitFilter implements Filter {
       }
     }
 
-    // Default: use client IP
-    return getClientIP(request);
+    // Default: use client IP (with trusted-proxy list when configured)
+    List<String> cidrs = trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null;
+    return ClientIpResolver.resolve(request, cidrs);
   }
 
   /**
@@ -337,80 +348,6 @@ public class RateLimitFilter implements Filter {
 
     // Default configuration
     return new RateLimitProperties.EndpointConfig();
-  }
-
-  /**
-   * Extracts client IP address from HTTP request, handling proxy headers with security
-   * considerations.
-   *
-   * <p>Priority order for IP extraction: 1. CF-Connecting-IP (Cloudflare - most trusted) 2.
-   * X-Forwarded-For (standard proxy header - can be spoofed) 3. X-Real-IP (Nginx/HAProxy - can be
-   * spoofed) 4. getRemoteAddr() (direct connection - fallback)
-   *
-   * <p>Security Warning: X-Forwarded-For and X-Real-IP headers can be easily spoofed by clients.
-   * Only CF-Connecting-IP provides reliable client IP when behind Cloudflare.
-   *
-   * @param request the HTTP request
-   * @return client IP address
-   */
-  private String getClientIP(HttpServletRequest request) {
-    // Priority 1: CF-Connecting-IP (Cloudflare - most trusted)
-    String cfConnectingIP = request.getHeader("CF-Connecting-IP");
-    if (cfConnectingIP != null && !cfConnectingIP.isEmpty() && isValidIP(cfConnectingIP)) {
-      return cfConnectingIP.trim();
-    }
-
-    // Priority 2: X-Forwarded-For (standard proxy header - can be spoofed)
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-      String firstIP = xForwardedFor.split(",")[0].trim();
-      if (isValidIP(firstIP)) {
-        return firstIP;
-      }
-    }
-
-    // Priority 3: X-Real-IP (Nginx/HAProxy - can be spoofed)
-    String xRealIP = request.getHeader("X-Real-IP");
-    if (xRealIP != null && !xRealIP.isEmpty() && isValidIP(xRealIP)) {
-      return xRealIP.trim();
-    }
-
-    // Priority 4: Direct connection (fallback)
-    return request.getRemoteAddr();
-  }
-
-  /**
-   * Validates if the given string is a valid IP address.
-   *
-   * @param ip the IP address string to validate
-   * @return true if valid IP address, false otherwise
-   */
-  private boolean isValidIP(String ip) {
-    if (ip == null || ip.trim().isEmpty()) {
-      return false;
-    }
-
-    try {
-      // Basic validation - check if it's a valid IP format
-      String[] parts = ip.trim().split("\\.");
-      if (parts.length == 4) {
-        // IPv4 validation
-        for (String part : parts) {
-          int num = Integer.parseInt(part);
-          if (num < 0 || num > 255) {
-            return false;
-          }
-        }
-        return true;
-      } else if (ip.contains(":")) {
-        // IPv6 - basic format check
-        java.net.InetAddress.getByName(ip);
-        return true;
-      }
-      return false;
-    } catch (Exception e) {
-      return false;
-    }
   }
 
   /** Result of a rate limit check operation. */

@@ -27,6 +27,8 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.ezkey.admin.config.AdminRateLimitProperties;
+import org.ezkey.admin.config.TrustedProxyProperties;
+import org.ezkey.audit.util.ClientIpResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -74,6 +76,7 @@ public class AdminRateLimitFilter implements Filter {
   private static final String LOGIN_ENDPOINT_PATH = "/api/v1/admin/auth/login";
 
   private final AdminRateLimitProperties properties;
+  private final TrustedProxyProperties trustedProxyProperties;
   private final MeterRegistry meterRegistry;
   private final Cache<String, Bucket> bucketCache;
   private final ConcurrentHashMap<String, AtomicInteger> failureCountMap;
@@ -83,10 +86,15 @@ public class AdminRateLimitFilter implements Filter {
    * Constructs the rate limiting filter with configuration properties.
    *
    * @param properties the rate limiting configuration properties
+   * @param trustedProxyProperties the trusted proxy CIDR list for client IP resolution (never null)
    * @param meterRegistry the metrics registry for monitoring
    */
-  public AdminRateLimitFilter(AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
+  public AdminRateLimitFilter(
+      AdminRateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      MeterRegistry meterRegistry) {
     this.properties = properties;
+    this.trustedProxyProperties = trustedProxyProperties;
     this.meterRegistry = meterRegistry;
 
     // Cache buckets for 1 hour with maximum 1000 entries
@@ -121,7 +129,7 @@ public class AdminRateLimitFilter implements Filter {
 
     // Apply rate limiting only to login endpoint
     if (shouldApplyRateLimit(requestUri, requestMethod)) {
-      String clientId = extractClientId(req);
+      String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
 
       // Check if IP is blocked
       if (isBlocked(clientId)) {
@@ -198,73 +206,6 @@ public class AdminRateLimitFilter implements Filter {
       long retryAfter = properties.getLogin().getWindowMinutes() * 60L;
       return new RateLimitResult(false, retryAfter);
     }
-  }
-
-  /**
-   * Extracts client identifier for rate limiting.
-   *
-   * <p>Priority order:
-   *
-   * <ol>
-   *   <li>CF-Connecting-IP (Cloudflare header)
-   *   <li>X-Forwarded-For (standard proxy header)
-   *   <li>X-Real-IP (nginx proxy header)
-   *   <li>Fallback: Direct connection IP
-   * </ol>
-   *
-   * @param request the HTTP request
-   * @return client identifier string
-   */
-  private String extractClientId(HttpServletRequest request) {
-    // Priority 1: CF-Connecting-IP (Cloudflare header)
-    String cfConnectingIp = request.getHeader("CF-Connecting-IP");
-    if (cfConnectingIp != null && !cfConnectingIp.isEmpty()) {
-      if (isValidIP(cfConnectingIp)) {
-        return cfConnectingIp;
-      }
-    }
-
-    // Priority 2: X-Forwarded-For (standard proxy header)
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-      String firstIP = xForwardedFor.split(",")[0].trim();
-      if (isValidIP(firstIP)) {
-        return firstIP;
-      }
-    }
-
-    // Priority 3: X-Real-IP (nginx proxy header)
-    String xRealIP = request.getHeader("X-Real-IP");
-    if (xRealIP != null && !xRealIP.isEmpty()) {
-      if (isValidIP(xRealIP)) {
-        return xRealIP;
-      }
-    }
-
-    // Fallback: Direct connection IP
-    return request.getRemoteAddr();
-  }
-
-  /**
-   * Validates if a string is a valid IP address.
-   *
-   * @param ip the IP string to validate
-   * @return true if valid IP address
-   */
-  private boolean isValidIP(String ip) {
-    if (ip == null || ip.isEmpty()) {
-      return false;
-    }
-
-    // Simple validation for IPv4 and IPv6
-    String ipv4Pattern =
-        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
-    String ipv6Pattern = "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$";
-
-    return ip.matches(ipv4Pattern)
-        || ip.matches(ipv6Pattern)
-        || ip.equals("::1")
-        || ip.equals("0:0:0:0:0:0:0:1");
   }
 
   /**

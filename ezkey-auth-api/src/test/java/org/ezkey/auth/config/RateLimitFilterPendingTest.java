@@ -20,6 +20,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,9 @@ class RateLimitFilterPendingTest {
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
     // Respond not under test - use default
-    filter = new RateLimitFilter(properties, objectMapper);
+    filter =
+        new RateLimitFilter(
+            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
   }
 
   @Test
@@ -89,7 +92,9 @@ class RateLimitFilterPendingTest {
     pendingConfig.setWindowMinutes(5);
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
-    filter = new RateLimitFilter(properties, objectMapper);
+    filter =
+        new RateLimitFilter(
+            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
 
     MockHttpServletRequest request1 = pendingRequest(42);
     MockHttpServletRequest request2 = pendingRequest(42);
@@ -113,7 +118,9 @@ class RateLimitFilterPendingTest {
     pendingConfig.setWindowMinutes(5);
     pendingConfig.setKeyStrategy("enrollment-id");
     properties.setPending(pendingConfig);
-    filter = new RateLimitFilter(properties, objectMapper);
+    filter =
+        new RateLimitFilter(
+            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
 
     MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
     request1.setContentType("application/json");
@@ -133,6 +140,68 @@ class RateLimitFilterPendingTest {
     MockHttpServletResponse response2 = new MockHttpServletResponse();
     filter.doFilter(request2, response2, filterChain);
 
+    assertThat(response2.getStatus()).isEqualTo(429);
+  }
+
+  @Test
+  @DisplayName("When trusted proxy list is set, X-Forwarded-For is used for rate limit key")
+  void trustedProxySet_xffUsedForRateLimitKey() throws Exception {
+    TrustedProxyProperties trusted = new TrustedProxyProperties();
+    trusted.setCidrs(List.of("10.0.0.0/8"));
+    RateLimitProperties.EndpointConfig pendingConfig = new RateLimitProperties.EndpointConfig();
+    pendingConfig.setRequests(1);
+    pendingConfig.setWindowMinutes(5);
+    pendingConfig.setKeyStrategy("enrollment-id");
+    properties.setPending(pendingConfig);
+    filter = new RateLimitFilter(properties, trusted, objectMapper);
+
+    MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
+    request1.setContentType("application/json");
+    request1.setContent(new byte[0]);
+    request1.setRemoteAddr("10.1.2.3");
+    request1.addHeader("X-Forwarded-For", "198.51.100.10");
+    MockHttpServletResponse response1 = new MockHttpServletResponse();
+    filter.doFilter(request1, response1, filterChain);
+    assertThat(response1.getStatus()).isEqualTo(200);
+
+    MockHttpServletRequest request2 = new MockHttpServletRequest("POST", PENDING_PATH);
+    request2.setContentType("application/json");
+    request2.setContent(new byte[0]);
+    request2.setRemoteAddr("10.1.2.4");
+    request2.addHeader("X-Forwarded-For", "198.51.100.10");
+    MockHttpServletResponse response2 = new MockHttpServletResponse();
+    filter.doFilter(request2, response2, filterChain);
+    assertThat(response2.getStatus()).isEqualTo(429);
+  }
+
+  @Test
+  @DisplayName(
+      "Forged X-Forwarded-For with empty trusted proxies does not change rate limit bucket")
+  void forgedXffWithEmptyTrustedProxies_sameBucketAsRemoteAddr() throws Exception {
+    RateLimitProperties.EndpointConfig pendingConfig = new RateLimitProperties.EndpointConfig();
+    pendingConfig.setRequests(1);
+    pendingConfig.setWindowMinutes(5);
+    pendingConfig.setKeyStrategy("enrollment-id");
+    properties.setPending(pendingConfig);
+    filter =
+        new RateLimitFilter(
+            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
+
+    MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PENDING_PATH);
+    request1.setContentType("application/json");
+    request1.setContent(new byte[0]);
+    request1.setRemoteAddr("203.0.113.50");
+    MockHttpServletResponse response1 = new MockHttpServletResponse();
+    filter.doFilter(request1, response1, filterChain);
+    assertThat(response1.getStatus()).isEqualTo(200);
+
+    MockHttpServletRequest request2 = new MockHttpServletRequest("POST", PENDING_PATH);
+    request2.setContentType("application/json");
+    request2.setContent(new byte[0]);
+    request2.setRemoteAddr("203.0.113.50");
+    request2.addHeader("X-Forwarded-For", "192.168.1.1");
+    MockHttpServletResponse response2 = new MockHttpServletResponse();
+    filter.doFilter(request2, response2, filterChain);
     assertThat(response2.getStatus()).isEqualTo(429);
   }
 

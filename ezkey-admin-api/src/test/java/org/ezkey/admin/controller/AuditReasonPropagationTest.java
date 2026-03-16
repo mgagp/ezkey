@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -114,11 +115,11 @@ class AuditReasonPropagationTest {
 
   @BeforeEach
   void setUpHttpRequest() {
-    // AuditHelper.extractClientIp reads several headers, then falls back to
-    // remoteAddr
-    when(httpRequest.getHeader("CF-Connecting-IP")).thenReturn(null);
-    when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-    when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
+    // ClientContext.from(request) uses ClientIpResolver; with no trusted proxies only
+    // remoteAddr is used. Lenient for header stubs that may not be called.
+    lenient().when(httpRequest.getHeader("CF-Connecting-IP")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
   }

@@ -22,6 +22,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.auth.config.TrustedProxyProperties;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondResponse;
@@ -125,6 +126,9 @@ public class AuthAttemptController {
   /** Repository for resolving tenant from admin MFA enrollment for audit log tenant association. */
   private final EzkeyAdminRepository adminRepository;
 
+  /** Trusted proxy CIDR list for client IP resolution in audit. */
+  private final TrustedProxyProperties trustedProxyProperties;
+
   /**
    * Constructs the mobile authentication attempt controller with required dependencies.
    *
@@ -135,6 +139,7 @@ public class AuthAttemptController {
    * @param enrollmentRepository the enrollment repository for tenant resolution
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param adminRepository the admin repository for resolving tenant from admin MFA enrollment
+   * @param trustedProxyProperties trusted proxy CIDR list for client IP resolution (may be null)
    */
   public AuthAttemptController(
       final AuthAttemptService authAttemptService,
@@ -143,7 +148,8 @@ public class AuthAttemptController {
       final AuthAttemptRepository authAttemptRepository,
       final EnrollmentRepository enrollmentRepository,
       final IntegrationRepository integrationRepository,
-      final EzkeyAdminRepository adminRepository) {
+      final EzkeyAdminRepository adminRepository,
+      final TrustedProxyProperties trustedProxyProperties) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -151,6 +157,7 @@ public class AuthAttemptController {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.adminRepository = adminRepository;
+    this.trustedProxyProperties = trustedProxyProperties;
   }
 
   /**
@@ -218,7 +225,9 @@ public class AuthAttemptController {
       final HttpServletRequest httpRequest) {
     LOG.info("Processing pending request for enrollment with proof token");
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String clientIp =
+        AuditHelper.extractClientIp(
+            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     try {
@@ -308,7 +317,9 @@ public class AuthAttemptController {
       @Valid @RequestBody final AuthAttemptRespondRequestDto request,
       final HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String clientIp =
+        AuditHelper.extractClientIp(
+            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     Integer respondTenantId = resolveTenantIdForAudit(request.authAttemptId());

@@ -19,6 +19,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Optional;
+import org.ezkey.admin.config.TrustedProxyProperties;
+import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.service.ApiKeyService;
 import org.jspecify.annotations.NonNull;
@@ -92,13 +94,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
   private final ApiKeyService apiKeyService;
 
+  private final TrustedProxyProperties trustedProxyProperties;
+
   /**
-   * Constructs a new ApiKeyAuthenticationFilter.
+   * Constructs the filter with API key service and trusted proxy configuration.
    *
-   * @param apiKeyService the API key service for validation
+   * @param apiKeyService the API key validation service
+   * @param trustedProxyProperties the trusted proxy CIDR list for client IP resolution (never null)
    */
-  public ApiKeyAuthenticationFilter(ApiKeyService apiKeyService) {
+  public ApiKeyAuthenticationFilter(
+      ApiKeyService apiKeyService, TrustedProxyProperties trustedProxyProperties) {
     this.apiKeyService = apiKeyService;
+    this.trustedProxyProperties = trustedProxyProperties;
   }
 
   /**
@@ -158,7 +165,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             String secretKey = password;
 
             // Extract client IP
-            String clientIp = extractClientIp(request);
+            String clientIp = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
 
             logger.debug(
                 "API key authentication attempt - Integration Key: {}..., Client IP: {}",
@@ -232,46 +239,5 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         "Security context established for integration: {} with role: {}",
         integration.getId(),
         ROLE_API_KEY);
-  }
-
-  /**
-   * Extracts the client IP address from the request.
-   *
-   * <p>Checks standard headers for proxied requests (X-Forwarded-For, X-Real-IP) before falling
-   * back to the direct remote address.
-   *
-   * <p><b>Header Priority:</b>
-   *
-   * <ol>
-   *   <li>X-Forwarded-For (first IP in chain)
-   *   <li>X-Real-IP
-   *   <li>Remote address
-   * </ol>
-   *
-   * @param request the HTTP request
-   * @return the client IP address
-   */
-  private String extractClientIp(HttpServletRequest request) {
-    // Check X-Forwarded-For header (standard for proxied requests)
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-      // X-Forwarded-For can contain multiple IPs, take the first one (client)
-      String[] ips = xForwardedFor.split(",");
-      String clientIp = ips[0].trim();
-      logger.debug("Client IP from X-Forwarded-For: {}", clientIp);
-      return clientIp;
-    }
-
-    // Check X-Real-IP header (nginx standard)
-    String xRealIp = request.getHeader("X-Real-IP");
-    if (xRealIp != null && !xRealIp.isEmpty()) {
-      logger.debug("Client IP from X-Real-IP: {}", xRealIp);
-      return xRealIp;
-    }
-
-    // Fall back to direct remote address
-    String remoteAddr = request.getRemoteAddr();
-    logger.debug("Client IP from remote address: {}", remoteAddr);
-    return remoteAddr;
   }
 }

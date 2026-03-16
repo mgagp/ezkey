@@ -59,7 +59,9 @@ class RateLimitFilterRespondTest {
     respondConfig.setWindowMinutes(5);
     respondConfig.setKeyStrategy("auth-attempt-id");
     properties.setRespond(respondConfig);
-    filter = new RateLimitFilter(properties, objectMapper);
+    filter =
+        new RateLimitFilter(
+            properties, new org.ezkey.auth.config.TrustedProxyProperties(), objectMapper);
   }
 
   @Test

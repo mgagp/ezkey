@@ -50,7 +50,7 @@ import org.springframework.context.annotation.Configuration;
     name = "ezkey.admin.rate-limit.enabled",
     havingValue = "true",
     matchIfMissing = false)
-@EnableConfigurationProperties(AdminRateLimitProperties.class)
+@EnableConfigurationProperties({AdminRateLimitProperties.class, TrustedProxyProperties.class})
 public class AdminRateLimitConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminRateLimitConfig.class);
@@ -91,7 +91,9 @@ public class AdminRateLimitConfig {
    */
   @Bean
   public AdminRateLimitFilter adminRateLimitFilter(
-      AdminRateLimitProperties properties, MeterRegistry meterRegistry) {
+      AdminRateLimitProperties properties,
+      TrustedProxyProperties trustedProxyProperties,
+      MeterRegistry meterRegistry) {
     logger.info("Initializing Admin API Rate Limiting with configuration:");
     logger.info(
         "  - Login requests: {} per {} minutes",
@@ -101,6 +103,6 @@ public class AdminRateLimitConfig {
     logger.info("  - Block after failures: {}", properties.getLogin().getBlockAfterFailures());
     logger.info("  - Block duration: {} minutes", properties.getLogin().getBlockDurationMinutes());
 
-    return new AdminRateLimitFilter(properties, meterRegistry);
+    return new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
   }
 }

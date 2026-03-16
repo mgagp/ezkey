@@ -2,11 +2,12 @@
 
 # Ezkey Docker Start Script
 # This script builds Docker images and starts the EZ Key stack
-# Usage: start.sh [--parallel] [--no-cache] [--debug-cache] [--native]
+# Usage: start.sh [--parallel] [--no-cache] [--debug-cache] [--native] [--with-proxy]
 #   --parallel: Build images in parallel (default: sequential for easier log examination)
 #   --no-cache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   --debug-cache: Build only the first service (migration) and stop - for cache validation
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
+#   --with-proxy: Add Caddy reverse proxy; APIs use EZKEY_TRUSTED_PROXIES for client IP (ports 19080, 18080, 17080)
 
 set -e
 
@@ -15,6 +16,7 @@ BUILD_PARALLEL=""
 BUILD_NO_CACHE=""
 DEBUG_CACHE=""
 NATIVE_MODE=""
+WITH_PROXY=""
 
 # Parse flags (all parameters are optional)
 for arg in "$@"; do
@@ -30,6 +32,9 @@ for arg in "$@"; do
             ;;
         --native)
             NATIVE_MODE="1"
+            ;;
+        --with-proxy)
+            WITH_PROXY="1"
             ;;
     esac
 done
@@ -77,6 +82,15 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
         echo "🔧 Docker diagnostics override enabled: $(basename "${DEV_OVERRIDE_FILE}")"
     else
         echo "⚠️  Warning: docker-dev profile is active but override file not found: ${DEV_OVERRIDE_FILE}"
+    fi
+fi
+
+# Optional: Caddy reverse proxy for trusted-proxy E2E (client IP from X-Forwarded-For).
+if [ -n "$WITH_PROXY" ]; then
+    COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.with-proxy.yml"
+    echo "🔧 Trusted-proxy mode: Caddy in front of APIs (Admin: 19080, Auth: 18080, M2M: 17080)"
+    if [ -z "${EZKEY_TRUSTED_PROXIES:-}" ]; then
+        export EZKEY_TRUSTED_PROXIES="172.16.0.0/12,10.0.0.0/8"
     fi
 fi
 
@@ -295,8 +309,16 @@ echo "  ✅ EZ Key Stack is Ready!"
 echo "=========================================="
 echo ""
 echo "📋 Service URLs:"
-echo "  - Admin API:    http://localhost:9080"
-echo "  - Auth API:     http://localhost:8080"
+if [ -n "$WITH_PROXY" ]; then
+    echo "  - Admin API (via Caddy): http://localhost:19080"
+    echo "  - Auth API (via Caddy):  http://localhost:18080"
+    echo "  - M2M API (via Caddy):   http://localhost:17080"
+    echo "  - Admin API (direct):    http://localhost:9080"
+    echo "  - Auth API (direct):    http://localhost:8080"
+else
+    echo "  - Admin API:    http://localhost:9080"
+    echo "  - Auth API:     http://localhost:8080"
+fi
 echo "  - Crypto API:   http://localhost:9090"
 echo "  - Demo Device:  http://localhost:8083"
 echo ""

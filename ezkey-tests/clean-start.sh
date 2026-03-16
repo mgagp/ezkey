@@ -9,10 +9,11 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap]
+# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--with-proxy] [--jmx] [--prod-safe]
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
+#   --with-proxy: Add Caddy reverse proxy; EZKEY_TRUSTED_PROXIES set so tests can use ports 19080/18080/17080 (trusted proxy path)
 #   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
@@ -32,6 +33,7 @@ TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
 NATIVE_MODE=""
 HA_MODE=""
 MVN_BOOTSTRAP=""
+WITH_PROXY=""
 ENABLE_JMX=""
 PROD_SAFE=""
 SPRING_PROFILES=""
@@ -48,6 +50,9 @@ for arg in "$@"; do
         --mvn-bootstrap)
             MVN_BOOTSTRAP="true"
             ;;
+        --with-proxy)
+            WITH_PROXY="--with-proxy"
+            ;;
         --jmx)
             ENABLE_JMX="true"
             ;;
@@ -56,7 +61,7 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--jmx] [--prod-safe]"
+            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--with-proxy] [--jmx] [--prod-safe]"
             exit 1
             ;;
     esac
@@ -97,12 +102,16 @@ echo ""
 if [ -n "$HA_MODE" ]; then
     echo "Step 1/7: Stopping Docker Compose HA stack (including volumes)..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
+    COMPOSE_EXTRA=""
 elif [ -n "$NATIVE_MODE" ]; then
     echo "Step 1/7: Stopping Docker Compose stack (including volumes) - Native mode..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
+    COMPOSE_EXTRA=""
 else
     echo "Step 1/7: Stopping Docker Compose stack (including volumes)..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+    # Include with-proxy override so Caddy is torn down if it was running
+    COMPOSE_EXTRA="-f ${DOCKER_DIR}/docker-compose.with-proxy.yml"
 fi
 cd "${PROJECT_ROOT}"
 
@@ -117,7 +126,7 @@ fi
 # Try both compose files to ensure cleanup
 if [ -f "${COMPOSE_FILE}" ]; then
     echo "  Stopping containers..."
-    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" down -v 2>/dev/null || {
+    ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" ${COMPOSE_EXTRA} down -v 2>/dev/null || {
         echo "  ⚠️  Warning: Some containers may not have been running"
     }
     echo "  ✅ Docker stack stopped and volumes removed"
@@ -127,26 +136,28 @@ fi
 
 # Also try to stop the other compose files if they exist (for cleanup)
 if [ -n "$HA_MODE" ]; then
-    # Stop standard and native stacks if running
-    for other_file in "${DOCKER_DIR}/docker-compose.yml" "${DOCKER_DIR}/docker-compose.native.yml"; do
-        if [ -f "${other_file}" ] && [ "${COMPOSE_FILE}" != "${other_file}" ]; then
-            ${DOCKER_COMPOSE} -f "${other_file}" down -v 2>/dev/null || true
-        fi
-    done
+    # Stop standard (and with-proxy) and native stacks if running
+    if [ -f "${DOCKER_DIR}/docker-compose.yml" ]; then
+        ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.yml" -f "${DOCKER_DIR}/docker-compose.with-proxy.yml" down -v 2>/dev/null || true
+    fi
+    if [ -f "${DOCKER_DIR}/docker-compose.native.yml" ] && [ "${COMPOSE_FILE}" != "${DOCKER_DIR}/docker-compose.native.yml" ]; then
+        ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.native.yml" down -v 2>/dev/null || true
+    fi
 else
     # Stop HA stack if running
     HA_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
     if [ -f "${HA_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${HA_COMPOSE_FILE}" ]; then
         ${DOCKER_COMPOSE} -f "${HA_COMPOSE_FILE}" down -v 2>/dev/null || true
     fi
-    # Stop other mode if running
+    # Stop other mode if running (and with-proxy for standard stack)
     if [ -n "$NATIVE_MODE" ]; then
-        OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.yml"
+        if [ -f "${DOCKER_DIR}/docker-compose.yml" ]; then
+            ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.yml" -f "${DOCKER_DIR}/docker-compose.with-proxy.yml" down -v 2>/dev/null || true
+        fi
     else
-        OTHER_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
-    fi
-    if [ -f "${OTHER_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${OTHER_COMPOSE_FILE}" ]; then
-        ${DOCKER_COMPOSE} -f "${OTHER_COMPOSE_FILE}" down -v 2>/dev/null || true
+        if [ -f "${DOCKER_DIR}/docker-compose.native.yml" ]; then
+            ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.native.yml" down -v 2>/dev/null || true
+        fi
     fi
 fi
 
@@ -205,6 +216,8 @@ if [ -n "$HA_MODE" ]; then
     echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
 elif [ -n "$NATIVE_MODE" ]; then
     echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Native mode..."
+elif [ -n "$WITH_PROXY" ]; then
+    echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Caddy reverse proxy..."
 else
     echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES})..."
 fi
@@ -224,10 +237,10 @@ elif [ -f "${DOCKER_DIR}/start.sh" ]; then
     if [ -n "$NATIVE_MODE" ]; then
         echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
         echo "  Using native compiled images..."
-        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE}
+        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE} ${WITH_PROXY}
     else
         echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
-        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh"
+        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${WITH_PROXY}
     fi
     echo "  ✅ Docker stack started"
 else
@@ -310,6 +323,12 @@ if [ -n "$HA_MODE" ]; then
 elif [ -n "$NATIVE_MODE" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (NATIVE mode)"
     echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
+elif [ -n "$WITH_PROXY" ]; then
+    echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (Caddy reverse proxy)"
+    echo "  - Admin API (via Caddy): http://localhost:19080"
+    echo "  - Auth API (via Caddy):  http://localhost:18080"
+    echo "  - M2M API (via Caddy):   http://localhost:17080"
+    echo "  - Direct ports still available: Admin 9080, Auth 8080, M2M 7080"
 else
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES})"
 fi
@@ -371,6 +390,7 @@ else
     if [ -z "$NATIVE_MODE" ]; then
         echo "  - Start with native images: ./clean-start.sh --native"
         echo "  - Start with HA stack: ./clean-start.sh --ha"
+        echo "  - Start with Caddy proxy (trusted proxy tests): ./clean-start.sh --with-proxy"
     fi
 fi
 echo ""

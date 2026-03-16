@@ -19,8 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Optional;
+import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.service.ApiKeyService;
+import org.ezkey.m2m.config.TrustedProxyProperties;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,13 +66,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
   private final ApiKeyService apiKeyService;
 
+  private final TrustedProxyProperties trustedProxyProperties;
+
   /**
-   * Constructs the filter with the API key validation service.
+   * Constructs the filter with the API key validation service and trusted proxy configuration.
    *
    * @param apiKeyService the service used to validate API key credentials
+   * @param trustedProxyProperties the trusted proxy CIDR list for client IP resolution (never null)
    */
-  public ApiKeyAuthenticationFilter(ApiKeyService apiKeyService) {
+  public ApiKeyAuthenticationFilter(
+      ApiKeyService apiKeyService, TrustedProxyProperties trustedProxyProperties) {
     this.apiKeyService = apiKeyService;
+    this.trustedProxyProperties = trustedProxyProperties;
   }
 
   /**
@@ -104,7 +111,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
           String password = parts[1];
 
           if (username.startsWith(INTEGRATION_KEY_PREFIX)) {
-            String clientIp = extractClientIp(request);
+            String clientIp = ClientIpResolver.resolve(request, trustedProxyProperties.getCidrs());
 
             logger.debug(
                 "API key authentication attempt - Integration Key: {}..., Client IP: {}",
@@ -163,25 +170,5 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         "Security context established for integration: {} with role: {}",
         integration.getId(),
         ROLE_API_KEY);
-  }
-
-  /**
-   * Extracts the client IP address from the request, respecting standard proxy headers.
-   *
-   * @param request the HTTP request
-   * @return the resolved client IP address
-   */
-  private String extractClientIp(HttpServletRequest request) {
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-      return xForwardedFor.split(",")[0].trim();
-    }
-
-    String xRealIp = request.getHeader("X-Real-IP");
-    if (xRealIp != null && !xRealIp.isEmpty()) {
-      return xRealIp.trim();
-    }
-
-    return request.getRemoteAddr();
   }
 }

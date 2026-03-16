@@ -20,6 +20,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.auth.config.TrustedProxyProperties;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
@@ -106,6 +107,8 @@ public class EnrollmentController {
 
   private final EzkeyAdminRepository adminRepository;
 
+  private final TrustedProxyProperties trustedProxyProperties;
+
   /**
    * Constructs the mobile enrollment controller with required dependencies.
    *
@@ -115,6 +118,7 @@ public class EnrollmentController {
    * @param enrollmentRepository enrollment repository for audit queries
    * @param integrationRepository integration repository for tenant resolution in audit logs
    * @param adminRepository admin repository for resolving tenant from admin MFA enrollment
+   * @param trustedProxyProperties trusted proxy CIDR list for client IP resolution (may be null)
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -122,13 +126,15 @@ public class EnrollmentController {
       AuditLogService auditLogService,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
-      EzkeyAdminRepository adminRepository) {
+      EzkeyAdminRepository adminRepository,
+      TrustedProxyProperties trustedProxyProperties) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.adminRepository = adminRepository;
+    this.trustedProxyProperties = trustedProxyProperties;
   }
 
   /**
@@ -189,7 +195,9 @@ public class EnrollmentController {
   public ResponseEntity<EnrollmentBindResponseDto> bind(
       @RequestBody EnrollmentBindRequestDto request, HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String clientIp =
+        AuditHelper.extractClientIp(
+            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
     // Validation: enrollmentId + enrollmentProofToken required
@@ -309,7 +317,9 @@ public class EnrollmentController {
   public ResponseEntity<EnrollmentVerifyResponseDto> verify(
       @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
 
-    String clientIp = AuditHelper.extractClientIp(httpRequest);
+    String clientIp =
+        AuditHelper.extractClientIp(
+            httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
     Integer verifyTenantId = resolveTenantIdForAudit(req.enrollmentId());
 

@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.auth.config.SecurityConfig;
+import org.ezkey.auth.config.TrustedProxyConfig;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
@@ -73,7 +74,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @WebMvcTest(controllers = EnrollmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, TrustedProxyConfig.class})
 @DisplayName("Enrollment Controller Critical Tests")
 class EnrollmentControllerTest {
 

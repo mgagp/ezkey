@@ -17,6 +17,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
 import org.ezkey.admin.config.AdminRateLimitProperties;
+import org.ezkey.admin.config.TrustedProxyProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +85,7 @@ public class NoOpAdminRateLimitFilter extends AdminRateLimitFilter {
    * @param meterRegistry the metrics registry (unused but required by parent)
    */
   public NoOpAdminRateLimitFilter(MeterRegistry meterRegistry) {
-    super(createDummyProperties(), meterRegistry);
+    super(createDummyProperties(), new TrustedProxyProperties(), meterRegistry);
     logger.info("NoOpAdminRateLimitFilter initialized - Rate limiting is DISABLED");
   }
 

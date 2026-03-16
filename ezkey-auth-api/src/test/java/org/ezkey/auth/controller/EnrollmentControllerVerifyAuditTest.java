@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -99,12 +100,11 @@ class EnrollmentControllerVerifyAuditTest {
 
     when(adminRepository.findTenantIdByMfaEnrollmentId(anyInt())).thenReturn(Optional.empty());
 
-    // Mock HttpServletRequest for AuditHelper
-    // AuditHelper.extractClientIp checks CF-Connecting-IP, X-Forwarded-For,
-    // X-Real-IP, then RemoteAddr
-    when(httpRequest.getHeader("CF-Connecting-IP")).thenReturn(null);
-    when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-    when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
+    // Mock HttpServletRequest for AuditHelper (with empty trusted proxies only remoteAddr
+    // is used). Lenient for header stubs that may not be called.
+    lenient().when(httpRequest.getHeader("CF-Connecting-IP")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
 
@@ -116,7 +116,8 @@ class EnrollmentControllerVerifyAuditTest {
             auditLogService,
             enrollmentRepository,
             integrationRepository,
-            adminRepository);
+            adminRepository,
+            new org.ezkey.auth.config.TrustedProxyProperties());
   }
 
   @Test

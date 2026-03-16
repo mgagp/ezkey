@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.auth.config.SecurityConfig;
+import org.ezkey.auth.config.TrustedProxyConfig;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -76,7 +77,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @WebMvcTest(controllers = AuthAttemptController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, TrustedProxyConfig.class})
 @DisplayName("AuthAttempt Controller Critical Tests")
 class AuthAttemptControllerTest {
 
