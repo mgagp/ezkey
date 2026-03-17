@@ -73,6 +73,8 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   defaultSort?: string;
   /** When false, the query is not run (e.g. for nested expandable sections). Default true. */
   enabled?: boolean;
+  /** When false, do not show previous data while the query key changes (e.g. after focus). Default true. */
+  keepPreviousData?: boolean;
 }): UsePaginatedFromOrvalResult<T> {
   const {
     queryKey,
@@ -81,6 +83,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     defaultSize = 20,
     defaultSort = 'createdAt,DESC',
     enabled = true,
+    keepPreviousData: useKeepPreviousData = true,
   } = options;
 
   const [page, setPageState] = useState(0);
@@ -97,7 +100,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   const { data: body, isLoading, isError, error, refetch } = useQuery({
     queryKey: [...queryKey, page, size, sort],
     queryFn: () => fetchPage(params),
-    placeholderData: keepPreviousData,
+    placeholderData: useKeepPreviousData ? keepPreviousData : undefined,
     enabled,
   });
 

@@ -394,7 +394,19 @@ function IntegrityPanel() {
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
   const [gapsListExpanded, setGapsListExpanded] = useState(true);
 
+  /** When a gap is focused, request a narrow window (gapStart − 1h to gapEnd + 1h) so page 0 contains the anchor and first checkpoint after the gap. Otherwise use the date-range filter. */
   const checkpointApiParams = useMemo(() => {
+    if (focusedGap) {
+      const start = new Date(focusedGap.gapStart);
+      start.setHours(start.getHours() - 1, start.getMinutes(), start.getSeconds(), 0);
+      const end = new Date(focusedGap.gapEnd);
+      end.setHours(end.getHours() + 1, end.getMinutes(), end.getSeconds(), 0);
+      return {
+        windowStartAfter: start.toISOString(),
+        windowStartBefore: end.toISOString(),
+        checkpointType: checkpointTypeFilter || undefined,
+      } as GetChainCheckpointsParams;
+    }
     if (!checkpointRange.from || !checkpointRange.to) return {};
     const { createdAfter, createdBefore } = dateRangeToApiParams(checkpointRange.from, checkpointRange.to);
     return {
@@ -402,7 +414,7 @@ function IntegrityPanel() {
       windowStartBefore: createdBefore,
       checkpointType: checkpointTypeFilter || undefined,
     } as GetChainCheckpointsParams;
-  }, [checkpointRange.from, checkpointRange.to, checkpointTypeFilter]);
+  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter]);
 
   const {
     data: checkpointData,
@@ -417,6 +429,8 @@ function IntegrityPanel() {
     defaultSize: 20,
     defaultSort: 'windowStart,ASC',
     enabled: timelineExpanded,
+    /** When a gap is focused, show loading then correct page 0 instead of keeping previous (wide) data. */
+    keepPreviousData: !focusedGap,
   });
 
   /** Rows to display: checkpoints in API order plus gap rows when sort is chronological. Gap detection is only valid when consecutive rows are in time order (sort by windowStart); otherwise do not insert gap rows to avoid misleading the operator. */
@@ -468,14 +482,15 @@ function IntegrityPanel() {
     return `${y}-${m}-${day}`;
   }
 
-  /** Focus a gap and navigate timeline to show it: set range around the gap, go to page 0, expand timeline. */
+  /** Focus a gap and navigate timeline: narrow API window so page 0 contains anchor + first-after gap; set date range to that same window so the filter matches the request; set sort, page 0, expand. */
   function focusGapAndNavigate(g: { gapStart: string; gapEnd: string; gapMinutes: number }) {
     setFocusedGap(g);
     const start = new Date(g.gapStart);
-    start.setDate(start.getDate() - 1);
+    start.setHours(start.getHours() - 1, start.getMinutes(), start.getSeconds(), 0);
     const end = new Date(g.gapEnd);
-    end.setDate(end.getDate() + 1);
+    end.setHours(end.getHours() + 1, end.getMinutes(), end.getSeconds(), 0);
     setCheckpointRange({ from: toYYYYMMDD(start), to: toYYYYMMDD(end) });
+    checkpointPagination.setSort('windowStart,ASC');
     checkpointPagination.goToPage(0);
     setTimelineExpanded(true);
   }
