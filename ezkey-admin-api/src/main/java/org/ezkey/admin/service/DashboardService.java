@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,7 @@ import org.ezkey.admin.dto.response.DashboardRecentActivityItemDto;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.service.AuthAttemptService;
@@ -59,20 +61,25 @@ public class DashboardService {
   /** Used only for parsing GAP_PENDING eventDetails JSON; not injected to avoid bean dependency. */
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+  private static final String CHECKPOINT_TYPE_GAP_DECLARATION = "GAP_DECLARATION";
+
   private final IntegrationService integrationService;
   private final EnrollmentService enrollmentService;
   private final AuthAttemptService authAttemptService;
   private final AuditLogService auditLogService;
+  private final AuditChainCheckpointRepository checkpointRepository;
 
   public DashboardService(
       IntegrationService integrationService,
       EnrollmentService enrollmentService,
       AuthAttemptService authAttemptService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AuditChainCheckpointRepository checkpointRepository) {
     this.integrationService = integrationService;
     this.enrollmentService = enrollmentService;
     this.authAttemptService = authAttemptService;
     this.auditLogService = auditLogService;
+    this.checkpointRepository = checkpointRepository;
   }
 
   /**
@@ -220,15 +227,43 @@ public class DashboardService {
             pageRequest);
     List<DashboardAlertItemDto> list = new ArrayList<>();
     for (AuditLog log : page.getContent()) {
+      DashboardGapPendingDetailsDto details = parseGapPendingDetails(log.getEventDetails());
+      if (details != null && isGapDeclared(details)) {
+        continue;
+      }
       DashboardAlertItemDto item = new DashboardAlertItemDto();
       item.setAuditLogId(log.getAuditLogId());
       item.setEventType(log.getEventType() != null ? log.getEventType().name() : null);
       item.setEventStatus(log.getEventStatus() != null ? log.getEventStatus().name() : null);
       item.setCreatedAt(log.getCreatedAt());
-      item.setEventDetails(parseGapPendingDetails(log.getEventDetails()));
+      item.setEventDetails(details);
       list.add(item);
     }
     return list;
+  }
+
+  /**
+   * Returns true if a GAP_DECLARATION checkpoint exists for the period described in the alert
+   * details, meaning the gap has been formally declared and the alert should not be shown.
+   */
+  private boolean isGapDeclared(DashboardGapPendingDetailsDto details) {
+    if (details.getGapStart() == null
+        || details.getGapStart().isBlank()
+        || details.getEstimatedGapEnd() == null
+        || details.getEstimatedGapEnd().isBlank()) {
+      return false;
+    }
+    try {
+      OffsetDateTime windowStart = OffsetDateTime.parse(details.getGapStart().trim());
+      OffsetDateTime windowEnd = OffsetDateTime.parse(details.getEstimatedGapEnd().trim());
+      return checkpointRepository
+          .findByWindowStartAndWindowEndAndCheckpointType(
+              windowStart, windowEnd, CHECKPOINT_TYPE_GAP_DECLARATION)
+          .isPresent();
+    } catch (DateTimeParseException e) {
+      logger.debug("Could not parse gap window for declared check: {}", e.getMessage());
+      return false;
+    }
   }
 
   private DashboardGapPendingDetailsDto parseGapPendingDetails(String eventDetailsJson) {

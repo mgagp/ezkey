@@ -44,6 +44,20 @@ public interface AuditChainCheckpointRepository
   boolean existsByWindowStartAndWindowEnd(OffsetDateTime windowStart, OffsetDateTime windowEnd);
 
   /**
+   * Finds a GAP_DECLARATION checkpoint for the exact window, if any.
+   *
+   * <p>Used by the dashboard to determine whether an AUDIT_CHAIN_GAP_PENDING alert has been
+   * resolved (the gap was declared), so that resolved alerts are not shown.
+   *
+   * @param windowStart start of the gap window
+   * @param windowEnd end of the gap window
+   * @param checkpointType must be {@code GAP_DECLARATION}
+   * @return the checkpoint if found
+   */
+  Optional<AuditChainCheckpoint> findByWindowStartAndWindowEndAndCheckpointType(
+      OffsetDateTime windowStart, OffsetDateTime windowEnd, String checkpointType);
+
+  /**
    * Finds the most recent checkpoint by window_start descending.
    *
    * @return the latest checkpoint, or empty if no checkpoints exist
