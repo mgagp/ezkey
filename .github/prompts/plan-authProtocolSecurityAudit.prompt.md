@@ -33,12 +33,12 @@ Audit exhaustif du protocole d'authentification mobile MFA d'EZKey (endpoints `/
 
 #### ÉLEVÉ — Probabilité moyenne, impact significatif
 
-**V4. Contexte transactionnel (`contextTitle`/`contextMessage`) non lié cryptographiquement**
+**V4. Contexte transactionnel (`contextTitle`/`contextMessage`) et Respond (`authAttemptAccepted`) non liés cryptographiquement**
 
-- **Méthodologie** : Le contexte (ex: "Transfert de 5000€ vers compte X") est transmis dans la réponse `/pending` **à côté** du `authAttemptProofToken` signé, mais le contexte lui-même **n'est pas inclus dans les données signées** par l'intégration. Un MITM entre le serveur et le device pourrait modifier `contextTitle`/`contextMessage` sans invalider la signature. L'utilisateur approuverait une transaction qu'il croit être "Transfert de 50€" alors que le backend a envoyé "Transfert de 5000€".
+- **Méthodologie** : (Pending) Le contexte est transmis dans la réponse `/pending` **à côté** du `authAttemptProofToken` signé, mais le contexte et `authAttemptChallengeRequired` **n'étaient pas inclus** dans les données signées par l'intégration. (Respond) De même, `authAttemptAccepted` était envoyé en clair et **n'était pas inclus** dans la signature device. Un MITM pouvait modifier contexte, challengeRequired ou accepted sans invalider les signatures.
 - **Probabilité** : **Moyenne** — nécessite un MITM actif (atténué par TLS en production).
-- **Remediation** : Inclure `contextTitle` et `contextMessage` dans le payload signé : `signature = ECDSA(authAttemptProofToken + "|" + contextTitle + "|" + contextMessage, integrationPrivateKey)`. Le device vérifie la signature sur le tuple complet. Ceci est **critique pour la conformité PSD2/SCA** mentionnée dans [CONTEXTUAL_AUTH.md](docs/CONTEXTUAL_AUTH.md).
-- **Vérification** : Test modifiant le `contextMessage` dans la réponse interceptée et vérifiant que le device rejette la signature.
+- **Remediation (implémentée)** : (1) **Pending** : L'intégration signe le payload canonique `proofToken|challengeRequired|contextTitle|contextMessage` (Unicode NFC pour le texte, UTF-8). Les clients (demo device, ezkey_mobile, ezkey_mobile_app) vérifient cette signature avant d'afficher le contexte. (2) **Respond** : Le device signe le payload canonique `proofToken|accepted` ; le backend vérifie cette signature. Spécification : [docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). Critique pour la conformité PSD2/SCA ([CONTEXTUAL_AUTH.md](docs/CONTEXTUAL_AUTH.md)).
+- **Vérification** : Test modifiant le `contextMessage` dans la réponse pending → le device rejette la signature. Test envoyant une signature sur `token|true` avec `authAttemptAccepted: false` → le backend rejette.
 
 **V5. Race condition sur `/respond` — absence de `FOR UPDATE` lock**
 
@@ -130,7 +130,7 @@ Audit exhaustif du protocole d'authentification mobile MFA d'EZKey (endpoints `/
 1. **[CRITIQUE] Ajouter rate limiting sur `/respond`** — Modifier [RateLimitFilter.java](ezkey-auth-api/src/main/java/org/ezkey/auth/config/RateLimitFilter.java) pour inclure le endpoint respond avec stratégie `auth-attempt-id` (extraire du body JSON), max 3 tentatives/5 min. Ajouter un compteur d'échecs sur `AuthAttempt` et invalider après N échecs.
 2. **[CRITIQUE] Corriger l'extraction d'enrollment-id dans le rate limiter** — Refactorer `extractEnrollmentIdFromPath()` pour extraire l'ID du body JSON via `ContentCachingRequestWrapper`, ou basculer sur `client-ip` pour `/pending` en attendant.
 3. **[CRITIQUE] Implémenter une liste de trusted proxies** — Ajouter une propriété `ezkey.rate-limit.trusted-proxies` (liste de CIDR). Ne faire confiance aux headers `X-Forwarded-For` que si `remoteAddr` est dans la liste.
-4. **[ÉLEVÉ] Lier cryptographiquement le contexte au proof token** — Modifier `SignatureService.generateSignature()` pour inclure `contextTitle + "|" + contextMessage` dans le payload signé. Modifier le device pour vérifier la signature sur le tuple complet. C'est l'amélioration la plus structurante pour la crédibilité sécuritaire du projet.
+4. **[ÉLEVÉ] Lier cryptographiquement le contexte au proof token (Pending) et authAttemptAccepted (Respond)** — **Implémenté.** (1) Pending : l'intégration signe le payload `proofToken|challengeRequired|contextTitle|contextMessage` (NFC + UTF-8) ; tous les clients vérifient cette signature. (2) Respond : le device signe `proofToken|accepted` ; le backend vérifie cette signature. Voir [AuthAttemptSignaturePayload](ezkey-core/src/main/java/org/ezkey/authattempt/service/AuthAttemptSignaturePayload.java) et [docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). Vérification : signature invalide si contexte ou accepted modifié.
 5. **[ÉLEVÉ] Ajouter Bean Validation sur les DTOs** — Annoter `AuthAttemptPendingRequestDto` et `AuthAttemptRespondRequestDto` avec `@NotNull`, `@NotBlank`, `@Size`. Assurer que le `@ControllerAdvice` transforme les `MethodArgumentNotValidException` en réponses 400 standardisées.
 6. **[ÉLEVÉ] Ajouter `FOR UPDATE` sur le respond** — Créer une méthode repository `findAndLockById()` avec `@Lock(PESSIMISTIC_WRITE)` et l'utiliser dans `AuthAttemptRespondService.validateAndGetAttempt()`.
 7. **[ÉLEVÉ] Supprimer les valeurs de challenge des logs** — Modifier le `logger.warn` dans [AuthAttemptRespondService](ezkey-core/src/main/java/org/ezkey/authattempt/service/AuthAttemptRespondService.java) pour ne pas inclure `expected` / `got`. Auditer tous les usages de `getAuthAttemptChallenge()` et `toString()` sur `AuthAttempt`.
@@ -153,7 +153,7 @@ Audit exhaustif du protocole d'authentification mobile MFA d'EZKey (endpoints `/
   - Concurrent respond race condition (2 threads sur même auth attempt)
   - Null/empty payload validation (vérifier 400, pas 500)
   - Challenge non loggé en clair (grep sur les logs de test)
-  - Contexte modifié → signature invalide (après implémentation V4)
+  - Contexte modifié dans pending → signature invalide (V4). Respond avec payload signé (token|accepted) incohérent avec authAttemptAccepted → rejet backend.
 - **Tests manuels via Postman** : Collection existante dans [postman/](postman/) — ajouter des scénarios d'attaque.
 - **Build verification** : `mvn clean verify` — tous les tests passent après chaque changement.
 - **Commande de validation** : `mvn checkstyle:check` — conformité style.
