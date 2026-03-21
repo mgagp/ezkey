@@ -18,9 +18,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -41,6 +39,14 @@ import org.slf4j.LoggerFactory;
  * // credentials.enrollmentId, credentials.enrollmentProofToken, etc.
  * </pre>
  *
+ * <p><b>Container names:</b> The extractor resolves the Admin API container via {@code docker
+ * inspect}. Supported names are the standard stack ({@code ezkey-admin-api}), native stack ({@code
+ * ezkey-admin-api-native}), and HA ({@code ezkey-admin-api-1} / {@code ezkey-admin-api-2}).
+ * Override with environment variable {@code EZKEY_ADMIN_DOCKER_CONTAINER} if your compose uses a
+ * different {@code container_name}. If the JVM cannot find the {@code docker} executable (common on
+ * Windows when running Maven outside Git Bash), set {@link DockerCliLocator#ENV_DOCKER_CLI} to the
+ * full path of {@code docker.exe} (see {@link DockerCliLocator}).
+ *
  * <p><b>Log Format Parsed:</b>
  *
  * <pre>
@@ -55,34 +61,26 @@ import org.slf4j.LoggerFactory;
  *    ...
  * </pre>
  *
- * <p><b>Container resolution:</b> Defaults to {@code ezkey-admin-api} from {@code
- * docker/docker-compose.yml}. If {@code docker inspect} fails from the JVM (common when running
- * Maven tests from an IDE on Windows with a different {@code PATH} than Git Bash), set {@code
- * EZKEY_TESTS_ADMIN_API_CONTAINER} to the container name, or rely on fallback discovery via {@code
- * docker ps --filter publish=9080}.
- *
  * @since 2025
  */
 public class BootstrapCredentialsExtractor {
 
   private static final Logger log = LoggerFactory.getLogger(BootstrapCredentialsExtractor.class);
 
-  /**
-   * Optional override when auto-detection fails (e.g. IDE cannot run {@code docker} with the same
-   * PATH as the terminal where Clean Start was run).
-   */
-  private static final String ENV_ADMIN_API_CONTAINER = "EZKEY_TESTS_ADMIN_API_CONTAINER";
-
-  /** Host port for Admin API HTTP ({@code admin-api} service in compose). */
-  private static final int ADMIN_API_PUBLISHED_PORT = 9080;
-
   private static final String DOCKER_CONTAINER_NAME_STANDARD = "ezkey-admin-api";
 
-  /** Native-image stack ({@code docker-compose.native.yml}) uses a distinct container name. */
+  /** Native image stack ({@code docker-compose.native.yml}) uses a distinct container name. */
   private static final String DOCKER_CONTAINER_NAME_NATIVE = "ezkey-admin-api-native";
 
   private static final String DOCKER_CONTAINER_NAME_HA_1 = "ezkey-admin-api-1";
   private static final String DOCKER_CONTAINER_NAME_HA_2 = "ezkey-admin-api-2";
+
+  /**
+   * Optional override: force the Admin API container name for log extraction (e.g. custom compose
+   * or Docker Desktop naming).
+   */
+  private static final String ENV_ADMIN_DOCKER_CONTAINER = "EZKEY_ADMIN_DOCKER_CONTAINER";
+
   private static final String CREDENTIALS_FILE_PATH = ".ezkey-test/bootstrap-credentials.json";
   private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
 
@@ -201,26 +199,25 @@ public class BootstrapCredentialsExtractor {
   }
 
   /**
-   * Detects which Admin API container to use based on environment (standard or HA mode).
+   * Detects which Admin API container to use (HA, standard JAR stack, or native image stack).
    *
    * @return Container name to use for reading logs
    * @throws IllegalStateException if no valid container is found
    */
   private String detectAdminApiContainer() throws IOException, InterruptedException {
-    String fromEnv = System.getenv(ENV_ADMIN_API_CONTAINER);
-    if (fromEnv != null && !fromEnv.isBlank()) {
-      String trimmed = fromEnv.trim();
-      if (containerExists(trimmed)) {
-        log.info("Using Admin API container from {}={}", ENV_ADMIN_API_CONTAINER, trimmed);
-        return trimmed;
+    String override = System.getenv(ENV_ADMIN_DOCKER_CONTAINER);
+    if (override != null && !override.isBlank()) {
+      String name = override.trim();
+      if (containerExists(name)) {
+        log.info("Using Admin API container from {}={}", ENV_ADMIN_DOCKER_CONTAINER, name);
+        return name;
       }
       log.warn(
-          "{}={} but docker inspect found no such container; continuing with auto-detection",
-          ENV_ADMIN_API_CONTAINER,
-          trimmed);
+          "{}={} but docker inspect did not find that container; trying auto-detection",
+          ENV_ADMIN_DOCKER_CONTAINER,
+          name);
     }
 
-    // Check if HA mode containers exist
     boolean haContainer1Exists = containerExists(DOCKER_CONTAINER_NAME_HA_1);
     boolean haContainer2Exists = containerExists(DOCKER_CONTAINER_NAME_HA_2);
 
@@ -229,52 +226,20 @@ public class BootstrapCredentialsExtractor {
           "HA mode detected: Found containers {} and {}",
           DOCKER_CONTAINER_NAME_HA_1,
           DOCKER_CONTAINER_NAME_HA_2);
-      // Find which instance created the admin global
       return findInstanceWithBootstrapLogs();
     }
 
-    // Standard JVM image (docker-compose.yml)
     if (containerExists(DOCKER_CONTAINER_NAME_STANDARD)) {
       log.debug("Standard mode detected: Using container {}", DOCKER_CONTAINER_NAME_STANDARD);
       return DOCKER_CONTAINER_NAME_STANDARD;
     }
 
-    // Native image stack (docker-compose.native.yml — same ports, different container_name)
     if (containerExists(DOCKER_CONTAINER_NAME_NATIVE)) {
-      log.debug("Native image stack detected: Using container {}", DOCKER_CONTAINER_NAME_NATIVE);
+      log.info("Native stack detected: Using container {}", DOCKER_CONTAINER_NAME_NATIVE);
       return DOCKER_CONTAINER_NAME_NATIVE;
     }
 
-    // Fallback: resolve by published port (works when localhost:9080 is up but docker inspect
-    // failed from this JVM, or compose uses an unexpected project prefix)
-    String byPort = findContainerPublishingAdminApiPort();
-    if (byPort != null) {
-      log.info(
-          "Resolved Admin API container via docker ps --filter publish={}: {}",
-          ADMIN_API_PUBLISHED_PORT,
-          byPort);
-      return byPort;
-    }
-
-    // Fallback: substring match on container name (docker ps --filter name=...)
-    String byNameFilter = findContainerByEzkeyAdminApiNameFilter();
-    if (byNameFilter != null) {
-      log.info(
-          "Resolved Admin API container via docker ps --filter name=ezkey-admin-api: {}",
-          byNameFilter);
-      return byNameFilter;
-    }
-
-    if (!dockerCliResponds()) {
-      throw new IllegalStateException(
-          "Docker CLI did not respond from this JVM (e.g. `docker version` failed). "
-              + "Functional tests need the same Docker CLI on PATH as your shell where Clean Start "
-              + "runs—on Windows, run tests from Git Bash or configure the IDE test runner PATH. "
-              + "Override: set "
-              + ENV_ADMIN_API_CONTAINER
-              + " to the container name from `docker ps`.");
-    }
-
+    logDockerBootstrapDiagnostics();
     throw new IllegalStateException(
         "No Admin API container found. Expected one of: "
             + DOCKER_CONTAINER_NAME_STANDARD
@@ -284,156 +249,69 @@ public class BootstrapCredentialsExtractor {
             + DOCKER_CONTAINER_NAME_HA_1
             + ", or "
             + DOCKER_CONTAINER_NAME_HA_2
-            + ", or a container publishing port "
-            + ADMIN_API_PUBLISHED_PORT
             + ". Set "
-            + ENV_ADMIN_API_CONTAINER
-            + " if needed.");
+            + ENV_ADMIN_DOCKER_CONTAINER
+            + " if your container_name differs. If services are healthy on localhost but this"
+            + " fails, the test JVM may not have the Docker CLI on PATH (Windows: set "
+            + DockerCliLocator.ENV_DOCKER_CLI
+            + " to the full path of docker.exe, e.g. under Docker Desktop resources\\\\bin).");
   }
 
   /**
-   * Returns true if {@code docker version} succeeds (same process as tests).
-   *
-   * @return true if Docker CLI responds
+   * Logs containers matching {@code ezkey-admin} and Docker client version to explain bootstrap
+   * failures when {@code docker inspect} finds no Admin API container.
    */
-  private boolean dockerCliResponds() {
+  private void logDockerBootstrapDiagnostics() {
+    log.warn("Bootstrap container auto-detection failed; running Docker diagnostics...");
     try {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder("docker", "version", "--format", "{{.Client.Version}}");
-      processBuilder.redirectErrorStream(true);
-      Process process = processBuilder.start();
-      try (BufferedReader reader =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-        while (reader.readLine() != null) {
-          // consume
-        }
-      }
-      return process.waitFor() == 0;
-    } catch (Exception e) {
-      log.debug("docker CLI check failed: {}", e.getMessage());
-      return false;
-    }
-  }
-
-  /**
-   * Finds a running container that publishes the Admin API HTTP port ({@value
-   * #ADMIN_API_PUBLISHED_PORT}).
-   *
-   * @return matching container name, or null
-   */
-  private String findContainerPublishingAdminApiPort() {
-    String[][] filterAttempts =
-        new String[][] {
-          {"publish", String.valueOf(ADMIN_API_PUBLISHED_PORT)},
-          {"publish", ADMIN_API_PUBLISHED_PORT + "/tcp"},
-        };
-    for (String[] pair : filterAttempts) {
-      List<String> names = dockerPsNamesMatchingFilter(pair[0], pair[1]);
-      String picked = pickPreferredAdminContainerName(names);
-      if (picked != null) {
-        return picked;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Picks a known Admin API container name when multiple containers publish the same port.
-   *
-   * @param names container names from {@code docker ps}
-   * @return preferred name, or null if empty
-   */
-  private String pickPreferredAdminContainerName(List<String> names) {
-    if (names.isEmpty()) {
-      return null;
-    }
-    List<String> preferredOrder =
-        List.of(
-            DOCKER_CONTAINER_NAME_STANDARD,
-            DOCKER_CONTAINER_NAME_NATIVE,
-            DOCKER_CONTAINER_NAME_HA_1,
-            DOCKER_CONTAINER_NAME_HA_2);
-    for (String preferred : preferredOrder) {
-      if (names.contains(preferred)) {
-        return preferred;
-      }
-    }
-    return names.get(0);
-  }
-
-  /**
-   * Uses {@code docker ps --filter name=ezkey-admin-api} (substring match) and prefers exact known
-   * names.
-   *
-   * @return container name, or null
-   */
-  private String findContainerByEzkeyAdminApiNameFilter() {
-    try {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder(
-              "docker", "ps", "--filter", "name=ezkey-admin-api", "--format", "{{.Names}}");
-      processBuilder.redirectErrorStream(true);
-      Process process = processBuilder.start();
-      Set<String> names = new LinkedHashSet<>();
-      try (BufferedReader reader =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      ProcessBuilder pb =
+          DockerCliLocator.processBuilder(
+              "ps", "-a", "--filter", "name=ezkey-admin", "--format", "{{.Names}}\t{{.Status}}");
+      pb.redirectErrorStream(true);
+      Process p = pb.start();
+      StringBuilder sb = new StringBuilder();
+      try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
         String line;
-        while ((line = reader.readLine()) != null) {
-          String trimmed = line.trim();
-          if (!trimmed.isEmpty()) {
-            names.add(trimmed);
-          }
+        while ((line = r.readLine()) != null) {
+          sb.append(line).append('\n');
         }
       }
-      if (process.waitFor() != 0) {
-        return null;
+      int code = p.waitFor();
+      String out = sb.toString().trim();
+      if (code == 0) {
+        if (out.isEmpty()) {
+          log.warn(
+              "Docker diagnostic: no containers matching name filter 'ezkey-admin'. "
+                  + "If docker works in a shell, check whether this JVM has docker on PATH.");
+        } else {
+          log.warn("Docker diagnostic: containers matching 'ezkey-admin':\n{}", out);
+        }
+      } else {
+        log.warn("Docker diagnostic: docker ps exited with code {}", code);
       }
-      if (names.contains(DOCKER_CONTAINER_NAME_STANDARD)) {
-        return DOCKER_CONTAINER_NAME_STANDARD;
-      }
-      if (names.contains(DOCKER_CONTAINER_NAME_NATIVE)) {
-        return DOCKER_CONTAINER_NAME_NATIVE;
-      }
-      if (names.contains(DOCKER_CONTAINER_NAME_HA_1)) {
-        return DOCKER_CONTAINER_NAME_HA_1;
-      }
-      if (names.contains(DOCKER_CONTAINER_NAME_HA_2)) {
-        return DOCKER_CONTAINER_NAME_HA_2;
-      }
-      return names.isEmpty() ? null : names.iterator().next();
     } catch (Exception e) {
-      log.debug("docker ps name filter failed: {}", e.getMessage());
-      return null;
+      log.warn(
+          "Docker diagnostic: could not run docker ps: {}. Is 'docker' available to this process?",
+          e.getMessage());
     }
-  }
 
-  private List<String> dockerPsNamesMatchingFilter(String filterKey, String filterValue) {
-    List<String> names = new ArrayList<>();
     try {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder(
-              "docker", "ps", "--filter", filterKey + "=" + filterValue, "--format", "{{.Names}}");
-      processBuilder.redirectErrorStream(true);
-      Process process = processBuilder.start();
-      try (BufferedReader reader =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      ProcessBuilder pb =
+          DockerCliLocator.processBuilder("version", "--format", "{{.Client.Version}}");
+      pb.redirectErrorStream(true);
+      Process p = pb.start();
+      StringBuilder sb = new StringBuilder();
+      try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
         String line;
-        while ((line = reader.readLine()) != null) {
-          String trimmed = line.trim();
-          if (!trimmed.isEmpty()) {
-            names.add(trimmed);
-          }
+        while ((line = r.readLine()) != null) {
+          sb.append(line);
         }
       }
-      int exitCode = process.waitFor();
-      if (exitCode != 0) {
-        log.debug("docker ps failed with exit {} for {}={}", exitCode, filterKey, filterValue);
-        return List.of();
+      if (p.waitFor() == 0 && !sb.isEmpty()) {
+        log.warn("Docker diagnostic: docker client version: {}", sb.toString().trim());
       }
-      return names;
     } catch (Exception e) {
-      log.debug("docker ps filter {}={} failed: {}", filterKey, filterValue, e.getMessage());
-      return List.of();
+      log.debug("Docker diagnostic: docker version failed: {}", e.getMessage());
     }
   }
 
@@ -445,7 +323,7 @@ public class BootstrapCredentialsExtractor {
    */
   private boolean containerExists(String containerName) {
     try {
-      ProcessBuilder processBuilder = new ProcessBuilder("docker", "inspect", containerName);
+      ProcessBuilder processBuilder = DockerCliLocator.processBuilder("inspect", containerName);
       processBuilder.redirectErrorStream(true);
       Process process = processBuilder.start();
 
@@ -529,8 +407,7 @@ public class BootstrapCredentialsExtractor {
       // Query ShedLock table for ADMIN_STARTUP_BOOTSTRAP lock
       // locked_by column contains host identifier (often Docker container ID prefix)
       ProcessBuilder processBuilder =
-          new ProcessBuilder(
-              "docker",
+          DockerCliLocator.processBuilder(
               "exec",
               "ezkey-postgres-ha",
               "psql",
@@ -620,7 +497,7 @@ public class BootstrapCredentialsExtractor {
   private String getDockerContainerIdPrefix(String containerName) {
     try {
       ProcessBuilder processBuilder =
-          new ProcessBuilder("docker", "inspect", "-f", "{{.Id}}", containerName);
+          DockerCliLocator.processBuilder("inspect", "-f", "{{.Id}}", containerName);
       processBuilder.redirectErrorStream(true);
       Process process = processBuilder.start();
 
@@ -676,7 +553,7 @@ public class BootstrapCredentialsExtractor {
   private String readDockerLogs(String containerName) throws IOException, InterruptedException {
     log.debug("Reading logs from Docker container: {}", containerName);
 
-    ProcessBuilder processBuilder = new ProcessBuilder("docker", "logs", containerName);
+    ProcessBuilder processBuilder = DockerCliLocator.processBuilder("logs", containerName);
     processBuilder.redirectErrorStream(true);
 
     Process process = processBuilder.start();

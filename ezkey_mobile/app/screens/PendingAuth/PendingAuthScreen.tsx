@@ -25,11 +25,13 @@ import {
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import axios from 'axios';
 import {Buffer} from 'buffer';
+import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentById} from '../../hooks/useEnrollments';
 import {authAttemptsApi} from '../../services/api/authAttempts';
 import {buildPendingPayload, buildRespondPayload} from '../../services/crypto/authAttemptPayload';
 import {cryptoService} from '../../services/crypto';
+import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -136,14 +138,22 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const [loading, setLoading] = useState(false);
   /** On-screen debug info when an error occurs (no server/file needed). */
   const [debugInfo, setDebugInfo] = useState<{
+    /** ISO 8601 timestamp when this debug snapshot started (confirms JS bundle / screen code version). */
+    capturedAtIso?: string;
     lastStep: string;
     integrationPublicKeyLength?: number;
     integrationPublicKeyPrefix?: string;
     pendingPayloadLength?: number;
+    /** SHA-256 hex of pendingPayload UTF-8; compare to Auth API log PENDING_PAYLOAD_DIAG payloadSha256Utf8Hex. */
+    pendingPayloadSha256Utf8Hex?: string;
     pendingPayloadBase64?: string;
     pendingPayloadPreview?: string;
     signatureLength?: number;
+    /** SHA-256 hex of integration signature Base64 string (UTF-8); compare PENDING_SIGNATURE_DIAG. */
+    signatureSha256Utf8Hex?: string;
     signaturePrefix?: string;
+    /** SHA-256 hex of integrationPublicKey string (UTF-8) passed to verify; compare PENDING_INTEGRATION_PUBLIC_KEY_DIAG. */
+    integrationPublicKeySha256Utf8Hex?: string;
     signatureValid?: boolean;
     errorMessage?: string;
   } | undefined>(undefined);
@@ -173,11 +183,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     setChallengeFailedMessage(undefined);
     setDebugInfo(undefined);
     try {
-      setDebugInfo({lastStep: 'start'});
+      const debugSnapshotAt = new Date().toISOString();
+      setDebugInfo({lastStep: 'start', capturedAtIso: debugSnapshotAt});
       const enrollmentId = enrollment.id.toString();
       // Ensure EC P-256 key pair exists for this enrollment
       await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
-      setDebugInfo(prev => (prev ? {...prev, lastStep: 'after_ensure'} : {lastStep: 'after_ensure'}));
+      setDebugInfo(prev =>
+        prev
+          ? {...prev, lastStep: 'after_ensure'}
+          : {lastStep: 'after_ensure', capturedAtIso: debugSnapshotAt},
+      );
       const deviceProofToken = Date.now().toString();
       const deviceProofTokenSigned = await cryptoService.sign(enrollmentId, deviceProofToken);
       const response = await authAttemptsApi.pending({
@@ -192,7 +207,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         setState('pending');
         return;
       }
-      setDebugInfo(prev => (prev ? {...prev, lastStep: 'after_pending'} : {lastStep: 'after_pending'}));
+      setDebugInfo(prev =>
+        prev
+          ? {...prev, lastStep: 'after_pending'}
+          : {lastStep: 'after_pending', capturedAtIso: debugSnapshotAt},
+      );
 
       // Verify integration signature over canonical payload (NFC + proofToken|challenge|title|message)
       const integrationPublicKey = enrollment.integrationPublicKey;
@@ -208,8 +227,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         response.contextTitle,
         response.contextMessage,
       );
+      const pendingPayloadSha256Utf8Hex = sha256HexUtf8(pendingPayload);
       const payloadBase64 = Buffer.from(pendingPayload, 'utf8').toString('base64');
       const signature = response.authAttemptProofTokenSignedByIntegration ?? '';
+      const signatureSha256Utf8Hex = sha256HexUtf8(signature);
+      const integrationPublicKeySha256Utf8Hex = sha256HexUtf8(integrationPublicKey);
       setDebugInfo(prev =>
         prev
           ? {
@@ -217,20 +239,27 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
               lastStep: 'before_verify',
               integrationPublicKeyLength: integrationPublicKey?.length,
               integrationPublicKeyPrefix: integrationPublicKey?.slice(0, 24) ?? '',
+              integrationPublicKeySha256Utf8Hex,
               pendingPayloadLength: pendingPayload.length,
+              pendingPayloadSha256Utf8Hex,
               pendingPayloadBase64: payloadBase64,
               pendingPayloadPreview: pendingPayload.slice(0, 180),
               signatureLength: signature.length,
+              signatureSha256Utf8Hex,
               signaturePrefix: signature.slice(0, 24),
             }
           : {
               lastStep: 'before_verify',
+              capturedAtIso: debugSnapshotAt,
               integrationPublicKeyLength: integrationPublicKey?.length,
               integrationPublicKeyPrefix: integrationPublicKey?.slice(0, 24) ?? '',
+              integrationPublicKeySha256Utf8Hex,
               pendingPayloadLength: pendingPayload.length,
+              pendingPayloadSha256Utf8Hex,
               pendingPayloadBase64: payloadBase64,
               pendingPayloadPreview: pendingPayload.slice(0, 180),
               signatureLength: signature.length,
+              signatureSha256Utf8Hex,
               signaturePrefix: signature.slice(0, 24),
             },
       );
@@ -240,7 +269,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         integrationPublicKey,
       );
       setDebugInfo(prev =>
-        prev ? {...prev, lastStep: 'after_verify', signatureValid} : {lastStep: 'after_verify', signatureValid},
+        prev
+          ? {...prev, lastStep: 'after_verify', signatureValid}
+          : {lastStep: 'after_verify', signatureValid, capturedAtIso: debugSnapshotAt},
       );
       if (!signatureValid) {
         setGlobalError('Invalid integration signature on pending response.');
@@ -263,11 +294,17 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       setChallengeInput('');
       setFormError(undefined);
       setState('pending');
-      setDebugInfo(prev => (prev ? {...prev, lastStep: 'after_verify'} : {lastStep: 'after_verify'}));
+      setDebugInfo(prev =>
+        prev
+          ? {...prev, lastStep: 'after_verify'}
+          : {lastStep: 'after_verify', capturedAtIso: debugSnapshotAt},
+      );
     } catch (error) {
       const msg = extractErrorMessage(error);
       setDebugInfo(prev =>
-        prev ? {...prev, lastStep: 'catch', errorMessage: msg} : {lastStep: 'catch', errorMessage: msg},
+        prev
+          ? {...prev, lastStep: 'catch', errorMessage: msg}
+          : {lastStep: 'catch', errorMessage: msg, capturedAtIso: new Date().toISOString()},
       );
       setGlobalError(msg);
     } finally {
@@ -365,9 +402,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         <View style={styles.errorState}>
           <Text style={styles.errorTitle}>Unable to load request</Text>
           <Text style={styles.errorBody}>{globalError}</Text>
-          {debugInfo ? (
+          {env.pendingAuthDebugPanel && debugInfo ? (
             <View style={styles.debugBox}>
               <Text style={styles.debugTitle}>Debug (for support)</Text>
+              {debugInfo.capturedAtIso != null && debugInfo.capturedAtIso !== '' && (
+                <Text style={styles.debugTimestamp} selectable>
+                  Captured at: {debugInfo.capturedAtIso}
+                </Text>
+              )}
               <Text style={styles.debugLine}>Last step: {debugInfo.lastStep}</Text>
               {debugInfo.integrationPublicKeyLength != null && (
                 <Text style={styles.debugLine}>integrationPublicKey length: {debugInfo.integrationPublicKeyLength}</Text>
@@ -375,8 +417,19 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
               {debugInfo.integrationPublicKeyPrefix != null && (
                 <Text style={styles.debugLine} selectable>integrationPublicKey prefix: {debugInfo.integrationPublicKeyPrefix}</Text>
               )}
+              {debugInfo.integrationPublicKeySha256Utf8Hex != null &&
+                debugInfo.integrationPublicKeySha256Utf8Hex !== '' && (
+                  <Text style={styles.debugLine} selectable>
+                    integrationPublicKey SHA256 (UTF-8 hex): {debugInfo.integrationPublicKeySha256Utf8Hex}
+                  </Text>
+                )}
               {debugInfo.pendingPayloadLength != null && (
                 <Text style={styles.debugLine}>pendingPayload length: {debugInfo.pendingPayloadLength}</Text>
+              )}
+              {debugInfo.pendingPayloadSha256Utf8Hex != null && debugInfo.pendingPayloadSha256Utf8Hex !== '' && (
+                <Text style={styles.debugLine} selectable>
+                  pendingPayload SHA256 (UTF-8 hex): {debugInfo.pendingPayloadSha256Utf8Hex}
+                </Text>
               )}
               {debugInfo.pendingPayloadPreview != null && (
                 <Text style={styles.debugLine} selectable>pendingPayload preview: {debugInfo.pendingPayloadPreview}</Text>
@@ -386,6 +439,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
               )}
               {debugInfo.signatureLength != null && (
                 <Text style={styles.debugLine}>signature length: {debugInfo.signatureLength}</Text>
+              )}
+              {debugInfo.signatureSha256Utf8Hex != null && debugInfo.signatureSha256Utf8Hex !== '' && (
+                <Text style={styles.debugLine} selectable>
+                  integration signature SHA256 (UTF-8 hex): {debugInfo.signatureSha256Utf8Hex}
+                </Text>
               )}
               {debugInfo.signaturePrefix != null && (
                 <Text style={styles.debugLine} selectable>signature prefix: {debugInfo.signaturePrefix}</Text>
@@ -868,7 +926,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#9aa3b6',
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  debugTimestamp: {
+    fontSize: 11,
+    color: '#61d095',
+    fontFamily: 'monospace',
+    marginBottom: 8,
   },
   debugLine: {
     fontSize: 11,

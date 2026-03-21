@@ -79,6 +79,19 @@ ios/                  Native iOS (Swift/Obj-C++) — EzkeyCryptoModule
 
 ---
 
+## Launcher icon (Android)
+
+Regenerate `mipmap-*` PNGs from the repo root `logo.svg`:
+
+```bash
+pip install -r scripts/requirements-generate-icons.txt
+python scripts/generate_android_launcher_icons.py
+```
+
+See [`scripts/README.md`](scripts/README.md).
+
+---
+
 ## Running and Testing
 
 ```bash

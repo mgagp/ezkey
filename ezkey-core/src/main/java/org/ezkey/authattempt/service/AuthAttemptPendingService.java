@@ -10,6 +10,8 @@
 
 package org.ezkey.authattempt.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
@@ -263,15 +265,43 @@ public class AuthAttemptPendingService {
             challengeRequired,
             authAttempt.getContextTitle(),
             authAttempt.getContextMessage());
+    // Diagnostic: SHA-256 (hex) of UTF-8 bytes — must match mobile pendingPayload
+    // (buildPendingPayload).
+    logger.info(
+        "PENDING_PAYLOAD_DIAG enrollmentId={} authAttemptId={} payloadLen={}"
+            + " payloadSha256Utf8Hex={}",
+        enrollment.getEnrollmentId(),
+        authAttempt.getAuthAttemptId(),
+        payload.length(),
+        sha256HexUtf8(payload));
     String signature =
         signatureService.generateSignature(payload, enrollment.getIntegrationPrivateKey());
     response.setAuthAttemptProofTokenSignedByIntegration(signature);
 
-    // Same verification path as Android (JCA SHA256withECDSA). If this fails, the mobile app will
-    // also fail — usually indicates private/public key mismatch or corrupted enrollment keys.
+    // Same string the client receives in JSON (Base64 DER) — hash UTF-8 bytes for bit-equality
+    // check.
+    logger.info(
+        "PENDING_SIGNATURE_DIAG enrollmentId={} authAttemptId={} signatureLen={}"
+            + " signatureSha256Utf8Hex={}",
+        enrollment.getEnrollmentId(),
+        authAttempt.getAuthAttemptId(),
+        signature != null ? signature.length() : 0,
+        sha256HexUtf8(signature));
+
+    // Exact public key material used for JCA verify (normalized SPKI / cert extraction).
     String normalizedPublicKey =
         signatureService.normalizeIntegrationPublicKeyToBase64(
             enrollment.getIntegrationPublicKey());
+    logger.info(
+        "PENDING_INTEGRATION_PUBLIC_KEY_DIAG enrollmentId={} authAttemptId={} keyLen={}"
+            + " integrationPublicKeySha256Utf8Hex={}",
+        enrollment.getEnrollmentId(),
+        authAttempt.getAuthAttemptId(),
+        normalizedPublicKey != null ? normalizedPublicKey.length() : 0,
+        sha256HexUtf8(normalizedPublicKey));
+
+    // Same verification path as Android (JCA SHA256withECDSA). If this fails, the mobile app will
+    // also fail — usually indicates private/public key mismatch or corrupted enrollment keys.
     if (!signatureService.validateSignatureWithJcaSha256WithEcdsa(
         payload, signature, normalizedPublicKey)) {
       logger.error(
@@ -282,5 +312,23 @@ public class AuthAttemptPendingService {
     }
 
     return response;
+  }
+
+  /** SHA-256 over UTF-8 bytes, lowercase hex — same convention as mobile {@code sha256HexUtf8}. */
+  private static String sha256HexUtf8(String input) {
+    if (input == null) {
+      return "";
+    }
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+      StringBuilder sb = new StringBuilder(hash.length * 2);
+      for (byte b : hash) {
+        sb.append(String.format("%02x", b));
+      }
+      return sb.toString();
+    } catch (Exception e) {
+      return "sha256_error";
+    }
   }
 }

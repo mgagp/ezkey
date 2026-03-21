@@ -5,8 +5,9 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Pure Kotlin/JVM integration public key parsing and ECDSA signature verification.
- * Uses only java.util.Base64 and java.security.* so it is testable on the JVM without Android.
- * Used by EzkeyCryptoModule.verify() for Pending response integration signature verification.
+ * Verification uses BouncyCastle ECDSASigner over SHA-256 of the UTF-8 payload, matching
+ * SignatureService.validateSignature on the Auth API (PublicKeyFactory.createKey on raw decoded
+ * key bytes — not a JCA round-trip, which can re-encode SPKI differently). JCA fallbacks follow.
  *
  * @since 2025
  */
@@ -14,14 +15,21 @@
 package com.ezkeymobile.crypto
 
 import java.io.ByteArrayInputStream
+import java.math.BigInteger
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
+import java.security.MessageDigest
 import java.security.PublicKey
 import java.security.Security
 import java.security.Signature
 import java.security.cert.CertificateFactory
 import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.ASN1Sequence
+import org.bouncycastle.crypto.params.ECPublicKeyParameters
+import org.bouncycastle.crypto.signers.ECDSASigner
+import org.bouncycastle.crypto.util.PublicKeyFactory
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 /**
@@ -124,14 +132,117 @@ object IntegrationKeyVerifier {
   fun verify(data: String, signatureBase64: String, publicKeyBase64: String): Boolean {
     return try {
       val keyBytes = decodePublicKeyInput(publicKeyBase64)
+      val signatureBytes = BASE64.decode(signatureBase64)
+      if (verifyEcdsaSha256BouncyCastleLightweight(data, signatureBytes, keyBytes)) {
+        return true
+      }
       val publicKey = parsePublicKey(keyBytes)
+      if (verifyEcdsaSha256BouncyCastleJcaProvider(data, signatureBytes, publicKey)) {
+        return true
+      }
+      verifyEcdsaSha256JcaDefaultProvider(data, signatureBytes, publicKey)
+    } catch (e: Exception) {
+      false
+    }
+  }
+
+  /**
+   * Mirrors backend [SignatureService.validateSignature]: decode Base64 to DER bytes, then
+   * [PublicKeyFactory.createKey] on those bytes (same as server). JCA [PublicKey.getEncoded] can
+   * differ from the original SPKI and break verification.
+   */
+  private fun verifyEcdsaSha256BouncyCastleLightweight(
+      data: String,
+      derSignature: ByteArray,
+      keyBytes: ByteArray,
+  ): Boolean {
+    return try {
+      val publicKeyParams = ecPublicKeyParametersFromIntegrationKeyBytes(keyBytes) ?: return false
+      val rs = decodeDerEcdsaSignature(derSignature) ?: return false
+      val verifier = ECDSASigner()
+      verifier.init(false, publicKeyParams)
+      val hash =
+          MessageDigest.getInstance("SHA-256").digest(data.toByteArray(StandardCharsets.UTF_8))
+      verifier.verifySignature(hash, rs.first, rs.second)
+    } catch (e: Exception) {
+      false
+    }
+  }
+
+  /**
+   * Same as server: SPKI bytes → BC public key params; if bytes are an X.509 certificate, extract
+   * subject public key info first.
+   */
+  private fun ecPublicKeyParametersFromIntegrationKeyBytes(keyBytes: ByteArray): ECPublicKeyParameters? {
+    return try {
+      PublicKeyFactory.createKey(keyBytes) as ECPublicKeyParameters
+    } catch (e: Exception) {
+      try {
+        val certFactory = CertificateFactory.getInstance("X.509")
+        val cert = certFactory.generateCertificate(ByteArrayInputStream(keyBytes))
+        val encoded = cert.publicKey.encoded
+        PublicKeyFactory.createKey(encoded) as ECPublicKeyParameters
+      } catch (e2: Exception) {
+        try {
+          if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(BouncyCastleProvider())
+          }
+          val keySpec = X509EncodedKeySpec(keyBytes)
+          val pk =
+              KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME).generatePublic(keySpec)
+          PublicKeyFactory.createKey(pk.encoded) as ECPublicKeyParameters
+        } catch (e3: Exception) {
+          null
+        }
+      }
+    }
+  }
+
+  /** BouncyCastle JCA [SHA256withECDSA] (avoids Conscrypt-only behaviour). */
+  private fun verifyEcdsaSha256BouncyCastleJcaProvider(
+      data: String,
+      derSignature: ByteArray,
+      publicKey: PublicKey,
+  ): Boolean {
+    return try {
+      if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.addProvider(BouncyCastleProvider())
+      }
+      val signature = Signature.getInstance("SHA256withECDSA", BouncyCastleProvider.PROVIDER_NAME)
+      signature.initVerify(publicKey)
+      signature.update(data.toByteArray(StandardCharsets.UTF_8))
+      signature.verify(derSignature)
+    } catch (e: Exception) {
+      false
+    }
+  }
+
+  private fun verifyEcdsaSha256JcaDefaultProvider(
+      data: String,
+      derSignature: ByteArray,
+      publicKey: PublicKey,
+  ): Boolean {
+    return try {
       val signature = Signature.getInstance("SHA256withECDSA")
       signature.initVerify(publicKey)
       signature.update(data.toByteArray(StandardCharsets.UTF_8))
-      val signatureBytes = BASE64.decode(signatureBase64)
-      signature.verify(signatureBytes)
+      signature.verify(derSignature)
     } catch (e: Exception) {
       false
+    }
+  }
+
+  private fun decodeDerEcdsaSignature(der: ByteArray): Pair<BigInteger, BigInteger>? {
+    return try {
+      val seq = ASN1Sequence.getInstance(der)
+      if (seq.size() != 2) {
+        return null
+      }
+      val r = ASN1Integer.getInstance(seq.getObjectAt(0)).value
+      val s = ASN1Integer.getInstance(seq.getObjectAt(1)).value
+      Pair(r, s)
+    } catch (e: Exception) {
+      null
     }
   }
 }

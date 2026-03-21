@@ -28,6 +28,9 @@
   - **Last step**: which step was last reached (`start`, `after_ensure`, `after_pending`, `before_verify`, `after_verify`, or `catch`). If you see `before_verify` then the failure is in `cryptoService.verify()` (integration public key parsing).
   - **integrationPublicKey length**: number of characters (only set when we reached `before_verify`). Helps spot truncated or wrong format.
   - **Error**: full error message (same as the red text, copyable).
+  - **pendingPayload SHA256 (UTF-8 hex)**: must match Auth API `PENDING_PAYLOAD_DIAG` → `payloadSha256Utf8Hex`.
+  - **integration signature SHA256 (UTF-8 hex)**: must match `PENDING_SIGNATURE_DIAG` → `signatureSha256Utf8Hex` (same Base64 string as in JSON).
+  - **integrationPublicKey SHA256 (UTF-8 hex)**: must match `PENDING_INTEGRATION_PUBLIC_KEY_DIAG` → `integrationPublicKeySha256Utf8Hex` (server uses normalized key from DB; device uses stored key passed to `verify`). See [PENDING_PAYLOAD_DIAGNOSTIC.md](../docs/PENDING_PAYLOAD_DIAGNOSTIC.md).
 
 ## Build and run (reference)
 

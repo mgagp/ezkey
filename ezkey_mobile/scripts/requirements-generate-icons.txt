@@ -1,0 +1,4 @@
+# For scripts/generate_android_launcher_icons.py only (optional dev dependency).
+# pip install -r scripts/requirements-generate-icons.txt
+cairosvg>=2.7.0
+Pillow>=10.0.0

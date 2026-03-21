@@ -191,8 +191,15 @@ public class SignatureService {
 
       BigInteger[] signature = signer.generateSignature(hash);
 
+      // Low-S normalization (BIP-62 style): Conscrypt/Android SHA256withECDSA may reject
+      // "high-S" signatures that OpenJDK still accepts when verifying the same (r,s) pair.
+      ECDomainParameters domainParams = privateKeyParams.getParameters();
+      BigInteger n = domainParams.getN();
+      BigInteger r = signature[0];
+      BigInteger s = normalizeEcdsaSToLowS(signature[1], n);
+
       // Encode signature as ASN.1 DER format
-      byte[] derSignature = encodeDERSignature(signature[0], signature[1]);
+      byte[] derSignature = encodeDERSignature(r, s);
       return Base64.getEncoder().encodeToString(derSignature);
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate signature", e);
@@ -367,6 +374,26 @@ public class SignatureService {
     } catch (Exception e) {
       throw new RuntimeException("EC P-256 key pair generation failed", e);
     }
+  }
+
+  /**
+   * Returns {@code s} if it lies in the lower half of the curve order; otherwise {@code n - s}.
+   *
+   * <p>ECDSA signatures are malleable: (r, s) and (r, n-s) are both valid. BouncyCastle's signer
+   * may emit either; Android's {@code Signature.verify} with Conscrypt is stricter and rejects some
+   * high-S signatures that the JVM accepts. Normalizing to low-S matches common cross-platform
+   * behavior (e.g. Bitcoin BIP 62) and aligns with mobile verification.
+   *
+   * @param s the s component from {@link ECDSASigner#generateSignature}
+   * @param n the curve order
+   * @return s in the range (0, n/2] (standard low-S representation)
+   */
+  private static BigInteger normalizeEcdsaSToLowS(BigInteger s, BigInteger n) {
+    BigInteger halfN = n.shiftRight(1); // floor(n/2)
+    if (s.compareTo(halfN) > 0) {
+      return n.subtract(s);
+    }
+    return s;
   }
 
   /**

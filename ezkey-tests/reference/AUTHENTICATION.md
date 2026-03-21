@@ -256,9 +256,18 @@ Check container logs for errors.
 
 **Solution**:
 1. Ensure Docker stack has completed startup
-2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"`
+2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"` (standard stack). For **native** stack (`clean-start -Native`), the container is `ezkey-admin-api-native`: `docker logs ezkey-admin-api-native`
 3. Verify bootstrap completed: Look for "✅ Global Admin Enrollment created"
 4. Run extraction test manually: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
+
+### No Admin API container found (docker inspect)
+
+**Problem**: Error lists expected names `ezkey-admin-api`, `ezkey-admin-api-native`, or HA instances, but extraction still fails.
+
+**Likely causes**:
+- **Wrong stack vs. names**: Native compose uses `ezkey-admin-api-native`, not `ezkey-admin-api`. Health checks use HTTP on localhost and can pass while `docker inspect ezkey-admin-api` fails.
+- **Different container name**: Set `EZKEY_ADMIN_DOCKER_CONTAINER` to your actual `container_name` from `docker ps`.
+- **IDE / JVM cannot run `docker`**: The test process may not have the same `PATH` as your terminal after a Docker Desktop update. Check the WARN lines from Docker diagnostics in the test log, or run tests from a shell where `docker version` works.
 
 ## Related Documentation
 

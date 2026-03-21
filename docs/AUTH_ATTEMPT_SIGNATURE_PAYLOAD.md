@@ -21,6 +21,13 @@ This document defines the canonical payload format used when signing or verifyin
 
 Clients must build this exact string (with NFC for title/message), then verify the integration signature over it. If verification fails, reject the pending response.
 
+### ECDSA signature encoding (integration → clients)
+
+- **Algorithm**: `SHA256withECDSA` with **secp256r1** (P-256).
+- **Wire format**: ASN.1 DER `(r, s)`, then **Base64** (standard URL-safe or classic Base64 as returned by the API).
+- **Low-S (canonical) form**: The backend normalizes **s** to the lower half of the curve order (`0 < s ≤ n/2`) before DER encoding. ECDSA is malleable: `(r, s)` and `(r, n−s)` are both mathematically valid; **Android Conscrypt** may reject the high-**s** form for `Signature.verify` even when the JVM accepts it. Emitting low-**s** improves cross-platform behaviour.
+- **Mobile verification (Android)**: `IntegrationKeyVerifier` verifies with **BouncyCastle `ECDSASigner`** over SHA-256 of the UTF-8 payload, using **`PublicKeyFactory.createKey` on the raw decoded key bytes** (same as `SignatureService.validateSignature` on the Auth API). It must **not** rely on a JCA-only round-trip (`PublicKey.getEncoded()` after `KeyFactory`) for the primary path, because the JVM may **re-encode** SubjectPublicKeyInfo (e.g. named curve vs explicit parameters) and the resulting EC point encoding can differ from what BC used when signing. **JCA `SHA256withECDSA`** with the BouncyCastle provider and then the default provider are used as fallbacks.
+
 ## Respond (device signs)
 
 **Payload to sign:** `{proofToken}|{accepted}`

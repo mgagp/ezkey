@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same pale blue as admin UI page background (index.css color-bg). Full bleed adaptive icon layer. -->
+    <color name="ic_launcher_background">#d6e6ff</color>
+</resources>
