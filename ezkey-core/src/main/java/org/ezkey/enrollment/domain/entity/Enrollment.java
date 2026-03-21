@@ -408,9 +408,10 @@ public class Enrollment implements Reencryptable {
    * <p>This method stores the plaintext in both the transient field and the persisted field. The
    * {@link EncryptionEntityListener} will overwrite the persisted field with an encrypted value
    * before persistence when encryption is available. Storing plaintext in the persisted field
-   * ensures the column is never null when the listener runs in contexts where transient fields may
-   * not be copied (e.g. merge flow). This matches the pattern used by {@link
-   * #setEnrollmentProofToken(String)}.
+   * ensures the column is never null when the listener runs in contexts where the transient field
+   * is not visible (e.g. merge flow, or {@code @PrePersist} when reflection does not see the
+   * transient — the listener then falls back to the mapped column, same as enrollment proof token).
+   * This matches the pattern used by {@link #setEnrollmentProofToken(String)}.
    *
    * @param integrationPrivateKey the plaintext integration private key to set
    */

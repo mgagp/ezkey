@@ -159,6 +159,36 @@ class SignatureServiceTest {
         "Should reject more than 6 digits");
   }
 
+  /**
+   * Mobile Android verifies integration signatures with JCA {@code SHA256withECDSA} (see
+   * IntegrationKeyVerifier). Backend signs with BouncyCastle ECDSASigner. This test locks
+   * interoperability: the same signature must verify with standard JCA.
+   */
+  @Test
+  @DisplayName(
+      "BouncyCastle-generated signature verifies with JCA SHA256withECDSA (Android parity)")
+  void testBouncyCastleSignatureVerifiesWithJcaSha256WithEcdsa() {
+    String signature = signatureService.generateSignature(testData, base64PrivateKey);
+    assertTrue(
+        signatureService.validateSignatureWithJcaSha256WithEcdsa(
+            testData, signature, base64PublicKey),
+        "JCA must accept BC-generated ECDSA signatures (Android pending verify)");
+  }
+
+  /**
+   * Same as {@link #testBouncyCastleSignatureVerifiesWithJcaSha256WithEcdsa()} using a canonical
+   * Pending payload shape (proofToken|challenge|title|message).
+   */
+  @Test
+  @DisplayName("JCA verifies BC signature for canonical pending payload string")
+  void testJcaVerifiesPendingPayloadShape() {
+    String pendingPayload = "abc123proof|false||";
+    String signature = signatureService.generateSignature(pendingPayload, base64PrivateKey);
+    assertTrue(
+        signatureService.validateSignatureWithJcaSha256WithEcdsa(
+            pendingPayload, signature, base64PublicKey));
+  }
+
   @Test
   @DisplayName("Should generate and validate signature successfully")
   void testKeyPairAndSignatureValidation() throws Exception {

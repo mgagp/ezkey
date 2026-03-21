@@ -16,6 +16,7 @@ type NativeModuleShape = {
   generateEnrollmentKeyPair(enrollmentId: string): Promise<boolean>;
   getPublicKey(enrollmentId: string): Promise<string>;
   sign(enrollmentId: string, data: string): Promise<string>;
+  verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
 };
 
@@ -34,6 +35,9 @@ const fallback = {
   },
   async sign(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to sign payload.');
+  },
+  async verify(): Promise<boolean> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to verify signature.');
   },
   async deleteKeyPair(): Promise<boolean> {
     throw new Error(
@@ -61,6 +65,8 @@ export const nativeCrypto = {
     cryptoModule.getPublicKey(enrollmentId),
   sign: (enrollmentId: string, data: string) =>
     cryptoModule.sign(enrollmentId, data),
+  verify: (data: string, signatureBase64: string, publicKeyBase64: string) =>
+    cryptoModule.verify(data, signatureBase64, publicKeyBase64),
   deleteKeyPair: (enrollmentId: string) =>
     cryptoModule.deleteKeyPair(enrollmentId),
 };

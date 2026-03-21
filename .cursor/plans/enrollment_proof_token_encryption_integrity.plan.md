@@ -1,8 +1,16 @@
+---
+name: ""
+overview: ""
+todos: []
+isProject: false
+---
+
 # Plan: Enrollment proof token encryption integrity
 
 **Status:** Ready for implementation (updated per user decisions)
 
 **User decisions (summary):**
+
 - **CryptoApiClient:** Complete the client so it fully aligns with what the Crypto API backend offers (not just add one method).
 - **DatabaseHelper (Option B):** Implement the DB verification helper as a mandatory tool for opportunistic, realistic tests and better quality.
 - **Regression test:** Add an **elective test** that ensures data integrity in the BD regarding encryption, to prevent regressions of the same kind.
@@ -26,7 +34,7 @@ Examples observed: Enrollment IDs 124–125, 156–157. This breaks the invarian
 
 **[EnrollmentUniquenessIntegrationTest](ezkey-tests/src/test/java/org/ezkey/tests/security/enrollment/EnrollmentUniquenessIntegrationTest.java)** creates a second enrollment row via **direct SQL** to exercise database-level uniqueness constraints. There are **three** such INSERTs (around lines 240–252, 364–376, 464–476). Each uses:
 
-- `enrollment_proof_token` = **`'test-token-2'`** (plaintext).
+- `enrollment_proof_token` = `**'test-token-2'`** (plaintext).
 - **No** `enrollment_proof_token_hash`.
 - Other fields copied from the first (API-created) enrollment.
 
@@ -120,3 +128,4 @@ If `EncryptionService` is not available when an enrollment is persisted via JPA,
 - **DatabaseHelper** offers a reusable way to detect enrollments (and optionally later auth_attempts) with plaintext proof tokens.
 - **All** enrollments created during the functional suite (including raw SQL in EnrollmentUniquenessIntegrationTest) store `enrollment_proof_token` in `ENC:...` format with a valid hash.
 - **Elective test** runs on demand and fails if any enrollment has a non-ENC proof token, preserving data integrity and preventing regressions.
+

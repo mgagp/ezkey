@@ -997,13 +997,15 @@ public class AdminBootstrapService {
         "   ✅ Auth attempt proof token received: {}...",
         authAttemptProofToken.substring(0, Math.min(30, authAttemptProofToken.length())));
 
-    // Sign auth attempt proof token with device private key
-    log.info("   Sub-step 7a: Signing auth attempt proof token...");
+    // Sign canonical respond payload (proofToken|accepted) per AUTH_ATTEMPT_SIGNATURE_PAYLOAD
+    log.info("   Sub-step 7a: Signing auth attempt respond payload (proofToken|accepted)...");
     // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth
     // API after
+    boolean accepted = true;
+    String respondPayload = authAttemptProofToken + "|" + (accepted ? "true" : "false");
     String authAttemptProofTokenSignedByDevice =
-        cryptoApiClient.signData(authAttemptProofToken, deviceKeyPair.privateKey());
-    log.info("   ✅ Auth attempt proof token signed");
+        cryptoApiClient.signData(respondPayload, deviceKeyPair.privateKey());
+    log.info("   ✅ Auth attempt respond payload signed");
 
     // Reconfigure RestAssured for Auth API after Crypto API call
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);

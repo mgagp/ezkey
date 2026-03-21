@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
+import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 /**
  * Ezkey - Open Source MFA/Passkey Alternative
@@ -177,11 +179,36 @@ public class EzkeyAppController {
       } else {
         model.addAttribute("error", "Bind failed: No response from server");
       }
+    } catch (WebClientResponseException e) {
+      logger.warn(
+          "Bind API error for enrollment {}: status={}, body={}",
+          enrollmentId,
+          e.getStatusCode(),
+          e.getResponseBodyAsString());
+      String userMessage =
+          toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
+      model.addAttribute("error", userMessage);
     } catch (Exception e) {
       logger.error("Bind failed for enrollment {}", enrollmentId, e);
       model.addAttribute("error", "Bind failed: " + e.getMessage());
     }
     return "phone/ezkey/bind_enrollment";
+  }
+
+  /** Maps bind API error status and optional body to a clear, actionable message for the user. */
+  private static String toBindErrorMessage(int statusCode, String responseBody) {
+    if (statusCode == 409) {
+      return "This enrollment is already bound to a device. Create a new enrollment in the Admin UI"
+          + " and use its ID and proof token to bind.";
+    }
+    if (statusCode == 400) {
+      return "Invalid request: use an enrollment that was just created (not yet bound), with the"
+          + " exact proof token from the Admin UI. If the invitation has expired, create a"
+          + " new enrollment.";
+    }
+    return "Bind failed: server returned "
+        + statusCode
+        + (responseBody != null && !responseBody.isBlank() ? " — " + responseBody : "");
   }
 
   @PostMapping("/enrollment/verify")
@@ -320,10 +347,17 @@ public class EzkeyAppController {
         // There's a pending authentication attempt
         logger.info("Found pending auth attempt: {}", pendingResponse);
 
-        // Validate the integration signature
+        // Build canonical payload (proofToken|challengeRequired|contextTitle|contextMessage, NFC)
+        String pendingPayload =
+            AuthAttemptPayloadUtil.buildPendingPayload(
+                pendingResponse.getAuthAttemptProofToken(),
+                Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequired()),
+                pendingResponse.getContextTitle(),
+                pendingResponse.getContextMessage());
+        // Validate the integration signature over the full payload
         boolean signatureValid =
             cryptoService.validateSignature(
-                pendingResponse.getAuthAttemptProofToken(),
+                pendingPayload,
                 pendingResponse.getAuthAttemptProofTokenSignedByIntegration(),
                 rec.integrationPublicKey());
         if (!signatureValid) {
@@ -385,10 +419,12 @@ public class EzkeyAppController {
       model.addAttribute("integrationDescription", rec.integrationDescription());
       model.addAttribute("integrationLogo", rec.integrationLogo());
 
-      // Sign the auth attempt proof token for the response (security: one-time use
-      // token)
+      // Sign canonical payload (proofToken|accepted) so backend can verify accepted was not
+      // tampered
+      String respondPayload =
+          AuthAttemptPayloadUtil.buildRespondPayload(authAttemptProofToken, approved);
       String responseSignature =
-          cryptoService.signStringToBase64(authAttemptProofToken, rec.devicePrivateKey());
+          cryptoService.signStringToBase64(respondPayload, rec.devicePrivateKey());
 
       // Create respond request with authAttemptId explicitly set
       AuthAttemptRespondRequestDto respondRequest =

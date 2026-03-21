@@ -149,11 +149,13 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
       String authAttemptProofToken = pendingResponse.jsonPath().getString("authAttemptProofToken");
       assertThat(authAttemptProofToken).isNotNull().isNotEmpty();
 
-      // Step 3: Sign auth attempt proof token
+      // Step 3: Sign canonical respond payload (proofToken|accepted) per
+      // AUTH_ATTEMPT_SIGNATURE_PAYLOAD
       // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth
       // API after
-      String authSignature =
-          cryptoApiClient.signData(authAttemptProofToken, deviceKeyPair.privateKey());
+      boolean accepted = true;
+      String respondPayload = authAttemptProofToken + "|" + (accepted ? "true" : "false");
+      String authSignature = cryptoApiClient.signData(respondPayload, deviceKeyPair.privateKey());
 
       // Reconfigure RestAssured for Auth API after Crypto API call
       configureForAuthApi(dockerStackConfig);

@@ -19,6 +19,9 @@ import org.springframework.stereotype.Component;
 /**
  * JPA entity listener that applies encryption/decryption for sensitive fields.
  *
+ * <p>When DEBUG is enabled for this class, integration private key diagnostics log full field
+ * values (local development only; not for production or shared logs).
+ *
  * <p>Currently encrypts/decrypts: Enrollment.integrationPrivateKey.
  *
  * <p>This listener uses a static field to store the EncryptionService because JPA entity listeners
@@ -32,6 +35,9 @@ import org.springframework.stereotype.Component;
 public class EncryptionEntityListener implements ApplicationContextAware {
 
   private static final Logger logger = LoggerFactory.getLogger(EncryptionEntityListener.class);
+
+  /** Transient field name for {@link Enrollment#integrationPrivateKey} (diagnostics only). */
+  private static final String INTEGRATION_PRIVATE_KEY_TRANSIENT = "integrationPrivateKey";
 
   /**
    * Static field for EncryptionService, accessible via reflection from Enrollment entity.
@@ -169,8 +175,11 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     String context = contextSupplier.get();
     String plaintext = getFieldValue(entity, transientFieldName);
 
+    logIntegrationPrivateKeyDiagnostics(
+        entity, transientFieldName, persistentFieldName, plaintext, service, "afterTransientRead");
+
     // When transient is null/blank, use persistent field as fallback source (setter wrote
-    // plaintext to encryptedEnrollmentProofToken; reflection may not see transient on proxy/copy).
+    // plaintext to the mapped column; reflection may not see @Transient at PrePersist/flush).
     if ((plaintext == null || plaintext.isBlank())
         && "enrollmentProofToken".equals(transientFieldName)
         && entity instanceof Enrollment) {
@@ -191,7 +200,35 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       }
     }
 
+    // Same pattern as enrollment proof token: setIntegrationPrivateKey copies plaintext into
+    // encryptedIntegrationPrivateKey, but the transient integrationPrivateKey can be null when
+    // this listener runs (e.g. at PrePersist before id assignment). Without this fallback the
+    // column would stay plaintext despite Tink being available.
+    if ((plaintext == null || plaintext.isBlank())
+        && INTEGRATION_PRIVATE_KEY_TRANSIENT.equals(transientFieldName)
+        && entity instanceof Enrollment) {
+      try {
+        String fromPersistent = getFieldValue(entity, persistentFieldName);
+        if (fromPersistent != null
+            && !fromPersistent.isBlank()
+            && (service == null || !service.isEncrypted(fromPersistent))) {
+          plaintext = fromPersistent;
+        }
+      } catch (Exception e) {
+        logger.warn(
+            "Fallback read of integration private key from persistent field failed for {}, "
+                + "skipping encryption of integration private key",
+            context,
+            e);
+      }
+    }
+
+    logIntegrationPrivateKeyDiagnostics(
+        entity, transientFieldName, persistentFieldName, plaintext, service, "afterFallbacks");
+
     if (plaintext == null || plaintext.isBlank()) {
+      warnIfIntegrationPrivateKeyTransientBlankButPersistentPlaintext(
+          entity, transientFieldName, persistentFieldName, service);
       logger.trace("Field {} is null or blank for {}", transientFieldName, context);
       return;
     }
@@ -212,10 +249,96 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       String encrypted = service.encrypt(plaintext);
       setFieldValue(entity, persistentFieldName, encrypted);
       logger.debug("Encrypted {}", context);
+      logIntegrationPrivateKeyDiagnostics(
+          entity, transientFieldName, persistentFieldName, plaintext, service, "afterEncrypt");
     } catch (Exception exception) {
       logger.error("Failed to encrypt {}", context, exception);
       setFieldValue(entity, persistentFieldName, plaintext);
     }
+  }
+
+  /**
+   * DEBUG-only diagnostics for {@code integrationPrivateKey} encryption.
+   *
+   * <p><b>Local development only:</b> logs full transient and persistent field values (private key
+   * material). Do not use this verbosity in shared or production environments.
+   *
+   * <p>Enable {@code logging.level.org.ezkey.security.EncryptionEntityListener=DEBUG} during Clean
+   * Start to trace state at flush time.
+   */
+  private void logIntegrationPrivateKeyDiagnostics(
+      Object entity,
+      String transientFieldName,
+      String persistentFieldName,
+      String plaintextFromTransient,
+      EncryptionService service,
+      String phase) {
+
+    if (!INTEGRATION_PRIVATE_KEY_TRANSIENT.equals(transientFieldName)
+        || !(entity instanceof Enrollment enrollment)) {
+      return;
+    }
+    if (!logger.isDebugEnabled()) {
+      return;
+    }
+
+    String persistent = getFieldValue(entity, persistentFieldName);
+    boolean encryptionAvailable = service != null && service.isEncryptionAvailable();
+    boolean persistentLooksEncrypted =
+        service != null && persistent != null && service.isEncrypted(persistent);
+    boolean transientPresent = plaintextFromTransient != null && !plaintextFromTransient.isBlank();
+
+    logger.debug(
+        "EncryptionEntityListener diagnostic [integrationPrivateKey] phase={} enrollmentId={} "
+            + "entityClass={} transientPresent={} transientCharLength={} persistentPresent={} "
+            + "persistentLooksEncrypted={} encryptionAvailable={} "
+            + "transientIntegrationPrivateKey={} persistentEncryptedIntegrationPrivateKey={}",
+        phase,
+        enrollment.getEnrollmentId(),
+        entity.getClass().getName(),
+        transientPresent,
+        plaintextFromTransient != null ? plaintextFromTransient.length() : 0,
+        persistent != null,
+        persistentLooksEncrypted,
+        encryptionAvailable,
+        plaintextFromTransient,
+        persistent);
+  }
+
+  /**
+   * If the transient integration private key is blank but the mapped column still holds a value
+   * that is not {@code ENC:...}, the listener will return without encrypting (should be rare after
+   * {@code encryptField} persistent fallback for {@code integrationPrivateKey}).
+   */
+  private void warnIfIntegrationPrivateKeyTransientBlankButPersistentPlaintext(
+      Object entity,
+      String transientFieldName,
+      String persistentFieldName,
+      EncryptionService service) {
+
+    if (!INTEGRATION_PRIVATE_KEY_TRANSIENT.equals(transientFieldName)
+        || !(entity instanceof Enrollment enrollment)) {
+      return;
+    }
+
+    String persistent = getFieldValue(entity, persistentFieldName);
+    if (persistent == null || persistent.isBlank()) {
+      return;
+    }
+    if (service != null && service.isEncrypted(persistent)) {
+      return;
+    }
+
+    boolean encryptionAvailable = service != null && service.isEncryptionAvailable();
+    logger.warn(
+        "Enrollment integration_private_key: transient integrationPrivateKey is blank but "
+            + "encryptedIntegrationPrivateKey holds an unencrypted value; listener will skip "
+            + "encryption for this field. enrollmentId={} entityClass={} encryptionAvailable={} "
+            + "persistentCharLength={}",
+        enrollment.getEnrollmentId(),
+        entity.getClass().getName(),
+        encryptionAvailable,
+        persistent.length());
   }
 
   private String getFieldValue(Object entity, String fieldName) {

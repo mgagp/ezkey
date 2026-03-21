@@ -15,6 +15,7 @@ import {colors, spacing, typography, borderRadius} from '../../config/theme';
 import {ChallengeInput} from '../../components/ChallengeInput';
 import {useEnrollmentById} from '../../hooks/useEnrollments';
 import {authAttemptsApi} from '../../services/api/authAttempts';
+import {buildPendingPayload, buildRespondPayload} from '../../services/crypto/authAttemptPayload';
 import {getCryptoService} from '../../services/crypto/cryptoService';
 
 type Props = StackScreenProps<RootStackParamList, 'PendingAuth'>;
@@ -80,6 +81,26 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         setNoPending(true);
         return;
       }
+      const integrationPublicKey = enrollment.integrationPublicKey;
+      if (!integrationPublicKey) {
+        setError('Enrollment missing integration public key; cannot verify pending response.');
+        return;
+      }
+      const pendingPayload = buildPendingPayload(
+        response.authAttemptProofToken,
+        response.authAttemptChallengeRequired ?? false,
+        response.contextTitle,
+        response.contextMessage,
+      );
+      const signatureValid = await crypto.verify(
+        pendingPayload,
+        response.authAttemptProofTokenSignedByIntegration,
+        integrationPublicKey,
+      );
+      if (!signatureValid) {
+        setError('Invalid integration signature on pending response.');
+        return;
+      }
       setAttempt({
         authAttemptId: response.authAttemptId,
         authAttemptProofToken: response.authAttemptProofToken,
@@ -122,7 +143,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         const crypto = getCryptoService();
         const eid = enrollment.id.toString();
         await crypto.ensureEnrollmentKeyPair(eid);
-        const proofTokenSigned = await crypto.sign(eid, attempt.authAttemptProofToken);
+        const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, accepted);
+        const proofTokenSigned = await crypto.sign(eid, respondPayload);
         const response = await authAttemptsApi.respond(
           {
             authAttemptId: attempt.authAttemptId,

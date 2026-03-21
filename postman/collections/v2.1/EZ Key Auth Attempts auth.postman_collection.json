@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "ee4f0c3e-66f8-4ea8-a990-e37ddfc4598e",
     "name": "EZ Key Auth Attempts auth",
-    "description": "Collection for mobile device authentication operations in the Auth API.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond**: Submit user's response (approve/deny) to authentication request\n\n## Crypto Operations\n\nThis collection includes helper endpoints from the Crypto API:\n- **Generate Proof Token**: Generate device proof token for authentication\n- **Sign**: Cryptographically sign data with device private key\n- **Validate**: Validate cryptographic signatures\n\n## Authentication Flow\n\n1. Generate device proof token and sign it\n2. Check for pending authentication attempts\n3. Validate integration's signature on auth attempt proof token\n4. Sign auth attempt proof token with device private key\n5. Submit response (approve/deny) with signatures\n\n## Security Notes\n\n- Uses enrollment proof token in request body (not URL) to prevent enumeration attacks\n- All cryptographic operations use EC P-256 (ECDSA-SHA256)\n- Device proof token provides authentication for pending requests\n- Auth attempt proof token signed by integration proves request authenticity\n- Auth attempt proof token signed by device proves device received the request\n\n## Rate Limiting\n\n- Pending endpoint: Rate limited to prevent abuse (normal user behavior expected)\n- User-initiated polling model (no automatic background polling)",
+    "description": "Collection for mobile device authentication operations in the Auth API.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond** / **Respond with context**: Submit user's response (approve/deny) with device signature\n\n## Crypto Operations\n\n- **Step 4 (Validate)**: Validates the integration signature over the canonical Pending payload: proofToken|challengeRequired|contextTitle|contextMessage (NFC for context). See docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.\n- **Step 5 (Sign)**: Device signs the canonical Respond payload: proofToken|accepted. The backend verifies this exact payload.\n\n## Flow and Create/Respond match\n\n- **Create** (no context) → use **6 respond** after steps 1–5.\n- **Create with Context** (Admin collection) → use **6b respond with context** after steps 1–5 (same implementation; naming for clarity).\n\n## Security Notes\n\n- Pending and Respond use canonical payloads (pipe-separated, NFC for context fields).\n- All cryptographic operations use EC P-256 (ECDSA-SHA256).\n\n## Rate Limiting\n\n- Pending: rate limited; user-initiated polling model.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -125,11 +125,9 @@
               "    pm.environment.set(\"authAttemptProofToken\", jsonData.authAttemptProofToken);",
               "    pm.environment.set(\"authAttemptProofTokenSignedByIntegration\", jsonData.authAttemptProofTokenSignedByIntegration);",
               "    pm.environment.set(\"authAttemptChallengeRequired\", jsonData.authAttemptChallengeRequired);",
-              "    ",
-              "    // Capture optional context fields (contextual authentication)",
-              "    if (jsonData.contextTitle) {",
-              "        pm.environment.set(\"contextTitle\", jsonData.contextTitle);",
-              "    }",
+              "    // Always set context fields for payload building (step 4); empty string when not provided",
+              "    pm.environment.set(\"contextTitle\", jsonData.contextTitle != null ? jsonData.contextTitle : \"\");",
+              "    pm.environment.set(\"contextMessage\", jsonData.contextMessage != null ? jsonData.contextMessage : \"\");",
               "    ",
               "    pm.test(\"Response contains required fields\", function () {",
               "        pm.expect(jsonData).to.have.property('authAttemptId');",
@@ -191,6 +189,25 @@
       "name": "4 crypto validate auth prooftoken by integration",
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Canonical Pending payload: proofToken|challengeRequired|contextTitle|contextMessage (NFC for context). See AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md",
+              "var pt = pm.environment.get(\"authAttemptProofToken\");",
+              "var cr = pm.environment.get(\"authAttemptChallengeRequired\");",
+              "var ct = pm.environment.get(\"contextTitle\") || \"\";",
+              "var cm = pm.environment.get(\"contextMessage\") || \"\";",
+              "if (typeof ct === 'string' && ct.normalize) ct = ct.normalize('NFC');",
+              "if (typeof cm === 'string' && cm.normalize) cm = cm.normalize('NFC');",
+              "var payload = pt + \"|\" + cr + \"|\" + ct + \"|\" + cm;",
+              "pm.environment.set(\"pendingPayload\", payload);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
           "listen": "test",
           "script": {
             "exec": [
@@ -223,7 +240,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+          "raw": "{\r\n    \"data\": \"{{pendingPayload}}\",\r\n    \"signature\": \"{{authAttemptProofTokenSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -242,13 +259,34 @@
             "validate"
           ]
         },
-        "description": "Validates the integration's signature on the authentication proof token. This ensures the authentication request is authentic and has not been tampered with.\n\n**Request Body:**\n- `data`: The authentication proof token to validate\n- `signature`: Integration's signature on the proof token\n- `publicKey`: Integration's public key (EC P-256, X.509 format, Base64 encoded)\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
+        "description": "Validates the integration's signature on the Pending payload. The integration signs the canonical payload proofToken|challengeRequired|contextTitle|contextMessage (see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). A pre-request script builds this payload from the Pending response (with NFC for context fields).\n\n**Request Body:**\n- `data`: The full Pending payload (built by pre-request script)\n- `signature`: Integration's signature (authAttemptProofTokenSignedByIntegration)\n- `publicKey`: Integration's public key\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
       },
       "response": []
     },
     {
       "name": "5 crypto sign authAttempt prooftoken by device",
       "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Canonical Respond payload: proofToken|accepted. See AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md",
+              "var pt = pm.environment.get(\"authAttemptProofToken\");",
+              "// Resolve from collection or environment; normalize string (trim, lowercase); default true when unset",
+              "var acc = pm.variables.get(\"authAttemptAccepted\");",
+              "var accepted = true;",
+              "if (acc !== undefined && acc !== null && acc !== \"\") {",
+              "    var s = String(acc).trim().toLowerCase();",
+              "    accepted = (s === \"true\" || s === \"1\");",
+              "}",
+              "var payload = pt + \"|\" + (accepted ? \"true\" : \"false\");",
+              "pm.environment.set(\"respondPayload\", payload);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
         {
           "listen": "test",
           "script": {
@@ -278,7 +316,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"data\": \"{{authAttemptProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+          "raw": "{\r\n    \"data\": \"{{respondPayload}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -297,7 +335,7 @@
             "sign"
           ]
         },
-        "description": "Signs the authentication proof token with the device's private key. This signature proves that the device has received the original authentication request and is responding to it.\n\n**Request Body:**\n- `data`: The authentication proof token (from pending response)\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n\n**Security Note:** This signature is included in the respond request as `authAttemptProofTokenSignedByDevice`. It proves the device received the original token and prevents replay attacks."
+        "description": "Signs the canonical Respond payload (proofToken|accepted) with the device's private key. The backend expects the device to sign exactly this payload (see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). A pre-request script builds respondPayload from authAttemptProofToken and authAttemptAccepted (default true).\n\n**Request Body:**\n- `data`: The Respond payload (respondPayload from pre-request script)\n- `privateKey`: Device's private key\n\n**Response (200 OK):**\n- `signature`: Used in the respond request as authAttemptProofTokenSignedByDevice\n\n**Match with Create:** Use this request after any Create (with or without context). For \"Create with Context\" you may use \"6b respond with context\" for clarity; the payload and behaviour are the same."
       },
       "response": []
     },
@@ -337,7 +375,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": true,\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
+          "raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": {{authAttemptAccepted}},\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -356,7 +394,66 @@
             "respond"
           ]
         },
-        "description": "Submits the mobile device's response to an authentication request. This endpoint completes the MFA authentication flow by submitting the user's decision (approve/deny) along with cryptographic proofs.\n\n**Request Body:**\n- `authAttemptId` (required): Authentication attempt ID to respond to\n- `authAttemptAccepted` (required): User's decision (true = approve, false = deny)\n- `authAttemptProofTokenSignedByDevice` (required): Device's signature on the authentication proof token\n- `authAttemptChallengeResponse` (required): Response to challenge (0 if no challenge required, or challenge code if required)\n\n**Response (200 OK):**\n- `result`: Authentication result (APPROVED, DENIED, FAILED, EXPIRED)\n- `message`: Success confirmation or error details for user feedback\n\n**Status Codes:**\n- 200: Authentication response submitted successfully\n- 400: Invalid response data or validation failed\n- 409: Authentication attempt state conflict (e.g., already responded or expired)\n- 500: Internal server error\n\n**Security Note:** The `authAttemptProofTokenSignedByDevice` must sign the `authAttemptProofToken` (not the enrollment proof token) to prove the device received the original authentication request."
+        "description": "Submits the mobile device's response when the auth attempt was created **without** context (standard Create or Create with API Key / User Identifier). Use after Pending and steps 4–5. The device signature (step 5) must be over the canonical payload proofToken|accepted; see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.\n\n**Request Body:**\n- `authAttemptId` (required), `authAttemptAccepted` (required), `authAttemptProofTokenSignedByDevice` (required), `authAttemptChallengeResponse` (0 or challenge code)\n\n**Match:** Create (no context) → use this Respond."
+      },
+      "response": []
+    },
+    {
+      "name": "6b respond with context",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('result');",
+              "        pm.expect(jsonData).to.have.property('message');",
+              "    });",
+              "    ",
+              "    pm.test(\"Result is valid\", function () {",
+              "        var validResults = ['APPROVED', 'DENIED', 'FAILED', 'EXPIRED'];",
+              "        pm.expect(validResults).to.include(jsonData.result);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"authAttemptAccepted\": {{authAttemptAccepted}},\r\n    \"authAttemptProofTokenSignedByDevice\": \"{{authAttemptProofTokenSignedByDevice}}\",\r\n    \"authAttemptChallengeResponse\": {{authAttemptChallengeResponse}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth-attempts/respond",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth-attempts",
+            "respond"
+          ]
+        },
+        "description": "Same as \"6 respond\"; use this when the auth attempt was created **with context** (Create with Context in the Admin collection). The backend does not include context in the Respond payload — the device still signs proofToken|accepted. This request is a duplicate for flow clarity: Create with Context → Pending (with contextTitle/contextMessage) → steps 4–5 → **6b respond with context**."
       },
       "response": []
     }
@@ -388,6 +485,11 @@
       "key": "authAttemptChallengeResponse",
       "value": "0",
       "description": "Challenge response (0 if no challenge required, or challenge code if required)"
+    },
+    {
+      "key": "authAttemptAccepted",
+      "value": "true",
+      "description": "User decision for Respond: true = approve, false = deny. Used to build the device signature payload (proofToken|accepted)."
     }
   ]
 }

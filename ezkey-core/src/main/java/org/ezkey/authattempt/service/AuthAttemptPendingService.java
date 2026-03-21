@@ -231,8 +231,9 @@ public class AuthAttemptPendingService {
   /**
    * Builds the pending response with signed proof token and challenge information.
    *
-   * <p>This method creates a complete response containing the authentication attempt ID, signed
-   * proof token, and challenge requirements for the mobile device.
+   * <p>The integration signs the canonical payload {@code proofToken|challengeRequired|contextTitle
+   * |contextMessage} (NFC-normalized text, UTF-8) so that context and challenge cannot be tampered
+   * by a MITM. See {@link AuthAttemptSignaturePayload} and docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.
    *
    * @param authAttempt the claimed authentication attempt
    * @param enrollment the enrollment containing integration private key
@@ -244,20 +245,41 @@ public class AuthAttemptPendingService {
     response.setAuthAttemptId(authAttempt.getAuthAttemptId());
     response.setCreatedAt(authAttempt.getCreatedAt()); // Required for FK to partitioned table
     response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
-    response.setAuthAttemptProofTokenSignedByIntegration(
-        signatureService.generateSignature(
-            authAttempt.getAuthAttemptProofToken(), enrollment.getIntegrationPrivateKey()));
 
-    // Determine challenge requirements
-    if (authAttempt.getAuthAttemptChallenge() != null) {
-      response.setAuthAttemptChallengeRequired(true);
-    } else {
-      response.setAuthAttemptChallengeRequired(enrollment.getAuthAttemptChallengeRequired());
-    }
+    // Determine challenge requirements (same logic as response fields)
+    boolean challengeRequired =
+        authAttempt.getAuthAttemptChallenge() != null
+            || Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired());
+    response.setAuthAttemptChallengeRequired(challengeRequired);
 
     // Forward optional contextual authentication fields to the mobile device
     response.setContextTitle(authAttempt.getContextTitle());
     response.setContextMessage(authAttempt.getContextMessage());
+
+    // Sign canonical payload (proofToken|challengeRequired|contextTitle|contextMessage) with NFC
+    String payload =
+        AuthAttemptSignaturePayload.buildPendingPayload(
+            authAttempt.getAuthAttemptProofToken(),
+            challengeRequired,
+            authAttempt.getContextTitle(),
+            authAttempt.getContextMessage());
+    String signature =
+        signatureService.generateSignature(payload, enrollment.getIntegrationPrivateKey());
+    response.setAuthAttemptProofTokenSignedByIntegration(signature);
+
+    // Same verification path as Android (JCA SHA256withECDSA). If this fails, the mobile app will
+    // also fail — usually indicates private/public key mismatch or corrupted enrollment keys.
+    String normalizedPublicKey =
+        signatureService.normalizeIntegrationPublicKeyToBase64(
+            enrollment.getIntegrationPublicKey());
+    if (!signatureService.validateSignatureWithJcaSha256WithEcdsa(
+        payload, signature, normalizedPublicKey)) {
+      logger.error(
+          "Pending integration signature failed JCA self-verification (same algorithm as mobile). "
+              + "enrollmentId={} authAttemptId={}",
+          enrollment.getEnrollmentId(),
+          authAttempt.getAuthAttemptId());
+    }
 
     return response;
   }

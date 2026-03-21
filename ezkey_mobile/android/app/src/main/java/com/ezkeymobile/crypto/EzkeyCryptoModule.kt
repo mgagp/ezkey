@@ -17,12 +17,12 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import android.util.Log
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import java.nio.charset.StandardCharsets
-import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
@@ -172,6 +172,36 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Verifies an ECDSA-SHA256 signature over the given data using the provided public key.
+   *
+   * Used to verify the integration signature on the Pending response payload (proofToken|
+   * challengeRequired|contextTitle|contextMessage). Public key must be Base64 X.509; signature
+   * Base64 ASN.1 DER.
+   *
+   * @param data The exact payload that was signed (UTF-8).
+   * @param signatureBase64 Base64-encoded ECDSA signature.
+   * @param publicKeyBase64 Base64-encoded X.509 public key.
+   * @param promise Promise resolved with true if signature is valid, false otherwise.
+   * @since 2025
+   */
+  @ReactMethod
+  fun verify(data: String, signatureBase64: String, publicKeyBase64: String, promise: Promise) {
+    try {
+      val valid = IntegrationKeyVerifier.verify(data, signatureBase64, publicKeyBase64)
+      if (!valid) {
+        Log.w(
+            TAG,
+            "Integration pending signature verify returned false (check Auth API JCA self-verify log vs logcat)",
+        )
+      }
+      promise.resolve(valid)
+    } catch (error: Exception) {
+      Log.e(TAG, "verify threw", error)
+      promise.reject(ERROR_CODE_VERIFY, error)
+    }
+  }
+
+  /**
    * Deletes the EC P-256 key pair for a given enrollment.
    *
    * @param enrollmentId The enrollment ID to delete the key pair for.
@@ -207,11 +237,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
   companion object {
     const val NAME = "EzkeyCryptoModule"
+    private const val TAG = "EzkeyCrypto"
     private const val ANDROID_KEY_STORE = "AndroidKeyStore"
     private const val ERROR_CODE_KEY_GENERATION = "EZK_KEY_GENERATION_ERROR"
     private const val ERROR_CODE_PUBLIC_KEY = "EZK_PUBLIC_KEY_ERROR"
     private const val ERROR_CODE_SIGN = "EZK_SIGN_ERROR"
     private const val ERROR_CODE_NOT_FOUND = "EZK_KEY_NOT_FOUND"
     private const val ERROR_CODE_DELETE = "EZK_DELETE_ERROR"
+    private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
   }
 }

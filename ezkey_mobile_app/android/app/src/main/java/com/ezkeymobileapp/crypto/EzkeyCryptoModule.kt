@@ -22,11 +22,13 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import java.nio.charset.StandardCharsets
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.security.spec.X509EncodedKeySpec
 
 /**
  * React Native module providing EC P-256 key generation, retrieval, signing, and deletion.
@@ -172,6 +174,37 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Verifies an ECDSA-SHA256 signature over the given data using the provided public key.
+   *
+   * Used to verify the integration signature on the Pending response payload (proofToken|
+   * challengeRequired|contextTitle|contextMessage). Public key must be Base64 X.509; signature
+   * Base64 ASN.1 DER.
+   *
+   * @param data The exact payload that was signed (UTF-8).
+   * @param signatureBase64 Base64-encoded ECDSA signature.
+   * @param publicKeyBase64 Base64-encoded X.509 public key.
+   * @param promise Promise resolved with true if signature is valid, false otherwise.
+   * @since 2025
+   */
+  @ReactMethod
+  fun verify(data: String, signatureBase64: String, publicKeyBase64: String, promise: Promise) {
+    try {
+      val keyBytes = android.util.Base64.decode(publicKeyBase64, android.util.Base64.NO_WRAP)
+      val keySpec = X509EncodedKeySpec(keyBytes)
+      val keyFactory = KeyFactory.getInstance("EC")
+      val publicKey = keyFactory.generatePublic(keySpec)
+      val signature = Signature.getInstance("SHA256withECDSA")
+      signature.initVerify(publicKey)
+      signature.update(data.toByteArray(StandardCharsets.UTF_8))
+      val signatureBytes = android.util.Base64.decode(signatureBase64, android.util.Base64.NO_WRAP)
+      val valid = signature.verify(signatureBytes)
+      promise.resolve(valid)
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_VERIFY, error)
+    }
+  }
+
+  /**
    * Deletes the EC P-256 key pair for a given enrollment.
    *
    * @param enrollmentId The enrollment ID to delete the key pair for.
@@ -213,5 +246,6 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_SIGN = "EZK_SIGN_ERROR"
     private const val ERROR_CODE_NOT_FOUND = "EZK_KEY_NOT_FOUND"
     private const val ERROR_CODE_DELETE = "EZK_DELETE_ERROR"
+    private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
   }
 }

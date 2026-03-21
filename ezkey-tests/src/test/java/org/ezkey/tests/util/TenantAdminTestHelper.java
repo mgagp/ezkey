@@ -435,11 +435,14 @@ public class TenantAdminTestHelper {
     String authAttemptProofToken = pendingResponse.jsonPath().getString("authAttemptProofToken");
     log.info("✅ Auth attempt proof token received");
 
-    // Step 4: Sign auth attempt proof token
-    log.info("🔐 STEP 5: Signing auth attempt proof token");
+    // Step 4: Sign canonical respond payload (proofToken|accepted) per
+    // AUTH_ATTEMPT_SIGNATURE_PAYLOAD
+    log.info("🔐 STEP 5: Signing auth attempt respond payload (proofToken|accepted)");
+    boolean accepted = true;
+    String respondPayload = authAttemptProofToken + "|" + (accepted ? "true" : "false");
     String authAttemptProofTokenSignedByDevice =
-        cryptoApiClient.signData(authAttemptProofToken, deviceCredentials.privateKey());
-    log.info("✅ Auth attempt proof token signed");
+        cryptoApiClient.signData(respondPayload, deviceCredentials.privateKey());
+    log.info("✅ Auth attempt respond payload signed");
 
     // Step 5: Respond to auth attempt
     log.info("🔐 STEP 6: Calling /auth-attempts/respond on Auth API");

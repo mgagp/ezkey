@@ -125,13 +125,22 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation "com.google.mlkit:barcode-scanning:17.2.0"
 
-    // Note: EC P-256 uses native Android Keystore, no external crypto library needed
-    // BouncyCastle kept for potential future use or testing
-    // implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // TEMPORARY (stabilization): required to parse legacy EC public keys encoded with explicit
+    // parameters. Remove after backend normalization to portable SPKI named-curve (secp256r1).
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
     }
+
+    // Unit tests for crypto (IntegrationKeyVerifier) — JVM only, no device
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+// Use JUnit 5 for unit tests
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

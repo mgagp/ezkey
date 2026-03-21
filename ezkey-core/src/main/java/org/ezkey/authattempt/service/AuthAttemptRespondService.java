@@ -205,8 +205,9 @@ public class AuthAttemptRespondService {
   /**
    * Validates the device signature for the authentication attempt.
    *
-   * <p>This method ensures the device signature is valid and corresponds to the authentication
-   * attempt proof token.
+   * <p>The device signs the canonical payload {@code proofToken|accepted} (UTF-8) so that
+   * authAttemptAccepted cannot be flipped by a MITM. See {@link AuthAttemptSignaturePayload} and
+   * docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.
    *
    * @param request the authentication response request
    * @param authAttempt the authentication attempt
@@ -214,14 +215,16 @@ public class AuthAttemptRespondService {
    */
   private void validateDeviceSignature(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
-    // Validate device signature
-    boolean isDeviceProofTokenValid =
+    boolean accepted = Boolean.TRUE.equals(request.getAuthAttemptAccepted());
+    String payload =
+        AuthAttemptSignaturePayload.buildRespondPayload(
+            authAttempt.getAuthAttemptProofToken(), accepted);
+    boolean isValid =
         signatureService.validateSignature(
-            authAttempt.getAuthAttemptProofToken(),
+            payload,
             request.getAuthAttemptProofTokenSignedByDevice(),
             enrollment.getDevicePublicKey());
-    if (!isDeviceProofTokenValid) {
-      // Use TxHelper to commit INVALID status before throwing exception
+    if (!isValid) {
       authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
       throw new IllegalArgumentException("Invalid signature for auth attempt code");
     }

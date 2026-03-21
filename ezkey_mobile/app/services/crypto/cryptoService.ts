@@ -91,6 +91,24 @@ class CryptoService {
   sign(enrollmentId: string, data: string): Promise<string> {
     return nativeCrypto.sign(enrollmentId, data);
   }
+
+  /**
+   * Verifies an ECDSA-SHA256 signature over the given data with the given public key.
+   * Used to verify the integration signature on the Pending response payload.
+   *
+   * @param data The exact payload that was signed (UTF-8).
+   * @param signatureBase64 Base64-encoded ECDSA signature.
+   * @param publicKeyBase64 Base64-encoded X.509 public key (e.g. integration public key).
+   * @return true if the signature is valid.
+   * @since 2025
+   */
+  verify(
+    data: string,
+    signatureBase64: string,
+    publicKeyBase64: string,
+  ): Promise<boolean> {
+    return nativeCrypto.verify(data, signatureBase64, publicKeyBase64);
+  }
 }
 
 export const cryptoService = CryptoService.create();

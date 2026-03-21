@@ -10,8 +10,14 @@
 
 package org.ezkey.signature;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.cert.CertificateFactory;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Objects;
 import org.bouncycastle.asn1.ASN1EncodableVector;
@@ -226,6 +232,51 @@ public class SignatureService {
    * @see org.bouncycastle.crypto.params.ECPublicKeyParameters
    * @see org.bouncycastle.crypto.signers.ECDSASigner
    */
+  /**
+   * Normalizes an integration public key to Base64-encoded X.509 SubjectPublicKeyInfo.
+   *
+   * <p>Clients (demo device, mobile) expect SubjectPublicKeyInfo only. Some enrollments may have
+   * been stored with a full X.509 certificate or legacy format. This method ensures the bind
+   * response always returns the format that {@link #validateSignature} and client
+   * PublicKeyFactory.createKey() accept.
+   *
+   * @param base64PublicKey the value from the enrollment (SubjectPublicKeyInfo or certificate,
+   *     Base64)
+   * @return Base64-encoded SubjectPublicKeyInfo, or the original string if normalization fails
+   */
+  public String normalizeIntegrationPublicKeyToBase64(String base64PublicKey) {
+    if (base64PublicKey == null || base64PublicKey.isBlank()) {
+      return base64PublicKey;
+    }
+    String trimmed = base64PublicKey.replaceAll("\\s", "");
+    byte[] keyBytes;
+    try {
+      keyBytes = Base64.getDecoder().decode(trimmed);
+    } catch (IllegalArgumentException e) {
+      logger.warn("Integration public key is not valid Base64; returning as-is");
+      return trimmed;
+    }
+    try {
+      // Already SubjectPublicKeyInfo if PublicKeyFactory accepts it
+      PublicKeyFactory.createKey(keyBytes);
+      return trimmed;
+    } catch (Exception e) {
+      // Try as X.509 certificate (e.g. legacy or migrated data)
+      try {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        java.security.cert.Certificate cert =
+            cf.generateCertificate(new ByteArrayInputStream(keyBytes));
+        byte[] subjectPublicKeyInfo = cert.getPublicKey().getEncoded();
+        return Base64.getEncoder().encodeToString(subjectPublicKeyInfo);
+      } catch (Exception e2) {
+        logger.warn(
+            "Could not normalize integration public key (not SubjectPublicKeyInfo nor X.509 cert);"
+                + " returning as-is");
+        return trimmed;
+      }
+    }
+  }
+
   public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
@@ -251,6 +302,34 @@ public class SignatureService {
       return verifier.verifySignature(hash, signature[0], signature[1]);
     } catch (Exception e) {
       logger.debug("Signature validation failed", e);
+      return false;
+    }
+  }
+
+  /**
+   * Verifies an ECDSA-SHA256 signature using JCA {@code SHA256withECDSA}.
+   *
+   * <p>Android mobile uses the same algorithm in {@code IntegrationKeyVerifier} (standard {@link
+   * Signature} API). Backend signing uses BouncyCastle {@link ECDSASigner}; this method confirms
+   * interoperability with the mobile verifier.
+   *
+   * @param data UTF-8 payload that was signed
+   * @param signatureBase64 Base64-encoded ASN.1 DER signature
+   * @param base64PublicKey Base64-encoded SubjectPublicKeyInfo (same as bind response)
+   * @return true if JCA accepts the signature
+   */
+  public boolean validateSignatureWithJcaSha256WithEcdsa(
+      String data, String signatureBase64, String base64PublicKey) {
+    try {
+      byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
+      PublicKey publicKey =
+          KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(keyBytes));
+      Signature verifier = Signature.getInstance("SHA256withECDSA");
+      verifier.initVerify(publicKey);
+      verifier.update(data.getBytes(StandardCharsets.UTF_8));
+      return verifier.verify(Base64.getDecoder().decode(signatureBase64));
+    } catch (Exception e) {
+      logger.debug("JCA signature validation failed", e);
       return false;
     }
   }

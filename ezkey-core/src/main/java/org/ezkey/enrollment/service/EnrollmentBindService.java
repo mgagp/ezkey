@@ -21,6 +21,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.security.SensitiveDataHasher;
+import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,7 @@ public class EnrollmentBindService {
   private final IntegrationRepository integrationRepository;
   private final EzkeyAdminRepository ezkeyAdminRepository;
   private final EnrollmentTxHelper enrollmentTxHelper;
+  private final SignatureService signatureService;
 
   /**
    * Constructs the bind service with required dependencies.
@@ -75,16 +77,20 @@ public class EnrollmentBindService {
    * @param ezkeyAdminRepository the JPA repository for admin lookup (admin MFA enrollments)
    * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
    *     separate transaction
+   * @param signatureService the signature service for normalizing integration public key to
+   *     SubjectPublicKeyInfo (so bind response matches what demo device and mobile expect)
    */
   public EnrollmentBindService(
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
       EzkeyAdminRepository ezkeyAdminRepository,
-      EnrollmentTxHelper enrollmentTxHelper) {
+      EnrollmentTxHelper enrollmentTxHelper,
+      SignatureService signatureService) {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.ezkeyAdminRepository = ezkeyAdminRepository;
     this.enrollmentTxHelper = enrollmentTxHelper;
+    this.signatureService = signatureService;
   }
 
   /**
@@ -308,7 +314,10 @@ public class EnrollmentBindService {
     EnrollmentBindResponse response = new EnrollmentBindResponse();
     response.setEnrollmentId(enrollment.getEnrollmentId());
     response.setEnrollmentName(enrollment.getEnrollmentName());
-    response.setIntegrationPublicKey(enrollment.getIntegrationPublicKey());
+    String normalizedIntegrationPublicKey =
+        signatureService.normalizeIntegrationPublicKeyToBase64(
+            enrollment.getIntegrationPublicKey());
+    response.setIntegrationPublicKey(normalizedIntegrationPublicKey);
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);

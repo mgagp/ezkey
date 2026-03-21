@@ -556,9 +556,10 @@ String adminToken = bootstrapService.ensureAdminToken();
 
 **Solution**:
 1. Ensure Docker stack has completed startup
-2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"`
-3. Verify bootstrap completed: Look for "✅ Global Admin Enrollment created"
-4. Run extraction test manually: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
+2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"` (container name from default Clean Start is `ezkey-admin-api`; use `docker ps` if unsure)
+3. If tests say **no Admin API container found** but `curl http://localhost:9080` works: the JVM running Maven often **cannot run `docker`** (different `PATH` than Git Bash on Windows). Run tests from the same terminal where `docker ps` works, **or** set `EZKEY_TESTS_ADMIN_API_CONTAINER` to the name shown by `docker ps`, **or** rely on fallback discovery via `docker ps --filter publish=9080` (implemented in `BootstrapCredentialsExtractor`)
+4. Verify bootstrap completed: Look for "✅ Global Admin Enrollment created"
+5. Run extraction test manually: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
 
 ### Tests Fail: Services Not Healthy
 
