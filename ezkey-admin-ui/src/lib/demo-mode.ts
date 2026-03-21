@@ -181,3 +181,39 @@ export const reasonDemoPresets: ReasonDemoPreset[] = [
   { id: 'end-of-access', en: 'End of access / offboarding', fr: 'Fin d\'accès / départ' },
   { id: 'revoked-security', en: 'Revoked for security reasons', fr: 'Révoqué pour raison de sécurité' },
 ];
+
+// ── Test Auth dialog: optional context (title + message) for demo ─────────────
+// Used when testing authentication with contextual approval (e.g. Garage du coin).
+
+export interface AuthContextDemoPreset {
+  id: string;
+  /** Badge label (short). */
+  label: string;
+  /** Context title (max 200 chars). */
+  contextTitle: string;
+  /** Context message (max 2000 chars). */
+  contextMessage: string;
+}
+
+export const authContextDemoPresets: AuthContextDemoPreset[] = [
+  {
+    id: 'garage-service',
+    label: 'Garage — Ordre de réparation',
+    contextTitle: 'Validation ordre de réparation',
+    contextMessage:
+      'Autoriser l’ordre de réparation #2847 — Porsche Cayenne, freins et distribution. Devis 2 340 € TTC.',
+  },
+  {
+    id: 'garage-payment',
+    label: 'Garage — Paiement fournisseur',
+    contextTitle: 'Paiement fournisseur',
+    contextMessage:
+      'Valider le virement de 8 500 € à Pièces Auto France pour la commande CMD-2025-089 (Garage du coin).',
+  },
+  {
+    id: 'document-signature',
+    label: 'Signature document',
+    contextTitle: 'Signature de document',
+    contextMessage: 'Approuver la signature du contrat NDA avec partenaire Acme Corp (Garage du coin).',
+  },
+];

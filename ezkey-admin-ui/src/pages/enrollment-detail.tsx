@@ -13,11 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -88,10 +91,13 @@ function TestAuthDialog({
   type Step = 'configure' | 'live' | 'done';
   type DoneReason = 'accepted' | 'rejected' | 'expired' | 'invalid' | 'cancelled';
 
+  const { sessionDemoOn } = useDemoModeSession();
   const [step, setStep] = useState<Step>('configure');
   const [challengeRequested, setChallengeRequested] = useState(
     enrollment.authAttemptChallengeRequired ?? false,
   );
+  const [contextTitle, setContextTitle] = useState('');
+  const [contextMessage, setContextMessage] = useState('');
   const [createdAttempt, setCreatedAttempt] = useState<AuthAttemptCreateResponse | null>(null);
   const [isFinal, setIsFinal] = useState(false);
   const [doneReason, setDoneReason] = useState<DoneReason | null>(null);
@@ -157,6 +163,8 @@ function TestAuthDialog({
   const resetState = () => {
     setStep('configure');
     setChallengeRequested(enrollment.authAttemptChallengeRequired ?? false);
+    setContextTitle('');
+    setContextMessage('');
     setCreatedAttempt(null);
     setIsFinal(false);
     setDoneReason(null);
@@ -192,6 +200,59 @@ function TestAuthDialog({
             </div>
           </label>
 
+          <div className="space-y-2 border-2 border-fg/20 p-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+              {t('testAuth.contextOptional')}
+            </p>
+            <div className="grid gap-2">
+              <Label htmlFor="testAuth-contextTitle" className="text-sm">
+                {t('testAuth.contextTitle')}
+              </Label>
+              <Input
+                id="testAuth-contextTitle"
+                value={contextTitle}
+                onChange={(e) => setContextTitle(e.target.value)}
+                placeholder={t('testAuth.contextTitlePlaceholder')}
+                maxLength={200}
+                className="border-2 border-fg/30"
+              />
+              <Label htmlFor="testAuth-contextMessage" className="text-sm">
+                {t('testAuth.contextMessage')}
+              </Label>
+              <Textarea
+                id="testAuth-contextMessage"
+                value={contextMessage}
+                onChange={(e) => setContextMessage(e.target.value)}
+                placeholder={t('testAuth.contextMessagePlaceholder')}
+                maxLength={2000}
+                rows={3}
+                className="border-fg/30"
+              />
+            </div>
+            {isDemoMode && sessionDemoOn && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                <span className="text-xs font-bold text-fg-muted uppercase tracking-wider mr-1">
+                  {t('testAuth.contextFillDemo')}
+                </span>
+                {authContextDemoPresets.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => {
+                      setContextTitle(preset.contextTitle);
+                      setContextMessage(preset.contextMessage);
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {createMutation.isError && (
             <Alert variant="error">
               {getApiErrorMessage(createMutation.error, t('testAuth.errorCreateAttempt'))}
@@ -202,14 +263,20 @@ function TestAuthDialog({
             <Button variant="ghost" onClick={handleClose}>{t('testAuth.cancel')}</Button>
             <Button
               isLoading={createMutation.isPending}
-              onClick={() =>
-                createMutation.mutate({
-                  data: {
-                    enrollmentId: enrollment.enrollmentId,
-                    challengeRequested,
-                  },
-                })
-              }
+              onClick={() => {
+                const data: {
+                  enrollmentId: number;
+                  challengeRequested: boolean;
+                  contextTitle?: string;
+                  contextMessage?: string;
+                } = {
+                  enrollmentId: enrollment.enrollmentId,
+                  challengeRequested,
+                };
+                if (contextTitle.trim()) data.contextTitle = contextTitle.trim();
+                if (contextMessage.trim()) data.contextMessage = contextMessage.trim();
+                createMutation.mutate({ data });
+              }}
               className="gap-1.5"
             >
               <Zap className="size-3.5" />
